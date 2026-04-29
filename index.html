@@ -1,0 +1,471 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Wayline Travel</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="Trips">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" role="img">
+              <path d="M3.7 12.6 20.4 4.3c.8-.4 1.7.4 1.3 1.3l-8.3 16.7c-.4.9-1.8.7-2-.3l-1.2-6.2-6.2-1.2c-1-.2-1.2-1.6-.3-2Z" />
+            </svg>
+          </div>
+          <div>
+            <strong>Wayline</strong>
+            <span>Travel organizer</span>
+          </div>
+        </div>
+
+        <button class="primary-action" id="newTripButton">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+          New trip
+        </button>
+
+        <section class="connection-summary" aria-label="Booking connections">
+          <div>
+            <span class="label">Booking sync</span>
+            <strong id="connectedCount">0 connected</strong>
+          </div>
+          <button class="icon-button small" id="connectionsJumpButton" aria-label="View booking connections">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.1 0l2.1-2.1a5 5 0 0 0-7.1-7.1L11 4.9M14 11a5 5 0 0 0-7.1 0l-2.1 2.1a5 5 0 0 0 7.1 7.1L13 19.1" /></svg>
+          </button>
+        </section>
+
+        <section class="connection-summary" aria-label="App integrations">
+          <div>
+            <span class="label">Integrations</span>
+            <strong id="integrationCount">0 active</strong>
+          </div>
+          <button class="icon-button small" id="integrationsJumpButton" aria-label="View app integrations">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M5 8h14M5 16h14" /></svg>
+          </button>
+        </section>
+
+        <section class="connection-summary" aria-label="Trip builder apps">
+          <div>
+            <span class="label">Trip builder</span>
+            <strong id="builderCount">0 apps</strong>
+          </div>
+          <button class="icon-button small" id="builderJumpButton" aria-label="View trip builder apps">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" /></svg>
+          </button>
+        </section>
+
+        <section class="connection-summary" aria-label="Database status">
+          <div>
+            <span class="label">Database</span>
+            <strong id="databaseStatus">Starting</strong>
+          </div>
+          <button class="icon-button small" id="saveNowButton" aria-label="Save trip database">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z" /><path d="M17 21v-8H7v8M7 3v5h8" /></svg>
+          </button>
+        </section>
+
+        <nav class="trip-list" id="tripList" aria-label="Saved trips"></nav>
+
+        <div class="sync-panel">
+          <div class="sync-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.6-6.4M21 3v6h-6" /></svg>
+          </div>
+          <div>
+            <strong>Email sync ready</strong>
+            <p>Forward confirmations or paste plans to build a timeline.</p>
+          </div>
+        </div>
+      </aside>
+
+      <main class="workspace">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Active itinerary</p>
+            <h1 id="tripTitle">Loading trip</h1>
+          </div>
+          <div class="global-search" role="search">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21 21-4.3-4.3M10.8 18a7.2 7.2 0 1 1 0-14.4 7.2 7.2 0 0 1 0 14.4Z" /></svg>
+            <input id="globalSearch" type="search" aria-label="Search all trip data" placeholder="Search trips, bookings, docs, apps" />
+            <button class="icon-button small" id="clearSearchButton" aria-label="Clear search">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
+            </button>
+          </div>
+          <div class="topbar-actions">
+            <button class="ghost-action" id="pitchModeButton">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V5M4 19h16M8 16v-5M12 16V8M16 16v-3" /></svg>
+              Pitch mode
+            </button>
+            <button class="icon-button" id="shareButton" aria-label="Share trip">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7M16 6l-4-4-4 4M12 2v14" /></svg>
+            </button>
+            <button class="ghost-action" id="importButton">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v16H4zM8 8h8M8 12h8M8 16h5" /></svg>
+              Import
+            </button>
+          </div>
+        </header>
+
+        <section class="search-summary" id="searchSummary" aria-live="polite">
+          <div>
+            <span class="label">Search environment</span>
+            <strong id="searchSummaryTitle">Everything connected</strong>
+          </div>
+          <div class="search-counts" id="searchCounts"></div>
+        </section>
+
+        <section class="investor-board" id="investorBoard" aria-label="Investor presentation summary">
+          <article class="investor-hero">
+            <div>
+              <p class="eyebrow">Investor demo</p>
+              <h2>AI travel command center for modern trip planning</h2>
+              <p>Wayline turns scattered confirmations, booking tools, maps, calendars, documents, and spend into one persistent itinerary workspace for consumers and teams.</p>
+            </div>
+            <button class="primary-action" id="copyPitchButton">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 8h12v12H8z" /><path d="M4 16V4h12" /></svg>
+              Copy one-pager
+            </button>
+          </article>
+
+          <div class="investor-metrics" id="investorMetrics"></div>
+
+          <div class="investor-grid">
+            <article class="investor-card">
+              <span class="label">Problem</span>
+              <strong>Travel planning is fragmented</strong>
+              <p>Travelers jump between email, booking sites, maps, calendars, notes, wallets, and spreadsheets. Trip context gets lost exactly when plans change.</p>
+            </article>
+            <article class="investor-card">
+              <span class="label">Solution</span>
+              <strong>One itinerary operating system</strong>
+              <p>Wayline centralizes confirmations, enriches them with AI extraction, connects external booking workflows, and keeps every trip searchable.</p>
+            </article>
+            <article class="investor-card">
+              <span class="label">Business model</span>
+              <strong>Consumer freemium plus partner revenue</strong>
+              <p>Premium sync, shared trips, business travel workspaces, affiliate booking handoffs, and API access for travel operators.</p>
+            </article>
+            <article class="investor-card">
+              <span class="label">Moat</span>
+              <strong>Personal travel graph</strong>
+              <p>Persistent trip data, supplier parsing, user preferences, document context, and calendar behavior compound into better automation over time.</p>
+            </article>
+          </div>
+
+          <div class="roadmap-strip" aria-label="Roadmap">
+            <div class="roadmap-label"><strong>Roadmap</strong><span>Funding milestones</span></div>
+            <div><strong>Now</strong><span>Static MVP, local database, AI import, Maps/Calendar handoffs</span></div>
+            <div><strong>Next</strong><span>Backend auth, Gmail sync, OpenAI API extraction, cloud Postgres</span></div>
+            <div><strong>Scale</strong><span>Mobile app, partner marketplace, teams, expense and duty-of-care layers</span></div>
+          </div>
+        </section>
+
+        <section class="overview-grid" aria-label="Trip overview">
+          <article class="status-card hero-card">
+            <div>
+              <span class="status-pill" id="tripStatus">Upcoming</span>
+              <h2 id="tripRoute">City to city</h2>
+              <p id="tripDates">Dates</p>
+            </div>
+            <div class="route-visual" aria-hidden="true">
+              <span></span>
+              <i></i>
+              <span></span>
+            </div>
+          </article>
+
+          <article class="status-card compact">
+            <span class="label">Next item</span>
+            <strong id="nextItem">Flight check-in</strong>
+            <p id="nextItemMeta">Time remaining</p>
+          </article>
+
+          <article class="status-card compact">
+            <span class="label">Total spend</span>
+            <strong id="tripSpend">$0</strong>
+            <p id="tripSpendMeta">Across bookings</p>
+          </article>
+
+          <article class="status-card compact">
+            <span class="label">Documents</span>
+            <strong id="docCount">0 saved</strong>
+            <p>Passports, tickets, receipts</p>
+          </article>
+        </section>
+
+        <section class="content-grid">
+          <div class="timeline-panel">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Timeline</p>
+                <h2>Trip plan</h2>
+                <span class="live-clock" id="timelineLiveClock">Syncing local times</span>
+              </div>
+              <div class="timeline-tools">
+                <button class="ghost-action compact-action" id="clearTimelineButton">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14" /></svg>
+                  Clear
+                </button>
+                <div class="segmented" role="tablist" aria-label="Timeline filter">
+                  <button class="active" data-filter="all">All</button>
+                  <button data-filter="flight">Flights</button>
+                  <button data-filter="stay">Stays</button>
+                  <button data-filter="activity">Plans</button>
+                </div>
+              </div>
+            </div>
+            <div class="timeline" id="timeline"></div>
+          </div>
+
+          <aside class="details-column">
+            <section class="tool-panel management-panel" id="managementPanel">
+              <div class="section-heading tight">
+                <div>
+                  <p class="eyebrow">Management</p>
+                  <h2>Recovery vault</h2>
+                </div>
+                <span class="connection-badge" id="recoveryCount">0 archived</span>
+              </div>
+              <div class="manager-lock" id="managerLock">
+                <input id="managerCodeInput" type="password" inputmode="numeric" aria-label="Management access code" placeholder="Management code" />
+                <button class="primary-action" id="unlockManagerButton">Unlock</button>
+              </div>
+              <div class="recovery-list" id="recoveryList"></div>
+            </section>
+
+            <section class="tool-panel integrations-panel" id="integrationsPanel">
+              <div class="section-heading tight">
+                <div>
+                  <p class="eyebrow">Integrations</p>
+                  <h2>Maps, Google, OpenAI</h2>
+                </div>
+                <span class="connection-badge">Prototype</span>
+              </div>
+              <div class="integration-list" id="integrationList"></div>
+            </section>
+
+            <section class="tool-panel destination-panel" id="destinationDiscoveryPanel">
+              <div class="section-heading tight">
+                <div>
+                  <p class="eyebrow">Google discovery</p>
+                  <h2>Explore any country</h2>
+                </div>
+                <span class="connection-badge" id="destinationDiscoveryCount">0 ideas</span>
+              </div>
+              <div class="destination-search">
+                <input id="destinationSearchInput" type="search" aria-label="Search country or destination" placeholder="Country, city, or region" />
+                <button class="primary-action" id="destinationSearchButton">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21 21-4.3-4.3M10.8 18a7.2 7.2 0 1 1 0-14.4 7.2 7.2 0 0 1 0 14.4Z" /></svg>
+                  Search
+                </button>
+              </div>
+              <div class="destination-chip-row" id="destinationChipRow"></div>
+              <div class="destination-results" id="destinationResults"></div>
+            </section>
+
+            <section class="tool-panel app-market-panel" id="builderAppsPanel">
+              <div class="section-heading tight">
+                <div>
+                  <p class="eyebrow">Trip builder</p>
+                  <h2>Essential apps</h2>
+                </div>
+                <span class="connection-badge" id="builderSupportedCount">0 ready</span>
+              </div>
+              <div class="booking-controls">
+                <input id="builderSearch" type="search" aria-label="Search trip builder apps" placeholder="Search flights, weather, budget" />
+                <select id="builderCategory" aria-label="Filter trip builder app category">
+                  <option value="all">All tools</option>
+                  <option value="Plan">Plan</option>
+                  <option value="Move">Move</option>
+                  <option value="Stay">Stay</option>
+                  <option value="Do">Do</option>
+                  <option value="Prepare">Prepare</option>
+                  <option value="Share">Share</option>
+                </select>
+              </div>
+              <div class="builder-app-list" id="builderAppList"></div>
+            </section>
+
+            <section class="tool-panel booking-panel" id="bookingConnections">
+              <div class="section-heading tight">
+                <div>
+                  <p class="eyebrow">Connections</p>
+                  <h2>Booking sites</h2>
+                </div>
+                <span class="connection-badge" id="supportedCount">0 supported</span>
+              </div>
+              <div class="booking-controls">
+                <input id="siteSearch" type="search" aria-label="Search booking sites" placeholder="Search airlines, hotels, agencies" />
+                <select id="siteCategory" aria-label="Filter booking site category">
+                  <option value="all">All categories</option>
+                  <option value="Airlines">Airlines</option>
+                  <option value="Hotels">Hotels</option>
+                  <option value="Car Rentals">Car rentals</option>
+                  <option value="Transportation">Transport</option>
+                  <option value="Agencies">Agencies</option>
+                  <option value="Activities">Activities</option>
+                </select>
+              </div>
+              <div class="booking-list" id="bookingList"></div>
+            </section>
+
+            <section class="tool-panel file-reader-panel">
+              <div class="section-heading tight">
+                <div>
+                  <p class="eyebrow">File reader</p>
+                  <h2>Upload planned trip</h2>
+                </div>
+                <span class="connection-badge" id="fileReaderStatus">Ready</span>
+              </div>
+              <label class="file-drop" for="tripFileInput">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M7 8l5-5 5 5M5 21h14" /></svg>
+                <span>
+                  <strong>Choose itinerary file</strong>
+                  <small>.pptx, .txt, .csv, .json, .ics, .html</small>
+                </span>
+                <input id="tripFileInput" type="file" accept=".pptx,.txt,.csv,.json,.ics,.html,.htm,text/plain,text/csv,application/json,text/calendar,text/html" />
+              </label>
+              <textarea id="filePreviewText" class="file-preview" aria-label="Extracted trip file text" placeholder="Extracted trip content will appear here." spellcheck="false"></textarea>
+              <div class="file-actions">
+                <button class="primary-action full" id="importFileButton">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h16M14 6l6 6-6 6" /></svg>
+                  Import file plan
+                </button>
+                <button class="ghost-action full" id="sendFileToSmartImportButton">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 8h12v12H8z" /><path d="M4 16V4h12" /></svg>
+                  Send to Smart Import
+                </button>
+              </div>
+            </section>
+
+            <section class="tool-panel">
+              <div class="section-heading tight">
+                <div>
+                  <p class="eyebrow">Smart import</p>
+                  <h2>Add confirmation</h2>
+                </div>
+              </div>
+              <textarea id="importText" aria-label="Paste confirmation text" spellcheck="false">Flight AA 418 from JFK to LAX on May 14 at 8:20 AM. Hotel The LINE Los Angeles from May 14 to May 17. Dinner at Bestia May 15 7:30 PM.</textarea>
+              <button class="primary-action full" id="parseButton">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M5 10l7-7 7 7" /></svg>
+                Parse into itinerary
+              </button>
+              <button class="ghost-action full secondary-stack" id="aiParseButton">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 9.7 8.5 4 11l5.7 2.5L12 19l2.3-5.5L20 11l-5.7-2.5L12 3Z" /></svg>
+                Extract with OpenAI
+              </button>
+            </section>
+
+            <section class="map-panel" aria-label="Trip map preview">
+              <div class="map-canvas">
+                <span class="pin pin-a"></span>
+                <span class="pin pin-b"></span>
+                <span class="pin pin-c"></span>
+                <svg viewBox="0 0 280 180" aria-hidden="true">
+                  <path d="M34 125 C86 48, 133 64, 158 104 S229 154, 251 45" />
+                </svg>
+              </div>
+              <div class="map-meta">
+                <strong id="mapTitle">Los Angeles</strong>
+                <span id="mapMeta">3 saved places</span>
+              </div>
+              <div class="map-actions">
+                <a class="map-link" id="mapsSearchLink" target="_blank" rel="noreferrer">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s7-5.2 7-11a7 7 0 0 0-14 0c0 5.8 7 11 7 11Z" /><path d="M12 10.5h.01" /></svg>
+                  Open map
+                </a>
+                <a class="map-link" id="mapsDirectionsLink" target="_blank" rel="noreferrer">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+                  Directions
+                </a>
+              </div>
+            </section>
+
+            <section class="tool-panel documents">
+              <div class="section-heading tight">
+                <div>
+                  <p class="eyebrow">Wallet</p>
+                  <h2>Travel docs</h2>
+                </div>
+              </div>
+              <div id="documents"></div>
+            </section>
+          </aside>
+        </section>
+      </main>
+    </div>
+
+    <dialog id="tripDialog">
+      <form method="dialog" class="dialog-card" id="tripForm">
+        <div class="section-heading tight">
+          <div>
+            <p class="eyebrow">Create trip</p>
+            <h2>Where to next?</h2>
+          </div>
+          <button class="icon-button" value="cancel" aria-label="Close dialog">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
+          </button>
+        </div>
+        <label>
+          Trip name
+          <input name="name" value="Tokyo research week" required />
+        </label>
+        <label>
+          Destination
+          <input name="destination" value="Tokyo" required />
+        </label>
+        <div class="form-grid">
+          <label>
+            Start
+            <input name="start" type="date" value="2026-06-08" required />
+          </label>
+          <label>
+            End
+            <input name="end" type="date" value="2026-06-13" required />
+          </label>
+        </div>
+        <button class="primary-action full" value="default">Create itinerary</button>
+      </form>
+    </dialog>
+
+    <dialog id="shareDialog">
+      <form method="dialog" class="dialog-card share-dialog" id="shareForm">
+        <div class="section-heading tight">
+          <div>
+            <p class="eyebrow">Share trip</p>
+            <h2>Send itinerary access</h2>
+          </div>
+          <button class="icon-button" value="cancel" aria-label="Close share dialog">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
+          </button>
+        </div>
+        <label>
+          Shareable link
+          <input id="shareLinkInput" readonly />
+        </label>
+        <div class="share-actions">
+          <button class="primary-action full" id="copyShareLinkButton" value="copy">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 8h12v12H8z" /><path d="M4 16V4h12" /></svg>
+            Copy link
+          </button>
+          <button class="ghost-action full" id="nativeShareButton" value="native">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7M16 6l-4-4-4 4M12 2v14" /></svg>
+            Share
+          </button>
+          <a class="ghost-action full share-mail-link" id="emailShareLink">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16v12H4z" /><path d="m4 7 8 6 8-6" /></svg>
+            Email
+          </a>
+          <button class="ghost-action full" id="exportTripButton" value="export">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M5 21h14" /></svg>
+            Export file
+          </button>
+        </div>
+        <p class="share-note">The link includes this trip data for demos. Production sharing should use authenticated cloud links.</p>
+      </form>
+    </dialog>
+
+    <script src="app.js"></script>
+  </body>
+</html>
