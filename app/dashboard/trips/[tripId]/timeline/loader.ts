@@ -1,6 +1,7 @@
 import type { TripSegment } from "@/lib/domain/trip";
 import type { TripSegmentType } from "@/lib/domain/trip";
 import { authorizeDashboardApi } from "@/lib/server/dashboard-test-auth";
+import { summarizeEstimatedRoutes } from "@/lib/server/itinerary-generator";
 import { isDemoTripId, isUuid } from "@/lib/server/trip-id";
 import { dayIdFromDate, segmentTypeLabel } from "@/lib/ui/timeline";
 import type { TimelineDayView, TripTimelineData } from "./types";
@@ -19,6 +20,7 @@ type TripSegmentRow = {
   lng: number | null;
   location: string | null;
   notes: string | null;
+  position: number | null;
   start_time: string | null;
   title: string;
   trip_id: string;
@@ -138,7 +140,7 @@ export async function loadTripTimelineData(tripId: string): Promise<TripTimeline
       .maybeSingle(),
     auth.supabase
       .from("trip_segments")
-      .select("id,trip_id,kind,title,location,start_time,end_time,lat,lng,notes,inserted_at")
+      .select("id,trip_id,kind,title,location,start_time,end_time,lat,lng,notes,position,inserted_at")
       .eq("trip_id", tripId)
       .eq("user_id", auth.userId)
       .order("start_time", { ascending: true, nullsFirst: false })
@@ -239,11 +241,8 @@ function groupSegmentsByDay(segments: TripSegment[]): TimelineDayView[] {
     groups.set(key, [...(groups.get(key) || []), segment]);
   }
 
-  return Array.from(groups.entries()).map(([date, items]) => ({
-    date,
-    dayNumber: date.slice(4),
-    id: dayIdFromDate(date),
-    items: items
+  return Array.from(groups.entries()).map(([date, items]) => {
+    const orderedItems = items
       .sort((a, b) => a.startAt.localeCompare(b.startAt))
       .map((segment) => ({
         actionLabel: segment.actionLabel,
@@ -263,10 +262,35 @@ function groupSegmentsByDay(segments: TripSegment[]): TimelineDayView[] {
         timeRange: formatTimeRange(segment.startAt, segment.endAt),
         title: segment.title,
         typeLabel: segmentTypeLabel(segment.type)
-      })),
-    label: formatWeekday(items[0]?.startAt || new Date().toISOString()),
-    summary: summariesByDate.get(date) || `${items.length} planned item${items.length === 1 ? "" : "s"}`
-  }));
+      }));
+    const routeSummary = summarizeEstimatedRoutes(
+      items.map((segment, index) => ({
+        id: segment.id,
+        kind: segment.type,
+        lat: segment.lat ?? null,
+        lng: segment.lng ?? null,
+        location: segment.location,
+        position: index,
+        start_time: segment.startAt,
+        title: segment.title
+      }))
+    )[0];
+
+    return {
+      date,
+      dayNumber: date.slice(4),
+      id: dayIdFromDate(date),
+      items: orderedItems,
+      label: formatWeekday(items[0]?.startAt || new Date().toISOString()),
+      routeSummary: {
+        estimatedDurationMinutes: routeSummary?.estimatedDurationMinutes || 0,
+        provider: routeSummary?.provider || "estimate",
+        totalDistanceMeters: routeSummary?.totalDistanceMeters || 0,
+        warnings: routeSummary?.warnings || []
+      },
+      summary: summariesByDate.get(date) || `${items.length} planned item${items.length === 1 ? "" : "s"}`
+    };
+  });
 }
 
 function mapSegmentRow(

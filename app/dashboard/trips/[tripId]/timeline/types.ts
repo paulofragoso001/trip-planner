@@ -27,6 +27,15 @@ export type TimelineDayView = {
   id: string;
   items: TimelineItemView[];
   label: string;
+  routeSummary: {
+    estimatedDurationMinutes: number;
+    provider: "estimate" | "google_distance_matrix";
+    totalDistanceMeters: number;
+    warnings: Array<{
+      code: "long_distance" | "too_many_stops" | "transit_heavy";
+      message: string;
+    }>;
+  };
   summary: string;
 };
 

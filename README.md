@@ -28,6 +28,9 @@ NEXT_PUBLIC_SUPABASE_URL=your-project-url
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your-publishable-or-anon-key
 NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=your-google-maps-browser-key
 NEXT_PUBLIC_APP_URL=http://localhost:3000
+OPENAI_API_KEY=your-openai-server-api-key
+OPENAI_OCR_MODEL=gpt-4.1-mini
+OPENAI_TRAVEL_IMPORT_MODEL=gpt-4.1-mini
 RESEND_API_KEY=your-resend-server-api-key
 RESEND_FROM_EMAIL="Wayline <updates@your-verified-domain.com>"
 CIRIUM_APP_ID=your-cirium-app-id
@@ -54,6 +57,11 @@ Confirm the Google Cloud project has billing enabled, budget alerts configured,
 and quota limits reviewed before using the production key.
 Cirium and Supabase service-role credentials must stay server-only and must not use
 the `NEXT_PUBLIC_` prefix.
+
+Social screenshot imports use `OPENAI_API_KEY` server-side for OCR and travel
+place extraction. `OPENAI_OCR_MODEL` and `OPENAI_TRAVEL_IMPORT_MODEL` can be
+overridden independently if you want separate model choices for text extraction
+and itinerary-place extraction.
 
 Resend production email requires a verified sending domain and a server-only
 `RESEND_API_KEY`. Set `RESEND_FROM_EMAIL` to an address on that verified domain;

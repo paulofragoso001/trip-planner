@@ -1,12 +1,16 @@
 import { AsyncActionButton } from "@/components/dashboard/async-action-button";
 import type { ImportsData } from "@/app/dashboard/imports/loader";
+import { ExtractedPlaceCard } from "@/components/imports/extracted-place-card";
+import { SocialImportForm } from "@/components/imports/social-import-form";
 import { UnfiledItemForm } from "@/components/imports/unfiled-item-form";
 
 type ImportsPageProps = ImportsData;
 
 export default function ImportsPage({
   error,
+  extractedPlaces,
   reviewQueuePrefix,
+  socialImports,
   sources,
   trips,
   unfiledItems
@@ -16,8 +20,46 @@ export default function ImportsPage({
     : "";
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[1fr_360px]" data-testid="imports-route">
-      <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+    <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]" data-testid="imports-route">
+      <section className="grid gap-6">
+        <div className="rounded-[2rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+          <p className="text-xs font-black uppercase tracking-[0.2em] text-blue-600">Capture</p>
+          <h2 className="mt-1 text-2xl font-black tracking-tight text-slate-950">Import travel saves</h2>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+            Paste a link, upload a screenshot, or add caption text. Wayline scans it into reviewable places.
+          </p>
+          <div className="mt-5">
+            <SocialImportForm trips={trips} />
+          </div>
+        </div>
+
+        <div className="rounded-[2rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.2em] text-blue-600">Review queue</p>
+              <h3 className="mt-1 text-xl font-black tracking-tight text-slate-950">Confirm AI candidates</h3>
+              <p className="mt-1 text-sm text-slate-600">
+                Add only confirmed places to your timeline and map.
+              </p>
+            </div>
+            <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-600">
+              {extractedPlaces.length} pending
+            </span>
+          </div>
+          <div className="mt-4 grid gap-4">
+            {extractedPlaces.map((place) => (
+              <ExtractedPlaceCard key={place.id} place={place} trips={trips} />
+            ))}
+            {extractedPlaces.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-slate-300 px-4 py-6 text-sm text-slate-600">
+                <p className="font-bold text-slate-950">No AI candidates yet.</p>
+                <p className="mt-1">Import a social save or screenshot to create reviewable places.</p>
+              </div>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="rounded-[2rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
         <h2 className="text-lg font-black">Imports</h2>
         <p className="mt-2 text-sm text-slate-600">
           Review connected sources and unfiled itinerary items here.
@@ -55,9 +97,48 @@ export default function ImportsPage({
             </div>
           ))}
         </div>
+        </div>
       </section>
 
-      <aside className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+      <aside className="grid content-start gap-5 xl:sticky xl:top-24">
+        <section className="rounded-[2rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+          <p className="text-xs font-black uppercase tracking-[0.2em] text-blue-600">Feed</p>
+          <h3 className="mt-1 text-base font-black">Recent AI imports</h3>
+          <div className="mt-4 grid gap-3">
+            {socialImports.slice(0, 6).map((post) => (
+              <div className="grid grid-cols-[56px_minmax(0,1fr)] gap-3 rounded-2xl bg-slate-50 px-3 py-3" key={post.id}>
+                <div className="grid h-14 w-14 place-items-center rounded-2xl bg-white text-xs font-black uppercase text-blue-700 ring-1 ring-slate-200">
+                  {post.sourcePlatform.slice(0, 2)}
+                </div>
+                <div className="min-w-0">
+                  <p className="truncate font-semibold text-slate-900">
+                    {post.sourceTitle || post.sourceUrl || "Screenshot import"}
+                  </p>
+                  <p className="mt-1 text-xs font-bold uppercase tracking-[0.16em] text-slate-500">
+                    {post.sourcePlatform} · {post.status}
+                  </p>
+                  {post.status === "processing" || post.status === "pending" ? (
+                    <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white">
+                      <div className="h-full w-2/3 animate-pulse rounded-full bg-blue-600" />
+                    </div>
+                  ) : null}
+                </div>
+                {post.errorMessage ? (
+                  <p className="col-span-2 rounded-xl bg-red-50 px-3 py-2 text-xs font-bold text-red-700">
+                    {post.errorMessage}
+                  </p>
+                ) : null}
+              </div>
+            ))}
+            {socialImports.length === 0 ? (
+              <p className="rounded-2xl border border-dashed border-slate-300 px-4 py-6 text-sm font-semibold text-slate-600">
+                Social imports will appear here after scanning.
+              </p>
+            ) : null}
+          </div>
+        </section>
+
+        <section className="rounded-[2rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
         <h3 className="text-base font-black">Unfiled items</h3>
         <div className="mt-4 grid gap-3 text-sm text-slate-700">
           <UnfiledItemForm defaultTitle={defaultReviewTitle} />
@@ -97,6 +178,7 @@ export default function ImportsPage({
             </div>
           ) : null}
         </div>
+        </section>
       </aside>
     </div>
   );

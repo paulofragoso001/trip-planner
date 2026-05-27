@@ -9,6 +9,7 @@
     "audit:compliance": "node scripts/compliance-audit.mjs",
     "layout:scorecard": "node scripts/layout-integrity-scorecard.mjs",
     "preflight:prod-env": "node scripts/production-env-preflight.mjs",
+    "verify:resend": "node scripts/verify-resend.mjs",
     "cypress:open": "cypress open",
     "cypress:run": "cypress run",
     "storybook": "storybook dev -p 6006",
@@ -18,13 +19,13 @@
     "test:prod:smoke": "ALLOW_TEST_DASHBOARD_BYPASS=true npx playwright test tests/playwright/dashboard.smoke.spec.ts --workers=1",
     "test:prod:auth": "npx playwright test tests/playwright/auth-boundary.spec.ts --workers=1",
     "test:prod:calendar": "ALLOW_TEST_DASHBOARD_BYPASS=true npx playwright test tests/playwright/calendar-contract.spec.ts tests/playwright/calendar-worker.spec.ts --workers=1",
-    "test:prod:imports": "ALLOW_TEST_DASHBOARD_BYPASS=true npx playwright test tests/playwright/imports-write.spec.ts --workers=1"
+    "test:prod:imports": "ALLOW_TEST_DASHBOARD_BYPASS=true npx playwright test tests/playwright/imports-write.spec.ts --workers=1",
+    "test:prod:social-imports": "ALLOW_TEST_DASHBOARD_BYPASS=true npx playwright test tests/playwright/social-import-loop.spec.ts --workers=1"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",
     "@react-google-maps/api": "^2.20.8",
-    "@supabase/auth-helpers-nextjs": "^0.15.0",
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.105.4",
     "@vis.gl/react-google-maps": "^1.8.3",

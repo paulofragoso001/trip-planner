@@ -18,6 +18,7 @@ import type {
 } from "@/app/dashboard/trips/[tripId]/timeline/types";
 import { AsyncActionButton } from "@/components/dashboard/async-action-button";
 import { CalendarSyncPanel } from "@/components/trip/calendar-sync-panel";
+import { GeneratePlanButton } from "@/components/trip/generate-plan-button";
 import { TripSegmentDeleteButton } from "@/components/trip/trip-segment-delete-button";
 import { TripSegmentForm } from "@/components/trip/trip-segment-form";
 import { timelineStatusClass, timelineStatusLabel } from "@/lib/ui/timeline";
@@ -34,39 +35,40 @@ export default function TripTimelinePage({
   title,
   tripId
 }: TripTimelinePageProps) {
+  const timelineItemIds = days.flatMap((day) => day.items.map((item) => item.id));
+
   return (
-    <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
-      <section className="min-w-0 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-        <div className="flex flex-col gap-4 2xl:flex-row 2xl:items-start 2xl:justify-between">
-          <div>
-            <h2 className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">
-              Timeline
-            </h2>
-            <p className="mt-1 text-2xl font-black text-slate-950">{title}</p>
-            <p className="mt-2 max-w-2xl text-sm text-slate-600">{description}</p>
+    <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
+      <section className="min-w-0">
+        <div className="flex flex-col gap-4 border-b border-slate-200 pb-5 2xl:flex-row 2xl:items-end 2xl:justify-between">
+          <div className="min-w-0">
+            <h2 className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">Timeline</h2>
+            <p className="mt-1 text-3xl font-black tracking-tight text-slate-950">{title}</p>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">{description}</p>
           </div>
 
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 2xl:min-w-[300px]">
+          <div className="grid grid-cols-3 gap-2 sm:min-w-[360px]">
             <StatPill label="Items" value={String(stats.totalItems)} />
             <StatPill label="Ready" value={`${stats.readyItems}/${stats.totalItems}`} />
-            <StatPill label="Alerts" value={String(stats.alerts)} />
+            <StatPill label="Watch" value={String(stats.alerts)} />
           </div>
         </div>
 
         {error ? (
-          <p className="mt-5 rounded-2xl bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
+          <p className="mt-4 rounded-xl bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
             {error}
           </p>
         ) : null}
 
         {dayTabs.length ? (
-          <div className="mt-5 flex gap-2 overflow-x-auto pb-1" aria-label="Trip days">
+          <div className="sticky top-[72px] z-20 -mx-4 mt-4 border-y border-slate-200 bg-[#f4f7fb]/95 px-4 py-3 backdrop-blur sm:-mx-6 sm:px-6 lg:-mx-6 lg:px-6" aria-label="Trip days">
+            <div className="flex gap-2 overflow-x-auto pb-1">
             {dayTabs.map((day, index) => (
               <a
                 className={[
-                  "min-w-[116px] rounded-2xl border px-4 py-3 text-left transition",
+                  "min-w-[128px] rounded-xl border px-4 py-3 text-left transition",
                   index === 0
-                    ? "border-blue-600 bg-blue-600 text-white shadow-sm"
+                    ? "border-slate-950 bg-slate-950 text-white shadow-sm"
                     : "border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100"
                 ].join(" ")}
                 href={day.href}
@@ -81,34 +83,67 @@ export default function TripTimelinePage({
                 </span>
               </a>
             ))}
+            </div>
           </div>
         ) : null}
 
-        <div className="mt-6 grid gap-7">
+        <div className="mt-6 grid gap-10">
           {days.length ? (
             days.map((day) => (
-            <section className="grid gap-4" id={day.id} key={day.id}>
-              <div className="flex items-center gap-3">
-                <div className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-slate-950 text-white">
-                  <span className="text-xs font-bold uppercase">{day.label}</span>
-                  <span className="-mt-1 text-lg font-black">{day.dayNumber}</span>
+            <section className="grid gap-4 scroll-mt-36" id={day.id} key={day.id}>
+              <div className="grid gap-4 md:grid-cols-[104px_minmax(0,1fr)]">
+                <div className="md:sticky md:top-40 md:self-start">
+                  <div className="rounded-2xl bg-slate-950 px-4 py-4 text-white shadow-sm">
+                    <span className="block text-xs font-bold uppercase tracking-[0.16em] text-slate-300">
+                      {day.label}
+                    </span>
+                    <span className="mt-1 block text-3xl font-black leading-none">{day.dayNumber}</span>
+                  </div>
                 </div>
-                <div className="min-w-0">
-                  <h3 className="text-lg font-black text-slate-950">{day.date}</h3>
-                  <p className="text-sm text-slate-600">{day.summary}</p>
-                </div>
-              </div>
 
-              <div className="relative grid gap-4 pl-3 sm:pl-7">
-                <div className="absolute bottom-6 left-[17px] top-2 hidden w-px bg-slate-200 sm:block" />
-                {day.items.map((item) => (
-                  <TimelineCard item={item} key={item.id} tripId={tripId} />
-                ))}
+                <div className="min-w-0">
+                  <div className="mb-3 flex flex-col gap-1 border-b border-slate-200 pb-3 sm:flex-row sm:items-end sm:justify-between">
+                    <div>
+                      <h3 className="text-xl font-black text-slate-950">{day.date}</h3>
+                      <p className="text-sm text-slate-600">{day.summary}</p>
+                    </div>
+                    <div className="flex flex-wrap gap-2 text-xs font-bold uppercase tracking-[0.12em] text-slate-500">
+                      <span>{day.items.length} plan{day.items.length === 1 ? "" : "s"}</span>
+                      <span>{formatDistance(day.routeSummary.totalDistanceMeters)}</span>
+                      <span>{formatDuration(day.routeSummary.estimatedDurationMinutes)}</span>
+                    </div>
+                  </div>
+
+                  {day.routeSummary.warnings.length ? (
+                    <div className="mb-3 grid gap-2">
+                      {day.routeSummary.warnings.map((warning) => (
+                        <p
+                          className="rounded-xl bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-800"
+                          key={warning.code}
+                        >
+                          {warning.message}
+                        </p>
+                      ))}
+                    </div>
+                  ) : null}
+
+                  <DayRoutePreview
+                    day={day}
+                    tripId={tripId}
+                  />
+
+                  <div className="relative grid gap-3">
+                    <div className="absolute bottom-8 left-[23px] top-8 hidden w-px bg-slate-200 sm:block" />
+                    {day.items.map((item) => (
+                      <TimelineCard item={item} key={item.id} tripId={tripId} />
+                    ))}
+                  </div>
+                </div>
               </div>
             </section>
             ))
           ) : (
-            <div className="rounded-3xl border border-dashed border-slate-300 px-5 py-8 text-sm text-slate-600">
+            <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-5 py-8 text-sm text-slate-600">
               <p className="font-bold text-slate-950">No timeline segments yet.</p>
               <p className="mt-1">Add flights, hotels, meetings, or activities to build the trip timeline.</p>
             </div>
@@ -116,8 +151,8 @@ export default function TripTimelinePage({
         </div>
       </section>
 
-      <aside className="grid gap-4">
-        <TimelineTools firstFlight={firstFlight} tripId={tripId} timelineItemIds={days.flatMap((day) => day.items.map((item) => item.id))} />
+      <aside className="grid content-start gap-4 xl:sticky xl:top-24 xl:self-start">
+        <TimelineTools firstFlight={firstFlight} tripId={tripId} timelineItemIds={timelineItemIds} />
         <TripOpsSummary mappedStops={stats.mappedStops} readyItems={stats.readyItems} totalItems={stats.totalItems} watchItems={stats.alerts} />
         <CalendarSyncPanel tripId={tripId} />
       </aside>
@@ -141,6 +176,7 @@ function TimelineTools({
         Keep itinerary changes synced across flights, maps, budget, and calendars.
       </p>
       <div className="mt-4 grid gap-3">
+        <GeneratePlanButton context="timeline" tripId={tripId} />
         <AsyncActionButton
           body={{ orderedItemIds: timelineItemIds, tripId }}
           endpoint="/api/itinerary/reorder"
@@ -189,88 +225,156 @@ function TimelineTools({
 
 function TimelineCard({ item, tripId }: { item: TimelineItemView; tripId: string }) {
   return (
-    <article className="relative rounded-3xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-slate-300 hover:shadow-md">
-      <div className="absolute -left-[35px] top-5 hidden h-6 w-6 rounded-full border-4 border-white bg-blue-600 shadow-sm sm:block" />
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <div className="flex min-w-0 gap-3">
-          <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-blue-50 text-blue-700">
-            {iconForKind(item.kind)}
-          </div>
+    <article className="relative grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-slate-300 hover:shadow-md sm:grid-cols-[48px_minmax(0,1fr)]">
+      <div className="relative hidden sm:block">
+        <div className="relative z-10 grid h-12 w-12 place-items-center rounded-2xl bg-blue-50 text-blue-700 ring-8 ring-white">
+          {iconForKind(item.kind)}
+        </div>
+      </div>
+
+      <div className="min-w-0">
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_180px]">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
+              <span className="grid h-9 w-9 place-items-center rounded-xl bg-blue-50 text-blue-700 sm:hidden">
+                {iconForKind(item.kind)}
+              </span>
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">
                 {item.typeLabel}
               </p>
               <span className={timelineStatusClass(item.status)}>
                 {timelineStatusLabel(item.status)}
               </span>
             </div>
-            <h4 className="mt-1 text-xl font-black text-slate-950">{item.title}</h4>
+            <h4 className="mt-2 text-xl font-black leading-tight text-slate-950">
+              {item.title}
+            </h4>
             <p className="mt-1 text-sm font-semibold text-slate-700">{item.meta}</p>
           </div>
-        </div>
 
-        <div className="rounded-2xl bg-slate-50 px-4 py-3 text-left lg:min-w-[180px]">
-          <div className="flex items-center gap-2 text-sm font-black text-slate-950">
-            <Clock className="h-4 w-4 text-slate-500" />
-            {item.timeRange}
-          </div>
-          <p className="mt-1 text-xs font-semibold text-slate-500">
-            Conf. {item.confirmation}
-          </p>
-        </div>
-      </div>
-
-      <div className="mt-4 grid gap-3 lg:grid-cols-[1fr_180px]">
-        <div className="rounded-2xl bg-slate-50 px-4 py-3">
-          <div className="flex items-start gap-2 text-sm text-slate-700">
-            <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-slate-500" />
-            <span>{item.location}</span>
-          </div>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {item.details.map((detail) => (
-              <span
-                className="rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-600 ring-1 ring-slate-200"
-                key={detail}
-              >
-                {detail}
-              </span>
-            ))}
+          <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-left">
+            <div className="flex items-center gap-2 text-sm font-black text-slate-950">
+              <Clock className="h-4 w-4 text-slate-500" />
+              {item.timeRange}
+            </div>
+            <p className="mt-1 text-xs font-semibold text-slate-500">
+              Conf. {item.confirmation}
+            </p>
           </div>
         </div>
 
-        <div className="grid gap-2">
-          <div className="rounded-2xl bg-slate-950 px-4 py-3 text-white">
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-300">
+        <div className="mt-4 grid gap-3 xl:grid-cols-[minmax(0,1fr)_150px]">
+          <div className="min-w-0">
+            <div className="flex items-start gap-2 text-sm text-slate-700">
+              <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-slate-500" />
+              <span className="min-w-0">{item.location}</span>
+            </div>
+
+            <div className="mt-3 flex flex-wrap gap-2">
+              {item.details.map((detail) => (
+                <span
+                  className="rounded-full bg-slate-50 px-3 py-1 text-xs font-bold text-slate-600 ring-1 ring-slate-200"
+                  key={detail}
+                >
+                  {detail}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-xl bg-slate-950 px-4 py-3 text-white">
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-300">
               Cost
             </p>
             <p className="mt-1 text-lg font-black">{item.costLabel}</p>
           </div>
-          <TripSegmentForm
-            buttonLabel="Save edits"
-            defaultEndTime={item.endAt}
-            defaultKind={item.kind}
-            defaultLat={item.lat}
-            defaultLng={item.lng}
-            defaultLocation={item.location === "Location not set" ? null : item.location}
-            defaultNotes={item.notes}
-            defaultStartTime={item.startAt}
-            defaultTitle={item.title}
-            includeCoordinates
-            segmentId={item.id}
-            tripId={tripId}
-          />
-          <TripSegmentDeleteButton segmentId={item.id} />
+        </div>
+
+        <div className="mt-4 flex flex-wrap gap-2 border-t border-slate-200 pt-3">
+          <Link
+            className="rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-slate-800"
+            href={`/dashboard/trips/${tripId}/map`}
+          >
+            {item.actionLabel}
+          </Link>
+          <details className="group min-w-[220px] flex-1">
+            <summary className="cursor-pointer list-none rounded-xl bg-slate-100 px-4 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-slate-200">
+              Edit details
+            </summary>
+            <div className="mt-3 grid gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
+              <TripSegmentForm
+                buttonLabel="Save edits"
+                defaultEndTime={item.endAt}
+                defaultKind={item.kind}
+                defaultLat={item.lat}
+                defaultLng={item.lng}
+                defaultLocation={item.location === "Location not set" ? null : item.location}
+                defaultNotes={item.notes}
+                defaultStartTime={item.startAt}
+                defaultTitle={item.title}
+                includeCoordinates
+                segmentId={item.id}
+                tripId={tripId}
+              />
+              <TripSegmentDeleteButton segmentId={item.id} />
+            </div>
+          </details>
         </div>
       </div>
     </article>
   );
 }
 
+function DayRoutePreview({
+  day,
+  tripId
+}: {
+  day: TripTimelineData["days"][number];
+  tripId: string;
+}) {
+  const mappedItems = day.items.filter((item) => item.lat !== null && item.lng !== null);
+
+  return (
+    <Link
+      className="mb-3 grid gap-3 rounded-2xl border border-slate-200 bg-slate-950 p-4 text-white shadow-sm transition hover:bg-slate-900 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
+      href={`/dashboard/trips/${tripId}/map`}
+    >
+      <div className="min-w-0">
+        <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-300">
+          Day route
+        </p>
+        <div className="mt-2 flex items-center gap-2 overflow-hidden">
+          {day.items.slice(0, 5).map((item, index) => (
+            <span className="flex items-center gap-2" key={item.id}>
+              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-white text-xs font-black text-slate-950">
+                {index + 1}
+              </span>
+              {index < Math.min(day.items.length, 5) - 1 ? (
+                <span className="h-px w-5 shrink-0 bg-slate-500" />
+              ) : null}
+            </span>
+          ))}
+        </div>
+        <p className="mt-2 truncate text-sm font-semibold text-slate-200">
+          {mappedItems.length ? `${mappedItems.length} mapped stop${mappedItems.length === 1 ? "" : "s"}` : "Add coordinates to preview the route"}
+        </p>
+      </div>
+      <div className="grid grid-cols-2 gap-2 text-sm sm:min-w-[170px]">
+        <span className="rounded-xl bg-white/10 px-3 py-2 font-bold">
+          {formatDistance(day.routeSummary.totalDistanceMeters)}
+        </span>
+        <span className="rounded-xl bg-white/10 px-3 py-2 font-bold">
+          {formatDuration(day.routeSummary.estimatedDurationMinutes)}
+        </span>
+      </div>
+    </Link>
+  );
+}
+
 function StatPill({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl bg-slate-50 px-4 py-3">
-      <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
+    <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+      <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">
         {label}
       </p>
       <p className="mt-1 text-xl font-black text-slate-950">{value}</p>
@@ -333,6 +437,20 @@ function SummaryRow({
       <strong className="shrink-0 text-slate-950">{value}</strong>
     </div>
   );
+}
+
+function formatDistance(value: number) {
+  if (!value) return "Route TBD";
+  if (value < 1000) return `${Math.round(value)} m`;
+  return `${Math.round(value / 1000)} km`;
+}
+
+function formatDuration(value: number) {
+  if (!value) return "Time TBD";
+  if (value < 60) return `${value} min`;
+  const hours = Math.floor(value / 60);
+  const minutes = value % 60;
+  return minutes ? `${hours}h ${minutes}m` : `${hours}h`;
 }
 
 function iconForKind(kind: TimelineItemView["kind"]) {

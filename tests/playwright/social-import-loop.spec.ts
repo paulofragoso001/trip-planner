@@ -1,0 +1,277 @@
+import { expect, test } from "@playwright/test";
+import { createClient } from "@supabase/supabase-js";
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+
+const baseUrl = process.env.BASE_URL ?? "http://127.0.0.1:3000";
+const dashboardHeaders = { "x-cypress-dashboard": "true" };
+const supabaseUrl =
+  process.env.NEXT_PUBLIC_SUPABASE_URL || readLocalEnv("NEXT_PUBLIC_SUPABASE_URL");
+const serviceRoleKey =
+  process.env.SUPABASE_SERVICE_ROLE_KEY || readLocalEnv("SUPABASE_SERVICE_ROLE_KEY");
+const socialWorkerSecret =
+  process.env.SOCIAL_IMPORT_WORKER_SECRET ||
+  process.env.CALENDAR_SYNC_WORKER_SECRET ||
+  process.env.FLIGHT_REFRESH_CRON_SECRET ||
+  readLocalEnv("SOCIAL_IMPORT_WORKER_SECRET") ||
+  readLocalEnv("CALENDAR_SYNC_WORKER_SECRET") ||
+  readLocalEnv("FLIGHT_REFRESH_CRON_SECRET");
+
+test("social inspiration import promotes to timeline/map and generates a plan", async ({
+  page,
+  request
+}) => {
+  test.setTimeout(120_000);
+  test.skip(
+    !supabaseUrl || !serviceRoleKey,
+    "social import loop requires Supabase URL and SUPABASE_SERVICE_ROLE_KEY in a protected environment"
+  );
+  test.skip(
+    !socialWorkerSecret,
+    "social import loop requires SOCIAL_IMPORT_WORKER_SECRET or compatible worker secret"
+  );
+  const admin = createClient(supabaseUrl!, serviceRoleKey!, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  });
+  const runId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+  const tripName = `e2e-social-loop-${runId}`;
+  const sourceTitle = `e2e-social-source-${runId}`;
+  const importedPlaceName = "Park Güell";
+  let importId = "";
+  let promotedSegmentId = "";
+  let tripId = "";
+
+  const preflight = await request.get(`${baseUrl}/api/social-imports`, {
+    headers: dashboardHeaders
+  });
+
+  test.skip(
+    preflight.status() !== 200,
+    "social import loop requires dashboard test auth to be enabled for the protected lane"
+  );
+
+  try {
+    const tripResponse = await request.post(`${baseUrl}/api/trips`, {
+      data: {
+        destination: "Barcelona, Spain",
+        end_date: "2026-06-13",
+        name: tripName,
+        start_date: "2026-06-11",
+        status: "Planning"
+      },
+      headers: dashboardHeaders
+    });
+    expect(tripResponse.status()).toBe(201);
+    const tripPayload = await tripResponse.json();
+    tripId = tripPayload?.trip?.id;
+    expect(typeof tripId).toBe("string");
+
+    const importResponse = await request.post(`${baseUrl}/api/social-imports`, {
+      data: {
+        processNow: false,
+        rawText:
+          "Barcelona save: Visit Park Güell for Gaudí mosaics and city views. Add this sightseeing stop to the trip map.",
+        sourcePlatform: "manual",
+        sourceTitle,
+        tripId
+      },
+      headers: dashboardHeaders
+    });
+    expect(importResponse.status()).toBe(201);
+    const importPayload = await importResponse.json();
+    importId = importPayload?.data?.socialImport?.id;
+    expect(typeof importId).toBe("string");
+
+    await processUntilReady(request, importId);
+
+    const detailResponse = await request.get(`${baseUrl}/api/social-imports/${importId}`, {
+      headers: dashboardHeaders
+    });
+    expect(detailResponse.status()).toBe(200);
+    const detailPayload = await detailResponse.json();
+    const extractedPlaces = detailPayload?.data?.extractedPlaces || [];
+    expect(extractedPlaces.length).toBeGreaterThan(0);
+
+    let place =
+      extractedPlaces.find((candidate: any) =>
+        String(candidate.name || "").toLowerCase().includes("park")
+      ) || extractedPlaces[0];
+
+    expect(place).toMatchObject({
+      id: expect.any(String),
+      status: "needs_review"
+    });
+
+    if (typeof place.latitude !== "number" || typeof place.longitude !== "number") {
+      const { data, error } = await admin
+        .from("extracted_places")
+        .update({
+          address: "Park Güell, 08024 Barcelona, Spain",
+          latitude: 41.4145,
+          longitude: 2.1527,
+          place_id: `e2e-${runId}-park-guell`
+        })
+        .eq("id", place.id)
+        .select("*")
+        .single();
+
+      expect(error).toBeNull();
+      place = data;
+    }
+
+    expect(typeof place.latitude).toBe("number");
+    expect(typeof place.longitude).toBe("number");
+
+    await page.setExtraHTTPHeaders(dashboardHeaders);
+    await page.goto(`${baseUrl}/dashboard/imports`, { waitUntil: "commit" });
+    await expect(page.getByTestId("imports-route")).toBeVisible();
+    await expect(page.getByText(place.name, { exact: true })).toBeVisible();
+
+    const promoteResponse = await request.post(
+      `${baseUrl}/api/social-imports/${importId}/promote`,
+      {
+        data: {
+          placeIds: [place.id],
+          tripId
+        },
+        headers: dashboardHeaders
+      }
+    );
+    expect(promoteResponse.status()).toBe(201);
+    const promotePayload = await promoteResponse.json();
+    promotedSegmentId = promotePayload?.data?.results?.[0]?.segment?.id;
+    expect(typeof promotedSegmentId).toBe("string");
+
+    await page.goto(`${baseUrl}/dashboard/trips/${tripId}/timeline`, {
+      waitUntil: "commit"
+    });
+    await expect(page.getByText(place.name, { exact: true })).toBeVisible();
+
+    await page.goto(`${baseUrl}/dashboard/trips/${tripId}/map`, {
+      waitUntil: "commit"
+    });
+    await expect(page.getByText(place.name, { exact: true })).toBeVisible();
+
+    const generateResponse = await request.post(
+      `${baseUrl}/api/trips/${tripId}/itinerary/generate`,
+      {
+        headers: dashboardHeaders
+      }
+    );
+    expect(generateResponse.status()).toBe(200);
+    await expect(await generateResponse.json()).toMatchObject({
+      data: {
+        itinerary: {
+          assigned: expect.any(Number),
+          routeSummary: expect.arrayContaining([
+            expect.objectContaining({
+              itemCount: expect.any(Number),
+              orderedItemIds: expect.arrayContaining([promotedSegmentId])
+            })
+          ])
+        }
+      },
+      error: null
+    });
+  } finally {
+    if (serviceRoleKey && supabaseUrl) {
+      await cleanupFixtures(admin, { importId, promotedSegmentId, sourceTitle, tripId, tripName });
+    }
+  }
+});
+
+async function processUntilReady(request: any, importId: string) {
+  for (let attempt = 0; attempt < 6; attempt += 1) {
+    const workerResponse = await request.post(`${baseUrl}/api/jobs/social-import-worker`, {
+      data: { limit: 10 },
+      headers: {
+        "x-social-import-worker-secret": socialWorkerSecret!
+      }
+    });
+    expect(workerResponse.status()).toBe(200);
+
+    const detailResponse = await request.get(`${baseUrl}/api/social-imports/${importId}`, {
+      headers: dashboardHeaders
+    });
+    expect(detailResponse.status()).toBe(200);
+    const detailPayload = await detailResponse.json();
+    const status = detailPayload?.data?.socialImport?.status;
+    const extractedPlaces = detailPayload?.data?.extractedPlaces || [];
+
+    if ((status === "needs_review" || status === "processed") && extractedPlaces.length) {
+      return;
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+  }
+
+  throw new Error("Social import worker did not produce extracted places.");
+}
+
+async function cleanupFixtures(
+  admin: ReturnType<typeof createClient>,
+  {
+    importId,
+    promotedSegmentId,
+    sourceTitle,
+    tripId,
+    tripName
+  }: {
+    importId: string;
+    promotedSegmentId: string;
+    sourceTitle: string;
+    tripId: string;
+    tripName: string;
+  }
+) {
+  if (promotedSegmentId) {
+    await admin.from("trip_segments").delete().eq("id", promotedSegmentId);
+  }
+
+  if (importId) {
+    await admin.from("extracted_places").delete().eq("imported_post_id", importId);
+    await admin.from("imported_social_posts").delete().eq("id", importId);
+  }
+
+  if (sourceTitle) {
+    const { data } = await admin
+      .from("imported_social_posts")
+      .select("id")
+      .eq("source_title", sourceTitle);
+    const ids = (data || []).map((row: { id: string }) => row.id);
+
+    if (ids.length) {
+      await admin.from("extracted_places").delete().in("imported_post_id", ids);
+      await admin.from("imported_social_posts").delete().in("id", ids);
+    }
+  }
+
+  if (tripId) {
+    await admin.from("trips").delete().eq("id", tripId);
+  }
+
+  if (tripName) {
+    await admin.from("trips").delete().eq("name", tripName);
+  }
+}
+
+function readLocalEnv(name: string) {
+  const envPath = join(process.cwd(), ".env.local");
+
+  if (!existsSync(envPath)) {
+    return "";
+  }
+
+  const line = readFileSync(envPath, "utf8")
+    .split(/\r?\n/)
+    .find((candidate) => candidate.startsWith(`${name}=`));
+
+  if (!line) {
+    return "";
+  }
+
+  return line.slice(name.length + 1).replace(/^["']|["']$/g, "").trim();
+}

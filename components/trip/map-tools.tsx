@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { GeneratePlanButton } from "@/components/trip/generate-plan-button";
 import { TripSegmentForm } from "@/components/trip/trip-segment-form";
 
 export function MapTools({ tripId }: { tripId: string }) {
@@ -19,6 +20,7 @@ export function MapTools({ tripId }: { tripId: string }) {
 
   return (
     <div className="mt-4 grid gap-3">
+      <GeneratePlanButton context="map" tripId={tripId} />
       <Link
         className="rounded-2xl bg-slate-100 px-4 py-3 text-left font-semibold transition hover:bg-slate-200"
         href={`/dashboard/trips/${encodeURIComponent(tripId)}/timeline#new-plan`}
