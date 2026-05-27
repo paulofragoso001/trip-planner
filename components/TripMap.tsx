@@ -1,13 +1,11 @@
 "use client";
 
 import {
-  DirectionsRenderer,
   GoogleMap,
   Marker,
-  useJsApiLoader
+  Polyline
 } from "@react-google-maps/api";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { googleMapsLibraries } from "@/lib/google-maps";
+import { useEffect, useMemo, useRef } from "react";
 
 export type TripMapItem = {
   id: string;
@@ -35,6 +33,8 @@ type TripMapProps = {
 };
 
 const fallbackCenter = { lat: 25.7617, lng: -80.1918 };
+const mapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+const mapsConfigured = Boolean(mapsApiKey && !mapsApiKey.startsWith("YOUR_"));
 
 export default function TripMap({
   items,
@@ -44,29 +44,29 @@ export default function TripMap({
   height = 420
 }: TripMapProps) {
   const mapRef = useRef<google.maps.Map | null>(null);
-  const [directions, setDirections] = useState<google.maps.DirectionsResult | null>(null);
-  const [routeInfo, setRouteInfo] = useState({
-    distance: "",
-    duration: ""
-  });
-  const [legsInfo, setLegsInfo] = useState<LegInfo[]>([]);
-
-  const { isLoaded } = useJsApiLoader({
-    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "",
-    libraries: googleMapsLibraries
-  });
 
   const center = useMemo(
     () => (items[0] ? { lat: items[0].lat, lng: items[0].lng } : fallbackCenter),
     [items]
   );
+  const routePath = useMemo(
+    () => items.map((item) => ({ lat: item.lat, lng: item.lng })),
+    [items]
+  );
+  const routeInfo = useMemo(() => getRouteInfo(items), [items]);
+  const legsInfo = useMemo(() => getLegsInfo(items), [items]);
   const containerStyle = useMemo(
     () => ({ width: "100%", height: `${height}px` }),
     [height]
   );
 
   useEffect(() => {
-    if (!isLoaded || !mapRef.current || !items.length || !window.google) {
+    if (
+      !mapRef.current ||
+      !items.length ||
+      typeof window === "undefined" ||
+      typeof window.google?.maps?.LatLngBounds !== "function"
+    ) {
       return;
     }
 
@@ -75,73 +75,7 @@ export default function TripMap({
       bounds.extend({ lat: item.lat, lng: item.lng });
     });
     mapRef.current.fitBounds(bounds);
-  }, [isLoaded, items]);
-
-  useEffect(() => {
-    if (!isLoaded || !window.google || items.length < 2) {
-      setDirections(null);
-      setRouteInfo({ distance: "", duration: "" });
-      setLegsInfo([]);
-      return;
-    }
-
-    const directionsService = new window.google.maps.DirectionsService();
-    const request = {
-      origin: { lat: items[0].lat, lng: items[0].lng },
-      destination: {
-        lat: items[items.length - 1].lat,
-        lng: items[items.length - 1].lng
-      },
-      waypoints: items.slice(1, -1).map((item) => ({
-        location: { lat: item.lat, lng: item.lng },
-        stopover: true
-      })),
-      travelMode: window.google.maps.TravelMode[travelMode],
-      optimizeWaypoints: false
-    };
-
-    directionsService.route(
-      request,
-      (result, status) => {
-        if (status === window.google.maps.DirectionsStatus.OK && result) {
-          setDirections(result);
-          setRouteInfo(getRouteInfo(result));
-          setLegsInfo(getLegsInfo(result, items));
-          return;
-        }
-
-        if (travelMode !== "DRIVING") {
-          console.warn("Fallback to DRIVING");
-          directionsService.route(
-            {
-              ...request,
-              travelMode: window.google.maps.TravelMode.DRIVING
-            },
-            (fallbackResult, fallbackStatus) => {
-              if (
-                fallbackStatus === window.google.maps.DirectionsStatus.OK &&
-                fallbackResult
-              ) {
-                setDirections(fallbackResult);
-                setRouteInfo(getRouteInfo(fallbackResult));
-                setLegsInfo(getLegsInfo(fallbackResult, items));
-                return;
-              }
-
-              setDirections(null);
-              setRouteInfo({ distance: "", duration: "" });
-              setLegsInfo([]);
-            }
-          );
-          return;
-        }
-
-        setDirections(null);
-        setRouteInfo({ distance: "", duration: "" });
-        setLegsInfo([]);
-      }
-    );
-  }, [isLoaded, items, travelMode]);
+  }, [items]);
 
   useEffect(() => {
     if (!mapRef.current || !selectedId) {
@@ -156,14 +90,25 @@ export default function TripMap({
     }
   }, [selectedId, items]);
 
-  if (!isLoaded) {
+  if (!mapsConfigured) {
     return (
-      <div
-        className="grid place-items-center bg-slate-100 text-sm font-bold text-slate-600"
-        style={{ height }}
-      >
-        Loading map...
-      </div>
+      <MapUnavailable
+        height={height}
+        message="Add NEXT_PUBLIC_GOOGLE_MAPS_API_KEY to .env.local to enable Google Maps."
+      />
+    );
+  }
+
+  if (
+    typeof window === "undefined" ||
+    typeof window.google?.maps?.Map !== "function" ||
+    typeof window.google?.maps?.LatLngBounds !== "function"
+  ) {
+    return (
+      <MapUnavailable
+        height={height}
+        message="Google Maps is still loading or could not be reached."
+      />
     );
   }
 
@@ -192,15 +137,14 @@ export default function TripMap({
           />
         ))}
 
-        {directions ? (
-          <DirectionsRenderer
-            directions={directions}
+        {routePath.length > 1 ? (
+          <Polyline
+            path={routePath}
             options={{
-              suppressMarkers: true,
-              polylineOptions: {
-                strokeColor: "#111827",
-                strokeWeight: 4
-              }
+              geodesic: true,
+              strokeColor: "#111827",
+              strokeOpacity: 0.78,
+              strokeWeight: 4
             }}
           />
         ) : null}
@@ -214,12 +158,12 @@ export default function TripMap({
               <div className="text-lg font-semibold">{routeInfo.distance}</div>
             </div>
             <div>
-              <div className="text-xs text-gray-500">Travel Time</div>
+              <div className="text-xs text-gray-500">Route Type</div>
               <div className="text-lg font-semibold">{routeInfo.duration}</div>
             </div>
           </div>
           <div className="mt-1 text-xs text-gray-400">
-            Mode: {travelMode.toLowerCase()}
+            Mode: {travelMode.toLowerCase()} coordinate path
           </div>
         </div>
       ) : null}
@@ -237,27 +181,57 @@ export default function TripMap({
   );
 }
 
-function getRouteInfo(result: google.maps.DirectionsResult) {
-  const legs = result.routes[0]?.legs || [];
-  const meters = legs.reduce((total, leg) => total + (leg.distance?.value || 0), 0);
-  const seconds = legs.reduce((total, leg) => total + (leg.duration?.value || 0), 0);
+function MapUnavailable({ height, message }: { height: number; message: string }) {
+  return (
+    <div
+      className="grid place-items-center bg-slate-100 p-6 text-center text-sm font-bold text-slate-600"
+      style={{ height }}
+    >
+      <p className="max-w-sm">{message}</p>
+    </div>
+  );
+}
+
+function getRouteInfo(items: TripMapItem[]) {
+  const meters = getTotalDistanceMeters(items);
 
   return {
     distance: meters ? formatDistance(meters) : "",
-    duration: seconds ? formatDuration(seconds) : ""
+    duration: meters ? "Polyline" : ""
   };
 }
 
-function getLegsInfo(result: google.maps.DirectionsResult, items: TripMapItem[]) {
-  const legs = result.routes[0]?.legs || [];
-
-  return legs.map((leg, index) => ({
+function getLegsInfo(items: TripMapItem[]) {
+  return items.slice(0, -1).map((item, index) => ({
     id: `${items[index]?.id || "origin"}-${items[index + 1]?.id || "destination"}`,
-    from: leg.start_address || items[index]?.title || `Stop ${index + 1}`,
-    to: leg.end_address || items[index + 1]?.title || `Stop ${index + 2}`,
-    distance: leg.distance?.text || "",
-    duration: leg.duration?.text || ""
+    from: item.title || `Stop ${index + 1}`,
+    to: items[index + 1]?.title || `Stop ${index + 2}`,
+    distance: formatDistance(getDistanceMeters(item, items[index + 1])),
+    duration: "Coordinate path"
   }));
+}
+
+function getTotalDistanceMeters(items: TripMapItem[]) {
+  return items
+    .slice(0, -1)
+    .reduce((total, item, index) => total + getDistanceMeters(item, items[index + 1]), 0);
+}
+
+function getDistanceMeters(a: TripMapItem, b: TripMapItem) {
+  const earthRadiusMeters = 6371000;
+  const dLat = toRadians(b.lat - a.lat);
+  const dLng = toRadians(b.lng - a.lng);
+  const lat1 = toRadians(a.lat);
+  const lat2 = toRadians(b.lat);
+  const h =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+
+  return 2 * earthRadiusMeters * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
+}
+
+function toRadians(value: number) {
+  return (value * Math.PI) / 180;
 }
 
 function formatDistance(meters: number) {
@@ -266,16 +240,4 @@ function formatDistance(meters: number) {
   return new Intl.NumberFormat("en-US", {
     maximumFractionDigits: miles >= 10 ? 0 : 1
   }).format(miles) + " mi";
-}
-
-function formatDuration(seconds: number) {
-  const minutes = Math.round(seconds / 60);
-  const hours = Math.floor(minutes / 60);
-  const remainingMinutes = minutes % 60;
-
-  if (hours === 0) {
-    return `${minutes} min`;
-  }
-
-  return remainingMinutes ? `${hours} hr ${remainingMinutes} min` : `${hours} hr`;
 }

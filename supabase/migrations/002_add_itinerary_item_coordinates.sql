@@ -20,12 +20,12 @@ add column if not exists image_urls text[];
 create table if not exists public.itinerary_comments (
   id uuid primary key default gen_random_uuid(),
   itinerary_item_id uuid references public.itinerary_items(id) on delete cascade,
-  user_id uuid,
   author_id uuid references auth.users(id) on delete set null,
   author text,
   author_avatar_url text,
   content text,
-  created_at timestamp default now()
+  created_at timestamp default now(),
+  user_id uuid
 );
 
 alter table public.itinerary_comments

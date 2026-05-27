@@ -1,8 +1,7 @@
 "use client";
 
-import { Autocomplete, useJsApiLoader } from "@react-google-maps/api";
+import { Autocomplete } from "@react-google-maps/api";
 import { useRef, useState } from "react";
-import { googleMapsLibraries } from "@/lib/google-maps";
 
 export type SelectedPlace = {
   title: string;
@@ -24,10 +23,6 @@ export function PlaceAutocompleteInput({
 }: PlaceAutocompleteInputProps) {
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
   const [error, setError] = useState("");
-  const { isLoaded } = useJsApiLoader({
-    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "",
-    libraries: googleMapsLibraries
-  });
 
   function handlePlaceChanged() {
     const place = autocompleteRef.current?.getPlace();
@@ -48,17 +43,6 @@ export function PlaceAutocompleteInput({
       lat: location.lat(),
       lng: location.lng()
     });
-  }
-
-  if (!isLoaded) {
-    return (
-      <input
-        disabled
-        placeholder="Loading Google Places..."
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-      />
-    );
   }
 
   return (

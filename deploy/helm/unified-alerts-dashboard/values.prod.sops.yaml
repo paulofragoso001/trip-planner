@@ -1,0 +1,15 @@
+grafana:
+  serviceAccountToken: ENC[AES256_GCM,data:REPLACE_WITH_SOPS_ENCRYPTED_VALUE,iv:REPLACE_WITH_SOPS_IV,tag:REPLACE_WITH_SOPS_TAG,type:str]
+cirium:
+  apiKey: ENC[AES256_GCM,data:REPLACE_WITH_SOPS_ENCRYPTED_VALUE,iv:REPLACE_WITH_SOPS_IV,tag:REPLACE_WITH_SOPS_TAG,type:str]
+sops:
+  age:
+    - recipient: age1xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+      enc: |
+        -----BEGIN AGE ENCRYPTED FILE-----
+        REPLACE_WITH_SOPS_AGE_PAYLOAD
+        -----END AGE ENCRYPTED FILE-----
+  lastmodified: "2026-05-08T00:00:00Z"
+  mac: ENC[AES256_GCM,data:REPLACE_WITH_SOPS_MAC,iv:REPLACE_WITH_SOPS_IV,tag:REPLACE_WITH_SOPS_TAG,type:str]
+  encrypted_regex: "^(grafana|cirium)$"
+  version: 3.9.0

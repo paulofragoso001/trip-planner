@@ -1,0 +1,101 @@
+apiVersion: flagger.app/v1beta1
+kind: Canary
+metadata:
+  name: flight-ops
+  namespace: flight-ops
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: flight-ops
+  progressDeadlineSeconds: 600
+  service:
+    port: 80
+    targetPort: 3000
+    gateways:
+      - flight-ops-gateway
+    hosts:
+      - flight-ops.example.com
+  analysis:
+    interval: 1m
+    threshold: 2
+    maxWeight: 50
+    stepWeight: 10
+    metrics:
+      - name: request-success-rate
+        thresholdRange:
+          min: 99
+        interval: 1m
+      - name: request-duration
+        thresholdRange:
+          max: 1000
+        interval: 1m
+      - name: flight-api-error-rate
+        templateRef:
+          name: flight-api-error-rate
+        thresholdRange:
+          max: 0.02
+        interval: 1m
+      - name: flight-api-latency-p95
+        templateRef:
+          name: flight-api-latency-p95
+        thresholdRange:
+          max: 1.25
+        interval: 1m
+      - name: graphql-api-failure-rate
+        templateRef:
+          name: graphql-api-failure-rate
+        thresholdRange:
+          max: 0.02
+        interval: 1m
+      - name: flight-marker-staleness
+        templateRef:
+          name: flight-marker-staleness
+        thresholdRange:
+          max: 90
+        interval: 1m
+      - name: alert-delivery-failure-rate
+        templateRef:
+          name: alert-delivery-failure-rate
+        thresholdRange:
+          max: 0.01
+        interval: 1m
+    alerts:
+      - name: flight-ops-chat
+        severity: info
+        providerRef:
+          name: flight-ops-chat
+      - name: pagerduty-critical
+        severity: error
+        providerRef:
+          name: flight-ops-pagerduty
+    webhooks:
+      - name: k6-load-test
+        type: pre-rollout
+        timeout: 5m
+        url: http://k6-loadtester.flagger/launch-test
+        metadata:
+          script: |
+            import http from 'k6/http';
+            import { sleep } from 'k6';
+
+            export const options = {
+              vus: 2,
+              duration: '30s',
+              thresholds: {
+                http_req_duration: ['p(95)<500'],
+              },
+            };
+
+            export default function () {
+              http.get('https://flight-ops-canary.example.com/flight-ops');
+              sleep(1);
+            }
+          slack_channels: "flight-ops-alerts"
+          wait_for_results: "true"
+      - name: flight-ops-smoke
+        type: confirm-rollout
+        url: http://flagger-loadtester.flagger/
+        timeout: 30s
+        metadata:
+          cmd: "curl -fsS http://flight-ops-canary.flight-ops/flight-ops >/dev/null"

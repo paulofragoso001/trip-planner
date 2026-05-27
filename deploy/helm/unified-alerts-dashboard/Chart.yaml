@@ -1,0 +1,6 @@
+apiVersion: v2
+name: unified-alerts-dashboard
+description: Flight Ops unified alerts dashboard for Slack, Teams, Discord, email, and PagerDuty triage.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

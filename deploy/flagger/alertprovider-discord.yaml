@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: flight-ops-discord-url
+  namespace: flight-ops
+type: Opaque
+stringData:
+  address: "https://discord.com/api/webhooks/XXX/YYY"
+---
+apiVersion: flagger.app/v1beta1
+kind: AlertProvider
+metadata:
+  name: flight-ops-discord
+  namespace: flight-ops
+spec:
+  # Flagger sends Slack-compatible payloads; Discord webhooks can receive them
+  # when configured through a compatible bridge or endpoint.
+  type: slack
+  channel: flight-ops-alerts
+  username: flagger
+  secretRef:
+    name: flight-ops-discord-url

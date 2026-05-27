@@ -1,0 +1,13 @@
+apiVersion: flagger.app/v1beta1
+kind: AlertProvider
+metadata:
+  name: flight-ops-chat
+  namespace: flight-ops
+spec:
+  # Slack-compatible payloads work for Slack directly and for Discord when the
+  # webhook endpoint accepts Slack-shaped messages.
+  type: slack
+  channel: flight-ops-alerts
+  username: flagger
+  secretRef:
+    name: flight-ops-chat-url

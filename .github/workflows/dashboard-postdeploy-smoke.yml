@@ -1,0 +1,50 @@
+name: dashboard-postdeploy-smoke
+
+on:
+  deployment_status:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: "Deployed base URL to smoke test."
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  postdeploy-smoke:
+    name: Dashboard post-deploy smoke
+    if: github.event_name == 'workflow_dispatch' || github.event.deployment_status.state == 'success'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          cache: npm
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Require deployment URL
+        env:
+          DEPLOYMENT_URL: ${{ github.event.inputs.base_url || github.event.deployment_status.target_url || github.event.deployment_status.environment_url }}
+        run: |
+          if [ -z "$DEPLOYMENT_URL" ]; then
+            echo "No deployment URL was provided by the deployment_status event."
+            exit 1
+          fi
+
+      - name: Run deployed dashboard smoke
+        run: npx playwright test tests/playwright/dashboard.postdeploy.spec.ts
+        env:
+          BASE_URL: ${{ github.event.inputs.base_url || github.event.deployment_status.target_url || github.event.deployment_status.environment_url }}

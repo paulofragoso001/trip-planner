@@ -1,0 +1,338 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname, useSearchParams } from "next/navigation";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
+import { navSections, resolveNavTitle } from "@/components/sidebar/nav-data";
+import { SidebarNav } from "@/components/sidebar/sidebar-nav";
+import { cn } from "@/components/trip-ui";
+
+type AppShellProps = {
+  children: ReactNode;
+  notifications?: ReactNode;
+  userEmail: string;
+  userMenu?: ReactNode;
+  workspaceName?: string;
+};
+
+type ShellDensity = "compact" | "comfortable";
+
+const SIDEBAR_COLLAPSED_STORAGE_KEY = "wayline:sidebar-collapsed";
+
+export function AppShell({
+  children,
+  notifications,
+  userEmail,
+  userMenu,
+  workspaceName = "Wayline"
+}: AppShellProps) {
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const view = searchParams.get("view");
+  const [collapsed, setCollapsed] = useState(false);
+  const [collapsedLoaded, setCollapsedLoaded] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [darkMode, setDarkMode] = useState(false);
+  const [density, setDensity] = useState<ShellDensity>("comfortable");
+
+  const page = useMemo(
+    () => ({ title: resolveNavTitle(pathname, view) }),
+    [pathname, view]
+  );
+
+  useEffect(() => {
+    const stored = window.localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY);
+
+    if (stored) {
+      setCollapsed(stored === "true");
+    }
+
+    setCollapsedLoaded(true);
+  }, []);
+
+  useEffect(() => {
+    if (!collapsedLoaded) {
+      return;
+    }
+
+    window.localStorage.setItem(SIDEBAR_COLLAPSED_STORAGE_KEY, String(collapsed));
+  }, [collapsed, collapsedLoaded]);
+
+  useEffect(() => {
+    document.documentElement.classList.toggle("dark", darkMode);
+  }, [darkMode]);
+
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname, view]);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setMobileOpen(false);
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
+  return (
+    <div
+      className="h-dvh overflow-hidden bg-[#f4f7fb] text-ink dark:bg-[#0d1117] dark:text-slate-100"
+      data-density={density}
+      data-testid="app-shell-root"
+    >
+      <a
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-white focus:px-4 focus:py-3 focus:text-sm focus:font-bold focus:text-brand focus:shadow-panel"
+        href="#main-content"
+      >
+        Skip to main content
+      </a>
+
+      <div className="flex h-dvh">
+        <aside
+          className={cn(
+            "sticky top-0 hidden h-dvh shrink-0 border-r border-slate-200 bg-white transition-[width] duration-300 ease-out dark:border-white/10 dark:bg-[#111827] lg:flex",
+            collapsed ? "w-[88px]" : "w-[280px]"
+          )}
+          data-testid="app-shell-sidebar"
+          aria-label="Primary navigation"
+        >
+          <SidebarContent
+            collapsed={collapsed}
+            onCollapse={() => setCollapsed((current) => !current)}
+            workspaceName={workspaceName}
+          />
+        </aside>
+
+        {mobileOpen ? (
+          <div className="fixed inset-0 z-40 lg:hidden" role="dialog" aria-modal="true">
+            <button
+              aria-label="Close navigation overlay"
+              className="absolute inset-0 bg-black/40"
+              onClick={() => setMobileOpen(false)}
+              type="button"
+            />
+            <aside
+              className="fixed inset-y-0 left-0 z-50 flex w-80 max-w-[85vw] border-r border-slate-200 bg-white shadow-2xl dark:border-white/10 dark:bg-[#111827]"
+              data-testid="app-shell-mobile-drawer"
+            >
+              <SidebarContent
+                collapsed={false}
+                mobile
+                onClose={() => setMobileOpen(false)}
+                workspaceName={workspaceName}
+              />
+            </aside>
+          </div>
+        ) : null}
+
+        <div className="flex min-w-0 flex-1 flex-col">
+          <header
+            className="sticky top-0 z-30 border-b border-black/10 bg-white/90 backdrop-blur dark:border-white/10 dark:bg-[#0d1117]/90"
+            data-testid="app-shell-topbar"
+          >
+            <div
+              className={cn(
+                "flex h-14 items-center gap-3 px-4 sm:px-6 lg:h-auto",
+                density === "compact" ? "lg:min-h-[60px]" : "lg:min-h-[72px]"
+              )}
+            >
+              <button
+                aria-label="Open navigation"
+                className="grid h-11 w-11 place-items-center rounded-xl border border-black/10 bg-white text-lg font-black shadow-sm transition hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-brand/20 dark:border-white/10 dark:bg-[#111827] dark:hover:bg-[#172033] lg:hidden"
+                onClick={() => setMobileOpen(true)}
+                type="button"
+              >
+                =
+              </button>
+
+              <span className="min-w-0 flex-1 truncate text-sm font-black lg:hidden">
+                {workspaceName}
+              </span>
+
+              <div className="hidden min-w-0 flex-1 lg:block">
+                <nav className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400" aria-label="Breadcrumbs">
+                  <Link className="rounded-md outline-none focus:ring-4 focus:ring-brand/20" href="/dashboard">
+                    Overview
+                  </Link>
+                  {page.title !== "Overview" ? (
+                    <>
+                      <span aria-hidden="true">/</span>
+                      <span className="truncate">{page.title}</span>
+                    </>
+                  ) : null}
+                </nav>
+                <h1 className="mt-1 truncate text-2xl font-black tracking-tight">{page.title}</h1>
+              </div>
+
+              <label className="hidden min-w-[240px] max-w-sm flex-1 lg:block">
+                <span className="sr-only">Global search</span>
+                <input
+                  className="h-11 rounded-xl border-black/10 bg-[#f7f9fc] pl-4 dark:border-white/10 dark:bg-[#111827] dark:text-slate-100"
+                  placeholder="Search trips, imports, flights..."
+                  type="search"
+                />
+              </label>
+
+              {notifications}
+
+              <button
+                aria-label={darkMode ? "Switch to light mode" : "Switch to dark mode"}
+                className="grid h-11 w-11 place-items-center rounded-xl border border-black/10 bg-white text-sm font-black shadow-sm transition hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-brand/20 dark:border-white/10 dark:bg-[#111827] dark:hover:bg-[#172033]"
+                onClick={() => setDarkMode((current) => !current)}
+                type="button"
+              >
+                {darkMode ? "L" : "D"}
+              </button>
+
+              <div className="relative">
+                <button
+                  aria-expanded={userMenuOpen}
+                  aria-haspopup="menu"
+                  className="flex h-11 min-w-11 items-center gap-2 rounded-xl border border-black/10 bg-white px-3 text-sm font-bold shadow-sm transition hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-brand/20 dark:border-white/10 dark:bg-[#111827] dark:hover:bg-[#172033]"
+                  onClick={() => setUserMenuOpen((current) => !current)}
+                  type="button"
+                >
+                  <span className="grid h-7 w-7 place-items-center rounded-full bg-brand text-xs font-black text-white">
+                    {initials(userEmail)}
+                  </span>
+                  <span className="hidden max-w-32 truncate xl:inline">{userEmail}</span>
+                </button>
+                {userMenuOpen ? (
+                  <div
+                    className="absolute right-0 z-50 mt-3 w-80 overflow-hidden rounded-2xl border border-black/10 bg-white p-3 shadow-panel dark:border-white/10 dark:bg-[#111827]"
+                    role="menu"
+                  >
+                    {userMenu}
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          </header>
+
+          <main
+            className={cn(
+              "min-h-0 flex-1 overflow-y-auto px-4 sm:px-6 lg:px-8",
+              density === "compact" ? "py-4" : "py-6"
+            )}
+            data-testid="app-shell-main"
+            id="main-content"
+          >
+            <div className="mx-auto w-full max-w-[1440px]" data-testid="app-shell-content">
+              {children}
+            </div>
+          </main>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SidebarContent({
+  collapsed,
+  mobile = false,
+  onClose,
+  onCollapse,
+  workspaceName
+}: {
+  collapsed: boolean;
+  mobile?: boolean;
+  onClose?: () => void;
+  onCollapse?: () => void;
+  workspaceName: string;
+}) {
+  return (
+    <div className="flex min-h-0 w-full flex-col px-4 py-5">
+      <div className="flex min-h-14 items-center gap-3 px-2">
+        <Link
+          className="flex min-w-0 flex-1 items-center gap-3 rounded-xl outline-none focus:ring-4 focus:ring-brand/20"
+          href="/dashboard"
+        >
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-brand text-sm font-black text-white">
+            W
+          </span>
+          {!collapsed ? (
+            <span className="min-w-0">
+              <span className="block truncate text-sm font-black">{workspaceName}</span>
+              <span className="block truncate text-xs font-semibold text-slate-500 dark:text-slate-400">
+                Flight operations
+              </span>
+            </span>
+          ) : null}
+        </Link>
+        {mobile ? (
+          <button
+            aria-label="Close sidebar"
+            className="grid h-11 w-11 place-items-center rounded-xl border border-black/10 font-black focus:outline-none focus:ring-4 focus:ring-brand/20 dark:border-white/10"
+            onClick={onClose}
+            type="button"
+          >
+            x
+          </button>
+        ) : null}
+      </div>
+
+      <div className="mt-6 flex-1 overflow-y-auto">
+        <SidebarNav
+          collapsed={collapsed}
+          onNavigate={mobile ? onClose : undefined}
+          sections={navSections}
+        />
+      </div>
+
+      <div className="border-t border-slate-200 pt-3 dark:border-white/10">
+        <Link
+          className={cn(
+            "group flex min-h-11 items-center gap-3 rounded-2xl px-3 py-3.5 text-sm font-semibold text-slate-700 outline-none transition hover:bg-slate-100 hover:text-slate-950 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:text-slate-200 dark:hover:bg-white/10 dark:hover:text-white dark:focus-visible:ring-offset-[#111827]",
+            collapsed && "justify-center px-0"
+          )}
+          data-testid="app-shell-workspace-switcher"
+          href="/dashboard?view=workspace"
+          onClick={mobile ? onClose : undefined}
+          aria-label={collapsed ? "Flight Ops Workspace" : undefined}
+          title={collapsed ? "Flight Ops Workspace" : undefined}
+        >
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-slate-100 text-sm font-bold text-slate-700 transition group-hover:bg-slate-200 dark:bg-white/10 dark:text-slate-200 dark:group-hover:bg-white/15">
+            A
+          </span>
+          {!collapsed ? (
+            <span className="min-w-0">
+              <span className="block truncate">Flight Ops Workspace</span>
+              <span className="block truncate text-xs text-slate-500 dark:text-slate-400">
+                Switch workspace
+              </span>
+            </span>
+          ) : null}
+        </Link>
+        {!mobile && onCollapse ? (
+          <button
+            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            className={cn(
+              "mt-2 flex min-h-11 w-full items-center gap-3 rounded-2xl px-3 py-3.5 text-sm font-semibold text-slate-700 outline-none transition hover:bg-slate-100 hover:text-slate-950 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:text-slate-200 dark:hover:bg-white/10 dark:hover:text-white dark:focus-visible:ring-offset-[#111827]",
+              collapsed && "justify-center px-0"
+            )}
+            onClick={onCollapse}
+            type="button"
+          >
+            <span className="grid h-10 w-10 place-items-center rounded-xl bg-slate-100 text-sm font-bold dark:bg-white/10">
+              {collapsed ? ">" : "<"}
+            </span>
+            <span className={cn(collapsed && "sr-only")}>Collapse sidebar</span>
+          </button>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function initials(value: string) {
+  const [first = "W", second = ""] = value
+    .split(/[^a-zA-Z0-9]+/)
+    .filter(Boolean)
+    .map((part) => part[0]?.toUpperCase());
+
+  return `${first}${second}`.slice(0, 2);
+}

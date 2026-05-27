@@ -3,6 +3,7 @@ export type Trip = {
   user_id: string;
   slug: string | null;
   is_public: boolean;
+  title?: string | null;
   name: string;
   destination: string;
   start_date: string | null;
@@ -43,4 +44,30 @@ export function normalizeTripInput(input: Partial<TripInput>) {
     itinerary: Array.isArray(input.itinerary) ? input.itinerary : [],
     documents: Array.isArray(input.documents) ? input.documents : []
   };
+}
+
+export function toTripWritePayload(trip: ReturnType<typeof normalizeTripInput>) {
+  return {
+    title: trip.name,
+    name: trip.name,
+    destination: trip.destination,
+    start_date: trip.start_date,
+    end_date: trip.end_date,
+    status: trip.status,
+    route: trip.route,
+    budget: trip.budget,
+    notes: trip.notes
+  };
+}
+
+export function mapTripRecord(record: Record<string, unknown>): Trip {
+  return {
+    ...record,
+    name: String(record.name || record.title || "Untitled trip"),
+    itinerary: Array.isArray(record.itinerary) ? record.itinerary : [],
+    documents: Array.isArray(record.documents) ? record.documents : [],
+    budget: Number(record.budget || 0),
+    route: typeof record.route === "string" ? record.route : null,
+    notes: typeof record.notes === "string" ? record.notes : null
+  } as Trip;
 }

@@ -1,0 +1,141 @@
+name: unified-alerts-deploy
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - app/api/alerts/**
+      - app/api/metrics/**
+      - app/flight-ops/alerts/**
+      - deploy/autoscaling/**
+      - deploy/flagger/unified-alerts-canary.yaml
+      - deploy/flagger/unified-alerts-canary-runtime.yaml
+      - deploy/helm/unified-alerts-dashboard/**
+      - deploy/prometheus/**
+      - deploy/kubernetes/unified-alerts-dashboard.yaml
+      - .sops.yaml
+      - lib/prometheus.ts
+      - scripts/deploy-production.sh
+      - scripts/notify-slack-teams-discord.sh
+      - scripts/smoke-unified-alerts.sh
+      - tests/playwright/flight-ops.spec.ts
+      - package.json
+      - package-lock.json
+      - tsconfig.json
+      - .github/workflows/unified-alerts-deploy.yml
+  workflow_dispatch:
+  schedule:
+    - cron: "0 6 * * *"
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  NODE_VERSION: "20"
+
+jobs:
+  build-test:
+    name: Build and deterministic browser tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          cache: npm
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint if configured
+        run: npm run lint --if-present
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Build app
+        run: npm run build
+
+      - name: Install Playwright
+        run: npx -y -p @playwright/test playwright install --with-deps chromium
+
+      - name: Run unified alerts and Cirium smoke
+        run: npx -y -p @playwright/test playwright test tests/playwright/flight-ops.spec.ts
+
+  deploy:
+    name: Deploy production
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    needs: build-test
+    if: github.event_name != 'pull_request'
+    environment:
+      name: production
+
+    env:
+      FLIGHT_OPS_CHAT_WEBHOOK: ${{ secrets.FLIGHT_OPS_CHAT_WEBHOOK }}
+      GRAFANA_SERVICE_ACCOUNT_TOKEN: ${{ secrets.GRAFANA_SERVICE_ACCOUNT_TOKEN }}
+      GRAFANA_URL: ${{ secrets.GRAFANA_URL }}
+      KUBE_CONFIG_DATA: ${{ secrets.FLIGHT_OPS_KUBE_CONFIG_DATA }}
+      KUBE_NAMESPACE: ${{ secrets.FLIGHT_OPS_KUBE_NAMESPACE }}
+      PAGERDUTY_ROUTING_KEY: ${{ secrets.FLIGHT_OPS_PAGERDUTY_ROUTING_KEY }}
+      SLACK_WEBHOOK_URL: ${{ secrets.FLIGHT_OPS_SLACK_WEBHOOK_URL }}
+      TEAMS_WEBHOOK_URL: ${{ secrets.FLIGHT_OPS_TEAMS_WEBHOOK_URL }}
+      DISCORD_WEBHOOK_URL: ${{ secrets.FLIGHT_OPS_DISCORD_WEBHOOK_URL }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v4
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v4
+
+      - name: Deploy production
+        run: bash scripts/deploy-production.sh
+
+  smoke:
+    name: Production smoke
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    needs: deploy
+
+    env:
+      UNIFIED_ALERTS_BASE_URL: ${{ secrets.UNIFIED_ALERTS_BASE_URL }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Smoke unified alerts
+        run: bash scripts/smoke-unified-alerts.sh
+
+  notify:
+    name: Notify rollout result
+    if: always()
+    runs-on: ubuntu-24.04
+    needs:
+      - build-test
+      - deploy
+      - smoke
+
+    env:
+      DISCORD_WEBHOOK_URL: ${{ secrets.FLIGHT_OPS_DISCORD_WEBHOOK_URL }}
+      SLACK_WEBHOOK_URL: ${{ secrets.FLIGHT_OPS_SLACK_WEBHOOK_URL }}
+      TEAMS_WEBHOOK_URL: ${{ secrets.FLIGHT_OPS_TEAMS_WEBHOOK_URL }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Notify chat channels
+        run: |
+          bash scripts/notify-slack-teams-discord.sh "Unified alerts deploy finished for ${GITHUB_REF} at ${GITHUB_SHA}. Result: ${{ job.status }}."

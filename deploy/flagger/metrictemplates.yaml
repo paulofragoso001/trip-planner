@@ -1,0 +1,66 @@
+apiVersion: flagger.app/v1beta1
+kind: MetricTemplate
+metadata:
+  name: flight-api-error-rate
+  namespace: flight-ops
+spec:
+  provider:
+    type: prometheus
+    address: http://prometheus.monitoring:9090
+  query: |
+    sum(rate(http_requests_total{app="{{ target }}",status=~"5.."}[{{ interval }}]))
+    /
+    clamp_min(sum(rate(http_requests_total{app="{{ target }}"}[{{ interval }}])), 1)
+---
+apiVersion: flagger.app/v1beta1
+kind: MetricTemplate
+metadata:
+  name: flight-api-latency-p95
+  namespace: flight-ops
+spec:
+  provider:
+    type: prometheus
+    address: http://prometheus.monitoring:9090
+  query: |
+    histogram_quantile(
+      0.95,
+      sum(rate(http_request_duration_seconds_bucket{app="{{ target }}"}[{{ interval }}])) by (le)
+    )
+---
+apiVersion: flagger.app/v1beta1
+kind: MetricTemplate
+metadata:
+  name: flight-marker-staleness
+  namespace: flight-ops
+spec:
+  provider:
+    type: prometheus
+    address: http://prometheus.monitoring:9090
+  query: |
+    time() - max(last_flight_marker_update_timestamp_seconds{app="{{ target }}"})
+---
+apiVersion: flagger.app/v1beta1
+kind: MetricTemplate
+metadata:
+  name: graphql-api-failure-rate
+  namespace: flight-ops
+spec:
+  provider:
+    type: prometheus
+    address: http://prometheus.monitoring:9090
+  query: |
+    sum(rate(http_requests_total{app="{{ target }}",route="/graphql",status=~"5.."}[{{ interval }}]))
+    /
+    clamp_min(sum(rate(http_requests_total{app="{{ target }}",route="/graphql"}[{{ interval }}])), 1)
+---
+apiVersion: flagger.app/v1beta1
+kind: MetricTemplate
+metadata:
+  name: alert-delivery-failure-rate
+  namespace: flight-ops
+spec:
+  provider:
+    type: prometheus
+    address: http://prometheus.monitoring:9090
+  query: |
+    sum(rate(alert_delivery_failures_total{app="{{ target }}"}[{{ interval }}]))

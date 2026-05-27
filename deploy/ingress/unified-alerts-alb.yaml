@@ -1,0 +1,38 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: unified-alerts-dashboard-alb
+  namespace: flight-ops
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80},{"HTTPS":443}]'
+    alb.ingress.kubernetes.io/ssl-redirect: "443"
+    alb.ingress.kubernetes.io/healthcheck-path: /api/metrics
+spec:
+  rules:
+    - host: alerts.example.com
+      http:
+        paths:
+          - path: /flight-ops/alerts
+            pathType: Prefix
+            backend:
+              service:
+                name: unified-alerts-dashboard
+                port:
+                  number: 80
+          - path: /api/alerts
+            pathType: Prefix
+            backend:
+              service:
+                name: unified-alerts-dashboard
+                port:
+                  number: 80
+          - path: /api/metrics
+            pathType: Prefix
+            backend:
+              service:
+                name: unified-alerts-dashboard
+                port:
+                  number: 80

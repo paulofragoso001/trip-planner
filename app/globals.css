@@ -6,14 +6,28 @@
   color-scheme: light;
 }
 
+:root.dark {
+  color-scheme: dark;
+}
+
 body {
   @apply bg-mist text-ink antialiased;
+}
+
+:root.dark body {
+  @apply bg-[#0d1117] text-slate-100;
 }
 
 input,
 select,
 textarea {
-  @apply w-full rounded-lg border border-line bg-white px-3 py-2 text-sm outline-none transition focus:border-brand focus:ring-4 focus:ring-blue-100;
+  @apply w-full min-w-0 rounded-lg border border-line bg-white px-3 py-2 text-sm outline-none transition focus:border-brand focus:ring-4 focus:ring-blue-100;
+}
+
+:root.dark input,
+:root.dark select,
+:root.dark textarea {
+  @apply border-white/10 bg-[#111827] text-slate-100 focus:ring-blue-500/20;
 }
 
 textarea {
@@ -21,5 +35,15 @@ textarea {
 }
 
 label {
-  @apply grid gap-2 text-sm font-semibold text-slate-700;
+  @apply grid min-w-0 gap-2 text-sm font-semibold text-slate-700;
+}
+
+.google-places-autocomplete,
+gmp-place-autocomplete {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  --gmp-input-border-radius: 16px;
+  --gmp-input-font-size: 14px;
 }

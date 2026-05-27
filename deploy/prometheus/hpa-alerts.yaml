@@ -1,0 +1,41 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: hpa-health
+  namespace: monitoring
+spec:
+  groups:
+    - name: hpa
+      rules:
+        - alert: HPAAtMaxReplicas
+          expr: kube_horizontalpodautoscaler_status_current_replicas >= kube_horizontalpodautoscaler_spec_max_replicas
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "HPA is pinned at max replicas"
+            description: "An HPA has been at its configured maximum replica count for 10 minutes."
+        - alert: HPAUnableToScale
+          expr: kube_horizontalpodautoscaler_status_condition{condition="ScalingActive",status="false"} == 1
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "HPA cannot use current metrics"
+            description: "Kubernetes HPA cannot fetch CPU, memory, or custom metrics."
+        - alert: DashboardIngressHighTraffic
+          expr: sum(rate(istio_requests_total{destination_workload="istio-ingressgateway"}[5m])) > 1000
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Ingress gateway traffic is high"
+            description: "Istio ingressgateway is seeing sustained high request volume."
+        - alert: UnifiedAlertsCustomMetricMissing
+          expr: absent(http_requests_rps)
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Unified alerts custom HPA metric is missing"
+            description: "Prometheus Adapter is not exposing http_requests_rps."

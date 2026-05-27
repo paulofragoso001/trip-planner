@@ -3,13 +3,14 @@
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
-type Provider = "google" | "github";
+type Provider = "google" | "github" | "facebook";
 
 const providers: {
   alt: string;
   icon: string;
   label: string;
   provider: Provider;
+  requiresSetup?: boolean;
 }[] = [
   {
     alt: "Google logo",
@@ -22,6 +23,13 @@ const providers: {
     icon: "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png",
     label: "Continue with GitHub",
     provider: "github"
+  },
+  {
+    alt: "Facebook logo",
+    icon: "https://www.svgrepo.com/show/475647/facebook-color.svg",
+    label: "Continue with Facebook",
+    provider: "facebook",
+    requiresSetup: true
   }
 ];
 
@@ -30,6 +38,13 @@ export function SocialLogin() {
   const [message, setMessage] = useState("");
 
   const signIn = async (provider: Provider) => {
+    if (provider === "facebook" && process.env.NEXT_PUBLIC_FACEBOOK_LOGIN_ENABLED !== "true") {
+      setMessage(
+        "Facebook login needs a valid Facebook App ID and App Secret enabled in Supabase first."
+      );
+      return;
+    }
+
     setLoadingProvider(provider);
     setMessage("");
 
@@ -57,6 +72,11 @@ export function SocialLogin() {
             key={item.provider}
             onClick={() => signIn(item.provider)}
             type="button"
+            title={
+              item.requiresSetup
+                ? "Enable Facebook in Supabase and set NEXT_PUBLIC_FACEBOOK_LOGIN_ENABLED=true"
+                : undefined
+            }
           >
             <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-line bg-white">
               <img

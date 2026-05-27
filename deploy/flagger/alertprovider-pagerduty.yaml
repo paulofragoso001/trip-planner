@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: flight-ops-pagerduty-key
+  namespace: flight-ops
+type: Opaque
+stringData:
+  routingKey: "PD_EVENTS_API_V2_ROUTING_KEY"
+---
+apiVersion: flagger.app/v1beta1
+kind: AlertProvider
+metadata:
+  name: flight-ops-pagerduty
+  namespace: flight-ops
+spec:
+  type: webhook
+  address: "https://events.pagerduty.com/v2/enqueue"
+  secretRef:
+    name: flight-ops-pagerduty-key

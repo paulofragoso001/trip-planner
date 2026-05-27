@@ -1,0 +1,11 @@
+.git
+.github
+.next
+node_modules
+storybook-static
+coverage
+cypress/videos
+cypress/screenshots
+npm-debug.log
+.env
+.env.local

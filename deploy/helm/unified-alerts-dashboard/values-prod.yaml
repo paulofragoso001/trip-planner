@@ -1,0 +1,117 @@
+replicaCount: 2
+
+image:
+  repository: 123456789012.dkr.ecr.us-east-1.amazonaws.com/unified-alerts-dashboard
+  tag: latest
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 3000
+
+ingress:
+  enabled: false
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 256Mi
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+
+env:
+  NODE_ENV: production
+  NEXT_TELEMETRY_DISABLED: "1"
+
+secrets:
+  create: false
+  name: flight-ops-alerts-dashboard
+
+secretProviderClass:
+  enabled: true
+  name: unified-alerts-secrets
+  provider: aws
+  mountPath: /mnt/secrets-store
+  objects:
+    - objectName: grafana-url
+      objectType: secretsmanager
+    - objectName: grafana-service-account-token
+      objectType: secretsmanager
+    - objectName: cirium-api-key
+      objectType: secretsmanager
+  secretObjects:
+    - secretName: flight-ops-alerts-dashboard
+      type: Opaque
+      data:
+        - objectName: grafana-service-account-token
+          key: GRAFANA_SERVICE_ACCOUNT_TOKEN
+        - objectName: grafana-url
+          key: GRAFANA_URL
+        - objectName: cirium-api-key
+          key: CIRIUM_API_KEY
+
+externalSecrets:
+  enabled: false
+
+cirium:
+  apiKeySecretName: flight-ops-alerts-dashboard
+  apiKeySecretKey: CIRIUM_API_KEY
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 12
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 75
+  customMetrics:
+    enabled: true
+    pods:
+      - name: http_requests_rps
+        averageValue: "20"
+      - name: alert_feed_queue_depth
+        averageValue: "50"
+
+vpa:
+  enabled: false
+  updateMode: "Off"
+  controlledResources:
+    - cpu
+    - memory
+  minAllowed:
+    cpu: 250m
+    memory: 256Mi
+  maxAllowed:
+    cpu: "1"
+    memory: 1Gi
+
+istio:
+  enabled: true
+  ingressGatewayAutoscaling:
+    enabled: true
+    name: istio-ingressgateway
+    namespace: istio-system
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 60
+  gateway:
+    name: unified-alerts-gateway
+    namespace: flight-ops
+    selector:
+      istio: ingressgateway
+    hosts:
+      - alerts.example.com
+    tls:
+      enabled: true
+      mode: SIMPLE
+      credentialName: alerts-example-com-tls
+  virtualService:
+    hosts:
+      - alerts.example.com
+    gateways:
+      - unified-alerts-gateway
+    paths:
+      - /flight-ops/alerts
+      - /api/alerts
+      - /api/metrics

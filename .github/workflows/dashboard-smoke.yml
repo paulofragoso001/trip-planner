@@ -1,0 +1,273 @@
+name: dashboard-smoke
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - synchronize
+      - reopened
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  dashboard-changes:
+    name: Detect dashboard changes
+    runs-on: ubuntu-24.04
+    outputs:
+      dashboard: ${{ steps.filter.outputs.dashboard }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Detect dashboard paths
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            dashboard:
+              - app/dashboard/**
+              - app/api/calendar/**
+              - app/api/panel-errors/**
+              - .github/dashboard/**
+              - components/*dashboard*.tsx
+              - components/*panel*.tsx
+              - components/dashboard-layout-simulator.tsx
+              - components/GoogleMapsProvider.tsx
+              - components/LocationAutocomplete.tsx
+              - components/TripMap.tsx
+              - components/trip-map-tab.tsx
+              - docs/layout-integrity-scorecard.md
+              - docs/ops/production-env-runbook.md
+              - lib/panel-error-reporting.ts
+              - lib/server/auth-flags.ts
+              - lib/server/env.ts
+              - lib/google-maps.ts
+              - scripts/layout-integrity-scorecard.mjs
+              - scripts/production-env-preflight.mjs
+              - scripts/run-production-tests.mjs
+              - tests/playwright/auth-boundary.spec.ts
+              - tests/playwright/calendar-contract.spec.ts
+              - tests/playwright/calendar-worker.spec.ts
+              - tests/playwright/dashboard.smoke.spec.ts
+              - tests/playwright/imports-write.spec.ts
+              - tests/playwright/layout-simulator.spec.ts
+              - tests/playwright/layout-simulator.visual.spec.ts
+              - tests/playwright/layout-simulator.spec.ts-snapshots/**
+              - tests/playwright/layout-simulator.visual.spec.ts-snapshots/**
+              - package.json
+              - package-lock.json
+              - next.config.ts
+              - .github/workflows/dashboard-smoke.yml
+
+  dashboard-smoke-real:
+    name: Run dashboard smoke
+    runs-on: ubuntu-24.04
+    needs: dashboard-changes
+    if: needs.dashboard-changes.outputs.dashboard == 'true' || github.event_name == 'workflow_dispatch'
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          cache: npm
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Typecheck dashboard graph
+        run: npx tsc --noEmit
+
+      - name: Start Next dev server
+        env:
+          ALLOW_TEST_DASHBOARD_BYPASS: "true"
+        run: |
+          npm run dev -- --webpack -p 3000 > /tmp/dashboard-smoke-next.log 2>&1 &
+          for attempt in {1..60}; do
+            if curl -fsS http://127.0.0.1:3000/dashboard >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/dashboard-smoke-next.log
+          exit 1
+
+      - name: Run dashboard smoke
+        run: npx playwright test tests/playwright/dashboard.smoke.spec.ts
+
+      - name: Run layout simulator contract suite
+        run: npx playwright test tests/playwright/layout-simulator.spec.ts --workers=1
+
+      - name: Generate layout integrity scorecard
+        run: npm run layout:scorecard
+
+      - name: Publish layout integrity summary
+        run: |
+          {
+            echo "## Layout Integrity"
+            echo
+            cat docs/layout-integrity-scorecard.md
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload layout integrity scorecard
+        uses: actions/upload-artifact@v4
+        with:
+          name: layout-integrity-scorecard
+          path: |
+            .github/dashboard/layout-integrity-scorecard.json
+            docs/layout-integrity-scorecard.md
+            tests/playwright/layout-simulator.spec.ts-snapshots/**
+            tests/playwright/layout-simulator.visual.spec.ts-snapshots/**
+          if-no-files-found: error
+
+  dashboard-imports-write:
+    name: Run imports write path
+    runs-on: ubuntu-24.04
+    needs: dashboard-changes
+    if: needs.dashboard-changes.outputs.dashboard == 'true' || github.event_name == 'workflow_dispatch'
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          cache: npm
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Start Next dev server with protected write-test env
+        env:
+          ALLOW_TEST_DASHBOARD_BYPASS: "true"
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          npm run dev -- --webpack -p 3000 > /tmp/dashboard-imports-write-next.log 2>&1 &
+          for attempt in {1..60}; do
+            if curl -fsS http://127.0.0.1:3000/dashboard/imports >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/dashboard-imports-write-next.log
+          exit 1
+
+      - name: Run imports write path
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: npx playwright test tests/playwright/imports-write.spec.ts --workers=1
+
+  dashboard-calendar-worker:
+    name: Run calendar worker path
+    runs-on: ubuntu-24.04
+    needs: dashboard-changes
+    if: needs.dashboard-changes.outputs.dashboard == 'true' || github.event_name == 'workflow_dispatch'
+    timeout-minutes: 15
+
+    env:
+      CALENDAR_SYNC_WORKER_SECRET: ${{ secrets.CALENDAR_SYNC_WORKER_SECRET }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          cache: npm
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Require protected calendar worker env
+        run: |
+          if [ -z "$CALENDAR_SYNC_WORKER_SECRET" ]; then
+            echo "CALENDAR_SYNC_WORKER_SECRET is required for calendar worker integration tests."
+            exit 1
+          fi
+
+      - name: Start Next dev server with calendar worker env
+        env:
+          ALLOW_TEST_DASHBOARD_BYPASS: "true"
+        run: |
+          npm run dev -- --webpack -p 3000 > /tmp/dashboard-calendar-worker-next.log 2>&1 &
+          for attempt in {1..60}; do
+            if curl -fsS http://127.0.0.1:3000/dashboard >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/dashboard-calendar-worker-next.log
+          exit 1
+
+      - name: Run calendar worker path
+        run: npx playwright test tests/playwright/calendar-worker.spec.ts --workers=1
+
+  dashboard-smoke-skip:
+    name: Skip dashboard smoke
+    runs-on: ubuntu-24.04
+    needs: dashboard-changes
+    if: needs.dashboard-changes.outputs.dashboard != 'true' && github.event_name != 'workflow_dispatch'
+
+    steps:
+      - name: Pass unchanged dashboard gate
+        run: echo "Dashboard files unchanged; passing required dashboard smoke gate."
+
+  dashboard-smoke:
+    name: Dashboard smoke
+    runs-on: ubuntu-24.04
+    needs:
+      - dashboard-calendar-worker
+      - dashboard-imports-write
+      - dashboard-smoke-real
+      - dashboard-smoke-skip
+    if: always()
+
+    steps:
+      - name: Require real or no-op dashboard smoke success
+        env:
+          CALENDAR_WORKER_RESULT: ${{ needs.dashboard-calendar-worker.result }}
+          IMPORTS_WRITE_RESULT: ${{ needs.dashboard-imports-write.result }}
+          REAL_RESULT: ${{ needs.dashboard-smoke-real.result }}
+          SKIP_RESULT: ${{ needs.dashboard-smoke-skip.result }}
+        run: |
+          imports_ok=false
+          if [ "$IMPORTS_WRITE_RESULT" = "success" ] || [ "$IMPORTS_WRITE_RESULT" = "skipped" ]; then
+            imports_ok=true
+          fi
+
+          calendar_worker_ok=false
+          if [ "$CALENDAR_WORKER_RESULT" = "success" ] || [ "$CALENDAR_WORKER_RESULT" = "skipped" ]; then
+            calendar_worker_ok=true
+          fi
+
+          if { [ "$REAL_RESULT" = "success" ] || [ "$SKIP_RESULT" = "success" ]; } && [ "$imports_ok" = "true" ] && [ "$calendar_worker_ok" = "true" ]; then
+            exit 0
+          fi
+
+          echo "Dashboard smoke gate failed. real=$REAL_RESULT skip=$SKIP_RESULT imports_write=$IMPORTS_WRITE_RESULT calendar_worker=$CALENDAR_WORKER_RESULT"
+          exit 1

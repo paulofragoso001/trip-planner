@@ -1,0 +1,171 @@
+name: unified-alerts-eks-deploy
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - app/api/alerts/**
+      - app/api/metrics/**
+      - app/flight-ops/alerts/**
+      - deploy/autoscaling/**
+      - deploy/ingress/**
+      - deploy/vpa/**
+      - deploy/helm/unified-alerts-dashboard/**
+      - deploy/flagger/unified-alerts-canary-runtime.yaml
+      - deploy/flagger/metrictemplates.yaml
+      - deploy/prometheus/**
+      - deploy/kubernetes/unified-alerts-dashboard.yaml
+      - .sops.yaml
+      - Dockerfile
+      - .dockerignore
+      - lib/prometheus.ts
+      - scripts/deploy-production.sh
+      - scripts/smoke-unified-alerts.sh
+      - tests/playwright/flight-ops.spec.ts
+      - package.json
+      - package-lock.json
+      - tsconfig.json
+      - .github/workflows/unified-alerts-eks-deploy.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+  packages: write
+
+env:
+  AWS_REGION: us-east-1
+  ECR_REGISTRY: ${{ secrets.AWS_ECR_REGISTRY }}
+  ECR_REPOSITORY: unified-alerts-dashboard
+  EKS_CLUSTER_NAME: ${{ secrets.FLIGHT_OPS_EKS_CLUSTER_NAME }}
+  EKS_CLUSTER_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
+  HELM_RELEASE_NAME: unified-alerts-dashboard
+  KUBE_NAMESPACE: flight-ops
+  NODE_VERSION: "20"
+
+jobs:
+  build-test-image:
+    name: Build, test, and publish image
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    outputs:
+      image_tag: ${{ steps.meta.outputs.image_tag }}
+      image_repository: ${{ steps.meta.outputs.image_repository }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          cache: npm
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Build app
+        run: npm run build
+
+      - name: Install Playwright
+        run: npx -y -p @playwright/test playwright install --with-deps chromium
+
+      - name: Run unified alerts smoke tests
+        run: npx -y -p @playwright/test playwright test tests/playwright/flight-ops.spec.ts
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_GHA_ROLE_ARN }}
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Image metadata
+        id: meta
+        run: |
+          echo "image_tag=${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+          echo "image_repository=${ECR_REGISTRY}/${ECR_REPOSITORY}" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push image
+        run: |
+          image="${{ steps.meta.outputs.image_repository }}:${{ steps.meta.outputs.image_tag }}"
+          docker build -t "$image" .
+          docker push "$image"
+
+  deploy:
+    name: Helm deploy to EKS
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    needs: build-test-image
+    environment:
+      name: production
+
+    env:
+      IMAGE_REPOSITORY: ${{ needs.build-test-image.outputs.image_repository }}
+      IMAGE_TAG: ${{ needs.build-test-image.outputs.image_tag }}
+      GRAFANA_SERVICE_ACCOUNT_TOKEN: ${{ secrets.GRAFANA_SERVICE_ACCOUNT_TOKEN }}
+      GRAFANA_URL: ${{ secrets.GRAFANA_URL }}
+      PAGERDUTY_ROUTING_KEY: ${{ secrets.FLIGHT_OPS_PAGERDUTY_ROUTING_KEY }}
+      SLACK_WEBHOOK_URL: ${{ secrets.FLIGHT_OPS_SLACK_WEBHOOK_URL }}
+      TEAMS_WEBHOOK_URL: ${{ secrets.FLIGHT_OPS_TEAMS_WEBHOOK_URL }}
+      DISCORD_WEBHOOK_URL: ${{ secrets.FLIGHT_OPS_DISCORD_WEBHOOK_URL }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_GHA_ROLE_ARN }}
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v4
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v4
+
+      - name: Helm deploy to EKS
+        uses: bitovi/github-actions-deploy-eks-helm@v1.2.12
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          cluster-name: ${{ env.EKS_CLUSTER_NAME }}
+          cluster-role-arn: ${{ env.EKS_CLUSTER_ROLE_ARN }}
+          chart-path: ./deploy/helm/unified-alerts-dashboard
+          namespace: ${{ env.KUBE_NAMESPACE }}
+          name: ${{ env.HELM_RELEASE_NAME }}
+          config-files: deploy/helm/unified-alerts-dashboard/values-prod.yaml
+          values: image.repository=${{ env.IMAGE_REPOSITORY }},image.tag=${{ env.IMAGE_TAG }}
+          atomic: true
+          create-namespace: true
+
+      - name: Apply Flagger canary
+        env:
+          SKIP_HELM_DEPLOY: "true"
+        run: |
+          aws eks update-kubeconfig --name "$EKS_CLUSTER_NAME" --region "$AWS_REGION"
+          bash scripts/deploy-production.sh
+
+  smoke:
+    name: Production smoke
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    needs: deploy
+
+    env:
+      UNIFIED_ALERTS_BASE_URL: ${{ secrets.UNIFIED_ALERTS_BASE_URL }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Smoke unified alerts
+        run: bash scripts/smoke-unified-alerts.sh

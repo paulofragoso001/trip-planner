@@ -1,0 +1,77 @@
+apiVersion: flagger.app/v1beta1
+kind: AlertProvider
+metadata:
+  name: flight-ops-slack
+  namespace: flight-ops
+spec:
+  type: slack
+  channel: flight-ops-alerts
+  username: flagger
+  secretRef:
+    name: slack-webhook-url
+---
+apiVersion: flagger.app/v1beta1
+kind: AlertProvider
+metadata:
+  name: flight-ops-pagerduty
+  namespace: flight-ops
+spec:
+  type: webhook
+  address: "https://events.pagerduty.com/v2/enqueue"
+  secretRef:
+    name: pagerduty-routing-key
+---
+apiVersion: flagger.app/v1beta1
+kind: Canary
+metadata:
+  name: unified-alerts-dashboard
+  namespace: flight-ops
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: flight-ops-alerts-dashboard
+  progressDeadlineSeconds: 600
+  service:
+    port: 80
+    targetPort: 3000
+    gateways:
+      - flight-ops-gateway
+    hosts:
+      - flight-ops.example.com
+  analysis:
+    interval: 1m
+    threshold: 5
+    maxWeight: 50
+    stepWeight: 10
+    metrics:
+      - name: request-success-rate
+        thresholdRange:
+          min: 99
+        interval: 1m
+      - name: request-duration
+        thresholdRange:
+          max: 500
+        interval: 1m
+      - name: flight-api-error-rate
+        templateRef:
+          name: flight-api-error-rate
+        thresholdRange:
+          max: 0.02
+        interval: 1m
+    alerts:
+      - name: slack-info
+        severity: info
+        providerRef:
+          name: flight-ops-slack
+      - name: pagerduty-critical
+        severity: error
+        providerRef:
+          name: flight-ops-pagerduty
+    webhooks:
+      - name: unified-alerts-smoke
+        type: confirm-rollout
+        url: http://flagger-loadtester.flagger/
+        timeout: 30s
+        metadata:
+          cmd: "curl -fsS http://unified-alerts-dashboard-canary.flight-ops/flight-ops/alerts >/dev/null"

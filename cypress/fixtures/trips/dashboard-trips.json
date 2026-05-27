@@ -1,0 +1,42 @@
+{
+  "trips": [
+    {
+      "id": "trip_1",
+      "user_id": "user_1",
+      "slug": "miami-work-trip",
+      "is_public": false,
+      "title": "Miami Work Trip",
+      "name": "Miami Work Trip",
+      "destination": "Miami, FL",
+      "start_date": "2026-05-10",
+      "end_date": "2026-05-13",
+      "status": "planned",
+      "route": null,
+      "budget": 1200,
+      "notes": "Client meetings and downtown hotel.",
+      "itinerary": [],
+      "documents": [],
+      "created_at": "2026-05-01T12:00:00.000Z",
+      "updated_at": "2026-05-01T12:00:00.000Z"
+    },
+    {
+      "id": "trip_2",
+      "user_id": "user_1",
+      "slug": "nyc-weekend",
+      "is_public": false,
+      "title": "NYC Weekend",
+      "name": "NYC Weekend",
+      "destination": "New York, NY",
+      "start_date": "2026-06-01",
+      "end_date": "2026-06-04",
+      "status": "planned",
+      "route": null,
+      "budget": 1800,
+      "notes": null,
+      "itinerary": [],
+      "documents": [],
+      "created_at": "2026-05-01T12:00:00.000Z",
+      "updated_at": "2026-05-01T12:00:00.000Z"
+    }
+  ]
+}

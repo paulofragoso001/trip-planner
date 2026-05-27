@@ -1,0 +1,18 @@
+[
+  {
+    "id": "item_3",
+    "title": "Brunch in SoHo",
+    "location": "SoHo, New York",
+    "lat": 40.7233,
+    "lng": -74.003,
+    "position": 1,
+    "date_time": "2026-06-01T11:00:00.000Z",
+    "notes": "Reserve a table",
+    "image_url": null,
+    "image_urls": null,
+    "segment_type": "activity",
+    "provider": null,
+    "confirmation_code": null,
+    "booking_url": null
+  }
+]

@@ -1,0 +1,179 @@
+replicaCount: 2
+
+image:
+  repository: ghcr.io/your-org/flight-ops-alerts-dashboard
+  tag: latest
+  pullPolicy: IfNotPresent
+
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations:
+  prometheus.io/path: /api/metrics
+  prometheus.io/port: "3000"
+  prometheus.io/scrape: "true"
+
+podSecurityContext:
+  runAsNonRoot: true
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: false
+  runAsNonRoot: true
+  runAsUser: 1001
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 3000
+
+env:
+  NODE_ENV: production
+  NEXT_TELEMETRY_DISABLED: "1"
+
+secrets:
+  create: true
+  name: flight-ops-alerts-dashboard
+  values:
+    GRAFANA_URL: ""
+    GRAFANA_SERVICE_ACCOUNT_TOKEN: ""
+    SLACK_WEBHOOK_URL: ""
+    TEAMS_WEBHOOK_URL: ""
+    DISCORD_WEBHOOK_URL: ""
+    PAGERDUTY_ROUTING_KEY: ""
+
+externalSecrets:
+  enabled: false
+  secretStoreRef:
+    name: aws-secrets-manager
+    kind: ClusterSecretStore
+  targetName: flight-ops-alerts-dashboard
+  refreshInterval: 1h
+  data:
+    grafanaUrl:
+      remoteRef:
+        key: flight-ops/grafana
+        property: url
+    grafanaServiceAccountToken:
+      remoteRef:
+        key: flight-ops/grafana
+        property: serviceAccountToken
+
+secretProviderClass:
+  enabled: false
+  name: unified-alerts-secrets
+  provider: aws
+  mountPath: /mnt/secrets-store
+  objects:
+    - objectName: grafana-url
+      objectType: secretsmanager
+    - objectName: grafana-service-account-token
+      objectType: secretsmanager
+    - objectName: cirium-api-key
+      objectType: secretsmanager
+  secretObjects:
+    - secretName: flight-ops-alerts-dashboard
+      type: Opaque
+      data:
+        - objectName: grafana-service-account-token
+          key: GRAFANA_SERVICE_ACCOUNT_TOKEN
+        - objectName: grafana-url
+          key: GRAFANA_URL
+        - objectName: cirium-api-key
+          key: CIRIUM_API_KEY
+
+cirium:
+  apiKeySecretName: flight-ops-alerts-dashboard
+  apiKeySecretKey: CIRIUM_API_KEY
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 12
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 75
+  customMetrics:
+    enabled: true
+    pods:
+      - name: http_requests_rps
+        averageValue: "20"
+      - name: alert_feed_queue_depth
+        averageValue: "50"
+
+vpa:
+  enabled: false
+  updateMode: "Off"
+  controlledResources:
+    - cpu
+    - memory
+  minAllowed:
+    cpu: 100m
+    memory: 256Mi
+  maxAllowed:
+    cpu: "1"
+    memory: 1Gi
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+istio:
+  enabled: true
+  ingressGatewayAutoscaling:
+    enabled: false
+    name: istio-ingressgateway
+    namespace: istio-system
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 60
+  gateway:
+    name: unified-alerts-dashboard
+    namespace: flight-ops
+    selector:
+      istio: ingressgateway
+    hosts:
+      - flight-ops.example.com
+    tls:
+      enabled: true
+      mode: SIMPLE
+      credentialName: flight-ops-tls
+  virtualService:
+    hosts:
+      - flight-ops.example.com
+    gateways:
+      - unified-alerts-dashboard
+    paths:
+      - /flight-ops/alerts
+      - /api/alerts
+      - /api/metrics
+
+ingress:
+  enabled: false
+  className: nginx
+  hosts:
+    - host: flight-ops.example.com
+      paths:
+        - path: /flight-ops/alerts
+          pathType: Prefix
+        - path: /api/alerts
+          pathType: Prefix
+        - path: /api/metrics
+          pathType: Prefix
+
+nodeSelector: {}
+tolerations: []
+affinity: {}

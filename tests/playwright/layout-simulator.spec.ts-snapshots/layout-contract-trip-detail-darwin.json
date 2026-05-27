@@ -1,0 +1,30 @@
+{
+  "contract": {
+    "accent": "teal",
+    "cardRadius": "medium",
+    "containerWidth": "wide",
+    "contentLayout": "timeline-inspector",
+    "density": "compact",
+    "mockPreset": "trip-detail",
+    "rightRail": "on",
+    "sidebarMode": "expanded",
+    "theme": "light",
+    "topbarMode": "trip-context"
+  },
+  "regions": {
+    "layout-preview-shell": true,
+    "layout-preview-topbar": true,
+    "layout-preview-main": true,
+    "layout-preview-content": true,
+    "layout-preview-kpis": true,
+    "layout-preview-states": true
+  },
+  "optionalRegions": {
+    "map": false,
+    "mobileDrawer": false,
+    "rightRail": true,
+    "sidebar": true,
+    "table": false,
+    "timeline": true
+  }
+}

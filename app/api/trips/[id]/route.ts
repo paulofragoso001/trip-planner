@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
-import { normalizeTripInput } from "@/lib/trips";
+import { authorizeDashboardApi } from "@/lib/server/dashboard-test-auth";
+import { mapTripRecord, normalizeTripInput, toTripWritePayload } from "@/lib/trips";
 
 type RouteContext = {
   params: Promise<{ id: string }>;
@@ -8,34 +8,31 @@ type RouteContext = {
 
 export async function GET(_request: Request, context: RouteContext) {
   const { id } = await context.params;
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error: userError
-  } = await supabase.auth.getUser();
+  const auth = await authorizeDashboardApi();
 
-  if (userError || !user) {
+  if (!auth) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { data, error } = await supabase.from("trips").select("*").eq("id", id).single();
+  const { data, error } = await auth.supabase
+    .from("trips")
+    .select("*")
+    .eq("id", id)
+    .eq("user_id", auth.userId)
+    .single();
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 404 });
   }
 
-  return NextResponse.json({ trip: data });
+  return NextResponse.json({ trip: mapTripRecord(data as Record<string, unknown>) });
 }
 
 export async function PATCH(request: Request, context: RouteContext) {
   const { id } = await context.params;
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error: userError
-  } = await supabase.auth.getUser();
+  const auth = await authorizeDashboardApi();
 
-  if (userError || !user) {
+  if (!auth) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -49,10 +46,11 @@ export async function PATCH(request: Request, context: RouteContext) {
     );
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await auth.supabase
     .from("trips")
-    .update(trip)
+    .update(toTripWritePayload(trip))
     .eq("id", id)
+    .eq("user_id", auth.userId)
     .select("*")
     .single();
 
@@ -60,22 +58,22 @@ export async function PATCH(request: Request, context: RouteContext) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ trip: data });
+  return NextResponse.json({ trip: mapTripRecord(data as Record<string, unknown>) });
 }
 
 export async function DELETE(_request: Request, context: RouteContext) {
   const { id } = await context.params;
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error: userError
-  } = await supabase.auth.getUser();
+  const auth = await authorizeDashboardApi();
 
-  if (userError || !user) {
+  if (!auth) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { error } = await supabase.from("trips").delete().eq("id", id);
+  const { error } = await auth.supabase
+    .from("trips")
+    .delete()
+    .eq("id", id)
+    .eq("user_id", auth.userId);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

@@ -1,0 +1,50 @@
+name: dependabot-slack-alerts
+
+on:
+  schedule:
+    - cron: "23 13 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  vulnerability-alerts: read
+
+jobs:
+  notify:
+    name: Notify open high severity Dependabot alerts
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    env:
+      GH_TOKEN: ${{ github.token }}
+      SLACK_WEBHOOK_URL: ${{ secrets.FLIGHT_OPS_SLACK_WEBHOOK_URL }}
+
+    steps:
+      - name: Fetch open Dependabot alerts
+        id: alerts
+        run: |
+          alerts="$(
+            gh api \
+              -H "Accept: application/vnd.github+json" \
+              "/repos/${GITHUB_REPOSITORY}/dependabot/alerts?state=open&severity=critical,high&per_page=100"
+          )"
+
+          count="$(printf '%s' "$alerts" | jq 'length')"
+          summary="$(
+            printf '%s' "$alerts" \
+              | jq -r '.[:10][] | "- \(.security_advisory.severity | ascii_upcase): \(.dependency.package.name) in \(.dependency.manifest_path) - \(.security_advisory.summary)"'
+          )"
+
+          {
+            echo "count=$count"
+            echo "summary<<EOF"
+            printf '%s\n' "$summary"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Notify Slack
+        if: steps.alerts.outputs.count != '0' && env.SLACK_WEBHOOK_URL != ''
+        run: |
+          message="Flight Ops has ${{ steps.alerts.outputs.count }} open high/critical Dependabot alerts:\n${{ steps.alerts.outputs.summary }}"
+          jq -n --arg text "$message" '{text: $text}' \
+            | curl -fsS -X POST -H "Content-Type: application/json" --data @- "$SLACK_WEBHOOK_URL"

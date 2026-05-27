@@ -1,0 +1,57 @@
+{{- if .Values.istio.enabled -}}
+apiVersion: networking.istio.io/v1beta1
+kind: Gateway
+metadata:
+  name: {{ .Values.istio.gateway.name }}
+  namespace: {{ .Values.istio.gateway.namespace }}
+  labels:
+    {{- include "unified-alerts-dashboard.labels" . | nindent 4 }}
+spec:
+  selector:
+    {{- toYaml .Values.istio.gateway.selector | nindent 4 }}
+  servers:
+    - port:
+        number: 80
+        name: http
+        protocol: HTTP
+      hosts:
+        {{- toYaml .Values.istio.gateway.hosts | nindent 8 }}
+      {{- if .Values.istio.gateway.tls.enabled }}
+      tls:
+        httpsRedirect: true
+      {{- end }}
+    {{- if .Values.istio.gateway.tls.enabled }}
+    - port:
+        number: 443
+        name: https
+        protocol: HTTPS
+      tls:
+        mode: {{ .Values.istio.gateway.tls.mode }}
+        credentialName: {{ .Values.istio.gateway.tls.credentialName }}
+      hosts:
+        {{- toYaml .Values.istio.gateway.hosts | nindent 8 }}
+    {{- end }}
+---
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: {{ include "unified-alerts-dashboard.fullname" . }}
+  labels:
+    {{- include "unified-alerts-dashboard.labels" . | nindent 4 }}
+spec:
+  hosts:
+    {{- toYaml .Values.istio.virtualService.hosts | nindent 4 }}
+  gateways:
+    {{- toYaml .Values.istio.virtualService.gateways | nindent 4 }}
+  http:
+    {{- range .Values.istio.virtualService.paths }}
+    - match:
+        - uri:
+            prefix: {{ . | quote }}
+      route:
+        - destination:
+            host: {{ include "unified-alerts-dashboard.fullname" $ }}
+            port:
+              number: {{ $.Values.service.port }}
+    {{- end }}
+{{- end }}

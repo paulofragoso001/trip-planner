@@ -1,0 +1,34 @@
+[
+  {
+    "id": "item_1",
+    "title": "Flight to Miami",
+    "location": "MIA",
+    "lat": 25.7959,
+    "lng": -80.287,
+    "position": 1,
+    "date_time": "2026-05-10T08:30:00.000Z",
+    "notes": "Check in online",
+    "image_url": null,
+    "image_urls": null,
+    "segment_type": "air",
+    "provider": "United",
+    "confirmation_code": "UA123",
+    "booking_url": "https://example.com/booking/ua123"
+  },
+  {
+    "id": "item_2",
+    "title": "Downtown Hotel",
+    "location": "Miami, FL",
+    "lat": 25.7617,
+    "lng": -80.1918,
+    "position": 2,
+    "date_time": "2026-05-10T14:00:00.000Z",
+    "notes": "King room",
+    "image_url": null,
+    "image_urls": null,
+    "segment_type": "hotel",
+    "provider": "Marriott",
+    "confirmation_code": "H456",
+    "booking_url": "https://example.com/booking/h456"
+  }
+]

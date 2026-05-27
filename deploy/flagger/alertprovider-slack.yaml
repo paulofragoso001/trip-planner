@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: flight-ops-slack-url
+  namespace: flight-ops
+type: Opaque
+stringData:
+  address: "https://hooks.slack.com/services/XXX/YYY/ZZZ"
+---
+apiVersion: flagger.app/v1beta1
+kind: AlertProvider
+metadata:
+  name: flight-ops-slack
+  namespace: flight-ops
+spec:
+  type: slack
+  channel: flight-ops-alerts
+  username: flagger
+  secretRef:
+    name: flight-ops-slack-url

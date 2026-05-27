@@ -10,7 +10,7 @@ export type ItineraryTimelineItem = {
 };
 
 type ItineraryTimelineProps = {
-  items: unknown[];
+  items?: unknown[] | null;
 };
 
 export function ItineraryTimeline({ items }: ItineraryTimelineProps) {
@@ -83,8 +83,8 @@ function Badge({ children }: { children: string }) {
   );
 }
 
-function groupItems(items: unknown[]) {
-  const normalizedItems = items
+function groupItems(items?: unknown[] | null) {
+  const normalizedItems = (Array.isArray(items) ? items : [])
     .map(normalizeItem)
     .filter((item): item is ItineraryTimelineItem & { title: string; date: string } =>
       Boolean(item?.title && item.date)
@@ -116,21 +116,46 @@ function normalizeItem(item: unknown): ItineraryTimelineItem | null {
   }
 
   const record = item as Record<string, unknown>;
+  const dateTime =
+    readString(record.date_time) ||
+    readString(record.datetime) ||
+    readString(record.starttime) ||
+    readString(record.start_time);
 
   return {
     id: readString(record.id),
-    date: readString(record.date) || readString(record.start_date) || readString(record.day),
-    time: readString(record.time) || readString(record.start_time),
+    date:
+      readString(record.date) ||
+      readString(record.start_date) ||
+      readString(record.day) ||
+      readDate(dateTime),
+    time: readString(record.time) || readTime(dateTime),
     title: readString(record.title) || readString(record.name) || readString(record.summary),
     location: readString(record.location) || readString(record.address),
-    type: readString(record.type) || readString(record.category),
-    confirmation: readString(record.confirmation) || readString(record.confirmation_number),
+    type:
+      readString(record.type) ||
+      readString(record.segment_type) ||
+      readString(record.kind) ||
+      readString(record.category),
+    confirmation:
+      readString(record.confirmation) ||
+      readString(record.confirmation_code) ||
+      readString(record.confirmation_number),
     notes: readString(record.notes) || readString(record.description)
   };
 }
 
 function readString(value: unknown) {
   return typeof value === "string" && value.trim() ? value.trim() : undefined;
+}
+
+function readDate(value?: string) {
+  return value?.slice(0, 10);
+}
+
+function readTime(value?: string) {
+  if (!value) return undefined;
+  return value.includes("T") ? value.slice(11, 16) : value.slice(0, 5);
 }
 
 function formatDateLabel(date: string) {

@@ -1,0 +1,68 @@
+{
+  "generatedAt": "2026-05-19T21:01:08.448Z",
+  "averageScore": 100,
+  "presets": [
+    {
+      "name": "mobile-drawer",
+      "score": 100,
+      "status": "clean-pass",
+      "checks": {
+        "contractMatches": true,
+        "optionalRegionsMatch": true,
+        "requiredRegionsPresent": true,
+        "visualBaselinesPresent": true
+      },
+      "scores": {
+        "shellContract": 25,
+        "visualStability": 25,
+        "responsiveIntegrity": 20,
+        "navigationClarity": 15,
+        "accessibilityLayout": 10,
+        "contractMetadata": 5
+      }
+    },
+    {
+      "name": "collapsed-right-rail",
+      "score": 100,
+      "status": "clean-pass",
+      "checks": {
+        "contractMatches": true,
+        "optionalRegionsMatch": true,
+        "requiredRegionsPresent": true,
+        "visualBaselinesPresent": true
+      },
+      "scores": {
+        "shellContract": 25,
+        "visualStability": 25,
+        "responsiveIntegrity": 20,
+        "navigationClarity": 15,
+        "accessibilityLayout": 10,
+        "contractMetadata": 5
+      }
+    },
+    {
+      "name": "wide-map-workspace",
+      "score": 100,
+      "status": "clean-pass",
+      "checks": {
+        "contractMatches": true,
+        "optionalRegionsMatch": true,
+        "requiredRegionsPresent": true,
+        "visualBaselinesPresent": true
+      },
+      "scores": {
+        "shellContract": 25,
+        "visualStability": 25,
+        "responsiveIntegrity": 20,
+        "navigationClarity": 15,
+        "accessibilityLayout": 10,
+        "contractMetadata": 5
+      }
+    }
+  ],
+  "thresholds": {
+    "cleanPass": 100,
+    "minorReview": "90-99",
+    "requiresAction": "<90"
+  }
+}

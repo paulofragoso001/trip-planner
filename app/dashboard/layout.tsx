@@ -1,0 +1,98 @@
+import { headers } from "next/headers";
+import Link from "next/link";
+import { redirect } from "next/navigation";
+import { signOut } from "@/app/actions";
+import { AppShell } from "@/components/app-shell";
+import { NotificationBell } from "@/components/NotificationBell";
+import { ProfileAvatar } from "@/components/ProfileAvatar";
+import { ensureProfile } from "@/lib/profile";
+import {
+  allowsDashboardTestBypass,
+  allowsLocalDashboardBypass
+} from "@/lib/server/auth-flags";
+import { createClient } from "@/lib/supabase/server";
+
+type DashboardLayoutProps = {
+  children: React.ReactNode;
+};
+
+export default async function DashboardLayout({ children }: DashboardLayoutProps) {
+  const requestHeaders = await headers();
+  const isCypressDashboard =
+    allowsDashboardTestBypass() &&
+    requestHeaders.get("x-cypress-dashboard") === "true";
+  const isLocalDashboard = allowsLocalDashboardBypass();
+
+  if (isCypressDashboard || isLocalDashboard) {
+    return (
+      <AppShell
+        userEmail={isCypressDashboard ? "cypress@wayline.test" : "local@wayline.test"}
+        userMenu={<TestUserMenu />}
+        workspaceName="Wayline"
+      >
+        {children}
+      </AppShell>
+    );
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user }
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/login");
+  }
+
+  await ensureProfile(supabase, user);
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("username,avatar_url")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  return (
+    <AppShell
+      notifications={<NotificationBell userId={user.id} />}
+      userEmail={user.email ?? "Signed in"}
+      userMenu={
+        <div className="grid gap-3">
+          <ProfileAvatar
+            email={user.email ?? ""}
+            profile={profile}
+            userId={user.id}
+          />
+          <Link
+            className="min-h-11 rounded-xl border border-line bg-white px-4 py-2 text-center text-sm font-bold text-ink transition hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-brand/20"
+            href="/dashboard/account"
+          >
+            Account settings
+          </Link>
+          <form action={signOut}>
+            <button className="min-h-11 w-full rounded-xl border border-line bg-white px-4 py-2 text-sm font-bold text-ink transition hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-brand/20">
+              Sign out
+            </button>
+          </form>
+        </div>
+      }
+      workspaceName="Wayline"
+    >
+      {children}
+    </AppShell>
+  );
+}
+
+function TestUserMenu() {
+  return (
+    <div className="grid gap-3 rounded-xl border border-line bg-white p-3 text-sm">
+      <p className="font-black text-ink">Cypress workspace</p>
+      <p className="mt-1 text-slate-500">Authenticated test shell</p>
+      <Link
+        className="rounded-xl border border-line px-3 py-2 text-center font-bold text-ink"
+        href="/dashboard/account"
+      >
+        Account settings
+      </Link>
+    </div>
+  );
+}

@@ -1,0 +1,867 @@
+name: flight-ops-delivery
+
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+    paths:
+      - app/api/grafana/**
+      - app/api/grafana-alert-rules/**
+      - app/api/auth/refresh/**
+      - app/flight-ops/**
+      - components/FlightOpsCommandCenter.tsx
+      - components/GrafanaAlertControlPanel.tsx
+      - cypress/e2e/grafana-oauth-refresh.cy.ts
+      - hooks/useAuthedGrafanaFetch.ts
+      - tests/playwright/flight-ops.smoke.spec.ts
+      - infra/terraform/grafana-flight-ops/**
+      - package-lock.json
+      - package.json
+      - tsconfig.json
+      - .github/workflows/flight-ops.yml
+  push:
+    branches:
+      - develop
+      - main
+    tags:
+      - "v*"
+    paths:
+      - app/api/grafana/**
+      - app/api/grafana-alert-rules/**
+      - app/api/auth/refresh/**
+      - app/flight-ops/**
+      - components/FlightOpsCommandCenter.tsx
+      - components/GrafanaAlertControlPanel.tsx
+      - cypress/e2e/grafana-oauth-refresh.cy.ts
+      - hooks/useAuthedGrafanaFetch.ts
+      - tests/playwright/flight-ops.smoke.spec.ts
+      - infra/terraform/grafana-flight-ops/**
+      - package-lock.json
+      - package.json
+      - tsconfig.json
+      - .github/workflows/flight-ops.yml
+  schedule:
+    - cron: "17 8 * * *"
+  workflow_dispatch:
+    inputs:
+      target_environment:
+        default: staging
+        description: Environment to deploy manually.
+        options:
+          - dev
+          - staging
+          - production
+        required: true
+        type: choice
+      apply_infra:
+        default: false
+        description: Apply Terraform before deployment.
+        required: true
+        type: boolean
+      rotate_token:
+        default: false
+        description: Invoke the Grafana token-rotation Lambda after deployment.
+        required: true
+        type: boolean
+      rollout_strategy:
+        default: canary
+        description: Production rollout strategy.
+        options:
+          - canary
+          - blue_green
+        required: true
+        type: choice
+
+permissions:
+  contents: read
+  id-token: write
+  pull-requests: write
+  security-events: write
+
+concurrency:
+  group: flight-ops-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: us-east-1
+  NODE_VERSION: "20"
+  TERRAFORM_WORKING_DIRECTORY: infra/terraform/grafana-flight-ops
+
+jobs:
+  security:
+    name: Security scans
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          cache: npm
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Dependency audit
+        run: npm audit --audit-level=high --omit=dev
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: javascript-typescript
+
+      - name: CodeQL analyze
+        uses: github/codeql-action/analyze@v3
+
+      - name: Notify security scan failure
+        if: failure()
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.FLIGHT_OPS_SLACK_WEBHOOK_URL }}
+        run: |
+          if [ -n "$SLACK_WEBHOOK_URL" ]; then
+            message="Flight Ops security scan failed for ${GITHUB_REF} at ${GITHUB_SHA}."
+            curl -fsS -X POST -H "Content-Type: application/json" --data "{\"text\":\"${message}\"}" "$SLACK_WEBHOOK_URL"
+          fi
+
+  build:
+    name: Build and test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    needs: security
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          cache: npm
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Build app
+        run: npm run build
+
+      - name: Cypress refresh recovery spec
+        uses: cypress-io/github-action@v6
+        with:
+          browser: chrome
+          install: false
+          start: npm start
+          wait-on: http://localhost:3000
+          spec: cypress/e2e/grafana-oauth-refresh.cy.ts
+        env:
+          CYPRESS_BASE_URL: http://localhost:3000
+
+  terraform-plan:
+    name: Terraform plan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    needs: build
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+
+    defaults:
+      run:
+        working-directory: ${{ env.TERRAFORM_WORKING_DIRECTORY }}
+
+    env:
+      TF_VAR_aws_region: ${{ env.AWS_REGION }}
+      TF_VAR_grafana_admin_auth: ${{ secrets.GRAFANA_TERRAFORM_TOKEN }}
+      TF_VAR_grafana_url: ${{ secrets.GRAFANA_URL }}
+      TF_VAR_provisioning_token_secret_arn: ${{ secrets.GRAFANA_PROVISIONING_TOKEN_SECRET_ARN }}
+      TF_VAR_runtime_token_secret_arn: ${{ secrets.GRAFANA_RUNTIME_TOKEN_SECRET_ARN }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_GHA_ROLE_ARN }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform fmt
+        run: terraform fmt -check
+
+      - name: Terraform init
+        run: terraform init
+
+      - name: Terraform validate
+        run: terraform validate
+
+      - name: Terraform plan
+        run: terraform plan -out=tfplan
+
+  terraform-apply:
+    name: Terraform apply
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.apply_infra)
+    environment: production
+
+    defaults:
+      run:
+        working-directory: ${{ env.TERRAFORM_WORKING_DIRECTORY }}
+
+    env:
+      TF_VAR_aws_region: ${{ env.AWS_REGION }}
+      TF_VAR_enable_token_rotation: "true"
+      TF_VAR_grafana_admin_auth: ${{ secrets.GRAFANA_TERRAFORM_TOKEN }}
+      TF_VAR_grafana_url: ${{ secrets.GRAFANA_URL }}
+      TF_VAR_provisioning_token_secret_arn: ${{ secrets.GRAFANA_PROVISIONING_TOKEN_SECRET_ARN }}
+      TF_VAR_runtime_token_secret_arn: ${{ secrets.GRAFANA_RUNTIME_TOKEN_SECRET_ARN }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_GHA_ROLE_ARN }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform init
+        run: terraform init
+
+      - name: Terraform apply
+        run: terraform apply -auto-approve
+
+  preview:
+    name: Preview deploy
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    needs: build
+    if: github.event_name == 'pull_request'
+    environment: preview
+
+    env:
+      PREVIEW_BASE_URL: ${{ secrets.FLIGHT_OPS_PREVIEW_BASE_URL }}
+      PREVIEW_DEPLOY_HOOK_URL: ${{ secrets.FLIGHT_OPS_PREVIEW_DEPLOY_HOOK_URL }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Deploy preview
+        id: deploy-preview
+        run: |
+          pr_number="${{ github.event.pull_request.number }}"
+          preview_url="${PREVIEW_BASE_URL%/}/pr-${pr_number}"
+
+          if [ -n "$PREVIEW_DEPLOY_HOOK_URL" ]; then
+            curl -fsS -X POST \
+              -H "Content-Type: application/json" \
+              --data "{\"pr\":${pr_number},\"sha\":\"${GITHUB_SHA}\",\"url\":\"${preview_url}\"}" \
+              "$PREVIEW_DEPLOY_HOOK_URL"
+          else
+            echo "FLIGHT_OPS_PREVIEW_DEPLOY_HOOK_URL is not set; reporting computed preview URL only."
+          fi
+
+          echo "url=$preview_url" >> "$GITHUB_OUTPUT"
+
+      - name: Comment preview URL
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const url = '${{ steps.deploy-preview.outputs.url }}';
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: `Flight Ops preview: ${url}`
+            });
+
+  deploy-dev:
+    name: Deploy dev
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    needs: build
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/develop') || (github.event_name == 'workflow_dispatch' && inputs.target_environment == 'dev')
+    environment: dev
+
+    env:
+      APP_BASE_URL: ${{ secrets.FLIGHT_OPS_DEV_BASE_URL }}
+      DEPLOY_HOOK_URL: ${{ secrets.FLIGHT_OPS_DEV_DEPLOY_HOOK_URL }}
+      DISCORD_WEBHOOK_URL: ${{ secrets.FLIGHT_OPS_DISCORD_WEBHOOK_URL }}
+      ROLLBACK_HOOK_URL: ${{ secrets.FLIGHT_OPS_DEV_ROLLBACK_HOOK_URL }}
+      SLACK_WEBHOOK_URL: ${{ secrets.FLIGHT_OPS_SLACK_WEBHOOK_URL }}
+
+    steps:
+      - name: Notify dev deploy start
+        run: |
+          message="Flight Ops dev deployment started: ${GITHUB_SHA}"
+          if [ -n "$SLACK_WEBHOOK_URL" ]; then
+            curl -fsS -X POST -H "Content-Type: application/json" --data "{\"text\":\"${message}\"}" "$SLACK_WEBHOOK_URL"
+          fi
+
+      - name: Deploy dev
+        run: |
+          curl -fsS -X POST "$DEPLOY_HOOK_URL"
+
+      - name: Smoke dev
+        run: |
+          curl -fsS "$APP_BASE_URL/flight-ops" >/dev/null
+          curl -fsS "$APP_BASE_URL/api/grafana/alert-rules" >/dev/null
+
+      - name: Rollback dev
+        if: failure()
+        run: |
+          if [ -n "$ROLLBACK_HOOK_URL" ]; then
+            curl -fsS -X POST "$ROLLBACK_HOOK_URL"
+          fi
+
+      - name: Notify dev
+        if: always()
+        run: |
+          status="${{ job.status }}"
+          message="Flight Ops dev deployment ${status}: ${GITHUB_SHA}"
+          if [ -n "$SLACK_WEBHOOK_URL" ]; then
+            curl -fsS -X POST -H "Content-Type: application/json" --data "{\"text\":\"${message}\"}" "$SLACK_WEBHOOK_URL"
+          fi
+          if [ -n "$DISCORD_WEBHOOK_URL" ]; then
+            curl -fsS -X POST -H "Content-Type: application/json" --data "{\"content\":\"${message}\"}" "$DISCORD_WEBHOOK_URL"
+          fi
+
+  deploy-staging:
+    name: Deploy staging
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    needs:
+      - build
+      - terraform-apply
+    if: always() && ((github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.target_environment == 'staging')) && needs.build.result == 'success' && (needs.terraform-apply.result == 'success' || needs.terraform-apply.result == 'skipped')
+    environment: staging
+
+    env:
+      APP_BASE_URL: ${{ secrets.FLIGHT_OPS_STAGING_BASE_URL }}
+      DEPLOY_HOOK_URL: ${{ secrets.FLIGHT_OPS_STAGING_DEPLOY_HOOK_URL }}
+      DISCORD_WEBHOOK_URL: ${{ secrets.FLIGHT_OPS_DISCORD_WEBHOOK_URL }}
+      ROLLBACK_HOOK_URL: ${{ secrets.FLIGHT_OPS_STAGING_ROLLBACK_HOOK_URL }}
+      SLACK_WEBHOOK_URL: ${{ secrets.FLIGHT_OPS_SLACK_WEBHOOK_URL }}
+
+    steps:
+      - name: Notify staging deploy start
+        run: |
+          message="Flight Ops staging deployment started: ${GITHUB_SHA}"
+          if [ -n "$SLACK_WEBHOOK_URL" ]; then
+            curl -fsS -X POST -H "Content-Type: application/json" --data "{\"text\":\"${message}\"}" "$SLACK_WEBHOOK_URL"
+          fi
+
+      - name: Deploy staging
+        run: |
+          curl -fsS -X POST "$DEPLOY_HOOK_URL"
+
+      - name: Smoke staging
+        run: |
+          curl -fsS "$APP_BASE_URL/flight-ops" >/dev/null
+          curl -fsS "$APP_BASE_URL/api/grafana/alert-rules" >/dev/null
+          refresh_status="$(curl -sS -o /tmp/auth-refresh.json -w "%{http_code}" -X POST "$APP_BASE_URL/api/auth/refresh")"
+          if [ "$refresh_status" != "200" ] && [ "$refresh_status" != "501" ]; then
+            cat /tmp/auth-refresh.json
+            exit 1
+          fi
+
+      - name: Rollback staging
+        if: failure()
+        run: |
+          if [ -n "$ROLLBACK_HOOK_URL" ]; then
+            curl -fsS -X POST "$ROLLBACK_HOOK_URL"
+          fi
+
+      - name: Notify staging
+        if: always()
+        run: |
+          status="${{ job.status }}"
+          message="Flight Ops staging deployment ${status}: ${GITHUB_SHA}"
+          if [ -n "$SLACK_WEBHOOK_URL" ]; then
+            curl -fsS -X POST -H "Content-Type: application/json" --data "{\"text\":\"${message}\"}" "$SLACK_WEBHOOK_URL"
+          fi
+          if [ -n "$DISCORD_WEBHOOK_URL" ]; then
+            curl -fsS -X POST -H "Content-Type: application/json" --data "{\"content\":\"${message}\"}" "$DISCORD_WEBHOOK_URL"
+          fi
+
+  canary-approval-requested:
+    name: Request canary approval
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    needs: build
+    if: (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) || (github.event_name == 'workflow_dispatch' && inputs.target_environment == 'production')
+
+    env:
+      SLACK_WEBHOOK_URL: ${{ secrets.FLIGHT_OPS_SLACK_WEBHOOK_URL }}
+
+    steps:
+      - name: Notify canary approval requested
+        run: |
+          message="Flight Ops canary approval requested for ${GITHUB_REF}. GitHub Environment: staging-canary."
+          if [ -n "$SLACK_WEBHOOK_URL" ]; then
+            curl -fsS -X POST -H "Content-Type: application/json" --data "{\"text\":\"${message}\"}" "$SLACK_WEBHOOK_URL"
+          fi
+
+  deploy-canary:
+    name: Deploy production canary
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    needs:
+      - build
+      - canary-approval-requested
+      - terraform-apply
+    if: always() && (startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.target_environment == 'production' && inputs.apply_infra)) && needs.build.result == 'success' && needs.canary-approval-requested.result == 'success' && needs.terraform-apply.result == 'success'
+    environment: staging-canary
+
+    outputs:
+      deployment_id: ${{ steps.codedeploy.outputs.deployment_id }}
+
+    env:
+      APP_BASE_URL: ${{ secrets.FLIGHT_OPS_PROD_BASE_URL }}
+      CODEDEPLOY_APPLICATION: ${{ secrets.FLIGHT_OPS_CODEDEPLOY_APPLICATION }}
+      CODEDEPLOY_DEPLOYMENT_GROUP: ${{ secrets.FLIGHT_OPS_CODEDEPLOY_DEPLOYMENT_GROUP }}
+      CODEDEPLOY_REVISION_BUCKET: ${{ secrets.FLIGHT_OPS_CODEDEPLOY_REVISION_BUCKET }}
+      CODEDEPLOY_REVISION_BUNDLE_TYPE: ${{ secrets.FLIGHT_OPS_CODEDEPLOY_REVISION_BUNDLE_TYPE }}
+      CODEDEPLOY_REVISION_KEY: ${{ secrets.FLIGHT_OPS_CODEDEPLOY_REVISION_KEY }}
+      DEPLOY_HOOK_URL: ${{ secrets.FLIGHT_OPS_PROD_CANARY_DEPLOY_HOOK_URL }}
+      DISCORD_WEBHOOK_URL: ${{ secrets.FLIGHT_OPS_DISCORD_WEBHOOK_URL }}
+      PLAYWRIGHT_SMOKE_COMMAND: ${{ secrets.FLIGHT_OPS_PLAYWRIGHT_SMOKE_COMMAND }}
+      PROMETHEUS_ALERT_DELIVERY_FAILURE_QUERY: ${{ secrets.FLIGHT_OPS_PROMETHEUS_ALERT_DELIVERY_FAILURE_QUERY }}
+      PROMETHEUS_API_FAILURE_QUERY: ${{ secrets.FLIGHT_OPS_PROMETHEUS_API_FAILURE_QUERY }}
+      PROMETHEUS_BASE_URL: ${{ secrets.FLIGHT_OPS_PROMETHEUS_BASE_URL }}
+      PROMETHEUS_CANARY_WAIT_SECONDS: ${{ secrets.FLIGHT_OPS_PROMETHEUS_CANARY_WAIT_SECONDS }}
+      PROMETHEUS_ERROR_RATE_QUERY: ${{ secrets.FLIGHT_OPS_PROMETHEUS_ERROR_RATE_QUERY }}
+      PROMETHEUS_HEALTH_FAILURE_QUERY: ${{ secrets.FLIGHT_OPS_PROMETHEUS_HEALTH_FAILURE_QUERY }}
+      PROMETHEUS_LATENCY_P95_QUERY: ${{ secrets.FLIGHT_OPS_PROMETHEUS_LATENCY_P95_QUERY }}
+      PROMETHEUS_MAX_ALERT_DELIVERY_FAILURE_RATE: ${{ secrets.FLIGHT_OPS_PROMETHEUS_MAX_ALERT_DELIVERY_FAILURE_RATE }}
+      PROMETHEUS_MAX_API_FAILURE_RATE: ${{ secrets.FLIGHT_OPS_PROMETHEUS_MAX_API_FAILURE_RATE }}
+      PROMETHEUS_MAX_ERROR_RATE: ${{ secrets.FLIGHT_OPS_PROMETHEUS_MAX_ERROR_RATE }}
+      PROMETHEUS_MAX_HEALTH_FAILURE_RATE: ${{ secrets.FLIGHT_OPS_PROMETHEUS_MAX_HEALTH_FAILURE_RATE }}
+      PROMETHEUS_MAX_LATENCY_P95_SECONDS: ${{ secrets.FLIGHT_OPS_PROMETHEUS_MAX_LATENCY_P95_SECONDS }}
+      PROMETHEUS_MAX_SMOKE_FAILURES: ${{ secrets.FLIGHT_OPS_PROMETHEUS_MAX_SMOKE_FAILURES }}
+      PROMETHEUS_MIN_SUCCESS_RATE: ${{ secrets.FLIGHT_OPS_PROMETHEUS_MIN_SUCCESS_RATE }}
+      PROMETHEUS_MAX_5XX_RATE: ${{ secrets.FLIGHT_OPS_PROMETHEUS_MAX_5XX_RATE }}
+      PROMETHEUS_PUSHGATEWAY_URL: ${{ secrets.FLIGHT_OPS_PROMETHEUS_PUSHGATEWAY_URL }}
+      PROMETHEUS_SMOKE_FAILURE_QUERY: ${{ secrets.FLIGHT_OPS_PROMETHEUS_SMOKE_FAILURE_QUERY }}
+      PROMETHEUS_SUCCESS_RATE_QUERY: ${{ secrets.FLIGHT_OPS_PROMETHEUS_SUCCESS_RATE_QUERY }}
+      PROMETHEUS_5XX_RATE_QUERY: ${{ secrets.FLIGHT_OPS_PROMETHEUS_5XX_RATE_QUERY }}
+      ROLLBACK_HOOK_URL: ${{ secrets.FLIGHT_OPS_PROD_ROLLBACK_HOOK_URL }}
+      SLACK_WEBHOOK_URL: ${{ secrets.FLIGHT_OPS_SLACK_WEBHOOK_URL }}
+
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_GHA_ROLE_ARN }}
+
+      - name: Notify canary start
+        run: |
+          strategy="${{ inputs.rollout_strategy || 'canary' }}"
+          message="Flight Ops production ${strategy} canary starting: ${GITHUB_REF}"
+          if [ -n "$SLACK_WEBHOOK_URL" ]; then
+            curl -fsS -X POST -H "Content-Type: application/json" --data "{\"text\":\"${message}\"}" "$SLACK_WEBHOOK_URL"
+          fi
+
+      - name: Start canary traffic slice
+        id: codedeploy
+        run: |
+          strategy="${{ inputs.rollout_strategy || 'canary' }}"
+          if [ "$strategy" = "blue_green" ]; then
+            deployment_config="CodeDeployDefault.ECSAllAtOnce"
+          else
+            deployment_config="CodeDeployDefault.ECSCanary10Percent5Minutes"
+          fi
+
+          if [ -n "$CODEDEPLOY_APPLICATION" ] && [ -n "$CODEDEPLOY_DEPLOYMENT_GROUP" ] && [ -n "$CODEDEPLOY_REVISION_BUCKET" ] && [ -n "$CODEDEPLOY_REVISION_KEY" ]; then
+            deployment_id="$(
+              aws deploy create-deployment \
+                --application-name "$CODEDEPLOY_APPLICATION" \
+                --deployment-group-name "$CODEDEPLOY_DEPLOYMENT_GROUP" \
+                --deployment-config-name "$deployment_config" \
+                --description "Flight Ops ${strategy} ${GITHUB_REF} ${GITHUB_SHA}" \
+                --s3-location "bucket=${CODEDEPLOY_REVISION_BUCKET},key=${CODEDEPLOY_REVISION_KEY},bundleType=${CODEDEPLOY_REVISION_BUNDLE_TYPE:-YAML}" \
+                --query deploymentId \
+                --output text
+            )"
+            echo "deployment_id=${deployment_id}" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [ -z "$DEPLOY_HOOK_URL" ]; then
+            echo "Configure CodeDeploy secrets or FLIGHT_OPS_PROD_CANARY_DEPLOY_HOOK_URL."
+            exit 1
+          fi
+
+          curl -fsS -X POST "$DEPLOY_HOOK_URL"
+
+      - name: Smoke canary
+        run: |
+          curl -fsS "$APP_BASE_URL/flight-ops" >/dev/null
+          curl -fsS "$APP_BASE_URL/api/grafana/alert-rules" >/dev/null
+          refresh_status="$(curl -sS -o /tmp/auth-refresh.json -w "%{http_code}" -X POST "$APP_BASE_URL/api/auth/refresh")"
+          if [ "$refresh_status" != "200" ] && [ "$refresh_status" != "501" ]; then
+            cat /tmp/auth-refresh.json
+            exit 1
+          fi
+
+          if [ -n "$PLAYWRIGHT_SMOKE_COMMAND" ]; then
+            eval "$PLAYWRIGHT_SMOKE_COMMAND"
+          fi
+
+      - name: Analyze canary metrics
+        run: |
+          if [ -z "$PROMETHEUS_BASE_URL" ]; then
+            echo "FLIGHT_OPS_PROMETHEUS_BASE_URL is not set; skipping Prometheus canary analysis."
+            exit 0
+          fi
+
+          wait_seconds="${PROMETHEUS_CANARY_WAIT_SECONDS:-90}"
+          echo "Waiting ${wait_seconds}s for canary traffic before querying Prometheus."
+          sleep "$wait_seconds"
+
+          query_prometheus() {
+            local query="$1"
+            curl -fsS --get "$PROMETHEUS_BASE_URL/api/v1/query" --data-urlencode "query=$query" \
+              | node -e 'let raw=""; process.stdin.on("data", c => raw += c); process.stdin.on("end", () => { const json = JSON.parse(raw); const value = Number(json?.data?.result?.[0]?.value?.[1] ?? 0); console.log(Number.isFinite(value) ? value : 0); });'
+          }
+
+          check_metric() {
+            local name="$1"
+            local query="$2"
+            local max="$3"
+            local value
+            value="$(query_prometheus "$query")"
+            echo "${name}=${value} max=${max}"
+            node -e "const value=Number(process.argv[1]); const max=Number(process.argv[2]); if (value > max) process.exit(1)" "$value" "$max"
+          }
+
+          check_metric_min() {
+            local name="$1"
+            local query="$2"
+            local min="$3"
+            local value
+            value="$(query_prometheus "$query")"
+            echo "${name}=${value} min=${min}"
+            node -e "const value=Number(process.argv[1]); const min=Number(process.argv[2]); if (value < min) process.exit(1)" "$value" "$min"
+          }
+
+          check_metric_min "request_success_rate" "${PROMETHEUS_SUCCESS_RATE_QUERY:-100 * sum(rate(http_requests_total{job=\"flight-ops\",status!~\"5..\"}[5m])) / clamp_min(sum(rate(http_requests_total{job=\"flight-ops\"}[5m])), 1)}" "${PROMETHEUS_MIN_SUCCESS_RATE:-99}"
+          check_metric "error_rate" "${PROMETHEUS_ERROR_RATE_QUERY:-sum(rate(http_requests_total{job=\"flight-ops\",status=~\"5..\"}[5m])) / clamp_min(sum(rate(http_requests_total{job=\"flight-ops\"}[5m])), 1)}" "${PROMETHEUS_MAX_ERROR_RATE:-0.02}"
+          check_metric "request_5xx_rate" "${PROMETHEUS_5XX_RATE_QUERY:-sum(rate(http_requests_total{job=\"flight-ops\",status=~\"5..\"}[5m]))}" "${PROMETHEUS_MAX_5XX_RATE:-0.05}"
+          check_metric "latency_p95" "${PROMETHEUS_LATENCY_P95_QUERY:-histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"flight-ops\"}[5m])) by (le))}" "${PROMETHEUS_MAX_LATENCY_P95_SECONDS:-1.5}"
+          check_metric "health_failure_rate" "${PROMETHEUS_HEALTH_FAILURE_QUERY:-sum(rate(health_check_failures_total{job=\"flight-ops\"}[5m]))}" "${PROMETHEUS_MAX_HEALTH_FAILURE_RATE:-0.01}"
+          check_metric "alert_delivery_failure_rate" "${PROMETHEUS_ALERT_DELIVERY_FAILURE_QUERY:-sum(rate(alert_delivery_failures_total{job=\"flight-ops\"}[5m]))}" "${PROMETHEUS_MAX_ALERT_DELIVERY_FAILURE_RATE:-0.01}"
+          check_metric "dashboard_api_failure_rate" "${PROMETHEUS_API_FAILURE_QUERY:-sum(rate(http_requests_total{job=\"flight-ops\",route=~\"/api/.*\",status=~\"5..\"}[5m]))}" "${PROMETHEUS_MAX_API_FAILURE_RATE:-0.02}"
+          check_metric "smoke_test_failure_count" "${PROMETHEUS_SMOKE_FAILURE_QUERY:-sum(increase(flight_ops_smoke_fail_total[10m]))}" "${PROMETHEUS_MAX_SMOKE_FAILURES:-0}"
+
+      - name: Publish canary pass metrics
+        if: success()
+        run: |
+          if [ -n "$PROMETHEUS_PUSHGATEWAY_URL" ]; then
+            printf '%s\n' \
+              'flight_ops_deploy_canary_success_total 1' \
+              'flight_ops_smoke_pass_total 1' \
+              | curl -fsS --data-binary @- "$PROMETHEUS_PUSHGATEWAY_URL/metrics/job/flight_ops_deploy/environment/production"
+          fi
+
+      - name: Rollback canary
+        if: failure()
+        run: |
+          deployment_id="${{ steps.codedeploy.outputs.deployment_id }}"
+          if [ -n "$deployment_id" ]; then
+            aws deploy stop-deployment --deployment-id "$deployment_id" --auto-rollback-enabled || true
+          fi
+          if [ -n "$ROLLBACK_HOOK_URL" ]; then
+            curl -fsS -X POST "$ROLLBACK_HOOK_URL"
+          fi
+          if [ -n "$PROMETHEUS_PUSHGATEWAY_URL" ]; then
+            printf '%s\n' \
+              'flight_ops_deploy_failure_total 1' \
+              'flight_ops_smoke_fail_total 1' \
+              'flight_ops_rollback_total{reason="canary_failure"} 1' \
+              | curl -fsS --data-binary @- "$PROMETHEUS_PUSHGATEWAY_URL/metrics/job/flight_ops_deploy/environment/production"
+          fi
+
+      - name: Notify canary rollback
+        if: failure()
+        run: |
+          message="Flight Ops production canary rollback triggered: ${GITHUB_REF}"
+          if [ -n "$SLACK_WEBHOOK_URL" ]; then
+            curl -fsS -X POST -H "Content-Type: application/json" --data "{\"text\":\"${message}\"}" "$SLACK_WEBHOOK_URL"
+          fi
+          if [ -n "$DISCORD_WEBHOOK_URL" ]; then
+            curl -fsS -X POST -H "Content-Type: application/json" --data "{\"content\":\"${message}\"}" "$DISCORD_WEBHOOK_URL"
+          fi
+
+  deploy-canary-no-infra:
+    name: Deploy production canary
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    needs:
+      - build
+      - canary-approval-requested
+    if: github.event_name == 'workflow_dispatch' && inputs.target_environment == 'production' && !inputs.apply_infra && needs.build.result == 'success' && needs.canary-approval-requested.result == 'success'
+    environment: staging-canary
+
+    outputs:
+      deployment_id: ${{ steps.codedeploy.outputs.deployment_id }}
+
+    env:
+      APP_BASE_URL: ${{ secrets.FLIGHT_OPS_PROD_BASE_URL }}
+      CODEDEPLOY_APPLICATION: ${{ secrets.FLIGHT_OPS_CODEDEPLOY_APPLICATION }}
+      CODEDEPLOY_DEPLOYMENT_GROUP: ${{ secrets.FLIGHT_OPS_CODEDEPLOY_DEPLOYMENT_GROUP }}
+      CODEDEPLOY_REVISION_BUCKET: ${{ secrets.FLIGHT_OPS_CODEDEPLOY_REVISION_BUCKET }}
+      CODEDEPLOY_REVISION_BUNDLE_TYPE: ${{ secrets.FLIGHT_OPS_CODEDEPLOY_REVISION_BUNDLE_TYPE }}
+      CODEDEPLOY_REVISION_KEY: ${{ secrets.FLIGHT_OPS_CODEDEPLOY_REVISION_KEY }}
+      DEPLOY_HOOK_URL: ${{ secrets.FLIGHT_OPS_PROD_CANARY_DEPLOY_HOOK_URL }}
+      DISCORD_WEBHOOK_URL: ${{ secrets.FLIGHT_OPS_DISCORD_WEBHOOK_URL }}
+      PLAYWRIGHT_SMOKE_COMMAND: ${{ secrets.FLIGHT_OPS_PLAYWRIGHT_SMOKE_COMMAND }}
+      PROMETHEUS_ALERT_DELIVERY_FAILURE_QUERY: ${{ secrets.FLIGHT_OPS_PROMETHEUS_ALERT_DELIVERY_FAILURE_QUERY }}
+      PROMETHEUS_API_FAILURE_QUERY: ${{ secrets.FLIGHT_OPS_PROMETHEUS_API_FAILURE_QUERY }}
+      PROMETHEUS_BASE_URL: ${{ secrets.FLIGHT_OPS_PROMETHEUS_BASE_URL }}
+      PROMETHEUS_CANARY_WAIT_SECONDS: ${{ secrets.FLIGHT_OPS_PROMETHEUS_CANARY_WAIT_SECONDS }}
+      PROMETHEUS_ERROR_RATE_QUERY: ${{ secrets.FLIGHT_OPS_PROMETHEUS_ERROR_RATE_QUERY }}
+      PROMETHEUS_HEALTH_FAILURE_QUERY: ${{ secrets.FLIGHT_OPS_PROMETHEUS_HEALTH_FAILURE_QUERY }}
+      PROMETHEUS_LATENCY_P95_QUERY: ${{ secrets.FLIGHT_OPS_PROMETHEUS_LATENCY_P95_QUERY }}
+      PROMETHEUS_MAX_ALERT_DELIVERY_FAILURE_RATE: ${{ secrets.FLIGHT_OPS_PROMETHEUS_MAX_ALERT_DELIVERY_FAILURE_RATE }}
+      PROMETHEUS_MAX_API_FAILURE_RATE: ${{ secrets.FLIGHT_OPS_PROMETHEUS_MAX_API_FAILURE_RATE }}
+      PROMETHEUS_MAX_ERROR_RATE: ${{ secrets.FLIGHT_OPS_PROMETHEUS_MAX_ERROR_RATE }}
+      PROMETHEUS_MAX_HEALTH_FAILURE_RATE: ${{ secrets.FLIGHT_OPS_PROMETHEUS_MAX_HEALTH_FAILURE_RATE }}
+      PROMETHEUS_MAX_LATENCY_P95_SECONDS: ${{ secrets.FLIGHT_OPS_PROMETHEUS_MAX_LATENCY_P95_SECONDS }}
+      PROMETHEUS_MAX_SMOKE_FAILURES: ${{ secrets.FLIGHT_OPS_PROMETHEUS_MAX_SMOKE_FAILURES }}
+      PROMETHEUS_MIN_SUCCESS_RATE: ${{ secrets.FLIGHT_OPS_PROMETHEUS_MIN_SUCCESS_RATE }}
+      PROMETHEUS_MAX_5XX_RATE: ${{ secrets.FLIGHT_OPS_PROMETHEUS_MAX_5XX_RATE }}
+      PROMETHEUS_PUSHGATEWAY_URL: ${{ secrets.FLIGHT_OPS_PROMETHEUS_PUSHGATEWAY_URL }}
+      PROMETHEUS_SMOKE_FAILURE_QUERY: ${{ secrets.FLIGHT_OPS_PROMETHEUS_SMOKE_FAILURE_QUERY }}
+      PROMETHEUS_SUCCESS_RATE_QUERY: ${{ secrets.FLIGHT_OPS_PROMETHEUS_SUCCESS_RATE_QUERY }}
+      PROMETHEUS_5XX_RATE_QUERY: ${{ secrets.FLIGHT_OPS_PROMETHEUS_5XX_RATE_QUERY }}
+      ROLLBACK_HOOK_URL: ${{ secrets.FLIGHT_OPS_PROD_ROLLBACK_HOOK_URL }}
+      SLACK_WEBHOOK_URL: ${{ secrets.FLIGHT_OPS_SLACK_WEBHOOK_URL }}
+
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_GHA_ROLE_ARN }}
+
+      - name: Notify canary start
+        run: |
+          message="Flight Ops production canary starting without infra apply: ${GITHUB_REF}"
+          if [ -n "$SLACK_WEBHOOK_URL" ]; then
+            curl -fsS -X POST -H "Content-Type: application/json" --data "{\"text\":\"${message}\"}" "$SLACK_WEBHOOK_URL"
+          fi
+
+      - name: Start canary traffic slice
+        id: codedeploy
+        run: |
+          if [ -n "$CODEDEPLOY_APPLICATION" ] && [ -n "$CODEDEPLOY_DEPLOYMENT_GROUP" ] && [ -n "$CODEDEPLOY_REVISION_BUCKET" ] && [ -n "$CODEDEPLOY_REVISION_KEY" ]; then
+            deployment_id="$(
+              aws deploy create-deployment \
+                --application-name "$CODEDEPLOY_APPLICATION" \
+                --deployment-group-name "$CODEDEPLOY_DEPLOYMENT_GROUP" \
+                --deployment-config-name "CodeDeployDefault.ECSCanary10Percent5Minutes" \
+                --description "Flight Ops canary ${GITHUB_REF} ${GITHUB_SHA}" \
+                --s3-location "bucket=${CODEDEPLOY_REVISION_BUCKET},key=${CODEDEPLOY_REVISION_KEY},bundleType=${CODEDEPLOY_REVISION_BUNDLE_TYPE:-YAML}" \
+                --query deploymentId \
+                --output text
+            )"
+            echo "deployment_id=${deployment_id}" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [ -z "$DEPLOY_HOOK_URL" ]; then
+            echo "Configure CodeDeploy secrets or FLIGHT_OPS_PROD_CANARY_DEPLOY_HOOK_URL."
+            exit 1
+          fi
+
+          curl -fsS -X POST "$DEPLOY_HOOK_URL"
+
+      - name: Smoke canary
+        run: |
+          curl -fsS "$APP_BASE_URL/flight-ops" >/dev/null
+          curl -fsS "$APP_BASE_URL/api/grafana/alert-rules" >/dev/null
+          if [ -n "$PLAYWRIGHT_SMOKE_COMMAND" ]; then
+            eval "$PLAYWRIGHT_SMOKE_COMMAND"
+          fi
+
+      - name: Analyze canary metrics
+        run: |
+          if [ -z "$PROMETHEUS_BASE_URL" ]; then
+            echo "FLIGHT_OPS_PROMETHEUS_BASE_URL is not set; skipping Prometheus canary analysis."
+            exit 0
+          fi
+
+          wait_seconds="${PROMETHEUS_CANARY_WAIT_SECONDS:-90}"
+          echo "Waiting ${wait_seconds}s for canary traffic before querying Prometheus."
+          sleep "$wait_seconds"
+
+          query_prometheus() {
+            local query="$1"
+            curl -fsS --get "$PROMETHEUS_BASE_URL/api/v1/query" --data-urlencode "query=$query" \
+              | node -e 'let raw=""; process.stdin.on("data", c => raw += c); process.stdin.on("end", () => { const json = JSON.parse(raw); const value = Number(json?.data?.result?.[0]?.value?.[1] ?? 0); console.log(Number.isFinite(value) ? value : 0); });'
+          }
+
+          check_metric() {
+            local name="$1"
+            local query="$2"
+            local max="$3"
+            local value
+            value="$(query_prometheus "$query")"
+            echo "${name}=${value} max=${max}"
+            node -e "const value=Number(process.argv[1]); const max=Number(process.argv[2]); if (value > max) process.exit(1)" "$value" "$max"
+          }
+
+          check_metric_min() {
+            local name="$1"
+            local query="$2"
+            local min="$3"
+            local value
+            value="$(query_prometheus "$query")"
+            echo "${name}=${value} min=${min}"
+            node -e "const value=Number(process.argv[1]); const min=Number(process.argv[2]); if (value < min) process.exit(1)" "$value" "$min"
+          }
+
+          check_metric_min "request_success_rate" "${PROMETHEUS_SUCCESS_RATE_QUERY:-100 * sum(rate(http_requests_total{job=\"flight-ops\",status!~\"5..\"}[5m])) / clamp_min(sum(rate(http_requests_total{job=\"flight-ops\"}[5m])), 1)}" "${PROMETHEUS_MIN_SUCCESS_RATE:-99}"
+          check_metric "error_rate" "${PROMETHEUS_ERROR_RATE_QUERY:-sum(rate(http_requests_total{job=\"flight-ops\",status=~\"5..\"}[5m])) / clamp_min(sum(rate(http_requests_total{job=\"flight-ops\"}[5m])), 1)}" "${PROMETHEUS_MAX_ERROR_RATE:-0.02}"
+          check_metric "request_5xx_rate" "${PROMETHEUS_5XX_RATE_QUERY:-sum(rate(http_requests_total{job=\"flight-ops\",status=~\"5..\"}[5m]))}" "${PROMETHEUS_MAX_5XX_RATE:-0.05}"
+          check_metric "latency_p95" "${PROMETHEUS_LATENCY_P95_QUERY:-histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"flight-ops\"}[5m])) by (le))}" "${PROMETHEUS_MAX_LATENCY_P95_SECONDS:-1.5}"
+          check_metric "health_failure_rate" "${PROMETHEUS_HEALTH_FAILURE_QUERY:-sum(rate(health_check_failures_total{job=\"flight-ops\"}[5m]))}" "${PROMETHEUS_MAX_HEALTH_FAILURE_RATE:-0.01}"
+          check_metric "alert_delivery_failure_rate" "${PROMETHEUS_ALERT_DELIVERY_FAILURE_QUERY:-sum(rate(alert_delivery_failures_total{job=\"flight-ops\"}[5m]))}" "${PROMETHEUS_MAX_ALERT_DELIVERY_FAILURE_RATE:-0.01}"
+          check_metric "dashboard_api_failure_rate" "${PROMETHEUS_API_FAILURE_QUERY:-sum(rate(http_requests_total{job=\"flight-ops\",route=~\"/api/.*\",status=~\"5..\"}[5m]))}" "${PROMETHEUS_MAX_API_FAILURE_RATE:-0.02}"
+          check_metric "smoke_test_failure_count" "${PROMETHEUS_SMOKE_FAILURE_QUERY:-sum(increase(flight_ops_smoke_fail_total[10m]))}" "${PROMETHEUS_MAX_SMOKE_FAILURES:-0}"
+
+      - name: Rollback canary
+        if: failure()
+        run: |
+          deployment_id="${{ steps.codedeploy.outputs.deployment_id }}"
+          if [ -n "$deployment_id" ]; then
+            aws deploy stop-deployment --deployment-id "$deployment_id" --auto-rollback-enabled || true
+          fi
+          if [ -n "$ROLLBACK_HOOK_URL" ]; then
+            curl -fsS -X POST "$ROLLBACK_HOOK_URL"
+          fi
+
+  promote-production:
+    name: Promote production rollout
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    needs:
+      - deploy-canary
+      - deploy-canary-no-infra
+    if: always() && (needs.deploy-canary.result == 'success' || needs.deploy-canary-no-infra.result == 'success')
+    environment: production
+
+    env:
+      APP_BASE_URL: ${{ secrets.FLIGHT_OPS_PROD_BASE_URL }}
+      DISCORD_WEBHOOK_URL: ${{ secrets.FLIGHT_OPS_DISCORD_WEBHOOK_URL }}
+      PROMOTE_HOOK_URL: ${{ secrets.FLIGHT_OPS_PROD_PROMOTE_HOOK_URL }}
+      PROMETHEUS_PUSHGATEWAY_URL: ${{ secrets.FLIGHT_OPS_PROMETHEUS_PUSHGATEWAY_URL }}
+      ROLLBACK_HOOK_URL: ${{ secrets.FLIGHT_OPS_PROD_ROLLBACK_HOOK_URL }}
+      SLACK_WEBHOOK_URL: ${{ secrets.FLIGHT_OPS_SLACK_WEBHOOK_URL }}
+      TOKEN_ROTATION_FUNCTION_NAME: ${{ secrets.GRAFANA_TOKEN_ROTATION_FUNCTION_NAME }}
+
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_GHA_ROLE_ARN }}
+
+      - name: Notify promotion approval passed
+        run: |
+          message="Flight Ops production promotion approved: ${GITHUB_REF}"
+          if [ -n "$SLACK_WEBHOOK_URL" ]; then
+            curl -fsS -X POST -H "Content-Type: application/json" --data "{\"text\":\"${message}\"}" "$SLACK_WEBHOOK_URL"
+          fi
+
+      - name: Promote canary to production
+        run: |
+          deployment_id="${{ needs.deploy-canary.outputs.deployment_id || needs.deploy-canary-no-infra.outputs.deployment_id }}"
+          if [ -n "$deployment_id" ]; then
+            aws deploy wait deployment-successful --deployment-id "$deployment_id"
+          elif [ -n "$PROMOTE_HOOK_URL" ]; then
+            curl -fsS -X POST "$PROMOTE_HOOK_URL"
+          else
+            echo "No CodeDeploy deployment or FLIGHT_OPS_PROD_PROMOTE_HOOK_URL available for promotion."
+            exit 1
+          fi
+
+      - name: Smoke promoted production
+        run: |
+          curl -fsS "$APP_BASE_URL/flight-ops" >/dev/null
+          curl -fsS "$APP_BASE_URL/api/grafana/alert-rules" >/dev/null
+          refresh_status="$(curl -sS -o /tmp/auth-refresh.json -w "%{http_code}" -X POST "$APP_BASE_URL/api/auth/refresh")"
+          if [ "$refresh_status" != "200" ] && [ "$refresh_status" != "501" ]; then
+            cat /tmp/auth-refresh.json
+            exit 1
+          fi
+
+      - name: Publish production success metrics
+        if: success()
+        run: |
+          if [ -n "$PROMETHEUS_PUSHGATEWAY_URL" ]; then
+            printf '%s\n' \
+              'flight_ops_deploy_success_total 1' \
+              'flight_ops_smoke_pass_total 1' \
+              | curl -fsS --data-binary @- "$PROMETHEUS_PUSHGATEWAY_URL/metrics/job/flight_ops_deploy/environment/production"
+          fi
+
+      - name: Rotate Grafana service account token
+        if: github.event_name == 'workflow_dispatch' && inputs.rotate_token
+        run: |
+          if [ -z "$TOKEN_ROTATION_FUNCTION_NAME" ]; then
+            echo "GRAFANA_TOKEN_ROTATION_FUNCTION_NAME is required when rotate_token is true."
+            exit 1
+          fi
+          aws lambda invoke \
+            --function-name "$TOKEN_ROTATION_FUNCTION_NAME" \
+            --cli-binary-format raw-in-base64-out \
+            --payload '{}' \
+            /tmp/grafana-token-rotation.json
+          cat /tmp/grafana-token-rotation.json
+          curl -fsS "$APP_BASE_URL/api/grafana/alert-rules" >/dev/null
+
+      - name: Rollback promoted production
+        if: failure()
+        run: |
+          if [ -n "$ROLLBACK_HOOK_URL" ]; then
+            curl -fsS -X POST "$ROLLBACK_HOOK_URL"
+          fi
+          if [ -n "$PROMETHEUS_PUSHGATEWAY_URL" ]; then
+            printf '%s\n' \
+              'flight_ops_deploy_failure_total 1' \
+              'flight_ops_smoke_fail_total 1' \
+              'flight_ops_rollback_total{reason="promotion_failure"} 1' \
+              | curl -fsS --data-binary @- "$PROMETHEUS_PUSHGATEWAY_URL/metrics/job/flight_ops_deploy/environment/production"
+          fi
+
+      - name: Notify production result
+        if: always()
+        run: |
+          status="${{ job.status }}"
+          message="Flight Ops production promotion ${status}: ${GITHUB_REF}"
+          if [ -n "$SLACK_WEBHOOK_URL" ]; then
+            curl -fsS -X POST -H "Content-Type: application/json" --data "{\"text\":\"${message}\"}" "$SLACK_WEBHOOK_URL"
+          fi
+          if [ -n "$DISCORD_WEBHOOK_URL" ]; then
+            curl -fsS -X POST -H "Content-Type: application/json" --data "{\"content\":\"${message}\"}" "$DISCORD_WEBHOOK_URL"
+          fi

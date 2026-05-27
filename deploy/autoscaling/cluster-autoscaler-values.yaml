@@ -1,0 +1,16 @@
+extraArgs:
+  cloud-provider: aws
+  expander: least-waste
+  balance-similar-node-groups: "true"
+  skip-nodes-with-system-pods: "false"
+  scale-down-unneeded-time: 10m
+  scale-down-delay-after-add: 10m
+  scale-down-utilization-threshold: "0.5"
+autoDiscovery:
+  clusterName: flight-ops-eks
+awsRegion: us-east-1
+rbac:
+  serviceAccount:
+    create: true
+    annotations:
+      eks.amazonaws.com/role-arn: arn:aws:iam::123456789012:role/flight-ops-cluster-autoscaler

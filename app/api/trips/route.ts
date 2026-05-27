@@ -1,39 +1,36 @@
 import { NextResponse } from "next/server";
 import { slugify } from "@/lib/slug";
-import { createClient } from "@/lib/supabase/server";
-import { normalizeTripInput } from "@/lib/trips";
+import { authorizeDashboardApi } from "@/lib/server/dashboard-test-auth";
+import { mapTripRecord, normalizeTripInput, toTripWritePayload } from "@/lib/trips";
 
 export async function GET() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error: userError
-  } = await supabase.auth.getUser();
+  const auth = await authorizeDashboardApi();
 
-  if (userError || !user) {
+  if (!auth) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await auth.supabase
     .from("trips")
     .select("*")
-    .order("created_at", { ascending: false });
+    .eq("user_id", auth.userId)
+    .order("start_date", { ascending: true, nullsFirst: false });
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ trips: data });
+  const trips = (data || [])
+    .map((record) => mapTripRecord(record as Record<string, unknown>))
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  return NextResponse.json({ trips });
 }
 
 export async function POST(request: Request) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error: userError
-  } = await supabase.auth.getUser();
+  const auth = await authorizeDashboardApi();
 
-  if (userError || !user) {
+  if (!auth) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -47,12 +44,12 @@ export async function POST(request: Request) {
     );
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await auth.supabase
     .from("trips")
     .insert({
-      ...trip,
+      ...toTripWritePayload(trip),
       slug: `${slugify(trip.name)}-${Date.now()}`,
-      user_id: user.id
+      user_id: auth.userId
     })
     .select("*")
     .single();
@@ -61,5 +58,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ trip: data }, { status: 201 });
+  return NextResponse.json(
+    { trip: mapTripRecord(data as Record<string, unknown>) },
+    { status: 201 }
+  );
 }

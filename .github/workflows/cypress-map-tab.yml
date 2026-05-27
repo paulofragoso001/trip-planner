@@ -1,0 +1,38 @@
+name: Cypress core flows
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  cypress-run:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build app
+        run: npm run build
+
+      - name: Run Cypress core specs
+        uses: cypress-io/github-action@v6
+        with:
+          browser: chrome
+          start: npm start
+          wait-on: 'http://localhost:3000'
+          spec: cypress/e2e/dashboard.cy.ts,cypress/e2e/trip-map-tab.cy.ts,cypress/e2e/itinerary-accessibility.cy.ts
+        env:
+          CYPRESS_BASE_URL: http://localhost:3000

@@ -1,0 +1,268 @@
+name: flight-ops-canary
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - app/flight-ops/**
+      - app/api/grafana/**
+      - app/api/grafana-alert-rules/**
+      - app/api/auth/refresh/**
+      - app/api/cirium/**
+      - app/api/alerts/**
+      - components/FlightOpsCommandCenter.tsx
+      - components/FlightOpsMapPanel.tsx
+      - components/GrafanaAlertControlPanel.tsx
+      - app/flight-ops/alerts/**
+      - deploy/flagger/**
+      - hooks/useAuthedGrafanaFetch.ts
+      - scripts/**
+      - tests/playwright/**
+      - package.json
+      - package-lock.json
+      - tsconfig.json
+      - .github/workflows/flight-ops-canary.yml
+  pull_request:
+    paths:
+      - app/flight-ops/**
+      - app/api/grafana/**
+      - app/api/grafana-alert-rules/**
+      - app/api/auth/refresh/**
+      - app/api/cirium/**
+      - app/api/alerts/**
+      - components/FlightOpsCommandCenter.tsx
+      - components/FlightOpsMapPanel.tsx
+      - components/GrafanaAlertControlPanel.tsx
+      - app/flight-ops/alerts/**
+      - deploy/flagger/**
+      - hooks/useAuthedGrafanaFetch.ts
+      - scripts/**
+      - tests/playwright/**
+      - package.json
+      - package-lock.json
+      - tsconfig.json
+      - .github/workflows/flight-ops-canary.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+  pull-requests: write
+
+concurrency:
+  group: flight-ops-canary-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  NODE_VERSION: "20"
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          cache: npm
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Build app
+        run: npm run build
+
+  playwright:
+    name: Deterministic browser smoke
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    needs: build
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          cache: npm
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright
+        run: npx -y -p @playwright/test playwright install --with-deps chromium
+
+      - name: Run Playwright smoke tests
+        run: npx -y -p @playwright/test playwright test tests/playwright/flight-ops.smoke.spec.ts tests/playwright/flight-ops.spec.ts
+
+  deploy-canary:
+    name: Deploy Flagger canary
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    needs:
+      - build
+      - playwright
+    if: github.event_name != 'pull_request'
+    environment:
+      name: staging-canary
+
+    env:
+      KUBE_CONFIG_DATA: ${{ secrets.FLIGHT_OPS_KUBE_CONFIG_DATA }}
+      KUBE_NAMESPACE: ${{ secrets.FLIGHT_OPS_KUBE_NAMESPACE }}
+      FLIGHT_OPS_CHAT_WEBHOOK: ${{ secrets.FLIGHT_OPS_CHAT_WEBHOOK }}
+      PAGERDUTY_ROUTING_KEY: ${{ secrets.FLIGHT_OPS_PAGERDUTY_ROUTING_KEY }}
+      SLACK_WEBHOOK_URL: ${{ secrets.FLIGHT_OPS_SLACK_WEBHOOK_URL }}
+      TEAMS_WEBHOOK_URL: ${{ secrets.FLIGHT_OPS_TEAMS_WEBHOOK_URL }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v4
+
+      - name: Notify canary start
+        run: bash scripts/notify-slack.sh "Flight Ops canary started for ${GITHUB_REF} at ${GITHUB_SHA}."
+
+      - name: Apply Flagger canary
+        run: bash scripts/apply-flagger-canary.sh
+
+  canary-analysis:
+    name: Canary analysis
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    needs: deploy-canary
+    if: github.event_name != 'pull_request'
+
+    env:
+      KUBE_CONFIG_DATA: ${{ secrets.FLIGHT_OPS_KUBE_CONFIG_DATA }}
+      KUBE_NAMESPACE: ${{ secrets.FLIGHT_OPS_KUBE_NAMESPACE }}
+      PROMETHEUS_BASE_URL: ${{ secrets.FLIGHT_OPS_PROMETHEUS_BASE_URL }}
+      PROMETHEUS_CANARY_APP: ${{ secrets.FLIGHT_OPS_PROMETHEUS_CANARY_APP }}
+      PROMETHEUS_PRIMARY_APP: ${{ secrets.FLIGHT_OPS_PROMETHEUS_PRIMARY_APP }}
+      PROMETHEUS_MAX_ERROR_RATE: ${{ secrets.FLIGHT_OPS_PROMETHEUS_MAX_ERROR_RATE }}
+      PROMETHEUS_MAX_LATENCY_RATIO: ${{ secrets.FLIGHT_OPS_PROMETHEUS_MAX_LATENCY_RATIO }}
+      PROMETHEUS_MAX_SMOKE_FAILURES: ${{ secrets.FLIGHT_OPS_PROMETHEUS_MAX_SMOKE_FAILURES }}
+      SLACK_WEBHOOK_URL: ${{ secrets.FLIGHT_OPS_SLACK_WEBHOOK_URL }}
+      TEAMS_WEBHOOK_URL: ${{ secrets.FLIGHT_OPS_TEAMS_WEBHOOK_URL }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v4
+
+      - name: Check Flagger and Prometheus analysis
+        run: bash scripts/check-canary-promql.sh
+
+      - name: Smoke canary URL
+        env:
+          CANARY_BASE_URL: ${{ secrets.FLIGHT_OPS_CANARY_BASE_URL }}
+        run: |
+          if [ -z "$CANARY_BASE_URL" ]; then
+            echo "FLIGHT_OPS_CANARY_BASE_URL is not set; Flagger/Prometheus analysis is the canary gate."
+            exit 0
+          fi
+          curl -fsS "$CANARY_BASE_URL/flight-ops" >/dev/null
+          curl -fsS "$CANARY_BASE_URL/api/grafana/alert-rules" >/dev/null
+
+      - name: Notify canary analysis failure
+        if: failure()
+        run: bash scripts/notify-slack.sh "Flight Ops canary analysis failed for ${GITHUB_REF}; rollback is starting."
+
+  promote-production:
+    name: Promote production
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    needs: canary-analysis
+    if: github.event_name != 'pull_request'
+    environment:
+      name: production
+
+    env:
+      KUBE_CONFIG_DATA: ${{ secrets.FLIGHT_OPS_KUBE_CONFIG_DATA }}
+      KUBE_NAMESPACE: ${{ secrets.FLIGHT_OPS_KUBE_NAMESPACE }}
+      PROMOTE_HOOK_URL: ${{ secrets.FLIGHT_OPS_PROD_PROMOTE_HOOK_URL }}
+      SLACK_WEBHOOK_URL: ${{ secrets.FLIGHT_OPS_SLACK_WEBHOOK_URL }}
+      TEAMS_WEBHOOK_URL: ${{ secrets.FLIGHT_OPS_TEAMS_WEBHOOK_URL }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v4
+
+      - name: Promote canary
+        run: bash scripts/promote-canary.sh
+
+      - name: Notify promotion complete
+        run: bash scripts/notify-slack.sh "Flight Ops canary promoted to production for ${GITHUB_REF}."
+
+  rollback:
+    name: Rollback failed canary
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    needs:
+      - deploy-canary
+      - canary-analysis
+      - promote-production
+    if: failure() && github.event_name != 'pull_request'
+
+    env:
+      KUBE_CONFIG_DATA: ${{ secrets.FLIGHT_OPS_KUBE_CONFIG_DATA }}
+      KUBE_NAMESPACE: ${{ secrets.FLIGHT_OPS_KUBE_NAMESPACE }}
+      ROLLBACK_HOOK_URL: ${{ secrets.FLIGHT_OPS_PROD_ROLLBACK_HOOK_URL }}
+      SLACK_WEBHOOK_URL: ${{ secrets.FLIGHT_OPS_SLACK_WEBHOOK_URL }}
+      TEAMS_WEBHOOK_URL: ${{ secrets.FLIGHT_OPS_TEAMS_WEBHOOK_URL }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v4
+
+      - name: Roll back canary
+        run: bash scripts/rollback-canary.sh
+
+      - name: Notify rollback
+        if: always()
+        run: bash scripts/notify-slack.sh "Flight Ops canary rollback finished for ${GITHUB_REF}."
+
+  notify:
+    name: Final Slack notification
+    runs-on: ubuntu-24.04
+    needs:
+      - build
+      - playwright
+      - deploy-canary
+      - canary-analysis
+      - promote-production
+      - rollback
+    if: always()
+
+    env:
+      SLACK_WEBHOOK_URL: ${{ secrets.FLIGHT_OPS_SLACK_WEBHOOK_URL }}
+      TEAMS_WEBHOOK_URL: ${{ secrets.FLIGHT_OPS_TEAMS_WEBHOOK_URL }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Notify result
+        run: |
+          bash scripts/notify-slack.sh "Flight Ops canary workflow finished for ${GITHUB_REF} at ${GITHUB_SHA}. Result: ${{ job.status }}."

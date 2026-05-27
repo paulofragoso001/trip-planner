@@ -1,0 +1,191 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: flight-ops-alerts-dashboard
+  namespace: flight-ops
+  labels:
+    app: flight-ops-alerts-dashboard
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: flight-ops-alerts-dashboard
+  template:
+    metadata:
+      labels:
+        app: flight-ops-alerts-dashboard
+      annotations:
+        prometheus.io/path: /api/metrics
+        prometheus.io/port: "3000"
+        prometheus.io/scrape: "true"
+    spec:
+      containers:
+        - name: web
+          image: ghcr.io/your-org/flight-ops-alerts-dashboard:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3000
+              name: http
+          env:
+            - name: NODE_ENV
+              value: production
+            - name: NEXT_TELEMETRY_DISABLED
+              value: "1"
+            - name: GRAFANA_URL
+              valueFrom:
+                secretKeyRef:
+                  name: flight-ops-grafana
+                  key: url
+            - name: GRAFANA_SERVICE_ACCOUNT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: flight-ops-grafana
+                  key: serviceAccountToken
+          readinessProbe:
+            httpGet:
+              path: /flight-ops/alerts
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/metrics
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: flight-ops-alerts-dashboard
+  namespace: flight-ops
+  labels:
+    app: flight-ops-alerts-dashboard
+spec:
+  type: ClusterIP
+  selector:
+    app: flight-ops-alerts-dashboard
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: flight-ops-alerts-dashboard
+  namespace: flight-ops
+  labels:
+    app: flight-ops-alerts-dashboard
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: flight-ops-alerts-dashboard
+  minReplicas: 2
+  maxReplicas: 6
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 65
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 75
+---
+apiVersion: networking.istio.io/v1beta1
+kind: Gateway
+metadata:
+  name: flight-ops-alerts-dashboard
+  namespace: flight-ops
+spec:
+  selector:
+    istio: ingressgateway
+  servers:
+    - port:
+        number: 80
+        name: http
+        protocol: HTTP
+      hosts:
+        - flight-ops.example.com
+      tls:
+        httpsRedirect: true
+    - port:
+        number: 443
+        name: https
+        protocol: HTTPS
+      tls:
+        mode: SIMPLE
+        credentialName: flight-ops-tls
+      hosts:
+        - flight-ops.example.com
+---
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: flight-ops-alerts-dashboard
+  namespace: flight-ops
+spec:
+  hosts:
+    - flight-ops.example.com
+  gateways:
+    - flight-ops-alerts-dashboard
+  http:
+    - match:
+        - uri:
+            prefix: /flight-ops/alerts
+        - uri:
+            prefix: /api/alerts
+        - uri:
+            prefix: /api/metrics
+      route:
+        - destination:
+            host: flight-ops-alerts-dashboard
+            port:
+              number: 80
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: flight-ops-alerts-dashboard
+  namespace: flight-ops
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+spec:
+  rules:
+    - host: flight-ops.example.com
+      http:
+        paths:
+          - path: /flight-ops/alerts
+            pathType: Prefix
+            backend:
+              service:
+                name: flight-ops-alerts-dashboard
+                port:
+                  name: http
+          - path: /api/alerts
+            pathType: Prefix
+            backend:
+              service:
+                name: flight-ops-alerts-dashboard
+                port:
+                  name: http
+          - path: /api/metrics
+            pathType: Prefix
+            backend:
+              service:
+                name: flight-ops-alerts-dashboard
+                port:
+                  name: http

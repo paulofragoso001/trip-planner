@@ -1,0 +1,55 @@
+name: production-env-preflight
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 10 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  preflight:
+    name: Validate production env
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment:
+      name: production
+
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+      NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: ${{ secrets.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY }}
+      NEXT_PUBLIC_APP_URL: ${{ vars.NEXT_PUBLIC_APP_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      CALENDAR_TOKEN_ENCRYPTION_KEY: ${{ secrets.CALENDAR_TOKEN_ENCRYPTION_KEY }}
+      CALENDAR_SYNC_WORKER_SECRET: ${{ secrets.CALENDAR_SYNC_WORKER_SECRET }}
+      GOOGLE_CALENDAR_CLIENT_ID: ${{ secrets.GOOGLE_CALENDAR_CLIENT_ID }}
+      GOOGLE_CALENDAR_CLIENT_SECRET: ${{ secrets.GOOGLE_CALENDAR_CLIENT_SECRET }}
+      GOOGLE_CALENDAR_REDIRECT_URI: ${{ vars.GOOGLE_CALENDAR_REDIRECT_URI }}
+      MICROSOFT_CALENDAR_CLIENT_ID: ${{ secrets.MICROSOFT_CALENDAR_CLIENT_ID }}
+      MICROSOFT_CALENDAR_CLIENT_SECRET: ${{ secrets.MICROSOFT_CALENDAR_CLIENT_SECRET }}
+      MICROSOFT_CALENDAR_REDIRECT_URI: ${{ vars.MICROSOFT_CALENDAR_REDIRECT_URI }}
+      RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+      RESEND_FROM_EMAIL: ${{ vars.RESEND_FROM_EMAIL }}
+      ALLOW_LOCAL_DASHBOARD_BYPASS: ${{ vars.ALLOW_LOCAL_DASHBOARD_BYPASS }}
+      ALLOW_TEST_DASHBOARD_BYPASS: ${{ vars.ALLOW_TEST_DASHBOARD_BYPASS }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          cache: npm
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run production env preflight
+        run: npm run preflight:prod-env
+
+      - name: Run compliance audit
+        run: npm run audit:compliance

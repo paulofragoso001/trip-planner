@@ -80,6 +80,14 @@ export default async function HomePage() {
           </div>
         </div>
       </section>
+      <footer className="mx-auto mt-10 flex max-w-6xl flex-wrap gap-4 border-t border-line pt-5 text-sm font-semibold text-slate-600">
+        <Link className="hover:text-ink" href="/privacy">
+          Privacy
+        </Link>
+        <Link className="hover:text-ink" href="/terms">
+          Terms
+        </Link>
+      </footer>
     </main>
   );
 }

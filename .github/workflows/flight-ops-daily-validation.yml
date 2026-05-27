@@ -1,0 +1,58 @@
+name: flight-ops-daily-validation
+
+on:
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: "20"
+
+jobs:
+  validate:
+    name: Daily Flight Ops validation
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+
+    env:
+      KUBE_CONFIG_DATA: ${{ secrets.FLIGHT_OPS_KUBE_CONFIG_DATA }}
+      KUBE_NAMESPACE: ${{ secrets.FLIGHT_OPS_KUBE_NAMESPACE }}
+      PROMETHEUS_BASE_URL: ${{ secrets.FLIGHT_OPS_PROMETHEUS_BASE_URL }}
+      PROMETHEUS_CANARY_APP: ${{ secrets.FLIGHT_OPS_PROMETHEUS_CANARY_APP }}
+      PROMETHEUS_PRIMARY_APP: ${{ secrets.FLIGHT_OPS_PROMETHEUS_PRIMARY_APP }}
+      PROMETHEUS_MAX_ERROR_RATE: ${{ secrets.FLIGHT_OPS_PROMETHEUS_MAX_ERROR_RATE }}
+      PROMETHEUS_MAX_LATENCY_RATIO: ${{ secrets.FLIGHT_OPS_PROMETHEUS_MAX_LATENCY_RATIO }}
+      PROMETHEUS_MAX_MARKER_STALENESS_SECONDS: ${{ secrets.FLIGHT_OPS_PROMETHEUS_MAX_MARKER_STALENESS_SECONDS }}
+      PROMETHEUS_MAX_SMOKE_FAILURES: ${{ secrets.FLIGHT_OPS_PROMETHEUS_MAX_SMOKE_FAILURES }}
+      SLACK_WEBHOOK_URL: ${{ secrets.FLIGHT_OPS_SLACK_WEBHOOK_URL }}
+      TEAMS_WEBHOOK_URL: ${{ secrets.FLIGHT_OPS_TEAMS_WEBHOOK_URL }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          cache: npm
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright
+        run: npx -y -p @playwright/test playwright install --with-deps chromium
+
+      - name: Run deterministic Playwright smoke
+        run: npx -y -p @playwright/test playwright test tests/playwright/flight-ops.smoke.spec.ts tests/playwright/flight-ops.spec.ts
+
+      - name: Check PromQL health
+        run: bash scripts/check-promql.sh
+
+      - name: Notify daily validation result
+        if: always()
+        run: |
+          bash scripts/notify-slack.sh "Flight Ops daily validation finished for ${GITHUB_SHA}. Result: ${{ job.status }}."

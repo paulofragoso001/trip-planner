@@ -1,0 +1,9 @@
+# Use this values overlay when cost or control-loop stability matters more than
+# recommendation telemetry. It keeps HPA and Cluster Autoscaler as the active
+# scaling path and renders no VPA object from the Helm chart.
+vpa:
+  enabled: false
+  updateMode: "Off"
+
+autoscaling:
+  enabled: true

@@ -1,0 +1,23 @@
+{{- if and .Values.istio.enabled .Values.istio.ingressGatewayAutoscaling.enabled -}}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ .Values.istio.ingressGatewayAutoscaling.name }}
+  namespace: {{ .Values.istio.ingressGatewayAutoscaling.namespace }}
+  labels:
+    {{- include "unified-alerts-dashboard.labels" . | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ .Values.istio.ingressGatewayAutoscaling.name }}
+  minReplicas: {{ .Values.istio.ingressGatewayAutoscaling.minReplicas }}
+  maxReplicas: {{ .Values.istio.ingressGatewayAutoscaling.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.istio.ingressGatewayAutoscaling.targetCPUUtilizationPercentage }}
+{{- end }}

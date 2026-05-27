@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import TripMap, { type TripMapItem } from "@/components/TripMap";
 
 type ItineraryMapProps = {
-  items: unknown[];
+  items?: unknown[] | null;
 };
 
 type MapPoint = {
@@ -100,8 +100,8 @@ function MapShell({ children }: { children: React.ReactNode }) {
   );
 }
 
-function extractMapPoints(items: unknown[]) {
-  return items
+function extractMapPoints(items?: unknown[] | null) {
+  return (Array.isArray(items) ? items : [])
     .map((item, index) => normalizePoint(item, index))
     .filter((point): point is MapPoint => Boolean(point));
 }
@@ -138,6 +138,12 @@ function normalizePoint(item: unknown, index: number): MapPoint | null {
     return null;
   }
 
+  const dateTime =
+    readString(record.date_time) ||
+    readString(record.datetime) ||
+    readString(record.starttime) ||
+    readString(record.start_time);
+
   return {
     id: readString(record.id) || `point-${index}`,
     title:
@@ -147,9 +153,17 @@ function normalizePoint(item: unknown, index: number): MapPoint | null {
       `Stop ${index + 1}`,
     latitude,
     longitude,
-    date: readString(record.date) || readString(record.start_date) || readString(record.day),
-    time: readString(record.time) || readString(record.start_time),
-    type: readString(record.type) || readString(record.category)
+    date:
+      readString(record.date) ||
+      readString(record.start_date) ||
+      readString(record.day) ||
+      readDate(dateTime),
+    time: readString(record.time) || readTime(dateTime),
+    type:
+      readString(record.type) ||
+      readString(record.segment_type) ||
+      readString(record.kind) ||
+      readString(record.category)
   };
 }
 
@@ -184,6 +198,15 @@ function firstNumber(...values: unknown[]) {
 
 function readString(value: unknown) {
   return typeof value === "string" && value.trim() ? value.trim() : undefined;
+}
+
+function readDate(value?: string) {
+  return value?.slice(0, 10);
+}
+
+function readTime(value?: string) {
+  if (!value) return undefined;
+  return value.includes("T") ? value.slice(11, 16) : value.slice(0, 5);
 }
 
 function isCoordinate(value: unknown, min: number, max: number): value is number {

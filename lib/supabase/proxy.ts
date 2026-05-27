@@ -1,6 +1,8 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
+const sessionRefreshTimeoutMs = 3000;
+
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
 
@@ -23,6 +25,24 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
-  await supabase.auth.getUser();
+  await withTimeout(
+    supabase.auth.getUser(),
+    sessionRefreshTimeoutMs,
+    "Supabase session refresh timed out."
+  ).catch((error) => {
+    if (process.env.NODE_ENV !== "production") {
+      console.warn(error instanceof Error ? error.message : error);
+    }
+  });
+
   return supabaseResponse;
+}
+
+function withTimeout<T>(promise: PromiseLike<T>, timeoutMs: number, message: string) {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error(message)), timeoutMs);
+    })
+  ]);
 }

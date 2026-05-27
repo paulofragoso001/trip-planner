@@ -1,0 +1,180 @@
+apiVersion: flagger.app/v1beta1
+kind: AlertProvider
+metadata:
+  name: slack-alert
+  namespace: flight-ops
+spec:
+  type: slack
+  channel: flight-ops
+  username: flagger
+  secretRef:
+    name: flagger-slack-webhook
+---
+apiVersion: flagger.app/v1beta1
+kind: MetricTemplate
+metadata:
+  name: flight-api-error-rate
+  namespace: flight-ops
+spec:
+  provider:
+    type: prometheus
+    address: http://prometheus.monitoring:9090
+  query: |
+    sum(rate(http_requests_total{app="{{ target }}",status=~"5.."}[{{ interval }}]))
+    /
+    clamp_min(sum(rate(http_requests_total{app="{{ target }}"}[{{ interval }}])), 1)
+---
+apiVersion: flagger.app/v1beta1
+kind: MetricTemplate
+metadata:
+  name: flight-api-latency-p95
+  namespace: flight-ops
+spec:
+  provider:
+    type: prometheus
+    address: http://prometheus.monitoring:9090
+  query: |
+    histogram_quantile(
+      0.95,
+      sum(rate(http_request_duration_seconds_bucket{app="{{ target }}"}[{{ interval }}])) by (le)
+    )
+---
+apiVersion: flagger.app/v1beta1
+kind: MetricTemplate
+metadata:
+  name: dashboard-api-failure-rate
+  namespace: flight-ops
+spec:
+  provider:
+    type: prometheus
+    address: http://prometheus.monitoring:9090
+  query: |
+    sum(rate(http_requests_total{app="{{ target }}",route=~"/api/.*",status=~"5.."}[{{ interval }}]))
+    /
+    clamp_min(sum(rate(http_requests_total{app="{{ target }}",route=~"/api/.*"}[{{ interval }}])), 1)
+---
+apiVersion: flagger.app/v1beta1
+kind: MetricTemplate
+metadata:
+  name: graphql-api-failure-rate
+  namespace: flight-ops
+spec:
+  provider:
+    type: prometheus
+    address: http://prometheus.monitoring:9090
+  query: |
+    sum(rate(http_requests_total{app="{{ target }}",route="/graphql",status=~"5.."}[{{ interval }}]))
+    /
+    clamp_min(sum(rate(http_requests_total{app="{{ target }}",route="/graphql"}[{{ interval }}])), 1)
+---
+apiVersion: flagger.app/v1beta1
+kind: MetricTemplate
+metadata:
+  name: flight-marker-staleness
+  namespace: flight-ops
+spec:
+  provider:
+    type: prometheus
+    address: http://prometheus.monitoring:9090
+  query: |
+    time() - max(last_flight_marker_update_timestamp_seconds{app="{{ target }}"})
+---
+apiVersion: flagger.app/v1beta1
+kind: MetricTemplate
+metadata:
+  name: alert-delivery-failure-rate
+  namespace: flight-ops
+spec:
+  provider:
+    type: prometheus
+    address: http://prometheus.monitoring:9090
+  query: |
+    sum(rate(alert_delivery_failures_total{app="{{ target }}"}[{{ interval }}]))
+---
+apiVersion: flagger.app/v1beta1
+kind: Canary
+metadata:
+  name: flight-ops
+  namespace: flight-ops
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: flight-ops
+  progressDeadlineSeconds: 600
+  service:
+    port: 80
+    targetPort: 3000
+    gateways:
+      - flight-ops-gateway
+    hosts:
+      - flight-ops.example.com
+  analysis:
+    interval: 1m
+    threshold: 2
+    maxWeight: 50
+    stepWeight: 10
+    metrics:
+      - name: request-success-rate
+        thresholdRange:
+          min: 99
+        interval: 1m
+      - name: request-duration
+        thresholdRange:
+          max: 1000
+        interval: 1m
+      - name: flight-api-error-rate
+        templateRef:
+          name: flight-api-error-rate
+        thresholdRange:
+          max: 0.02
+        interval: 1m
+      - name: flight-api-latency-p95
+        templateRef:
+          name: flight-api-latency-p95
+        thresholdRange:
+          max: 1.25
+        interval: 1m
+      - name: dashboard-api-failure-rate
+        templateRef:
+          name: dashboard-api-failure-rate
+        thresholdRange:
+          max: 0.02
+        interval: 1m
+      - name: graphql-api-failure-rate
+        templateRef:
+          name: graphql-api-failure-rate
+        thresholdRange:
+          max: 0.02
+        interval: 1m
+      - name: flight-marker-staleness
+        templateRef:
+          name: flight-marker-staleness
+        thresholdRange:
+          max: 90
+        interval: 1m
+      - name: alert-delivery-failure-rate
+        templateRef:
+          name: alert-delivery-failure-rate
+        thresholdRange:
+          max: 0.01
+        interval: 1m
+    alerts:
+      - name: slack-alert
+        severity: info
+        providerRef:
+          name: slack-alert
+    webhooks:
+      - name: flight-ops-smoke
+        type: confirm-rollout
+        url: http://flagger-loadtester.flagger/
+        timeout: 30s
+        metadata:
+          cmd: "curl -fsS http://flight-ops-canary.flight-ops/flight-ops >/dev/null"
+      - name: load-test
+        type: rollout
+        url: http://flagger-k6-webhook.flight-ops.svc.cluster.local/
+        timeout: 30s
+        metadata:
+          profile: smoke
+          test: flight-ops-canary
