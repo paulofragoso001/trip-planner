@@ -44,7 +44,7 @@
     "@types/react": "latest",
     "@types/react-dom": "latest",
     "autoprefixer": "latest",
-    "cypress": "^15.4.0",
+    "cypress": "^15.16.0",
     "cypress-axe": "^1.7.0",
     "postcss": "latest",
     "storybook": "^10.3.6",
