@@ -270,6 +270,7 @@ test("Miami social inspiration extraction returns only real travel candidates", 
     const names = (payload?.data?.extractedPlaces || []).map((place: any) =>
       String(place.name || "")
     );
+    const places = payload?.data?.extractedPlaces || [];
     const normalizedNames = names.map(normalizeNameForAssertion);
 
     for (const expected of [
@@ -285,12 +286,18 @@ test("Miami social inspiration extraction returns only real travel candidates", 
     }
 
     for (const blocked of [
+      "Destination: Miami",
+      "Travel style: balanced",
       "OpenAI",
       "Wayline",
       "AI trip planner",
       "Review candidates before promoting them into the itinerary"
     ]) {
       expect(normalizedNames).not.toContain(normalizeNameForAssertion(blocked));
+    }
+
+    for (const place of places) {
+      expect(Number(place.confidence || 0)).toBeGreaterThanOrEqual(0.85);
     }
   } finally {
     if (importId) {

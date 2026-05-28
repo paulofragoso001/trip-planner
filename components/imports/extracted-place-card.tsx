@@ -93,15 +93,16 @@ export function ExtractedPlaceCard({ mergeTargets = [], place, trips }: Extracte
           >
             {[
               "activity",
-              "food",
-              "sightseeing",
+              "attraction",
+              "restaurant",
               "nightlife",
               "shopping",
               "hotel",
-              "nature",
-              "culture",
+              "park",
+              "tour",
               "transportation",
-              "hidden_gem"
+              "neighborhood",
+              "event"
             ].map((category) => (
               <option key={category} value={category}>
                 {category.replace("_", " ")}

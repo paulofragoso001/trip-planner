@@ -1097,10 +1097,11 @@ async function extractWithOpenAi(input: {
         "Extract only real travel places or bookable travel experiences from the user-submitted saved inspiration below. Return an empty places array if no real place or experience is present.\n\n" +
         "Allowed candidates: named restaurants, cafes, attractions, landmarks, neighborhoods, tours, activities, hotels, events, parks, shopping places, nightlife venues, and relevant transportation hubs.\n" +
         "Reject candidates that are UI labels, app names, product names, generic itinerary ideas, sentence fragments, instructions, marketing copy, or system/planner text. Never return OpenAI, Wayline, AI trip planner, Saved Inspiration, Review candidates, or text about promoting items.\n" +
+        "Trip metadata belongs in trip_context, not in place_candidates. Do not return metadata such as Destination: Miami, Travel style: balanced, budget, dates, number of travelers, pace, planning notes, or itinerary labels as place candidates.\n" +
         "Split compound text into separate candidates. Example: \"visit Wynwood Walls, dinner at Komodo, walk Brickell City Centre\" returns three places.\n" +
         "Each candidate must include name, category, location_hint, city, country if known, an evidence quote copied from the user content, and confidence. Do not invent prices, booking URLs, or availability.\n" +
         "Use these categories only: attraction, restaurant, shopping, park, activity, tour, nightlife, hotel, transportation, neighborhood, event.\n" +
-        "Return only JSON with {\"places\":[{\"name\":\"\",\"category\":\"attraction|restaurant|shopping|park|activity|tour|nightlife|hotel|transportation|neighborhood|event\",\"summary\":\"\",\"address\":null,\"city\":null,\"country\":null,\"location_hint\":null,\"duplicate_group_key\":null,\"confidence\":0.0,\"evidence\":[]}]}. Evidence must quote the user content.\n\n" +
+        "Return only JSON with {\"trip_context\":{\"destination\":null,\"travel_style\":null,\"budget\":null,\"dates\":null,\"number_of_travelers\":null,\"pace\":null,\"interests\":[]},\"place_candidates\":[{\"name\":\"\",\"category\":\"attraction|restaurant|shopping|park|activity|tour|nightlife|hotel|transportation|neighborhood|event\",\"summary\":\"\",\"address\":null,\"city\":null,\"country\":null,\"location_hint\":null,\"duplicate_group_key\":null,\"confidence\":0.0,\"evidence\":[]}]}. Evidence must quote the user content.\n\n" +
         `Source platform: ${input.sourcePlatform}\nSource URL host: ${safeHostname(input.sourceUrl) || "none"}\nUSER_SAVED_INSPIRATION_BEGIN\n${input.sourceText || ""}\nUSER_SAVED_INSPIRATION_END`,
       type: "input_text"
     }
@@ -1139,7 +1140,12 @@ async function extractWithOpenAi(input: {
   const payload = await response.json();
   const text = readOutputText(payload);
   const parsed = parseJsonObject(text);
-  return filterTravelSignals(validateExtractedTravelSignals(parsed?.places, "openai"));
+  return filterTravelSignals(
+    validateExtractedTravelSignals(
+      parsed?.place_candidates ?? parsed?.placeCandidates ?? parsed?.places,
+      "openai"
+    )
+  );
 }
 
 function extractWithRules(sourceText: string, sourceUrl: string | null): ExtractedTravelSignal[] {
@@ -1149,6 +1155,7 @@ function extractWithRules(sourceText: string, sourceUrl: string | null): Extract
     .map((line) => line.trim())
     .filter(Boolean);
   const candidates = lines
+    .filter((line) => !isTripMetadataLine(line))
     .filter((line) => looksLikePlace(line))
     .map(cleanRuleCandidateName)
     .filter(Boolean)
@@ -1339,6 +1346,9 @@ function rejectionReasonForSignal(signal: ExtractedTravelSignal) {
   if (!allowedExtractionCategories.has(normalizeCategory(signal.category))) {
     return "unsupported_category";
   }
+  if (isTripMetadataCandidate(name) || isTripMetadataCandidate(signal.category)) {
+    return "trip_metadata";
+  }
   if (isBlockedExtractionTerm(normalized)) return "blocked_term";
   if (containsInstructionalPhrase(normalized) || containsInstructionalPhrase(evidenceText)) {
     return "instructional_or_ui_copy";
@@ -1369,6 +1379,19 @@ const blockedExtractionTerms = [
   "Create Trip Plan",
   "Trip Draft Queue"
 ];
+
+function isTripMetadataLine(value: string) {
+  return /^\s*(destination|travel style|budget|pace|dates?|travelers?|number of travelers|trip type|itinerary|planning)\s*:/i.test(value);
+}
+
+function isTripMetadataCandidate(value: string | null | undefined) {
+  if (!value) return false;
+  const normalized = normalizeCopy(value);
+  if (/^(destination|travel style|budget|pace|date|dates|travelers|number of travelers|trip type|itinerary|planning)\b/.test(normalized)) {
+    return true;
+  }
+  return /\b(destination|travel style|budget|pace|dates|travelers|trip type|itinerary)\s*:/.test(value.toLowerCase());
+}
 
 function containsInstructionalPhrase(value: string) {
   return /before promoting|promoting them into|review candidates|generate reviewable|do not create|return only json|source platform|user saved inspiration|openai created|scan with openai/.test(value);
@@ -1488,7 +1511,7 @@ function cleanRuleCandidateName(value: string) {
 function confidenceForRuleCandidate(name: string, sourceText: string) {
   const text = normalizeCopy(`${name} ${sourceText}`);
   if (/dinner at|visit|walk around|go to|boat tour|restaurant|park|centre|center|walls/.test(text)) {
-    return 0.82;
+    return 0.9;
   }
   return 0.62;
 }
