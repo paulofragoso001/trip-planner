@@ -1,7 +1,7 @@
 create table if not exists public.flight_truth_events (
   id uuid primary key default gen_random_uuid(),
   trip_id uuid not null references public.trips(id) on delete cascade,
-  itinerary_item_id uuid not null references public.itinerary_items(id) on delete cascade,
+  trip_segment_id uuid not null references public.trip_segments(id) on delete cascade,
   user_id uuid not null references auth.users(id) on delete cascade,
   event_type text not null,
   message text not null,
@@ -15,8 +15,8 @@ create table if not exists public.flight_truth_events (
 create index if not exists flight_truth_events_trip_created_idx
   on public.flight_truth_events (trip_id, created_at desc);
 
-create index if not exists flight_truth_events_item_created_idx
-  on public.flight_truth_events (itinerary_item_id, created_at desc);
+create index if not exists flight_truth_events_segment_created_idx
+  on public.flight_truth_events (trip_segment_id, created_at desc);
 
 create index if not exists flight_truth_events_user_created_idx
   on public.flight_truth_events (user_id, created_at desc);

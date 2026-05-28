@@ -37,19 +37,3 @@ drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
 after insert on auth.users
 for each row execute procedure public.handle_new_user();
-
-do $$
-begin
-  if not exists (
-    select 1
-    from pg_constraint
-    where conname = 'itinerary_comments_user_id_fkey'
-  ) then
-    alter table public.itinerary_comments
-    add constraint itinerary_comments_user_id_fkey
-    foreign key (user_id)
-    references public.profiles(id)
-    on delete set null;
-  end if;
-end;
-$$;

@@ -23,6 +23,11 @@ export type UpdateExtractedPlaceInput = {
   priority?: "candidate" | "must_do" | "optional" | "want_to_do";
   status?: "accepted" | "dismissed" | "merged" | "needs_review" | "promoted";
   travelNote?: string | null;
+  tripId?: string | null;
+};
+
+export type MergeExtractedPlaceInput = {
+  targetPlaceId: string;
 };
 
 type ValidationResult<TValue> =
@@ -111,6 +116,10 @@ export function validateUpdateExtractedPlace(
     update.travelNote = readNullableString(value.travelNote ?? value.travel_note, 2000);
   }
 
+  if ("tripId" in value || "trip_id" in value) {
+    update.tripId = readNullableString(value.tripId ?? value.trip_id, 120);
+  }
+
   if ("priority" in value) {
     const priority = readNullableString(value.priority, 40);
     if (!priority || !priorities.has(priority)) {
@@ -132,6 +141,31 @@ export function validateUpdateExtractedPlace(
   return Object.keys(details).length
     ? { details, ok: false }
     : { ok: true, value: update };
+}
+
+export function validateMergeExtractedPlace(
+  value: unknown
+): ValidationResult<MergeExtractedPlaceInput> {
+  if (!isRecord(value)) {
+    return { details: { body: "Expected a JSON object." }, ok: false };
+  }
+
+  const targetPlaceId = readNullableString(
+    value.targetPlaceId ?? value.target_place_id,
+    120
+  );
+
+  if (!targetPlaceId) {
+    return {
+      details: { targetPlaceId: "Choose a duplicate target." },
+      ok: false
+    };
+  }
+
+  return {
+    ok: true,
+    value: { targetPlaceId }
+  };
 }
 
 export function normalizeSourcePlatform(

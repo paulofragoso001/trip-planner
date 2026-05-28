@@ -54,7 +54,7 @@ describe("Wayline live dashboard with mocked data", () => {
     }).as("getUnfiledItems");
     cy.intercept("POST", "**/api/itinerary", {
       ok: true,
-      source: "itinerary_items",
+      source: "trip_segments",
       item: {
         id: "item_saved_1",
         title: "Saved Hotel"
@@ -76,7 +76,7 @@ describe("Wayline live dashboard with mocked data", () => {
           date_time: "2026-05-10T08:30:00.000Z",
           segment_type: "flight",
           notes: "Flight UA123",
-          promoted_itinerary_item_id: null,
+          promoted_trip_segment_id: null,
           created_at: "2026-05-01T12:00:00.000Z"
         }
       }

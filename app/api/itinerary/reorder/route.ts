@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
   const results = await Promise.all(
     updates.map((update) => {
       let query = supabase
-        .from(tripId ? "trip_segments" : "itinerary_items")
+        .from("trip_segments")
         .update({ position: update.position })
         .eq("id", update.id)
         .eq("user_id", user.id);

@@ -5,11 +5,11 @@ import { fetchCiriumFlightStatus } from "@/lib/cirium";
 import type { RefreshFlightStatusInput } from "@/lib/validators/flight-status";
 
 export type FlightStatusClient = {
-  from: (table: "itinerary_items" | "trip_segments") => any;
+  from: (table: "trip_segments") => any;
 };
 
-const itinerarySelect =
-  "id,title,location,lat,lng,position,date_time,notes,image_url,image_urls,segment_type,provider,confirmation_code,booking_url,flight_number,airline,departure_airport,arrival_airport,scheduled_departure,estimated_departure,gate,terminal,flight_status,last_status_checked_at,flight_lat,flight_lng,flight_altitude,flight_bearing,flight_speed,flight_position_updated_at,departure_airport_lat,departure_airport_lng,arrival_airport_lat,arrival_airport_lng";
+const segmentFlightSelect =
+  "id,trip_id,user_id,title,location,lat,lng,position,start_time,end_time,notes,kind,provider,confirmation_code,booking_url,flight_number,airline,departure_airport,arrival_airport,scheduled_departure,estimated_departure,gate,terminal,flight_status,last_status_checked_at,flight_lat,flight_lng,flight_altitude,flight_bearing,flight_speed,flight_position_updated_at,departure_airport_lat,departure_airport_lng,arrival_airport_lat,arrival_airport_lng";
 const flightStatusColumns = [
   "flight_status",
   "flight_lat",
@@ -76,16 +76,16 @@ export async function refreshItineraryFlightStatus(
   }
 
   if (estimatedDeparture || scheduledDeparture) {
-    updates.date_time = estimatedDeparture || scheduledDeparture;
+    updates.start_time = estimatedDeparture || scheduledDeparture;
   }
 
   const { data, error } = await supabase
-    .from("itinerary_items")
+    .from("trip_segments")
     .update(updates)
     .eq("id", input.itemId)
     .eq("trip_id", input.tripId)
     .eq("user_id", userId)
-    .select(itinerarySelect)
+    .select(segmentFlightSelect)
     .single();
 
   if (error) {
@@ -97,10 +97,8 @@ export async function refreshItineraryFlightStatus(
       );
     }
 
-    return refreshTripSegmentFlightStatus(supabase, userId, input, {
-      estimatedDeparture,
-      flightStatus: String(updates.flight_status || input.status),
-      scheduledDeparture
+    throw new ApiError("internal_error", "Could not refresh flight status.", 500, {
+      supabaseMessage: error.message
     });
   }
 

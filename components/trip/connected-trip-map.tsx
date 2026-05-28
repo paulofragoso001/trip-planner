@@ -15,12 +15,12 @@ export function ConnectedTripMap({ destination, items, searchUrl }: ConnectedTri
   const selectedItem = items.find((item) => item.id === selectedId) ?? items[0];
 
   return (
-    <div className="grid gap-4" data-testid="connected-trip-map">
+    <div className="grid h-full min-h-0 gap-4" data-testid="connected-trip-map">
       {items.length ? (
         <GoogleMapsProvider>
-          <div className="overflow-hidden rounded-3xl border border-slate-200 bg-slate-100">
+          <div className="min-h-[420px] overflow-hidden rounded-2xl border border-slate-200 bg-slate-100">
             <TripMap
-              height={460}
+              height={520}
               items={items}
               selectedId={selectedId}
               onSelect={setSelectedId}
@@ -49,29 +49,29 @@ export function ConnectedTripMap({ destination, items, searchUrl }: ConnectedTri
 
       {items.length ? (
         <div className="grid gap-3 sm:grid-cols-2">
-        {items.map((item, index) => {
-          const active = item.id === selectedItem?.id;
+          {items.map((item, index) => {
+            const active = item.id === selectedItem?.id;
 
-          return (
-            <button
-              aria-current={active ? "true" : undefined}
-              className={[
-                "rounded-2xl border px-4 py-3 text-left text-sm transition",
-                active
-                  ? "border-blue-300 bg-blue-50 text-blue-950"
-                  : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-              ].join(" ")}
-              key={item.id}
-              onClick={() => setSelectedId(item.id)}
-              type="button"
-            >
-              <span className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">
-                Stop {index + 1}
-              </span>
-              <span className="mt-1 block font-semibold">{item.title}</span>
-            </button>
-          );
-        })}
+            return (
+              <button
+                aria-current={active ? "true" : undefined}
+                className={[
+                  "rounded-xl border px-4 py-3 text-left text-sm transition",
+                  active
+                    ? "border-blue-300 bg-blue-50 text-blue-950"
+                    : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                ].join(" ")}
+                key={item.id}
+                onClick={() => setSelectedId(item.id)}
+                type="button"
+              >
+                <span className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">
+                  Stop {index + 1}
+                </span>
+                <span className="mt-1 block truncate font-semibold">{item.title}</span>
+              </button>
+            );
+          })}
         </div>
       ) : null}
     </div>

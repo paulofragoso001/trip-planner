@@ -13,7 +13,6 @@ create table if not exists public.unfiled_items (
   date_time timestamptz,
   segment_type text,
   notes text,
-  promoted_itinerary_item_id uuid references public.itinerary_items(id) on delete set null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -30,8 +29,7 @@ add column if not exists title text,
 add column if not exists location text,
 add column if not exists date_time timestamptz,
 add column if not exists segment_type text,
-add column if not exists notes text,
-add column if not exists promoted_itinerary_item_id uuid references public.itinerary_items(id) on delete set null;
+add column if not exists notes text;
 
 alter table public.unfiled_items enable row level security;
 

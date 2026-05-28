@@ -1,29 +1,21 @@
 "use client";
 
-import { Check, ImageIcon, MapPin, Pencil, X } from "lucide-react";
+import { Check, GitMerge, ImageIcon, MapPin, Pencil, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import type { AiReviewItemView } from "@/app/dashboard/imports/loader";
 
 type ExtractedPlaceCardProps = {
-  place: {
-    address: string | null;
-    category: string;
-    confidence: number;
-    id: string;
-    name: string;
-    reviewReason: "low_confidence" | "ready";
-    sourcePlatform: string;
-    status: string;
-    travelNote: string | null;
-    tripId: string | null;
-  };
+  mergeTargets?: AiReviewItemView[];
+  place: AiReviewItemView;
   trips: Array<{ id: string; name: string }>;
 };
 
-export function ExtractedPlaceCard({ place, trips }: ExtractedPlaceCardProps) {
+export function ExtractedPlaceCard({ mergeTargets = [], place, trips }: ExtractedPlaceCardProps) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [message, setMessage] = useState("");
+  const [mergeTargetId, setMergeTargetId] = useState(mergeTargets[0]?.id || "");
   const [pending, setPending] = useState(false);
   const defaultTripId = place.tripId || trips[0]?.id || "";
 
@@ -50,7 +42,13 @@ export function ExtractedPlaceCard({ place, trips }: ExtractedPlaceCardProps) {
         throw new Error(readError(payload, response.status));
       }
 
-      setMessage("Updated.");
+      setMessage(
+        endpoint.endsWith("/merge")
+          ? "Merged into selected place."
+          : body.status === "accepted"
+            ? "Added to trip draft."
+            : "Updated."
+      );
       router.refresh();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Action failed.");
@@ -66,6 +64,17 @@ export function ExtractedPlaceCard({ place, trips }: ExtractedPlaceCardProps) {
       travelNote: formData.get("travelNote")
     });
     setEditing(false);
+  }
+
+  async function mergeIntoTarget() {
+    if (!mergeTargetId) {
+      setMessage("Choose the duplicate to merge into.");
+      return;
+    }
+
+    await run(`/api/extracted-places/${place.id}/merge`, "POST", {
+      targetPlaceId: mergeTargetId
+    });
   }
 
   return (
@@ -130,6 +139,11 @@ export function ExtractedPlaceCard({ place, trips }: ExtractedPlaceCardProps) {
               <p className="mt-1 text-xs font-bold uppercase tracking-[0.16em] text-slate-500">
                 {place.sourcePlatform} · {place.category} · {Math.round(place.confidence * 100)}%
               </p>
+              {place.duplicateOf ? (
+                <span className="mt-2 inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-600">
+                  Possible duplicate
+                </span>
+              ) : null}
               <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100">
                 <div
                   className={[
@@ -156,12 +170,24 @@ export function ExtractedPlaceCard({ place, trips }: ExtractedPlaceCardProps) {
             </p>
           ) : null}
           {place.travelNote ? <p className="text-sm text-slate-600">{place.travelNote}</p> : null}
+          {place.evidence.length ? (
+            <div className="grid gap-2 rounded-2xl bg-slate-50 px-4 py-3">
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">
+                Why Wayline suggested this
+              </p>
+              <ul className="grid gap-1 text-sm text-slate-600">
+                {place.evidence.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
           {place.reviewReason === "low_confidence" ? (
             <p className="rounded-2xl bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
-              Confirm the name and category before adding this to a trip.
+              Confirm the name and category before approving this into a draft.
             </p>
           ) : null}
-          <div className="grid gap-2 sm:grid-cols-[1fr_auto_auto] sm:items-center">
+          <div className="grid gap-2 sm:grid-cols-[1fr_auto_auto_auto] sm:items-center">
             <select
               className="min-h-12 rounded-xl border border-slate-200 bg-white px-3 text-sm font-bold text-slate-700"
               defaultValue={defaultTripId}
@@ -178,15 +204,41 @@ export function ExtractedPlaceCard({ place, trips }: ExtractedPlaceCardProps) {
               disabled={pending || !defaultTripId}
               onClick={() => {
                 const select = document.getElementById(`trip-${place.id}`) as HTMLSelectElement | null;
-                run(`/api/extracted-places/${place.id}/promote`, "POST", {
+                patch({
+                  status: "accepted",
                   tripId: select?.value || defaultTripId
                 });
               }}
               type="button"
             >
               <Check className="h-4 w-4" />
-              Add to trip
+              Approve to draft
             </button>
+            {mergeTargets.length ? (
+              <div className="grid gap-2 sm:min-w-56">
+                <select
+                  aria-label={`Merge ${place.name} into duplicate`}
+                  className="min-h-12 rounded-xl border border-slate-200 bg-white px-3 text-sm font-bold text-slate-700"
+                  onChange={(event) => setMergeTargetId(event.target.value)}
+                  value={mergeTargetId}
+                >
+                  {mergeTargets.map((target) => (
+                    <option key={target.id} value={target.id}>
+                      Merge into {target.name}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-slate-100 px-4 text-sm font-black text-slate-700 disabled:opacity-60"
+                  disabled={pending || !mergeTargetId}
+                  onClick={mergeIntoTarget}
+                  type="button"
+                >
+                  <GitMerge className="h-4 w-4" />
+                  Merge
+                </button>
+              </div>
+            ) : null}
             <button
               className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-slate-100 px-4 text-sm font-black text-slate-700 disabled:opacity-60"
               disabled={pending}

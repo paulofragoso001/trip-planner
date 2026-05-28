@@ -36,11 +36,26 @@ const maxStopsPerDay = 8;
 const maxDistanceMetersPerDay = 50_000;
 const maxTransitMinutesPerDay = 180;
 
+function logItineraryGeneration(
+  event: string,
+  details: Record<string, unknown>
+) {
+  console.info(
+    JSON.stringify({
+      area: "itinerary_generation",
+      event,
+      ...details
+    })
+  );
+}
+
 export async function generateSimpleTripItinerary(
   supabase: SupabaseLike,
   userId: string,
   tripId: string
 ) {
+  logItineraryGeneration("itinerary_generation_started", { tripId, userId });
+
   const { data: trip, error: tripError } = await supabase
     .from("trips")
     .select("id,start_date,end_date")
@@ -49,12 +64,24 @@ export async function generateSimpleTripItinerary(
     .maybeSingle();
 
   if (tripError) {
+    logItineraryGeneration("itinerary_generation_failed", {
+      error: tripError.message,
+      tripId,
+      userId
+    });
+
     throw new ApiError("internal_error", "Could not load trip.", 500, {
       supabaseMessage: tripError.message
     });
   }
 
   if (!trip) {
+    logItineraryGeneration("itinerary_generation_failed", {
+      error: "Trip not found.",
+      tripId,
+      userId
+    });
+
     throw new ApiError("not_found", "Trip not found.", 404);
   }
 
@@ -67,6 +94,12 @@ export async function generateSimpleTripItinerary(
     .order("position", { ascending: true, nullsFirst: false });
 
   if (error) {
+    logItineraryGeneration("itinerary_generation_failed", {
+      error: error.message,
+      tripId,
+      userId
+    });
+
     throw new ApiError("internal_error", "Could not load trip segments.", 500, {
       supabaseMessage: error.message
     });
@@ -108,6 +141,13 @@ export async function generateSimpleTripItinerary(
       start_time: updates[index]?.startTime || segment.start_time
     }))
   );
+
+  logItineraryGeneration("itinerary_generation_completed", {
+    assigned: updates.length,
+    routeDays: routeSummary.length,
+    tripId,
+    userId
+  });
 
   return {
     assigned: updates.length,

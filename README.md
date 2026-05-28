@@ -78,6 +78,11 @@ secrets are missing, or a known server secret value is exposed through a
 Before production deploys, run `npm run preflight:prod-env`. See
 `docs/ops/production-env-runbook.md` for the full checklist.
 
+The social-inspiration itinerary MVP plan lives at
+`docs/product/social-inspiration-itinerary-mvp.md`. It defines the mobile-first
+loop for importing links/screenshots/notes, extracting places with AI, reviewing
+candidates, promoting them into trip segments, and generating a day plan.
+
 ## Protected Write-Path Tests
 
 The Playwright imports write-path spec uses `x-cypress-dashboard` to exercise
@@ -155,8 +160,8 @@ Supabase’s current Next.js guidance recommends `@supabase/ssr`, a browser clie
 ## Flight Truth Worker
 
 `GET` or `POST /api/jobs/refresh-flight-statuses` refreshes near-term,
-unresolved flight itinerary items from Cirium and stores normalized truth back
-onto `itinerary_items`. It also records changed status, gate, terminal, and
+unresolved flight trip segments from Cirium and stores normalized truth back
+onto `trip_segments`. It also records changed status, gate, terminal, and
 schedule values in `flight_truth_events`.
 
 Call it from a scheduler with either header:

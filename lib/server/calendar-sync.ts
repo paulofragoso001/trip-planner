@@ -13,7 +13,6 @@ export type CalendarSyncClient = {
       | "calendar_connections"
       | "calendar_sync_jobs"
       | "calendar_sync_items"
-      | "itinerary_items"
       | "trip_segments"
   ) => any;
 };
@@ -23,7 +22,7 @@ type CalendarSourceSegment = {
   location: string | null;
   notes?: string | null;
   sourceId: string;
-  sourceType: "itinerary_item" | "trip_segment";
+  sourceType: "trip_segment";
   start: string;
   timeZone?: string | null;
   title: string;
@@ -32,8 +31,6 @@ type CalendarSourceSegment = {
   updatedAt?: string | null;
 };
 
-const itineraryCalendarSelect =
-  "id,title,location,date_time,notes,segment_type,scheduled_departure,estimated_departure,updated_at";
 const segmentCalendarSelect = "id,title,location,kind,start_time,end_time,inserted_at";
 
 export async function syncTripToCalendar(
@@ -143,74 +140,11 @@ async function listCalendarSourceSegments(
     return demoCalendarSegments(input.tripId);
   }
 
-  const [itineraryItems, tripSegments] = await Promise.all([
-    listItineraryCalendarItems(supabase, userId, input),
-    listTripCalendarSegments(supabase, userId, input)
-  ]);
+  const tripSegments = await listTripCalendarSegments(supabase, userId, input);
 
-  return [...itineraryItems, ...tripSegments].sort((a, b) =>
+  return tripSegments.sort((a, b) =>
     a.start.localeCompare(b.start)
   );
-}
-
-async function listItineraryCalendarItems(
-  supabase: CalendarSyncClient,
-  userId: string,
-  input: CalendarSyncInput
-): Promise<CalendarSourceSegment[]> {
-  let query = supabase
-    .from("itinerary_items")
-    .select(itineraryCalendarSelect)
-    .eq("trip_id", input.tripId)
-    .eq("user_id", userId)
-    .order("date_time", { ascending: true, nullsFirst: false });
-
-  if (input.segmentIds.length > 0) {
-    query = query.in("id", input.segmentIds);
-  }
-
-  const { data, error } = await query;
-
-  if (error) {
-    if (error.message.includes("public.itinerary_items")) {
-      return [];
-    }
-
-    throw new ApiError("internal_error", "Could not load itinerary calendar items.", 500, {
-      supabaseMessage: error.message
-    });
-  }
-
-  return (data || [])
-    .map((item: Record<string, unknown>) => {
-      const start =
-        readString(item.scheduled_departure) ||
-        readString(item.estimated_departure) ||
-        readString(item.date_time);
-
-      if (!start) {
-        return null;
-      }
-
-      const type = readString(item.segment_type) || "activity";
-      const end = addDefaultDuration(start, type);
-
-      return {
-        end,
-        location: readString(item.location),
-        notes: readString(item.notes),
-        sourceId: readString(item.id),
-        sourceType: "itinerary_item" as const,
-        start,
-        title: readString(item.title) || "Trip item",
-        tripId: input.tripId,
-        type,
-        updatedAt: readString(item.updated_at)
-      };
-    })
-    .filter((item: CalendarSourceSegment | null): item is CalendarSourceSegment =>
-      Boolean(item)
-    );
 }
 
 async function listTripCalendarSegments(

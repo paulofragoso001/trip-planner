@@ -6,9 +6,12 @@ import { createClient } from "@/lib/supabase/client";
 type Notification = {
   id: string;
   type: string | null;
-  content: string | null;
-  itinerary_item_id: string | null;
-  is_read: boolean | null;
+  title: string | null;
+  body: string | null;
+  trip_id: string | null;
+  trip_segment_id: string | null;
+  metadata: Record<string, unknown> | null;
+  read_at: string | null;
   created_at: string | null;
 };
 
@@ -23,7 +26,7 @@ export function NotificationBell({ userId }: NotificationBellProps) {
   const panelRef = useRef<HTMLDivElement | null>(null);
 
   const unread = useMemo(
-    () => notifications.filter((notification) => !notification.is_read).length,
+    () => notifications.filter((notification) => !notification.read_at).length,
     [notifications]
   );
 
@@ -78,7 +81,10 @@ export function NotificationBell({ userId }: NotificationBellProps) {
     if (!unread) return;
 
     setNotifications((current) =>
-      current.map((notification) => ({ ...notification, is_read: true }))
+      current.map((notification) => ({
+        ...notification,
+        read_at: notification.read_at || new Date().toISOString()
+      }))
     );
 
     await fetch("/api/notifications/read", {
@@ -123,9 +129,12 @@ export function NotificationBell({ userId }: NotificationBellProps) {
                   className="border-b border-line p-2 text-sm last:border-b-0"
                   key={notification.id}
                 >
-                  <div className="text-ink">
-                    {notification.content || "New trip notification"}
+                  <div className="font-semibold text-ink">
+                    {notification.title || "New trip notification"}
                   </div>
+                  {notification.body && (
+                    <div className="mt-1 text-slate-600">{notification.body}</div>
+                  )}
                   <div className="mt-1 text-xs text-slate-500">
                     {formatNotificationDate(notification.created_at)}
                   </div>

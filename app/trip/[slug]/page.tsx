@@ -89,10 +89,17 @@ export default async function TripPage({ params }: TripPageProps) {
   }
 
   const { data: items } = await supabase
-    .from("itinerary_items")
-    .select("id,title,location,lat,lng,position,date_time,notes,image_url,image_urls,segment_type,provider,confirmation_code,booking_url")
+    .from("trip_segments")
+    .select("id,title,location,lat,lng,position,start_time,notes,kind,provider,confirmation_code,booking_url")
     .eq("trip_id", trip.id)
     .order("position", { ascending: true, nullsFirst: false });
+  const tripItems = (items || []).map((item) => ({
+    ...item,
+    date_time: item.start_time,
+    image_url: null,
+    image_urls: [],
+    segment_type: item.kind
+  }));
 
   return (
     <main className="min-h-screen px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
@@ -101,7 +108,7 @@ export default async function TripPage({ params }: TripPageProps) {
           Back to dashboard
         </Link>
         <div className="mt-8 rounded-lg border border-line bg-white">
-          <TripView trip={trip} items={items || []} />
+          <TripView trip={trip} items={tripItems} />
         </div>
         {user?.id === trip.user_id ? (
           <div className="mt-8">
@@ -109,7 +116,7 @@ export default async function TripPage({ params }: TripPageProps) {
               tripId={trip.id}
               tripName={trip.name || trip.title}
               tripDestination={trip.destination}
-              initialItems={items || []}
+              initialItems={tripItems}
             />
           </div>
         ) : null}

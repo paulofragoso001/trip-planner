@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 import { ApiError } from "@/lib/api/errors";
 import type {
   CreateSocialImportInput,
+  MergeExtractedPlaceInput,
   UpdateExtractedPlaceInput
 } from "@/lib/validators/social-imports";
 
@@ -50,6 +51,19 @@ const importedPostSelect =
 const extractedPlaceSelect =
   "id,user_id,imported_post_id,trip_id,promoted_trip_segment_id,name,normalized_name,category,description,travel_note,address,city,region,country,place_id,latitude,longitude,confidence,priority,dedupe_key,duplicate_of,status,evidence,ai_payload,created_at,updated_at";
 const highConfidenceThreshold = 0.85;
+
+function logSocialImportEvent(
+  event: string,
+  details: Record<string, unknown>
+) {
+  console.info(
+    JSON.stringify({
+      area: "social_imports",
+      event,
+      ...details
+    })
+  );
+}
 
 export async function listSocialImportWorkspace(
   supabase: SupabaseLike,
@@ -120,7 +134,15 @@ export async function createSocialImport(
   file?: File | null
 ) {
   const upload = file ? await uploadSocialImportAsset(supabase, userId, file) : null;
-  const rawText = [input.sourceTitle, input.sourceCaption, input.rawText]
+  const sourceMetadata = await loadSocialUrlMetadata(input.sourceUrl);
+  const rawText = [
+    input.sourceTitle,
+    sourceMetadata.title,
+    sourceMetadata.description,
+    sourceMetadata.siteName,
+    input.sourceCaption,
+    input.rawText
+  ]
     .filter(Boolean)
     .join("\n\n")
     .trim();
@@ -131,12 +153,18 @@ export async function createSocialImport(
       raw_metadata: {
         fileName: file?.name || null,
         fileType: file?.type || null,
-        inputMode: file ? "screenshot" : input.sourceUrl ? "url" : "text"
+        inputMode: file ? "screenshot" : input.sourceUrl ? "url" : "text",
+        sourceMetadata: {
+          description: sourceMetadata.description,
+          error: sourceMetadata.error,
+          siteName: sourceMetadata.siteName,
+          title: sourceMetadata.title
+        }
       },
       raw_text: rawText || null,
       source_caption: input.sourceCaption,
       source_platform: file ? "screenshot" : input.sourcePlatform,
-      source_title: input.sourceTitle,
+      source_title: input.sourceTitle || sourceMetadata.title,
       source_url: input.sourceUrl,
       status: input.processNow ? "processing" : "pending",
       trip_id: input.tripId,
@@ -161,8 +189,24 @@ export async function createSocialImport(
   }
 
   if (!input.processNow) {
+    logSocialImportEvent("import_created", {
+      importedPostId: data.id,
+      processNow: false,
+      sourcePlatform: data.source_platform,
+      tripId: data.trip_id,
+      userId
+    });
+
     return { extractedPlaces: [], socialImport: data };
   }
+
+  logSocialImportEvent("import_created", {
+    importedPostId: data.id,
+    processNow: true,
+    sourcePlatform: data.source_platform,
+    tripId: data.trip_id,
+    userId
+  });
 
   const processed = await processSocialImport(supabase, userId, data.id, {
     imageDataUrl: upload?.dataUrl || null
@@ -181,6 +225,13 @@ export async function processSocialImport(
   options?: { imageDataUrl?: string | null }
 ) {
   const post = await getImportedPost(supabase, userId, importedPostId);
+
+  logSocialImportEvent("ai_extraction_started", {
+    importedPostId,
+    sourcePlatform: post.source_platform,
+    tripId: post.trip_id,
+    userId
+  });
 
   await supabase
     .from("imported_social_posts")
@@ -278,6 +329,14 @@ export async function processSocialImport(
       throw new Error(updateError.message);
     }
 
+    logSocialImportEvent("ai_extraction_completed", {
+      extractedPlaces: inserted.length,
+      importedPostId,
+      socialImportStatus: updatedPost.status,
+      tripId: updatedPost.trip_id,
+      userId
+    });
+
     return {
       extractedPlaces: inserted,
       socialImport: updatedPost
@@ -291,6 +350,12 @@ export async function processSocialImport(
       })
       .eq("id", importedPostId)
       .eq("user_id", userId);
+
+    logSocialImportEvent("ai_extraction_failed", {
+      error: error instanceof Error ? error.message : "Processing failed.",
+      importedPostId,
+      userId
+    });
 
     throw new ApiError("internal_error", "Could not process social import.", 500, {
       message: error instanceof Error ? error.message : String(error)
@@ -313,6 +378,7 @@ export async function updateExtractedPlace(
   if ("priority" in input) updates.priority = input.priority;
   if ("status" in input) updates.status = input.status;
   if ("travelNote" in input) updates.travel_note = input.travelNote;
+  if ("tripId" in input) updates.trip_id = input.tripId;
 
   const { data, error } = await supabase
     .from("extracted_places")
@@ -328,7 +394,117 @@ export async function updateExtractedPlace(
     });
   }
 
+  if ("status" in input) {
+    logSocialImportEvent("place_reviewed", {
+      action: input.status,
+      extractedPlaceId: id,
+      tripId: "tripId" in input ? input.tripId : data.trip_id,
+      userId
+    });
+  }
+
   return data;
+}
+
+export async function mergeExtractedPlace(
+  supabase: SupabaseLike,
+  userId: string,
+  sourceId: string,
+  input: MergeExtractedPlaceInput
+) {
+  if (sourceId === input.targetPlaceId) {
+    throw new ApiError("validation_error", "Choose a different place to merge into.", 400);
+  }
+
+  const [source, target] = await Promise.all([
+    getExtractedPlace(supabase, userId, sourceId),
+    getExtractedPlace(supabase, userId, input.targetPlaceId)
+  ]);
+
+  if (source.status === "promoted") {
+    throw new ApiError("validation_error", "Promoted places cannot be merged.", 400);
+  }
+
+  if (target.status === "dismissed" || target.status === "merged") {
+    throw new ApiError("validation_error", "Choose an active target place.", 400);
+  }
+
+  const mergedEvidence = uniqueStrings([
+    ...readStringArray(target.evidence),
+    ...readStringArray(source.evidence)
+  ]).slice(0, 8);
+  const mergedTravelNote = mergeNotes(target.travel_note || target.description, source.travel_note || source.description);
+  const targetPayload = isRecord(target.ai_payload) ? target.ai_payload : {};
+  const sourcePayload = isRecord(source.ai_payload) ? source.ai_payload : {};
+  const mergedFrom = Array.isArray(targetPayload.mergedFrom)
+    ? targetPayload.mergedFrom.filter((item: unknown) => isRecord(item))
+    : [];
+
+  const { data: updatedTarget, error: targetError } = await supabase
+    .from("extracted_places")
+    .update({
+      ai_payload: {
+        ...targetPayload,
+        mergedFrom: [
+          ...mergedFrom,
+          {
+            category: source.category,
+            evidence: readStringArray(source.evidence),
+            id: source.id,
+            mergedAt: new Date().toISOString(),
+            name: source.name,
+            sourcePayload
+          }
+        ]
+      },
+      confidence: Math.max(Number(target.confidence || 0), Number(source.confidence || 0)),
+      evidence: mergedEvidence,
+      travel_note: mergedTravelNote
+    })
+    .eq("id", target.id)
+    .eq("user_id", userId)
+    .select(extractedPlaceSelect)
+    .single();
+
+  if (targetError) {
+    throw new ApiError("internal_error", "Could not update merge target.", 500, {
+      supabaseMessage: targetError.message
+    });
+  }
+
+  const { data: updatedSource, error: sourceError } = await supabase
+    .from("extracted_places")
+    .update({
+      ai_payload: {
+        ...sourcePayload,
+        mergedAt: new Date().toISOString(),
+        mergedInto: target.id
+      },
+      duplicate_of: target.id,
+      status: "merged"
+    })
+    .eq("id", source.id)
+    .eq("user_id", userId)
+    .select(extractedPlaceSelect)
+    .single();
+
+  if (sourceError) {
+    throw new ApiError("internal_error", "Could not merge extracted place.", 500, {
+      supabaseMessage: sourceError.message
+    });
+  }
+
+  logSocialImportEvent("place_merged", {
+    sourcePlaceId: source.id,
+    targetPlaceId: target.id,
+    tripId: target.trip_id || source.trip_id,
+    userId
+  });
+
+  return {
+    source: updatedSource,
+    target: updatedTarget
+  };
 }
 
 export async function promoteExtractedPlace(
@@ -374,6 +550,13 @@ export async function promoteExtractedPlace(
     .single();
 
   if (segmentError) {
+    logSocialImportEvent("trip_draft_promotion_failed", {
+      error: segmentError.message,
+      extractedPlaceId: id,
+      tripId,
+      userId
+    });
+
     throw new ApiError("internal_error", "Could not promote extracted place.", 500, {
       supabaseMessage: segmentError.message
     });
@@ -393,6 +576,13 @@ export async function promoteExtractedPlace(
     .eq("user_id", userId)
     .select(extractedPlaceSelect)
     .single();
+
+  logSocialImportEvent("trip_draft_promoted", {
+    extractedPlaceId: id,
+    segmentId: segment.id,
+    tripId,
+    userId
+  });
 
   return {
     place: finalPlace || updatedPlace,
@@ -593,6 +783,109 @@ async function loadStoredImageDataUrl(supabase: SupabaseLike, post: ImportedPost
   return `data:${data.type || "image/png"};base64,${bytes.toString("base64")}`;
 }
 
+async function loadSocialUrlMetadata(sourceUrl: string | null) {
+  if (!sourceUrl) {
+    return { description: null, error: null, siteName: null, title: null };
+  }
+
+  try {
+    const url = new URL(sourceUrl);
+    if (url.protocol !== "http:" && url.protocol !== "https:") {
+      return {
+        description: null,
+        error: "Unsupported URL protocol.",
+        siteName: null,
+        title: null
+      };
+    }
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 3500);
+    const response = await fetch(url, {
+      headers: {
+        Accept: "text/html,application/xhtml+xml",
+        "User-Agent":
+          "WaylineBot/1.0 (+https://wayline.app; travel planning metadata fetcher)"
+      },
+      signal: controller.signal
+    }).finally(() => clearTimeout(timeout));
+
+    if (!response.ok) {
+      return {
+        description: null,
+        error: `Metadata fetch failed: ${response.status}`,
+        siteName: null,
+        title: null
+      };
+    }
+
+    const contentType = response.headers.get("content-type") || "";
+    if (!contentType.includes("text/html")) {
+      return {
+        description: null,
+        error: "Metadata fetch did not return HTML.",
+        siteName: null,
+        title: null
+      };
+    }
+
+    const html = (await response.text()).slice(0, 250_000);
+
+    return {
+      description:
+        readMetaContent(html, "og:description") ||
+        readMetaContent(html, "description") ||
+        readMetaContent(html, "twitter:description"),
+      error: null,
+      siteName: readMetaContent(html, "og:site_name") || url.hostname,
+      title:
+        readMetaContent(html, "og:title") ||
+        readMetaContent(html, "twitter:title") ||
+        readTitle(html)
+    };
+  } catch (error) {
+    return {
+      description: null,
+      error: error instanceof Error ? error.message : "Metadata fetch failed.",
+      siteName: null,
+      title: null
+    };
+  }
+}
+
+function readMetaContent(html: string, key: string) {
+  const escapedKey = escapeRegExp(key);
+  const propertyPattern = new RegExp(
+    `<meta[^>]+(?:property|name)=["']${escapedKey}["'][^>]+content=["']([^"']+)["'][^>]*>`,
+    "i"
+  );
+  const contentFirstPattern = new RegExp(
+    `<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["']${escapedKey}["'][^>]*>`,
+    "i"
+  );
+  const match = html.match(propertyPattern) || html.match(contentFirstPattern);
+  return match?.[1] ? decodeHtml(match[1]).slice(0, 1000) : null;
+}
+
+function readTitle(html: string) {
+  const match = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+  return match?.[1] ? decodeHtml(match[1]).slice(0, 500) : null;
+}
+
+function decodeHtml(value: string) {
+  return value
+    .replaceAll("&amp;", "&")
+    .replaceAll("&quot;", '"')
+    .replaceAll("&#39;", "'")
+    .replaceAll("&lt;", "<")
+    .replaceAll("&gt;", ">")
+    .trim();
+}
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 async function extractScreenshotText(imageDataUrl: string | null) {
   const model = process.env.OPENAI_OCR_MODEL || process.env.OPENAI_TRAVEL_IMPORT_MODEL || "gpt-4.1-mini";
 
@@ -676,7 +969,7 @@ async function extractWithOpenAi(input: {
   const content: Array<Record<string, unknown>> = [
     {
       text:
-        "Extract travel places from this saved social travel inspiration. Return only JSON with {\"places\":[{\"name\":\"\",\"category\":\"food|sightseeing|nightlife|shopping|hotel|nature|culture|transportation|hidden_gem|activity|tip\",\"summary\":\"\",\"address\":null,\"city\":null,\"country\":null,\"confidence\":0.0,\"evidence\":[]}]}.\n\n" +
+        "Extract travel places from this saved social travel inspiration. Use only the provided URL metadata, caption text, OCR text, and image content. Do not claim to browse private social content. Return only JSON with {\"places\":[{\"name\":\"\",\"category\":\"food|sightseeing|nightlife|shopping|hotel|nature|culture|transportation|hidden_gem|activity|tip\",\"summary\":\"\",\"address\":null,\"city\":null,\"country\":null,\"confidence\":0.0,\"evidence\":[]}]}.\n\n" +
         `Source platform: ${input.sourcePlatform}\nSource URL: ${input.sourceUrl || "none"}\nText:\n${input.sourceText || "No text provided."}`,
       type: "input_text"
     }
@@ -1034,6 +1327,21 @@ function readString(value: unknown) {
 
 function readNumber(value: unknown) {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function readStringArray(value: unknown) {
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string" && Boolean(item.trim()))
+    : [];
+}
+
+function uniqueStrings(values: string[]) {
+  return [...new Set(values.map((value) => value.trim()).filter(Boolean))];
+}
+
+function mergeNotes(primary: string | null | undefined, secondary: string | null | undefined) {
+  const notes = uniqueStrings([primary || "", secondary || ""]);
+  return notes.join("\n\n").slice(0, 2000) || null;
 }
 
 async function claimPendingImport(supabase: SupabaseLike, postId: string, userId: string) {

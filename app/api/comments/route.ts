@@ -18,9 +18,9 @@ export async function GET(request: Request) {
 
   const supabase = await createClient();
   const { data, error } = await supabase
-    .from("itinerary_comments")
+    .from("trip_segment_comments")
     .select("*, profiles (avatar_url, username)")
-    .eq("itinerary_item_id", itemId)
+    .eq("trip_segment_id", itemId)
     .order("created_at", { ascending: true });
 
   if (error) {
@@ -31,11 +31,12 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const { itinerary_item_id, author, content } = await request.json();
+  const { trip_segment_id, author, content } = await request.json();
+  const segmentId = trip_segment_id;
 
-  if (!itinerary_item_id || !content?.trim()) {
+  if (!segmentId || !content?.trim()) {
     return NextResponse.json(
-      { error: "itinerary_item_id and content are required." },
+      { error: "trip_segment_id and content are required." },
       { status: 400 }
     );
   }
@@ -54,9 +55,9 @@ export async function POST(request: Request) {
   const authorAvatarUrl =
     readString(metadata.avatar_url) || readString(metadata.picture) || null;
   const { data, error } = await supabase
-    .from("itinerary_comments")
+    .from("trip_segment_comments")
     .insert({
-      itinerary_item_id,
+      trip_segment_id: segmentId,
       user_id: user?.id || null,
       author_id: user?.id || null,
       author: authorName,
@@ -72,9 +73,9 @@ export async function POST(request: Request) {
 
   if (user) {
     const { data: item } = await supabase
-      .from("itinerary_items")
+      .from("trip_segments")
       .select("title,trip_id")
-      .eq("id", itinerary_item_id)
+      .eq("id", segmentId)
       .single();
 
     if (item?.trip_id) {
@@ -93,8 +94,11 @@ export async function POST(request: Request) {
         await supabase.from("notifications").insert({
           user_id: trip.user_id,
           type: "comment",
-          content: `${commenter} commented on ${itemTitle} 🍝`,
-          itinerary_item_id
+          title: `${commenter} commented on ${itemTitle}`,
+          body: "Open the trip to review the new comment.",
+          trip_id: item.trip_id,
+          trip_segment_id: segmentId,
+          metadata: { trip_segment_id: segmentId }
         });
       }
 

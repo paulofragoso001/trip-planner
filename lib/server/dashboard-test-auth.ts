@@ -12,6 +12,7 @@ export type DashboardApiAuth<TClient = SupabaseClient> = {
 };
 
 const dashboardTestUserEmail = "cypress@wayline.test";
+const dashboardAuthTimeoutMs = 3000;
 
 export async function authorizeDashboardApi<TClient = SupabaseClient>(): Promise<
   DashboardApiAuth<TClient> | null
@@ -53,11 +54,33 @@ export async function authorizeDashboardApi<TClient = SupabaseClient>(): Promise
   const {
     data: { user },
     error
-  } = await supabase.auth.getUser();
+  } = await withTimeout(
+    supabase.auth.getUser(),
+    dashboardAuthTimeoutMs,
+    "Supabase dashboard auth lookup timed out."
+  ).catch((error) => {
+    if (process.env.NODE_ENV !== "production") {
+      console.warn(error instanceof Error ? error.message : error);
+    }
+
+    return {
+      data: { user: null },
+      error
+    };
+  });
 
   if (!error && user) {
     return { supabase: supabase as TClient, userId: user.id };
   }
 
   return null;
+}
+
+function withTimeout<T>(promise: PromiseLike<T>, timeoutMs: number, message: string) {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error(message)), timeoutMs);
+    })
+  ]);
 }

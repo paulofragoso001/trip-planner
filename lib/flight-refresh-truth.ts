@@ -5,14 +5,14 @@ import type {
   FlightRefreshResult
 } from "@/types/flight-refresh";
 
-type FlightItineraryItem = {
+type FlightTripSegment = {
   id: string;
   trip_id: string;
   user_id: string;
   title: string | null;
   flight_number: string | null;
   airline: string | null;
-  date_time: string | null;
+  start_time: string | null;
   scheduled_departure: string | null;
   estimated_departure: string | null;
   departure_airport: string | null;
@@ -33,7 +33,7 @@ type FlightItineraryItem = {
 };
 
 const itinerarySelect =
-  "id,trip_id,user_id,title,flight_number,airline,date_time,scheduled_departure,estimated_departure,departure_airport,arrival_airport,gate,terminal,flight_status,flight_lat,flight_lng,flight_altitude,flight_bearing,flight_speed,flight_position_updated_at,departure_airport_lat,departure_airport_lng,arrival_airport_lat,arrival_airport_lng";
+  "id,trip_id,user_id,title,flight_number,airline,start_time,scheduled_departure,estimated_departure,departure_airport,arrival_airport,gate,terminal,flight_status,flight_lat,flight_lng,flight_altitude,flight_bearing,flight_speed,flight_position_updated_at,departure_airport_lat,departure_airport_lng,arrival_airport_lat,arrival_airport_lng";
 
 export async function refreshSingleFlightTruth(
   data: FlightRefreshJobData
@@ -45,7 +45,7 @@ export async function refreshSingleFlightTruth(
   }
 
   const { data: item, error: itemError } = await supabase
-    .from("itinerary_items")
+    .from("trip_segments")
     .select(itinerarySelect)
     .eq("id", data.itemId)
     .eq("trip_id", data.tripId)
@@ -57,7 +57,7 @@ export async function refreshSingleFlightTruth(
   }
 
   if (!item) {
-    throw new Error("Flight itinerary item not found.");
+    throw new Error("Flight trip segment not found.");
   }
 
   const truth = await fetchCiriumFlightStatus({
@@ -72,7 +72,7 @@ export async function refreshSingleFlightTruth(
   if (!flight) {
     const checkedAt = new Date().toISOString();
     await supabase
-      .from("itinerary_items")
+      .from("trip_segments")
       .update({ last_status_checked_at: checkedAt })
       .eq("id", data.itemId)
       .eq("trip_id", data.tripId)
@@ -86,11 +86,11 @@ export async function refreshSingleFlightTruth(
     };
   }
 
-  const currentItem = item as FlightItineraryItem;
+  const currentItem = item as FlightTripSegment;
   const updates = buildFlightUpdates(flight, currentItem);
   const events = buildFlightEvents(currentItem, flight);
   const { error: updateError } = await supabase
-    .from("itinerary_items")
+    .from("trip_segments")
     .update(updates)
     .eq("id", data.itemId)
     .eq("trip_id", data.tripId)
@@ -118,10 +118,10 @@ export async function refreshSingleFlightTruth(
   };
 }
 
-function buildFlightUpdates(flight: NormalizedFlightStatus, item: FlightItineraryItem) {
+function buildFlightUpdates(flight: NormalizedFlightStatus, item: FlightTripSegment) {
   const scheduledDeparture = normalizeDate(flight.scheduledDeparture || item.scheduled_departure);
   const estimatedDeparture = normalizeDate(flight.estimatedDeparture || item.estimated_departure);
-  const dateTime = estimatedDeparture || scheduledDeparture || item.date_time || null;
+  const startTime = estimatedDeparture || scheduledDeparture || item.start_time || null;
   const currentPosition = flight.currentPosition;
   const departurePosition = flight.departurePosition;
   const arrivalPosition = flight.arrivalPosition;
@@ -133,7 +133,7 @@ function buildFlightUpdates(flight: NormalizedFlightStatus, item: FlightItinerar
     arrival_airport: flight.arrivalAirport || item.arrival_airport,
     scheduled_departure: scheduledDeparture,
     estimated_departure: estimatedDeparture,
-    date_time: dateTime,
+    start_time: startTime,
     gate: flight.departureGate || item.gate,
     terminal: flight.departureTerminal || item.terminal,
     flight_status: normalizeStatus(flight.status),
@@ -154,12 +154,12 @@ function buildFlightUpdates(flight: NormalizedFlightStatus, item: FlightItinerar
   };
 }
 
-function buildFlightEvents(item: FlightItineraryItem, flight: NormalizedFlightStatus) {
+function buildFlightEvents(item: FlightTripSegment, flight: NormalizedFlightStatus) {
   const title = item.title || flight.flightNumber || "Flight";
   const flightLabel = flight.flightNumber || item.flight_number || title;
   const base = {
     trip_id: item.trip_id,
-    itinerary_item_id: item.id,
+    trip_segment_id: item.id,
     user_id: item.user_id,
     provider: "cirium",
     source_payload: {

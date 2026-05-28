@@ -7,11 +7,11 @@ type FlightItineraryItem = {
   trip_id: string;
   user_id: string;
   title: string | null;
-  segment_type: string | null;
+  kind: string | null;
   flight_number: string | null;
   airline: string | null;
   confirmation_code: string | null;
-  date_time: string | null;
+  start_time: string | null;
   scheduled_departure: string | null;
   estimated_departure: string | null;
   departure_airport: string | null;
@@ -34,7 +34,7 @@ type FlightItineraryItem = {
 
 type FlightTruthEvent = {
   trip_id: string;
-  itinerary_item_id: string;
+  trip_segment_id: string;
   user_id: string;
   event_type: string;
   message: string;
@@ -45,7 +45,7 @@ type FlightTruthEvent = {
 };
 
 const itinerarySelect =
-  "id,trip_id,user_id,title,segment_type,flight_number,airline,confirmation_code,date_time,scheduled_departure,estimated_departure,departure_airport,arrival_airport,gate,terminal,flight_status,last_status_checked_at,flight_lat,flight_lng,flight_altitude,flight_bearing,flight_speed,flight_position_updated_at,departure_airport_lat,departure_airport_lng,arrival_airport_lat,arrival_airport_lng";
+  "id,trip_id,user_id,title,kind,flight_number,airline,confirmation_code,start_time,scheduled_departure,estimated_departure,departure_airport,arrival_airport,gate,terminal,flight_status,last_status_checked_at,flight_lat,flight_lng,flight_altitude,flight_bearing,flight_speed,flight_position_updated_at,departure_airport_lat,departure_airport_lng,arrival_airport_lat,arrival_airport_lng";
 const workerWindowPastHours = 6;
 const workerWindowFutureHours = 48;
 const staleCheckMinutes = 15;
@@ -86,10 +86,10 @@ async function refreshFlightStatuses(request: Request) {
   const batchSize = parseBatchSize(url.searchParams.get("limit"));
   const now = new Date();
   const { data, error } = await supabase
-    .from("itinerary_items")
+    .from("trip_segments")
     .select(itinerarySelect)
-    .or("segment_type.eq.air,flight_number.not.is.null,confirmation_code.not.is.null")
-    .order("date_time", { ascending: true, nullsFirst: false })
+    .or("kind.eq.flight,kind.eq.air,flight_number.not.is.null,confirmation_code.not.is.null")
+    .order("start_time", { ascending: true, nullsFirst: false })
     .limit(batchSize * 3);
 
   if (error) {
@@ -161,7 +161,7 @@ async function refreshFlightItem(
 
     if (!flight) {
       await supabase
-        .from("itinerary_items")
+        .from("trip_segments")
         .update({ last_status_checked_at: now.toISOString() })
         .eq("id", item.id);
 
@@ -171,7 +171,7 @@ async function refreshFlightItem(
     const updates = buildFlightUpdates(flight, item, now);
     const events = buildFlightEvents(item, flight);
     const { error: updateError } = await supabase
-      .from("itinerary_items")
+      .from("trip_segments")
       .update(updates)
       .eq("id", item.id)
       .eq("trip_id", item.trip_id)
@@ -203,7 +203,7 @@ async function refreshFlightItem(
 function shouldRefreshFlight(item: FlightItineraryItem, now: Date) {
   const status = normalizeStatus(item.flight_status);
   const flightDate = parseDate(
-    item.scheduled_departure || item.estimated_departure || item.date_time
+    item.scheduled_departure || item.estimated_departure || item.start_time
   );
   const lastCheckedAt = parseDate(item.last_status_checked_at);
   const unresolved = status !== "arrived" && status !== "cancelled";
@@ -228,7 +228,7 @@ function resolveFlightLookup(item: FlightItineraryItem) {
   const carrier = parseCarrier(flightText) || parseCarrier(item.airline);
   const flightNumber = parseFlightNumber(flightText);
   const departureDate = parseDate(
-    item.scheduled_departure || item.estimated_departure || item.date_time
+    item.scheduled_departure || item.estimated_departure || item.start_time
   );
 
   if (!carrier || !flightNumber || !departureDate) {
@@ -251,7 +251,7 @@ function buildFlightUpdates(
 ) {
   const scheduledDeparture = normalizeDate(flight.scheduledDeparture || item.scheduled_departure);
   const estimatedDeparture = normalizeDate(flight.estimatedDeparture || item.estimated_departure);
-  const dateTime = estimatedDeparture || scheduledDeparture || item.date_time || null;
+  const startTime = estimatedDeparture || scheduledDeparture || item.start_time || null;
   const currentPosition = flight.currentPosition;
   const departurePosition = flight.departurePosition;
   const arrivalPosition = flight.arrivalPosition;
@@ -263,7 +263,7 @@ function buildFlightUpdates(
     arrival_airport: flight.arrivalAirport || item.arrival_airport,
     scheduled_departure: scheduledDeparture,
     estimated_departure: estimatedDeparture,
-    date_time: dateTime,
+    start_time: startTime,
     gate: flight.departureGate || item.gate,
     terminal: flight.departureTerminal || item.terminal,
     flight_status: normalizeStatus(flight.status),
@@ -292,7 +292,7 @@ function buildFlightEvents(
   const flightLabel = flight.flightNumber || item.flight_number || title;
   const eventBase = {
     trip_id: item.trip_id,
-    itinerary_item_id: item.id,
+    trip_segment_id: item.id,
     user_id: item.user_id,
     provider: "cirium" as const,
     source_payload: {

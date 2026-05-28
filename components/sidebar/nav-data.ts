@@ -3,6 +3,7 @@ import {
   Bell,
   CircleDollarSign,
   CalendarDays,
+  Compass,
   History,
   Inbox,
   LayoutDashboard,
@@ -22,6 +23,7 @@ export type NavItem = {
   icon: NavIcon;
   label: string;
   badge?: string;
+  getHref?: (pathname: string, tripId?: string | null) => string;
   match?: (pathname: string, view: string | null) => boolean;
 };
 
@@ -30,28 +32,62 @@ export type NavSection = {
   items: NavItem[];
 };
 
+function currentTripHref(pathname: string, suffix = "", fallbackTripId?: string | null) {
+  const match = pathname.match(/^\/dashboard\/trips\/([^/]+)/);
+  const tripId = match?.[1] || fallbackTripId;
+
+  if (!tripId) {
+    return "/dashboard/trips";
+  }
+
+  return `/dashboard/trips/${tripId}${suffix}`;
+}
+
 export const navSections: NavSection[] = [
   {
-    title: "Operations",
+    title: "Wayline",
     items: [
       {
         href: "/dashboard",
         icon: LayoutDashboard,
-        label: "Overview",
+        label: "Home",
         match: (pathname, view) => pathname === "/dashboard" && !view
+      },
+      {
+        href: "/dashboard/imports",
+        icon: Compass,
+        label: "Plan with AI",
+        match: (pathname, view) =>
+          pathname.startsWith("/dashboard/imports") ||
+          (pathname === "/dashboard" && view === "imports")
       },
       {
         href: "/dashboard/trips",
         icon: Plane,
-        label: "Trips",
+        label: "My Trips",
         match: (pathname, view) =>
-          pathname.startsWith("/dashboard/trips") ||
+          pathname === "/dashboard/trips" ||
           (pathname === "/dashboard" && view === "trips")
+      }
+    ]
+  },
+  {
+    title: "Trip Plan",
+    items: [
+      {
+        href: "/dashboard/trips",
+        icon: Map,
+        label: "Map",
+        getHref: (pathname, tripId) => currentTripHref(pathname, "/map", tripId),
+        match: (pathname, view) =>
+          pathname.includes("/map") ||
+          (pathname === "/dashboard" && view === "map")
       },
       {
         href: "/dashboard/trips",
         icon: CalendarDays,
         label: "Itinerary",
+        getHref: (pathname, tripId) => currentTripHref(pathname, "/timeline", tripId),
         match: (pathname, view) =>
           pathname.includes("/timeline") ||
           (pathname === "/dashboard" && view === "itinerary")
@@ -60,31 +96,25 @@ export const navSections: NavSection[] = [
         href: "/dashboard/trips",
         icon: CircleDollarSign,
         label: "Budget",
+        getHref: (pathname, tripId) => currentTripHref(pathname, "/budget", tripId),
         match: (pathname, view) =>
           pathname.includes("/budget") ||
           (pathname === "/dashboard" && view === "budget")
       },
       {
-        href: "/dashboard/imports",
-        icon: Inbox,
-        label: "Imports",
+        href: "/dashboard/trips",
+        icon: Users,
+        label: "Sharing",
+        getHref: (pathname, tripId) => currentTripHref(pathname, "/sharing", tripId),
         match: (pathname, view) =>
-          pathname.startsWith("/dashboard/imports") ||
-          (pathname === "/dashboard" && view === "imports")
+          pathname.includes("/sharing") ||
+          (pathname === "/dashboard" && view === "sharing")
       },
       {
         href: "/dashboard?view=flight-status",
         icon: Radar,
         label: "Flight Status",
         match: (pathname, view) => pathname === "/dashboard" && view === "flight-status"
-      },
-      {
-        href: "/dashboard/trips",
-        icon: Map,
-        label: "Map",
-        match: (pathname, view) =>
-          pathname.includes("/map") ||
-          (pathname === "/dashboard" && view === "map")
       }
     ]
   },
@@ -101,6 +131,7 @@ export const navSections: NavSection[] = [
         href: "/dashboard/trips",
         icon: History,
         label: "Activity",
+        getHref: (pathname, tripId) => currentTripHref(pathname, "", tripId),
         match: (pathname, view) =>
           (pathname.startsWith("/dashboard/trips/") &&
             !pathname.includes("/timeline") &&
@@ -110,12 +141,12 @@ export const navSections: NavSection[] = [
           (pathname === "/dashboard" && view === "activity")
       },
       {
-        href: "/dashboard/trips",
-        icon: Users,
-        label: "Sharing",
+        href: "/dashboard/imports",
+        icon: Inbox,
+        label: "Saved Inspiration",
         match: (pathname, view) =>
-          pathname.includes("/sharing") ||
-          (pathname === "/dashboard" && view === "sharing")
+          pathname.startsWith("/dashboard/imports") ||
+          (pathname === "/dashboard" && view === "imports")
       },
       {
         href: "/dashboard/api-transition",
@@ -159,5 +190,5 @@ export function resolveNavTitle(pathname: string, view: string | null) {
     .flatMap((section) => section.items)
     .find((item) => item.match?.(pathname, view));
 
-  return match?.label ?? "Overview";
+  return match?.label ?? "Home";
 }

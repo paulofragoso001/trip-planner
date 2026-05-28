@@ -32,6 +32,7 @@ jobs:
       MICROSOFT_CALENDAR_REDIRECT_URI: ${{ vars.MICROSOFT_CALENDAR_REDIRECT_URI }}
       RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
       RESEND_FROM_EMAIL: ${{ vars.RESEND_FROM_EMAIL }}
+      RESEND_TEST_TO: ${{ vars.RESEND_TEST_TO }}
       ALLOW_LOCAL_DASHBOARD_BYPASS: ${{ vars.ALLOW_LOCAL_DASHBOARD_BYPASS }}
       ALLOW_TEST_DASHBOARD_BYPASS: ${{ vars.ALLOW_TEST_DASHBOARD_BYPASS }}
 
@@ -53,3 +54,6 @@ jobs:
 
       - name: Run compliance audit
         run: npm run audit:compliance
+
+      - name: Verify Resend configuration
+        run: npm run verify:resend

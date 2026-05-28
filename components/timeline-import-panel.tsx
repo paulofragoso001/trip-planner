@@ -30,7 +30,7 @@ type UnfiledItem = {
   date_time: string | null;
   segment_type: string | null;
   notes: string | null;
-  promoted_itinerary_item_id: string | null;
+  promoted_trip_segment_id: string | null;
   created_at: string;
 };
 
@@ -363,7 +363,7 @@ export function TimelineImportPanel({ trip }: TimelineImportPanelProps) {
       const updateResponse = await fetch(`/api/unfiled-items/${item.id}`, {
         body: JSON.stringify({
           parseStatus: "promoted",
-          promotedItineraryItemId:
+          promotedTripSegmentId:
             typeof promotedItem.id === "string" ? promotedItem.id : undefined,
           tripId: trip.id
         }),

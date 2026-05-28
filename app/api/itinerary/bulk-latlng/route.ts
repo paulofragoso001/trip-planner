@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
   const results = await Promise.all(
     updates.map((update) =>
       supabase
-        .from("itinerary_items")
+        .from("trip_segments")
         .update({ lat: update.lat, lng: update.lng })
         .eq("id", update.id)
         .eq("user_id", user.id)

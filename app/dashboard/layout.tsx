@@ -16,6 +16,8 @@ type DashboardLayoutProps = {
   children: React.ReactNode;
 };
 
+const dashboardAuthTimeoutMs = 3000;
+
 export default async function DashboardLayout({ children }: DashboardLayoutProps) {
   const requestHeaders = await headers();
   const isCypressDashboard =
@@ -38,7 +40,11 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
   const supabase = await createClient();
   const {
     data: { user }
-  } = await supabase.auth.getUser();
+  } = await withTimeout(
+    supabase.auth.getUser(),
+    dashboardAuthTimeoutMs,
+    "Supabase dashboard auth lookup timed out."
+  ).catch(() => ({ data: { user: null } }));
 
   if (!user) {
     redirect("/login");
@@ -80,6 +86,15 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
       {children}
     </AppShell>
   );
+}
+
+function withTimeout<T>(promise: PromiseLike<T>, timeoutMs: number, message: string) {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error(message)), timeoutMs);
+    })
+  ]);
 }
 
 function TestUserMenu() {

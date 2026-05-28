@@ -13,7 +13,7 @@ export type UnfiledItemsClient = {
 };
 
 const unfiledSelect =
-  "id,user_id,trip_id,source_type,source_label,raw_text,parsed_payload,parse_status,parse_confidence,title,location,date_time,segment_type,notes,promoted_itinerary_item_id,promoted_trip_segment_id,created_at,updated_at";
+  "id,user_id,trip_id,source_type,source_label,raw_text,parsed_payload,parse_status,parse_confidence,title,location,date_time,segment_type,notes,promoted_trip_segment_id,created_at,updated_at";
 const missingUnfiledItemsTableMessage =
   "Could not find the table 'public.unfiled_items'";
 const missingImportParseEventsTableMessage =
@@ -126,9 +126,6 @@ export async function updateUnfiledItem(
   if ("dateTime" in input) updates.date_time = input.dateTime || null;
   if ("segmentType" in input) updates.segment_type = input.segmentType || "activity";
   if ("notes" in input) updates.notes = input.notes || null;
-  if ("promotedItineraryItemId" in input) {
-    updates.promoted_itinerary_item_id = input.promotedItineraryItemId || null;
-  }
   if ("promotedTripSegmentId" in input) {
     updates.promoted_trip_segment_id = input.promotedTripSegmentId || null;
   }

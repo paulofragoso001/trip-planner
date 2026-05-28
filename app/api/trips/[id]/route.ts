@@ -46,13 +46,27 @@ export async function PATCH(request: Request, context: RouteContext) {
     );
   }
 
-  const { data, error } = await auth.supabase
+  let { data, error } = await auth.supabase
     .from("trips")
     .update(toTripWritePayload(trip))
     .eq("id", id)
     .eq("user_id", auth.userId)
     .select("*")
     .single();
+
+  if (error && isMissingTravelStyleColumn(error.message)) {
+    const { travel_style: _travelStyle, ...legacyPayload } = toTripWritePayload(trip);
+    const retry = await auth.supabase
+      .from("trips")
+      .update(legacyPayload)
+      .eq("id", id)
+      .eq("user_id", auth.userId)
+      .select("*")
+      .single();
+
+    data = retry.data;
+    error = retry.error;
+  }
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -80,4 +94,8 @@ export async function DELETE(_request: Request, context: RouteContext) {
   }
 
   return NextResponse.json({ ok: true });
+}
+
+function isMissingTravelStyleColumn(message: string) {
+  return /travel_style/i.test(message) && /column|schema cache|could not find/i.test(message);
 }

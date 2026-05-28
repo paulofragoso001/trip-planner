@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 
 type Comment = {
   id: string;
-  itinerary_item_id?: string;
+  trip_segment_id?: string;
   author: string | null;
   author_avatar_url: string | null;
   content: string;
@@ -44,8 +44,8 @@ export default function Comments({ itemId }: CommentsProps) {
         {
           event: "INSERT",
           schema: "public",
-          table: "itinerary_comments",
-          filter: `itinerary_item_id=eq.${itemId}`
+          table: "trip_segment_comments",
+          filter: `trip_segment_id=eq.${itemId}`
         },
         (payload) => {
           const newComment = payload.new as Comment;
@@ -79,7 +79,7 @@ export default function Comments({ itemId }: CommentsProps) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        itinerary_item_id: itemId,
+        trip_segment_id: itemId,
         author: "Guest",
         content: text
       })

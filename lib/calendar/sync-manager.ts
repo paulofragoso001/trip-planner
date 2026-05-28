@@ -575,8 +575,14 @@ export class WaylineCalendarSyncManager implements SyncManager {
 
     try {
       await this.client.from("notifications").insert({
-        content: `${providerLabel} sync needs attention: ${message}`,
         type: "calendar_sync_failure",
+        title: `${providerLabel} sync needs attention`,
+        body: message,
+        metadata: {
+          connectionId: connection.id,
+          provider: connection.provider,
+          providerAccountEmail: connection.provider_account_email
+        },
         user_id: connection.user_id
       });
     } catch {

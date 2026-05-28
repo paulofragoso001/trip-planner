@@ -5,10 +5,18 @@ Run this check before production deploys:
 ```bash
 npm run preflight:prod-env
 npm run audit:compliance
+npm run verify:resend
 ```
 
 In GitHub Actions, run the `production-env-preflight` workflow against the
 protected `production` environment before release.
+
+Production deployments should also pass the `production-deployment-gate`
+workflow. Configure it as a required GitHub check or Vercel deployment check so
+deployments are not promoted while Vercel shows "No checks configured." The
+gate validates production env/compliance, Resend, deployed dashboard health,
+auth boundaries, the calendar worker endpoint, and the import parse RLS
+cross-user audit.
 
 The preflight fails when:
 
@@ -47,6 +55,15 @@ Required production env vars:
 - `MICROSOFT_CALENDAR_REDIRECT_URI`
 - `RESEND_API_KEY`
 - `RESEND_FROM_EMAIL`
+
+Optional email verification env var:
+
+- `RESEND_TEST_TO`
+
+When `RESEND_TEST_TO` is set, `npm run verify:resend` sends one delivery
+verification email to that controlled inbox. When it is not set, the command
+still validates the Resend API key, verified domains, and `RESEND_FROM_EMAIL`
+domain alignment, but skips live delivery.
 
 Server-only values must never use the `NEXT_PUBLIC_` prefix. Keep service-role
 keys, token encryption keys, and OAuth client secrets only in protected hosting

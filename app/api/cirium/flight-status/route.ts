@@ -5,13 +5,13 @@ import { createClient } from "@/lib/supabase/server";
 type ItineraryFlightRecord = {
   id: string;
   title: string | null;
-  segment_type: string | null;
+  kind: string | null;
   flight_number: string | null;
   airline: string | null;
   confirmation_code: string | null;
   scheduled_departure: string | null;
   estimated_departure: string | null;
-  date_time: string | null;
+  start_time: string | null;
 };
 
 export async function GET(request: Request) {
@@ -43,9 +43,9 @@ export async function GET(request: Request) {
 
   try {
     const { data: itineraryItem, error: itemError } = await supabase
-      .from("itinerary_items")
+      .from("trip_segments")
       .select(
-        "id,title,segment_type,flight_number,airline,confirmation_code,scheduled_departure,estimated_departure,date_time"
+        "id,title,kind,flight_number,airline,confirmation_code,scheduled_departure,estimated_departure,start_time"
       )
       .eq("id", itemId)
       .eq("trip_id", tripId)
@@ -107,7 +107,7 @@ function resolveFlightLookup(
     parseCarrier(storedFlightText) || parseCarrierCode(item.airline) || null;
   const storedFlightNumber = parseFlightNumber(storedFlightText);
   const storedDate = parseFlightDate(
-    item.scheduled_departure || item.estimated_departure || item.date_time
+    item.scheduled_departure || item.estimated_departure || item.start_time
   );
   const requestedDate = parseRequestedDate(request.year, request.month, request.day);
   const requestedCarrier = parseCarrierCode(request.carrier);
@@ -115,7 +115,7 @@ function resolveFlightLookup(
   const flightNumber = parseFlightNumber(request.flightNumber) || storedFlightNumber;
   const date = requestedDate || storedDate;
 
-  if (item.segment_type && item.segment_type !== "air" && !storedFlightNumber) {
+  if (item.kind && item.kind !== "flight" && item.kind !== "air" && !storedFlightNumber) {
     return {
       error: "Itinerary item is not a flight segment.",
       status: 400

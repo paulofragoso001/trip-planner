@@ -37,7 +37,6 @@ export type UpdateUnfiledItemInput = {
   location?: string | null;
   notes?: string | null;
   parseStatus?: ParseStatus;
-  promotedItineraryItemId?: string | null;
   promotedTripSegmentId?: string | null;
   segmentType?: SegmentType;
   title?: string | null;
@@ -142,14 +141,6 @@ export function validateUpdateUnfiledItem(
     else update.segmentType = segmentType;
   }
   if ("notes" in value) update.notes = readNullableString(value.notes, "notes", details, 5000);
-  if ("promotedItineraryItemId" in value) {
-    update.promotedItineraryItemId = readNullableString(
-      value.promotedItineraryItemId,
-      "promotedItineraryItemId",
-      details,
-      120
-    );
-  }
   if ("promotedTripSegmentId" in value) {
     update.promotedTripSegmentId = readNullableString(
       value.promotedTripSegmentId,

@@ -1,0 +1,121 @@
+name: production-deployment-gate
+
+on:
+  deployment_status:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: "Production or preview URL to validate."
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  production-env-and-compliance:
+    name: Production env and compliance
+    if: github.event_name == 'workflow_dispatch' || github.event.deployment_status.state == 'success'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment:
+      name: production
+
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+      NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: ${{ secrets.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY }}
+      NEXT_PUBLIC_APP_URL: ${{ vars.NEXT_PUBLIC_APP_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      CALENDAR_TOKEN_ENCRYPTION_KEY: ${{ secrets.CALENDAR_TOKEN_ENCRYPTION_KEY }}
+      CALENDAR_SYNC_WORKER_SECRET: ${{ secrets.CALENDAR_SYNC_WORKER_SECRET }}
+      GOOGLE_CALENDAR_CLIENT_ID: ${{ secrets.GOOGLE_CALENDAR_CLIENT_ID }}
+      GOOGLE_CALENDAR_CLIENT_SECRET: ${{ secrets.GOOGLE_CALENDAR_CLIENT_SECRET }}
+      GOOGLE_CALENDAR_REDIRECT_URI: ${{ vars.GOOGLE_CALENDAR_REDIRECT_URI }}
+      MICROSOFT_CALENDAR_CLIENT_ID: ${{ secrets.MICROSOFT_CALENDAR_CLIENT_ID }}
+      MICROSOFT_CALENDAR_CLIENT_SECRET: ${{ secrets.MICROSOFT_CALENDAR_CLIENT_SECRET }}
+      MICROSOFT_CALENDAR_REDIRECT_URI: ${{ vars.MICROSOFT_CALENDAR_REDIRECT_URI }}
+      RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+      RESEND_FROM_EMAIL: ${{ vars.RESEND_FROM_EMAIL }}
+      RESEND_TEST_TO: ${{ vars.RESEND_TEST_TO }}
+      ALLOW_LOCAL_DASHBOARD_BYPASS: ${{ vars.ALLOW_LOCAL_DASHBOARD_BYPASS }}
+      ALLOW_TEST_DASHBOARD_BYPASS: ${{ vars.ALLOW_TEST_DASHBOARD_BYPASS }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          cache: npm
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run production env preflight
+        run: npm run preflight:prod-env
+
+      - name: Run compliance audit
+        run: npm run audit:compliance
+
+      - name: Verify Resend configuration
+        run: npm run verify:resend
+
+  production-runtime-tests:
+    name: Production runtime tests
+    if: github.event_name == 'workflow_dispatch' || github.event.deployment_status.state == 'success'
+    runs-on: ubuntu-24.04
+    needs: production-env-and-compliance
+    timeout-minutes: 20
+    environment:
+      name: production
+
+    env:
+      BASE_URL: ${{ github.event.inputs.base_url || github.event.deployment_status.target_url || github.event.deployment_status.environment_url }}
+      CALENDAR_SYNC_WORKER_SECRET: ${{ secrets.CALENDAR_SYNC_WORKER_SECRET }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          cache: npm
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Require deployment URL and worker secret
+        run: |
+          if [ -z "$BASE_URL" ]; then
+            echo "BASE_URL is required for production runtime tests."
+            exit 1
+          fi
+
+          if [ -z "$CALENDAR_SYNC_WORKER_SECRET" ]; then
+            echo "CALENDAR_SYNC_WORKER_SECRET is required for calendar worker integration tests."
+            exit 1
+          fi
+
+      - name: Run production smoke test
+        run: npx playwright test tests/playwright/dashboard.postdeploy.spec.ts --workers=1
+
+      - name: Run auth boundary tests
+        run: npx playwright test tests/playwright/auth-boundary.spec.ts --workers=1
+
+      - name: Run calendar worker integration test
+        run: npx playwright test tests/playwright/calendar-worker.spec.ts --workers=1
+
+      - name: Run import parse RLS/cross-user audit
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: npm run audit:import-parse-rls

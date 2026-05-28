@@ -15,7 +15,7 @@ export function SocialImportForm({ trips }: SocialImportFormProps) {
 
   async function submit(formData: FormData) {
     setPending(true);
-    setMessage("Queuing inspiration scan...");
+    setMessage("Scanning travel save with OpenAI...");
 
     try {
       const response = await fetch("/api/social-imports", {
@@ -28,7 +28,12 @@ export function SocialImportForm({ trips }: SocialImportFormProps) {
         throw new Error(readError(payload, response.status));
       }
 
-      setMessage("Import queued. The social import worker will scan it.");
+      const count = countExtractedPlaces(payload);
+      setMessage(
+        count
+          ? `OpenAI created ${count} review candidate${count === 1 ? "" : "s"}.`
+          : "Scan finished. Add a caption or screenshot if no places appeared."
+      );
       router.refresh();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Could not import inspiration.");
@@ -98,14 +103,14 @@ export function SocialImportForm({ trips }: SocialImportFormProps) {
         </select>
       </div>
 
-      <input name="processNow" type="hidden" value="false" />
+      <input name="processNow" type="hidden" value="true" />
       <button
         className="inline-flex min-h-14 items-center justify-center gap-2 rounded-2xl bg-slate-950 px-5 text-base font-black text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
         disabled={pending}
         type="submit"
       >
         <WandSparkles className="h-4 w-4" />
-        {pending ? "Queuing..." : "Queue AI scan"}
+        {pending ? "Scanning..." : "Scan with OpenAI"}
       </button>
       {pending ? (
         <div aria-hidden="true" className="h-2 overflow-hidden rounded-full bg-slate-100">
@@ -135,4 +140,20 @@ function readError(payload: unknown, status: number) {
   }
 
   return `Import failed (${status}).`;
+}
+
+function countExtractedPlaces(payload: unknown) {
+  if (
+    typeof payload === "object" &&
+    payload !== null &&
+    "data" in payload &&
+    typeof payload.data === "object" &&
+    payload.data !== null &&
+    "extractedPlaces" in payload.data &&
+    Array.isArray(payload.data.extractedPlaces)
+  ) {
+    return payload.data.extractedPlaces.length;
+  }
+
+  return 0;
 }

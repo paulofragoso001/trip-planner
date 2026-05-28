@@ -1,12 +1,32 @@
+import { headers } from "next/headers";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { AccountDeletionRequestForm } from "@/components/account/account-deletion-request-form";
+import {
+  allowsDashboardTestBypass,
+  allowsLocalDashboardBypass
+} from "@/lib/server/auth-flags";
 import { createClient } from "@/lib/supabase/server";
 
+const accountAuthTimeoutMs = 3000;
+
 export default async function AccountPage() {
+  const requestHeaders = await headers();
+  const hasDashboardBypass =
+    allowsLocalDashboardBypass() ||
+    (allowsDashboardTestBypass() && requestHeaders.get("x-cypress-dashboard") === "true");
   const supabase = await createClient();
   const {
     data: { user }
-  } = await supabase.auth.getUser();
+  } = await withTimeout(
+    supabase.auth.getUser(),
+    accountAuthTimeoutMs,
+    "Supabase account auth lookup timed out."
+  ).catch(() => ({ data: { user: null } }));
+
+  if (!user && !hasDashboardBypass) {
+    redirect("/login");
+  }
 
   const { data: deletionRequest } = user
     ? await supabase
@@ -61,4 +81,13 @@ export default async function AccountPage() {
       </aside>
     </div>
   );
+}
+
+function withTimeout<T>(promise: PromiseLike<T>, timeoutMs: number, message: string) {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error(message)), timeoutMs);
+    })
+  ]);
 }

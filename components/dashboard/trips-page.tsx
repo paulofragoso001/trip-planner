@@ -46,6 +46,9 @@ export default function TripsPage({ error, trips }: TripsPageProps) {
                     <p className="text-lg font-semibold">{trip.name}</p>
                     <p className="text-sm text-slate-500">{trip.destination}</p>
                     <p className="mt-1 text-sm text-slate-500">{trip.dateRange}</p>
+                    <p className="mt-1 text-xs font-semibold uppercase text-slate-400">
+                      {trip.travelStyleLabel}
+                    </p>
                   </div>
                   <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold">
                     {trip.status}
@@ -63,6 +66,7 @@ export default function TripsPage({ error, trips }: TripsPageProps) {
                   id={trip.id}
                   name={trip.name}
                   startDate={trip.startDate}
+                  travelStyle={trip.travelStyle}
                 />
               </div>
             ))}

@@ -1,4 +1,4 @@
-alter table public.itinerary_items
+alter table public.trip_segments
   add column if not exists flight_lat double precision,
   add column if not exists flight_lng double precision,
   add column if not exists flight_altitude double precision,
@@ -10,6 +10,6 @@ alter table public.itinerary_items
   add column if not exists arrival_airport_lat double precision,
   add column if not exists arrival_airport_lng double precision;
 
-create index if not exists itinerary_items_flight_position_idx
-  on public.itinerary_items (trip_id, flight_lat, flight_lng)
+create index if not exists trip_segments_flight_position_idx
+  on public.trip_segments (trip_id, flight_lat, flight_lng)
   where flight_lat is not null and flight_lng is not null;

@@ -73,7 +73,7 @@ export async function loadDashboardData(): Promise<DashboardData> {
         .from("notifications")
         .select("id", { count: "exact", head: true })
         .eq("user_id", auth.userId)
-        .eq("is_read", false)
+        .is("read_at", null)
     ]);
 
   const firstError = [

@@ -1,5 +1,6 @@
 "use client";
 
+import { Menu, Moon, Sun, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { type ReactNode, useEffect, useMemo, useState } from "react";
@@ -40,6 +41,8 @@ export function AppShell({
     () => ({ title: resolveNavTitle(pathname, view) }),
     [pathname, view]
   );
+  const fullBleedContent =
+    pathname.includes("/map") || pathname.startsWith("/dashboard/layout-simulator");
 
   useEffect(() => {
     const stored = window.localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY);
@@ -108,7 +111,7 @@ export function AppShell({
         </aside>
 
         {mobileOpen ? (
-          <div className="fixed inset-0 z-40 lg:hidden" role="dialog" aria-modal="true">
+          <div className="fixed inset-0 z-40 sm:hidden" role="dialog" aria-modal="true">
             <button
               aria-label="Close navigation overlay"
               className="absolute inset-0 bg-black/40"
@@ -116,7 +119,7 @@ export function AppShell({
               type="button"
             />
             <aside
-              className="fixed inset-y-0 left-0 z-50 flex w-80 max-w-[85vw] border-r border-slate-200 bg-white shadow-2xl dark:border-white/10 dark:bg-[#111827]"
+              className="fixed inset-y-0 left-0 z-50 flex w-[min(320px,calc(100vw-56px))] border-r border-slate-200 bg-white shadow-2xl dark:border-white/10 dark:bg-[#111827]"
               data-testid="app-shell-mobile-drawer"
             >
               <SidebarContent
@@ -127,6 +130,21 @@ export function AppShell({
               />
             </aside>
           </div>
+        ) : null}
+
+        {mobileOpen ? (
+          <aside
+            aria-label="Primary navigation"
+            className="sticky top-0 hidden h-dvh min-h-dvh w-[min(320px,38vw)] shrink-0 self-stretch border-r border-slate-200 bg-white shadow-xl transition-[width] duration-300 ease-out dark:border-white/10 dark:bg-[#111827] sm:flex lg:hidden"
+            data-testid="app-shell-responsive-sidebar"
+          >
+            <SidebarContent
+              collapsed={false}
+              mobile
+              onClose={() => setMobileOpen(false)}
+              workspaceName={workspaceName}
+            />
+          </aside>
         ) : null}
 
         <div className="flex min-w-0 flex-1 flex-col">
@@ -142,23 +160,36 @@ export function AppShell({
             >
               <button
                 aria-label="Open navigation"
-                className="grid h-11 w-11 place-items-center rounded-xl border border-black/10 bg-white text-lg font-black shadow-sm transition hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-brand/20 dark:border-white/10 dark:bg-[#111827] dark:hover:bg-[#172033] lg:hidden"
+                className={cn(
+                  "grid h-11 w-11 place-items-center rounded-xl border border-black/10 bg-white text-lg font-black shadow-sm transition hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-brand/20 dark:border-white/10 dark:bg-[#111827] dark:hover:bg-[#172033] lg:hidden",
+                  mobileOpen && "sm:hidden"
+                )}
                 onClick={() => setMobileOpen(true)}
                 type="button"
               >
-                =
+                <Menu className="h-5 w-5" aria-hidden="true" />
               </button>
 
-              <span className="min-w-0 flex-1 truncate text-sm font-black lg:hidden">
+              <span
+                className={cn(
+                  "min-w-0 flex-1 truncate text-sm font-black lg:hidden",
+                  mobileOpen && "sm:hidden"
+                )}
+              >
                 {workspaceName}
               </span>
+              {mobileOpen ? (
+                <span className="hidden min-w-0 flex-1 truncate text-sm font-black sm:block lg:hidden">
+                  {page.title}
+                </span>
+              ) : null}
 
               <div className="hidden min-w-0 flex-1 lg:block">
                 <nav className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400" aria-label="Breadcrumbs">
                   <Link className="rounded-md outline-none focus:ring-4 focus:ring-brand/20" href="/dashboard">
-                    Overview
+                    Home
                   </Link>
-                  {page.title !== "Overview" ? (
+                  {page.title !== "Home" ? (
                     <>
                       <span aria-hidden="true">/</span>
                       <span className="truncate">{page.title}</span>
@@ -185,7 +216,11 @@ export function AppShell({
                 onClick={() => setDarkMode((current) => !current)}
                 type="button"
               >
-                {darkMode ? "L" : "D"}
+                {darkMode ? (
+                  <Sun className="h-5 w-5" aria-hidden="true" />
+                ) : (
+                  <Moon className="h-5 w-5" aria-hidden="true" />
+                )}
               </button>
 
               <div className="relative">
@@ -215,13 +250,20 @@ export function AppShell({
 
           <main
             className={cn(
-              "min-h-0 flex-1 overflow-y-auto px-4 sm:px-6 lg:px-8",
+              "min-h-0 flex-1 overflow-y-auto px-4 sm:px-6",
+              fullBleedContent ? "lg:px-6" : "lg:px-8",
               density === "compact" ? "py-4" : "py-6"
             )}
             data-testid="app-shell-main"
             id="main-content"
           >
-            <div className="mx-auto w-full max-w-[1440px]" data-testid="app-shell-content">
+            <div
+              className={cn(
+                "mx-auto w-full",
+                fullBleedContent ? "max-w-none" : "max-w-[1440px]"
+              )}
+              data-testid="app-shell-content"
+            >
               {children}
             </div>
           </main>
@@ -245,7 +287,7 @@ function SidebarContent({
   workspaceName: string;
 }) {
   return (
-    <div className="flex min-h-0 w-full flex-col px-4 py-5">
+    <div className={cn("flex min-h-0 w-full flex-col py-5", mobile ? "px-3" : "px-4")}>
       <div className="flex min-h-14 items-center gap-3 px-2">
         <Link
           className="flex min-w-0 flex-1 items-center gap-3 rounded-xl outline-none focus:ring-4 focus:ring-brand/20"
@@ -258,7 +300,7 @@ function SidebarContent({
             <span className="min-w-0">
               <span className="block truncate text-sm font-black">{workspaceName}</span>
               <span className="block truncate text-xs font-semibold text-slate-500 dark:text-slate-400">
-                Flight operations
+                Travel planner
               </span>
             </span>
           ) : null}
@@ -270,7 +312,7 @@ function SidebarContent({
             onClick={onClose}
             type="button"
           >
-            x
+            <X className="h-5 w-5" aria-hidden="true" />
           </button>
         ) : null}
       </div>
@@ -292,15 +334,15 @@ function SidebarContent({
           data-testid="app-shell-workspace-switcher"
           href="/dashboard?view=workspace"
           onClick={mobile ? onClose : undefined}
-          aria-label={collapsed ? "Flight Ops Workspace" : undefined}
-          title={collapsed ? "Flight Ops Workspace" : undefined}
+          aria-label={collapsed ? "Wayline Workspace" : undefined}
+          title={collapsed ? "Wayline Workspace" : undefined}
         >
           <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-slate-100 text-sm font-bold text-slate-700 transition group-hover:bg-slate-200 dark:bg-white/10 dark:text-slate-200 dark:group-hover:bg-white/15">
             A
           </span>
           {!collapsed ? (
             <span className="min-w-0">
-              <span className="block truncate">Flight Ops Workspace</span>
+              <span className="block truncate">Wayline Workspace</span>
               <span className="block truncate text-xs text-slate-500 dark:text-slate-400">
                 Switch workspace
               </span>

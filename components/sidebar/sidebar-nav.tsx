@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 import { cn } from "@/components/trip-ui";
 import type { NavSection } from "./nav-data";
 
@@ -11,6 +12,8 @@ type SidebarNavProps = {
   onNavigate?: () => void;
 };
 
+const LAST_TRIP_STORAGE_KEY = "wayline:last-trip-id";
+
 export function SidebarNav({
   sections,
   collapsed = false,
@@ -19,6 +22,44 @@ export function SidebarNav({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const view = searchParams.get("view");
+  const [targetTripId, setTargetTripId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const tripId = readTripId(pathname);
+
+    if (tripId) {
+      window.localStorage.setItem(LAST_TRIP_STORAGE_KEY, tripId);
+      setTargetTripId(tripId);
+      return;
+    }
+
+    const stored = window.localStorage.getItem(LAST_TRIP_STORAGE_KEY);
+    if (stored) {
+      setTargetTripId(stored);
+      return;
+    }
+
+    let cancelled = false;
+
+    fetch("/api/trips", { headers: { Accept: "application/json" } })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((payload) => {
+        if (cancelled) {
+          return;
+        }
+
+        const firstTripId = readFirstTripId(payload);
+        if (firstTripId) {
+          window.localStorage.setItem(LAST_TRIP_STORAGE_KEY, firstTripId);
+          setTargetTripId(firstTripId);
+        }
+      })
+      .catch(() => undefined);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [pathname]);
 
   return (
     <nav aria-label="Primary" className="space-y-6" data-testid="app-shell-nav">
@@ -36,10 +77,11 @@ export function SidebarNav({
           <ul className="space-y-2">
             {section.items.map((item) => {
               const Icon = item.icon;
+              const href = item.getHref?.(pathname, targetTripId) ?? item.href;
               const active =
                 item.match?.(pathname, view) ??
                 (pathname === item.href || pathname.startsWith(`${item.href}/`));
-              const itemKey = `${section.title}:${item.label}:${item.href}`;
+              const itemKey = `${section.title}:${item.label}:${href}`;
 
               return (
                 <li key={itemKey}>
@@ -53,7 +95,7 @@ export function SidebarNav({
                         ? "bg-blue-600 text-white shadow-sm hover:bg-blue-600"
                         : "text-slate-700 hover:bg-slate-100 hover:text-slate-950 dark:text-slate-200 dark:hover:bg-white/10 dark:hover:text-white"
                     )}
-                    href={item.href}
+                    href={href}
                     onClick={onNavigate}
                     title={collapsed ? item.label : undefined}
                   >
@@ -92,4 +134,30 @@ export function SidebarNav({
       ))}
     </nav>
   );
+}
+
+function readTripId(pathname: string) {
+  const match = pathname.match(/^\/dashboard\/trips\/([^/]+)/);
+  return match?.[1] || null;
+}
+
+function readFirstTripId(payload: unknown) {
+  if (
+    typeof payload === "object" &&
+    payload !== null &&
+    "trips" in payload &&
+    Array.isArray(payload.trips)
+  ) {
+    const first = payload.trips[0];
+    if (
+      typeof first === "object" &&
+      first !== null &&
+      "id" in first &&
+      typeof first.id === "string"
+    ) {
+      return first.id;
+    }
+  }
+
+  return null;
 }

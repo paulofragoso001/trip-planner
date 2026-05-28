@@ -6,6 +6,11 @@ import { useState } from "react";
 import GoogleMapsProvider from "@/components/GoogleMapsProvider";
 import LocationAutocomplete from "@/components/LocationAutocomplete";
 import { useWaylineAction } from "@/hooks/use-wayline-action";
+import {
+  TRIP_TRAVEL_STYLES,
+  TRIP_TRAVEL_STYLE_LABELS,
+  type TripTravelStyle
+} from "@/lib/trips";
 
 export function TripCreateForm() {
   const router = useRouter();
@@ -14,6 +19,7 @@ export function TripCreateForm() {
   const [endDate, setEndDate] = useState("");
   const [name, setName] = useState("");
   const [startDate, setStartDate] = useState("");
+  const [travelStyle, setTravelStyle] = useState<TripTravelStyle>("balanced");
   const { isPending, run, state } = useWaylineAction<{ trip?: { id: string } }>();
 
   async function createTrip(event: FormEvent<HTMLFormElement>) {
@@ -24,7 +30,8 @@ export function TripCreateForm() {
       destination,
       end_date: endDate,
       name,
-      start_date: startDate
+      start_date: startDate,
+      travel_style: travelStyle
     };
     const result = await run({
       body: payload,
@@ -39,6 +46,7 @@ export function TripCreateForm() {
       setEndDate("");
       setName("");
       setStartDate("");
+      setTravelStyle("balanced");
       router.refresh();
     }
   }
@@ -87,6 +95,17 @@ export function TripCreateForm() {
         placeholder="Budget"
         value={budget}
       />
+      <select
+        className="rounded-2xl border border-slate-200 bg-white px-4 py-3"
+        onChange={(event) => setTravelStyle(event.target.value as TripTravelStyle)}
+        value={travelStyle}
+      >
+        {TRIP_TRAVEL_STYLES.map((style) => (
+          <option key={style} value={style}>
+            {TRIP_TRAVEL_STYLE_LABELS[style]}
+          </option>
+        ))}
+      </select>
       <button
         className="rounded-2xl bg-blue-600 px-4 py-3 font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
         disabled={isPending}

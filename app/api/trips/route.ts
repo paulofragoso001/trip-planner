@@ -44,15 +44,28 @@ export async function POST(request: Request) {
     );
   }
 
-  const { data, error } = await auth.supabase
+  const writePayload = {
+    ...toTripWritePayload(trip),
+    slug: `${slugify(trip.name)}-${Date.now()}`,
+    user_id: auth.userId
+  };
+  let { data, error } = await auth.supabase
     .from("trips")
-    .insert({
-      ...toTripWritePayload(trip),
-      slug: `${slugify(trip.name)}-${Date.now()}`,
-      user_id: auth.userId
-    })
+    .insert(writePayload)
     .select("*")
     .single();
+
+  if (error && isMissingTravelStyleColumn(error.message)) {
+    const { travel_style: _travelStyle, ...legacyPayload } = writePayload;
+    const retry = await auth.supabase
+      .from("trips")
+      .insert(legacyPayload)
+      .select("*")
+      .single();
+
+    data = retry.data;
+    error = retry.error;
+  }
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -62,4 +75,8 @@ export async function POST(request: Request) {
     { trip: mapTripRecord(data as Record<string, unknown>) },
     { status: 201 }
   );
+}
+
+function isMissingTravelStyleColumn(message: string) {
+  return /travel_style/i.test(message) && /column|schema cache|could not find/i.test(message);
 }

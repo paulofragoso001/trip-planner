@@ -4,6 +4,11 @@ import { useRouter } from "next/navigation";
 import type { FormEvent } from "react";
 import { useState } from "react";
 import { useWaylineAction } from "@/hooks/use-wayline-action";
+import {
+  TRIP_TRAVEL_STYLES,
+  TRIP_TRAVEL_STYLE_LABELS,
+  type TripTravelStyle
+} from "@/lib/trips";
 
 type TripRowActionsProps = {
   destination: string;
@@ -11,6 +16,7 @@ type TripRowActionsProps = {
   id: string;
   name: string;
   startDate: string | null;
+  travelStyle: TripTravelStyle;
 };
 
 export function TripRowActions({
@@ -18,7 +24,8 @@ export function TripRowActions({
   endDate,
   id,
   name,
-  startDate
+  startDate,
+  travelStyle
 }: TripRowActionsProps) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
@@ -26,6 +33,8 @@ export function TripRowActions({
   const [nextEndDate, setNextEndDate] = useState(endDate || "");
   const [nextName, setNextName] = useState(name);
   const [nextStartDate, setNextStartDate] = useState(startDate || "");
+  const [nextTravelStyle, setNextTravelStyle] =
+    useState<TripTravelStyle>(travelStyle);
   const { isPending, run, state } = useWaylineAction();
 
   async function save(event: FormEvent<HTMLFormElement>) {
@@ -35,7 +44,8 @@ export function TripRowActions({
         destination: nextDestination,
         end_date: nextEndDate,
         name: nextName,
-        start_date: nextStartDate
+        start_date: nextStartDate,
+        travel_style: nextTravelStyle
       },
       method: "PATCH",
       timeoutMs: 5000,
@@ -107,6 +117,19 @@ export function TripRowActions({
               value={nextEndDate}
             />
           </div>
+          <select
+            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+            onChange={(event) =>
+              setNextTravelStyle(event.target.value as TripTravelStyle)
+            }
+            value={nextTravelStyle}
+          >
+            {TRIP_TRAVEL_STYLES.map((style) => (
+              <option key={style} value={style}>
+                {TRIP_TRAVEL_STYLE_LABELS[style]}
+              </option>
+            ))}
+          </select>
           <button
             className="rounded-xl bg-blue-600 px-3 py-2 text-xs font-bold text-white disabled:opacity-60"
             disabled={isPending}
