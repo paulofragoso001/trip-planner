@@ -72,15 +72,22 @@ export async function GET(
     requestPath: url.pathname
   });
 
-  const response = apiCanonicalSuccess({
-    authUrl,
-    configured: true,
-    provider
-  });
+  const response = wantsHtmlRedirect(request)
+    ? Response.redirect(authUrl, 302)
+    : apiCanonicalSuccess({
+        authUrl,
+        configured: true,
+        provider
+      });
 
   response.headers.append("Set-Cookie", state.cookie);
 
   return response;
+}
+
+function wantsHtmlRedirect(request: Request) {
+  const accept = request.headers.get("accept") || "";
+  return accept.includes("text/html") && !accept.includes("application/json");
 }
 
 function buildAuthorizationUrl(provider: "google" | "outlook", encodedState: string) {
