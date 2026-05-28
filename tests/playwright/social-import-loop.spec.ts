@@ -408,6 +408,331 @@ test("destination mismatch blocks accidental approval into the wrong trip", asyn
   }
 });
 
+test("AI review requires a real trip destination before approval", async ({
+  page,
+  request
+}) => {
+  test.setTimeout(90_000);
+  test.skip(
+    !supabaseUrl || !serviceRoleKey,
+    "destination control regression requires Supabase URL and SUPABASE_SERVICE_ROLE_KEY"
+  );
+
+  const preflight = await request.get(`${baseUrl}/api/social-imports`, {
+    headers: dashboardHeaders
+  });
+
+  test.skip(
+    preflight.status() !== 200,
+    "destination control regression requires dashboard test auth to be enabled"
+  );
+
+  const admin = createClient(supabaseUrl!, serviceRoleKey!, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  });
+  const runId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+  const seedTripName = `e2e-seed-trip-${runId}`;
+  const placeholderTripName = `Barcelona work trip ${runId}`;
+  const sourceTitle = `e2e-destination-controls-${runId}`;
+  let seedTripId = "";
+  let placeholderTripId = "";
+  let miamiTripId = "";
+  let activitySegmentId = "";
+  let importId = "";
+  let placeId = "";
+
+  try {
+    const seedTripResponse = await request.post(`${baseUrl}/api/trips`, {
+      data: {
+        destination: "Seed City",
+        name: seedTripName,
+        status: "Planning"
+      },
+      headers: dashboardHeaders
+    });
+    expect(seedTripResponse.status()).toBe(201);
+    const seedTripPayload = await seedTripResponse.json();
+    seedTripId = seedTripPayload?.trip?.id;
+    const userId = seedTripPayload?.trip?.user_id;
+    expect(typeof seedTripId).toBe("string");
+    expect(typeof userId).toBe("string");
+
+    const { data: placeholderTrip, error: tripError } = await admin
+      .from("trips")
+      .insert({
+        budget: 0,
+        destination: "Destination not set",
+        name: placeholderTripName,
+        slug: `e2e-placeholder-${runId}`,
+        status: "Planning",
+        title: placeholderTripName,
+        travel_style: "balanced",
+        user_id: userId
+      })
+      .select("id")
+      .single();
+    expect(tripError).toBeNull();
+    placeholderTripId = placeholderTrip?.id;
+    expect(typeof placeholderTripId).toBe("string");
+
+    const { data: post, error: postError } = await admin
+      .from("imported_social_posts")
+      .insert({
+        raw_text: "Planning a Miami weekend trip. Maybe do a Biscayne Bay boat tour.",
+        source_platform: "manual",
+        source_title: sourceTitle,
+        status: "needs_review",
+        user_id: userId
+      })
+      .select("id")
+      .single();
+    expect(postError).toBeNull();
+    importId = post?.id;
+    expect(typeof importId).toBe("string");
+
+    const { data: place, error: placeError } = await admin
+      .from("extracted_places")
+      .insert({
+        ai_payload: {
+          locationHint: "Miami",
+          reviewReason: "needs_location",
+          summary: "Biscayne Bay boat tour activity idea"
+        },
+        category: "tour",
+        city: "Miami",
+        confidence: 0.91,
+        evidence: ["maybe do a Biscayne Bay boat tour"],
+        imported_post_id: importId,
+        name: "Biscayne Bay boat tour",
+        normalized_name: "biscayne-bay-boat-tour",
+        status: "needs_location_confirmation",
+        travel_note: "Activity idea that needs a provider or meeting point.",
+        user_id: userId
+      })
+      .select("id")
+      .single();
+    expect(placeError).toBeNull();
+    placeId = place?.id;
+    expect(typeof placeId).toBe("string");
+
+    const blockedApproval = await request.patch(
+      `${baseUrl}/api/extracted-places/${placeId}`,
+      {
+        data: {
+          confirmDestinationMismatch: true,
+          status: "accepted",
+          tripId: placeholderTripId
+        },
+        headers: dashboardHeaders
+      }
+    );
+    expect(blockedApproval.status()).toBe(400);
+    const blockedPayload = await blockedApproval.json();
+    expect(blockedPayload?.error?.details?.reason).toBe("destination_required");
+
+    await page.setExtraHTTPHeaders(dashboardHeaders);
+    await page.goto(`${baseUrl}/dashboard/imports`);
+
+    const card = page.getByTestId(`ai-review-card-${placeId}`);
+    await expect(card.getByText("Wayline found this as an activity idea.")).toBeVisible();
+    await page.locator(`#trip-${placeId}`).selectOption(placeholderTripId);
+    await expect(
+      card.getByText("This trip does not have a destination yet. Set a destination before approving AI candidates.")
+    ).toBeVisible();
+    await expect(card.getByRole("button", { name: "Approve to draft" })).toBeDisabled();
+    await expect(card.getByRole("button", { name: /Set destination to Barcelona/ })).toBeVisible();
+
+    const miamiTripResponse = await request.post(`${baseUrl}/api/trips`, {
+      data: {
+        destination: "Miami",
+        name: `e2e-miami-activity-${runId}`,
+        status: "Planning"
+      },
+      headers: dashboardHeaders
+    });
+    expect(miamiTripResponse.status()).toBe(201);
+    const miamiTripPayload = await miamiTripResponse.json();
+    miamiTripId = miamiTripPayload?.trip?.id;
+    expect(typeof miamiTripId).toBe("string");
+
+    const validApproval = await request.patch(
+      `${baseUrl}/api/extracted-places/${placeId}`,
+      {
+        data: {
+          status: "accepted",
+          tripId: miamiTripId
+        },
+        headers: dashboardHeaders
+      }
+    );
+    expect(validApproval.status()).toBe(200);
+
+    const promoteResponse = await request.post(
+      `${baseUrl}/api/extracted-places/${placeId}/promote`,
+      {
+        data: { tripId: miamiTripId },
+        headers: dashboardHeaders
+      }
+    );
+    expect(promoteResponse.status()).toBe(201);
+    const promotePayload = await promoteResponse.json();
+    const segment = promotePayload?.data?.segment;
+    activitySegmentId = segment?.id || "";
+    expect(segment).toMatchObject({
+      kind: "activity",
+      lat: null,
+      lng: null,
+      location: "Miami",
+      title: "Biscayne Bay boat tour"
+    });
+  } finally {
+    if (activitySegmentId) {
+      await admin.from("trip_segments").delete().eq("id", activitySegmentId);
+    }
+    if (importId) {
+      await admin.from("extracted_places").delete().eq("imported_post_id", importId);
+      await admin.from("imported_social_posts").delete().eq("id", importId);
+    }
+    if (placeholderTripId) {
+      await admin.from("trips").delete().eq("id", placeholderTripId);
+    }
+    if (miamiTripId) {
+      await admin.from("trips").delete().eq("id", miamiTripId);
+    }
+    if (seedTripId) {
+      await admin.from("trips").delete().eq("id", seedTripId);
+    }
+    await admin.from("trips").delete().eq("name", placeholderTripName);
+    await admin.from("trips").delete().eq("name", seedTripName);
+    await admin.from("trips").delete().eq("name", `e2e-miami-activity-${runId}`);
+  }
+});
+
+test("AI review can create and select a destination-matched trip draft", async ({
+  page,
+  request
+}) => {
+  test.setTimeout(90_000);
+  test.skip(
+    !supabaseUrl || !serviceRoleKey,
+    "trip draft creation regression requires Supabase URL and SUPABASE_SERVICE_ROLE_KEY"
+  );
+
+  const preflight = await request.get(`${baseUrl}/api/social-imports`, {
+    headers: dashboardHeaders
+  });
+
+  test.skip(
+    preflight.status() !== 200,
+    "trip draft creation regression requires dashboard test auth to be enabled"
+  );
+
+  const admin = createClient(supabaseUrl!, serviceRoleKey!, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  });
+  const runId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+  const seedTripName = `e2e-seed-draft-${runId}`;
+  const sourceTitle = `e2e-create-miami-draft-${runId}`;
+  let seedTripId = "";
+  let importId = "";
+  let placeId = "";
+  let createdTripId = "";
+
+  try {
+    const seedTripResponse = await request.post(`${baseUrl}/api/trips`, {
+      data: {
+        destination: "Seed City",
+        name: seedTripName,
+        status: "Planning"
+      },
+      headers: dashboardHeaders
+    });
+    expect(seedTripResponse.status()).toBe(201);
+    const seedTripPayload = await seedTripResponse.json();
+    seedTripId = seedTripPayload?.trip?.id;
+    const userId = seedTripPayload?.trip?.user_id;
+    expect(typeof seedTripId).toBe("string");
+    expect(typeof userId).toBe("string");
+
+    const { data: post, error: postError } = await admin
+      .from("imported_social_posts")
+      .insert({
+        raw_text: "Planning a Miami weekend trip. Visit Wynwood Walls.",
+        source_platform: "manual",
+        source_title: sourceTitle,
+        status: "needs_review",
+        user_id: userId
+      })
+      .select("id")
+      .single();
+    expect(postError).toBeNull();
+    importId = post?.id;
+
+    const { data: place, error: placeError } = await admin
+      .from("extracted_places")
+      .insert({
+        ai_payload: {
+          locationHint: "Miami",
+          summary: "Wynwood Walls from Miami saved inspiration."
+        },
+        category: "attraction",
+        city: "Miami",
+        confidence: 0.94,
+        evidence: ["Visit Wynwood Walls"],
+        imported_post_id: importId,
+        name: "Wynwood Walls",
+        normalized_name: "wynwood-walls",
+        status: "needs_review",
+        travel_note: "Street art attraction in Miami.",
+        user_id: userId
+      })
+      .select("id")
+      .single();
+    expect(placeError).toBeNull();
+    placeId = place?.id;
+    expect(typeof placeId).toBe("string");
+
+    await page.setExtraHTTPHeaders(dashboardHeaders);
+    await page.goto(`${baseUrl}/dashboard/imports`);
+
+    const card = page.getByTestId(`ai-review-card-${placeId}`);
+    await expect(card.getByText("No matching trip found for Miami.")).toBeVisible();
+    await card.getByRole("button", { name: "Create new Miami trip draft" }).click();
+    await expect(card.getByText(/Miami trip is ready for approval/)).toBeVisible();
+    await expect(card.getByRole("button", { name: "Approve to draft" })).toBeEnabled();
+
+    const { data: trips } = await admin
+      .from("trips")
+      .select("id,destination,name,travel_style")
+      .eq("user_id", userId)
+      .eq("destination", "Miami")
+      .order("created_at", { ascending: false })
+      .limit(1);
+    createdTripId = trips?.[0]?.id || "";
+    expect(createdTripId).toEqual(expect.any(String));
+    expect(trips?.[0]?.name).toBe("Miami trip");
+    expect(trips?.[0]?.travel_style || "balanced").toBe("balanced");
+  } finally {
+    if (importId) {
+      await admin.from("extracted_places").delete().eq("imported_post_id", importId);
+      await admin.from("imported_social_posts").delete().eq("id", importId);
+    }
+    if (createdTripId) {
+      await admin.from("trips").delete().eq("id", createdTripId);
+    }
+    if (seedTripId) {
+      await admin.from("trips").delete().eq("id", seedTripId);
+    }
+    await admin.from("trips").delete().eq("name", seedTripName);
+  }
+});
+
 test("Barcelona production-style inspiration extracts clean mapped candidates", async ({
   request
 }) => {

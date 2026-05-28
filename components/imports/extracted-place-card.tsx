@@ -5,29 +5,53 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { AiReviewItemView } from "@/app/dashboard/imports/loader";
 
+type TripOption = {
+  destination: string | null;
+  endDate?: string | null;
+  id: string;
+  name: string;
+  startDate?: string | null;
+  travelStyle?: string;
+};
+
 type ExtractedPlaceCardProps = {
   mergeTargets?: AiReviewItemView[];
   place: AiReviewItemView;
-  trips: Array<{ destination: string | null; id: string; name: string }>;
+  trips: TripOption[];
 };
 
 export function ExtractedPlaceCard({ mergeTargets = [], place, trips }: ExtractedPlaceCardProps) {
   const router = useRouter();
+  const [availableTrips, setAvailableTrips] = useState<TripOption[]>(trips);
   const [editing, setEditing] = useState(false);
   const [message, setMessage] = useState("");
   const [mergeTargetId, setMergeTargetId] = useState(mergeTargets[0]?.id || "");
   const [pending, setPending] = useState(false);
-  const matchingTrip = findMatchingTrip(place, trips);
+  const matchingTrip = findMatchingTrip(place, availableTrips);
   const initialTripId =
-    place.tripId && tripMatchesPlace(place, trips.find((trip) => trip.id === place.tripId))
+    place.tripId && tripMatchesPlace(place, availableTrips.find((trip) => trip.id === place.tripId))
       ? place.tripId
       : matchingTrip?.id || "";
   const [selectedTripId, setSelectedTripId] = useState(initialTripId);
   const [confirmMismatch, setConfirmMismatch] = useState(false);
-  const selectedTrip = trips.find((trip) => trip.id === selectedTripId);
-  const destinationMismatch = Boolean(selectedTripId && selectedTrip && !tripMatchesPlace(place, selectedTrip));
+  const selectedTrip = availableTrips.find((trip) => trip.id === selectedTripId);
+  const destinationMissing = Boolean(
+    selectedTripId && selectedTrip && isMissingDestination(selectedTrip.destination)
+  );
+  const destinationMismatch = Boolean(
+    selectedTripId &&
+      selectedTrip &&
+      !isMissingDestination(selectedTrip.destination) &&
+      !tripMatchesPlace(place, selectedTrip)
+  );
   const candidateDestination = place.city || place.locationHint || place.country || "";
+  const inferredTripDestination = selectedTrip ? inferDestinationFromTripName(selectedTrip.name) : "";
   const isActivityIdea = isTourOrActivityIdea(place);
+  const approveDisabled =
+    pending ||
+    !selectedTripId ||
+    destinationMissing ||
+    (destinationMismatch && !confirmMismatch);
 
   async function patch(body: Record<string, unknown>) {
     return run(`/api/extracted-places/${place.id}`, "PATCH", body);
@@ -87,8 +111,101 @@ export function ExtractedPlaceCard({ mergeTargets = [], place, trips }: Extracte
     });
   }
 
+  async function createDestinationTripDraft() {
+    if (!candidateDestination) return;
+    setPending(true);
+    setMessage(`Creating ${candidateDestination} trip draft...`);
+
+    try {
+      const response = await fetch("/api/trips", {
+        body: JSON.stringify({
+          destination: candidateDestination,
+          name: `${candidateDestination} trip`,
+          status: "Planning",
+          travel_style: "balanced"
+        }),
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json"
+        },
+        method: "POST"
+      });
+      const payload = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(readError(payload, response.status));
+      }
+
+      const trip = payload?.trip;
+      if (!trip?.id) {
+        throw new Error("Trip draft was created without an id.");
+      }
+
+      const option: TripOption = {
+        destination: trip.destination || candidateDestination,
+        id: trip.id,
+        name: trip.name || trip.title || `${candidateDestination} trip`,
+        travelStyle: trip.travel_style || "balanced"
+      };
+      setAvailableTrips((current) => [option, ...current.filter((item) => item.id !== option.id)]);
+      setSelectedTripId(option.id);
+      setConfirmMismatch(false);
+      setMessage(`${option.name} is ready for approval.`);
+      router.refresh();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Could not create trip draft.");
+    } finally {
+      setPending(false);
+    }
+  }
+
+  async function setSelectedTripDestination(destination: string) {
+    if (!selectedTrip || !destination) return;
+    setPending(true);
+    setMessage(`Setting destination to ${destination}...`);
+
+    try {
+      const response = await fetch(`/api/trips/${selectedTrip.id}`, {
+        body: JSON.stringify({
+          destination,
+          end_date: selectedTrip.endDate || null,
+          name: selectedTrip.name,
+          start_date: selectedTrip.startDate || null,
+          status: "Planning",
+          travel_style: selectedTrip.travelStyle || "balanced"
+        }),
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json"
+        },
+        method: "PATCH"
+      });
+      const payload = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(readError(payload, response.status));
+      }
+
+      setAvailableTrips((current) =>
+        current.map((trip) =>
+          trip.id === selectedTrip.id ? { ...trip, destination } : trip
+        )
+      );
+      setConfirmMismatch(false);
+      setMessage(`Destination set to ${destination}.`);
+      router.refresh();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Could not update trip destination.");
+    } finally {
+      setPending(false);
+    }
+  }
+
   return (
-    <div className="grid gap-3 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+    <div
+      className="grid gap-3 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm"
+      data-testid={`ai-review-card-${place.id}`}
+    >
       {editing ? (
         <form action={saveEdit} className="grid gap-3">
           <input
@@ -206,14 +323,51 @@ export function ExtractedPlaceCard({ mergeTargets = [], place, trips }: Extracte
           {place.reviewReason === "needs_location" ? (
             <p className="rounded-2xl bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-800">
               {isActivityIdea
-                ? "Wayline found this as an activity idea, but it needs a meeting point or provider before it can appear on the map."
+                ? "Wayline found this as an activity idea. Add a meeting point or provider before it can appear on the map."
                 : "Wayline could not map this place yet. Edit the name or add more location detail before creating the trip plan."}
             </p>
+          ) : null}
+          {destinationMissing ? (
+            <div className="grid gap-3 rounded-2xl bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-900">
+              <p>This trip does not have a destination yet. Set a destination before approving AI candidates.</p>
+              <div className="flex flex-wrap gap-2">
+                {candidateDestination ? (
+                  <button
+                    className="inline-flex min-h-9 items-center justify-center rounded-xl bg-rose-700 px-3 text-xs font-black text-white disabled:opacity-60"
+                    disabled={pending}
+                    onClick={() => setSelectedTripDestination(candidateDestination)}
+                    type="button"
+                  >
+                    Set trip destination to {candidateDestination}
+                  </button>
+                ) : null}
+                {inferredTripDestination ? (
+                  <button
+                    className="inline-flex min-h-9 items-center justify-center rounded-xl bg-white px-3 text-xs font-black text-rose-800 ring-1 ring-rose-200 disabled:opacity-60"
+                    disabled={pending}
+                    onClick={() => setSelectedTripDestination(inferredTripDestination)}
+                    type="button"
+                  >
+                    Set destination to {inferredTripDestination}
+                  </button>
+                ) : null}
+                {candidateDestination ? (
+                  <button
+                    className="inline-flex min-h-9 items-center justify-center rounded-xl bg-white px-3 text-xs font-black text-rose-800 ring-1 ring-rose-200 disabled:opacity-60"
+                    disabled={pending}
+                    onClick={createDestinationTripDraft}
+                    type="button"
+                  >
+                    Create new {candidateDestination} trip draft
+                  </button>
+                ) : null}
+              </div>
+            </div>
           ) : null}
           {destinationMismatch ? (
             <div className="rounded-2xl bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900">
               <p>
-                This candidate appears to belong to {candidateDestination || "another destination"}, but the selected trip is {selectedTrip?.destination || selectedTrip?.name}.
+                This candidate appears to belong to {candidateDestination || "another destination"}, but the selected trip is {selectedTrip?.destination}.
               </p>
               <label className="mt-3 flex items-start gap-2 text-xs font-black uppercase tracking-[0.12em] text-amber-800">
                 <input
@@ -228,10 +382,15 @@ export function ExtractedPlaceCard({ mergeTargets = [], place, trips }: Extracte
           ) : null}
           {!selectedTripId && candidateDestination ? (
             <div className="rounded-2xl bg-blue-50 px-4 py-3 text-sm font-semibold text-blue-900">
-              <p>No matching trip found for {candidateDestination}. Create a new trip draft or select an existing trip manually.</p>
-              <a className="mt-2 inline-flex text-sm font-black text-blue-700 underline" href="/dashboard/trips#new-trip">
+              <p>No matching trip found for {candidateDestination}. Create a new {candidateDestination} trip draft or select an existing trip manually.</p>
+              <button
+                className="mt-3 inline-flex min-h-9 items-center justify-center rounded-xl bg-blue-700 px-3 text-xs font-black text-white disabled:opacity-60"
+                disabled={pending}
+                onClick={createDestinationTripDraft}
+                type="button"
+              >
                 Create new {candidateDestination} trip draft
-              </a>
+              </button>
             </div>
           ) : null}
           <div className="grid gap-2 sm:grid-cols-[1fr_auto_auto_auto] sm:items-center">
@@ -245,17 +404,17 @@ export function ExtractedPlaceCard({ mergeTargets = [], place, trips }: Extracte
               value={selectedTripId}
             >
               <option value="">
-                {candidateDestination ? `Choose a ${candidateDestination} trip` : "Choose a trip"}
+              {candidateDestination ? `Choose a ${candidateDestination} trip` : "Choose a trip"}
               </option>
-              {trips.map((trip) => (
+              {availableTrips.map((trip) => (
                 <option key={trip.id} value={trip.id}>
-                  {trip.name}{trip.destination ? ` · ${trip.destination}` : ""}
+                  {trip.name} · {isMissingDestination(trip.destination) ? "Destination not set" : trip.destination}
                 </option>
               ))}
             </select>
             <button
-              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 text-sm font-black text-white disabled:opacity-60"
-              disabled={pending || !selectedTripId || (destinationMismatch && !confirmMismatch)}
+              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 text-sm font-black text-white transition disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500 disabled:ring-1 disabled:ring-slate-300"
+              disabled={approveDisabled}
               onClick={() => {
                 const select = document.getElementById(`trip-${place.id}`) as HTMLSelectElement | null;
                 patch({
@@ -317,25 +476,41 @@ export function ExtractedPlaceCard({ mergeTargets = [], place, trips }: Extracte
 
 function findMatchingTrip(
   place: AiReviewItemView,
-  trips: Array<{ destination: string | null; id: string; name: string }>
+  trips: TripOption[]
 ) {
   return trips.find((trip) => tripMatchesPlace(place, trip)) || null;
 }
 
 function tripMatchesPlace(
   place: AiReviewItemView,
-  trip?: { destination: string | null; id: string; name: string }
+  trip?: TripOption
 ) {
   if (!trip) return false;
+  if (isMissingDestination(trip.destination)) return false;
   const placeContext = normalizeDestination(
     [place.city, place.locationHint, place.country, place.address].filter(Boolean).join(" ")
   );
   if (!placeContext) return true;
-  const tripContext = normalizeDestination([trip.destination, trip.name].filter(Boolean).join(" "));
+  const tripContext = normalizeDestination(trip.destination || "");
   if (!tripContext) return false;
   const placeTokens = placeContext.split(" ").filter((token) => token.length > 2);
   const tripTokens = tripContext.split(" ").filter((token) => token.length > 2);
   return placeTokens.some((token) => tripTokens.includes(token));
+}
+
+function isMissingDestination(value: string | null | undefined) {
+  const normalized = normalizeDestination(value || "");
+  return !normalized || normalized === "destination not set" || normalized === "not set";
+}
+
+function inferDestinationFromTripName(name: string) {
+  const cleaned = name
+    .replace(/\b(work|business|weekend|family|solo|trip|travel|planner|draft|vacation|holiday)\b/gi, " ")
+    .replace(/[^a-zA-Z\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const match = cleaned.match(/\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?\b/);
+  return match?.[0] || "";
 }
 
 function normalizeDestination(value: string) {

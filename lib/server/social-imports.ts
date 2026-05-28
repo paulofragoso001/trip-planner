@@ -835,7 +835,30 @@ async function assertTripDestinationMatch(
   ]);
   const trip = tripResult.data;
   const placeContext = placeDestinationContext(place);
-  const tripContext = [trip?.destination, trip?.name, trip?.title].filter(Boolean).join(" ");
+  const rawTripDestination = readString(trip?.destination);
+  const tripDestination = isMissingDestination(rawTripDestination) ? "" : rawTripDestination;
+  const tripContext = tripDestination || "";
+
+  if (placeContext && !tripDestination) {
+    logSocialImportEvent("destination_missing_for_ai_approval", {
+      extractedPlaceId: placeId,
+      placeContext: sanitizeLogPreview(placeContext),
+      tripId,
+      tripName: sanitizeLogPreview(trip?.name || trip?.title || ""),
+      userId
+    });
+
+    throw new ApiError(
+      "validation_error",
+      "This trip does not have a destination yet. Set a destination before approving AI candidates.",
+      400,
+      {
+        placeContext: sanitizeLogPreview(placeContext),
+        reason: "destination_required",
+        tripContext: null
+      }
+    );
+  }
 
   if (!placeContext || !tripContext || destinationsOverlap(placeContext, tripContext)) {
     return;
@@ -853,7 +876,7 @@ async function assertTripDestinationMatch(
   if (!options.allowMismatch) {
     throw new ApiError(
       "validation_error",
-      `This candidate appears to belong to ${placeContext}, but the selected trip is ${trip?.destination || trip?.name || "another destination"}.`,
+      `This candidate appears to belong to ${placeContext}, but the selected trip is ${tripDestination || "another destination"}.`,
       400,
       {
         placeContext: sanitizeLogPreview(placeContext),
@@ -1763,6 +1786,11 @@ function destinationTokens(value: string) {
   return normalizeCopy(value)
     .split(" ")
     .filter((token) => token.length > 2 && !["trip", "work", "weekend", "travel", "planner"].includes(token));
+}
+
+function isMissingDestination(value: string | null | undefined) {
+  const normalized = normalizeCopy(value || "");
+  return !normalized || normalized === "destination not set" || normalized === "not set";
 }
 
 function isTourOrActivityPlace(place: Record<string, any>) {
