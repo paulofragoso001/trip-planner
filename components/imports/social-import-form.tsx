@@ -14,8 +14,24 @@ export function SocialImportForm({ trips }: SocialImportFormProps) {
   const [pending, setPending] = useState(false);
 
   async function submit(formData: FormData) {
+    const file = formData.get("file");
+    const hasFile = file instanceof File && file.size > 0;
+    const hasText = ["sourceUrl", "rawText", "sourceCaption", "sourceTitle"].some((key) => {
+      const value = formData.get(key);
+      return typeof value === "string" && Boolean(value.trim());
+    });
+
+    if (!hasFile && !hasText) {
+      setMessage("Paste a link, add notes, or upload a screenshot first.");
+      return;
+    }
+
     setPending(true);
     setMessage("Scanning travel save with OpenAI...");
+    formData.set("hasFile", hasFile ? "true" : "false");
+    if (hasFile) {
+      formData.set("sourcePlatform", "screenshot");
+    }
 
     try {
       const response = await fetch("/api/social-imports", {
@@ -25,6 +41,17 @@ export function SocialImportForm({ trips }: SocialImportFormProps) {
       const payload = await response.json().catch(() => ({}));
 
       if (!response.ok) {
+        const partialCount = countExtractedPlaces(payload);
+        if (partialCount) {
+          setMessage(
+            `OpenAI created ${partialCount} review candidate${
+              partialCount === 1 ? "" : "s"
+            }, but Wayline returned a warning: ${readError(payload, response.status)}`
+          );
+          router.refresh();
+          return;
+        }
+
         throw new Error(readError(payload, response.status));
       }
 

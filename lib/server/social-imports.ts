@@ -513,10 +513,26 @@ export async function promoteExtractedPlace(
   id: string,
   tripId: string
 ) {
-  const place = await getExtractedPlace(supabase, userId, id);
+  const place = await resolveExtractedPlaceForPromotion(supabase, userId, id, tripId);
 
   if (place.status === "promoted" && place.promoted_trip_segment_id) {
     return { place, segment: null };
+  }
+
+  if (typeof place.latitude !== "number" || typeof place.longitude !== "number") {
+    logSocialImportEvent("trip_draft_promotion_failed", {
+      error: "location_unresolved",
+      extractedPlaceId: id,
+      tripId,
+      userId
+    });
+
+    throw new ApiError(
+      "validation_error",
+      "Confirm this place location before creating the trip plan.",
+      400,
+      { reason: "location_unresolved" }
+    );
   }
 
   const { data: latestSegment } = await supabase
@@ -588,6 +604,72 @@ export async function promoteExtractedPlace(
     place: finalPlace || updatedPlace,
     segment
   };
+}
+
+async function resolveExtractedPlaceForPromotion(
+  supabase: SupabaseLike,
+  userId: string,
+  id: string,
+  tripId: string
+) {
+  const place = await getExtractedPlace(supabase, userId, id);
+
+  if (typeof place.latitude === "number" && typeof place.longitude === "number") {
+    return place;
+  }
+
+  const { data: trip } = await supabase
+    .from("trips")
+    .select("destination,name,title")
+    .eq("id", tripId)
+    .eq("user_id", userId)
+    .maybeSingle();
+  const resolved = await resolvePlaceFromQuery({
+    address: place.address || null,
+    city: place.city || trip?.destination || null,
+    country: place.country || null,
+    name: place.name,
+    sourceTitle: trip?.destination || trip?.name || trip?.title || null
+  });
+
+  if (typeof resolved.lat !== "number" || typeof resolved.lng !== "number") {
+    return place;
+  }
+
+  const { data, error } = await supabase
+    .from("extracted_places")
+    .update({
+      address: resolved.address || place.address,
+      city: resolved.city || place.city,
+      country: resolved.country || place.country,
+      latitude: resolved.lat,
+      longitude: resolved.lng,
+      place_id: resolved.placeId || place.place_id
+    })
+    .eq("id", id)
+    .eq("user_id", userId)
+    .select(extractedPlaceSelect)
+    .single();
+
+  if (error) {
+    logSocialImportEvent("place_resolution_update_failed", {
+      error: error.message,
+      extractedPlaceId: id,
+      tripId,
+      userId
+    });
+
+    return place;
+  }
+
+  logSocialImportEvent("place_resolved", {
+    extractedPlaceId: id,
+    provider: resolved.placeId ? "google_places" : "google_geocoding",
+    tripId,
+    userId
+  });
+
+  return data;
 }
 
 export async function promoteSocialImportPlaces(
@@ -969,7 +1051,7 @@ async function extractWithOpenAi(input: {
   const content: Array<Record<string, unknown>> = [
     {
       text:
-        "Extract travel places from this saved social travel inspiration. Use only the provided URL metadata, caption text, OCR text, and image content. Do not claim to browse private social content. Return only JSON with {\"places\":[{\"name\":\"\",\"category\":\"food|sightseeing|nightlife|shopping|hotel|nature|culture|transportation|hidden_gem|activity|tip\",\"summary\":\"\",\"address\":null,\"city\":null,\"country\":null,\"confidence\":0.0,\"evidence\":[]}]}.\n\n" +
+        "Extract individual travel places from this saved social travel inspiration. Split compound captions into separate places. For example, \"coffee at Nomad Coffee, visit Sagrada Familia, sunset from Park Guell\" must return three places, not one broad itinerary idea. Use only the provided URL metadata, caption text, OCR text, and image content. Do not claim to browse private social content. Do not create generic concepts like \"Barcelona itinerary\". Each place must be a named restaurant, cafe, hotel, landmark, neighborhood, activity venue, transit point, or travel tip. Return only JSON with {\"places\":[{\"name\":\"\",\"category\":\"food|sightseeing|nightlife|shopping|hotel|nature|culture|transportation|hidden_gem|activity|tip\",\"summary\":\"\",\"address\":null,\"city\":null,\"country\":null,\"confidence\":0.0,\"evidence\":[]}]}.\n\n" +
         `Source platform: ${input.sourcePlatform}\nSource URL: ${input.sourceUrl || "none"}\nText:\n${input.sourceText || "No text provided."}`,
       type: "input_text"
     }
@@ -1007,13 +1089,14 @@ async function extractWithOpenAi(input: {
 
   const payload = await response.json();
   const text = readOutputText(payload);
-  const parsed = JSON.parse(text);
+  const parsed = parseJsonObject(text);
   return validateExtractedTravelSignals(parsed?.places, "openai");
 }
 
 function extractWithRules(sourceText: string, sourceUrl: string | null): ExtractedTravelSignal[] {
   const lines = sourceText
-    .split(/\r?\n|\.|•|-/)
+    .replace(/\b(?:visit|see|try|eat at|coffee at|tapas at|stay at)\b/gi, "\n$&")
+    .split(/\r?\n|\.|•|-|;|,(?=\s*(?:visit|see|try|eat at|coffee at|tapas at|stay at)\b)/i)
     .map((line) => line.trim())
     .filter(Boolean);
   const candidates = lines
@@ -1038,19 +1121,35 @@ function extractWithRules(sourceText: string, sourceUrl: string | null): Extract
 }
 
 async function resolvePlace(signal: ExtractedTravelSignal, post: ImportedPostRow) {
+  return resolvePlaceFromQuery({
+    address: signal.address || null,
+    city: signal.city || null,
+    country: signal.country || null,
+    name: signal.name,
+    sourceTitle: post.source_title
+  });
+}
+
+async function resolvePlaceFromQuery(input: {
+  address?: string | null;
+  city?: string | null;
+  country?: string | null;
+  name: string;
+  sourceTitle?: string | null;
+}) {
   const apiKey = process.env.GOOGLE_PLACES_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
   if (!apiKey) {
     return {
-      address: signal.address || null,
-      city: signal.city || null,
-      country: signal.country || null,
+      address: input.address || null,
+      city: input.city || null,
+      country: input.country || null,
       lat: null,
       lng: null,
       placeId: null
     };
   }
 
-  const query = [signal.name, signal.city, signal.country, post.source_title]
+  const query = [input.name, input.address, input.city, input.country, input.sourceTitle]
     .filter(Boolean)
     .join(" ");
   const url = new URL("https://maps.googleapis.com/maps/api/place/findplacefromtext/json");
@@ -1061,27 +1160,67 @@ async function resolvePlace(signal: ExtractedTravelSignal, post: ImportedPostRow
 
   const response = await fetch(url, { cache: "no-store" });
   if (!response.ok) {
-    return {
-      address: signal.address || null,
-      city: signal.city || null,
-      country: signal.country || null,
-      lat: null,
-      lng: null,
-      placeId: null
-    };
+    return geocodePlaceFallback(apiKey, input, query);
   }
 
   const payload = await response.json();
   const candidate = Array.isArray(payload.candidates) ? payload.candidates[0] : null;
 
+  if (!candidate?.geometry?.location) {
+    return geocodePlaceFallback(apiKey, input, query);
+  }
+
   return {
-    address: candidate?.formatted_address || signal.address || null,
-    city: signal.city || null,
-    country: signal.country || null,
+    address: candidate?.formatted_address || input.address || null,
+    city: input.city || null,
+    country: input.country || null,
     lat: candidate?.geometry?.location?.lat ?? null,
     lng: candidate?.geometry?.location?.lng ?? null,
     placeId: candidate?.place_id || null
   };
+}
+
+async function geocodePlaceFallback(
+  apiKey: string,
+  input: {
+    address?: string | null;
+    city?: string | null;
+    country?: string | null;
+    name: string;
+  },
+  query: string
+) {
+  const fallback = {
+    address: input.address || null,
+    city: input.city || null,
+    country: input.country || null,
+    lat: null as number | null,
+    lng: null as number | null,
+    placeId: null as string | null
+  };
+
+  try {
+    const url = new URL("https://maps.googleapis.com/maps/api/geocode/json");
+    url.searchParams.set("address", query);
+    url.searchParams.set("key", apiKey);
+
+    const response = await fetch(url, { cache: "no-store" });
+    if (!response.ok) return fallback;
+
+    const payload = await response.json();
+    const candidate = Array.isArray(payload.results) ? payload.results[0] : null;
+
+    return {
+      address: candidate?.formatted_address || fallback.address,
+      city: fallback.city,
+      country: fallback.country,
+      lat: candidate?.geometry?.location?.lat ?? null,
+      lng: candidate?.geometry?.location?.lng ?? null,
+      placeId: candidate?.place_id || null
+    };
+  } catch {
+    return fallback;
+  }
 }
 
 async function defaultStartTimeForTrip(
@@ -1197,6 +1336,22 @@ function readOutputText(payload: any) {
     ?.trim();
   if (!text) throw new Error("OpenAI response did not contain text.");
   return text;
+}
+
+function parseJsonObject(text: string) {
+  const trimmed = text
+    .trim()
+    .replace(/^```(?:json)?/i, "")
+    .replace(/```$/i, "")
+    .trim();
+  const start = trimmed.indexOf("{");
+  const end = trimmed.lastIndexOf("}");
+
+  if (start < 0 || end < start) {
+    throw new Error("OpenAI extraction did not return JSON.");
+  }
+
+  return JSON.parse(trimmed.slice(start, end + 1));
 }
 
 function normalizeCategory(value: string) {

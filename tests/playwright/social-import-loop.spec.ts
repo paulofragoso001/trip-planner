@@ -68,6 +68,8 @@ test("social inspiration import promotes to timeline/map and generates a plan", 
     const tripPayload = await tripResponse.json();
     tripId = tripPayload?.trip?.id;
     expect(typeof tripId).toBe("string");
+    const testUserId = tripPayload?.trip?.user_id;
+    expect(typeof testUserId).toBe("string");
 
     const importResponse = await request.post(`${baseUrl}/api/social-imports`, {
       data: {
@@ -82,6 +84,7 @@ test("social inspiration import promotes to timeline/map and generates a plan", 
     });
     expect(importResponse.status()).toBe(201);
     const importPayload = await importResponse.json();
+    expect(importPayload.error).toBeNull();
     importId = importPayload?.data?.socialImport?.id;
     expect(typeof importId).toBe("string");
 
@@ -124,6 +127,43 @@ test("social inspiration import promotes to timeline/map and generates a plan", 
 
     expect(typeof place.latitude).toBe("number");
     expect(typeof place.longitude).toBe("number");
+
+    const { data: duplicate, error: duplicateError } = await admin
+      .from("extracted_places")
+      .insert({
+        category: place.category || "sightseeing",
+        confidence: 0.7,
+        dedupe_key: `e2e-duplicate-${runId}`,
+        description: "Duplicate evidence from a second saved post.",
+        evidence: ["Duplicate Park Güell evidence"],
+        imported_post_id: importId,
+        latitude: place.latitude,
+        longitude: place.longitude,
+        name: "Park Guell duplicate",
+        normalized_name: `park-guell-duplicate-${runId}`,
+        status: "needs_review",
+        travel_note: "Duplicate note to merge into the target.",
+        trip_id: tripId,
+        user_id: testUserId
+      })
+      .select("*")
+      .single();
+
+    expect(duplicateError).toBeNull();
+    const mergeResponse = await request.post(
+      `${baseUrl}/api/extracted-places/${duplicate.id}/merge`,
+      {
+        data: { targetPlaceId: place.id },
+        headers: dashboardHeaders
+      }
+    );
+    expect(mergeResponse.status()).toBe(200);
+    const mergePayload = await mergeResponse.json();
+    expect(mergePayload?.data?.source).toMatchObject({
+      duplicate_of: place.id,
+      status: "merged"
+    });
+    expect(mergePayload?.data?.target?.evidence).toContain("Duplicate Park Güell evidence");
 
     await page.setExtraHTTPHeaders(dashboardHeaders);
     await page.goto(`${baseUrl}/dashboard/imports`, { waitUntil: "commit" });

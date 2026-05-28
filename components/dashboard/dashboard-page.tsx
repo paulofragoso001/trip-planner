@@ -1,14 +1,21 @@
 import Link from "next/link";
-import { ArrowRight, Compass, Map, Plane } from "lucide-react";
+import { ArrowRight, Compass, Map, Plane, Radar } from "lucide-react";
 import type { DashboardData } from "@/app/dashboard/loader";
 
-type DashboardPageProps = DashboardData;
+type DashboardPageProps = DashboardData & {
+  view?: string;
+};
 
 export default function DashboardPage({
   error,
   metrics,
-  recentTrips
+  recentTrips,
+  view
 }: DashboardPageProps) {
+  if (view === "flight-status") {
+    return <FlightStatusDashboard error={error} metrics={metrics} recentTrips={recentTrips} />;
+  }
+
   const importsWaiting = metrics.find((metric) => metric.label === "Imports waiting")?.value ?? "0";
 
   return (
@@ -169,6 +176,73 @@ export default function DashboardPage({
             </Link>
           </div>
         </article>
+      </section>
+    </div>
+  );
+}
+
+function FlightStatusDashboard({
+  error,
+  metrics,
+  recentTrips
+}: DashboardData) {
+  const segments = metrics.find((metric) => metric.label === "Segments")?.value ?? "0";
+
+  return (
+    <div className="grid gap-6" data-testid="flight-status-dashboard">
+      {error ? (
+        <p className="rounded-2xl bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
+          {error}
+        </p>
+      ) : null}
+
+      <section className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.22em] text-blue-600">
+              Flight Status
+            </p>
+            <h1 className="mt-2 max-w-3xl text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
+              Flight monitoring for confirmed trip segments.
+            </h1>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600 sm:text-base">
+              Flight updates appear here after flight segments are added to a trip and refreshed. Non-flight trip ideas stay in the itinerary and map workspace.
+            </p>
+          </div>
+          <span className="grid h-14 w-14 place-items-center rounded-2xl bg-blue-50 text-blue-700">
+            <Radar className="h-6 w-6" aria-hidden="true" />
+          </span>
+        </div>
+      </section>
+
+      <section className="grid gap-4 md:grid-cols-3">
+        <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+            Trips watched
+          </p>
+          <p className="mt-2 text-3xl font-black">{recentTrips.length}</p>
+        </article>
+        <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+            Segments
+          </p>
+          <p className="mt-2 text-3xl font-black">{segments}</p>
+        </article>
+        <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+            Alerts
+          </p>
+          <p className="mt-2 text-3xl font-black">
+            {metrics.find((metric) => metric.label === "Alerts")?.value ?? "0"}
+          </p>
+        </article>
+      </section>
+
+      <section className="rounded-[2rem] border border-dashed border-slate-300 bg-white p-5 shadow-sm sm:p-6">
+        <p className="font-black text-slate-950">No live flight updates to review.</p>
+        <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+          Add flight itinerary items to a confirmed trip, then refresh flight status from the trip timeline. Gate, terminal, delay, and cancellation updates will appear here.
+        </p>
       </section>
     </div>
   );

@@ -45,14 +45,18 @@ export async function loadTripsData(): Promise<TripsData> {
     };
   }
 
-  const { data, error } = await auth.supabase
-    .from("trips")
-    .select("id,name,destination,start_date,end_date,status,travel_style")
-    .eq("user_id", auth.userId)
-    .order("start_date", { ascending: true, nullsFirst: false })
-    .order("created_at", { ascending: false });
+  const { data, error } = await loadTripRows(auth.supabase, auth.userId);
 
   if (error) {
+    console.error(
+      JSON.stringify({
+        area: "trips",
+        event: "trips_load_failed",
+        message: error.message,
+        userId: auth.userId
+      })
+    );
+
     return {
       error: "Could not load trips from Supabase.",
       trips: []
@@ -63,6 +67,39 @@ export async function loadTripsData(): Promise<TripsData> {
     error: null,
     trips: ((data || []) as TripRow[]).map(mapTrip)
   };
+}
+
+async function loadTripRows(supabase: any, userId: string) {
+  const withTravelStyle = await supabase
+    .from("trips")
+    .select("id,name,destination,start_date,end_date,status,travel_style")
+    .eq("user_id", userId)
+    .order("start_date", { ascending: true, nullsFirst: false })
+    .order("created_at", { ascending: false });
+
+  if (!withTravelStyle.error || !isMissingTravelStyleColumn(withTravelStyle.error.message)) {
+    return withTravelStyle;
+  }
+
+  console.warn(
+    JSON.stringify({
+      area: "trips",
+      event: "trips_load_schema_fallback",
+      message: withTravelStyle.error.message,
+      userId
+    })
+  );
+
+  return supabase
+    .from("trips")
+    .select("id,name,destination,start_date,end_date,status")
+    .eq("user_id", userId)
+    .order("start_date", { ascending: true, nullsFirst: false })
+    .order("created_at", { ascending: false });
+}
+
+function isMissingTravelStyleColumn(message: string) {
+  return /travel_style/i.test(message) && /column|schema cache|could not find/i.test(message);
 }
 
 function mapTrip(row: TripRow): TripListItemView {

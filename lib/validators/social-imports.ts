@@ -63,12 +63,13 @@ export function validateCreateSocialImport(
   );
   const sourceTitle = readNullableString(value.sourceTitle ?? value.source_title, 500);
   const tripId = readNullableString(value.tripId ?? value.trip_id, 120);
+  const hasFile = value.hasFile === true || value.hasFile === "true";
   const sourcePlatform = normalizeSourcePlatform(
     readNullableString(value.sourcePlatform ?? value.source_platform, 40),
     sourceUrl
   );
 
-  if (!sourceUrl && !rawText && !sourceCaption && !sourceTitle) {
+  if (!hasFile && !sourceUrl && !rawText && !sourceCaption && !sourceTitle) {
     details.body = "Paste a URL, caption, or text to import.";
   }
 

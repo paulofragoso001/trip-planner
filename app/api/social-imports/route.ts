@@ -71,10 +71,14 @@ async function readFormData(request: Request) {
   const formData = await request.formData();
   const fileValue = formData.get("file");
   const value = {
+    hasFile: fileValue instanceof File && fileValue.size > 0,
     processNow: formData.get("processNow") !== "false",
     rawText: readFormString(formData, "rawText"),
     sourceCaption: readFormString(formData, "sourceCaption"),
-    sourcePlatform: readFormString(formData, "sourcePlatform"),
+    sourcePlatform:
+      fileValue instanceof File && fileValue.size > 0
+        ? "screenshot"
+        : readFormString(formData, "sourcePlatform"),
     sourceTitle: readFormString(formData, "sourceTitle"),
     sourceUrl: readFormString(formData, "sourceUrl"),
     tripId: readFormString(formData, "tripId")
