@@ -37,12 +37,11 @@ export async function POST(request: Request) {
     const result = await createSocialImport(auth.supabase, auth.userId, {
       processNow: true,
       rawText: buildAiTripPlannerBrief(validation.value),
-      sourceCaption:
-        "OpenAI-generated planner brief. Review candidates before promoting them into the itinerary.",
+      sourceCaption: null,
       sourcePlatform: "manual",
-      sourceTitle: `AI trip planner: ${
-        validation.value.destination || validation.value.tripName || "Untitled trip"
-      }`,
+      sourceTitle: validation.value.destination
+        ? `Travel ideas for ${validation.value.destination}`
+        : validation.value.tripName || null,
       sourceUrl: null,
       tripId: validation.value.tripId
     });

@@ -54,6 +54,20 @@ const importedPostSelect =
 const extractedPlaceSelect =
   "id,user_id,imported_post_id,trip_id,promoted_trip_segment_id,name,normalized_name,category,description,travel_note,address,city,region,country,place_id,latitude,longitude,confidence,priority,dedupe_key,duplicate_of,status,evidence,ai_payload,created_at,updated_at";
 const highConfidenceThreshold = 0.85;
+const allowedExtractionCategories = new Set([
+  "activity",
+  "attraction",
+  "event",
+  "hotel",
+  "landmark",
+  "neighborhood",
+  "nightlife",
+  "park",
+  "restaurant",
+  "shopping",
+  "tour",
+  "transportation"
+]);
 
 function logSocialImportEvent(
   event: string,
@@ -100,7 +114,7 @@ export async function listSocialImportWorkspace(
   }
 
   return {
-    extractedPlaces: placesResult.error ? [] : placesResult.data || [],
+    extractedPlaces: placesResult.error ? [] : filterStoredExtractedPlaces(placesResult.data || []),
     socialImports: postsResult.error ? [] : postsResult.data || []
   };
 }
@@ -125,7 +139,7 @@ export async function getSocialImportDetail(
   }
 
   return {
-    extractedPlaces: data || [],
+    extractedPlaces: filterStoredExtractedPlaces(data || []),
     socialImport
   };
 }
@@ -139,10 +153,6 @@ export async function createSocialImport(
   const upload = file ? await uploadSocialImportAsset(supabase, userId, file) : null;
   const sourceMetadata = await loadSocialUrlMetadata(input.sourceUrl);
   const rawText = [
-    input.sourceTitle,
-    sourceMetadata.title,
-    sourceMetadata.description,
-    sourceMetadata.siteName,
     input.sourceCaption,
     input.rawText
   ]
@@ -1054,10 +1064,21 @@ async function extractTravelSignals(input: {
   sourceText: string;
   sourceUrl: string | null;
 }): Promise<ExtractedTravelSignal[]> {
+  logSocialImportEvent("ai_extraction_input_preview", {
+    preview: sanitizeLogPreview(input.sourceText),
+    sourcePlatform: input.sourcePlatform,
+    sourceTextLength: input.sourceText.length,
+    sourceUrlHost: safeHostname(input.sourceUrl)
+  });
+
   if (process.env.OPENAI_API_KEY) {
-    const aiSignals = await extractWithOpenAi(input).catch(() => null);
-    if (aiSignals?.length) {
-      return aiSignals;
+    try {
+      return await extractWithOpenAi(input);
+    } catch (error) {
+      logSocialImportEvent("ai_extraction_provider_failed", {
+        error: error instanceof Error ? error.message : "OpenAI extraction failed.",
+        sourcePlatform: input.sourcePlatform
+      });
     }
   }
 
@@ -1073,8 +1094,14 @@ async function extractWithOpenAi(input: {
   const content: Array<Record<string, unknown>> = [
     {
       text:
-        "Extract individual travel places from this saved social travel inspiration. Split compound captions into separate places. For example, \"coffee at Nomad Coffee, visit Sagrada Familia, sunset from Park Guell\" must return three places, not one broad itinerary idea. Use only the provided URL metadata, caption text, OCR text, and image content. Do not claim to browse private social content. Do not create generic concepts like \"Barcelona itinerary\". Each place must be a named restaurant, cafe, hotel, landmark, neighborhood, activity venue, transit point, or travel tip. If the text contains multiple places, output multiple candidates. Return only JSON with {\"places\":[{\"name\":\"\",\"category\":\"food|sightseeing|nightlife|shopping|hotel|nature|culture|transportation|hidden_gem|activity|tip\",\"summary\":\"\",\"address\":null,\"city\":null,\"country\":null,\"location_hint\":null,\"duplicate_group_key\":null,\"confidence\":0.0,\"evidence\":[]}]}.\n\n" +
-        `Source platform: ${input.sourcePlatform}\nSource URL: ${input.sourceUrl || "none"}\nText:\n${input.sourceText || "No text provided."}`,
+        "Extract only real travel places or bookable travel experiences from the user-submitted saved inspiration below. Return an empty places array if no real place or experience is present.\n\n" +
+        "Allowed candidates: named restaurants, cafes, attractions, landmarks, neighborhoods, tours, activities, hotels, events, parks, shopping places, nightlife venues, and relevant transportation hubs.\n" +
+        "Reject candidates that are UI labels, app names, product names, generic itinerary ideas, sentence fragments, instructions, marketing copy, or system/planner text. Never return OpenAI, Wayline, AI trip planner, Saved Inspiration, Review candidates, or text about promoting items.\n" +
+        "Split compound text into separate candidates. Example: \"visit Wynwood Walls, dinner at Komodo, walk Brickell City Centre\" returns three places.\n" +
+        "Each candidate must include name, category, location_hint, city, country if known, an evidence quote copied from the user content, and confidence. Do not invent prices, booking URLs, or availability.\n" +
+        "Use these categories only: attraction, restaurant, shopping, park, activity, tour, nightlife, hotel, transportation, neighborhood, event.\n" +
+        "Return only JSON with {\"places\":[{\"name\":\"\",\"category\":\"attraction|restaurant|shopping|park|activity|tour|nightlife|hotel|transportation|neighborhood|event\",\"summary\":\"\",\"address\":null,\"city\":null,\"country\":null,\"location_hint\":null,\"duplicate_group_key\":null,\"confidence\":0.0,\"evidence\":[]}]}. Evidence must quote the user content.\n\n" +
+        `Source platform: ${input.sourcePlatform}\nSource URL host: ${safeHostname(input.sourceUrl) || "none"}\nUSER_SAVED_INSPIRATION_BEGIN\n${input.sourceText || ""}\nUSER_SAVED_INSPIRATION_END`,
       type: "input_text"
     }
   ];
@@ -1112,34 +1139,36 @@ async function extractWithOpenAi(input: {
   const payload = await response.json();
   const text = readOutputText(payload);
   const parsed = parseJsonObject(text);
-  return validateExtractedTravelSignals(parsed?.places, "openai");
+  return filterTravelSignals(validateExtractedTravelSignals(parsed?.places, "openai"));
 }
 
 function extractWithRules(sourceText: string, sourceUrl: string | null): ExtractedTravelSignal[] {
   const lines = sourceText
-    .replace(/\b(?:visit|see|try|eat at|coffee at|tapas at|stay at)\b/gi, "\n$&")
-    .split(/\r?\n|\.|•|-|;|,(?=\s*(?:visit|see|try|eat at|coffee at|tapas at|stay at)\b)/i)
+    .replace(/\b(?:visit|see|try|eat at|have dinner at|dinner at|coffee at|tapas at|stay at|walk around|go to|do a)\b/gi, "\n$&")
+    .split(/\r?\n|\.|•|;|,(?=\s*(?:visit|see|try|eat at|have dinner at|dinner at|coffee at|tapas at|stay at|walk around|go to|do a)\b)/i)
     .map((line) => line.trim())
     .filter(Boolean);
   const candidates = lines
     .filter((line) => looksLikePlace(line))
-    .slice(0, 5)
-    .map((line) => line.replace(/^visit\s+/i, "").replace(/^try\s+/i, ""));
+    .map(cleanRuleCandidateName)
+    .filter(Boolean)
+    .slice(0, 8);
 
   if (!candidates.length && sourceUrl) {
     candidates.push(titleFromUrl(sourceUrl));
   }
 
-  return validateExtractedTravelSignals(candidates.map((name) => ({
-    category: inferCategory(`${name}\n${sourceText}`),
-    confidence: sourceText ? 0.62 : 0.4,
-    evidence: sourceText ? [sourceText.slice(0, 180)] : [sourceUrl || "Imported URL"],
+  return filterTravelSignals(validateExtractedTravelSignals(candidates.map((name) => ({
+    category: inferCategory(name),
+    confidence: sourceText ? confidenceForRuleCandidate(name, sourceText) : 0.4,
+    evidence: sourceText ? [evidenceForCandidate(name, sourceText)] : [sourceUrl || "Imported URL"],
+    location_hint: locationHintFromText(sourceText),
     name: name.slice(0, 180),
     priority: "candidate",
     summary: sourceText
       ? summarizeText(sourceText)
       : "Imported travel inspiration. Confirm the place before promoting it."
-  })), "rules");
+  })), "rules"));
 }
 
 async function resolvePlace(signal: ExtractedTravelSignal, post: ImportedPostRow) {
@@ -1173,7 +1202,7 @@ async function defaultStartTimeForTrip(
 }
 
 function buildSourceText(post: ImportedPostRow) {
-  return [post.source_title, post.source_caption, post.raw_text, post.source_url]
+  return [post.source_caption, post.raw_text, post.source_url]
     .filter(Boolean)
     .join("\n\n");
 }
@@ -1205,7 +1234,18 @@ function validateExtractedTravelSignals(
     throw new Error(`${source} extraction returned invalid places payload.`);
   }
 
-  return value.map((item, index) => validateExtractedTravelSignal(item, index, source));
+  const signals: ExtractedTravelSignal[] = [];
+  for (const [index, item] of value.entries()) {
+    try {
+      signals.push(validateExtractedTravelSignal(item, index, source));
+    } catch (error) {
+      logSocialImportEvent("ai_extraction_candidate_rejected", {
+        reason: error instanceof Error ? error.message : "invalid_candidate",
+        source
+      });
+    }
+  }
+  return signals;
 }
 
 function validateExtractedTravelSignal(
@@ -1218,7 +1258,7 @@ function validateExtractedTravelSignal(
   }
 
   const name = readString(value.name);
-  if (!name || name.length > 180) {
+  if (!name || name.length < 3 || name.length > 180) {
     throw new Error(`${source} extraction place ${index} is missing a valid name.`);
   }
 
@@ -1252,11 +1292,110 @@ function validateExtractedTravelSignal(
 function dedupeSignals(signals: ExtractedTravelSignal[]) {
   const seen = new Set<string>();
   return signals.filter((signal) => {
-    const key = normalizeName(signal.name);
+    const key = normalizeName(`${signal.name}:${signal.city || signal.locationHint || ""}`);
     if (!key || seen.has(key)) return false;
     seen.add(key);
     return true;
   });
+}
+
+function filterTravelSignals(signals: ExtractedTravelSignal[]) {
+  return signals.filter((signal) => {
+    const rejectionReason = rejectionReasonForSignal(signal);
+    if (rejectionReason) {
+      logSocialImportEvent("ai_extraction_candidate_rejected", {
+        name: sanitizeLogPreview(signal.name),
+        reason: rejectionReason
+      });
+      return false;
+    }
+    return true;
+  });
+}
+
+function filterStoredExtractedPlaces<TPlace extends Record<string, any>>(places: TPlace[]) {
+  return places.filter((place) => {
+    if (place.status === "promoted") return true;
+    return !rejectionReasonForSignal({
+      category: String(place.category || "activity"),
+      city: place.city || null,
+      confidence: Number(place.confidence || 0.5),
+      country: place.country || null,
+      evidence: readStringArray(place.evidence),
+      locationHint: place.ai_payload?.locationHint || place.address || null,
+      name: String(place.name || ""),
+      reviewReason: "ready",
+      summary: String(place.travel_note || place.description || "")
+    });
+  });
+}
+
+function rejectionReasonForSignal(signal: ExtractedTravelSignal) {
+  const name = signal.name.trim();
+  const normalized = normalizeCopy(name);
+  const evidenceText = normalizeCopy([signal.summary, ...(signal.evidence || [])].join(" "));
+
+  if (name.length < 3) return "too_short";
+  if (!allowedExtractionCategories.has(normalizeCategory(signal.category))) {
+    return "unsupported_category";
+  }
+  if (isBlockedExtractionTerm(normalized)) return "blocked_term";
+  if (containsInstructionalPhrase(normalized) || containsInstructionalPhrase(evidenceText)) {
+    return "instructional_or_ui_copy";
+  }
+  if (looksLikeSentenceFragment(name)) return "sentence_fragment";
+  if (!hasTravelIntent(signal)) return "missing_travel_intent";
+  return null;
+}
+
+function isBlockedExtractionTerm(normalized: string) {
+  return blockedExtractionTerms.some((term) => {
+    const normalizedTerm = normalizeCopy(term);
+    return normalized === normalizedTerm || normalized.includes(normalizedTerm);
+  });
+}
+
+const blockedExtractionTerms = [
+  "OpenAI",
+  "Wayline",
+  "AI trip planner",
+  "Review candidates",
+  "Review candidates before promoting them into the itinerary",
+  "Confirm AI candidates",
+  "Saved Inspiration",
+  "Generate review candidates",
+  "Place extraction",
+  "Human review",
+  "Create Trip Plan",
+  "Trip Draft Queue"
+];
+
+function containsInstructionalPhrase(value: string) {
+  return /before promoting|promoting them into|review candidates|generate reviewable|do not create|return only json|source platform|user saved inspiration|openai created|scan with openai/.test(value);
+}
+
+function looksLikeSentenceFragment(value: string) {
+  const wordCount = value.trim().split(/\s+/).length;
+  if (wordCount <= 4) return false;
+  return /^(review|confirm|generate|extract|turn|use|add|click|open|create|planning)\b/i.test(value);
+}
+
+function hasTravelIntent(signal: ExtractedTravelSignal) {
+  const text = normalizeCopy([
+    signal.name,
+    signal.category,
+    signal.city,
+    signal.country,
+    signal.locationHint,
+    signal.summary,
+    ...(signal.evidence || [])
+  ].filter(Boolean).join(" "));
+
+  if (/restaurant|dinner|lunch|breakfast|cafe|bar|food|hotel|park|beach|museum|gallery|tour|boat|bay|landmark|attraction|shopping|centre|center|mall|nightlife|airport|station|neighborhood|district|visit|walk|stay|go to|around|activity|experience/.test(text)) {
+    return true;
+  }
+
+  return Boolean(signal.city || signal.locationHint || /[A-Z][a-z]+(?:\s+[A-Z][a-z]+)+/.test(signal.name));
 }
 
 function readOutputText(payload: any) {
@@ -1288,22 +1427,22 @@ function parseJsonObject(text: string) {
 
 function normalizeCategory(value: string) {
   const normalized = value.toLowerCase().replace(/[^a-z_]/g, "_");
-  if (normalized.includes("food") || normalized.includes("restaurant")) return "food";
+  if (normalized.includes("food") || normalized.includes("restaurant") || normalized.includes("cafe")) return "restaurant";
   if (normalized.includes("hotel") || normalized.includes("lodging")) return "hotel";
   if (normalized.includes("night")) return "nightlife";
   if (normalized.includes("shop")) return "shopping";
-  if (normalized.includes("nature") || normalized.includes("park")) return "nature";
-  if (normalized.includes("culture") || normalized.includes("museum")) return "culture";
+  if (normalized.includes("park") || normalized.includes("nature")) return "park";
+  if (normalized.includes("culture") || normalized.includes("museum") || normalized.includes("landmark") || normalized.includes("sight") || normalized.includes("attraction")) return "attraction";
   if (normalized.includes("transport")) return "transportation";
-  if (normalized.includes("hidden")) return "hidden_gem";
-  if (normalized.includes("sight")) return "sightseeing";
-  if (normalized.includes("tip")) return "tip";
+  if (normalized.includes("neighbor") || normalized.includes("district")) return "neighborhood";
+  if (normalized.includes("tour")) return "tour";
+  if (normalized.includes("event")) return "event";
   return "activity";
 }
 
 function segmentKindForCategory(category: string) {
   switch (normalizeCategory(category)) {
-    case "food":
+    case "restaurant":
       return "restaurant";
     case "hotel":
       return "hotel";
@@ -1318,12 +1457,14 @@ function segmentKindForCategory(category: string) {
 function inferCategory(text: string) {
   const lower = text.toLowerCase();
   if (/restaurant|cafe|bar|coffee|dinner|lunch|breakfast|taco|sushi|food/.test(lower)) {
-    return "food";
+    return "restaurant";
   }
   if (/hotel|stay|resort|hostel/.test(lower)) return "hotel";
-  if (/museum|gallery|temple|church|castle/.test(lower)) return "culture";
-  if (/beach|park|hike|trail|garden|nature/.test(lower)) return "nature";
+  if (/boat tour|tour|cruise|experience/.test(lower)) return "tour";
+  if (/museum|gallery|temple|church|castle|walls|landmark|attraction/.test(lower)) return "attraction";
+  if (/beach|park|hike|trail|garden|nature/.test(lower)) return "park";
   if (/shop|market|boutique/.test(lower)) return "shopping";
+  if (/neighborhood|district/.test(lower)) return "neighborhood";
   return "activity";
 }
 
@@ -1332,6 +1473,41 @@ function looksLikePlace(value: string) {
   if (/https?:\/\//i.test(value)) return false;
   if (/^(and|the|this|that|with|from|for|you|travel|trip)$/i.test(value)) return false;
   return /[A-Z][a-z]+/.test(value) || /restaurant|cafe|hotel|market|museum|beach/i.test(value);
+}
+
+function cleanRuleCandidateName(value: string) {
+  return value
+    .replace(/^(?:and\s+)?(?:maybe\s+)?(?:visit|see|try|eat at|have dinner at|dinner at|coffee at|tapas at|stay at|walk around|go to|do a)\s+/i, "")
+    .replace(/^(?:I want to|I would like to)\s+/i, "")
+    .replace(/,\s+and\s+maybe$/i, "")
+    .replace(/,\s+and\s+maybe\s+/i, "")
+    .replace(/\s+(?:for|with)\s+.+$/i, "")
+    .trim();
+}
+
+function confidenceForRuleCandidate(name: string, sourceText: string) {
+  const text = normalizeCopy(`${name} ${sourceText}`);
+  if (/dinner at|visit|walk around|go to|boat tour|restaurant|park|centre|center|walls/.test(text)) {
+    return 0.82;
+  }
+  return 0.62;
+}
+
+function evidenceForCandidate(name: string, sourceText: string) {
+  const sentences = sourceText
+    .split(/(?<=[.!?])\s+|[\n;]/)
+    .map((sentence) => sentence.trim())
+    .filter(Boolean);
+  const normalizedName = normalizeCopy(name);
+  const direct = sentences.find((sentence) =>
+    normalizeCopy(sentence).includes(normalizedName)
+  );
+  return (direct || sourceText).slice(0, 240);
+}
+
+function locationHintFromText(sourceText: string) {
+  const match = sourceText.match(/\b(?:Planning|Trip to|Destination:)\s+(?:a\s+)?([A-Z][A-Za-z\s]+?)(?:\s+weekend|\s+trip|\.|,|\n|$)/);
+  return match?.[1]?.trim() || null;
 }
 
 function titleFromUrl(value: string) {
@@ -1355,6 +1531,28 @@ function buildDedupeKey(userId: string, placeId: string | null, name: string, ci
 
 function normalizeName(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+}
+
+function normalizeCopy(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+function sanitizeLogPreview(value: string | null | undefined) {
+  return String(value || "")
+    .replace(/https?:\/\/\S+/gi, "[url]")
+    .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, "[email]")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 240);
+}
+
+function safeHostname(value?: string | null) {
+  if (!value) return "";
+  try {
+    return new URL(value).hostname.toLowerCase();
+  } catch {
+    return "";
+  }
 }
 
 function clampConfidence(value: number) {

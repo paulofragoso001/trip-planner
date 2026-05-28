@@ -223,6 +223,84 @@ test("social inspiration import promotes to timeline/map and generates a plan", 
   }
 });
 
+test("Miami social inspiration extraction returns only real travel candidates", async ({
+  request
+}) => {
+  test.setTimeout(90_000);
+  test.skip(
+    !supabaseUrl || !serviceRoleKey,
+    "social import extraction quality requires Supabase URL and SUPABASE_SERVICE_ROLE_KEY"
+  );
+
+  const preflight = await request.get(`${baseUrl}/api/social-imports`, {
+    headers: dashboardHeaders
+  });
+
+  test.skip(
+    preflight.status() !== 200,
+    "social import extraction quality requires dashboard test auth to be enabled"
+  );
+
+  const admin = createClient(supabaseUrl!, serviceRoleKey!, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  });
+  const runId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+  const sourceTitle = `e2e-miami-extraction-${runId}`;
+  let importId = "";
+
+  try {
+    const response = await request.post(`${baseUrl}/api/social-imports`, {
+      data: {
+        processNow: true,
+        rawText:
+          "Planning a Miami weekend trip. I want to visit Wynwood Walls, have dinner at Komodo, walk around Brickell City Centre, go to South Pointe Park, and maybe do a Biscayne Bay boat tour.",
+        sourcePlatform: "manual",
+        sourceTitle
+      },
+      headers: dashboardHeaders
+    });
+    expect(response.status()).toBe(201);
+    const payload = await response.json();
+    importId = payload?.data?.socialImport?.id;
+    expect(typeof importId).toBe("string");
+
+    const names = (payload?.data?.extractedPlaces || []).map((place: any) =>
+      String(place.name || "")
+    );
+    const normalizedNames = names.map(normalizeNameForAssertion);
+
+    for (const expected of [
+      "Wynwood Walls",
+      "Komodo",
+      "Brickell City Centre",
+      "South Pointe Park",
+      "Biscayne Bay boat tour"
+    ]) {
+      expect(
+        normalizedNames.some((name) => name.includes(normalizeNameForAssertion(expected)))
+      ).toBeTruthy();
+    }
+
+    for (const blocked of [
+      "OpenAI",
+      "Wayline",
+      "AI trip planner",
+      "Review candidates before promoting them into the itinerary"
+    ]) {
+      expect(normalizedNames).not.toContain(normalizeNameForAssertion(blocked));
+    }
+  } finally {
+    if (importId) {
+      await admin.from("extracted_places").delete().eq("imported_post_id", importId);
+      await admin.from("imported_social_posts").delete().eq("id", importId);
+    }
+    await admin.from("imported_social_posts").delete().eq("source_title", sourceTitle);
+  }
+});
+
 async function processUntilReady(request: any, importId: string) {
   for (let attempt = 0; attempt < 6; attempt += 1) {
     const workerResponse = await request.post(`${baseUrl}/api/jobs/social-import-worker`, {
@@ -314,4 +392,8 @@ function readLocalEnv(name: string) {
   }
 
   return line.slice(name.length + 1).replace(/^["']|["']$/g, "").trim();
+}
+
+function normalizeNameForAssertion(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 }

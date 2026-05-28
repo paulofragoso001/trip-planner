@@ -58,17 +58,13 @@ export function validateAiTripPlannerInput(
 
 export function buildAiTripPlannerBrief(input: AiTripPlannerInput) {
   return [
-    "Wayline AI trip planner request.",
-    `Destination: ${input.destination || "not specified"}.`,
-    `Trip: ${input.tripName || "not attached"}.`,
-    `Dates: ${input.startDate || "TBD"} to ${input.endDate || "TBD"}.`,
-    `Travel style: ${input.travelStyle}.`,
-    `Interests, saved-post themes, constraints, and preferences: ${input.interests || "not specified"}.`,
-    "Generate reviewable travel candidates for this trip.",
-    "Extract specific restaurants, cafes, landmarks, museums, viewpoints, hotels, neighborhoods, day activities, nightlife, shopping, transportation tips, and hidden gems.",
-    "Each candidate should include a concise travel note, category, confidence, and evidence.",
-    "Prefer real place names. Keep uncertain ideas low-confidence. Do not create final itinerary segments; these are review candidates only."
-  ].join("\n");
+    input.destination ? `Destination: ${input.destination}` : null,
+    input.startDate || input.endDate
+      ? `Dates: ${input.startDate || "TBD"} to ${input.endDate || "TBD"}`
+      : null,
+    input.travelStyle ? `Travel style: ${input.travelStyle}` : null,
+    input.interests ? `Saved inspiration: ${input.interests}` : null
+  ].filter(Boolean).join("\n");
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
