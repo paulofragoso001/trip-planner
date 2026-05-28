@@ -19,6 +19,7 @@ export type CreateSocialImportInput = {
 
 export type UpdateExtractedPlaceInput = {
   category?: string;
+  confirmDestinationMismatch?: boolean;
   name?: string;
   priority?: "candidate" | "must_do" | "optional" | "want_to_do";
   status?: "accepted" | "dismissed" | "merged" | "needs_location_confirmation" | "needs_review" | "promoted";
@@ -118,6 +119,11 @@ export function validateUpdateExtractedPlace(
 
   if ("category" in value) {
     update.category = readNullableString(value.category, 80) || "activity";
+  }
+
+  if ("confirmDestinationMismatch" in value || "confirm_destination_mismatch" in value) {
+    update.confirmDestinationMismatch =
+      value.confirmDestinationMismatch === true || value.confirm_destination_mismatch === true;
   }
 
   if ("travelNote" in value || "travel_note" in value) {

@@ -299,12 +299,112 @@ test("Miami social inspiration extraction returns only real travel candidates", 
     for (const place of places) {
       expect(Number(place.confidence || 0)).toBeGreaterThanOrEqual(0.85);
     }
+
+    const boatTour = places.find((place: any) =>
+      normalizeNameForAssertion(String(place.name || "")).includes("biscayne bay boat tour")
+    );
+    expect(boatTour).toBeTruthy();
+    expect(["activity", "tour"]).toContain(String(boatTour?.category || ""));
+    expect(
+      places
+        .map((place: any) => `${place.name || ""} ${place.address || ""}`)
+        .join(" ")
+        .toLowerCase()
+    ).not.toContain("fort lauderdale");
   } finally {
     if (importId) {
       await admin.from("extracted_places").delete().eq("imported_post_id", importId);
       await admin.from("imported_social_posts").delete().eq("id", importId);
     }
     await admin.from("imported_social_posts").delete().eq("source_title", sourceTitle);
+  }
+});
+
+test("destination mismatch blocks accidental approval into the wrong trip", async ({
+  request
+}) => {
+  test.setTimeout(90_000);
+  test.skip(
+    !supabaseUrl || !serviceRoleKey,
+    "destination mismatch regression requires Supabase URL and SUPABASE_SERVICE_ROLE_KEY"
+  );
+
+  const preflight = await request.get(`${baseUrl}/api/social-imports`, {
+    headers: dashboardHeaders
+  });
+
+  test.skip(
+    preflight.status() !== 200,
+    "destination mismatch regression requires dashboard test auth to be enabled"
+  );
+
+  const admin = createClient(supabaseUrl!, serviceRoleKey!, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  });
+  const runId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+  const sourceTitle = `e2e-miami-mismatch-${runId}`;
+  const barcelonaTripName = `e2e-barcelona-mismatch-${runId}`;
+  let importId = "";
+  let barcelonaTripId = "";
+
+  try {
+    const tripResponse = await request.post(`${baseUrl}/api/trips`, {
+      data: {
+        destination: "Barcelona, Spain",
+        name: barcelonaTripName,
+        status: "Planning"
+      },
+      headers: dashboardHeaders
+    });
+    expect(tripResponse.status()).toBe(201);
+    const tripPayload = await tripResponse.json();
+    barcelonaTripId = tripPayload?.trip?.id;
+    expect(typeof barcelonaTripId).toBe("string");
+
+    const response = await request.post(`${baseUrl}/api/social-imports`, {
+      data: {
+        processNow: true,
+        rawText:
+          "Planning a Miami weekend trip. I want to visit Wynwood Walls and maybe do a Biscayne Bay boat tour.",
+        sourcePlatform: "manual",
+        sourceTitle
+      },
+      headers: dashboardHeaders
+    });
+    expect(response.status()).toBe(201);
+    const payload = await response.json();
+    importId = payload?.data?.socialImport?.id;
+    expect(typeof importId).toBe("string");
+    const places = payload?.data?.extractedPlaces || [];
+    const miamiPlace = places.find((place: any) => String(place.city || place.address || "").toLowerCase().includes("miami")) || places[0];
+    expect(miamiPlace?.id).toEqual(expect.any(String));
+
+    const approvalResponse = await request.patch(
+      `${baseUrl}/api/extracted-places/${miamiPlace.id}`,
+      {
+        data: {
+          status: "accepted",
+          tripId: barcelonaTripId
+        },
+        headers: dashboardHeaders
+      }
+    );
+    expect(approvalResponse.status()).toBe(400);
+    const approvalPayload = await approvalResponse.json();
+    expect(approvalPayload?.error?.details?.reason).toBe("destination_mismatch");
+  } finally {
+    if (importId) {
+      await admin.from("extracted_places").delete().eq("imported_post_id", importId);
+      await admin.from("imported_social_posts").delete().eq("id", importId);
+    }
+    if (barcelonaTripId) {
+      await admin.from("trips").delete().eq("id", barcelonaTripId);
+    }
+    await admin.from("imported_social_posts").delete().eq("source_title", sourceTitle);
+    await admin.from("trips").delete().eq("name", barcelonaTripName);
   }
 });
 

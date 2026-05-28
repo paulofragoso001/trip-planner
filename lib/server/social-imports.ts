@@ -387,6 +387,12 @@ export async function updateExtractedPlace(
   id: string,
   input: UpdateExtractedPlaceInput
 ) {
+  if (input.status === "accepted" && input.tripId) {
+    await assertTripDestinationMatch(supabase, userId, id, input.tripId, {
+      allowMismatch: input.confirmDestinationMismatch === true
+    });
+  }
+
   const updates: Record<string, unknown> = {};
   if ("category" in input) updates.category = input.category;
   if ("name" in input) {
@@ -538,6 +544,10 @@ export async function promoteExtractedPlace(
   }
 
   if (typeof place.latitude !== "number" || typeof place.longitude !== "number") {
+    if (isTourOrActivityPlace(place)) {
+      return promoteUnmappedActivityPlace(supabase, userId, place, tripId);
+    }
+
     logSocialImportEvent("trip_draft_promotion_failed", {
       error: "location_unresolved",
       extractedPlaceId: id,
@@ -632,6 +642,95 @@ export async function promoteExtractedPlace(
   };
 }
 
+async function promoteUnmappedActivityPlace(
+  supabase: SupabaseLike,
+  userId: string,
+  place: Record<string, any>,
+  tripId: string
+) {
+  const { data: latestSegment } = await supabase
+    .from("trip_segments")
+    .select("position")
+    .eq("trip_id", tripId)
+    .eq("user_id", userId)
+    .order("position", { ascending: false, nullsFirst: false })
+    .limit(1)
+    .maybeSingle();
+  const nextPosition =
+    typeof latestSegment?.position === "number" ? latestSegment.position + 1 : 0;
+  const startTime = await defaultStartTimeForTrip(supabase, userId, tripId, nextPosition);
+
+  const { data: segment, error: segmentError } = await supabase
+    .from("trip_segments")
+    .insert({
+      kind: "activity",
+      lat: null,
+      lng: null,
+      location_status: "needs_location_confirmation",
+      location: place.city || place.address || null,
+      notes: buildPromotedNotes(place),
+      position: nextPosition,
+      provider: "wayline_activity_idea",
+      provider_metadata: {
+        activityCandidate: true,
+        evidence: readStringArray(place.evidence),
+        extractedPlaceId: place.id,
+        sourceImportId: place.imported_post_id
+      },
+      provider_place_id: null,
+      source_import_id: place.imported_post_id || null,
+      start_time: startTime,
+      title: place.name,
+      trip_id: tripId,
+      user_id: userId
+    })
+    .select("id,trip_id,user_id,kind,title,start_time,end_time,location,lat,lng,notes,inserted_at")
+    .single();
+
+  if (segmentError) {
+    logSocialImportEvent("trip_draft_promotion_failed", {
+      error: segmentError.message,
+      extractedPlaceId: place.id,
+      tripId,
+      userId
+    });
+
+    throw new ApiError("internal_error", "Could not promote activity idea.", 500, {
+      supabaseMessage: segmentError.message
+    });
+  }
+
+  const { data: finalPlace } = await supabase
+    .from("extracted_places")
+    .update({
+      ai_payload: {
+        ...(isRecord(place.ai_payload) ? place.ai_payload : {}),
+        activityCandidate: true,
+        reviewReason: "needs_activity_provider"
+      },
+      promoted_trip_segment_id: segment.id,
+      status: "promoted",
+      trip_id: tripId
+    })
+    .eq("id", place.id)
+    .eq("user_id", userId)
+    .select(extractedPlaceSelect)
+    .single();
+
+  logSocialImportEvent("trip_draft_promoted", {
+    activityCandidate: true,
+    extractedPlaceId: place.id,
+    segmentId: segment.id,
+    tripId,
+    userId
+  });
+
+  return {
+    place: finalPlace || place,
+    segment
+  };
+}
+
 async function resolveExtractedPlaceForPromotion(
   supabase: SupabaseLike,
   userId: string,
@@ -639,6 +738,10 @@ async function resolveExtractedPlaceForPromotion(
   tripId: string
 ) {
   const place = await getExtractedPlace(supabase, userId, id);
+  await assertTripDestinationMatch(supabase, userId, id, tripId, {
+    allowMismatch: false,
+    place
+  });
 
   if (typeof place.latitude === "number" && typeof place.longitude === "number") {
     return place;
@@ -712,6 +815,53 @@ async function resolveExtractedPlaceForPromotion(
   });
 
   return data;
+}
+
+async function assertTripDestinationMatch(
+  supabase: SupabaseLike,
+  userId: string,
+  placeId: string,
+  tripId: string,
+  options: { allowMismatch: boolean; place?: Record<string, any> }
+) {
+  const [place, tripResult] = await Promise.all([
+    options.place ? Promise.resolve(options.place) : getExtractedPlace(supabase, userId, placeId),
+    supabase
+      .from("trips")
+      .select("destination,name,title")
+      .eq("id", tripId)
+      .eq("user_id", userId)
+      .maybeSingle()
+  ]);
+  const trip = tripResult.data;
+  const placeContext = placeDestinationContext(place);
+  const tripContext = [trip?.destination, trip?.name, trip?.title].filter(Boolean).join(" ");
+
+  if (!placeContext || !tripContext || destinationsOverlap(placeContext, tripContext)) {
+    return;
+  }
+
+  logSocialImportEvent("destination_mismatch_detected", {
+    allowMismatch: options.allowMismatch,
+    extractedPlaceId: placeId,
+    placeContext: sanitizeLogPreview(placeContext),
+    tripContext: sanitizeLogPreview(tripContext),
+    tripId,
+    userId
+  });
+
+  if (!options.allowMismatch) {
+    throw new ApiError(
+      "validation_error",
+      `This candidate appears to belong to ${placeContext}, but the selected trip is ${trip?.destination || trip?.name || "another destination"}.`,
+      400,
+      {
+        placeContext: sanitizeLogPreview(placeContext),
+        reason: "destination_mismatch",
+        tripContext: sanitizeLogPreview(tripContext)
+      }
+    );
+  }
 }
 
 export async function promoteSocialImportPlaces(
@@ -1590,6 +1740,40 @@ function locationContextForSignal(signal: ExtractedTravelSignal, post: ImportedP
     readString(post.raw_metadata?.tripContext) ||
     null
   );
+}
+
+function placeDestinationContext(place: Record<string, any>) {
+  const payload = isRecord(place.ai_payload) ? place.ai_payload : {};
+  return [
+    place.city,
+    readString(payload.locationHint),
+    place.country,
+    place.address
+  ].filter(Boolean).join(" ");
+}
+
+function destinationsOverlap(placeContext: string, tripContext: string) {
+  const placeTokens = destinationTokens(placeContext);
+  const tripTokens = destinationTokens(tripContext);
+  if (!placeTokens.length || !tripTokens.length) return true;
+  return placeTokens.some((token) => tripTokens.includes(token));
+}
+
+function destinationTokens(value: string) {
+  return normalizeCopy(value)
+    .split(" ")
+    .filter((token) => token.length > 2 && !["trip", "work", "weekend", "travel", "planner"].includes(token));
+}
+
+function isTourOrActivityPlace(place: Record<string, any>) {
+  const text = normalizeCopy([
+    place.category,
+    place.name,
+    place.travel_note,
+    place.description,
+    ...(readStringArray(place.evidence) || [])
+  ].filter(Boolean).join(" "));
+  return /\b(tour|activity|experience|excursion|boat|cruise|guided)\b/.test(text);
 }
 
 function titleFromUrl(value: string) {

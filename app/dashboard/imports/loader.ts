@@ -37,12 +37,15 @@ export type ImportedContentView = {
 export type AiReviewItemView = {
   address: string | null;
   category: string;
+  city: string | null;
   confidence: number;
+  country: string | null;
   duplicateOf: string | null;
   evidence: string[];
   id: string;
   importedPostId: string;
   latitude: number | null;
+  locationHint: string | null;
   longitude: number | null;
   name: string;
   promotedTripSegmentId: string | null;
@@ -161,12 +164,15 @@ export async function loadImportsData(
       return {
         address: place.address || null,
         category: place.category || "activity",
+        city: place.city || null,
         confidence: Number(place.confidence || 0),
+        country: place.country || null,
         duplicateOf: place.duplicate_of || null,
         evidence: readEvidence(place.evidence),
         id: place.id,
         importedPostId: place.imported_post_id,
         latitude: typeof place.latitude === "number" ? place.latitude : null,
+        locationHint: readLocationHint(place.ai_payload),
         longitude: typeof place.longitude === "number" ? place.longitude : null,
         name: place.name || "Imported place",
         promotedTripSegmentId: place.promoted_trip_segment_id || null,
@@ -395,6 +401,20 @@ function readReviewReason(value: unknown, confidence: number): "low_confidence" 
   }
 
   return confidence >= 0.85 ? "ready" : "low_confidence";
+}
+
+function readLocationHint(value: unknown) {
+  if (
+    typeof value === "object" &&
+    value !== null &&
+    !Array.isArray(value) &&
+    "locationHint" in value &&
+    typeof value.locationHint === "string"
+  ) {
+    return value.locationHint;
+  }
+
+  return null;
 }
 
 function isMissingColumn(message: string) {

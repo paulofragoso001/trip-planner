@@ -8,7 +8,7 @@ import type { AiReviewItemView } from "@/app/dashboard/imports/loader";
 type ExtractedPlaceCardProps = {
   mergeTargets?: AiReviewItemView[];
   place: AiReviewItemView;
-  trips: Array<{ id: string; name: string }>;
+  trips: Array<{ destination: string | null; id: string; name: string }>;
 };
 
 export function ExtractedPlaceCard({ mergeTargets = [], place, trips }: ExtractedPlaceCardProps) {
@@ -17,7 +17,17 @@ export function ExtractedPlaceCard({ mergeTargets = [], place, trips }: Extracte
   const [message, setMessage] = useState("");
   const [mergeTargetId, setMergeTargetId] = useState(mergeTargets[0]?.id || "");
   const [pending, setPending] = useState(false);
-  const defaultTripId = place.tripId || trips[0]?.id || "";
+  const matchingTrip = findMatchingTrip(place, trips);
+  const initialTripId =
+    place.tripId && tripMatchesPlace(place, trips.find((trip) => trip.id === place.tripId))
+      ? place.tripId
+      : matchingTrip?.id || "";
+  const [selectedTripId, setSelectedTripId] = useState(initialTripId);
+  const [confirmMismatch, setConfirmMismatch] = useState(false);
+  const selectedTrip = trips.find((trip) => trip.id === selectedTripId);
+  const destinationMismatch = Boolean(selectedTripId && selectedTrip && !tripMatchesPlace(place, selectedTrip));
+  const candidateDestination = place.city || place.locationHint || place.country || "";
+  const isActivityIdea = isTourOrActivityIdea(place);
 
   async function patch(body: Record<string, unknown>) {
     return run(`/api/extracted-places/${place.id}`, "PATCH", body);
@@ -195,29 +205,63 @@ export function ExtractedPlaceCard({ mergeTargets = [], place, trips }: Extracte
           ) : null}
           {place.reviewReason === "needs_location" ? (
             <p className="rounded-2xl bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-800">
-              Wayline could not map this place yet. Edit the name or add more location detail before creating the trip plan.
+              {isActivityIdea
+                ? "Wayline found this as an activity idea, but it needs a meeting point or provider before it can appear on the map."
+                : "Wayline could not map this place yet. Edit the name or add more location detail before creating the trip plan."}
             </p>
+          ) : null}
+          {destinationMismatch ? (
+            <div className="rounded-2xl bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900">
+              <p>
+                This candidate appears to belong to {candidateDestination || "another destination"}, but the selected trip is {selectedTrip?.destination || selectedTrip?.name}.
+              </p>
+              <label className="mt-3 flex items-start gap-2 text-xs font-black uppercase tracking-[0.12em] text-amber-800">
+                <input
+                  checked={confirmMismatch}
+                  className="mt-0.5"
+                  onChange={(event) => setConfirmMismatch(event.target.checked)}
+                  type="checkbox"
+                />
+                Approve into this trip anyway
+              </label>
+            </div>
+          ) : null}
+          {!selectedTripId && candidateDestination ? (
+            <div className="rounded-2xl bg-blue-50 px-4 py-3 text-sm font-semibold text-blue-900">
+              <p>No matching trip found for {candidateDestination}. Create a new trip draft or select an existing trip manually.</p>
+              <a className="mt-2 inline-flex text-sm font-black text-blue-700 underline" href="/dashboard/trips#new-trip">
+                Create new {candidateDestination} trip draft
+              </a>
+            </div>
           ) : null}
           <div className="grid gap-2 sm:grid-cols-[1fr_auto_auto_auto] sm:items-center">
             <select
               className="min-h-12 rounded-xl border border-slate-200 bg-white px-3 text-sm font-bold text-slate-700"
-              defaultValue={defaultTripId}
               id={`trip-${place.id}`}
+              onChange={(event) => {
+                setSelectedTripId(event.target.value);
+                setConfirmMismatch(false);
+              }}
+              value={selectedTripId}
             >
+              <option value="">
+                {candidateDestination ? `Choose a ${candidateDestination} trip` : "Choose a trip"}
+              </option>
               {trips.map((trip) => (
                 <option key={trip.id} value={trip.id}>
-                  {trip.name}
+                  {trip.name}{trip.destination ? ` · ${trip.destination}` : ""}
                 </option>
               ))}
             </select>
             <button
               className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 text-sm font-black text-white disabled:opacity-60"
-              disabled={pending || !defaultTripId}
+              disabled={pending || !selectedTripId || (destinationMismatch && !confirmMismatch)}
               onClick={() => {
                 const select = document.getElementById(`trip-${place.id}`) as HTMLSelectElement | null;
                 patch({
+                  confirmDestinationMismatch: confirmMismatch,
                   status: "accepted",
-                  tripId: select?.value || defaultTripId
+                  tripId: select?.value || selectedTripId
                 });
               }}
               type="button"
@@ -269,6 +313,43 @@ export function ExtractedPlaceCard({ mergeTargets = [], place, trips }: Extracte
       ) : null}
     </div>
   );
+}
+
+function findMatchingTrip(
+  place: AiReviewItemView,
+  trips: Array<{ destination: string | null; id: string; name: string }>
+) {
+  return trips.find((trip) => tripMatchesPlace(place, trip)) || null;
+}
+
+function tripMatchesPlace(
+  place: AiReviewItemView,
+  trip?: { destination: string | null; id: string; name: string }
+) {
+  if (!trip) return false;
+  const placeContext = normalizeDestination(
+    [place.city, place.locationHint, place.country, place.address].filter(Boolean).join(" ")
+  );
+  if (!placeContext) return true;
+  const tripContext = normalizeDestination([trip.destination, trip.name].filter(Boolean).join(" "));
+  if (!tripContext) return false;
+  const placeTokens = placeContext.split(" ").filter((token) => token.length > 2);
+  const tripTokens = tripContext.split(" ").filter((token) => token.length > 2);
+  return placeTokens.some((token) => tripTokens.includes(token));
+}
+
+function normalizeDestination(value: string) {
+  return value
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function isTourOrActivityIdea(place: AiReviewItemView) {
+  const text = `${place.category} ${place.name} ${place.travelNote || ""}`.toLowerCase();
+  return /\b(tour|activity|experience|excursion|boat tour|guided tour|cruise)\b/.test(text);
 }
 
 function readError(payload: unknown, status: number) {
