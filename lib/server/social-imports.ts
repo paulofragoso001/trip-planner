@@ -31,6 +31,7 @@ type ImportedPostRow = {
   source_platform: string;
   source_title: string | null;
   source_url: string | null;
+  trip_id: string | null;
   uploaded_asset_path: string | null;
 };
 
@@ -650,14 +651,23 @@ async function resolveExtractedPlaceForPromotion(
     .eq("user_id", userId)
     .maybeSingle();
   const payload = isRecord(place.ai_payload) ? place.ai_payload : {};
-  const resolved = await resolveTravelPlace({
-    address: place.address || null,
-    city: place.city || trip?.destination || null,
-    country: place.country || null,
-    locationHint: readString(payload.locationHint),
-    name: place.name,
-    sourceTitle: trip?.destination || trip?.name || trip?.title || null
-  });
+  const locationContext =
+    place.city || readString(payload.locationHint) || trip?.destination || null;
+  const resolved = await resolveTravelPlace(
+    {
+      address: place.address || null,
+      city: locationContext,
+      country: place.country || null,
+      locationHint: locationContext,
+      name: place.name,
+      sourceTitle: trip?.destination || trip?.name || trip?.title || null
+    },
+    {
+      city: locationContext,
+      destination: trip?.destination || locationContext,
+      tripId
+    }
+  );
 
   if (typeof resolved.latitude !== "number" || typeof resolved.longitude !== "number") {
     await supabase
@@ -1149,12 +1159,7 @@ async function extractWithOpenAi(input: {
 }
 
 function extractWithRules(sourceText: string, sourceUrl: string | null): ExtractedTravelSignal[] {
-  const lines = sourceText
-    .replace(/\b(?:visit|see|try|eat at|have dinner at|dinner at|coffee at|tapas at|stay at|walk around|go to|do a)\b/gi, "\n$&")
-    .split(/\r?\n|\.|•|;|,(?=\s*(?:visit|see|try|eat at|have dinner at|dinner at|coffee at|tapas at|stay at|walk around|go to|do a)\b)/i)
-    .map((line) => line.trim())
-    .filter(Boolean);
-  const candidates = lines
+  const candidates = extractRuleCandidateNames(sourceText)
     .filter((line) => !isTripMetadataLine(line))
     .filter((line) => looksLikePlace(line))
     .map(cleanRuleCandidateName)
@@ -1178,15 +1183,42 @@ function extractWithRules(sourceText: string, sourceUrl: string | null): Extract
   })), "rules"));
 }
 
+function extractRuleCandidateNames(sourceText: string) {
+  const candidates: string[] = [];
+  const actionPattern =
+    /\b(?:visit|see|try|eat at|have dinner at|dinner at|coffee at|tapas at|stay at|walk around|go to|do a|sunset from)\s+([^,.;\n]+)/gi;
+  let match: RegExpExecArray | null;
+  while ((match = actionPattern.exec(sourceText))) {
+    candidates.push(match[1].trim());
+  }
+
+  const lines = sourceText
+    .replace(/\b(?:visit|see|try|eat at|have dinner at|dinner at|coffee at|tapas at|stay at|walk around|go to|do a|sunset from)\b/gi, "\n$&")
+    .split(/\r?\n|\.|•|;|,(?=\s*(?:visit|see|try|eat at|have dinner at|dinner at|coffee at|tapas at|stay at|walk around|go to|do a|sunset from)\b)/i)
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  candidates.push(...lines);
+  return Array.from(new Set(candidates.map((candidate) => candidate.trim()).filter(Boolean)));
+}
+
 async function resolvePlace(signal: ExtractedTravelSignal, post: ImportedPostRow) {
-  return resolveTravelPlace({
-    address: signal.address || null,
-    city: signal.city || null,
-    country: signal.country || null,
-    locationHint: signal.locationHint || null,
-    name: signal.name,
-    sourceTitle: post.source_title
-  });
+  const context = locationContextForSignal(signal, post);
+  return resolveTravelPlace(
+    {
+      address: signal.address || null,
+      city: signal.city || context || null,
+      country: signal.country || null,
+      locationHint: signal.locationHint || context || null,
+      name: signal.name,
+      sourceTitle: post.source_title
+    },
+    {
+      city: signal.city || context || null,
+      destination: context || null,
+      tripId: post.trip_id || null
+    }
+  );
 }
 
 async function defaultStartTimeForTrip(
@@ -1349,6 +1381,7 @@ function rejectionReasonForSignal(signal: ExtractedTravelSignal) {
   if (isTripMetadataCandidate(name) || isTripMetadataCandidate(signal.category)) {
     return "trip_metadata";
   }
+  if (looksLikeRawInspirationNote(name)) return "raw_inspiration_note";
   if (isBlockedExtractionTerm(normalized)) return "blocked_term";
   if (containsInstructionalPhrase(normalized) || containsInstructionalPhrase(evidenceText)) {
     return "instructional_or_ui_copy";
@@ -1369,6 +1402,7 @@ const blockedExtractionTerms = [
   "OpenAI",
   "Wayline",
   "AI trip planner",
+  "Test production inspiration",
   "Review candidates",
   "Review candidates before promoting them into the itinerary",
   "Confirm AI candidates",
@@ -1401,6 +1435,15 @@ function looksLikeSentenceFragment(value: string) {
   const wordCount = value.trim().split(/\s+/).length;
   if (wordCount <= 4) return false;
   return /^(review|confirm|generate|extract|turn|use|add|click|open|create|planning)\b/i.test(value);
+}
+
+function looksLikeRawInspirationNote(value: string) {
+  const wordCount = value.trim().split(/\s+/).length;
+  if (wordCount >= 8) return true;
+  if (value.includes(",") && /\b(?:visit|coffee at|tapas at|see sunset|go to|walk around)\b/i.test(value)) {
+    return true;
+  }
+  return /test production inspiration|planning a trip|i want to visit|coffee at .+,\s*visit|tapas at .+,\s*visit/i.test(value);
 }
 
 function hasTravelIntent(signal: ExtractedTravelSignal) {
@@ -1500,10 +1543,14 @@ function looksLikePlace(value: string) {
 
 function cleanRuleCandidateName(value: string) {
   return value
+    .replace(/^test production inspiration:\s*/i, "")
     .replace(/^(?:and\s+)?(?:maybe\s+)?(?:visit|see|try|eat at|have dinner at|dinner at|coffee at|tapas at|stay at|walk around|go to|do a)\s+/i, "")
+    .replace(/^sunset from\s+/i, "")
     .replace(/^(?:I want to|I would like to)\s+/i, "")
+    .replace(/^sunset\s+from\s+/i, "")
     .replace(/,\s+and\s+maybe$/i, "")
     .replace(/,\s+and\s+maybe\s+/i, "")
+    .replace(/\s+in\s+([A-Z][A-Za-z\s]+)$/i, "")
     .replace(/\s+(?:for|with)\s+.+$/i, "")
     .trim();
 }
@@ -1529,8 +1576,20 @@ function evidenceForCandidate(name: string, sourceText: string) {
 }
 
 function locationHintFromText(sourceText: string) {
-  const match = sourceText.match(/\b(?:Planning|Trip to|Destination:)\s+(?:a\s+)?([A-Z][A-Za-z\s]+?)(?:\s+weekend|\s+trip|\.|,|\n|$)/);
+  const match =
+    sourceText.match(/\b(?:Planning|Trip to|Destination:)\s+(?:a\s+)?([A-Z][A-Za-z\s]+?)(?:\s+weekend|\s+trip|\.|,|\n|$)/) ||
+    sourceText.match(/\bin\s+([A-Z][A-Za-z\s]+?)(?:,|\.|\n|$)/);
   return match?.[1]?.trim() || null;
+}
+
+function locationContextForSignal(signal: ExtractedTravelSignal, post: ImportedPostRow) {
+  return (
+    signal.city ||
+    signal.locationHint ||
+    locationHintFromText(buildSourceText(post)) ||
+    readString(post.raw_metadata?.tripContext) ||
+    null
+  );
 }
 
 function titleFromUrl(value: string) {

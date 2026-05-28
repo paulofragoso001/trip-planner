@@ -7,7 +7,8 @@ import type {
   PlaceResolutionQuery,
   ProviderAdapter,
   ResolvedPlace,
-  TravelInventoryItem
+  TravelInventoryItem,
+  TripContext
 } from "@/lib/travel-data/types";
 
 const provider = "google_places" as const;
@@ -18,22 +19,17 @@ export const googlePlacesProvider: ProviderAdapter = {
   searchNearbyActivities
 };
 
-async function resolvePlace(query: PlaceResolutionQuery): Promise<ResolvedPlace> {
+async function resolvePlace(
+  query: PlaceResolutionQuery,
+  context?: TripContext
+): Promise<ResolvedPlace> {
   const apiKey = googlePlacesApiKey();
   if (!apiKey) {
     return unresolved(query);
   }
 
-  const textQuery = [
-    query.name,
-    query.address,
-    query.locationHint,
-    query.city,
-    query.country,
-    query.sourceTitle
-  ]
-    .filter(Boolean)
-    .join(" ");
+  const locationContext = destinationContext(query, context);
+  const textQuery = buildTextQuery(query, locationContext);
 
   try {
     const url = new URL("https://maps.googleapis.com/maps/api/place/findplacefromtext/json");
@@ -44,14 +40,23 @@ async function resolvePlace(query: PlaceResolutionQuery): Promise<ResolvedPlace>
 
     const response = await fetch(url, { cache: "no-store" });
     if (!response.ok) {
-      return geocodePlaceFallback(apiKey, query, textQuery);
+      return geocodePlaceFallback(apiKey, query, textQuery, locationContext);
     }
 
     const payload = await response.json();
     const candidate = Array.isArray(payload.candidates) ? payload.candidates[0] : null;
 
     if (!candidate?.geometry?.location) {
-      return geocodePlaceFallback(apiKey, query, textQuery);
+      return geocodePlaceFallback(apiKey, query, textQuery, locationContext);
+    }
+
+    if (!matchesLocationContext(candidate.formatted_address, locationContext)) {
+      logTravelProviderEvent("place_resolution_rejected_location_mismatch", {
+        address: safeAddressPreview(candidate.formatted_address),
+        locationContext,
+        provider
+      });
+      return unresolved(query);
     }
 
     const item = normalizeGooglePlace(candidate, "place");
@@ -77,7 +82,8 @@ async function resolvePlace(query: PlaceResolutionQuery): Promise<ResolvedPlace>
 async function geocodePlaceFallback(
   apiKey: string,
   query: PlaceResolutionQuery,
-  textQuery: string
+  textQuery: string,
+  locationContext: string | null
 ): Promise<ResolvedPlace> {
   try {
     const url = new URL("https://maps.googleapis.com/maps/api/geocode/json");
@@ -91,6 +97,15 @@ async function geocodePlaceFallback(
     const candidate = Array.isArray(payload.results) ? payload.results[0] : null;
 
     if (!candidate?.geometry?.location) {
+      return unresolved(query);
+    }
+
+    if (!matchesLocationContext(candidate.formatted_address, locationContext)) {
+      logTravelProviderEvent("place_geocode_rejected_location_mismatch", {
+        address: safeAddressPreview(candidate.formatted_address),
+        locationContext,
+        provider
+      });
       return unresolved(query);
     }
 
@@ -205,6 +220,47 @@ function googlePlacesApiKey() {
     process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ||
     ""
   );
+}
+
+function buildTextQuery(query: PlaceResolutionQuery, locationContext: string | null) {
+  const parts = [
+    query.name,
+    query.address,
+    locationContext,
+    query.country
+  ].filter(Boolean);
+  return Array.from(new Set(parts.map((part) => String(part).trim()).filter(Boolean))).join(" ");
+}
+
+function destinationContext(query: PlaceResolutionQuery, context?: TripContext) {
+  return (
+    query.city ||
+    query.locationHint ||
+    context?.destination ||
+    context?.city ||
+    query.sourceTitle ||
+    null
+  );
+}
+
+function matchesLocationContext(address: string | null | undefined, locationContext: string | null) {
+  if (!locationContext || !address) return true;
+  const normalizedAddress = normalizeText(address);
+  const normalizedContext = normalizeText(locationContext);
+  if (!normalizedContext) return true;
+  const contextTokens = normalizedContext
+    .split(" ")
+    .filter((token) => token.length > 2 && !["trip", "weekend", "travel", "planner"].includes(token));
+  if (!contextTokens.length) return true;
+  return contextTokens.some((token) => normalizedAddress.includes(token));
+}
+
+function safeAddressPreview(address: string | null | undefined) {
+  return String(address || "").slice(0, 120);
+}
+
+function normalizeText(value: string) {
+  return value.toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "").replace(/[^a-z0-9]+/g, " ").trim();
 }
 
 function unresolved(query: PlaceResolutionQuery): ResolvedPlace {

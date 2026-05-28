@@ -86,6 +86,7 @@ export type TravelLocation = {
 };
 
 export type TripContext = {
+  city?: string | null;
   destination?: string | null;
   endDate?: string | null;
   startDate?: string | null;

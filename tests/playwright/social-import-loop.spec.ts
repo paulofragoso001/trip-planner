@@ -308,6 +308,85 @@ test("Miami social inspiration extraction returns only real travel candidates", 
   }
 });
 
+test("Barcelona production-style inspiration extracts clean mapped candidates", async ({
+  request
+}) => {
+  test.setTimeout(90_000);
+  test.skip(
+    !supabaseUrl || !serviceRoleKey,
+    "Barcelona extraction quality requires Supabase URL and SUPABASE_SERVICE_ROLE_KEY"
+  );
+
+  const preflight = await request.get(`${baseUrl}/api/social-imports`, {
+    headers: dashboardHeaders
+  });
+
+  test.skip(
+    preflight.status() !== 200,
+    "Barcelona extraction quality requires dashboard test auth to be enabled"
+  );
+
+  const admin = createClient(supabaseUrl!, serviceRoleKey!, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  });
+  const runId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+  const sourceTitle = `e2e-barcelona-extraction-${runId}`;
+  let importId = "";
+
+  try {
+    const response = await request.post(`${baseUrl}/api/social-imports`, {
+      data: {
+        processNow: true,
+        rawText:
+          "Test production inspiration: coffee at Nomad Coffee in Barcelona, visit Sagrada Familia, see sunset from Park Guell, tapas at El Xampanyet",
+        sourcePlatform: "manual",
+        sourceTitle
+      },
+      headers: dashboardHeaders
+    });
+    expect(response.status()).toBe(201);
+    const payload = await response.json();
+    importId = payload?.data?.socialImport?.id;
+    expect(typeof importId).toBe("string");
+
+    const places = payload?.data?.extractedPlaces || [];
+    const names = places.map((place: any) => String(place.name || ""));
+    const normalizedNames = names.map(normalizeNameForAssertion);
+    const combinedText = places
+      .map((place: any) => `${place.name || ""} ${place.address || ""}`)
+      .join(" ");
+
+    for (const expected of [
+      "Nomad Coffee",
+      "Sagrada Familia",
+      "Park Guell",
+      "El Xampanyet"
+    ]) {
+      expect(
+        normalizedNames.some((name) => name.includes(normalizeNameForAssertion(expected)))
+      ).toBeTruthy();
+    }
+
+    for (const blocked of [
+      "Test production inspiration",
+      "coffee at Nomad Coffee in Barcelona, visit Sagrada Familia, see sunset from Park Guell, tapas at El Xampanyet",
+      "1 N Fort Lauderdale Beach Blvd",
+      "Fort Lauderdale"
+    ]) {
+      expect(combinedText.toLowerCase()).not.toContain(blocked.toLowerCase());
+    }
+  } finally {
+    if (importId) {
+      await admin.from("extracted_places").delete().eq("imported_post_id", importId);
+      await admin.from("imported_social_posts").delete().eq("id", importId);
+    }
+    await admin.from("imported_social_posts").delete().eq("source_title", sourceTitle);
+  }
+});
+
 async function processUntilReady(request: any, importId: string) {
   for (let attempt = 0; attempt < 6; attempt += 1) {
     const workerResponse = await request.post(`${baseUrl}/api/jobs/social-import-worker`, {
