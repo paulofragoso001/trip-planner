@@ -2,14 +2,35 @@ import "server-only";
 
 import type { TripMapItem } from "@/components/TripMap";
 import { authorizeDashboardApi } from "@/lib/server/dashboard-test-auth";
+import { listTripRecommendations } from "@/lib/server/travel-recommendations";
 import { isDemoTripId, isUuid } from "@/lib/server/trip-id";
 
 export type TripMapData = {
   destination: string | null;
   error: string | null;
   items: TripMapItem[];
+  recommendations: TripRecommendationView[];
   searchUrl: string | null;
   tripId: string;
+  unmappedCount: number;
+  unmappedSegments: Array<{
+    id: string;
+    location: string | null;
+    title: string;
+  }>;
+};
+
+export type TripRecommendationView = {
+  bookingUrl: string | null;
+  category: string | null;
+  id: string;
+  priceLabel: string | null;
+  provider: string;
+  ratingLabel: string | null;
+  reason: string | null;
+  status: string;
+  title: string;
+  type: string;
 };
 
 type TripRow = {
@@ -37,8 +58,11 @@ export async function loadTripMapData(tripId: string): Promise<TripMapData> {
       destination: "Barcelona, Spain",
       error: null,
       items: demoItems,
+      recommendations: [],
       searchUrl: googleMapsSearchUrl("Barcelona, Spain"),
-      tripId
+      tripId,
+      unmappedCount: 0,
+      unmappedSegments: []
     };
   }
 
@@ -52,7 +76,7 @@ export async function loadTripMapData(tripId: string): Promise<TripMapData> {
     return emptyMapData(tripId, "Sign in to load trip map data.");
   }
 
-  const [tripResult, itemResult] = await Promise.all([
+  const [tripResult, itemResult, recommendationsResult] = await Promise.all([
     auth.supabase
       .from("trips")
       .select("destination")
@@ -64,10 +88,9 @@ export async function loadTripMapData(tripId: string): Promise<TripMapData> {
       .select("id,title,location,lat,lng")
       .eq("trip_id", tripId)
       .eq("user_id", auth.userId)
-      .not("lat", "is", null)
-      .not("lng", "is", null)
       .order("position", { ascending: true, nullsFirst: false })
-      .order("start_time", { ascending: true, nullsFirst: false })
+      .order("start_time", { ascending: true, nullsFirst: false }),
+    listTripRecommendations(auth.supabase as any, auth.userId, tripId).catch(() => [])
   ]);
 
   if (tripResult.error || itemResult.error) {
@@ -79,13 +102,27 @@ export async function loadTripMapData(tripId: string): Promise<TripMapData> {
   }
 
   const trip = tripResult.data as TripRow;
+  const rows = (itemResult.data || []) as TripSegmentMapRow[];
+  const mappedRows = rows.filter(
+    (row) => typeof row.lat === "number" && typeof row.lng === "number"
+  );
+  const unmappedSegments = rows
+    .filter((row) => typeof row.lat !== "number" || typeof row.lng !== "number")
+    .map((row) => ({
+      id: row.id,
+      location: row.location,
+      title: row.title || "Trip stop"
+    }));
 
   return {
     destination: trip.destination,
     error: null,
-    items: ((itemResult.data || []) as TripSegmentMapRow[]).map(mapItem),
+    items: mappedRows.map(mapItem),
+    recommendations: mapRecommendations(recommendationsResult),
     searchUrl: trip.destination ? googleMapsSearchUrl(trip.destination) : null,
-    tripId
+    tripId,
+    unmappedCount: unmappedSegments.length,
+    unmappedSegments
   };
 }
 
@@ -94,8 +131,11 @@ function emptyMapData(tripId: string, error: string): TripMapData {
     destination: null,
     error,
     items: [],
+    recommendations: [],
     searchUrl: null,
-    tripId
+    tripId,
+    unmappedCount: 0,
+    unmappedSegments: []
   };
 }
 
@@ -110,4 +150,31 @@ function mapItem(row: TripSegmentMapRow): TripMapItem {
 
 function googleMapsSearchUrl(value: string) {
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(value)}`;
+}
+
+function mapRecommendations(value: unknown): TripRecommendationView[] {
+  return (Array.isArray(value) ? value : []).map((row: any) => {
+    const inventory = Array.isArray(row.travel_inventory)
+      ? row.travel_inventory[0]
+      : row.travel_inventory;
+
+    return {
+      bookingUrl: inventory?.booking_url || inventory?.source_url || null,
+      category: inventory?.category || null,
+      id: row.id,
+      priceLabel:
+        typeof inventory?.price_from === "number"
+          ? `${inventory.currency || "USD"} ${inventory.price_from}`
+          : null,
+      provider: inventory?.provider || "wayline",
+      ratingLabel:
+        typeof inventory?.rating === "number"
+          ? `${inventory.rating.toFixed(1)}${inventory.review_count ? ` (${inventory.review_count})` : ""}`
+          : null,
+      reason: row.reason || null,
+      status: row.status || "suggested",
+      title: inventory?.title || "Suggested stop",
+      type: inventory?.type || row.recommendation_type || "activity"
+    };
+  });
 }

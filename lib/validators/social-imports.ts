@@ -21,7 +21,7 @@ export type UpdateExtractedPlaceInput = {
   category?: string;
   name?: string;
   priority?: "candidate" | "must_do" | "optional" | "want_to_do";
-  status?: "accepted" | "dismissed" | "merged" | "needs_review" | "promoted";
+  status?: "accepted" | "dismissed" | "merged" | "needs_location_confirmation" | "needs_review" | "promoted";
   travelNote?: string | null;
   tripId?: string | null;
 };
@@ -45,7 +45,14 @@ const sourcePlatforms = new Set<SocialImportSourcePlatform>([
 ]);
 
 const priorities = new Set(["candidate", "must_do", "optional", "want_to_do"]);
-const statuses = new Set(["accepted", "dismissed", "merged", "needs_review", "promoted"]);
+const statuses = new Set([
+  "accepted",
+  "dismissed",
+  "merged",
+  "needs_location_confirmation",
+  "needs_review",
+  "promoted"
+]);
 
 export function validateCreateSocialImport(
   value: unknown

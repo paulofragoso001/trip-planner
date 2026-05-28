@@ -1,5 +1,6 @@
 import { ConnectedTripMap } from "@/components/trip/connected-trip-map";
 import { MapTools } from "@/components/trip/map-tools";
+import { SmartSuggestionsPanel } from "@/components/trip/smart-suggestions-panel";
 import type { TripMapData } from "@/app/dashboard/trips/[tripId]/map/loader";
 
 type TripMapPageProps = TripMapData;
@@ -8,8 +9,11 @@ export default function TripMapPage({
   destination,
   error,
   items,
+  recommendations,
   searchUrl,
-  tripId
+  tripId,
+  unmappedCount,
+  unmappedSegments
 }: TripMapPageProps) {
   return (
     <div className="grid min-h-[calc(100dvh-220px)] gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
@@ -30,6 +34,8 @@ export default function TripMapPage({
             destination={destination}
             items={items}
             searchUrl={searchUrl}
+            unmappedCount={unmappedCount}
+            unmappedSegments={unmappedSegments}
           />
         </div>
       </section>
@@ -44,6 +50,10 @@ export default function TripMapPage({
           </code>
           is not configured.
         </div>
+        <SmartSuggestionsPanel
+          recommendations={recommendations}
+          tripId={tripId}
+        />
       </aside>
     </div>
   );

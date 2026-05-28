@@ -46,7 +46,7 @@ export type AiReviewItemView = {
   longitude: number | null;
   name: string;
   promotedTripSegmentId: string | null;
-  reviewReason: "low_confidence" | "ready";
+  reviewReason: "low_confidence" | "needs_location" | "ready";
   sourcePlatform: string;
   status: string;
   travelNote: string | null;
@@ -170,7 +170,9 @@ export async function loadImportsData(
         longitude: typeof place.longitude === "number" ? place.longitude : null,
         name: place.name || "Imported place",
         promotedTripSegmentId: place.promoted_trip_segment_id || null,
-        reviewReason: readReviewReason(place.ai_payload, Number(place.confidence || 0)),
+        reviewReason: place.status === "needs_location_confirmation"
+          ? "needs_location"
+          : readReviewReason(place.ai_payload, Number(place.confidence || 0)),
         sourcePlatform: post?.source_platform || "manual",
         status: place.status || "needs_review",
         travelNote: place.travel_note || place.description || null,
@@ -178,7 +180,7 @@ export async function loadImportsData(
       };
     });
   const aiReviewItems = extractedPlaces.filter(
-    (place) => place.status === "needs_review"
+    (place) => place.status === "needs_review" || place.status === "needs_location_confirmation"
   );
   const tripDrafts = buildTripDrafts(extractedPlaces, trips);
   const importedContent = socialWorkspace.socialImports.map((post: any) =>
@@ -381,10 +383,7 @@ function labelForSource(sourceType: string) {
   return "Forwarded email";
 }
 
-function readReviewReason(
-  value: unknown,
-  confidence: number
-): "low_confidence" | "ready" {
+function readReviewReason(value: unknown, confidence: number): "low_confidence" | "ready" {
   if (
     typeof value === "object" &&
     value !== null &&

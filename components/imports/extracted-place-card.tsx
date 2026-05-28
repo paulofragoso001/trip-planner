@@ -135,6 +135,11 @@ export function ExtractedPlaceCard({ mergeTargets = [], place, trips }: Extracte
                     Low confidence
                   </span>
                 ) : null}
+                {place.reviewReason === "needs_location" ? (
+                  <span className="rounded-full bg-rose-50 px-3 py-1 text-xs font-black text-rose-700">
+                    Needs location
+                  </span>
+                ) : null}
               </div>
               <p className="mt-1 text-xs font-bold uppercase tracking-[0.16em] text-slate-500">
                 {place.sourcePlatform} · {place.category} · {Math.round(place.confidence * 100)}%
@@ -185,6 +190,11 @@ export function ExtractedPlaceCard({ mergeTargets = [], place, trips }: Extracte
           {place.reviewReason === "low_confidence" ? (
             <p className="rounded-2xl bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
               Confirm the name and category before approving this into a draft.
+            </p>
+          ) : null}
+          {place.reviewReason === "needs_location" ? (
+            <p className="rounded-2xl bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-800">
+              Wayline could not map this place yet. Edit the name or add more location detail before creating the trip plan.
             </p>
           ) : null}
           <div className="grid gap-2 sm:grid-cols-[1fr_auto_auto_auto] sm:items-center">

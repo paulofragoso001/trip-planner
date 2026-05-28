@@ -2,6 +2,7 @@ import "server-only";
 
 import { randomUUID } from "node:crypto";
 import { ApiError } from "@/lib/api/errors";
+import { resolvePlace as resolveTravelPlace } from "@/lib/travel-data";
 import type {
   CreateSocialImportInput,
   MergeExtractedPlaceInput,
@@ -39,7 +40,9 @@ type ExtractedTravelSignal = {
   city?: string | null;
   confidence: number;
   country?: string | null;
+  duplicateGroupKey?: string | null;
   evidence: string[];
+  locationHint?: string | null;
   name: string;
   priority?: "candidate" | "must_do" | "optional" | "want_to_do";
   reviewReason: "low_confidence" | "ready";
@@ -283,6 +286,10 @@ export async function processSocialImport(
         .insert({
           address: resolved.address,
           ai_payload: {
+            duplicateGroupKey: signal.duplicateGroupKey || null,
+            locationHint: signal.locationHint || null,
+            provider: resolved.provider,
+            providerMetadata: resolved.inventoryItem?.metadata || {},
             reviewReason: signal.reviewReason,
             sourcePlatform: post.source_platform,
             sourceUrl: post.source_url,
@@ -292,12 +299,12 @@ export async function processSocialImport(
           city: resolved.city || signal.city || null,
           confidence,
           country: resolved.country || signal.country || null,
-          dedupe_key: buildDedupeKey(userId, resolved.placeId, signal.name, resolved.city),
+          dedupe_key: signal.duplicateGroupKey || buildDedupeKey(userId, resolved.placeId, signal.name, resolved.city),
           description: signal.summary,
           evidence: signal.evidence || [],
           imported_post_id: post.id,
-          latitude: resolved.lat,
-          longitude: resolved.lng,
+          latitude: resolved.latitude,
+          longitude: resolved.longitude,
           name: signal.name,
           normalized_name: normalizeName(signal.name),
           place_id: resolved.placeId,
@@ -553,10 +560,18 @@ export async function promoteExtractedPlace(
       kind: segmentKindForCategory(place.category),
       lat: place.latitude,
       lng: place.longitude,
+      location_status: "resolved",
       location: place.address || place.city || null,
       notes: buildPromotedNotes(place),
       position: nextPosition,
       provider: place.place_id ? "google_places" : "wayline_social_import",
+      provider_metadata: {
+        evidence: readStringArray(place.evidence),
+        extractedPlaceId: place.id,
+        sourceImportId: place.imported_post_id
+      },
+      provider_place_id: place.place_id || null,
+      source_import_id: place.imported_post_id || null,
       start_time: startTime,
       title: place.name,
       trip_id: tripId,
@@ -624,15 +639,22 @@ async function resolveExtractedPlaceForPromotion(
     .eq("id", tripId)
     .eq("user_id", userId)
     .maybeSingle();
-  const resolved = await resolvePlaceFromQuery({
+  const payload = isRecord(place.ai_payload) ? place.ai_payload : {};
+  const resolved = await resolveTravelPlace({
     address: place.address || null,
     city: place.city || trip?.destination || null,
     country: place.country || null,
+    locationHint: readString(payload.locationHint),
     name: place.name,
     sourceTitle: trip?.destination || trip?.name || trip?.title || null
   });
 
-  if (typeof resolved.lat !== "number" || typeof resolved.lng !== "number") {
+  if (typeof resolved.latitude !== "number" || typeof resolved.longitude !== "number") {
+    await supabase
+      .from("extracted_places")
+      .update({ status: "needs_location_confirmation" })
+      .eq("id", id)
+      .eq("user_id", userId);
     return place;
   }
 
@@ -642,8 +664,8 @@ async function resolveExtractedPlaceForPromotion(
       address: resolved.address || place.address,
       city: resolved.city || place.city,
       country: resolved.country || place.country,
-      latitude: resolved.lat,
-      longitude: resolved.lng,
+      latitude: resolved.latitude,
+      longitude: resolved.longitude,
       place_id: resolved.placeId || place.place_id
     })
     .eq("id", id)
@@ -664,7 +686,7 @@ async function resolveExtractedPlaceForPromotion(
 
   logSocialImportEvent("place_resolved", {
     extractedPlaceId: id,
-    provider: resolved.placeId ? "google_places" : "google_geocoding",
+    provider: resolved.provider || "google_places",
     tripId,
     userId
   });
@@ -1051,7 +1073,7 @@ async function extractWithOpenAi(input: {
   const content: Array<Record<string, unknown>> = [
     {
       text:
-        "Extract individual travel places from this saved social travel inspiration. Split compound captions into separate places. For example, \"coffee at Nomad Coffee, visit Sagrada Familia, sunset from Park Guell\" must return three places, not one broad itinerary idea. Use only the provided URL metadata, caption text, OCR text, and image content. Do not claim to browse private social content. Do not create generic concepts like \"Barcelona itinerary\". Each place must be a named restaurant, cafe, hotel, landmark, neighborhood, activity venue, transit point, or travel tip. Return only JSON with {\"places\":[{\"name\":\"\",\"category\":\"food|sightseeing|nightlife|shopping|hotel|nature|culture|transportation|hidden_gem|activity|tip\",\"summary\":\"\",\"address\":null,\"city\":null,\"country\":null,\"confidence\":0.0,\"evidence\":[]}]}.\n\n" +
+        "Extract individual travel places from this saved social travel inspiration. Split compound captions into separate places. For example, \"coffee at Nomad Coffee, visit Sagrada Familia, sunset from Park Guell\" must return three places, not one broad itinerary idea. Use only the provided URL metadata, caption text, OCR text, and image content. Do not claim to browse private social content. Do not create generic concepts like \"Barcelona itinerary\". Each place must be a named restaurant, cafe, hotel, landmark, neighborhood, activity venue, transit point, or travel tip. If the text contains multiple places, output multiple candidates. Return only JSON with {\"places\":[{\"name\":\"\",\"category\":\"food|sightseeing|nightlife|shopping|hotel|nature|culture|transportation|hidden_gem|activity|tip\",\"summary\":\"\",\"address\":null,\"city\":null,\"country\":null,\"location_hint\":null,\"duplicate_group_key\":null,\"confidence\":0.0,\"evidence\":[]}]}.\n\n" +
         `Source platform: ${input.sourcePlatform}\nSource URL: ${input.sourceUrl || "none"}\nText:\n${input.sourceText || "No text provided."}`,
       type: "input_text"
     }
@@ -1121,106 +1143,14 @@ function extractWithRules(sourceText: string, sourceUrl: string | null): Extract
 }
 
 async function resolvePlace(signal: ExtractedTravelSignal, post: ImportedPostRow) {
-  return resolvePlaceFromQuery({
+  return resolveTravelPlace({
     address: signal.address || null,
     city: signal.city || null,
     country: signal.country || null,
+    locationHint: signal.locationHint || null,
     name: signal.name,
     sourceTitle: post.source_title
   });
-}
-
-async function resolvePlaceFromQuery(input: {
-  address?: string | null;
-  city?: string | null;
-  country?: string | null;
-  name: string;
-  sourceTitle?: string | null;
-}) {
-  const apiKey = process.env.GOOGLE_PLACES_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
-  if (!apiKey) {
-    return {
-      address: input.address || null,
-      city: input.city || null,
-      country: input.country || null,
-      lat: null,
-      lng: null,
-      placeId: null
-    };
-  }
-
-  const query = [input.name, input.address, input.city, input.country, input.sourceTitle]
-    .filter(Boolean)
-    .join(" ");
-  const url = new URL("https://maps.googleapis.com/maps/api/place/findplacefromtext/json");
-  url.searchParams.set("input", query);
-  url.searchParams.set("inputtype", "textquery");
-  url.searchParams.set("fields", "place_id,name,formatted_address,geometry");
-  url.searchParams.set("key", apiKey);
-
-  const response = await fetch(url, { cache: "no-store" });
-  if (!response.ok) {
-    return geocodePlaceFallback(apiKey, input, query);
-  }
-
-  const payload = await response.json();
-  const candidate = Array.isArray(payload.candidates) ? payload.candidates[0] : null;
-
-  if (!candidate?.geometry?.location) {
-    return geocodePlaceFallback(apiKey, input, query);
-  }
-
-  return {
-    address: candidate?.formatted_address || input.address || null,
-    city: input.city || null,
-    country: input.country || null,
-    lat: candidate?.geometry?.location?.lat ?? null,
-    lng: candidate?.geometry?.location?.lng ?? null,
-    placeId: candidate?.place_id || null
-  };
-}
-
-async function geocodePlaceFallback(
-  apiKey: string,
-  input: {
-    address?: string | null;
-    city?: string | null;
-    country?: string | null;
-    name: string;
-  },
-  query: string
-) {
-  const fallback = {
-    address: input.address || null,
-    city: input.city || null,
-    country: input.country || null,
-    lat: null as number | null,
-    lng: null as number | null,
-    placeId: null as string | null
-  };
-
-  try {
-    const url = new URL("https://maps.googleapis.com/maps/api/geocode/json");
-    url.searchParams.set("address", query);
-    url.searchParams.set("key", apiKey);
-
-    const response = await fetch(url, { cache: "no-store" });
-    if (!response.ok) return fallback;
-
-    const payload = await response.json();
-    const candidate = Array.isArray(payload.results) ? payload.results[0] : null;
-
-    return {
-      address: candidate?.formatted_address || fallback.address,
-      city: fallback.city,
-      country: fallback.country,
-      lat: candidate?.geometry?.location?.lat ?? null,
-      lng: candidate?.geometry?.location?.lng ?? null,
-      placeId: candidate?.place_id || null
-    };
-  } catch {
-    return fallback;
-  }
 }
 
 async function defaultStartTimeForTrip(
@@ -1309,7 +1239,9 @@ function validateExtractedTravelSignal(
     city: readString(value.city),
     confidence,
     country: readString(value.country),
+    duplicateGroupKey: readString(value.duplicate_group_key ?? value.duplicateGroupKey),
     evidence,
+    locationHint: readString(value.location_hint ?? value.locationHint),
     name,
     priority,
     reviewReason: reviewReasonForConfidence(confidence),
