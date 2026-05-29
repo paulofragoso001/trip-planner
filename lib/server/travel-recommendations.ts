@@ -54,6 +54,11 @@ export async function generateTripRecommendations(
   );
 
   if (!mappedSegments.length) {
+    logSuggestionsEvent("suggestions_skipped_no_mapped_stops", {
+      mappedStopCount: 0,
+      tripId,
+      userId
+    });
     return {
       created: 0,
       recommendations: [],
@@ -67,23 +72,36 @@ export async function generateTripRecommendations(
   }
 
   const stored = [];
+  let providerFailureCount = 0;
   for (const segment of mappedSegments.slice(0, 3)) {
     const suggestions = await searchNearbyActivities({
-      limit: 5,
-      location: {
-        address: segment.location,
-        latitude: segment.lat!,
-        longitude: segment.lng!,
-        title: segment.title
-      },
-      tripContext: {
-        destination: trip.destination,
-        endDate: trip.end_date,
-        startDate: trip.start_date,
-        travelStyle: trip.travel_style,
-        tripId
-      }
-    });
+        limit: 5,
+        location: {
+          address: segment.location,
+          latitude: segment.lat!,
+          longitude: segment.lng!,
+          title: segment.title
+        },
+        tripContext: {
+          destination: trip.destination,
+          endDate: trip.end_date,
+          startDate: trip.start_date,
+          travelStyle: trip.travel_style,
+          tripId
+        }
+      }).catch((error) => {
+        providerFailureCount += 1;
+        console.info(
+          JSON.stringify({
+            area: "travel_recommendations",
+            event: "suggestions_provider_failed",
+            error: error instanceof Error ? error.message.slice(0, 160) : "Provider failed.",
+            mappedStopCount: mappedSegments.length,
+            tripId
+          })
+        );
+        return [];
+      });
 
     for (const item of suggestions) {
       const inventory = await upsertInventory(admin, item);
@@ -116,6 +134,8 @@ export async function generateTripRecommendations(
 
   return {
     created: stored.length,
+    partialFailure: providerFailureCount > 0 && stored.length > 0,
+    providerFailureCount,
     recommendations: stored,
     skippedReason: null
   };
@@ -184,7 +204,27 @@ export async function saveTripRecommendation(
       notes: recommendation.reason || inventory.description,
       position: nextPosition,
       provider: inventory.provider,
-      provider_metadata: inventory.metadata || {},
+      provider_metadata: {
+        ...(inventory.metadata || {}),
+        locationDiagnostics: {
+          attemptedAt: new Date().toISOString(),
+          destinationContext: null,
+          lastErrorCode: null,
+          lastErrorMessageSafe: null,
+          provider: inventory.provider,
+          providerResultCount: 1,
+          query: inventory.title,
+          rejectionReason: null,
+          retryable: false,
+          retryCount: 0,
+          selectedFormattedAddress: inventory.address,
+          selectedProviderPlaceId: inventory.provider_item_id,
+          status:
+            typeof inventory.latitude === "number" && typeof inventory.longitude === "number"
+              ? "resolved"
+              : "needs_location_confirmation"
+        }
+      },
       provider_place_id: inventory.provider_item_id,
       title: inventory.title,
       trip_id: recommendation.trip_id,
@@ -354,4 +394,14 @@ function segmentKindForInventory(type: string) {
 
 function isMissingRecommendationSchema(message: string) {
   return /trip_recommendations|travel_inventory|schema cache/i.test(message);
+}
+
+function logSuggestionsEvent(event: string, details: Record<string, unknown>) {
+  console.info(
+    JSON.stringify({
+      area: "travel_recommendations",
+      event,
+      ...details
+    })
+  );
 }

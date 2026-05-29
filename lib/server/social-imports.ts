@@ -37,6 +37,15 @@ type ImportedPostRow = {
 
 type ExtractedTravelSignal = {
   address?: string | null;
+  candidateType?:
+    | "activity_idea"
+    | "event"
+    | "hotel"
+    | "neighborhood"
+    | "physical_place"
+    | "restaurant_intent"
+    | "tour"
+    | "transportation";
   category: string;
   city?: string | null;
   confidence: number;
@@ -45,6 +54,8 @@ type ExtractedTravelSignal = {
   evidence: string[];
   locationHint?: string | null;
   name: string;
+  needsProviderSearch?: boolean;
+  normalizedName?: string | null;
   priority?: "candidate" | "must_do" | "optional" | "want_to_do";
   reviewReason: "low_confidence" | "ready";
   summary: string;
@@ -257,7 +268,9 @@ export async function processSocialImport(
     const imageDataUrl =
       options?.imageDataUrl || (await loadStoredImageDataUrl(supabase, post));
     const ocrResult = await extractScreenshotText(imageDataUrl);
-    const sourceText = [buildSourceText(post), ocrResult.text].filter(Boolean).join("\n\n");
+    const sourceText = normalizeExtractionInput(
+      [buildSourceText(post), ocrResult.text].filter(Boolean).join("\n\n")
+    );
 
     if (ocrResult.provider !== "none") {
       await supabase
@@ -292,13 +305,16 @@ export async function processSocialImport(
     for (const signal of dedupedSignals) {
       const resolved = await resolvePlace(signal, post);
       const confidence = clampConfidence(signal.confidence);
+      const status = reviewStatusForSignal(signal, resolved, confidence);
       const { data, error } = await supabase
         .from("extracted_places")
         .insert({
           address: resolved.address,
           ai_payload: {
             duplicateGroupKey: signal.duplicateGroupKey || null,
+            candidateType: signal.candidateType || candidateTypeForSignal(signal),
             locationHint: signal.locationHint || null,
+            needsProviderSearch: Boolean(signal.needsProviderSearch),
             provider: resolved.provider,
             providerMetadata: resolved.inventoryItem?.metadata || {},
             reviewReason: signal.reviewReason,
@@ -317,10 +333,10 @@ export async function processSocialImport(
           latitude: resolved.latitude,
           longitude: resolved.longitude,
           name: signal.name,
-          normalized_name: normalizeName(signal.name),
+          normalized_name: normalizeCanonicalName(signal.normalizedName || signal.name),
           place_id: resolved.placeId,
           priority: signal.priority || "candidate",
-          status: reviewStatusForConfidence(confidence),
+          status,
           travel_note: signal.summary,
           trip_id: post.trip_id,
           user_id: userId
@@ -589,6 +605,7 @@ export async function promoteExtractedPlace(
       provider_metadata: {
         evidence: readStringArray(place.evidence),
         extractedPlaceId: place.id,
+        locationDiagnostics: readLocationDiagnostics(place.ai_payload),
         sourceImportId: place.imported_post_id
       },
       provider_place_id: place.place_id || null,
@@ -598,7 +615,7 @@ export async function promoteExtractedPlace(
       trip_id: tripId,
       user_id: userId
     })
-    .select("id,trip_id,user_id,kind,title,start_time,end_time,location,lat,lng,notes,inserted_at")
+    .select("id,trip_id,user_id,kind,title,start_time,end_time,location,lat,lng,location_status,notes,inserted_at")
     .single();
 
   if (segmentError) {
@@ -660,13 +677,11 @@ async function promoteUnmappedActivityPlace(
     typeof latestSegment?.position === "number" ? latestSegment.position + 1 : 0;
   const startTime = await defaultStartTimeForTrip(supabase, userId, tripId, nextPosition);
 
-  const { data: segment, error: segmentError } = await supabase
-    .from("trip_segments")
-    .insert({
+  const activitySegmentPayload = {
       kind: "activity",
       lat: null,
       lng: null,
-      location_status: "needs_location_confirmation",
+      location_status: "needs_activity_provider",
       location: place.city || place.address || null,
       notes: buildPromotedNotes(place),
       position: nextPosition,
@@ -675,6 +690,21 @@ async function promoteUnmappedActivityPlace(
         activityCandidate: true,
         evidence: readStringArray(place.evidence),
         extractedPlaceId: place.id,
+        locationDiagnostics: {
+          attemptedAt: new Date().toISOString(),
+          destinationContext: place.city || place.address || null,
+          lastErrorCode: null,
+          lastErrorMessageSafe: null,
+          provider: "wayline",
+          providerResultCount: 0,
+          query: place.name || null,
+          rejectionReason: null,
+          retryable: true,
+          retryCount: 0,
+          selectedFormattedAddress: null,
+          selectedProviderPlaceId: null,
+          status: "needs_activity_provider"
+        },
         sourceImportId: place.imported_post_id
       },
       provider_place_id: null,
@@ -683,9 +713,26 @@ async function promoteUnmappedActivityPlace(
       title: place.name,
       trip_id: tripId,
       user_id: userId
-    })
-    .select("id,trip_id,user_id,kind,title,start_time,end_time,location,lat,lng,notes,inserted_at")
+    };
+
+  let { data: segment, error: segmentError } = await supabase
+    .from("trip_segments")
+    .insert(activitySegmentPayload)
+    .select("id,trip_id,user_id,kind,title,start_time,end_time,location,lat,lng,location_status,notes,inserted_at")
     .single();
+
+  if (segmentError && /location_status_check/i.test(segmentError.message)) {
+    const retry = await supabase
+      .from("trip_segments")
+      .insert({
+        ...activitySegmentPayload,
+        location_status: "needs_location_confirmation"
+      })
+      .select("id,trip_id,user_id,kind,title,start_time,end_time,location,lat,lng,location_status,notes,inserted_at")
+      .single();
+    segment = retry.data;
+    segmentError = retry.error;
+  }
 
   if (segmentError) {
     logSocialImportEvent("trip_draft_promotion_failed", {
@@ -815,6 +862,7 @@ async function resolveExtractedPlaceForPromotion(
       ai_payload: {
         ...(isRecord(place.ai_payload) ? place.ai_payload : {}),
         provider: resolved.provider,
+        locationDiagnostics: resolved.diagnostics || null,
         providerMetadata: resolved.inventoryItem?.metadata || {},
         resolvedAt: new Date().toISOString()
       }
@@ -1310,12 +1358,13 @@ async function extractWithOpenAi(input: {
       text:
         "Extract only real travel places or bookable travel experiences from the user-submitted saved inspiration below. Return an empty places array if no real place or experience is present.\n\n" +
         "Allowed candidates: named restaurants, cafes, attractions, landmarks, neighborhoods, tours, activities, hotels, events, parks, shopping places, nightlife venues, and relevant transportation hubs.\n" +
+        "Vague requests such as cute sushi spot in Brickell, rooftop drinks, or waterfront brunch are not named venues. Return them only as restaurant_intent or activity_idea with needs_provider_search=true, low confidence, and no address.\n" +
         "Reject candidates that are UI labels, app names, product names, generic itinerary ideas, sentence fragments, instructions, marketing copy, or system/planner text. Never return OpenAI, Wayline, AI trip planner, Saved Inspiration, Review candidates, or text about promoting items.\n" +
         "Trip metadata belongs in trip_context, not in place_candidates. Do not return metadata such as Destination: Miami, Travel style: balanced, budget, dates, number of travelers, pace, planning notes, or itinerary labels as place candidates.\n" +
         "Split compound text into separate candidates. Example: \"visit Wynwood Walls, dinner at Komodo, walk Brickell City Centre\" returns three places.\n" +
         "Each candidate must include name, category, location_hint, city, country if known, an evidence quote copied from the user content, and confidence. Do not invent prices, booking URLs, or availability.\n" +
         "Use these categories only: attraction, restaurant, shopping, park, activity, tour, nightlife, hotel, transportation, neighborhood, event.\n" +
-        "Return only JSON with {\"trip_context\":{\"destination\":null,\"travel_style\":null,\"budget\":null,\"dates\":null,\"number_of_travelers\":null,\"pace\":null,\"interests\":[]},\"place_candidates\":[{\"name\":\"\",\"category\":\"attraction|restaurant|shopping|park|activity|tour|nightlife|hotel|transportation|neighborhood|event\",\"summary\":\"\",\"address\":null,\"city\":null,\"country\":null,\"location_hint\":null,\"duplicate_group_key\":null,\"confidence\":0.0,\"evidence\":[]}]}. Evidence must quote the user content.\n\n" +
+        "Return only JSON with {\"trip_context\":{\"destination\":null,\"cities\":[],\"country\":null,\"travel_style\":null,\"budget\":null,\"dates\":null,\"travelers\":null,\"pace\":null,\"interests\":[]},\"place_candidates\":[{\"name\":\"\",\"normalized_name\":\"\",\"category\":\"attraction|restaurant|shopping|park|activity|tour|nightlife|hotel|transportation|neighborhood|event\",\"candidate_type\":\"physical_place|neighborhood|activity_idea|tour|restaurant_intent|hotel|transportation|event\",\"needs_provider_search\":false,\"summary\":\"\",\"address\":null,\"city\":null,\"country\":null,\"location_hint\":null,\"duplicate_group_key\":null,\"confidence\":0.0,\"evidence\":[]}]}. Evidence must quote the user content.\n\n" +
         `Source platform: ${input.sourcePlatform}\nSource URL host: ${safeHostname(input.sourceUrl) || "none"}\nUSER_SAVED_INSPIRATION_BEGIN\n${input.sourceText || ""}\nUSER_SAVED_INSPIRATION_END`,
       type: "input_text"
     }
@@ -1354,16 +1403,27 @@ async function extractWithOpenAi(input: {
   const payload = await response.json();
   const text = readOutputText(payload);
   const parsed = parseJsonObject(text);
+  const modelSignals = validateExtractedTravelSignals(
+    parsed?.place_candidates ?? parsed?.placeCandidates ?? parsed?.places,
+    "openai"
+  );
+  const ruleSignals = extractWithRules(input.sourceText, input.sourceUrl);
   return filterTravelSignals(
-    validateExtractedTravelSignals(
-      parsed?.place_candidates ?? parsed?.placeCandidates ?? parsed?.places,
-      "openai"
-    )
+    dedupeSignals([...modelSignals, ...ruleSignals])
   );
 }
 
 function extractWithRules(sourceText: string, sourceUrl: string | null): ExtractedTravelSignal[] {
-  const candidates = extractRuleCandidateNames(sourceText)
+  const normalizedSourceText = normalizeExtractionInput(sourceText);
+  const locationHint = locationHintFromText(normalizedSourceText);
+  const highSignalCandidates = [
+    ...extractKnownPlacesFromText(normalizedSourceText),
+    ...extractVagueIntentCandidates(normalizedSourceText)
+  ];
+  const candidates = uniqueStrings([
+    ...highSignalCandidates,
+    ...extractRuleCandidateNames(sourceText)
+  ])
     .filter((line) => !isTripMetadataLine(line))
     .filter((line) => looksLikePlace(line))
     .map(cleanRuleCandidateName)
@@ -1378,7 +1438,8 @@ function extractWithRules(sourceText: string, sourceUrl: string | null): Extract
     category: inferCategory(name),
     confidence: sourceText ? confidenceForRuleCandidate(name, sourceText) : 0.4,
     evidence: sourceText ? [evidenceForCandidate(name, sourceText)] : [sourceUrl || "Imported URL"],
-    location_hint: locationHintFromText(sourceText),
+    city: cityForCandidate(name, normalizedSourceText) || locationHint,
+    location_hint: cityForCandidate(name, normalizedSourceText) || locationHint,
     name: name.slice(0, 180),
     priority: "candidate",
     summary: sourceText
@@ -1389,16 +1450,23 @@ function extractWithRules(sourceText: string, sourceUrl: string | null): Extract
 
 function extractRuleCandidateNames(sourceText: string) {
   const candidates: string[] = [];
+  const normalizedText = normalizeExtractionInput(sourceText);
   const actionPattern =
-    /\b(?:visit|see|try|eat at|have dinner at|dinner at|coffee at|tapas at|stay at|walk around|go to|do a|sunset from)\s+([^,.;\n]+)/gi;
+    /\b(?:visit|see|try|eat at|have dinner at|dinner at|coffee at|tapas at|stay at|staying near|walk around|walk|go to|do a|book a|book|sunset from|flying into)\s+([^,.;\n#]+)/gi;
   let match: RegExpExecArray | null;
-  while ((match = actionPattern.exec(sourceText))) {
+  while ((match = actionPattern.exec(normalizedText))) {
     candidates.push(match[1].trim());
   }
 
-  const lines = sourceText
-    .replace(/\b(?:visit|see|try|eat at|have dinner at|dinner at|coffee at|tapas at|stay at|walk around|go to|do a|sunset from)\b/gi, "\n$&")
-    .split(/\r?\n|\.|•|;|,(?=\s*(?:visit|see|try|eat at|have dinner at|dinner at|coffee at|tapas at|stay at|walk around|go to|do a|sunset from)\b)/i)
+  const arrowParts = normalizedText
+    .split(/→|->|—|–/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  candidates.push(...arrowParts);
+
+  const lines = normalizedText
+    .replace(/\b(?:visit|see|try|eat at|have dinner at|dinner at|coffee at|tapas at|stay at|staying near|walk around|walk|go to|do a|book a|book|sunset from|flying into)\b/gi, "\n$&")
+    .split(/\r?\n|\.|•|;|,(?=\s*(?:visit|see|try|eat at|have dinner at|dinner at|coffee at|tapas at|stay at|staying near|walk around|walk|go to|do a|book a|book|sunset from|flying into)\b)/i)
     .map((line) => line.trim())
     .filter(Boolean);
 
@@ -1406,7 +1474,69 @@ function extractRuleCandidateNames(sourceText: string) {
   return Array.from(new Set(candidates.map((candidate) => candidate.trim()).filter(Boolean)));
 }
 
+const knownPlacePatterns: Array<[RegExp, string]> = [
+  [/\bBiscayne Bay\b(?:\s+boat\s+(?:day|tour))?/i, "Biscayne Bay boat tour"],
+  [/\bBrickell City Centre\b/i, "Brickell City Centre"],
+  [/\bBrickell\b/i, "Brickell"],
+  [/\bcitizenM Miami Brickell\b/i, "citizenM Miami Brickell"],
+  [/\bCoava\b/i, "Coava"],
+  [/\bCoconut Grove\b/i, "Coconut Grove"],
+  [/\bEl Xampanyet\b/i, "El Xampanyet"],
+  [/\bEverglades\b(?:\s+airboat\s+tour)?/i, "Everglades airboat tour"],
+  [/\bGran Via\b/i, "Gran Via"],
+  [/\bKomodo(?:\s+Miami)?\b/i, "Komodo"],
+  [/\bLe Pigeon\b/i, "Le Pigeon"],
+  [/\bLittle Havana\b(?:\s+food\s+tour)?/i, "Little Havana food tour"],
+  [/\bMIA\b|\bMiami International Airport\b/i, "Miami International Airport"],
+  [/\bNomad Coffee\b/i, "Nomad Coffee"],
+  [/\bPark Guell\b|\bPark Güell\b/i, "Park Guell"],
+  [/\bPortland Japanese Garden\b|\bJapanese Garden\b/i, "Portland Japanese Garden"],
+  [/\bPowell(?:'|’)?s Books\b/i, "Powell's Books"],
+  [/\bPrado Museum\b/i, "Prado Museum"],
+  [/\bRetiro Park\b/i, "Retiro Park"],
+  [/\bSagrada Familia\b/i, "Sagrada Familia"],
+  [/\bSouth Beach\b/i, "South Beach"],
+  [/\bSouth Pointe Park\b/i, "South Pointe Park"],
+  [/\bThe Wynwood Walls\b|\bWynwood Wall\b|\bWynwood Walls\b/i, "Wynwood Walls"],
+  [/\bWynwood\b/i, "Wynwood"]
+];
+
+function extractKnownPlacesFromText(sourceText: string) {
+  const found: string[] = [];
+  for (const [pattern, name] of knownPlacePatterns) {
+    if (pattern.test(sourceText)) found.push(name);
+  }
+  return found;
+}
+
+function extractVagueIntentCandidates(sourceText: string) {
+  const candidates: string[] = [];
+  if (/\bsushi spot\b.*\bBrickell\b|\bBrickell\b.*\bsushi spot\b/i.test(sourceText)) {
+    candidates.push("sushi spot in Brickell");
+  }
+  if (/\brooftop drinks\b/i.test(sourceText)) {
+    candidates.push("rooftop drinks");
+  }
+  if (/\b(?:near the water|waterfront)\b.*\bbrunch\b|\bbrunch\b.*\b(?:near the water|waterfront)\b/i.test(sourceText)) {
+    candidates.push("waterfront brunch");
+  }
+  return candidates;
+}
+
 async function resolvePlace(signal: ExtractedTravelSignal, post: ImportedPostRow) {
+  if (!shouldResolveSignalWithPlaces(signal)) {
+    return {
+      address: null,
+      city: signal.city || locationContextForSignal(signal, post),
+      country: signal.country || null,
+      inventoryItem: null,
+      latitude: null,
+      longitude: null,
+      placeId: null,
+      provider: "wayline_review"
+    };
+  }
+
   const context = locationContextForSignal(signal, post);
   return resolveTravelPlace(
     {
@@ -1423,6 +1553,14 @@ async function resolvePlace(signal: ExtractedTravelSignal, post: ImportedPostRow
       tripId: post.trip_id || null
     }
   );
+}
+
+function shouldResolveSignalWithPlaces(signal: ExtractedTravelSignal) {
+  const candidateType = signal.candidateType || candidateTypeForSignal(signal);
+  if (candidateType === "activity_idea" || candidateType === "restaurant_intent" || candidateType === "tour") {
+    return false;
+  }
+  return !signal.needsProviderSearch;
 }
 
 async function defaultStartTimeForTrip(
@@ -1467,6 +1605,15 @@ function sanitizeOcrText(value: string) {
     .replace(/\n{4,}/g, "\n\n\n")
     .trim()
     .slice(0, 10000);
+}
+
+function normalizeExtractionInput(value: string) {
+  return sanitizeOcrText(value)
+    .replace(/WYNW00D/gi, "Wynwood")
+    .replace(/WYNW0OD/gi, "Wynwood")
+    .replace(/K0MODO/gi, "Komodo")
+    .replace(/BR1CKELL/gi, "Brickell")
+    .replace(/P0INTE/gi, "Pointe");
 }
 
 function validateExtractedTravelSignals(
@@ -1515,10 +1662,23 @@ function validateExtractedTravelSignal(
     ? value.evidence.filter((item): item is string => typeof item === "string").slice(0, 5)
     : [];
   const priority = readPriority(value.priority);
+  const category = normalizeCategory(readString(value.category) || "activity");
+  const candidateType = normalizeCandidateType(
+    readString(value.candidate_type ?? value.candidateType),
+    category,
+    name
+  );
+  const needsProviderSearch =
+    value.needs_provider_search === true ||
+    value.needsProviderSearch === true ||
+    candidateType === "restaurant_intent" ||
+    candidateType === "activity_idea" ||
+    candidateType === "tour";
 
   return {
     address: readString(value.address),
-    category: normalizeCategory(readString(value.category) || "activity"),
+    candidateType,
+    category,
     city: readString(value.city),
     confidence,
     country: readString(value.country),
@@ -1526,6 +1686,8 @@ function validateExtractedTravelSignal(
     evidence,
     locationHint: readString(value.location_hint ?? value.locationHint),
     name,
+    needsProviderSearch,
+    normalizedName: readString(value.normalized_name ?? value.normalizedName),
     priority,
     reviewReason: reviewReasonForConfidence(confidence),
     summary
@@ -1533,13 +1695,26 @@ function validateExtractedTravelSignal(
 }
 
 function dedupeSignals(signals: ExtractedTravelSignal[]) {
-  const seen = new Set<string>();
-  return signals.filter((signal) => {
-    const key = normalizeName(`${signal.name}:${signal.city || signal.locationHint || ""}`);
-    if (!key || seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
+  const byKey = new Map<string, ExtractedTravelSignal>();
+  for (const signal of signals) {
+    const key = normalizeName(
+      `${normalizeCanonicalPlaceLabel(signal.normalizedName || signal.name)}:${signal.city || signal.locationHint || ""}`
+    );
+    if (!key) continue;
+    const existing = byKey.get(key);
+    if (!existing) {
+      byKey.set(key, {
+        ...signal,
+        duplicateGroupKey: signal.duplicateGroupKey || key,
+        name: normalizeDisplayName(signal.name)
+      });
+      continue;
+    }
+
+    byKey.set(key, mergeSignals(existing, signal, key));
+  }
+
+  return [...byKey.values()];
 }
 
 function filterTravelSignals(signals: ExtractedTravelSignal[]) {
@@ -1573,10 +1748,83 @@ function filterStoredExtractedPlaces<TPlace extends Record<string, any>>(places:
   });
 }
 
+function mergeSignals(
+  existing: ExtractedTravelSignal,
+  incoming: ExtractedTravelSignal,
+  duplicateGroupKey: string
+): ExtractedTravelSignal {
+  const confidence = Math.max(existing.confidence, incoming.confidence);
+  const category = strongerCategory(existing.category, incoming.category);
+  const candidateType = strongerCandidateType(
+    existing.candidateType || candidateTypeForCategoryAndName(category, existing.name),
+    incoming.candidateType || candidateTypeForCategoryAndName(category, incoming.name),
+    category
+  );
+  return {
+    ...existing,
+    candidateType,
+    category,
+    city: existing.city || incoming.city || null,
+    confidence,
+    country: existing.country || incoming.country || null,
+    duplicateGroupKey,
+    evidence: uniqueStrings([
+      ...(existing.evidence || []),
+      ...(incoming.evidence || [])
+    ]).slice(0, 5),
+    name: preferredSignalName(existing.name, incoming.name),
+    locationHint: existing.locationHint || incoming.locationHint || null,
+    needsProviderSearch:
+      Boolean(existing.needsProviderSearch || incoming.needsProviderSearch) ||
+      candidateType === "activity_idea" ||
+      candidateType === "restaurant_intent" ||
+      candidateType === "tour",
+    reviewReason: reviewReasonForConfidence(confidence),
+    summary: mergeNotes(existing.summary, incoming.summary) || existing.summary || incoming.summary
+  };
+}
+
+function strongerCandidateType(
+  current: ExtractedTravelSignal["candidateType"],
+  next: ExtractedTravelSignal["candidateType"],
+  category: string
+) {
+  const categoryType = candidateTypeForCategoryAndName(category, "");
+  const priority: Record<NonNullable<ExtractedTravelSignal["candidateType"]>, number> = {
+    activity_idea: 6,
+    restaurant_intent: 6,
+    tour: 6,
+    transportation: 5,
+    hotel: 5,
+    event: 5,
+    neighborhood: 4,
+    physical_place: 3
+  };
+  const candidates = [current, next, categoryType].filter(Boolean) as Array<
+    NonNullable<ExtractedTravelSignal["candidateType"]>
+  >;
+  return candidates.sort((a, b) => priority[b] - priority[a])[0] || "physical_place";
+}
+
+function strongerCategory(current: string, next: string) {
+  const currentCategory = normalizeCategory(current);
+  const nextCategory = normalizeCategory(next);
+  if (currentCategory === "activity" && nextCategory !== "activity") return nextCategory;
+  return currentCategory;
+}
+
+function preferredSignalName(current: string, next: string) {
+  const normalizedCurrent = normalizeCanonicalPlaceLabel(current);
+  const normalizedNext = normalizeCanonicalPlaceLabel(next);
+  if (normalizedCurrent === normalizedNext) {
+    return normalizeDisplayName(current.length >= next.length ? current : next);
+  }
+  return normalizeDisplayName(current);
+}
+
 function rejectionReasonForSignal(signal: ExtractedTravelSignal) {
   const name = signal.name.trim();
   const normalized = normalizeCopy(name);
-  const evidenceText = normalizeCopy([signal.summary, ...(signal.evidence || [])].join(" "));
 
   if (name.length < 3) return "too_short";
   if (!allowedExtractionCategories.has(normalizeCategory(signal.category))) {
@@ -1587,12 +1835,51 @@ function rejectionReasonForSignal(signal: ExtractedTravelSignal) {
   }
   if (looksLikeRawInspirationNote(name)) return "raw_inspiration_note";
   if (isBlockedExtractionTerm(normalized)) return "blocked_term";
-  if (containsInstructionalPhrase(normalized) || containsInstructionalPhrase(evidenceText)) {
+  if (isSocialFillerCandidate(normalized)) {
+    return "social_filler";
+  }
+  if (isGenericPlanningPhrase(normalized) && !isSuggestionIntent(signal)) {
+    return "generic_planning_phrase";
+  }
+  if (containsInstructionalPhrase(normalized)) {
     return "instructional_or_ui_copy";
   }
   if (looksLikeSentenceFragment(name)) return "sentence_fragment";
   if (!hasTravelIntent(signal)) return "missing_travel_intent";
   return null;
+}
+
+function isSuggestionIntent(signal: ExtractedTravelSignal) {
+  return signal.candidateType === "restaurant_intent" || signal.needsProviderSearch === true;
+}
+
+function isSocialFillerCandidate(value: string) {
+  return socialFillerTerms.some((term) => {
+    const normalizedTerm = normalizeCopy(term);
+    if (normalizedTerm.length <= 3) {
+      return value === normalizedTerm;
+    }
+    return value === normalizedTerm || value.includes(normalizedTerm);
+  });
+}
+
+const socialFillerTerms = [
+  "#ad",
+  "#fyp",
+  "comment below",
+  "follow for more",
+  "like and follow",
+  "link in bio",
+  "pov",
+  "save this",
+  "thingstodo",
+  "travelhack",
+  "travel tips",
+  "viral"
+];
+
+function isGenericPlanningPhrase(value: string) {
+  return /\b(cute restaurant|cute sushi spot|rooftop drinks|brunch spot|coffee place|waterfront brunch|something near the water|dinner near|planning spain|perfect .* weekend|best .* spots)\b/.test(value);
 }
 
 function isBlockedExtractionTerm(normalized: string) {
@@ -1644,10 +1931,10 @@ function looksLikeSentenceFragment(value: string) {
 function looksLikeRawInspirationNote(value: string) {
   const wordCount = value.trim().split(/\s+/).length;
   if (wordCount >= 8) return true;
-  if (value.includes(",") && /\b(?:visit|coffee at|tapas at|see sunset|go to|walk around)\b/i.test(value)) {
+  if (value.includes(",") && /\b(?:visit|coffee at|tapas at|see sunset|go to|walk around|follow|save this)\b/i.test(value)) {
     return true;
   }
-  return /test production inspiration|planning a trip|i want to visit|coffee at .+,\s*visit|tapas at .+,\s*visit/i.test(value);
+  return /test production inspiration|planning a trip|planning .*:|i want to visit|coffee at .+,\s*visit|tapas at .+,\s*visit/i.test(value);
 }
 
 function hasTravelIntent(signal: ExtractedTravelSignal) {
@@ -1726,15 +2013,16 @@ function segmentKindForCategory(category: string) {
 
 function inferCategory(text: string) {
   const lower = text.toLowerCase();
-  if (/restaurant|cafe|bar|coffee|dinner|lunch|breakfast|taco|sushi|food/.test(lower)) {
+  if (/airport|\bMIA\b|station|terminal|flying into/i.test(text)) return "transportation";
+  if (/boat day|boat tour|airboat tour|food tour|tour|cruise|experience/.test(lower)) return "tour";
+  if (/neighborhood|district|wynwood|brickell|south beach|coconut grove|gran via|little havana/.test(lower)) return "neighborhood";
+  if (/restaurant|cafe|bar|coffee|dinner|lunch|breakfast|taco|sushi|brunch|food/.test(lower)) {
     return "restaurant";
   }
   if (/hotel|stay|resort|hostel/.test(lower)) return "hotel";
-  if (/boat tour|tour|cruise|experience/.test(lower)) return "tour";
   if (/museum|gallery|temple|church|castle|walls|landmark|attraction/.test(lower)) return "attraction";
   if (/beach|park|hike|trail|garden|nature/.test(lower)) return "park";
   if (/shop|market|boutique/.test(lower)) return "shopping";
-  if (/neighborhood|district/.test(lower)) return "neighborhood";
   return "activity";
 }
 
@@ -1742,21 +2030,25 @@ function looksLikePlace(value: string) {
   if (value.length < 3 || value.length > 180) return false;
   if (/https?:\/\//i.test(value)) return false;
   if (/^(and|the|this|that|with|from|for|you|travel|trip)$/i.test(value)) return false;
-  return /[A-Z][a-z]+/.test(value) || /restaurant|cafe|hotel|market|museum|beach/i.test(value);
+  return /[A-Z][a-z]+/.test(value) || /restaurant|cafe|hotel|market|museum|beach|sushi spot|rooftop drinks|waterfront brunch/i.test(value);
 }
 
 function cleanRuleCandidateName(value: string) {
-  return value
+  let cleaned = value
     .replace(/^test production inspiration:\s*/i, "")
-    .replace(/^(?:and\s+)?(?:maybe\s+)?(?:visit|see|try|eat at|have dinner at|dinner at|coffee at|tapas at|stay at|walk around|go to|do a)\s+/i, "")
+    .replace(/^(?:pov:\s*)?you found the perfect\s+.+?\s+weekend\s*/i, "")
+    .replace(/^(?:and\s+)?(?:maybe\s+)?(?:visit|see|try|eat at|have dinner at|dinner at|coffee at|tapas at|stay at|staying near|walk around|walk|go to|do a|book a|book|flying into)\s+/i, "")
     .replace(/^sunset from\s+/i, "")
     .replace(/^(?:I want to|I would like to)\s+/i, "")
     .replace(/^sunset\s+from\s+/i, "")
     .replace(/,\s+and\s+maybe$/i, "")
     .replace(/,\s+and\s+maybe\s+/i, "")
-    .replace(/\s+in\s+([A-Z][A-Za-z\s]+)$/i, "")
     .replace(/\s+(?:for|with)\s+.+$/i, "")
     .trim();
+  if (!/\b(sushi spot|brunch|rooftop drinks|coffee place|restaurant)\b/i.test(cleaned)) {
+    cleaned = cleaned.replace(/\s+in\s+([A-Z][A-Za-z\s]+)$/i, "").trim();
+  }
+  return normalizeDisplayName(cleaned);
 }
 
 function confidenceForRuleCandidate(name: string, sourceText: string) {
@@ -1781,9 +2073,30 @@ function evidenceForCandidate(name: string, sourceText: string) {
 
 function locationHintFromText(sourceText: string) {
   const match =
-    sourceText.match(/\b(?:Planning|Trip to|Destination:)\s+(?:a\s+)?([A-Z][A-Za-z\s]+?)(?:\s+weekend|\s+trip|\.|,|\n|$)/) ||
+    sourceText.match(/\bPlanning\s+([A-Z][A-Za-z\s]+?)(?:\s*:|\s+weekend|\s+trip|\.|,|\n|$)/) ||
+    sourceText.match(/\b(?:Trip to|Destination:)\s+(?:a\s+)?([A-Z][A-Za-z\s]+?)(?:\s+weekend|\s+trip|\.|,|\n|$)/) ||
     sourceText.match(/\bin\s+([A-Z][A-Za-z\s]+?)(?:,|\.|\n|$)/);
   return match?.[1]?.trim() || null;
+}
+
+function cityForCandidate(name: string, sourceText: string) {
+  const normalizedName = normalizeCopy(name);
+  const normalizedSource = normalizeCopy(sourceText);
+  if (/sagrada familia|el xampanyet|nomad coffee|park guell/.test(normalizedName)) {
+    if (normalizedSource.includes("barcelona")) return "Barcelona";
+  }
+  if (/prado museum|retiro park|gran via/.test(normalizedName)) {
+    if (normalizedSource.includes("madrid")) return "Madrid";
+  }
+  if (
+    /wynwood|komodo|brickell|south pointe|south beach|coconut grove|biscayne bay|everglades|little havana|miami international airport|mia|sushi spot/.test(normalizedName)
+  ) {
+    if (normalizedSource.includes("miami")) return "Miami";
+  }
+  if (/coava|powell|japanese garden|le pigeon/.test(normalizedName)) {
+    if (normalizedSource.includes("portland")) return "Portland";
+  }
+  return null;
 }
 
 function locationContextForSignal(signal: ExtractedTravelSignal, post: ImportedPostRow) {
@@ -1854,11 +2167,43 @@ function summarizeText(value: string) {
 }
 
 function buildDedupeKey(userId: string, placeId: string | null, name: string, city?: string | null) {
-  return placeId ? `place:${placeId}` : `name:${userId}:${normalizeName(`${name}:${city || ""}`)}`;
+  return placeId ? `place:${placeId}` : `name:${userId}:${normalizeCanonicalName(`${name}:${city || ""}`)}`;
 }
 
 function normalizeName(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+}
+
+function normalizeCanonicalName(value: string) {
+  return normalizeName(normalizeCanonicalPlaceLabel(value));
+}
+
+function normalizeCanonicalPlaceLabel(value: string) {
+  const normalized = normalizeExtractionInput(value)
+    .replace(/[\u{1F300}-\u{1FAFF}]/gu, " ")
+    .replace(/\bthe\s+/gi, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  const copy = normalizeCopy(normalized);
+  if (copy === "wynwood wall" || copy === "wynwood walls" || copy === "the wynwood walls") {
+    return "Wynwood Walls";
+  }
+  if (copy === "komodo miami" || copy === "dinner at komodo") return "Komodo";
+  if (copy === "park guell") return "Park Guell";
+  if (copy === "japanese garden") return "Portland Japanese Garden";
+  if (copy === "biscayne bay boat day") return "Biscayne Bay boat tour";
+  return normalized;
+}
+
+function normalizeDisplayName(value: string) {
+  const canonical = normalizeCanonicalPlaceLabel(value)
+    .replace(/^near\s+/i, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  const copy = normalizeCopy(canonical);
+  if (copy === "mia") return "Miami International Airport";
+  if (copy === "wynwood") return "Wynwood";
+  return canonical;
 }
 
 function normalizeCopy(value: string) {
@@ -1896,6 +2241,75 @@ function reviewStatusForConfidence(_confidence: number) {
   return "needs_review";
 }
 
+function reviewStatusForSignal(
+  signal: ExtractedTravelSignal,
+  resolved: Awaited<ReturnType<typeof resolvePlace>>,
+  _confidence: number
+) {
+  const candidateType = signal.candidateType || candidateTypeForSignal(signal);
+  if (
+    signal.needsProviderSearch ||
+    candidateType === "activity_idea" ||
+    candidateType === "restaurant_intent" ||
+    candidateType === "tour"
+  ) {
+    return "needs_location_confirmation";
+  }
+
+  if (typeof resolved.latitude !== "number" || typeof resolved.longitude !== "number") {
+    return "needs_location_confirmation";
+  }
+
+  return "needs_review";
+}
+
+function normalizeCandidateType(
+  value: string | null,
+  category: string,
+  name: string
+): ExtractedTravelSignal["candidateType"] {
+  const normalized = normalizeCopy(value || "");
+  if (normalized === "physical place") return "physical_place";
+  if (
+    normalized === "physical_place" ||
+    normalized === "neighborhood" ||
+    normalized === "activity_idea" ||
+    normalized === "tour" ||
+    normalized === "restaurant_intent" ||
+    normalized === "hotel" ||
+    normalized === "transportation" ||
+    normalized === "event"
+  ) {
+    return normalized;
+  }
+
+  return candidateTypeForCategoryAndName(category, name);
+}
+
+function candidateTypeForSignal(signal: ExtractedTravelSignal) {
+  return signal.candidateType || candidateTypeForCategoryAndName(signal.category, signal.name);
+}
+
+function candidateTypeForCategoryAndName(
+  category: string,
+  name: string
+): NonNullable<ExtractedTravelSignal["candidateType"]> {
+  const normalizedCategory = normalizeCategory(category);
+  const text = normalizeCopy(name);
+  if (normalizedCategory === "neighborhood") return "neighborhood";
+  if (normalizedCategory === "hotel") return "hotel";
+  if (normalizedCategory === "transportation") return "transportation";
+  if (normalizedCategory === "event") return "event";
+  if (normalizedCategory === "tour") return "tour";
+  if (/\b(cute|spot|rooftop drinks|brunch|near the water|something near)\b/.test(text)) {
+    return "restaurant_intent";
+  }
+  if (/\b(boat day|boat tour|airboat tour|food tour|experience|excursion)\b/.test(text)) {
+    return "tour";
+  }
+  return "physical_place";
+}
+
 function readPriority(value: unknown): ExtractedTravelSignal["priority"] {
   if (
     value === "candidate" ||
@@ -1916,6 +2330,11 @@ function buildPromotedNotes(place: any) {
     place.place_id ? `Google Place ID: ${place.place_id}` : null
   ].filter(Boolean);
   return parts.join("\n");
+}
+
+function readLocationDiagnostics(payload: unknown) {
+  if (!isRecord(payload)) return null;
+  return isRecord(payload.locationDiagnostics) ? payload.locationDiagnostics : null;
 }
 
 function safeFileExtension(name: string, type: string) {

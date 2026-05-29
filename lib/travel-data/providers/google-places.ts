@@ -3,6 +3,7 @@ import "server-only";
 import { logTravelProviderEvent } from "@/lib/travel-data/errors";
 import { normalizeInventoryItem } from "@/lib/travel-data/normalize";
 import type {
+  LocationDiagnostics,
   NearbyActivitySearchInput,
   PlaceResolutionQuery,
   ProviderAdapter,
@@ -29,11 +30,24 @@ async function resolvePlace(
       provider,
       query: safeQueryPreview(query.name)
     });
-    return unresolved(query);
+    return unresolved(query, diagnostics({
+      code: "provider_not_configured",
+      message: "Location matching is not configured.",
+      query: query.name,
+      retryable: false,
+      status: "provider_failed"
+    }));
   }
 
   const locationContext = destinationContext(query, context);
   const textQueries = buildTextQueries(query, locationContext);
+  let providerResultCount = 0;
+  let lastWrongCity: {
+    address: string | null;
+    placeId: string | null;
+    query: string;
+  } | null = null;
+  let lastProviderError: LocationDiagnostics | null = null;
   logTravelProviderEvent("place_resolution_started", {
     locationContext,
     provider,
@@ -48,8 +62,16 @@ async function resolvePlace(
       url.searchParams.set("fields", "place_id,name,formatted_address,geometry,rating,user_ratings_total,types,photos");
       url.searchParams.set("key", apiKey);
 
-      const response = await fetch(url, { cache: "no-store" });
+      const response = await fetchWithTimeout(url);
       if (!response.ok) {
+        lastProviderError = diagnostics({
+          code: errorCodeForHttpStatus(response.status),
+          destinationContext: locationContext,
+          message: `Provider request failed with status ${response.status}.`,
+          providerResultCount,
+          query: textQuery,
+          status: "provider_failed"
+        });
         logTravelProviderEvent("place_resolution_http_failed", {
           provider,
           query: safeQueryPreview(textQuery),
@@ -68,6 +90,7 @@ async function resolvePlace(
       }
 
       const candidates = Array.isArray(payload.candidates) ? payload.candidates : [];
+      providerResultCount += candidates.length;
       logTravelProviderEvent("place_resolution_candidates", {
         count: candidates.length,
         provider,
@@ -83,6 +106,11 @@ async function resolvePlace(
       }
 
       if (!matchesLocationContext(candidate.formatted_address, locationContext)) {
+        lastWrongCity = {
+          address: candidate.formatted_address || null,
+          placeId: candidate.place_id || null,
+          query: textQuery
+        };
         logTravelProviderEvent("place_resolution_rejected_location_mismatch", {
           address: safeAddressPreview(candidate.formatted_address),
           locationContext,
@@ -107,6 +135,14 @@ async function resolvePlace(
         address: item.address || query.address || null,
         city: query.city || null,
         country: query.country || null,
+        diagnostics: diagnostics({
+          destinationContext: locationContext,
+          providerResultCount,
+          query: textQuery,
+          selectedAddress: item.address,
+          selectedPlaceId: item.providerItemId,
+          status: "resolved"
+        }),
         inventoryItem: item,
         latitude: item.latitude,
         longitude: item.longitude,
@@ -115,13 +151,51 @@ async function resolvePlace(
       };
     }
 
-    return geocodePlaceFallback(apiKey, query, textQueries, locationContext);
+    const geocoded = await geocodePlaceFallback(apiKey, query, textQueries, locationContext, providerResultCount);
+    if (geocoded.diagnostics?.status === "resolved") return geocoded;
+    if (geocoded.diagnostics?.status === "wrong_city_rejected") return geocoded;
+
+    if (lastWrongCity) {
+      return unresolved(query, diagnostics({
+        code: "wrong_city_rejected",
+        destinationContext: locationContext,
+        message: "Provider result was outside the trip destination.",
+        providerResultCount,
+        query: lastWrongCity.query,
+        rejectionReason: "address_does_not_match_destination_context",
+        retryable: true,
+        selectedAddress: lastWrongCity.address,
+        selectedPlaceId: lastWrongCity.placeId,
+        status: "wrong_city_rejected"
+      }));
+    }
+
+    if (lastProviderError) return unresolved(query, lastProviderError);
+
+    return geocoded.diagnostics
+      ? geocoded
+      : unresolved(query, diagnostics({
+          code: "provider_no_results",
+          destinationContext: locationContext,
+          message: "No matching places were found.",
+          providerResultCount,
+          query: textQueries[0] || query.name,
+          status: "needs_location_confirmation"
+        }));
   } catch (error) {
+    const aborted = error instanceof Error && error.name === "AbortError";
     logTravelProviderEvent("place_resolution_failed", {
-      error: error instanceof Error ? error.message : "Unknown provider failure.",
+      error: safeProviderError(error),
       provider
     });
-    return unresolved(query);
+    return unresolved(query, diagnostics({
+      code: aborted ? "provider_timeout" : "provider_network_error",
+      destinationContext: locationContext,
+      message: aborted ? "Provider request timed out." : "Provider request failed.",
+      providerResultCount,
+      query: textQueries[0] || query.name,
+      status: "provider_failed"
+    }));
   }
 }
 
@@ -129,16 +203,32 @@ async function geocodePlaceFallback(
   apiKey: string,
   query: PlaceResolutionQuery,
   textQueries: string[],
-  locationContext: string | null
+  locationContext: string | null,
+  priorResultCount = 0
 ): Promise<ResolvedPlace> {
+  let providerResultCount = priorResultCount;
+  let lastWrongCity: {
+    address: string | null;
+    placeId: string | null;
+    query: string;
+  } | null = null;
+  let lastProviderError: LocationDiagnostics | null = null;
   try {
     for (const textQuery of textQueries) {
       const url = new URL("https://maps.googleapis.com/maps/api/geocode/json");
       url.searchParams.set("address", textQuery);
       url.searchParams.set("key", apiKey);
 
-      const response = await fetch(url, { cache: "no-store" });
+      const response = await fetchWithTimeout(url);
       if (!response.ok) {
+        lastProviderError = diagnostics({
+          code: errorCodeForHttpStatus(response.status),
+          destinationContext: locationContext,
+          message: `Provider request failed with status ${response.status}.`,
+          providerResultCount,
+          query: textQuery,
+          status: "provider_failed"
+        });
         logTravelProviderEvent("place_geocode_http_failed", {
           provider,
           query: safeQueryPreview(textQuery),
@@ -157,6 +247,7 @@ async function geocodePlaceFallback(
       }
 
       const results = Array.isArray(payload.results) ? payload.results : [];
+      providerResultCount += results.length;
       logTravelProviderEvent("place_geocode_candidates", {
         count: results.length,
         provider,
@@ -172,6 +263,11 @@ async function geocodePlaceFallback(
       }
 
       if (!matchesLocationContext(candidate.formatted_address, locationContext)) {
+        lastWrongCity = {
+          address: candidate.formatted_address || null,
+          placeId: candidate.place_id || null,
+          query: textQuery
+        };
         logTravelProviderEvent("place_geocode_rejected_location_mismatch", {
           address: safeAddressPreview(candidate.formatted_address),
           locationContext,
@@ -201,6 +297,14 @@ async function geocodePlaceFallback(
         address: item.address,
         city: query.city || null,
         country: query.country || null,
+        diagnostics: diagnostics({
+          destinationContext: locationContext,
+          providerResultCount,
+          query: textQuery,
+          selectedAddress: item.address,
+          selectedPlaceId: item.providerItemId,
+          status: "resolved"
+        }),
         inventoryItem: item,
         latitude: item.latitude,
         longitude: item.longitude,
@@ -208,13 +312,43 @@ async function geocodePlaceFallback(
         provider
       };
     }
-    return unresolved(query);
+    if (lastWrongCity) {
+      return unresolved(query, diagnostics({
+        code: "wrong_city_rejected",
+        destinationContext: locationContext,
+        message: "Provider result was outside the trip destination.",
+        providerResultCount,
+        query: lastWrongCity.query,
+        rejectionReason: "address_does_not_match_destination_context",
+        retryable: true,
+        selectedAddress: lastWrongCity.address,
+        selectedPlaceId: lastWrongCity.placeId,
+        status: "wrong_city_rejected"
+      }));
+    }
+    if (lastProviderError) return unresolved(query, lastProviderError);
+    return unresolved(query, diagnostics({
+      code: "provider_no_results",
+      destinationContext: locationContext,
+      message: "No matching places were found.",
+      providerResultCount,
+      query: textQueries[0] || query.name,
+      status: "needs_location_confirmation"
+    }));
   } catch (error) {
+    const aborted = error instanceof Error && error.name === "AbortError";
     logTravelProviderEvent("place_geocode_fallback_failed", {
-      error: error instanceof Error ? error.message : "Unknown provider failure.",
+      error: safeProviderError(error),
       provider
     });
-    return unresolved(query);
+    return unresolved(query, diagnostics({
+      code: aborted ? "provider_timeout" : "provider_network_error",
+      destinationContext: locationContext,
+      message: aborted ? "Provider request timed out." : "Provider request failed.",
+      providerResultCount,
+      query: textQueries[0] || query.name,
+      status: "provider_failed"
+    }));
   }
 }
 
@@ -326,6 +460,16 @@ function buildTextQueries(query: PlaceResolutionQuery, locationContext: string |
   return Array.from(new Set(variants.map((part) => part.replace(/\s+/g, " ").trim()).filter(Boolean)));
 }
 
+async function fetchWithTimeout(url: URL) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5000);
+  try {
+    return await fetch(url, { cache: "no-store", signal: controller.signal });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 function destinationContext(query: PlaceResolutionQuery, context?: TripContext) {
   return (
     query.city ||
@@ -381,15 +525,59 @@ function normalizeText(value: string) {
   return value.toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "").replace(/[^a-z0-9]+/g, " ").trim();
 }
 
-function unresolved(query: PlaceResolutionQuery): ResolvedPlace {
+function unresolved(query: PlaceResolutionQuery, locationDiagnostics?: LocationDiagnostics): ResolvedPlace {
   return {
     address: query.address || null,
     city: query.city || null,
     country: query.country || null,
+    diagnostics: locationDiagnostics || null,
     inventoryItem: null,
     latitude: null,
     longitude: null,
     placeId: null,
     provider: null
   };
+}
+
+function diagnostics(input: {
+  code?: LocationDiagnostics["lastErrorCode"];
+  destinationContext?: string | null;
+  message?: string | null;
+  providerResultCount?: number;
+  query?: string | null;
+  rejectionReason?: string | null;
+  retryable?: boolean;
+  selectedAddress?: string | null;
+  selectedPlaceId?: string | null;
+  status: LocationDiagnostics["status"];
+}): LocationDiagnostics {
+  return {
+    attemptedAt: new Date().toISOString(),
+    destinationContext: input.destinationContext ?? null,
+    lastErrorCode: input.code ?? null,
+    lastErrorMessageSafe: input.message ? safeProviderMessage(input.message) : null,
+    provider,
+    providerResultCount: input.providerResultCount ?? 0,
+    query: input.query ? safeQueryPreview(input.query) : null,
+    rejectionReason: input.rejectionReason ?? null,
+    retryable: input.retryable ?? input.status !== "resolved",
+    selectedFormattedAddress: input.selectedAddress ? safeAddressPreview(input.selectedAddress) : null,
+    selectedProviderPlaceId: input.selectedPlaceId || null,
+    status: input.status
+  };
+}
+
+function errorCodeForHttpStatus(status: number): LocationDiagnostics["lastErrorCode"] {
+  if (status === 408 || status === 504) return "provider_timeout";
+  if (status === 429) return "provider_quota";
+  if (status >= 400 && status < 500) return "provider_invalid_request";
+  return "provider_unknown_error";
+}
+
+function safeProviderError(error: unknown) {
+  return safeProviderMessage(error instanceof Error ? error.message : "Unknown provider failure.");
+}
+
+function safeProviderMessage(value: string) {
+  return value.replace(/key=[^&\s]+/gi, "key=[redacted]").replace(/\s+/g, " ").slice(0, 160);
 }

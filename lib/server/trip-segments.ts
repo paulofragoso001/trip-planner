@@ -10,7 +10,7 @@ export type TripSegmentsClient = {
 };
 
 const segmentSelect =
-  "id,trip_id,user_id,title,location,kind,start_time,end_time,lat,lng,notes,provider,confirmation_code,booking_url,position,inserted_at,updated_at";
+  "id,trip_id,user_id,title,location,kind,start_time,end_time,lat,lng,notes,provider,provider_metadata,location_status,confirmation_code,booking_url,position,inserted_at,updated_at";
 
 export async function listTripSegments(
   supabase: TripSegmentsClient,
@@ -50,9 +50,17 @@ export async function createTripSegment(
       lat: input.lat,
       lng: input.lng,
       location: input.location,
+      location_status:
+        typeof input.lat === "number" && typeof input.lng === "number"
+          ? "resolved"
+          : "needs_location_confirmation",
       notes: input.notes,
       position: nextPosition,
       provider: input.provider,
+      provider_metadata:
+        typeof input.lat === "number" && typeof input.lng === "number"
+          ? manualLocationMetadata(input.location)
+          : {},
       start_time: input.startTime,
       title: input.title,
       trip_id: input.tripId,
@@ -85,6 +93,15 @@ export async function updateTripSegment(
   if ("lat" in input) updates.lat = input.lat;
   if ("lng" in input) updates.lng = input.lng;
   if ("location" in input) updates.location = input.location;
+  if (
+    typeof input.lat === "number" &&
+    typeof input.lng === "number"
+  ) {
+    updates.location_status = "resolved";
+    updates.provider_metadata = manualLocationMetadata(input.location);
+  } else if ("lat" in input || "lng" in input) {
+    updates.location_status = "manual_location_required";
+  }
   if ("notes" in input) updates.notes = input.notes;
   if ("provider" in input) updates.provider = input.provider;
   if ("startTime" in input) updates.start_time = input.startTime;
@@ -105,6 +122,27 @@ export async function updateTripSegment(
   }
 
   return data;
+}
+
+function manualLocationMetadata(location: string | null | undefined) {
+  return {
+    locationDiagnostics: {
+      attemptedAt: new Date().toISOString(),
+      destinationContext: null,
+      lastErrorCode: null,
+      lastErrorMessageSafe: null,
+      provider: "wayline",
+      providerResultCount: 0,
+      query: location || null,
+      rejectionReason: null,
+      retryable: false,
+      retryCount: 0,
+      selectedFormattedAddress: location || null,
+      selectedProviderPlaceId: null,
+      status: "manually_resolved"
+    },
+    manualOverride: true
+  };
 }
 
 export async function deleteTripSegment(

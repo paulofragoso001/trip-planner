@@ -8,6 +8,7 @@ type TripMapPageProps = TripMapData;
 export default function TripMapPage({
   destination,
   error,
+  activitySegments,
   items,
   recommendations,
   searchUrl,
@@ -26,7 +27,7 @@ export default function TripMapPage({
           <div className="mt-4 grid grid-cols-3 gap-2">
             <MapSummary label="Mapped stops" value={String(items.length)} />
             <MapSummary label="Needs location" value={String(unmappedCount)} />
-            <MapSummary label="Suggestions" value={String(recommendations.length)} />
+            <MapSummary label="Activity ideas" value={String(activitySegments.length)} />
           </div>
         </div>
         {error ? (
@@ -40,6 +41,7 @@ export default function TripMapPage({
             items={items}
             searchUrl={searchUrl}
             tripId={tripId}
+            activitySegments={activitySegments}
             unmappedCount={unmappedCount}
             unmappedSegments={unmappedSegments}
           />
@@ -48,7 +50,7 @@ export default function TripMapPage({
 
       <aside className="self-start rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5 xl:sticky xl:top-24">
         <h3 className="text-base font-black">Map actions</h3>
-        <MapTools tripId={tripId} />
+        <MapTools hasMappedStops={items.length > 0} hasUnmappedStops={unmappedCount > 0} tripId={tripId} />
         <SmartSuggestionsPanel
           mappedStopCount={items.length}
           recommendations={recommendations}

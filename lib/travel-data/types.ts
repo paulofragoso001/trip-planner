@@ -71,11 +71,47 @@ export type ResolvedPlace = {
   address: string | null;
   city: string | null;
   country: string | null;
+  diagnostics?: LocationDiagnostics | null;
   inventoryItem: TravelInventoryItem | null;
   latitude: number | null;
   longitude: number | null;
   placeId: string | null;
   provider: TravelProviderName | null;
+};
+
+export type LocationMatchStatus =
+  | "resolved"
+  | "needs_location_confirmation"
+  | "needs_activity_provider"
+  | "wrong_city_rejected"
+  | "provider_failed"
+  | "manual_location_required"
+  | "manually_resolved";
+
+export type TravelProviderErrorCode =
+  | "provider_timeout"
+  | "provider_quota"
+  | "provider_no_results"
+  | "provider_invalid_request"
+  | "provider_not_configured"
+  | "provider_network_error"
+  | "provider_unknown_error"
+  | "wrong_city_rejected";
+
+export type LocationDiagnostics = {
+  attemptedAt: string;
+  destinationContext: string | null;
+  lastErrorCode: TravelProviderErrorCode | null;
+  lastErrorMessageSafe: string | null;
+  provider: TravelProviderName | null;
+  providerResultCount: number;
+  query: string | null;
+  rejectionReason: string | null;
+  retryable: boolean;
+  retryCount?: number;
+  selectedFormattedAddress: string | null;
+  selectedProviderPlaceId: string | null;
+  status: LocationMatchStatus;
 };
 
 export type TravelLocation = {

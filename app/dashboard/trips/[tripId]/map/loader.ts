@@ -13,12 +13,17 @@ export type TripMapData = {
   recommendations: TripRecommendationView[];
   searchUrl: string | null;
   tripId: string;
+  activitySegments: UnmappedMapSegment[];
   unmappedCount: number;
-  unmappedSegments: Array<{
-    id: string;
-    location: string | null;
-    title: string;
-  }>;
+  unmappedSegments: UnmappedMapSegment[];
+};
+
+export type UnmappedMapSegment = {
+  id: string;
+  location: string | null;
+  locationStatus: string | null;
+  safeRejectedAddress: string | null;
+  title: string;
 };
 
 export type TripRecommendationView = {
@@ -45,6 +50,8 @@ type TripSegmentMapRow = {
   lat: number | null;
   lng: number | null;
   location: string | null;
+  location_status: string | null;
+  provider_metadata: Record<string, unknown> | null;
   title: string;
 };
 
@@ -64,6 +71,7 @@ export async function loadTripMapData(tripId: string): Promise<TripMapData> {
       recommendations: [],
       searchUrl: googleMapsSearchUrl("Barcelona, Spain"),
       tripId,
+      activitySegments: [],
       unmappedCount: 0,
       unmappedSegments: []
     };
@@ -112,7 +120,7 @@ export async function loadTripMapData(tripId: string): Promise<TripMapData> {
   const [itemResult, recommendationsResult] = await Promise.all([
     auth.supabase
       .from("trip_segments")
-      .select("id,title,location,lat,lng")
+      .select("id,title,location,lat,lng,location_status,provider_metadata")
       .eq("trip_id", tripId)
       .eq("user_id", auth.userId)
       .order("position", { ascending: true, nullsFirst: false })
@@ -128,13 +136,15 @@ export async function loadTripMapData(tripId: string): Promise<TripMapData> {
   const mappedRows = rows.filter(
     (row) => typeof row.lat === "number" && typeof row.lng === "number"
   );
-  const unmappedSegments = rows
-    .filter((row) => typeof row.lat !== "number" || typeof row.lng !== "number")
-    .map((row) => ({
-      id: row.id,
-      location: row.location,
-      title: row.title || "Trip stop"
-    }));
+  const unresolvedRows = rows.filter(
+    (row) => typeof row.lat !== "number" || typeof row.lng !== "number"
+  );
+  const activitySegments = unresolvedRows
+    .filter((row) => isActivityIdea(row))
+    .map(mapUnmappedSegment);
+  const unmappedSegments = unresolvedRows
+    .filter((row) => !isActivityIdea(row))
+    .map(mapUnmappedSegment);
 
   return {
     destination: trip.destination,
@@ -143,6 +153,7 @@ export async function loadTripMapData(tripId: string): Promise<TripMapData> {
     recommendations: mapRecommendations(recommendationsResult),
     searchUrl: trip.destination ? googleMapsSearchUrl(trip.destination) : null,
     tripId,
+    activitySegments,
     unmappedCount: unmappedSegments.length,
     unmappedSegments
   };
@@ -156,9 +167,40 @@ function emptyMapData(tripId: string, error: string): TripMapData {
     recommendations: [],
     searchUrl: null,
     tripId,
+    activitySegments: [],
     unmappedCount: 0,
     unmappedSegments: []
   };
+}
+
+function mapUnmappedSegment(row: TripSegmentMapRow): UnmappedMapSegment {
+  const diagnostics = isRecord(row.provider_metadata?.locationDiagnostics)
+    ? row.provider_metadata.locationDiagnostics
+    : null;
+  return {
+    id: row.id,
+    location: row.location,
+    locationStatus: row.location_status || null,
+    safeRejectedAddress:
+      typeof diagnostics?.selectedFormattedAddress === "string"
+        ? diagnostics.selectedFormattedAddress
+        : null,
+    title: row.title || "Trip stop"
+  };
+}
+
+function isActivityIdea(row: TripSegmentMapRow) {
+  const metadata = isRecord(row.provider_metadata) ? row.provider_metadata : {};
+  const text = `${row.title || ""} ${row.location || ""} ${row.location_status || ""}`.toLowerCase();
+  return (
+    row.location_status === "needs_activity_provider" ||
+    metadata.activityCandidate === true ||
+    /\b(boat tour|tour|cruise|guided|excursion|experience|meeting point|provider)\b/.test(text)
+  );
+}
+
+function isRecord(value: unknown): value is Record<string, any> {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value));
 }
 
 function mapItem(row: TripSegmentMapRow): TripMapItem {

@@ -109,9 +109,9 @@ test("social inspiration import promotes to timeline/map and generates a plan", 
       ) || extractedPlaces[0];
 
     expect(place).toMatchObject({
-      id: expect.any(String),
-      status: "needs_review"
+      id: expect.any(String)
     });
+    expect(["needs_review", "needs_location_confirmation"]).toContain(place.status);
 
     if (typeof place.latitude !== "number" || typeof place.longitude !== "number") {
       const { data, error } = await admin
@@ -642,6 +642,9 @@ test("AI review requires a real trip destination before approval", async ({
       location: "Miami",
       title: "Biscayne Bay boat tour"
     });
+    expect(["needs_activity_provider", "needs_location_confirmation"]).toContain(
+      segment.location_status
+    );
   } finally {
     if (activitySegmentId) {
       await admin.from("trip_segments").delete().eq("id", activitySegmentId);

@@ -31,10 +31,20 @@ export function SmartSuggestionsPanel({
       });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(readError(payload, response.status));
-      setMessage(label === "Generating suggestions" ? "Suggestions updated." : "Done.");
+      if (payload?.data?.skippedReason === "no_mapped_segments") {
+        setMessage("Add at least one mapped stop to get nearby suggestions.");
+      } else if (payload?.data?.partialFailure) {
+        setMessage("Some suggestions could not be loaded. Showing what is available.");
+      } else {
+        setMessage(label === "Generating suggestions" ? "Suggestions updated." : "Done.");
+      }
       router.refresh();
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Action failed.");
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "Suggestions are temporarily unavailable. Try again."
+      );
     } finally {
       setPendingAction(null);
     }
@@ -145,7 +155,9 @@ export function SmartSuggestionsPanel({
           <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-600">
             <p className="font-black text-slate-950">No suggestions yet.</p>
             <p className="mt-1 leading-6">
-              Generate suggestions after your trip has at least one mapped stop.
+              {mappedStopCount === 0
+                ? "Add at least one mapped stop to get nearby suggestions."
+                : "Find ideas to load suggestions near your route."}
             </p>
           </div>
         ) : null}
