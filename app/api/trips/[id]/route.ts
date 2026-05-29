@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
 import { authorizeDashboardApi } from "@/lib/server/dashboard-test-auth";
-import { mapTripRecord, normalizeTripInput, toTripWritePayload } from "@/lib/trips";
+import {
+  isMissingTripDestinationMetadataColumn,
+  mapTripRecord,
+  normalizeTripInput,
+  stripTripDestinationMetadata,
+  toTripWritePayload
+} from "@/lib/trips";
 
 type RouteContext = {
   params: Promise<{ id: string }>;
@@ -54,8 +60,13 @@ export async function PATCH(request: Request, context: RouteContext) {
     .select("*")
     .single();
 
-  if (error && isMissingTravelStyleColumn(error.message)) {
-    const { travel_style: _travelStyle, ...legacyPayload } = toTripWritePayload(trip);
+  if (
+    error &&
+    (isMissingTravelStyleColumn(error.message) ||
+      isMissingTripDestinationMetadataColumn(error.message))
+  ) {
+    const { travel_style: _travelStyle, ...withoutTravelStyle } = toTripWritePayload(trip);
+    const legacyPayload = stripTripDestinationMetadata(withoutTravelStyle);
     const retry = await auth.supabase
       .from("trips")
       .update(legacyPayload)
