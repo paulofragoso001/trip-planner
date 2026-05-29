@@ -4,7 +4,9 @@ import { useRouter } from "next/navigation";
 import type { FormEvent } from "react";
 import { useState } from "react";
 import GoogleMapsProvider from "@/components/GoogleMapsProvider";
-import LocationAutocomplete from "@/components/LocationAutocomplete";
+import LocationAutocomplete, {
+  type LocationSelection
+} from "@/components/LocationAutocomplete";
 import { useWaylineAction } from "@/hooks/use-wayline-action";
 import {
   TRIP_TRAVEL_STYLES,
@@ -16,6 +18,8 @@ export function TripCreateForm() {
   const router = useRouter();
   const [budget, setBudget] = useState("");
   const [destination, setDestination] = useState("");
+  const [destinationSelection, setDestinationSelection] =
+    useState<LocationSelection | null>(null);
   const [endDate, setEndDate] = useState("");
   const [name, setName] = useState("");
   const [startDate, setStartDate] = useState("");
@@ -28,6 +32,12 @@ export function TripCreateForm() {
     const payload = {
       budget: Number(budget || 0),
       destination,
+      destination_formatted_address: destinationSelection?.formattedAddress || null,
+      destination_lat: destinationSelection?.lat || null,
+      destination_lng: destinationSelection?.lng || null,
+      destination_place_id: destinationSelection?.placeId || null,
+      destination_provider_metadata: destinationSelection?.providerMetadata || {},
+      destination_status: destinationSelection ? "resolved" : "manual",
       end_date: endDate,
       name,
       start_date: startDate,
@@ -43,6 +53,7 @@ export function TripCreateForm() {
     if (result.status === "success") {
       setBudget("");
       setDestination("");
+      setDestinationSelection(null);
       setEndDate("");
       setName("");
       setStartDate("");
@@ -67,13 +78,24 @@ export function TripCreateForm() {
           ariaLabel="Destination"
           inputClassName="w-full rounded-2xl border border-slate-200 px-4 py-3"
           name="destination"
-          onInputChange={setDestination}
-          onSelect={(location) => setDestination(location.address)}
+          onInputChange={(value) => {
+            setDestination(value);
+            setDestinationSelection(null);
+          }}
+          onSelect={(location) => {
+            setDestination(location.address);
+            setDestinationSelection(location);
+          }}
           placeholder="Destination"
           required
           value={destination}
         />
       </GoogleMapsProvider>
+      {destination.trim() && !destinationSelection ? (
+        <p className="rounded-2xl bg-amber-50 px-4 py-3 text-xs font-semibold text-amber-800">
+          Destination saved manually. Map and AI matching may work better after selecting a Google result.
+        </p>
+      ) : null}
       <div className="grid grid-cols-2 gap-3">
         <input
           className="rounded-2xl border border-slate-200 px-4 py-3"
