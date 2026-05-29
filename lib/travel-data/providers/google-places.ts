@@ -33,80 +33,89 @@ async function resolvePlace(
   }
 
   const locationContext = destinationContext(query, context);
-  const textQuery = buildTextQuery(query, locationContext);
+  const textQueries = buildTextQueries(query, locationContext);
   logTravelProviderEvent("place_resolution_started", {
     locationContext,
     provider,
-    query: safeQueryPreview(textQuery)
+    query: safeQueryPreview(textQueries[0])
   });
 
   try {
-    const url = new URL("https://maps.googleapis.com/maps/api/place/findplacefromtext/json");
-    url.searchParams.set("input", textQuery);
-    url.searchParams.set("inputtype", "textquery");
-    url.searchParams.set("fields", "place_id,name,formatted_address,geometry,rating,user_ratings_total,types,photos");
-    url.searchParams.set("key", apiKey);
+    for (const textQuery of textQueries) {
+      const url = new URL("https://maps.googleapis.com/maps/api/place/findplacefromtext/json");
+      url.searchParams.set("input", textQuery);
+      url.searchParams.set("inputtype", "textquery");
+      url.searchParams.set("fields", "place_id,name,formatted_address,geometry,rating,user_ratings_total,types,photos");
+      url.searchParams.set("key", apiKey);
 
-    const response = await fetch(url, { cache: "no-store" });
-    if (!response.ok) {
-      logTravelProviderEvent("place_resolution_http_failed", {
+      const response = await fetch(url, { cache: "no-store" });
+      if (!response.ok) {
+        logTravelProviderEvent("place_resolution_http_failed", {
+          provider,
+          query: safeQueryPreview(textQuery),
+          status: response.status
+        });
+        continue;
+      }
+
+      const payload = await response.json();
+      if (payload.status && payload.status !== "OK" && payload.status !== "ZERO_RESULTS") {
+        logTravelProviderEvent("place_resolution_provider_status", {
+          provider,
+          query: safeQueryPreview(textQuery),
+          status: payload.status
+        });
+      }
+
+      const candidates = Array.isArray(payload.candidates) ? payload.candidates : [];
+      logTravelProviderEvent("place_resolution_candidates", {
+        count: candidates.length,
         provider,
-        status: response.status
+        query: safeQueryPreview(textQuery)
       });
-      return geocodePlaceFallback(apiKey, query, textQuery, locationContext);
-    }
+      const candidate =
+        candidates.find((item: any) =>
+          matchesLocationContext(item?.formatted_address, locationContext)
+        ) || candidates[0] || null;
 
-    const payload = await response.json();
-    if (payload.status && payload.status !== "OK" && payload.status !== "ZERO_RESULTS") {
-      logTravelProviderEvent("place_resolution_provider_status", {
+      if (!candidate?.geometry?.location) {
+        continue;
+      }
+
+      if (!matchesLocationContext(candidate.formatted_address, locationContext)) {
+        logTravelProviderEvent("place_resolution_rejected_location_mismatch", {
+          address: safeAddressPreview(candidate.formatted_address),
+          locationContext,
+          provider,
+          query: safeQueryPreview(textQuery),
+          reason: "address_does_not_match_destination_context"
+        });
+        continue;
+      }
+
+      const item = normalizeGooglePlace(candidate, "place");
+      logTravelProviderEvent("place_resolution_selected", {
+        address: safeAddressPreview(item.address),
+        hasCoordinates: typeof item.latitude === "number" && typeof item.longitude === "number",
         provider,
-        status: payload.status
+        providerItemId: item.providerItemId ? "present" : "missing",
+        query: safeQueryPreview(textQuery),
+        title: safeQueryPreview(item.title)
       });
-    }
 
-    const candidates = Array.isArray(payload.candidates) ? payload.candidates : [];
-    logTravelProviderEvent("place_resolution_candidates", {
-      count: candidates.length,
-      provider,
-      query: safeQueryPreview(textQuery)
-    });
-    const candidate =
-      candidates.find((item: any) =>
-        matchesLocationContext(item?.formatted_address, locationContext)
-      ) || candidates[0] || null;
-
-    if (!candidate?.geometry?.location) {
-      return geocodePlaceFallback(apiKey, query, textQuery, locationContext);
-    }
-
-    if (!matchesLocationContext(candidate.formatted_address, locationContext)) {
-      logTravelProviderEvent("place_resolution_rejected_location_mismatch", {
-        address: safeAddressPreview(candidate.formatted_address),
-        locationContext,
+      return {
+        address: item.address || query.address || null,
+        city: query.city || null,
+        country: query.country || null,
+        inventoryItem: item,
+        latitude: item.latitude,
+        longitude: item.longitude,
+        placeId: item.providerItemId,
         provider
-      });
-      return unresolved(query);
+      };
     }
 
-    const item = normalizeGooglePlace(candidate, "place");
-    logTravelProviderEvent("place_resolution_selected", {
-      address: safeAddressPreview(item.address),
-      hasCoordinates: typeof item.latitude === "number" && typeof item.longitude === "number",
-      provider,
-      providerItemId: item.providerItemId ? "present" : "missing",
-      title: safeQueryPreview(item.title)
-    });
-
-    return {
-      address: item.address || query.address || null,
-      city: query.city || null,
-      country: query.country || null,
-      inventoryItem: item,
-      latitude: item.latitude,
-      longitude: item.longitude,
-      placeId: item.providerItemId,
-      provider
-    };
+    return geocodePlaceFallback(apiKey, query, textQueries, locationContext);
   } catch (error) {
     logTravelProviderEvent("place_resolution_failed", {
       error: error instanceof Error ? error.message : "Unknown provider failure.",
@@ -119,80 +128,87 @@ async function resolvePlace(
 async function geocodePlaceFallback(
   apiKey: string,
   query: PlaceResolutionQuery,
-  textQuery: string,
+  textQueries: string[],
   locationContext: string | null
 ): Promise<ResolvedPlace> {
   try {
-    const url = new URL("https://maps.googleapis.com/maps/api/geocode/json");
-    url.searchParams.set("address", textQuery);
-    url.searchParams.set("key", apiKey);
+    for (const textQuery of textQueries) {
+      const url = new URL("https://maps.googleapis.com/maps/api/geocode/json");
+      url.searchParams.set("address", textQuery);
+      url.searchParams.set("key", apiKey);
 
-    const response = await fetch(url, { cache: "no-store" });
-    if (!response.ok) {
-      logTravelProviderEvent("place_geocode_http_failed", {
+      const response = await fetch(url, { cache: "no-store" });
+      if (!response.ok) {
+        logTravelProviderEvent("place_geocode_http_failed", {
+          provider,
+          query: safeQueryPreview(textQuery),
+          status: response.status
+        });
+        continue;
+      }
+
+      const payload = await response.json();
+      if (payload.status && payload.status !== "OK" && payload.status !== "ZERO_RESULTS") {
+        logTravelProviderEvent("place_geocode_provider_status", {
+          provider,
+          query: safeQueryPreview(textQuery),
+          status: payload.status
+        });
+      }
+
+      const results = Array.isArray(payload.results) ? payload.results : [];
+      logTravelProviderEvent("place_geocode_candidates", {
+        count: results.length,
         provider,
-        status: response.status
+        query: safeQueryPreview(textQuery)
       });
-      return unresolved(query);
-    }
+      const candidate =
+        results.find((item: any) =>
+          matchesLocationContext(item?.formatted_address, locationContext)
+        ) || results[0] || null;
 
-    const payload = await response.json();
-    if (payload.status && payload.status !== "OK" && payload.status !== "ZERO_RESULTS") {
-      logTravelProviderEvent("place_geocode_provider_status", {
+      if (!candidate?.geometry?.location) {
+        continue;
+      }
+
+      if (!matchesLocationContext(candidate.formatted_address, locationContext)) {
+        logTravelProviderEvent("place_geocode_rejected_location_mismatch", {
+          address: safeAddressPreview(candidate.formatted_address),
+          locationContext,
+          provider,
+          query: safeQueryPreview(textQuery),
+          reason: "address_does_not_match_destination_context"
+        });
+        continue;
+      }
+
+      const item = normalizeInventoryItem({
+        address: candidate.formatted_address || query.address || null,
+        category: "geocoded_place",
+        latitude: candidate.geometry.location.lat,
+        longitude: candidate.geometry.location.lng,
+        metadata: {
+          placeTypes: candidate.types || [],
+          resolver: "google_geocoding"
+        },
         provider,
-        status: payload.status
+        providerItemId: candidate.place_id || null,
+        title: query.name,
+        type: "place"
       });
-    }
 
-    const results = Array.isArray(payload.results) ? payload.results : [];
-    logTravelProviderEvent("place_geocode_candidates", {
-      count: results.length,
-      provider,
-      query: safeQueryPreview(textQuery)
-    });
-    const candidate =
-      results.find((item: any) =>
-        matchesLocationContext(item?.formatted_address, locationContext)
-      ) || results[0] || null;
-
-    if (!candidate?.geometry?.location) {
-      return unresolved(query);
-    }
-
-    if (!matchesLocationContext(candidate.formatted_address, locationContext)) {
-      logTravelProviderEvent("place_geocode_rejected_location_mismatch", {
-        address: safeAddressPreview(candidate.formatted_address),
-        locationContext,
+      return {
+        address: item.address,
+        city: query.city || null,
+        country: query.country || null,
+        inventoryItem: item,
+        latitude: item.latitude,
+        longitude: item.longitude,
+        placeId: item.providerItemId,
         provider
-      });
-      return unresolved(query);
+      };
     }
-
-    const item = normalizeInventoryItem({
-      address: candidate.formatted_address || query.address || null,
-      category: "geocoded_place",
-      latitude: candidate.geometry.location.lat,
-      longitude: candidate.geometry.location.lng,
-      metadata: {
-        placeTypes: candidate.types || [],
-        resolver: "google_geocoding"
-      },
-      provider,
-      providerItemId: candidate.place_id || null,
-      title: query.name,
-      type: "place"
-    });
-
-    return {
-      address: item.address,
-      city: query.city || null,
-      country: query.country || null,
-      inventoryItem: item,
-      latitude: item.latitude,
-      longitude: item.longitude,
-      placeId: item.providerItemId,
-      provider
-    };
+    return unresolved(query);
   } catch (error) {
     logTravelProviderEvent("place_geocode_fallback_failed", {
       error: error instanceof Error ? error.message : "Unknown provider failure.",
@@ -288,14 +304,26 @@ export function getGooglePlaceResolutionConfig() {
   };
 }
 
-function buildTextQuery(query: PlaceResolutionQuery, locationContext: string | null) {
-  const parts = [
-    query.name,
-    query.address,
-    locationContext,
-    query.country
-  ].filter(Boolean);
-  return Array.from(new Set(parts.map((part) => String(part).trim()).filter(Boolean))).join(" ");
+function buildTextQueries(query: PlaceResolutionQuery, locationContext: string | null) {
+  const normalizedName = normalizeText(query.name);
+  const variants: string[] = [];
+  const push = (...parts: Array<string | null | undefined>) => {
+    const value = parts.map((part) => String(part || "").trim()).filter(Boolean).join(" ");
+    if (value) variants.push(value);
+  };
+
+  push(query.name, query.address, locationContext, query.country);
+  push(query.name, locationContext);
+  push(query.name, query.city);
+  push(query.name, query.address);
+
+  if (normalizedName === "wynwood walls" || normalizedName.includes("wynwood walls")) {
+    push("Wynwood Walls", "Miami");
+    push("Wynwood Walls", "Miami FL");
+    push("Wynwood Walls", "2516 NW 2nd Ave Miami");
+  }
+
+  return Array.from(new Set(variants.map((part) => part.replace(/\s+/g, " ").trim()).filter(Boolean)));
 }
 
 function destinationContext(query: PlaceResolutionQuery, context?: TripContext) {
