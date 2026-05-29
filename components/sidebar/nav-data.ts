@@ -21,7 +21,7 @@ export type NavItem = {
   label: string;
   badge?: string;
   getHref?: (pathname: string, tripId?: string | null) => string;
-  match?: (pathname: string, view: string | null) => boolean;
+  match?: (pathname: string, view: string | null, hash?: string) => boolean;
 };
 
 export type NavSection = {
@@ -54,8 +54,8 @@ export const navSections: NavSection[] = [
         href: "/dashboard/imports",
         icon: Compass,
         label: "Plan with AI",
-        match: (pathname, view) =>
-          pathname.startsWith("/dashboard/imports") ||
+        match: (pathname, view, hash) =>
+          (pathname.startsWith("/dashboard/imports") && hash !== "#saved-inspiration") ||
           (pathname === "/dashboard" && view === "imports")
       },
       {
@@ -70,9 +70,9 @@ export const navSections: NavSection[] = [
         href: "/dashboard/imports#saved-inspiration",
         icon: Inbox,
         label: "Saved Inspiration",
-        match: (pathname, view) =>
-          pathname.startsWith("/dashboard/imports") ||
-          (pathname === "/dashboard" && view === "imports")
+        match: (pathname, view, hash) =>
+          (pathname.startsWith("/dashboard/imports") && hash === "#saved-inspiration") ||
+          (pathname === "/dashboard" && view === "saved-inspiration")
       },
       {
         href: "/dashboard/trips",

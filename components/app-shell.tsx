@@ -36,6 +36,7 @@ export function AppShell({
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
   const [density, setDensity] = useState<ShellDensity>("comfortable");
+  const [hash, setHash] = useState("");
 
   const page = useMemo(
     () => ({ title: resolveNavTitle(pathname, view) }),
@@ -69,6 +70,14 @@ export function AppShell({
   useEffect(() => {
     setMobileOpen(false);
   }, [pathname, view]);
+
+  useEffect(() => {
+    const syncHash = () => setHash(window.location.hash);
+
+    syncHash();
+    window.addEventListener("hashchange", syncHash);
+    return () => window.removeEventListener("hashchange", syncHash);
+  }, [pathname]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -267,7 +276,12 @@ export function AppShell({
               {children}
             </div>
           </main>
-          <MobileBottomNav pathname={pathname} view={view} />
+          <MobileBottomNav
+            hash={hash}
+            onHashChange={setHash}
+            pathname={pathname}
+            view={view}
+          />
         </div>
       </div>
     </div>
@@ -381,9 +395,13 @@ function initials(value: string) {
 }
 
 function MobileBottomNav({
+  hash,
+  onHashChange,
   pathname,
   view
 }: {
+  hash: string;
+  onHashChange: (hash: string) => void;
   pathname: string;
   view: string | null;
 }) {
@@ -396,7 +414,7 @@ function MobileBottomNav({
       <div className="grid grid-cols-5 gap-1">
         {mobileNavItems.map((item) => {
           const href = item.getHref?.(pathname) || item.href;
-          const active = Boolean(item.match?.(pathname, view));
+          const active = Boolean(item.match?.(pathname, view, hash));
           const Icon = item.icon;
 
           return (
@@ -410,6 +428,10 @@ function MobileBottomNav({
               )}
               href={href}
               key={item.label}
+              onClick={() => {
+                const nextUrl = new URL(href, window.location.href);
+                onHashChange(nextUrl.hash);
+              }}
             >
               <Icon className="h-4 w-4" aria-hidden="true" />
               <span className="mt-1 max-w-full truncate">{item.label}</span>

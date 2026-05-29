@@ -22,7 +22,16 @@ export function SidebarNav({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const view = searchParams.get("view");
+  const [hash, setHash] = useState("");
   const [targetTripId, setTargetTripId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const syncHash = () => setHash(window.location.hash);
+
+    syncHash();
+    window.addEventListener("hashchange", syncHash);
+    return () => window.removeEventListener("hashchange", syncHash);
+  }, [pathname]);
 
   useEffect(() => {
     const tripId = readTripId(pathname);
@@ -79,7 +88,7 @@ export function SidebarNav({
               const Icon = item.icon;
               const href = item.getHref?.(pathname, targetTripId) ?? item.href;
               const active =
-                item.match?.(pathname, view) ??
+                item.match?.(pathname, view, hash) ??
                 (pathname === item.href || pathname.startsWith(`${item.href}/`));
               const itemKey = `${section.title}:${item.label}:${href}`;
 
@@ -96,7 +105,11 @@ export function SidebarNav({
                         : "text-slate-700 hover:bg-slate-100 hover:text-slate-950 dark:text-slate-200 dark:hover:bg-white/10 dark:hover:text-white"
                     )}
                     href={href}
-                    onClick={onNavigate}
+                    onClick={() => {
+                      const nextUrl = new URL(href, window.location.href);
+                      setHash(nextUrl.hash);
+                      onNavigate?.();
+                    }}
                     title={collapsed ? item.label : undefined}
                   >
                     <span

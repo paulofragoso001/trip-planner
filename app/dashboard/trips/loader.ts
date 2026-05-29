@@ -39,9 +39,11 @@ type TripRow = {
 };
 
 type TripSegmentSummary = {
-  latitude: number | null;
+  lat?: number | null;
+  latitude?: number | null;
   location_status: string | null;
-  longitude: number | null;
+  lng?: number | null;
+  longitude?: number | null;
   trip_id: string;
 };
 
@@ -128,10 +130,18 @@ async function loadTripSegmentSummaries(
   tripIds: string[],
   userId: string
 ): Promise<Map<string, SegmentCounts>> {
-  const { data, error } = await supabase
+  const result = await supabase
     .from("trip_segments")
-    .select("trip_id,latitude,longitude,location_status")
+    .select("trip_id,lat,lng,location_status")
     .in("trip_id", tripIds);
+
+  const { data, error } =
+    result.error && isMissingLatLngColumns(result.error.message)
+      ? await supabase
+          .from("trip_segments")
+          .select("trip_id,latitude,longitude,location_status")
+          .in("trip_id", tripIds)
+      : result;
 
   if (error) {
     console.warn(
@@ -152,7 +162,9 @@ async function loadTripSegmentSummaries(
       needsLocationStops: 0,
       stopCount: 0
     };
-    const mapped = typeof row.latitude === "number" && typeof row.longitude === "number";
+    const lat = row.lat ?? row.latitude;
+    const lng = row.lng ?? row.longitude;
+    const mapped = typeof lat === "number" && typeof lng === "number";
     current.stopCount += 1;
     current.mappedStops += mapped ? 1 : 0;
     current.needsLocationStops += !mapped || row.location_status === "needs_location_confirmation" ? 1 : 0;
@@ -160,6 +172,10 @@ async function loadTripSegmentSummaries(
   }
 
   return summaries;
+}
+
+function isMissingLatLngColumns(message: string) {
+  return /lat|lng/i.test(message) && /column|schema cache|could not find/i.test(message);
 }
 
 function mapTrip(row: TripRow, counts?: SegmentCounts): TripListItemView {
