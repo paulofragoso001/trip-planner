@@ -1,7 +1,13 @@
 import { NextResponse } from "next/server";
 import { slugify } from "@/lib/slug";
 import { authorizeDashboardApi } from "@/lib/server/dashboard-test-auth";
-import { mapTripRecord, normalizeTripInput, toTripWritePayload } from "@/lib/trips";
+import {
+  isMissingTripDestinationMetadataColumn,
+  mapTripRecord,
+  normalizeTripInput,
+  stripTripDestinationMetadata,
+  toTripWritePayload
+} from "@/lib/trips";
 
 export async function GET() {
   const auth = await authorizeDashboardApi();
@@ -55,8 +61,13 @@ export async function POST(request: Request) {
     .select("*")
     .single();
 
-  if (error && isMissingTravelStyleColumn(error.message)) {
-    const { travel_style: _travelStyle, ...legacyPayload } = writePayload;
+  if (
+    error &&
+    (isMissingTravelStyleColumn(error.message) ||
+      isMissingTripDestinationMetadataColumn(error.message))
+  ) {
+    const { travel_style: _travelStyle, ...withoutTravelStyle } = writePayload;
+    const legacyPayload = stripTripDestinationMetadata(withoutTravelStyle);
     const retry = await auth.supabase
       .from("trips")
       .insert(legacyPayload)
