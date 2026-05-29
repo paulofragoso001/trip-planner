@@ -166,7 +166,7 @@ export async function loadTripTimelineData(tripId: string): Promise<TripTimeline
   );
 
   return buildTimelineData({
-    description: `Plans loaded from Supabase for ${(tripResult.data as TripRow).destination || "this trip"}.`,
+    description: `Plans loaded for ${(tripResult.data as TripRow).destination || "this trip"}.`,
     segments,
     title: `${(tripResult.data as TripRow).name} itinerary`,
     tripId
@@ -219,7 +219,7 @@ function emptyTimelineData(tripId: string, error: string): TripTimelineData {
   return {
     dayTabs: [],
     days: [],
-    description: "Timeline data will appear after trip segments are available.",
+    description: "Your timeline will appear after stops are available.",
     error,
     firstFlight: null,
     stats: {

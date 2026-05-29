@@ -7,7 +7,6 @@ import { TripSegmentForm } from "@/components/trip/trip-segment-form";
 
 export function MapTools({ tripId }: { tripId: string }) {
   const [message, setMessage] = useState<string | null>(null);
-  const [filtersEnabled, setFiltersEnabled] = useState(true);
 
   async function shareView() {
     try {
@@ -25,7 +24,7 @@ export function MapTools({ tripId }: { tripId: string }) {
         className="rounded-2xl bg-slate-100 px-4 py-3 text-left font-semibold transition hover:bg-slate-200"
         href={`/dashboard/trips/${encodeURIComponent(tripId)}/timeline#new-plan`}
       >
-        Add pin
+        Add stop
       </Link>
       <TripSegmentForm
         buttonLabel="Save map pin"
@@ -33,16 +32,6 @@ export function MapTools({ tripId }: { tripId: string }) {
         includeCoordinates
         tripId={tripId}
       />
-      <button
-        className="rounded-2xl bg-slate-100 px-4 py-3 text-left font-semibold transition hover:bg-slate-200"
-        onClick={() => {
-          setFiltersEnabled((current) => !current);
-          setMessage(`Stop filters ${filtersEnabled ? "hidden" : "shown"}.`);
-        }}
-        type="button"
-      >
-        {filtersEnabled ? "Hide stop filters" : "Show stop filters"}
-      </button>
       <button
         className="rounded-2xl bg-slate-100 px-4 py-3 text-left font-semibold transition hover:bg-slate-200"
         onClick={shareView}

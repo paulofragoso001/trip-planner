@@ -39,6 +39,7 @@ export default function TripMapPage({
             destination={destination}
             items={items}
             searchUrl={searchUrl}
+            tripId={tripId}
             unmappedCount={unmappedCount}
             unmappedSegments={unmappedSegments}
           />
@@ -49,6 +50,7 @@ export default function TripMapPage({
         <h3 className="text-base font-black">Map actions</h3>
         <MapTools tripId={tripId} />
         <SmartSuggestionsPanel
+          mappedStopCount={items.length}
           recommendations={recommendations}
           tripId={tripId}
         />

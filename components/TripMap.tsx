@@ -94,7 +94,7 @@ export default function TripMap({
     return (
       <MapUnavailable
         height={height}
-        message="Add NEXT_PUBLIC_GOOGLE_MAPS_API_KEY to .env.local to enable Google Maps."
+        message="Maps are temporarily unavailable. You can still save stops and try again later."
       />
     );
   }
@@ -107,7 +107,7 @@ export default function TripMap({
     return (
       <MapUnavailable
         height={height}
-        message="Google Maps is still loading or could not be reached."
+        message="Preparing your map. Location details will appear shortly."
       />
     );
   }

@@ -21,7 +21,7 @@ export default async function AccountPage() {
   } = await withTimeout(
     supabase.auth.getUser(),
     accountAuthTimeoutMs,
-    "Supabase account auth lookup timed out."
+    "Account lookup timed out."
   ).catch(() => ({ data: { user: null } }));
 
   if (!user && !hasDashboardBypass) {
@@ -73,7 +73,7 @@ export default async function AccountPage() {
         <p className="mt-2 text-sm leading-6 text-slate-600">
           This creates an auditable deletion request. The operator should delete
           or anonymize user-owned data, disconnect OAuth providers, and remove
-          the Supabase Auth user after review.
+          the account after review.
         </p>
         <div className="mt-5">
           <AccountDeletionRequestForm existingRequest={deletionRequest} />

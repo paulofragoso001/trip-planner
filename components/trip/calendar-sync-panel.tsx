@@ -165,7 +165,7 @@ export function CalendarSyncPanel({ tripId }: { tripId: string }) {
         <div>
           <h3 className="text-base font-black">Calendar sync</h3>
           <p className="mt-1 text-sm text-slate-600">
-            Push timed trip segments to Google Calendar or Outlook.
+            Send timed stops to Google Calendar or Outlook.
           </p>
         </div>
         <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 
 const tabs = [
   { label: "Timeline", href: "/timeline" },
@@ -14,14 +15,26 @@ const tabs = [
 export function TripTabs({ tripId }: { tripId: string }) {
   const pathname = usePathname();
   const base = `/dashboard/trips/${tripId}`;
+  const [hash, setHash] = useState("");
+
+  useEffect(() => {
+    const syncHash = () => setHash(window.location.hash);
+
+    syncHash();
+    window.addEventListener("hashchange", syncHash);
+    return () => window.removeEventListener("hashchange", syncHash);
+  }, [pathname]);
 
   return (
     <nav aria-label="Trip tabs" className="flex flex-wrap gap-2">
       {tabs.map((tab) => {
         const href = `${base}${tab.href}`;
         const active =
-          pathname === href ||
-          (tab.href === "/map#smart-suggestions" && pathname === `${base}/map`);
+          tab.href === "/map"
+            ? pathname === href && hash !== "#smart-suggestions"
+            : tab.href === "/map#smart-suggestions"
+              ? pathname === `${base}/map` && hash === "#smart-suggestions"
+              : pathname === href;
 
         return (
           <Link

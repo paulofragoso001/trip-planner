@@ -39,9 +39,7 @@ export function SocialLogin() {
 
   const signIn = async (provider: Provider) => {
     if (provider === "facebook" && process.env.NEXT_PUBLIC_FACEBOOK_LOGIN_ENABLED !== "true") {
-      setMessage(
-        "Facebook login needs a valid Facebook App ID and App Secret enabled in Supabase first."
-      );
+      setMessage("Facebook login is not available yet. Use Google or email to continue.");
       return;
     }
 
@@ -74,7 +72,7 @@ export function SocialLogin() {
             type="button"
             title={
               item.requiresSetup
-                ? "Enable Facebook in Supabase and set NEXT_PUBLIC_FACEBOOK_LOGIN_ENABLED=true"
+                ? "Facebook login is not available yet."
                 : undefined
             }
           >

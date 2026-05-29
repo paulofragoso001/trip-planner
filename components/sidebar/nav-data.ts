@@ -155,14 +155,6 @@ export const mobileNavItems: NavItem[] = [
 ];
 
 export function resolveNavTitle(pathname: string, view: string | null) {
-  if (pathname.startsWith("/dashboard/api-transition")) {
-    return "API Transition";
-  }
-
-  if (pathname.startsWith("/dashboard/layout-simulator")) {
-    return "Layout Simulator";
-  }
-
   const match = navSections
     .flatMap((section) => section.items)
     .find((item) => item.match?.(pathname, view));

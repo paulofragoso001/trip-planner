@@ -277,7 +277,7 @@ export function TripDashboard({ userEmail }: TripDashboardProps) {
       const segmentPayload = await segmentResponse.json();
 
       if (!segmentResponse.ok) {
-        throw new Error(getApiErrorMessage(segmentPayload, "Could not load trip segments."));
+        throw new Error(getApiErrorMessage(segmentPayload, "Could not load trip stops."));
       }
 
       itinerary = readLegacyArrayOrField<Record<string, unknown>>(
@@ -783,7 +783,7 @@ export function TripDashboard({ userEmail }: TripDashboardProps) {
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.12em] text-slate-500">
-              Trip database
+              My Trips
             </p>
             <h2 className="mt-2 text-2xl font-black">
               {editingId ? "Edit trip" : "Create trip"}

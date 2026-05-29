@@ -277,13 +277,13 @@ function FlightPositionMap({
 
   if (!mapsConfigured) {
     return (
-      <MapPlaceholder message="Add NEXT_PUBLIC_GOOGLE_MAPS_API_KEY to .env.local to render the live flight map." />
+      <MapPlaceholder message="The live flight map is temporarily unavailable." />
     );
   }
 
   if (typeof window === "undefined" || !window.google) {
     return (
-      <MapPlaceholder message="Google Maps is still loading or could not be reached." />
+      <MapPlaceholder message="Preparing the live flight map. Position details will appear shortly." />
     );
   }
 

@@ -33,8 +33,8 @@ export default function TripOverviewPage({
           <h3 className="text-base font-black">Next steps</h3>
           <div className="mt-4 grid gap-3">
             {[
-              `${segmentCount} timeline segment${segmentCount === 1 ? "" : "s"} loaded`,
-              "Review imports for new trip facts",
+              `${segmentCount} stop${segmentCount === 1 ? "" : "s"} loaded`,
+              "Review saved inspiration for new trip ideas",
               "Share the workspace when collaborators are ready"
             ].map((item) => (
               <div
@@ -70,8 +70,7 @@ export default function TripOverviewPage({
         <article className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
           <h3 className="text-base font-black">Trip summary</h3>
           <p className="mt-2 text-sm text-slate-600">
-            Supabase is the source of truth for this trip workspace. Timeline,
-            sharing, budget, and map views derive from the selected trip id.
+            Timeline, map, budget, and sharing stay connected to this trip so your confirmed plan stays in one place.
           </p>
         </article>
       </aside>

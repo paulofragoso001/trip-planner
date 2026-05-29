@@ -25,7 +25,7 @@ function GoogleMapsLoader({ apiKey, children }: GoogleMapsLoaderProps) {
     return (
       <>
         <MapWarning>
-          Google Maps could not load. Check API key and referrer restrictions.
+          The map could not load right now. You can still edit your trip and try again in a moment.
         </MapWarning>
         {children}
       </>
@@ -36,7 +36,7 @@ function GoogleMapsLoader({ apiKey, children }: GoogleMapsLoaderProps) {
     return (
       <>
         <MapWarning>
-          Google Maps is loading. Map-dependent panels will fill in when it is ready.
+          Preparing your map. Location details will appear shortly.
         </MapWarning>
         {children}
       </>
@@ -71,7 +71,7 @@ export default function GoogleMapsProvider({ children }: GoogleMapsProviderProps
     return (
       <>
         <MapWarning>
-          Add NEXT_PUBLIC_GOOGLE_MAPS_API_KEY to enable Google Maps.
+          Maps are temporarily unavailable. You can still save trips and add stops.
         </MapWarning>
         {children}
       </>

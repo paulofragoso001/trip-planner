@@ -6,11 +6,13 @@ import { useState } from "react";
 import type { TripRecommendationView } from "@/app/dashboard/trips/[tripId]/map/loader";
 
 type SmartSuggestionsPanelProps = {
+  mappedStopCount: number;
   recommendations: TripRecommendationView[];
   tripId: string;
 };
 
 export function SmartSuggestionsPanel({
+  mappedStopCount,
   recommendations,
   tripId
 }: SmartSuggestionsPanelProps) {
@@ -59,9 +61,10 @@ export function SmartSuggestionsPanel({
         </div>
         <button
           className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-slate-950 px-3 text-xs font-black text-white disabled:opacity-60"
-          disabled={Boolean(pendingAction)}
+          disabled={Boolean(pendingAction) || mappedStopCount === 0}
           onClick={() => run(`/api/trips/${tripId}/generate-suggestions`, "Generating suggestions")}
           type="button"
+          title={mappedStopCount === 0 ? "Add a mapped stop before finding suggestions." : undefined}
         >
           {pendingAction?.includes("generate-suggestions") ? (
             <Loader2 className="h-4 w-4 animate-spin" />

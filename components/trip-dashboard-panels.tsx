@@ -64,7 +64,7 @@ export function TripEditorPanel({
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.12em] text-slate-500">
-            Trip database
+            My Trips
           </p>
           <h2 className="mt-2 text-2xl font-black">
             {editingId ? "Edit trip" : "Create trip"}

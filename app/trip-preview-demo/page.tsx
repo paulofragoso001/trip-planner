@@ -1,8 +1,5 @@
-import { TripPreviewPage } from "@/components/trip-preview/TripPreviewPage";
-import { createMockTripPreview } from "@/lib/mockItinerary";
+import { redirect } from "next/navigation";
 
-export default function TripPreviewDemoPage() {
-  const preview = createMockTripPreview({ days: 4, minPlansPerDay: 2, maxPlansPerDay: 4 });
-
-  return <TripPreviewPage {...preview} />;
+export default function TripPreviewDemoRedirect() {
+  redirect("/dashboard/trips");
 }

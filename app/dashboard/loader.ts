@@ -86,7 +86,7 @@ export async function loadDashboardData(): Promise<DashboardData> {
   ].find(Boolean);
 
   if (firstError) {
-    return emptyDashboardData("Could not load dashboard metrics from Supabase.");
+    return emptyDashboardData("Could not load dashboard details right now.");
   }
 
   const recentTrips = ((tripsResult.data || []) as TripRow[]).map(mapRecentTrip);
@@ -96,8 +96,8 @@ export async function loadDashboardData(): Promise<DashboardData> {
     metrics: [
       { label: "Trips saved", value: String(tripCountResult.count || 0) },
       { label: "Active plans", value: String(activeTripsResult.count || 0) },
-      { label: "Segments", value: String(segmentsResult.count || 0) },
-      { label: "Imports waiting", value: String(importsResult.count || 0) },
+      { label: "Stops", value: String(segmentsResult.count || 0) },
+      { label: "Ideas waiting", value: String(importsResult.count || 0) },
       { label: "Alerts", value: String(alertsResult.count || 0) }
     ],
     recentTrips
@@ -110,8 +110,8 @@ function emptyDashboardData(error: string): DashboardData {
     metrics: [
       { label: "Trips saved", value: "0" },
       { label: "Active plans", value: "0" },
-      { label: "Segments", value: "0" },
-      { label: "Imports waiting", value: "0" },
+      { label: "Stops", value: "0" },
+      { label: "Ideas waiting", value: "0" },
       { label: "Alerts", value: "0" }
     ],
     recentTrips: []

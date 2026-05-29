@@ -62,7 +62,7 @@ export async function loadTripWorkspaceData(tripId: string): Promise<TripWorkspa
     .maybeSingle();
 
   if (error) {
-    return emptyTripWorkspaceData(tripId, "Could not load trip from Supabase.");
+    return emptyTripWorkspaceData(tripId, "Could not load this trip right now.");
   }
 
   if (!data) {

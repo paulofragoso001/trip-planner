@@ -9,6 +9,7 @@ type ConnectedTripMapProps = {
   destination: string | null;
   items: TripMapItem[];
   searchUrl: string | null;
+  tripId: string;
   unmappedCount?: number;
   unmappedSegments?: Array<{
     id: string;
@@ -21,6 +22,7 @@ export function ConnectedTripMap({
   destination,
   items,
   searchUrl,
+  tripId,
   unmappedCount = 0,
   unmappedSegments = []
 }: ConnectedTripMapProps) {
@@ -61,7 +63,7 @@ export function ConnectedTripMap({
             </Link>
             <Link
               className="inline-flex min-h-11 items-center justify-center rounded-2xl bg-white px-4 text-sm font-bold text-slate-800 ring-1 ring-slate-200 transition hover:bg-slate-100"
-              href="/dashboard/trips#new-trip"
+              href={`/dashboard/trips/${encodeURIComponent(tripId)}/timeline#new-plan`}
             >
               Add location manually
             </Link>
@@ -123,7 +125,7 @@ export function ConnectedTripMap({
                 <p className="text-xs font-semibold text-slate-500">{segment.location}</p>
               ) : (
                 <p className="text-xs font-semibold text-slate-500">
-                  Activity idea - add a meeting point before it appears on the map.
+                  Activity idea — add a meeting point before it appears on the map.
                 </p>
               )}
             </div>

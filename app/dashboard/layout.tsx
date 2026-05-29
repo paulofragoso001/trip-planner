@@ -43,7 +43,7 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
   } = await withTimeout(
     supabase.auth.getUser(),
     dashboardAuthTimeoutMs,
-    "Supabase dashboard auth lookup timed out."
+    "Dashboard auth lookup timed out."
   ).catch(() => ({ data: { user: null } }));
 
   if (!user) {

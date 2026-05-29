@@ -178,7 +178,7 @@ export default function DashboardPage({
               className="rounded-2xl bg-slate-100 px-4 py-3 text-left font-semibold text-slate-800"
               href="/dashboard/trips"
             >
-              Open map
+              Open My Trips
             </Link>
           </div>
         </SectionCard>
@@ -209,7 +209,7 @@ function FlightStatusDashboard({
               Flight Status
             </p>
             <h1 className="mt-2 max-w-3xl text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
-              Flight monitoring for confirmed trip segments.
+              Flight monitoring for confirmed trip stops.
             </h1>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600 sm:text-base">
               Flight updates appear here after flight segments are added to a trip and refreshed. Non-flight trip ideas stay in the itinerary and map workspace.
@@ -230,7 +230,7 @@ function FlightStatusDashboard({
         </article>
         <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-            Segments
+            Stops
           </p>
           <p className="mt-2 text-3xl font-black">{segments}</p>
         </article>
@@ -247,7 +247,7 @@ function FlightStatusDashboard({
       <section className="rounded-[2rem] border border-dashed border-slate-300 bg-white p-5 shadow-sm sm:p-6">
         <p className="font-black text-slate-950">No live flight updates to review.</p>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-          Add flight itinerary items to a confirmed trip, then refresh flight status from the trip timeline. Gate, terminal, delay, and cancellation updates will appear here.
+          Add flight stops to a confirmed trip, then refresh flight status from the trip timeline. Gate, terminal, delay, and cancellation updates will appear here.
         </p>
       </section>
     </div>

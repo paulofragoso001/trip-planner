@@ -1,6 +1,6 @@
 "use client";
 
-import { Menu, Moon, Sun, X } from "lucide-react";
+import { MessageSquare, Menu, Moon, Sun, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { type ReactNode, useEffect, useMemo, useState } from "react";
@@ -212,7 +212,7 @@ export function AppShell({
                 <span className="sr-only">Global search</span>
                 <input
                   className="h-11 rounded-xl border-black/10 bg-[#f7f9fc] pl-4 dark:border-white/10 dark:bg-[#111827] dark:text-slate-100"
-                  placeholder="Search trips, imports, flights..."
+                  placeholder="Search trips and saved ideas..."
                   type="search"
                 />
               </label>
@@ -341,29 +341,29 @@ function SidebarContent({
       </div>
 
       <div className="border-t border-slate-200 pt-3 dark:border-white/10">
-        <Link
+        <a
           className={cn(
             "group flex min-h-11 items-center gap-3 rounded-2xl px-3 py-3.5 text-sm font-semibold text-slate-700 outline-none transition hover:bg-slate-100 hover:text-slate-950 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:text-slate-200 dark:hover:bg-white/10 dark:hover:text-white dark:focus-visible:ring-offset-[#111827]",
             collapsed && "justify-center px-0"
           )}
           data-testid="app-shell-workspace-switcher"
-          href="/dashboard?view=workspace"
+          href="mailto:feedback@wayline.app?subject=Wayline%20feedback"
           onClick={mobile ? onClose : undefined}
-          aria-label={collapsed ? "Wayline Workspace" : undefined}
-          title={collapsed ? "Wayline Workspace" : undefined}
+          aria-label={collapsed ? "Send feedback" : undefined}
+          title={collapsed ? "Send feedback" : undefined}
         >
           <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-slate-100 text-sm font-bold text-slate-700 transition group-hover:bg-slate-200 dark:bg-white/10 dark:text-slate-200 dark:group-hover:bg-white/15">
-            A
+            <MessageSquare className="h-4 w-4" aria-hidden="true" />
           </span>
           {!collapsed ? (
             <span className="min-w-0">
-              <span className="block truncate">Wayline Workspace</span>
+              <span className="block truncate">Send feedback</span>
               <span className="block truncate text-xs text-slate-500 dark:text-slate-400">
-                Switch workspace
+                Report an issue
               </span>
             </span>
           ) : null}
-        </Link>
+        </a>
         {!mobile && onCollapse ? (
           <button
             aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}

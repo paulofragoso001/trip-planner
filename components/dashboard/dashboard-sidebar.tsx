@@ -4,10 +4,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const items = [
-  { label: "Dashboard", href: "/dashboard" },
-  { label: "Trips", href: "/dashboard/trips" },
-  { label: "Imports", href: "/dashboard/imports" },
-  { label: "Admin", href: "/dashboard/admin" }
+  { label: "Home", href: "/dashboard" },
+  { label: "My Trips", href: "/dashboard/trips" },
+  { label: "Plan with AI", href: "/dashboard/imports" }
 ] as const;
 
 export function DashboardSidebar() {

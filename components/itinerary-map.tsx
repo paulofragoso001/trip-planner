@@ -40,9 +40,8 @@ export function ItineraryMap({ items }: ItineraryMapProps) {
     return (
       <MapShell>
         <p className="text-sm leading-6 text-slate-600">
-          Add <code className="rounded bg-slate-100 px-1 py-0.5">NEXT_PUBLIC_GOOGLE_MAPS_API_KEY</code>{" "}
-          to <code className="rounded bg-slate-100 px-1 py-0.5">.env.local</code> to enable
-          Google Maps markers.
+          Maps are temporarily unavailable. You can still keep building your plan
+          and try the map again later.
         </p>
       </MapShell>
     );
@@ -90,7 +89,7 @@ function MapShell({ children }: { children: React.ReactNode }) {
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.12em] text-slate-500">
-            Google Maps
+            Map
           </p>
           <h4 className="mt-1 text-sm font-black text-ink">Itinerary route map</h4>
         </div>

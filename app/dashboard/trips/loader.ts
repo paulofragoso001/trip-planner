@@ -70,7 +70,7 @@ export async function loadTripsData(): Promise<TripsData> {
     );
 
     return {
-      error: "Could not load trips from Supabase.",
+      error: "Could not load trips right now.",
       trips: []
     };
   }
