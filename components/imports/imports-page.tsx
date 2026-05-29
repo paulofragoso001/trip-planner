@@ -6,14 +6,21 @@ import { SocialImportForm } from "@/components/imports/social-import-form";
 import { TripDraftQueue } from "@/components/imports/trip-draft-queue";
 import { UnfiledItemForm } from "@/components/imports/unfiled-item-form";
 import { EmptyState, PageHeader, SectionCard, Stepper, StatusBadge } from "@/components/trip-ui";
+import type { WaylineSampleKey } from "@/lib/wayline-onboarding";
 
-type ImportsPageProps = ImportsData;
+type ImportsPageProps = ImportsData & {
+  sampleInspiration?: {
+    key: WaylineSampleKey;
+    text: string;
+  } | null;
+};
 
 export default function ImportsPage({
   aiReviewItems,
   error,
   importedContent,
   reviewQueuePrefix,
+  sampleInspiration,
   sources,
   tripDrafts,
   trips,
@@ -74,7 +81,11 @@ export default function ImportsPage({
           title="Add travel ideas"
         >
           <div className="mt-5">
-            <SocialImportForm trips={trips} />
+            <SocialImportForm
+              defaultRawText={sampleInspiration?.text}
+              sampleKey={sampleInspiration?.key}
+              trips={trips}
+            />
           </div>
         </SectionCard>
 
@@ -100,7 +111,15 @@ export default function ImportsPage({
             ))}
             {aiReviewItems.length === 0 ? (
               <EmptyState
-                description="Add inspiration to start planning. Wayline will extract real places and activities for review."
+                action={
+                  <a
+                    className="inline-flex min-h-11 items-center justify-center rounded-2xl bg-blue-600 px-4 text-sm font-black text-white"
+                    href="/dashboard/imports?sample=miami#saved-inspiration"
+                  >
+                    Try sample inspiration
+                  </a>
+                }
+                description="Add inspiration and Wayline will find real places and activities for your trip."
                 title="No places to review yet."
               />
             ) : null}
@@ -181,9 +200,19 @@ export default function ImportsPage({
               </div>
             ))}
             {importedContent.length === 0 ? (
-              <p className="rounded-2xl border border-dashed border-slate-300 px-4 py-6 text-sm font-semibold text-slate-600">
-                Saved inspiration will appear here after you paste a link, upload a screenshot, or add notes.
-              </p>
+              <EmptyState
+                action={
+                  <a
+                    className="inline-flex min-h-11 items-center justify-center rounded-2xl bg-blue-600 px-4 text-sm font-black text-white"
+                    href="/dashboard/imports?sample=miami#saved-inspiration"
+                  >
+                    Try sample inspiration
+                  </a>
+                }
+                className="rounded-2xl px-4 py-6"
+                description="Paste a note, link, or screenshot. Wayline will extract places for you."
+                title="No saved inspiration yet."
+              />
             ) : null}
           </div>
         </section>

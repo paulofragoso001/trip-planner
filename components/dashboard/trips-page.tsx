@@ -20,6 +20,7 @@ export default function TripsPage({ error, trips }: TripsPageProps) {
         <SectionCard
           className="lg:sticky lg:top-24 lg:self-start"
           description="Set the destination first so Wayline can match AI places to the right trip."
+          id="new-trip"
           title="Create a new trip"
         >
           <TripCreateForm />
@@ -37,7 +38,23 @@ export default function TripsPage({ error, trips }: TripsPageProps) {
             ) : null}
             {!error && trips.length === 0 ? (
               <EmptyState
-                description="Create a trip or approve AI places to turn saved inspiration into a real itinerary."
+                action={
+                  <div className="grid gap-2 sm:flex sm:flex-wrap">
+                    <Link
+                      className="inline-flex min-h-11 items-center justify-center rounded-2xl bg-blue-600 px-4 text-sm font-black text-white"
+                      href="/dashboard/imports?sample=miami#saved-inspiration"
+                    >
+                      Try sample inspiration
+                    </Link>
+                    <Link
+                      className="inline-flex min-h-11 items-center justify-center rounded-2xl bg-white px-4 text-sm font-black text-slate-800 ring-1 ring-slate-200"
+                      href="#new-trip"
+                    >
+                      Create manually
+                    </Link>
+                  </div>
+                }
+                description="Create one manually or let Wayline build one from inspiration."
                 title="No trips yet."
               />
             ) : null}

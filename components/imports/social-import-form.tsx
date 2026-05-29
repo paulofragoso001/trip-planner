@@ -2,16 +2,32 @@
 
 import { Clipboard, FileText, Upload, WandSparkles } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import type { WaylineSampleKey } from "@/lib/wayline-onboarding";
 
 type SocialImportFormProps = {
+  defaultRawText?: string;
+  sampleKey?: WaylineSampleKey;
   trips: Array<{ id: string; name: string }>;
 };
 
-export function SocialImportForm({ trips }: SocialImportFormProps) {
+export function SocialImportForm({
+  defaultRawText,
+  sampleKey,
+  trips
+}: SocialImportFormProps) {
   const router = useRouter();
   const [message, setMessage] = useState("");
   const [pending, setPending] = useState(false);
+  const rawTextRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (!rawTextRef.current) return;
+    if (defaultRawText || window.location.hash === "#saved-inspiration") {
+      rawTextRef.current.focus();
+      rawTextRef.current.scrollIntoView({ block: "center", behavior: "smooth" });
+    }
+  }, [defaultRawText]);
 
   async function submit(formData: FormData) {
     const file = formData.get("file");
@@ -62,6 +78,9 @@ export function SocialImportForm({ trips }: SocialImportFormProps) {
           : "Scan finished. Add a caption or screenshot if no places appeared."
       );
       router.refresh();
+      window.setTimeout(() => {
+        document.getElementById("ai-review")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 250);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Could not import inspiration.");
     } finally {
@@ -75,6 +94,12 @@ export function SocialImportForm({ trips }: SocialImportFormProps) {
         <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-500">
           Capture travel inspiration
         </p>
+
+        {defaultRawText ? (
+          <div className="rounded-2xl bg-blue-50 px-4 py-3 text-sm font-semibold text-blue-900 ring-1 ring-blue-200">
+            Sample inspiration loaded{sampleKey ? `: ${sampleKey}` : ""}. Edit it if you want, then tap Find places.
+          </div>
+        ) : null}
 
         <div className="grid gap-3 sm:grid-cols-3">
           <label className="grid min-h-24 cursor-text content-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm focus-within:border-slate-400">
@@ -110,8 +135,10 @@ export function SocialImportForm({ trips }: SocialImportFormProps) {
           />
           <textarea
             className="min-h-32 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-base outline-none focus:border-slate-400"
+            defaultValue={defaultRawText || ""}
             name="rawText"
             placeholder="Paste caption, notes, or visible text from a post"
+            ref={rawTextRef}
           />
         </div>
       </div>

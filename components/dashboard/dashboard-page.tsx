@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowRight, Compass, Map, Plane, Radar } from "lucide-react";
 import type { DashboardData } from "@/app/dashboard/loader";
+import { FirstRunOnboarding, FirstRunProgress } from "@/components/dashboard/first-run-onboarding";
 import { EmptyState, PageHeader, SectionCard } from "@/components/trip-ui";
 
 type DashboardPageProps = DashboardData & {
@@ -9,6 +10,7 @@ type DashboardPageProps = DashboardData & {
 
 export default function DashboardPage({
   error,
+  firstRun,
   metrics,
   recentTrips,
   view
@@ -29,6 +31,8 @@ export default function DashboardPage({
           {error}
         </p>
       ) : null}
+
+      <FirstRunOnboarding firstRun={firstRun} />
 
       <PageHeader
         actions={
@@ -51,6 +55,8 @@ export default function DashboardPage({
         subtitle="Start with messy saved posts and notes, then move the approved plan into your trip workspace."
         title="Turn saved travel ideas into a mapped trip plan."
       />
+
+      <FirstRunProgress firstRun={firstRun} />
 
       <section className="grid gap-4">
         <div className="grid gap-4 lg:grid-cols-2">
@@ -137,7 +143,15 @@ export default function DashboardPage({
               ))
             ) : (
               <EmptyState
-                description="Create a trip or approve AI places to start building a confirmed plan."
+                action={
+                  <Link
+                    className="inline-flex min-h-11 items-center justify-center rounded-2xl bg-blue-600 px-4 text-sm font-black text-white"
+                    href="/dashboard/imports"
+                  >
+                    Plan with AI
+                  </Link>
+                }
+                description="Start with a travel idea. Wayline will turn it into places, stops, and a map."
                 title="No recent trips."
               />
             )}
@@ -194,7 +208,7 @@ function FlightStatusDashboard({
   error,
   metrics,
   recentTrips
-}: DashboardData) {
+}: Pick<DashboardData, "error" | "metrics" | "recentTrips">) {
   const segments = metrics.find((metric) => metric.label === "Segments")?.value ?? "0";
 
   return (
