@@ -146,7 +146,7 @@ function shouldRetrySegmentResolution(segment: TripSegmentRow) {
   if (metadata.activityCandidate === true) return false;
 
   const text = normalizeText(
-    [segment.kind, segment.title, segment.location, segment.notes].filter(Boolean).join(" ")
+    [segment.kind, segment.title, segment.location].filter(Boolean).join(" ")
   );
   return !/\b(boat tour|tour|cruise|guided|excursion|experience|meeting point|provider)\b/.test(text);
 }
