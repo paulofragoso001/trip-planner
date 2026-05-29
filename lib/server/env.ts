@@ -4,7 +4,6 @@ const productionRequiredEnv = [
   "NEXT_PUBLIC_SUPABASE_URL",
   "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
   "NEXT_PUBLIC_GOOGLE_MAPS_API_KEY",
-  "GOOGLE_PLACES_API_KEY",
   "NEXT_PUBLIC_APP_URL",
   "SUPABASE_SERVICE_ROLE_KEY",
   "CALENDAR_TOKEN_ENCRYPTION_KEY",
@@ -45,6 +44,8 @@ export function validateEnv() {
     requireEnv(name);
   }
 
+  assertServerPlaceResolutionConfigured();
+
   for (const name of serverSecretEnv) {
     assertSecretIsNotPublic(name);
   }
@@ -61,6 +62,16 @@ function requireEnv(name: string) {
   if (!process.env[name]) {
     throw new Error(`Missing required env var: ${name}`);
   }
+}
+
+function assertServerPlaceResolutionConfigured() {
+  if (process.env.GOOGLE_PLACES_API_KEY || process.env.GOOGLE_MAPS_API_KEY) {
+    return;
+  }
+
+  throw new Error(
+    "Missing required env var: GOOGLE_PLACES_API_KEY or GOOGLE_MAPS_API_KEY"
+  );
 }
 
 function assertProductionBypassesDisabled() {

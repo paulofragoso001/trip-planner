@@ -4,7 +4,6 @@ const requiredEnv = [
   "NEXT_PUBLIC_SUPABASE_URL",
   "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
   "NEXT_PUBLIC_GOOGLE_MAPS_API_KEY",
-  "GOOGLE_PLACES_API_KEY",
   "NEXT_PUBLIC_APP_URL",
   "SUPABASE_SERVICE_ROLE_KEY",
   "CALENDAR_TOKEN_ENCRYPTION_KEY",
@@ -40,6 +39,7 @@ function main() {
   const errors = [
     ...findEnabledBypassFlags(),
     ...findMissingRequiredEnv(),
+    ...findMissingProviderEnv(),
     ...findInvalidProductionUrls(),
     ...findPlaceholderPublicMapsKey(),
     ...findPublicSecretLeaks()
@@ -66,6 +66,14 @@ function findMissingRequiredEnv() {
   return requiredEnv
     .filter((name) => !process.env[name])
     .map((name) => `Missing required env var: ${name}`);
+}
+
+function findMissingProviderEnv() {
+  if (process.env.GOOGLE_PLACES_API_KEY || process.env.GOOGLE_MAPS_API_KEY) {
+    return [];
+  }
+
+  return ["Missing required env var: GOOGLE_PLACES_API_KEY or GOOGLE_MAPS_API_KEY"];
 }
 
 function findInvalidProductionUrls() {
