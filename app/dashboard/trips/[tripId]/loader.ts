@@ -84,10 +84,18 @@ type SegmentCounts = {
 };
 
 async function loadSegmentCounts(supabase: any, tripId: string): Promise<SegmentCounts> {
-  const { data, error } = await supabase
+  const result = await supabase
     .from("trip_segments")
-    .select("latitude,longitude,location_status")
+    .select("lat,lng,location_status")
     .eq("trip_id", tripId);
+
+  const { data, error } =
+    result.error && isMissingLatLngColumns(result.error.message)
+      ? await supabase
+          .from("trip_segments")
+          .select("latitude,longitude,location_status")
+          .eq("trip_id", tripId)
+      : result;
 
   if (error) {
     return { mappedStops: 0, needsLocationStops: 0, stopCount: 0 };
@@ -95,7 +103,9 @@ async function loadSegmentCounts(supabase: any, tripId: string): Promise<Segment
 
   return (data || []).reduce(
     (counts: SegmentCounts, row: any) => {
-      const mapped = typeof row.latitude === "number" && typeof row.longitude === "number";
+      const lat = row.lat ?? row.latitude;
+      const lng = row.lng ?? row.longitude;
+      const mapped = typeof lat === "number" && typeof lng === "number";
       counts.stopCount += 1;
       counts.mappedStops += mapped ? 1 : 0;
       counts.needsLocationStops += !mapped || row.location_status === "needs_location_confirmation" ? 1 : 0;
@@ -103,6 +113,10 @@ async function loadSegmentCounts(supabase: any, tripId: string): Promise<Segment
     },
     { mappedStops: 0, needsLocationStops: 0, stopCount: 0 }
   );
+}
+
+function isMissingLatLngColumns(message: string) {
+  return /lat|lng/i.test(message) && /column|schema cache|could not find/i.test(message);
 }
 
 async function loadSuggestionsCount(supabase: any, tripId: string): Promise<number> {
