@@ -238,14 +238,8 @@ export default function LocationAutocomplete({
         if (active) {
           setSuggestions([]);
           setModernSuggestionsFailed(true);
-
-          if (window.google?.maps?.places?.Autocomplete) {
-            setMode("legacy");
-            setPlaceError("");
-          } else {
-            setMode("unavailable");
-            setPlaceError("Places suggestions are unavailable. You can still type a destination.");
-          }
+          setMode("unavailable");
+          setPlaceError("Places suggestions are unavailable. You can still type a destination.");
         }
       }
     }, 220);
