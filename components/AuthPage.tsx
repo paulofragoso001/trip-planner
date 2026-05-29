@@ -61,7 +61,7 @@ export default function AuthPage({ message }: AuthPageProps) {
   const signInWithFacebook = async () => {
     if (process.env.NEXT_PUBLIC_FACEBOOK_LOGIN_ENABLED !== "true") {
       setStatus(
-        "Facebook login needs a valid Facebook App ID and App Secret enabled in Supabase first."
+        "Facebook login is not available yet. Use Google or email to continue."
       );
       return;
     }
@@ -111,9 +111,11 @@ export default function AuthPage({ message }: AuthPageProps) {
       <section className="animate-fade-in w-full max-w-md rounded-2xl border border-gray-200 bg-white/80 p-6 shadow-xl backdrop-blur-xl sm:p-8">
         <div className="mb-6 text-center">
           <div className="text-2xl font-semibold tracking-tight text-ink">
-            Trip Planner
+            Wayline
           </div>
-          <p className="mt-1 text-sm text-gray-500">Plan smarter. Travel better.</p>
+          <p className="mt-1 text-sm text-gray-500">
+            Turn saved travel ideas into real trip plans.
+          </p>
         </div>
 
         <div className="space-y-3">
