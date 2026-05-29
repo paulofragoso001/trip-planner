@@ -17,7 +17,8 @@ function GoogleMapsLoader({ apiKey, children }: GoogleMapsLoaderProps) {
   const { isLoaded, loadError } = useJsApiLoader({
     id: "google-map-script",
     googleMapsApiKey: apiKey,
-    libraries
+    libraries,
+    version: "beta"
   });
 
   if (loadError) {
