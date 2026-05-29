@@ -3,6 +3,10 @@
 import { useRouter } from "next/navigation";
 import type { FormEvent } from "react";
 import { useState } from "react";
+import GoogleMapsProvider from "@/components/GoogleMapsProvider";
+import LocationAutocomplete, {
+  type LocationSelection
+} from "@/components/LocationAutocomplete";
 import { useWaylineAction } from "@/hooks/use-wayline-action";
 import {
   TRIP_TRAVEL_STYLES,
@@ -30,6 +34,8 @@ export function TripRowActions({
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [nextDestination, setNextDestination] = useState(destination);
+  const [nextDestinationSelection, setNextDestinationSelection] =
+    useState<LocationSelection | null>(null);
   const [nextEndDate, setNextEndDate] = useState(endDate || "");
   const [nextName, setNextName] = useState(name);
   const [nextStartDate, setNextStartDate] = useState(startDate || "");
@@ -42,6 +48,12 @@ export function TripRowActions({
     const result = await run({
       body: {
         destination: nextDestination,
+        destination_formatted_address: nextDestinationSelection?.formattedAddress || null,
+        destination_lat: nextDestinationSelection?.lat || null,
+        destination_lng: nextDestinationSelection?.lng || null,
+        destination_place_id: nextDestinationSelection?.placeId || null,
+        destination_provider_metadata: nextDestinationSelection?.providerMetadata || {},
+        destination_status: nextDestinationSelection ? "resolved" : "manual",
         end_date: nextEndDate,
         name: nextName,
         start_date: nextStartDate,
@@ -97,12 +109,28 @@ export function TripRowActions({
             required
             value={nextName}
           />
-          <input
-            className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
-            onChange={(event) => setNextDestination(event.target.value)}
-            required
-            value={nextDestination}
-          />
+          <GoogleMapsProvider>
+            <LocationAutocomplete
+              ariaLabel="Trip destination"
+              inputClassName="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+              onInputChange={(value) => {
+                setNextDestination(value);
+                setNextDestinationSelection(null);
+              }}
+              onSelect={(location) => {
+                setNextDestination(location.address);
+                setNextDestinationSelection(location);
+              }}
+              placeholder="Destination"
+              required
+              value={nextDestination}
+            />
+          </GoogleMapsProvider>
+          {nextDestination.trim() && !nextDestinationSelection ? (
+            <p className="rounded-xl bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800">
+              Destination saved manually. Map and AI matching may work better after selecting a Google result.
+            </p>
+          ) : null}
           <div className="grid gap-2 sm:grid-cols-2">
             <input
               className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
