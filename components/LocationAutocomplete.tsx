@@ -53,6 +53,7 @@ export default function LocationAutocomplete({
   const [inputValue, setInputValue] = useState(value);
   const [isFocused, setIsFocused] = useState(false);
   const [isResolvingSuggestion, setIsResolvingSuggestion] = useState(false);
+  const [modernSuggestionsFailed, setModernSuggestionsFailed] = useState(false);
   const [mode, setMode] = useState<AutocompleteMode>("loading");
   const [placeError, setPlaceError] = useState("");
   const [suggestions, setSuggestions] = useState<SuggestionOption[]>([]);
@@ -118,7 +119,9 @@ export default function LocationAutocomplete({
   function handleChange(event: ChangeEvent<HTMLInputElement>) {
     const nextValue = event.target.value;
     setInputValue(nextValue);
-    setPlaceError("");
+    if (mode !== "unavailable") {
+      setPlaceError("");
+    }
     setSuggestions([]);
     onInputChange?.(nextValue);
   }
@@ -180,7 +183,7 @@ export default function LocationAutocomplete({
   }, [_onSelect, bounds, country, mode, onInputChange]);
 
   useEffect(() => {
-    if (mode !== "suggestions") {
+    if (mode !== "suggestions" || modernSuggestionsFailed) {
       return;
     }
 
@@ -234,7 +237,15 @@ export default function LocationAutocomplete({
       } catch {
         if (active) {
           setSuggestions([]);
-          setPlaceError("Places suggestions are unavailable. You can still type a destination.");
+          setModernSuggestionsFailed(true);
+
+          if (window.google?.maps?.places?.Autocomplete) {
+            setMode("legacy");
+            setPlaceError("");
+          } else {
+            setMode("unavailable");
+            setPlaceError("Places suggestions are unavailable. You can still type a destination.");
+          }
         }
       }
     }, 220);
@@ -243,7 +254,7 @@ export default function LocationAutocomplete({
       active = false;
       clearTimeout(timer);
     };
-  }, [bounds, country, inputValue, isFocused, mode]);
+  }, [bounds, country, inputValue, isFocused, modernSuggestionsFailed, mode]);
 
   async function selectSuggestion(option: SuggestionOption) {
     setIsResolvingSuggestion(true);
