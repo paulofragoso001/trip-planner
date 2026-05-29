@@ -105,6 +105,7 @@ export async function resolveUnmappedPhysicalTripSegments(
         provider: resolved.provider || "google_places",
         provider_metadata: {
           ...(isRecord(segment.provider_metadata) ? segment.provider_metadata : {}),
+          activityCandidate: false,
           providerMetadata: resolved.inventoryItem?.metadata || {},
           resolvedAt: new Date().toISOString(),
           resolutionSource: "map_retry"
@@ -143,12 +144,13 @@ function shouldRetrySegmentResolution(segment: TripSegmentRow) {
   if (segment.location_status === "resolved") return false;
 
   const metadata = isRecord(segment.provider_metadata) ? segment.provider_metadata : {};
-  if (metadata.activityCandidate === true) return false;
-
   const text = normalizeText(
     [segment.kind, segment.title, segment.location].filter(Boolean).join(" ")
   );
-  return !/\b(boat tour|tour|cruise|guided|excursion|experience|meeting point|provider)\b/.test(text);
+  const isTourLike =
+    /\b(boat tour|tour|cruise|guided|excursion|experience|meeting point|provider)\b/.test(text);
+  if (metadata.activityCandidate === true && isTourLike) return false;
+  return !isTourLike;
 }
 
 function logSegmentResolution(event: string, details: Record<string, unknown>) {
