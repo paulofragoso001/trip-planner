@@ -364,7 +364,13 @@ test("Google place resolution maps physical Miami stops with destination context
     expect(resolved?.provider).toBe("google_places");
     expect(typeof resolved?.latitude).toBe("number");
     expect(typeof resolved?.longitude).toBe("number");
-    expect(String(resolved?.address || "").toLowerCase()).not.toContain("fort lauderdale");
+    const address = String(resolved?.address || "").toLowerCase();
+    expect(address).not.toContain("fort lauderdale");
+    if (name === "Wynwood Walls") {
+      expect([address, String(resolved?.inventoryItem?.title || "").toLowerCase()].join(" ")).toMatch(
+        /wynwood|miami|florida|fl\b/
+      );
+    }
   }
 });
 
