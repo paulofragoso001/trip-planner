@@ -44,10 +44,10 @@ export function SmartSuggestionsPanel({
 
   return (
     <section
-      className="mt-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+      className="mt-5 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5"
       id="smart-suggestions"
     >
-      <div className="flex items-start justify-between gap-3">
+      <div className="grid gap-3 sm:flex sm:items-start sm:justify-between">
         <div>
           <p className="text-xs font-black uppercase tracking-[0.18em] text-blue-600">
             Smart Suggestions
@@ -60,7 +60,7 @@ export function SmartSuggestionsPanel({
           </p>
         </div>
         <button
-          className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-slate-950 px-3 text-xs font-black text-white disabled:opacity-60"
+          className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-slate-950 px-3 text-xs font-black text-white disabled:opacity-60 sm:w-auto"
           disabled={Boolean(pendingAction) || mappedStopCount === 0}
           onClick={() => run(`/api/trips/${tripId}/generate-suggestions`, "Generating suggestions")}
           type="button"
@@ -82,8 +82,8 @@ export function SmartSuggestionsPanel({
               {group.label}
             </p>
             {group.items.map((item) => (
-              <article className="rounded-2xl bg-slate-50 p-4" key={item.id}>
-                <div className="flex items-start justify-between gap-3">
+              <article className="rounded-2xl bg-slate-50 p-3 sm:p-4" key={item.id}>
+                <div className="grid gap-2 sm:flex sm:items-start sm:justify-between sm:gap-3">
                   <div>
                     <p className="text-sm font-black text-slate-950">{item.title}</p>
                     <p className="mt-1 text-xs font-bold uppercase tracking-[0.14em] text-slate-500">
@@ -91,7 +91,7 @@ export function SmartSuggestionsPanel({
                     </p>
                   </div>
                   {item.ratingLabel ? (
-                    <span className="rounded-full bg-white px-2 py-1 text-xs font-black text-slate-700">
+                    <span className="w-fit rounded-full bg-white px-2 py-1 text-xs font-black text-slate-700">
                       {item.ratingLabel}
                     </span>
                   ) : null}
@@ -101,13 +101,13 @@ export function SmartSuggestionsPanel({
                 ) : null}
                 <div className="mt-3 flex flex-wrap gap-2">
                   {item.priceLabel ? (
-                    <span className="rounded-full bg-white px-3 py-1 text-xs font-black text-slate-700">
+                    <span className="inline-flex min-h-9 items-center rounded-full bg-white px-3 text-xs font-black text-slate-700">
                       From {item.priceLabel}
                     </span>
                   ) : null}
                   {item.bookingUrl ? (
                     <a
-                      className="inline-flex items-center gap-1 rounded-full bg-white px-3 py-1 text-xs font-black text-blue-700"
+                      className="inline-flex min-h-11 items-center gap-1 rounded-full bg-white px-4 text-xs font-black text-blue-700"
                       href={item.bookingUrl}
                       rel="noreferrer"
                       target="_blank"
@@ -119,7 +119,7 @@ export function SmartSuggestionsPanel({
                 </div>
                 <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_auto]">
                   <button
-                    className="inline-flex min-h-10 items-center justify-center rounded-xl bg-blue-600 px-3 text-sm font-black text-white disabled:opacity-60"
+                    className="inline-flex min-h-11 items-center justify-center rounded-xl bg-blue-600 px-3 text-sm font-black text-white disabled:opacity-60"
                     disabled={Boolean(pendingAction)}
                     onClick={() => run(`/api/trip-recommendations/${item.id}/save`, "Saving suggestion")}
                     type="button"
@@ -127,7 +127,7 @@ export function SmartSuggestionsPanel({
                     Save to Trip
                   </button>
                   <button
-                    className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-white px-3 text-sm font-black text-slate-700 disabled:opacity-60"
+                    className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-white px-3 text-sm font-black text-slate-700 disabled:opacity-60"
                     disabled={Boolean(pendingAction)}
                     onClick={() => run(`/api/trip-recommendations/${item.id}/dismiss`, "Dismissing suggestion")}
                     type="button"

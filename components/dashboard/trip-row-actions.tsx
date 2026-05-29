@@ -84,16 +84,16 @@ export function TripRowActions({
 
   return (
     <div className="mt-3 grid gap-2">
-      <div className="flex flex-wrap gap-2">
+      <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
         <button
-          className="rounded-xl bg-slate-100 px-3 py-2 text-xs font-bold text-slate-700"
+          className="min-h-11 rounded-xl bg-slate-100 px-3 text-xs font-bold text-slate-700"
           onClick={() => setEditing((current) => !current)}
           type="button"
         >
           {editing ? "Close edit" : "Edit"}
         </button>
         <button
-          className="rounded-xl bg-red-50 px-3 py-2 text-xs font-bold text-red-700 disabled:opacity-60"
+          className="min-h-11 rounded-xl bg-red-50 px-3 text-xs font-bold text-red-700 disabled:opacity-60"
           disabled={isPending}
           onClick={deleteTrip}
           type="button"
@@ -104,7 +104,7 @@ export function TripRowActions({
       {editing ? (
         <form className="grid gap-2 rounded-2xl bg-slate-50 p-3" onSubmit={save}>
           <input
-            className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
+            className="min-h-11 rounded-xl border border-slate-200 px-3 text-sm"
             onChange={(event) => setNextName(event.target.value)}
             required
             value={nextName}
@@ -112,7 +112,7 @@ export function TripRowActions({
           <GoogleMapsProvider>
             <LocationAutocomplete
               ariaLabel="Trip destination"
-              inputClassName="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+              inputClassName="w-full min-h-11 rounded-xl border border-slate-200 px-3 text-sm"
               onInputChange={(value) => {
                 setNextDestination(value);
                 setNextDestinationSelection(null);
@@ -133,20 +133,20 @@ export function TripRowActions({
           ) : null}
           <div className="grid gap-2 sm:grid-cols-2">
             <input
-              className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
+              className="min-h-11 rounded-xl border border-slate-200 px-3 text-sm"
               onChange={(event) => setNextStartDate(event.target.value)}
               type="date"
               value={nextStartDate}
             />
             <input
-              className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
+              className="min-h-11 rounded-xl border border-slate-200 px-3 text-sm"
               onChange={(event) => setNextEndDate(event.target.value)}
               type="date"
               value={nextEndDate}
             />
           </div>
           <select
-            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+            className="min-h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm"
             onChange={(event) =>
               setNextTravelStyle(event.target.value as TripTravelStyle)
             }
@@ -159,7 +159,7 @@ export function TripRowActions({
             ))}
           </select>
           <button
-            className="rounded-xl bg-blue-600 px-3 py-2 text-xs font-bold text-white disabled:opacity-60"
+            className="min-h-11 rounded-xl bg-blue-600 px-3 text-xs font-bold text-white disabled:opacity-60"
             disabled={isPending}
             type="submit"
           >

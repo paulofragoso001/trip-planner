@@ -22,15 +22,15 @@ export const tripUi = {
   },
   button: {
     primary:
-      "rounded-full bg-brand px-5 py-3 text-sm font-black text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60",
+      "min-h-11 rounded-full bg-brand px-5 py-3 text-sm font-black text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60",
     primaryCompact:
-      "rounded-full bg-brand px-4 py-2 text-sm font-bold text-white transition hover:bg-blue-700",
+      "min-h-11 rounded-full bg-brand px-4 py-2 text-sm font-bold text-white transition hover:bg-blue-700",
     secondary:
-      "rounded-full border border-black/10 bg-white px-4 py-2 text-sm font-bold text-ink transition hover:bg-[#faf8f5]",
+      "min-h-11 rounded-full border border-black/10 bg-white px-4 py-2 text-sm font-bold text-ink transition hover:bg-[#faf8f5]",
     subtle:
-      "rounded-full border border-black/10 bg-[#faf8f5] px-4 py-2 text-sm font-bold text-[#5f574d] transition hover:bg-[#f1ede7]",
+      "min-h-11 rounded-full border border-black/10 bg-[#faf8f5] px-4 py-2 text-sm font-bold text-[#5f574d] transition hover:bg-[#f1ede7]",
     danger:
-      "rounded-full border border-red-200 bg-white px-4 py-2 text-sm font-bold text-red-700 transition hover:bg-red-50"
+      "min-h-11 rounded-full border border-red-200 bg-white px-4 py-2 text-sm font-bold text-red-700 transition hover:bg-red-50"
   }
 } as const;
 
@@ -52,7 +52,7 @@ export function PageHeader({
   return (
     <header
       className={cn(
-        "grid gap-4 rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm sm:p-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end",
+        "grid gap-4 rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:rounded-[2rem] sm:p-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end",
         className
       )}
       {...props}
@@ -63,16 +63,16 @@ export function PageHeader({
             {eyebrow}
           </p>
         ) : null}
-        <h1 className="mt-2 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
+        <h1 className="mt-2 text-2xl font-black tracking-tight text-slate-950 sm:text-4xl">
           {title}
         </h1>
         {subtitle ? (
-          <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600 sm:text-base">
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600 sm:mt-3 sm:text-base">
             {subtitle}
           </p>
         ) : null}
       </div>
-      {actions ? <div className="flex flex-wrap gap-3">{actions}</div> : null}
+      {actions ? <div className="grid gap-2 sm:flex sm:flex-wrap sm:gap-3">{actions}</div> : null}
     </header>
   );
 }
@@ -97,7 +97,7 @@ export function SectionCard({
   return (
     <section
       className={cn(
-        "rounded-[2rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5",
+        "rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:rounded-[2rem] sm:p-5",
         className
       )}
       {...props}
@@ -274,19 +274,19 @@ type StepperProps = {
 
 export function Stepper({ steps }: StepperProps) {
   return (
-    <ol className="grid gap-3 md:grid-cols-3">
+    <ol className="grid grid-cols-3 gap-2 md:gap-3">
       {steps.map((step, index) => (
         <li
-          className="grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:grid-cols-[44px_minmax(0,1fr)]"
+          className="grid gap-2 rounded-2xl border border-slate-200 bg-white p-3 text-center shadow-sm sm:grid-cols-[44px_minmax(0,1fr)] sm:gap-3 sm:p-4 sm:text-left"
           key={step.label}
         >
-          <span className="grid h-11 w-11 place-items-center rounded-2xl bg-blue-600 text-sm font-black text-white">
+          <span className="mx-auto grid h-9 w-9 place-items-center rounded-xl bg-blue-600 text-sm font-black text-white sm:mx-0 sm:h-11 sm:w-11 sm:rounded-2xl">
             {index + 1}
           </span>
           <span className="min-w-0">
-            <span className="block font-black text-slate-950">{step.label}</span>
+            <span className="block text-sm font-black text-slate-950 sm:text-base">{step.label}</span>
             {step.description ? (
-              <span className="mt-1 block text-sm leading-6 text-slate-600">
+              <span className="mt-1 hidden text-sm leading-6 text-slate-600 sm:block">
                 {step.description}
               </span>
             ) : null}

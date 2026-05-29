@@ -57,8 +57,8 @@ export function TripDraftQueue({ drafts }: TripDraftQueueProps) {
   }
 
   return (
-    <section className="rounded-[2rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <section className="rounded-[1.5rem] border border-slate-200 bg-white p-3 shadow-sm sm:rounded-[2rem] sm:p-5">
+      <div className="grid gap-3 sm:flex sm:flex-wrap sm:items-center sm:justify-between">
         <div>
           <p className="text-xs font-black uppercase tracking-[0.2em] text-blue-600">
             Trip drafts
@@ -70,7 +70,7 @@ export function TripDraftQueue({ drafts }: TripDraftQueueProps) {
             Approved places become a mapped trip plan when you are ready.
           </p>
         </div>
-        <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-600">
+        <span className="inline-flex min-h-9 w-fit items-center rounded-full bg-slate-100 px-3 text-xs font-black text-slate-600">
           {drafts.length} draft{drafts.length === 1 ? "" : "s"}
         </span>
       </div>
@@ -81,13 +81,13 @@ export function TripDraftQueue({ drafts }: TripDraftQueueProps) {
 
           return (
             <article
-              className="grid gap-4 rounded-3xl border border-slate-200 bg-slate-50 p-4"
+              className="grid gap-4 rounded-[1.25rem] border border-slate-200 bg-slate-50 p-3 sm:rounded-3xl sm:p-4"
               key={draft.id}
             >
               <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
                 <div>
-                  <p className="text-lg font-black text-slate-950">{draft.tripName}</p>
-                  <p className="mt-1 text-sm font-semibold text-slate-600">
+                  <p className="break-words text-lg font-black text-slate-950">{draft.tripName}</p>
+                  <p className="mt-1 break-words text-sm font-semibold text-slate-600">
                     {draft.destination}
                   </p>
                 </div>
@@ -114,31 +114,31 @@ export function TripDraftQueue({ drafts }: TripDraftQueueProps) {
                 </div>
               </div>
 
-              <dl className="grid gap-2 sm:grid-cols-3">
-                <div className="rounded-2xl bg-white px-4 py-3">
-                  <dt className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.16em] text-slate-500">
+              <dl className="grid grid-cols-3 gap-2">
+                <div className="rounded-2xl bg-white px-3 py-3 sm:px-4">
+                  <dt className="flex items-center gap-1.5 text-[0.65rem] font-black uppercase tracking-[0.12em] text-slate-500 sm:gap-2 sm:text-xs sm:tracking-[0.16em]">
                     <Map className="h-3.5 w-3.5" />
                     Places
                   </dt>
-                  <dd className="mt-1 text-lg font-black text-slate-950">
+                  <dd className="mt-1 text-base font-black text-slate-950 sm:text-lg">
                     {draft.placeCount}
                   </dd>
                 </div>
-                <div className="rounded-2xl bg-white px-4 py-3">
-                  <dt className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.16em] text-slate-500">
+                <div className="rounded-2xl bg-white px-3 py-3 sm:px-4">
+                  <dt className="flex items-center gap-1.5 text-[0.65rem] font-black uppercase tracking-[0.12em] text-slate-500 sm:gap-2 sm:text-xs sm:tracking-[0.16em]">
                     <CalendarDays className="h-3.5 w-3.5" />
                     Dates
                   </dt>
-                  <dd className="mt-1 text-sm font-black text-slate-950">
+                  <dd className="mt-1 break-words text-xs font-black text-slate-950 sm:text-sm">
                     {draft.suggestedDates}
                   </dd>
                 </div>
-                <div className="rounded-2xl bg-white px-4 py-3">
-                  <dt className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.16em] text-slate-500">
+                <div className="rounded-2xl bg-white px-3 py-3 sm:px-4">
+                  <dt className="flex items-center gap-1.5 text-[0.65rem] font-black uppercase tracking-[0.12em] text-slate-500 sm:gap-2 sm:text-xs sm:tracking-[0.16em]">
                     <Route className="h-3.5 w-3.5" />
                     Route
                   </dt>
-                  <dd className="mt-1 text-sm font-black text-slate-950">
+                  <dd className="mt-1 break-words text-xs font-black text-slate-950 sm:text-sm">
                     {draft.routeStatus}
                   </dd>
                 </div>
@@ -150,7 +150,7 @@ export function TripDraftQueue({ drafts }: TripDraftQueueProps) {
                     className="rounded-2xl bg-white px-4 py-3 text-sm"
                     key={place.id}
                   >
-                    <p className="font-black text-slate-950">{place.name}</p>
+                    <p className="break-words font-black text-slate-950">{place.name}</p>
                     <p className="mt-1 text-xs font-bold uppercase tracking-[0.14em] text-slate-500">
                       {place.category.replace("_", " ")} · {Math.round(place.confidence * 100)}%
                     </p>

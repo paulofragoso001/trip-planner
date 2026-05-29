@@ -18,6 +18,7 @@ export default function TripsPage({ error, trips }: TripsPageProps) {
 
       <div className="grid gap-6 lg:grid-cols-[380px_minmax(0,1fr)]">
         <SectionCard
+          className="lg:sticky lg:top-24 lg:self-start"
           description="Set the destination first so Wayline can match AI places to the right trip."
           title="Create a new trip"
         >
@@ -48,24 +49,24 @@ export default function TripsPage({ error, trips }: TripsPageProps) {
                 <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-start">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <p className="truncate text-xl font-black text-slate-950">{trip.name}</p>
+                      <p className="min-w-0 break-words text-lg font-black text-slate-950 sm:text-xl">{trip.name}</p>
                       <StatusBadge tone={trip.status === "Planning" ? "blue" : "green"}>
                         {trip.status}
                       </StatusBadge>
                     </div>
-                    <p className="text-sm text-slate-500">{trip.destination}</p>
+                    <p className="break-words text-sm text-slate-500">{trip.destination}</p>
                     <p className="mt-1 text-sm text-slate-500">{trip.dateRange}</p>
                     <p className="mt-2 text-xs font-black uppercase tracking-[0.16em] text-slate-500">
                       {trip.travelStyleLabel}
                     </p>
                   </div>
-                  <div className="grid gap-2 sm:grid-cols-3 xl:min-w-[300px]">
+                  <div className="grid grid-cols-3 gap-2 xl:min-w-[300px]">
                     <MiniStat label="Stops" value={String(trip.stopCount)} />
                     <MiniStat label="Mapped" value={String(trip.mappedStops)} />
                     <MiniStat label="Needs location" value={String(trip.needsLocationStops)} />
                   </div>
                 </div>
-                <div className="mt-4 flex flex-wrap gap-2">
+                <div className="mt-4 grid gap-2 sm:flex sm:flex-wrap">
                   <Link
                     className="inline-flex min-h-11 items-center justify-center rounded-2xl bg-blue-600 px-4 text-sm font-black text-white transition hover:bg-blue-700"
                     href={trip.href}

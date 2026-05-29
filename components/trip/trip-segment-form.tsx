@@ -93,14 +93,14 @@ export function TripSegmentForm({
   return (
     <form className="grid gap-3 rounded-2xl bg-slate-50 p-3" onSubmit={submit}>
       <input
-        className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
+        className="min-h-11 rounded-xl border border-slate-200 px-3 text-sm"
         onChange={(event) => setTitle(event.target.value)}
         placeholder="Title"
         required
         value={title}
       />
       <select
-        className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
+        className="min-h-11 rounded-xl border border-slate-200 px-3 text-sm"
         onChange={(event) => setKind(event.target.value)}
         value={kind}
       >
@@ -113,20 +113,20 @@ export function TripSegmentForm({
         <option value="note">Note</option>
       </select>
       <input
-        className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
+        className="min-h-11 rounded-xl border border-slate-200 px-3 text-sm"
         onChange={(event) => setLocation(event.target.value)}
         placeholder="Location"
         value={location}
       />
       <div className="grid gap-2 sm:grid-cols-2">
         <input
-          className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
+          className="min-h-11 rounded-xl border border-slate-200 px-3 text-sm"
           onChange={(event) => setStartTime(event.target.value)}
           type="datetime-local"
           value={startTime}
         />
         <input
-          className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
+          className="min-h-11 rounded-xl border border-slate-200 px-3 text-sm"
           onChange={(event) => setEndTime(event.target.value)}
           type="datetime-local"
           value={endTime}
@@ -135,14 +135,14 @@ export function TripSegmentForm({
       {includeCoordinates ? (
         <div className="grid gap-2 sm:grid-cols-2">
           <input
-            className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
+            className="min-h-11 rounded-xl border border-slate-200 px-3 text-sm"
             inputMode="decimal"
             onChange={(event) => setLat(event.target.value)}
             placeholder="Latitude"
             value={lat}
           />
           <input
-            className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
+            className="min-h-11 rounded-xl border border-slate-200 px-3 text-sm"
             inputMode="decimal"
             onChange={(event) => setLng(event.target.value)}
             placeholder="Longitude"
@@ -157,7 +157,7 @@ export function TripSegmentForm({
         value={notes}
       />
       <button
-        className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white disabled:opacity-60"
+        className="min-h-11 rounded-xl bg-blue-600 px-4 text-sm font-bold text-white disabled:opacity-60"
         disabled={isPending}
         type="submit"
       >

@@ -204,7 +204,7 @@ export function ExtractedPlaceCard({ mergeTargets = [], place, trips }: Extracte
 
   return (
     <div
-      className="grid gap-4 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-blue-200 hover:shadow-md"
+      className="grid gap-3 rounded-[1.5rem] border border-slate-200 bg-white p-3 shadow-sm transition hover:border-blue-200 hover:shadow-md sm:gap-4 sm:rounded-3xl sm:p-4"
       data-testid={`ai-review-card-${place.id}`}
     >
       {editing ? (
@@ -243,7 +243,7 @@ export function ExtractedPlaceCard({ mergeTargets = [], place, trips }: Extracte
             name="travelNote"
           />
           <button
-            className="inline-flex min-h-10 items-center justify-center rounded-xl bg-slate-950 px-4 text-sm font-black text-white disabled:opacity-60"
+            className="inline-flex min-h-11 items-center justify-center rounded-xl bg-slate-950 px-4 text-sm font-black text-white disabled:opacity-60"
             disabled={pending}
             type="submit"
           >
@@ -258,7 +258,7 @@ export function ExtractedPlaceCard({ mergeTargets = [], place, trips }: Extracte
             </div>
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
-                <p className="min-w-0 text-xl font-black leading-tight text-slate-950">{place.name}</p>
+                <p className="min-w-0 break-words text-lg font-black leading-tight text-slate-950 sm:text-xl">{place.name}</p>
                 {place.reviewReason === "low_confidence" ? (
                   <StatusBadge tone="amber">Low confidence</StatusBadge>
                 ) : null}
@@ -295,7 +295,7 @@ export function ExtractedPlaceCard({ mergeTargets = [], place, trips }: Extracte
             </div>
             <button
               aria-label={`Edit ${place.name}`}
-              className="rounded-xl bg-white p-2 text-slate-600 transition hover:text-slate-950"
+              className="grid h-11 w-11 place-items-center rounded-xl bg-white text-slate-600 transition hover:text-slate-950 focus:outline-none focus:ring-4 focus:ring-blue-100"
               onClick={() => setEditing(true)}
               type="button"
             >
@@ -343,7 +343,7 @@ export function ExtractedPlaceCard({ mergeTargets = [], place, trips }: Extracte
               <div className="flex flex-wrap gap-2">
                 {candidateDestination ? (
                   <button
-                    className="inline-flex min-h-9 items-center justify-center rounded-xl bg-rose-700 px-3 text-xs font-black text-white disabled:opacity-60"
+                    className="inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-rose-700 px-3 text-xs font-black text-white disabled:opacity-60 sm:w-auto"
                     disabled={pending}
                     onClick={() => setSelectedTripDestination(candidateDestination)}
                     type="button"
@@ -353,7 +353,7 @@ export function ExtractedPlaceCard({ mergeTargets = [], place, trips }: Extracte
                 ) : null}
                 {inferredTripDestination ? (
                   <button
-                    className="inline-flex min-h-9 items-center justify-center rounded-xl bg-white px-3 text-xs font-black text-rose-800 ring-1 ring-rose-200 disabled:opacity-60"
+                    className="inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-white px-3 text-xs font-black text-rose-800 ring-1 ring-rose-200 disabled:opacity-60 sm:w-auto"
                     disabled={pending}
                     onClick={() => setSelectedTripDestination(inferredTripDestination)}
                     type="button"
@@ -363,7 +363,7 @@ export function ExtractedPlaceCard({ mergeTargets = [], place, trips }: Extracte
                 ) : null}
                 {candidateDestination ? (
                   <button
-                    className="inline-flex min-h-9 items-center justify-center rounded-xl bg-white px-3 text-xs font-black text-rose-800 ring-1 ring-rose-200 disabled:opacity-60"
+                    className="inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-white px-3 text-xs font-black text-rose-800 ring-1 ring-rose-200 disabled:opacity-60 sm:w-auto"
                     disabled={pending}
                     onClick={createDestinationTripDraft}
                     type="button"
@@ -394,7 +394,7 @@ export function ExtractedPlaceCard({ mergeTargets = [], place, trips }: Extracte
             <InlineAlert tone="blue">
               <p>No matching trip found for {candidateDestination}. Create a new {candidateDestination} trip draft or select an existing trip manually.</p>
               <button
-                className="mt-3 inline-flex min-h-9 items-center justify-center rounded-xl bg-blue-700 px-3 text-xs font-black text-white disabled:opacity-60"
+                className="mt-3 inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-blue-700 px-3 text-xs font-black text-white disabled:opacity-60 sm:w-auto"
                 disabled={pending}
                 onClick={createDestinationTripDraft}
                 type="button"
@@ -444,7 +444,7 @@ export function ExtractedPlaceCard({ mergeTargets = [], place, trips }: Extracte
           </div>
           <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
             {mergeTargets.length ? (
-              <div className="grid gap-2 sm:min-w-56">
+              <div className="grid gap-2 sm:min-w-56 sm:grid-cols-[minmax(0,1fr)_auto]">
                 <select
                   aria-label={`Merge ${place.name} into duplicate`}
                   className="min-h-12 rounded-xl border border-slate-200 bg-white px-3 text-sm font-bold text-slate-700"

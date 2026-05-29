@@ -33,9 +33,9 @@ export function ConnectedTripMap({
     <div className="grid h-full min-h-0 gap-4" data-testid="connected-trip-map">
       {items.length ? (
         <GoogleMapsProvider>
-          <div className="min-h-[420px] overflow-hidden rounded-2xl border border-slate-200 bg-slate-100">
+          <div className="min-h-[360px] overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 sm:min-h-[420px]">
             <TripMap
-              height={520}
+              height={420}
               items={items}
               selectedId={selectedId}
               onSelect={setSelectedId}
@@ -54,22 +54,22 @@ export function ConnectedTripMap({
               {unmappedCount} stop{unmappedCount === 1 ? "" : "s"} need location confirmation before they can appear on the map.
             </p>
           ) : null}
-          <div className="mt-4 flex flex-wrap gap-2">
+          <div className="mt-4 grid gap-2 sm:flex sm:flex-wrap">
             <Link
-              className="inline-flex min-h-11 items-center justify-center rounded-2xl bg-blue-600 px-4 text-sm font-bold text-white transition hover:bg-blue-700"
+              className="inline-flex min-h-11 w-full items-center justify-center rounded-2xl bg-blue-600 px-4 text-sm font-bold text-white transition hover:bg-blue-700 sm:w-auto"
               href="/dashboard/imports#ai-review"
             >
               Go to AI Review
             </Link>
             <Link
-              className="inline-flex min-h-11 items-center justify-center rounded-2xl bg-white px-4 text-sm font-bold text-slate-800 ring-1 ring-slate-200 transition hover:bg-slate-100"
+              className="inline-flex min-h-11 w-full items-center justify-center rounded-2xl bg-white px-4 text-sm font-bold text-slate-800 ring-1 ring-slate-200 transition hover:bg-slate-100 sm:w-auto"
               href={`/dashboard/trips/${encodeURIComponent(tripId)}/timeline#new-plan`}
             >
               Add location manually
             </Link>
             {searchUrl ? (
               <a
-                className="inline-flex min-h-11 items-center justify-center rounded-2xl bg-white px-4 text-sm font-bold text-slate-800 ring-1 ring-slate-200 transition hover:bg-slate-100"
+                className="inline-flex min-h-11 w-full items-center justify-center rounded-2xl bg-white px-4 text-sm font-bold text-slate-800 ring-1 ring-slate-200 transition hover:bg-slate-100 sm:w-auto"
                 href={searchUrl}
                 rel="noreferrer"
                 target="_blank"
@@ -96,7 +96,7 @@ export function ConnectedTripMap({
               <button
                 aria-current={active ? "true" : undefined}
                 className={[
-                  "rounded-xl border px-4 py-3 text-left text-sm transition",
+                  "min-h-16 rounded-xl border px-4 py-3 text-left text-sm transition",
                   active
                     ? "border-blue-300 bg-blue-50 text-blue-950"
                     : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
@@ -108,7 +108,7 @@ export function ConnectedTripMap({
                 <span className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">
                   Stop {index + 1}
                 </span>
-                <span className="mt-1 block truncate font-semibold">{item.title}</span>
+                <span className="mt-1 block break-words font-semibold">{item.title}</span>
               </button>
             );
           })}
@@ -116,11 +116,11 @@ export function ConnectedTripMap({
       ) : null}
 
       {unmappedSegments.length ? (
-        <div className="grid gap-2 rounded-2xl border border-slate-200 bg-white p-4 text-sm">
+        <div className="grid gap-2 rounded-2xl border border-slate-200 bg-white p-3 text-sm sm:p-4">
           <p className="font-black text-slate-950">Needs location</p>
           {unmappedSegments.slice(0, 5).map((segment) => (
-            <div className="rounded-xl bg-slate-50 px-3 py-2" key={segment.id}>
-              <p className="font-bold text-slate-800">{segment.title}</p>
+            <div className="rounded-xl bg-slate-50 px-3 py-3" key={segment.id}>
+              <p className="break-words font-bold text-slate-800">{segment.title}</p>
               {segment.location ? (
                 <p className="text-xs font-semibold text-slate-500">{segment.location}</p>
               ) : (

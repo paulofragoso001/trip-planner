@@ -259,7 +259,7 @@ export function AppShell({
 
           <main
             className={cn(
-              "min-h-0 flex-1 overflow-y-auto px-4 pb-24 pt-6 sm:px-6 lg:pb-6",
+              "min-h-0 flex-1 overflow-y-auto px-3 pb-[calc(6.5rem+env(safe-area-inset-bottom))] pt-4 sm:px-6 sm:pt-6 lg:pb-6",
               fullBleedContent ? "lg:px-6" : "lg:px-8",
               density === "compact" ? "lg:py-4" : "lg:py-6"
             )}
@@ -408,7 +408,7 @@ function MobileBottomNav({
   return (
     <nav
       aria-label="Primary mobile navigation"
-      className="fixed inset-x-3 bottom-3 z-40 rounded-[1.4rem] border border-slate-200 bg-white/95 p-2 shadow-2xl backdrop-blur dark:border-white/10 dark:bg-[#111827]/95 lg:hidden"
+      className="fixed inset-x-2 bottom-[calc(0.5rem+env(safe-area-inset-bottom))] z-40 rounded-[1.25rem] border border-slate-200 bg-white/95 p-1.5 shadow-2xl backdrop-blur dark:border-white/10 dark:bg-[#111827]/95 sm:inset-x-3 sm:bottom-[calc(0.75rem+env(safe-area-inset-bottom))] sm:rounded-[1.4rem] sm:p-2 lg:hidden"
       data-testid="app-shell-mobile-bottom-nav"
     >
       <div className="grid grid-cols-5 gap-1">

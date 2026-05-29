@@ -43,14 +43,14 @@ export default function TripTimelinePage({
         <div className="flex flex-col gap-4 border-b border-slate-200 pb-5 2xl:flex-row 2xl:items-end 2xl:justify-between">
           <div className="min-w-0">
             <h2 className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">Timeline</h2>
-            <p className="mt-1 text-3xl font-black tracking-tight text-slate-950">{title}</p>
+            <p className="mt-1 break-words text-2xl font-black tracking-tight text-slate-950 sm:text-3xl">{title}</p>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">{description}</p>
           </div>
 
           <div className="grid grid-cols-3 gap-2 sm:min-w-[360px]">
             <StatPill label="Stops" value={String(stats.totalItems)} />
             <StatPill label="Mapped" value={String(stats.mappedStops)} />
-            <StatPill label="Needs attention" value={String(stats.alerts)} />
+            <StatPill label="Needs location" value={String(stats.alerts)} />
           </div>
         </div>
 
@@ -110,8 +110,8 @@ export default function TripTimelinePage({
                       <h3 className="text-xl font-black text-slate-950">{day.date}</h3>
                       <p className="text-sm text-slate-600">{day.summary}</p>
                     </div>
-                    <div className="flex flex-wrap gap-2 text-xs font-bold uppercase tracking-[0.12em] text-slate-500">
-                      <span>{day.items.length} plan{day.items.length === 1 ? "" : "s"}</span>
+                  <div className="flex flex-wrap gap-2 text-xs font-bold uppercase tracking-[0.12em] text-slate-500">
+                      <span>{day.items.length} stop{day.items.length === 1 ? "" : "s"}</span>
                       <span>{formatDistance(day.routeSummary.totalDistanceMeters)}</span>
                       <span>{formatDuration(day.routeSummary.estimatedDurationMinutes)}</span>
                     </div>
@@ -173,7 +173,7 @@ function TimelineTools({
   tripId: string;
 }) {
   return (
-    <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+    <div className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:rounded-3xl sm:p-5">
       <h3 className="text-base font-black">Plan tools</h3>
       <p className="mt-2 text-sm text-slate-600">
         Generate the day order, add stops, and keep the plan ready for maps and sharing.
@@ -228,7 +228,7 @@ function TimelineTools({
 
 function TimelineCard({ item, tripId }: { item: TimelineItemView; tripId: string }) {
   return (
-    <article className="relative grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-slate-300 hover:shadow-md sm:grid-cols-[48px_minmax(0,1fr)]">
+    <article className="relative grid gap-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm transition hover:border-slate-300 hover:shadow-md sm:grid-cols-[48px_minmax(0,1fr)] sm:p-4">
       <div className="relative hidden sm:block">
         <div className="relative z-10 grid h-12 w-12 place-items-center rounded-2xl bg-blue-50 text-blue-700 ring-8 ring-white">
           {iconForKind(item.kind)}
@@ -249,7 +249,7 @@ function TimelineCard({ item, tripId }: { item: TimelineItemView; tripId: string
                 {timelineStatusLabel(item.status)}
               </span>
             </div>
-            <h4 className="mt-2 text-xl font-black leading-tight text-slate-950">
+            <h4 className="mt-2 break-words text-lg font-black leading-tight text-slate-950 sm:text-xl">
               {item.title}
             </h4>
             <p className="mt-1 text-sm font-semibold text-slate-700">{item.meta}</p>
@@ -293,15 +293,15 @@ function TimelineCard({ item, tripId }: { item: TimelineItemView; tripId: string
           </div>
         </div>
 
-        <div className="mt-4 flex flex-wrap gap-2 border-t border-slate-200 pt-3">
+        <div className="mt-4 grid gap-2 border-t border-slate-200 pt-3 sm:flex sm:flex-wrap">
           <Link
-            className="rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-slate-800"
+            className="inline-flex min-h-11 items-center justify-center rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-slate-800"
             href={`/dashboard/trips/${tripId}/map`}
           >
             {item.actionLabel}
           </Link>
-          <details className="group min-w-[220px] flex-1">
-            <summary className="cursor-pointer list-none rounded-xl bg-slate-100 px-4 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-slate-200">
+          <details className="group min-w-0 flex-1">
+            <summary className="flex min-h-11 cursor-pointer list-none items-center rounded-xl bg-slate-100 px-4 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-slate-200">
               Edit details
             </summary>
             <div className="mt-3 grid gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
@@ -376,11 +376,11 @@ function DayRoutePreview({
 
 function StatPill({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
-      <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">
+    <div className="rounded-xl border border-slate-200 bg-white px-3 py-2 shadow-sm sm:px-4 sm:py-3">
+      <p className="text-[0.62rem] font-bold uppercase tracking-[0.12em] text-slate-500 sm:text-xs sm:tracking-[0.16em]">
         {label}
       </p>
-      <p className="mt-1 text-xl font-black text-slate-950">{value}</p>
+      <p className="mt-1 text-lg font-black text-slate-950 sm:text-xl">{value}</p>
     </div>
   );
 }
@@ -397,7 +397,7 @@ function TripOpsSummary({
   watchItems: number;
 }) {
   return (
-    <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+    <div className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:rounded-3xl sm:p-5">
       <h3 className="text-base font-black">Trip readiness</h3>
       <div className="mt-4 grid gap-3">
         <SummaryRow
@@ -407,7 +407,7 @@ function TripOpsSummary({
         />
         <SummaryRow
           icon={<AlertTriangle className="h-4 w-4" />}
-          label="Needs attention"
+          label="Needs location"
           value={`${watchItems} items`}
         />
         <SummaryRow

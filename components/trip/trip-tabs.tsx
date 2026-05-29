@@ -26,7 +26,7 @@ export function TripTabs({ tripId }: { tripId: string }) {
   }, [pathname]);
 
   return (
-    <nav aria-label="Trip tabs" className="flex flex-wrap gap-2">
+    <nav aria-label="Trip tabs" className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0">
       {tabs.map((tab) => {
         const href = `${base}${tab.href}`;
         const active =
@@ -40,7 +40,7 @@ export function TripTabs({ tripId }: { tripId: string }) {
           <Link
             aria-current={active ? "page" : undefined}
             className={[
-              "rounded-full px-4 py-2 text-sm font-semibold transition",
+              "inline-flex min-h-11 shrink-0 items-center justify-center rounded-full px-4 text-sm font-semibold transition",
               active
                 ? "bg-blue-600 text-white"
                 : "bg-slate-100 text-slate-700 hover:bg-slate-200"

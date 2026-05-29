@@ -17,7 +17,10 @@ export default function DashboardPage({
     return <FlightStatusDashboard error={error} metrics={metrics} recentTrips={recentTrips} />;
   }
 
-  const importsWaiting = metrics.find((metric) => metric.label === "Imports waiting")?.value ?? "0";
+  const importsWaiting =
+    metrics.find((metric) => metric.label === "Ideas waiting")?.value ??
+    metrics.find((metric) => metric.label === "Imports waiting")?.value ??
+    "0";
 
   return (
     <div className="grid gap-6">
@@ -52,14 +55,14 @@ export default function DashboardPage({
       <section className="grid gap-4">
         <div className="grid gap-4 lg:grid-cols-2">
           <Link
-            className="group grid min-h-48 content-between rounded-[1.5rem] bg-slate-950 p-5 text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-panel"
+            className="group grid min-h-40 content-between rounded-[1.5rem] bg-slate-950 p-4 text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-panel sm:min-h-48 sm:p-5"
             href="/dashboard/imports"
           >
             <span className="grid h-12 w-12 place-items-center rounded-2xl bg-blue-600">
               <Compass className="h-5 w-5" aria-hidden="true" />
             </span>
             <span>
-              <span className="block text-2xl font-black">Plan with AI</span>
+              <span className="block text-xl font-black sm:text-2xl">Plan with AI</span>
               <span className="mt-2 block max-w-md text-sm leading-6 text-slate-300">
                 Import Instagram, TikTok, Pinterest, YouTube links, screenshots, or notes. Wayline extracts places and drafts the route.
               </span>
@@ -71,14 +74,14 @@ export default function DashboardPage({
           </Link>
 
           <Link
-            className="group grid min-h-48 content-between rounded-[1.5rem] border border-slate-200 bg-slate-50 p-5 text-slate-950 transition hover:-translate-y-0.5 hover:bg-white hover:shadow-panel"
+            className="group grid min-h-40 content-between rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4 text-slate-950 transition hover:-translate-y-0.5 hover:bg-white hover:shadow-panel sm:min-h-48 sm:p-5"
             href="/dashboard/trips"
           >
             <span className="grid h-12 w-12 place-items-center rounded-2xl bg-white text-blue-700 shadow-sm">
               <Plane className="h-5 w-5" aria-hidden="true" />
             </span>
             <span>
-              <span className="block text-2xl font-black">My Trips</span>
+              <span className="block text-xl font-black sm:text-2xl">My Trips</span>
               <span className="mt-2 block max-w-md text-sm leading-6 text-slate-600">
                 Manage confirmed itineraries, maps, reservations, shared access, budgets, and travel notes in one place.
               </span>
@@ -91,7 +94,7 @@ export default function DashboardPage({
         </div>
       </section>
 
-      <section className="grid gap-4 md:grid-cols-5" aria-label="Wayline at a glance">
+      <section className="hidden gap-4 sm:grid md:grid-cols-5" aria-label="Wayline at a glance">
         {metrics.map((metric) => (
           <article
             className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
@@ -119,7 +122,7 @@ export default function DashboardPage({
             {recentTrips.length ? (
               recentTrips.map((trip) => (
                 <Link
-                  className="flex items-center justify-between gap-4 rounded-2xl bg-slate-50 px-4 py-3 transition hover:bg-slate-100"
+                className="grid gap-2 rounded-2xl bg-slate-50 px-4 py-3 transition hover:bg-slate-100 sm:flex sm:items-center sm:justify-between sm:gap-4"
                   href={trip.href}
                   key={trip.id}
                 >
@@ -127,7 +130,7 @@ export default function DashboardPage({
                     <p className="font-semibold">{trip.name}</p>
                     <p className="text-sm text-slate-500">{trip.dateRange}</p>
                   </div>
-                  <span className="shrink-0 rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-700">
+                  <span className="w-fit shrink-0 rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-700">
                     {trip.status}
                   </span>
                 </Link>
