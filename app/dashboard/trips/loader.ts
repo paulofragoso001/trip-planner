@@ -12,10 +12,13 @@ export type TripListItemView = {
   destination: string;
   href: string;
   id: string;
+  mappedStops: number;
   name: string;
+  needsLocationStops: number;
   endDate: string | null;
   startDate: string | null;
   status: string;
+  stopCount: number;
   travelStyle: TripTravelStyle;
   travelStyleLabel: string;
 };
@@ -33,6 +36,13 @@ type TripRow = {
   start_date: string | null;
   status: string | null;
   travel_style: string | null;
+};
+
+type TripSegmentSummary = {
+  latitude: number | null;
+  location_status: string | null;
+  longitude: number | null;
+  trip_id: string;
 };
 
 export async function loadTripsData(): Promise<TripsData> {
@@ -63,9 +73,14 @@ export async function loadTripsData(): Promise<TripsData> {
     };
   }
 
+  const tripRows = ((data || []) as TripRow[]);
+  const summaries = tripRows.length
+    ? await loadTripSegmentSummaries(auth.supabase, tripRows.map((trip) => trip.id), auth.userId)
+    : new Map<string, SegmentCounts>();
+
   return {
     error: null,
-    trips: ((data || []) as TripRow[]).map(mapTrip)
+    trips: tripRows.map((row) => mapTrip(row, summaries.get(row.id)))
   };
 }
 
@@ -102,7 +117,52 @@ function isMissingTravelStyleColumn(message: string) {
   return /travel_style/i.test(message) && /column|schema cache|could not find/i.test(message);
 }
 
-function mapTrip(row: TripRow): TripListItemView {
+type SegmentCounts = {
+  mappedStops: number;
+  needsLocationStops: number;
+  stopCount: number;
+};
+
+async function loadTripSegmentSummaries(
+  supabase: any,
+  tripIds: string[],
+  userId: string
+): Promise<Map<string, SegmentCounts>> {
+  const { data, error } = await supabase
+    .from("trip_segments")
+    .select("trip_id,latitude,longitude,location_status")
+    .in("trip_id", tripIds);
+
+  if (error) {
+    console.warn(
+      JSON.stringify({
+        area: "trips",
+        event: "trip_segment_summary_load_failed",
+        message: error.message,
+        userId
+      })
+    );
+    return new Map();
+  }
+
+  const summaries = new Map<string, SegmentCounts>();
+  for (const row of (data || []) as TripSegmentSummary[]) {
+    const current = summaries.get(row.trip_id) || {
+      mappedStops: 0,
+      needsLocationStops: 0,
+      stopCount: 0
+    };
+    const mapped = typeof row.latitude === "number" && typeof row.longitude === "number";
+    current.stopCount += 1;
+    current.mappedStops += mapped ? 1 : 0;
+    current.needsLocationStops += !mapped || row.location_status === "needs_location_confirmation" ? 1 : 0;
+    summaries.set(row.trip_id, current);
+  }
+
+  return summaries;
+}
+
+function mapTrip(row: TripRow, counts?: SegmentCounts): TripListItemView {
   const travelStyle = normalizeTravelStyle(row.travel_style);
 
   return {
@@ -110,10 +170,13 @@ function mapTrip(row: TripRow): TripListItemView {
     destination: row.destination || "No destination set",
     href: `/dashboard/trips/${row.id}`,
     id: row.id,
+    mappedStops: counts?.mappedStops || 0,
     name: row.name,
+    needsLocationStops: counts?.needsLocationStops || 0,
     endDate: row.end_date,
     startDate: row.start_date,
     status: row.status || "Planning",
+    stopCount: counts?.stopCount || 0,
     travelStyle,
     travelStyleLabel: TRIP_TRAVEL_STYLE_LABELS[travelStyle]
   };

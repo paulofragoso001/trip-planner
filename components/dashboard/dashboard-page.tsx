@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowRight, Compass, Map, Plane, Radar } from "lucide-react";
 import type { DashboardData } from "@/app/dashboard/loader";
+import { EmptyState, PageHeader, SectionCard } from "@/components/trip-ui";
 
 type DashboardPageProps = DashboardData & {
   view?: string;
@@ -26,19 +27,29 @@ export default function DashboardPage({
         </p>
       ) : null}
 
-      <section className="grid gap-4 rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-        <div>
-          <p className="text-xs font-black uppercase tracking-[0.22em] text-blue-600">
-            Wayline
-          </p>
-          <h1 className="mt-2 max-w-3xl text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
-            Turn travel inspiration into organized, route-ready trips.
-          </h1>
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600 sm:text-base">
-            Start with messy saved posts and notes, then move the approved plan into your trip command center.
-          </p>
-        </div>
+      <PageHeader
+        actions={
+          <>
+            <Link
+              className="inline-flex min-h-11 items-center justify-center rounded-2xl bg-blue-600 px-4 text-sm font-black text-white transition hover:bg-blue-700"
+              href="/dashboard/imports"
+            >
+              Plan with AI
+            </Link>
+            <Link
+              className="inline-flex min-h-11 items-center justify-center rounded-2xl bg-slate-100 px-4 text-sm font-black text-slate-800 transition hover:bg-slate-200"
+              href="/dashboard/trips"
+            >
+              Open My Trips
+            </Link>
+          </>
+        }
+        eyebrow="Wayline"
+        subtitle="Start with messy saved posts and notes, then move the approved plan into your trip workspace."
+        title="Turn saved travel ideas into a mapped trip plan."
+      />
 
+      <section className="grid gap-4">
         <div className="grid gap-4 lg:grid-cols-2">
           <Link
             className="group grid min-h-48 content-between rounded-[1.5rem] bg-slate-950 p-5 text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-panel"
@@ -80,38 +91,35 @@ export default function DashboardPage({
         </div>
       </section>
 
-      <section className="grid gap-4 md:grid-cols-5">
+      <section className="grid gap-4 md:grid-cols-5" aria-label="Wayline at a glance">
         {metrics.map((metric) => (
           <article
-            className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+            className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
             key={metric.label}
           >
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">
               {metric.label}
             </p>
-            <p className="mt-2 text-3xl font-black">{metric.value}</p>
+            <p className="mt-2 text-2xl font-black">{metric.value}</p>
           </article>
         ))}
       </section>
 
       <section className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
-        <article className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="text-xs font-black uppercase tracking-[0.2em] text-blue-600">
-                Travel Planner
-              </p>
-              <h2 className="mt-1 text-lg font-black">Upcoming trips</h2>
-            </div>
+        <SectionCard
+          actions={
             <Link className="text-sm font-black text-blue-700" href="/dashboard/trips">
               View all
             </Link>
-          </div>
+          }
+          eyebrow="My Trips"
+          title="Continue planning"
+        >
           <div className="mt-4 grid gap-3">
             {recentTrips.length ? (
               recentTrips.map((trip) => (
                 <Link
-                  className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3 transition hover:bg-slate-100"
+                  className="flex items-center justify-between gap-4 rounded-2xl bg-slate-50 px-4 py-3 transition hover:bg-slate-100"
                   href={trip.href}
                   key={trip.id}
                 >
@@ -119,34 +127,32 @@ export default function DashboardPage({
                     <p className="font-semibold">{trip.name}</p>
                     <p className="text-sm text-slate-500">{trip.dateRange}</p>
                   </div>
-                  <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-700">
+                  <span className="shrink-0 rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-700">
                     {trip.status}
                   </span>
                 </Link>
               ))
             ) : (
-              <div className="rounded-2xl border border-dashed border-slate-300 px-4 py-6 text-sm text-slate-600">
-                <p className="font-bold text-slate-950">No recent trips.</p>
-                <p className="mt-1">Create a trip to populate this dashboard.</p>
-              </div>
+              <EmptyState
+                description="Create a trip or approve AI places to start building a confirmed plan."
+                title="No recent trips."
+              />
             )}
           </div>
-        </article>
+        </SectionCard>
 
-        <article className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm">
-          <p className="text-xs font-black uppercase tracking-[0.2em] text-blue-600">
-            Saved Inspiration
-          </p>
-          <h2 className="mt-1 text-lg font-black">Recently generated plans</h2>
+        <SectionCard eyebrow="Saved Inspiration" title="Ready for review">
           <div className="mt-4 rounded-2xl bg-slate-50 p-4">
             <div className="flex items-start gap-3">
               <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white text-blue-700 shadow-sm">
                 <Map className="h-4 w-4" aria-hidden="true" />
               </span>
               <div>
-                <p className="font-black text-slate-950">{importsWaiting} items waiting</p>
+                <p className="font-black text-slate-950">
+                  {importsWaiting} item{importsWaiting === "1" ? "" : "s"} waiting
+                </p>
                 <p className="mt-1 text-sm leading-6 text-slate-600">
-                  Review AI candidates, promote confirmed places, then generate the trip plan.
+                  Review AI places, approve what belongs, then create the trip plan.
                 </p>
               </div>
             </div>
@@ -160,7 +166,7 @@ export default function DashboardPage({
               className="rounded-2xl bg-blue-600 px-4 py-3 text-left font-semibold text-white"
               href="/dashboard/imports"
             >
-              Plan with AI
+              Add inspiration
             </Link>
             <Link
               className="rounded-2xl bg-slate-100 px-4 py-3 text-left font-semibold text-slate-800"
@@ -170,12 +176,12 @@ export default function DashboardPage({
             </Link>
             <Link
               className="rounded-2xl bg-slate-100 px-4 py-3 text-left font-semibold text-slate-800"
-              href="/dashboard/admin"
+              href="/dashboard/trips"
             >
-              Open admin tools
+              Open map
             </Link>
           </div>
-        </article>
+        </SectionCard>
       </section>
     </div>
   );

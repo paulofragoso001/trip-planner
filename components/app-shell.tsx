@@ -4,7 +4,7 @@ import { Menu, Moon, Sun, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { type ReactNode, useEffect, useMemo, useState } from "react";
-import { navSections, resolveNavTitle } from "@/components/sidebar/nav-data";
+import { mobileNavItems, navSections, resolveNavTitle } from "@/components/sidebar/nav-data";
 import { SidebarNav } from "@/components/sidebar/sidebar-nav";
 import { cn } from "@/components/trip-ui";
 
@@ -149,7 +149,7 @@ export function AppShell({
 
         <div className="flex min-w-0 flex-1 flex-col">
           <header
-            className="sticky top-0 z-30 border-b border-black/10 bg-white/90 backdrop-blur dark:border-white/10 dark:bg-[#0d1117]/90"
+            className="sticky top-0 z-30 border-b border-black/10 bg-white/95 backdrop-blur dark:border-white/10 dark:bg-[#0d1117]/90"
             data-testid="app-shell-topbar"
           >
             <div
@@ -250,9 +250,9 @@ export function AppShell({
 
           <main
             className={cn(
-              "min-h-0 flex-1 overflow-y-auto px-4 sm:px-6",
+              "min-h-0 flex-1 overflow-y-auto px-4 pb-24 pt-6 sm:px-6 lg:pb-6",
               fullBleedContent ? "lg:px-6" : "lg:px-8",
-              density === "compact" ? "py-4" : "py-6"
+              density === "compact" ? "lg:py-4" : "lg:py-6"
             )}
             data-testid="app-shell-main"
             id="main-content"
@@ -267,6 +267,7 @@ export function AppShell({
               {children}
             </div>
           </main>
+          <MobileBottomNav pathname={pathname} view={view} />
         </div>
       </div>
     </div>
@@ -377,4 +378,45 @@ function initials(value: string) {
     .map((part) => part[0]?.toUpperCase());
 
   return `${first}${second}`.slice(0, 2);
+}
+
+function MobileBottomNav({
+  pathname,
+  view
+}: {
+  pathname: string;
+  view: string | null;
+}) {
+  return (
+    <nav
+      aria-label="Primary mobile navigation"
+      className="fixed inset-x-3 bottom-3 z-40 rounded-[1.4rem] border border-slate-200 bg-white/95 p-2 shadow-2xl backdrop-blur dark:border-white/10 dark:bg-[#111827]/95 lg:hidden"
+      data-testid="app-shell-mobile-bottom-nav"
+    >
+      <div className="grid grid-cols-5 gap-1">
+        {mobileNavItems.map((item) => {
+          const href = item.getHref?.(pathname) || item.href;
+          const active = Boolean(item.match?.(pathname, view));
+          const Icon = item.icon;
+
+          return (
+            <Link
+              aria-current={active ? "page" : undefined}
+              className={cn(
+                "grid min-h-14 place-items-center rounded-2xl px-1 py-2 text-[0.68rem] font-black text-slate-500 transition focus:outline-none focus:ring-4 focus:ring-brand/20 dark:text-slate-300",
+                active
+                  ? "bg-blue-600 text-white shadow-sm dark:text-white"
+                  : "hover:bg-slate-100 hover:text-slate-950 dark:hover:bg-white/10 dark:hover:text-white"
+              )}
+              href={href}
+              key={item.label}
+            >
+              <Icon className="h-4 w-4" aria-hidden="true" />
+              <span className="mt-1 max-w-full truncate">{item.label}</span>
+            </Link>
+          );
+        })}
+      </div>
+    </nav>
+  );
 }

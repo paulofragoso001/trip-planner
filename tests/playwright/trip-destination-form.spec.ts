@@ -25,8 +25,8 @@ test("trip destination supports manual entry and resolved Google metadata", asyn
     await page.setExtraHTTPHeaders(dashboardHeaders);
     await page.goto(`${baseUrl}/dashboard/trips#new-trip`);
 
-    await expect(page.getByRole("heading", { name: "Trips database" })).toBeVisible();
-    await page.getByPlaceholder("Trip name").fill(manualTripName);
+    await expect(page.getByRole("heading", { name: "My Trips" })).toBeVisible();
+    await page.getByLabel("Trip name").fill(manualTripName);
     await page.getByLabel("Destination").fill("Miami");
     await page.getByRole("button", { name: "Save trip" }).click();
     await expect(page.getByText("Trip saved.")).toBeVisible();

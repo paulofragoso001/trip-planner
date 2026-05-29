@@ -5,6 +5,7 @@ import { ExtractedPlaceCard } from "@/components/imports/extracted-place-card";
 import { SocialImportForm } from "@/components/imports/social-import-form";
 import { TripDraftQueue } from "@/components/imports/trip-draft-queue";
 import { UnfiledItemForm } from "@/components/imports/unfiled-item-form";
+import { EmptyState, PageHeader, SectionCard, Stepper, StatusBadge } from "@/components/trip-ui";
 
 type ImportsPageProps = ImportsData;
 
@@ -25,32 +26,69 @@ export default function ImportsPage({
   return (
     <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]" data-testid="imports-route">
       <section className="grid gap-6">
+        <PageHeader
+          actions={
+            <>
+              <a
+                className="inline-flex min-h-11 items-center justify-center rounded-2xl bg-blue-600 px-4 text-sm font-black text-white transition hover:bg-blue-700"
+                href="#saved-inspiration"
+              >
+                Add inspiration
+              </a>
+              <a
+                className="inline-flex min-h-11 items-center justify-center rounded-2xl bg-slate-100 px-4 text-sm font-black text-slate-800 transition hover:bg-slate-200"
+                href="#ai-review"
+              >
+                Review places
+              </a>
+            </>
+          }
+          eyebrow="Plan with AI"
+          subtitle="Paste a link, note, or screenshot. Wayline finds the places, checks the destination, and turns approved ideas into a mapped trip plan."
+          title="Turn saved inspiration into a trip."
+        />
+
+        <Stepper
+          steps={[
+            {
+              description: "Paste travel links, screenshots, or notes.",
+              label: "Add inspiration"
+            },
+            {
+              description: "Approve, edit, merge, or dismiss AI places.",
+              label: "Review places"
+            },
+            {
+              description: "Create a confirmed trip with timeline and map stops.",
+              label: "Create trip plan"
+            }
+          ]}
+        />
+
         <AiTravelPlannerForm trips={trips} />
 
-        <div className="rounded-[2rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-          <p className="text-xs font-black uppercase tracking-[0.2em] text-blue-600">Saved Inspiration</p>
-          <h2 className="mt-1 text-2xl font-black tracking-tight text-slate-950">Scan links, screenshots, and notes</h2>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-            Paste Instagram, TikTok, Pinterest, YouTube, or travel notes. Wayline extracts places into reviewable itinerary candidates.
-          </p>
+        <SectionCard
+          description="Paste a TikTok, Instagram, travel note, or screenshot. Wayline will find the places for you."
+          eyebrow="Saved Inspiration"
+          id="saved-inspiration"
+          title="Add travel ideas"
+        >
           <div className="mt-5">
             <SocialImportForm trips={trips} />
           </div>
-        </div>
+        </SectionCard>
 
-        <div className="rounded-[2rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <p className="text-xs font-black uppercase tracking-[0.2em] text-blue-600">AI Review</p>
-              <h3 className="mt-1 text-xl font-black tracking-tight text-slate-950">Confirm AI candidates</h3>
-              <p className="mt-1 text-sm text-slate-600">
-                Edit, merge, reject, or approve places into a trip draft.
-              </p>
-            </div>
-            <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-600">
-              {aiReviewItems.length} pending
-            </span>
-          </div>
+        <SectionCard
+          actions={
+            <StatusBadge tone={aiReviewItems.length ? "blue" : "slate"}>
+              {aiReviewItems.length} to review
+            </StatusBadge>
+          }
+          description="Review these places before adding them to your trip."
+          eyebrow="AI Review"
+          id="ai-review"
+          title="Review places Wayline found"
+        >
           <div className="mt-4 grid gap-4">
             {aiReviewItems.map((place) => (
               <ExtractedPlaceCard
@@ -61,20 +99,20 @@ export default function ImportsPage({
               />
             ))}
             {aiReviewItems.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-slate-300 px-4 py-6 text-sm text-slate-600">
-                <p className="font-bold text-slate-950">No AI candidates yet.</p>
-                <p className="mt-1">Scan saved inspiration to create reviewable places. Approved items move into the trip draft queue.</p>
-              </div>
+              <EmptyState
+                description="Add inspiration to start planning. Wayline will extract real places and activities for review."
+                title="No places to review yet."
+              />
             ) : null}
           </div>
-        </div>
+        </SectionCard>
 
         <TripDraftQueue drafts={tripDrafts} />
 
-        <div className="rounded-[2rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-        <h2 className="text-lg font-black">Connected sources</h2>
+        <details className="rounded-[2rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+        <summary className="cursor-pointer text-lg font-black text-slate-950">Advanced sources</summary>
         <p className="mt-2 text-sm text-slate-600">
-          Review inbox, calendar, and source connections that feed Wayline.
+          Optional inbox, calendar, and source connections that can feed Wayline later.
         </p>
         {error ? (
           <p className="mt-4 rounded-2xl bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
@@ -109,13 +147,13 @@ export default function ImportsPage({
             </div>
           ))}
         </div>
-        </div>
+        </details>
       </section>
 
       <aside className="grid content-start gap-5">
         <section className="rounded-[2rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
           <p className="text-xs font-black uppercase tracking-[0.2em] text-blue-600">Feed</p>
-          <h3 className="mt-1 text-base font-black">Recent inspiration scans</h3>
+          <h3 className="mt-1 text-base font-black">Recent saved inspiration</h3>
           <div className="mt-4 grid gap-3">
             {importedContent.slice(0, 6).map((post) => (
               <div className="grid grid-cols-[56px_minmax(0,1fr)] gap-3 rounded-2xl bg-slate-50 px-3 py-3" key={post.id}>
@@ -150,8 +188,8 @@ export default function ImportsPage({
           </div>
         </section>
 
-        <section className="rounded-[2rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-        <h3 className="text-base font-black">Trip draft queue</h3>
+        <details className="rounded-[2rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+        <summary className="cursor-pointer text-base font-black text-slate-950">Legacy review queue</summary>
         <div className="mt-4 grid gap-3 text-sm text-slate-700">
           <UnfiledItemForm defaultTitle={defaultReviewTitle} />
           {unfiledItems.map((item) => (
@@ -190,7 +228,7 @@ export default function ImportsPage({
             </div>
           ) : null}
         </div>
-        </section>
+        </details>
       </aside>
     </div>
   );

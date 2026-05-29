@@ -11,7 +11,7 @@ test("loads dashboard summary and route-split pages", async ({ page }) => {
   await expect(page.getByTestId("app-shell-root")).toBeVisible();
   await expect(
     page.getByRole("heading", {
-      name: "Turn travel inspiration into organized, route-ready trips."
+      name: "Turn saved travel ideas into a mapped trip plan."
     })
   ).toBeVisible();
   const dashboardContent = page.getByTestId("app-shell-content");
@@ -22,13 +22,13 @@ test("loads dashboard summary and route-split pages", async ({ page }) => {
     dashboardContent.getByRole("link", { name: /My Trips/ }).first()
   ).toBeVisible();
   await expect(page.getByText("Trips saved")).toBeVisible();
-  await expect(page.getByText("Upcoming trips")).toBeVisible();
+  await expect(page.getByText("Continue planning")).toBeVisible();
   await expect(page.getByText("Quick actions")).toBeVisible();
 
   await openDashboardRoute("/dashboard/trips");
   await expect(page.getByTestId("app-shell-topbar").getByRole("heading", { name: "My Trips" })).toBeVisible();
-  await expect(page.getByText("Trips database")).toBeVisible();
-  await expect(page.getByText("Trip list")).toBeVisible();
+  await expect(page.getByText("Create a new trip")).toBeVisible();
+  await expect(page.getByText("Confirmed plans")).toBeVisible();
   await page.getByRole("button", { name: "Refresh" }).click();
 
   await openDashboardRoute("/dashboard/trips/demo");
@@ -38,8 +38,10 @@ test("loads dashboard summary and route-split pages", async ({ page }) => {
 
   await openDashboardRoute("/dashboard/trips/demo/timeline");
   await expect(page.getByTestId("trip-workspace-layout")).toBeVisible();
-  await expect(page.getByRole("heading", { exact: true, name: "Timeline" })).toBeVisible();
-  await expect(page.getByText("Timeline tools")).toBeVisible();
+  await expect(
+    page.getByTestId("app-shell-content").getByRole("heading", { exact: true, name: "Timeline" })
+  ).toBeVisible();
+  await expect(page.getByText("Plan tools")).toBeVisible();
   await expect(page.getByRole("heading", { exact: true, name: "Calendar sync" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Connect Google" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Connect Outlook" })).toBeVisible();
@@ -49,10 +51,10 @@ test("loads dashboard summary and route-split pages", async ({ page }) => {
   await expect(
     page
       .getByTestId("app-shell-content")
-      .getByRole("heading", { exact: true, name: "Map" })
+      .getByRole("heading", { exact: true, name: "Trip map" })
   ).toBeVisible();
   await expect(page.getByTestId("connected-trip-map")).toBeVisible();
-  await expect(page.getByText("Connected Google Maps route preview")).toBeVisible();
+  await expect(page.getByText("Your confirmed stops, needs-location ideas")).toBeVisible();
   await expect(page.getByRole("button", { name: "Share view" })).toBeVisible();
 
   await openDashboardRoute("/dashboard/trips/demo/budget");
@@ -74,10 +76,10 @@ test("loads dashboard summary and route-split pages", async ({ page }) => {
   await openDashboardRoute("/dashboard/imports");
   const importsRoute = page.getByTestId("imports-route");
   await expect(importsRoute).toBeVisible();
-  await expect(importsRoute.getByRole("heading", { exact: true, name: "Scan links, screenshots, and notes" })).toBeVisible();
-  await expect(importsRoute.getByRole("heading", { exact: true, name: "Build confirmed plans" })).toBeVisible();
-  await expect(importsRoute.getByRole("heading", { exact: true, name: "Trip draft queue" })).toBeVisible();
-  await expect(importsRoute.getByRole("button", { name: "Connect" }).first()).toBeVisible();
+  await expect(importsRoute.getByRole("heading", { exact: true, name: "Add travel ideas" })).toBeVisible();
+  await expect(importsRoute.getByRole("heading", { exact: true, name: "Review places Wayline found" })).toBeVisible();
+  await expect(importsRoute.getByRole("heading", { exact: true, name: "Create your trip plan" })).toBeVisible();
+  await expect(importsRoute.getByText("Advanced sources")).toBeVisible();
 
   await openDashboardRoute("/dashboard/admin");
   const adminRoute = page.getByTestId("admin-route");

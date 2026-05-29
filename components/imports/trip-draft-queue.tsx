@@ -61,13 +61,13 @@ export function TripDraftQueue({ drafts }: TripDraftQueueProps) {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-xs font-black uppercase tracking-[0.2em] text-blue-600">
-            Trip Draft Queue
+            Trip drafts
           </p>
           <h3 className="mt-1 text-xl font-black tracking-tight text-slate-950">
-            Build confirmed plans
+            Create your trip plan
           </h3>
           <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-600">
-            Approved AI places wait here before becoming real itinerary, map, budget, and sharing data.
+            Approved places become a mapped trip plan when you are ready.
           </p>
         </div>
         <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-600">
@@ -96,7 +96,7 @@ export function TripDraftQueue({ drafts }: TripDraftQueueProps) {
                     className="inline-flex min-h-12 items-center justify-center rounded-2xl bg-white px-5 text-sm font-black text-slate-800 shadow-sm transition hover:bg-slate-100"
                     href={`/dashboard/trips/${draft.tripId}`}
                   >
-                    Edit details
+                    Edit trip
                   </Link>
                   <button
                     className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-blue-600 px-5 text-sm font-black text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"

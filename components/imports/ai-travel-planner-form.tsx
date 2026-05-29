@@ -84,8 +84,8 @@ export function AiTravelPlannerForm({ trips }: AiTravelPlannerFormProps) {
       const count = countExtractedPlaces(payload);
       setMessage(
         count
-          ? `OpenAI created ${count} review candidate${count === 1 ? "" : "s"}.`
-          : "OpenAI finished. No confident candidates were found yet."
+          ? `Wayline found ${count} place${count === 1 ? "" : "s"} to review.`
+          : "Wayline finished scanning. No confident places were found yet."
       );
       router.refresh();
     } catch (error) {
@@ -101,13 +101,13 @@ export function AiTravelPlannerForm({ trips }: AiTravelPlannerFormProps) {
         <div>
           <p className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-black uppercase text-blue-100">
             <Sparkles className="h-3.5 w-3.5" />
-            AI travel planner
+            Plan with AI
           </p>
           <h2 className="mt-4 max-w-xl text-3xl font-black tracking-tight sm:text-4xl">
             Turn saved ideas into a reviewable trip plan.
           </h2>
           <p className="mt-3 max-w-xl text-sm leading-6 text-slate-300">
-            Describe the destination, trip style, and interests. Wayline creates candidate places for the review queue, then you approve what becomes timeline and map data.
+            Describe the destination, trip style, and interests. Wayline creates reviewable places, then you approve what becomes timeline and map data.
           </p>
           <div className="mt-5 grid gap-3 text-sm font-bold text-slate-200 sm:grid-cols-3">
             <div className="rounded-2xl bg-white/10 px-4 py-3">
@@ -173,7 +173,7 @@ export function AiTravelPlannerForm({ trips }: AiTravelPlannerFormProps) {
             type="button"
           >
             <WandSparkles className="h-4 w-4" />
-            {pending ? "Generating..." : "Generate review candidates"}
+            {pending ? "Scanning..." : "Find places to review"}
           </button>
           {pending ? (
             <div aria-hidden="true" className="h-2 overflow-hidden rounded-full bg-slate-100">

@@ -4,11 +4,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const tabs = [
-  { label: "Overview", href: "" },
   { label: "Timeline", href: "/timeline" },
   { label: "Map", href: "/map" },
+  { label: "Suggestions", href: "/map#smart-suggestions" },
   { label: "Budget", href: "/budget" },
-  { label: "Sharing", href: "/sharing" }
+  { label: "Share", href: "/sharing" }
 ] as const;
 
 export function TripTabs({ tripId }: { tripId: string }) {
@@ -19,7 +19,9 @@ export function TripTabs({ tripId }: { tripId: string }) {
     <nav aria-label="Trip tabs" className="flex flex-wrap gap-2">
       {tabs.map((tab) => {
         const href = `${base}${tab.href}`;
-        const active = pathname === href || (tab.href === "" && pathname === base);
+        const active =
+          pathname === href ||
+          (tab.href === "/map#smart-suggestions" && pathname === `${base}/map`);
 
         return (
           <Link

@@ -1,16 +1,13 @@
 import {
-  BarChart3,
   Bell,
   CircleDollarSign,
   CalendarDays,
   Compass,
-  History,
   Inbox,
   LayoutDashboard,
   Map,
-  PanelLeft,
   Plane,
-  Settings,
+  Sparkles,
   Users
 } from "lucide-react";
 import type { ComponentType, SVGProps } from "react";
@@ -18,6 +15,7 @@ import type { ComponentType, SVGProps } from "react";
 export type NavIcon = ComponentType<SVGProps<SVGSVGElement>>;
 
 export type NavItem = {
+  anchor?: string;
   href: string;
   icon: NavIcon;
   label: string;
@@ -67,12 +65,38 @@ export const navSections: NavSection[] = [
         match: (pathname, view) =>
           pathname === "/dashboard/trips" ||
           (pathname === "/dashboard" && view === "trips")
+      },
+      {
+        href: "/dashboard/imports#saved-inspiration",
+        icon: Inbox,
+        label: "Saved Inspiration",
+        match: (pathname, view) =>
+          pathname.startsWith("/dashboard/imports") ||
+          (pathname === "/dashboard" && view === "imports")
+      },
+      {
+        href: "/dashboard/trips",
+        icon: Map,
+        label: "Map",
+        getHref: (pathname, tripId) => currentTripHref(pathname, "/map", tripId),
+        match: (pathname, view) =>
+          pathname.includes("/map") ||
+          (pathname === "/dashboard" && view === "map")
       }
     ]
   },
   {
-    title: "Trip Plan",
+    title: "Trip Workspace",
     items: [
+      {
+        href: "/dashboard/trips",
+        icon: CalendarDays,
+        label: "Timeline",
+        getHref: (pathname, tripId) => currentTripHref(pathname, "/timeline", tripId),
+        match: (pathname, view) =>
+          pathname.includes("/timeline") ||
+          (pathname === "/dashboard" && view === "itinerary")
+      },
       {
         href: "/dashboard/trips",
         icon: Map,
@@ -84,12 +108,10 @@ export const navSections: NavSection[] = [
       },
       {
         href: "/dashboard/trips",
-        icon: CalendarDays,
-        label: "Itinerary",
-        getHref: (pathname, tripId) => currentTripHref(pathname, "/timeline", tripId),
-        match: (pathname, view) =>
-          pathname.includes("/timeline") ||
-          (pathname === "/dashboard" && view === "itinerary")
+        icon: Sparkles,
+        label: "Suggestions",
+        getHref: (pathname, tripId) => currentTripHref(pathname, "/map#smart-suggestions", tripId),
+        match: () => false
       },
       {
         href: "/dashboard/trips",
@@ -103,12 +125,12 @@ export const navSections: NavSection[] = [
       {
         href: "/dashboard/trips",
         icon: Users,
-        label: "Sharing",
+        label: "Share",
         getHref: (pathname, tripId) => currentTripHref(pathname, "/sharing", tripId),
         match: (pathname, view) =>
           pathname.includes("/sharing") ||
           (pathname === "/dashboard" && view === "sharing")
-      },
+      }
     ]
   },
   {
@@ -117,57 +139,19 @@ export const navSections: NavSection[] = [
       {
         href: "/dashboard?view=alerts",
         icon: Bell,
-        label: "Alerts",
+        label: "Notifications",
         match: (pathname, view) => pathname === "/dashboard" && view === "alerts"
-      },
-      {
-        href: "/dashboard/trips",
-        icon: History,
-        label: "Activity",
-        getHref: (pathname, tripId) => currentTripHref(pathname, "", tripId),
-        match: (pathname, view) =>
-          (pathname.startsWith("/dashboard/trips/") &&
-            !pathname.includes("/timeline") &&
-            !pathname.includes("/map") &&
-            !pathname.includes("/budget") &&
-            !pathname.includes("/sharing")) ||
-          (pathname === "/dashboard" && view === "activity")
-      },
-      {
-        href: "/dashboard/imports",
-        icon: Inbox,
-        label: "Saved Inspiration",
-        match: (pathname, view) =>
-          pathname.startsWith("/dashboard/imports") ||
-          (pathname === "/dashboard" && view === "imports")
-      },
-      {
-        href: "/dashboard/api-transition",
-        icon: BarChart3,
-        label: "Reports",
-        match: (pathname) => pathname.startsWith("/dashboard/api-transition")
-      },
-      {
-        href: "/dashboard/layout-simulator",
-        icon: PanelLeft,
-        label: "Layout Simulator",
-        match: (pathname) => pathname.startsWith("/dashboard/layout-simulator")
-      }
-    ]
-  },
-  {
-    title: "Admin",
-    items: [
-      {
-        href: "/dashboard/admin",
-        icon: Settings,
-        label: "Admin",
-        match: (pathname, view) =>
-          pathname.startsWith("/dashboard/admin") ||
-          (pathname === "/dashboard" && view === "settings")
       }
     ]
   }
+];
+
+export const mobileNavItems: NavItem[] = [
+  navSections[0].items[0],
+  navSections[0].items[1],
+  navSections[0].items[2],
+  navSections[0].items[4],
+  navSections[0].items[3]
 ];
 
 export function resolveNavTitle(pathname: string, view: string | null) {

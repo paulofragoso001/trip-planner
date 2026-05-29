@@ -4,6 +4,7 @@ import { Check, GitMerge, ImageIcon, MapPin, Pencil, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { AiReviewItemView } from "@/app/dashboard/imports/loader";
+import { InlineAlert, StatusBadge } from "@/components/trip-ui";
 
 type TripOption = {
   destination: string | null;
@@ -203,7 +204,7 @@ export function ExtractedPlaceCard({ mergeTargets = [], place, trips }: Extracte
 
   return (
     <div
-      className="grid gap-3 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm"
+      className="grid gap-4 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-blue-200 hover:shadow-md"
       data-testid={`ai-review-card-${place.id}`}
     >
       {editing ? (
@@ -251,33 +252,38 @@ export function ExtractedPlaceCard({ mergeTargets = [], place, trips }: Extracte
         </form>
       ) : (
         <>
-          <div className="grid gap-3 sm:grid-cols-[88px_minmax(0,1fr)_auto] sm:items-start">
-            <div className="grid aspect-[4/3] place-items-center rounded-2xl bg-gradient-to-br from-slate-100 to-blue-50 text-blue-700">
+          <div className="grid gap-3 sm:grid-cols-[56px_minmax(0,1fr)_auto] sm:items-start">
+            <div className="grid h-14 w-14 place-items-center rounded-2xl bg-gradient-to-br from-slate-100 to-blue-50 text-blue-700">
               <ImageIcon className="h-6 w-6" />
             </div>
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
-                <p className="min-w-0 text-lg font-black leading-tight text-slate-950">{place.name}</p>
+                <p className="min-w-0 text-xl font-black leading-tight text-slate-950">{place.name}</p>
                 {place.reviewReason === "low_confidence" ? (
-                  <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-black text-amber-700">
-                    Low confidence
-                  </span>
+                  <StatusBadge tone="amber">Low confidence</StatusBadge>
                 ) : null}
                 {place.reviewReason === "needs_location" ? (
-                  <span className="rounded-full bg-rose-50 px-3 py-1 text-xs font-black text-rose-700">
-                    Needs location
-                  </span>
+                  <StatusBadge tone={isActivityIdea ? "blue" : "red"}>
+                    {isActivityIdea ? "Activity idea" : "Needs location"}
+                  </StatusBadge>
+                ) : null}
+                {place.reviewReason !== "low_confidence" && place.reviewReason !== "needs_location" ? (
+                  <StatusBadge tone="green">Ready</StatusBadge>
                 ) : null}
               </div>
-              <p className="mt-1 text-xs font-bold uppercase tracking-[0.16em] text-slate-500">
-                {place.sourcePlatform} · {place.category} · {Math.round(place.confidence * 100)}%
-              </p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                <StatusBadge>{place.category.replace("_", " ")}</StatusBadge>
+                <StatusBadge tone={place.confidence >= 0.75 ? "green" : "amber"}>
+                  {Math.round(place.confidence * 100)}% confidence
+                </StatusBadge>
+                {candidateDestination ? (
+                  <StatusBadge tone="blue">{candidateDestination}</StatusBadge>
+                ) : null}
+              </div>
               {place.duplicateOf ? (
-                <span className="mt-2 inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-600">
-                  Possible duplicate
-                </span>
+                <StatusBadge className="mt-2" tone="purple">Possible duplicate</StatusBadge>
               ) : null}
-              <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100">
+              <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-slate-100">
                 <div
                   className={[
                     "h-full rounded-full",
@@ -302,33 +308,37 @@ export function ExtractedPlaceCard({ mergeTargets = [], place, trips }: Extracte
               {place.address}
             </p>
           ) : null}
-          {place.travelNote ? <p className="text-sm text-slate-600">{place.travelNote}</p> : null}
+          {place.travelNote ? (
+            <p className="rounded-2xl bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-700">
+              {place.travelNote}
+            </p>
+          ) : null}
           {place.evidence.length ? (
-            <div className="grid gap-2 rounded-2xl bg-slate-50 px-4 py-3">
-              <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">
+            <details className="rounded-2xl bg-slate-50 px-4 py-3">
+              <summary className="cursor-pointer text-xs font-black uppercase tracking-[0.16em] text-slate-500">
                 Why Wayline suggested this
-              </p>
+              </summary>
               <ul className="grid gap-1 text-sm text-slate-600">
                 {place.evidence.map((item) => (
                   <li key={item}>{item}</li>
                 ))}
               </ul>
-            </div>
+            </details>
           ) : null}
           {place.reviewReason === "low_confidence" ? (
-            <p className="rounded-2xl bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
+            <InlineAlert tone="amber">
               Confirm the name and category before approving this into a draft.
-            </p>
+            </InlineAlert>
           ) : null}
           {place.reviewReason === "needs_location" ? (
-            <p className="rounded-2xl bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-800">
+            <InlineAlert tone={isActivityIdea ? "blue" : "red"}>
               {isActivityIdea
                 ? "Wayline found this as an activity idea. Add a meeting point or provider before it can appear on the map."
                 : "Wayline could not map this place yet. Edit the name or add more location detail before creating the trip plan."}
-            </p>
+            </InlineAlert>
           ) : null}
           {destinationMissing ? (
-            <div className="grid gap-3 rounded-2xl bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-900">
+            <InlineAlert className="grid gap-3" tone="red">
               <p>This trip does not have a destination yet. Set a destination before approving AI candidates.</p>
               <div className="flex flex-wrap gap-2">
                 {candidateDestination ? (
@@ -362,10 +372,10 @@ export function ExtractedPlaceCard({ mergeTargets = [], place, trips }: Extracte
                   </button>
                 ) : null}
               </div>
-            </div>
+            </InlineAlert>
           ) : null}
           {destinationMismatch ? (
-            <div className="rounded-2xl bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900">
+            <InlineAlert tone="amber">
               <p>
                 This candidate appears to belong to {candidateDestination || "another destination"}, but the selected trip is {selectedTrip?.destination}.
               </p>
@@ -378,10 +388,10 @@ export function ExtractedPlaceCard({ mergeTargets = [], place, trips }: Extracte
                 />
                 Approve into this trip anyway
               </label>
-            </div>
+            </InlineAlert>
           ) : null}
           {!selectedTripId && candidateDestination ? (
-            <div className="rounded-2xl bg-blue-50 px-4 py-3 text-sm font-semibold text-blue-900">
+            <InlineAlert tone="blue">
               <p>No matching trip found for {candidateDestination}. Create a new {candidateDestination} trip draft or select an existing trip manually.</p>
               <button
                 className="mt-3 inline-flex min-h-9 items-center justify-center rounded-xl bg-blue-700 px-3 text-xs font-black text-white disabled:opacity-60"
@@ -391,27 +401,30 @@ export function ExtractedPlaceCard({ mergeTargets = [], place, trips }: Extracte
               >
                 Create new {candidateDestination} trip draft
               </button>
-            </div>
+            </InlineAlert>
           ) : null}
-          <div className="grid gap-2 sm:grid-cols-[1fr_auto_auto_auto] sm:items-center">
-            <select
-              className="min-h-12 rounded-xl border border-slate-200 bg-white px-3 text-sm font-bold text-slate-700"
-              id={`trip-${place.id}`}
-              onChange={(event) => {
-                setSelectedTripId(event.target.value);
-                setConfirmMismatch(false);
-              }}
-              value={selectedTripId}
-            >
-              <option value="">
-              {candidateDestination ? `Choose a ${candidateDestination} trip` : "Choose a trip"}
-              </option>
-              {availableTrips.map((trip) => (
-                <option key={trip.id} value={trip.id}>
-                  {trip.name} · {isMissingDestination(trip.destination) ? "Destination not set" : trip.destination}
+          <div className="grid gap-3 rounded-3xl border border-slate-200 bg-slate-50 p-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+            <label className="grid gap-2 text-sm font-black text-slate-800">
+              Add to trip draft
+              <select
+                className="min-h-12 rounded-xl border border-slate-200 bg-white px-3 text-sm font-bold text-slate-700"
+                id={`trip-${place.id}`}
+                onChange={(event) => {
+                  setSelectedTripId(event.target.value);
+                  setConfirmMismatch(false);
+                }}
+                value={selectedTripId}
+              >
+                <option value="">
+                {candidateDestination ? `Choose a ${candidateDestination} trip` : "Choose a trip"}
                 </option>
-              ))}
-            </select>
+                {availableTrips.map((trip) => (
+                  <option key={trip.id} value={trip.id}>
+                    {trip.name} · {isMissingDestination(trip.destination) ? "Destination not set" : trip.destination}
+                  </option>
+                ))}
+              </select>
+            </label>
             <button
               className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 text-sm font-black text-white transition disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500 disabled:ring-1 disabled:ring-slate-300"
               disabled={approveDisabled}
@@ -428,6 +441,8 @@ export function ExtractedPlaceCard({ mergeTargets = [], place, trips }: Extracte
               <Check className="h-4 w-4" />
               Approve to draft
             </button>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
             {mergeTargets.length ? (
               <div className="grid gap-2 sm:min-w-56">
                 <select

@@ -27,7 +27,7 @@ export function SocialImportForm({ trips }: SocialImportFormProps) {
     }
 
     setPending(true);
-    setMessage("Scanning travel save with OpenAI...");
+    setMessage("Scanning travel save...");
     formData.set("hasFile", hasFile ? "true" : "false");
     if (hasFile) {
       formData.set("sourcePlatform", "screenshot");
@@ -44,7 +44,7 @@ export function SocialImportForm({ trips }: SocialImportFormProps) {
         const partialCount = countExtractedPlaces(payload);
         if (partialCount) {
           setMessage(
-            `OpenAI created ${partialCount} review candidate${
+            `Wayline found ${partialCount} place${
               partialCount === 1 ? "" : "s"
             }, but Wayline returned a warning: ${readError(payload, response.status)}`
           );
@@ -58,7 +58,7 @@ export function SocialImportForm({ trips }: SocialImportFormProps) {
       const count = countExtractedPlaces(payload);
       setMessage(
         count
-          ? `OpenAI created ${count} review candidate${count === 1 ? "" : "s"}.`
+          ? `Wayline found ${count} place${count === 1 ? "" : "s"} to review.`
           : "Scan finished. Add a caption or screenshot if no places appeared."
       );
       router.refresh();
@@ -137,7 +137,7 @@ export function SocialImportForm({ trips }: SocialImportFormProps) {
         type="submit"
       >
         <WandSparkles className="h-4 w-4" />
-        {pending ? "Scanning..." : "Scan with OpenAI"}
+        {pending ? "Scanning..." : "Find places"}
       </button>
       {pending ? (
         <div aria-hidden="true" className="h-2 overflow-hidden rounded-full bg-slate-100">

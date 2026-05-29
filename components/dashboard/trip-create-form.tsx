@@ -66,68 +66,91 @@ export function TripCreateForm() {
 
   return (
     <form className="mt-5 grid gap-4" id="new-trip" onSubmit={createTrip}>
-      <input
-        className="rounded-2xl border border-slate-200 px-4 py-3"
-        onChange={(event) => setName(event.target.value)}
-        placeholder="Trip name"
-        required
-        value={name}
-      />
-      <GoogleMapsProvider>
-        <LocationAutocomplete
-          ariaLabel="Destination"
-          inputClassName="w-full rounded-2xl border border-slate-200 px-4 py-3"
-          name="destination"
-          onInputChange={(value) => {
-            setDestination(value);
-            setDestinationSelection(null);
-          }}
-          onSelect={(location) => {
-            setDestination(location.address);
-            setDestinationSelection(location);
-          }}
-          placeholder="Destination"
+      <label className="grid gap-2 text-sm font-black text-slate-800">
+        Trip name
+        <input
+          className="min-h-12 rounded-2xl border border-slate-200 px-4 py-3 font-semibold outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+          onChange={(event) => setName(event.target.value)}
+          placeholder="Miami weekend"
           required
-          value={destination}
+          value={name}
         />
-      </GoogleMapsProvider>
+      </label>
+      <div className="grid gap-2 text-sm font-black text-slate-800">
+        <span>Destination</span>
+        <GoogleMapsProvider>
+          <LocationAutocomplete
+            ariaLabel="Destination"
+            inputClassName="w-full min-h-12 rounded-2xl border border-slate-200 px-4 py-3 font-semibold outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+            name="destination"
+            onInputChange={(value) => {
+              setDestination(value);
+              setDestinationSelection(null);
+            }}
+            onSelect={(location) => {
+              setDestination(location.address);
+              setDestinationSelection(location);
+            }}
+            placeholder="Search Miami, Barcelona, Tokyo..."
+            required
+            value={destination}
+          />
+        </GoogleMapsProvider>
+      </div>
       {destination.trim() && !destinationSelection ? (
         <p className="rounded-2xl bg-amber-50 px-4 py-3 text-xs font-semibold text-amber-800">
           Destination saved manually. Map and AI matching may work better after selecting a Google result.
         </p>
       ) : null}
-      <div className="grid grid-cols-2 gap-3">
-        <input
-          className="rounded-2xl border border-slate-200 px-4 py-3"
-          onChange={(event) => setStartDate(event.target.value)}
-          type="date"
-          value={startDate}
-        />
-        <input
-          className="rounded-2xl border border-slate-200 px-4 py-3"
-          onChange={(event) => setEndDate(event.target.value)}
-          type="date"
-          value={endDate}
-        />
+      {destinationSelection ? (
+        <p className="rounded-2xl bg-emerald-50 px-4 py-3 text-xs font-black text-emerald-800">
+          Location matched. Wayline can use this destination for AI review and map planning.
+        </p>
+      ) : null}
+      <div className="grid gap-3 sm:grid-cols-2">
+        <label className="grid gap-2 text-sm font-black text-slate-800">
+          Start date
+          <input
+            className="min-h-12 rounded-2xl border border-slate-200 px-4 py-3 font-semibold outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+            onChange={(event) => setStartDate(event.target.value)}
+            type="date"
+            value={startDate}
+          />
+        </label>
+        <label className="grid gap-2 text-sm font-black text-slate-800">
+          End date
+          <input
+            className="min-h-12 rounded-2xl border border-slate-200 px-4 py-3 font-semibold outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+            onChange={(event) => setEndDate(event.target.value)}
+            type="date"
+            value={endDate}
+          />
+        </label>
       </div>
-      <input
-        className="rounded-2xl border border-slate-200 px-4 py-3"
-        inputMode="decimal"
-        onChange={(event) => setBudget(event.target.value)}
-        placeholder="Budget"
-        value={budget}
-      />
-      <select
-        className="rounded-2xl border border-slate-200 bg-white px-4 py-3"
-        onChange={(event) => setTravelStyle(event.target.value as TripTravelStyle)}
-        value={travelStyle}
-      >
-        {TRIP_TRAVEL_STYLES.map((style) => (
-          <option key={style} value={style}>
-            {TRIP_TRAVEL_STYLE_LABELS[style]}
-          </option>
-        ))}
-      </select>
+      <label className="grid gap-2 text-sm font-black text-slate-800">
+        Budget
+        <input
+          className="min-h-12 rounded-2xl border border-slate-200 px-4 py-3 font-semibold outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+          inputMode="decimal"
+          onChange={(event) => setBudget(event.target.value)}
+          placeholder="Optional"
+          value={budget}
+        />
+      </label>
+      <label className="grid gap-2 text-sm font-black text-slate-800">
+        Travel style
+        <select
+          className="min-h-12 rounded-2xl border border-slate-200 bg-white px-4 py-3 font-semibold outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+          onChange={(event) => setTravelStyle(event.target.value as TripTravelStyle)}
+          value={travelStyle}
+        >
+          {TRIP_TRAVEL_STYLES.map((style) => (
+            <option key={style} value={style}>
+              {TRIP_TRAVEL_STYLE_LABELS[style]}
+            </option>
+          ))}
+        </select>
+      </label>
       <button
         className="rounded-2xl bg-blue-600 px-4 py-3 font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
         disabled={isPending}

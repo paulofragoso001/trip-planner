@@ -1,3 +1,4 @@
+import { Loader2 } from "lucide-react";
 import { forwardRef } from "react";
 import type { ButtonHTMLAttributes, HTMLAttributes, ReactNode } from "react";
 
@@ -32,6 +33,327 @@ export const tripUi = {
       "rounded-full border border-red-200 bg-white px-4 py-2 text-sm font-bold text-red-700 transition hover:bg-red-50"
   }
 } as const;
+
+type PageHeaderProps = HTMLAttributes<HTMLElement> & {
+  actions?: ReactNode;
+  eyebrow?: string;
+  subtitle?: ReactNode;
+  title: ReactNode;
+};
+
+export function PageHeader({
+  actions,
+  className,
+  eyebrow,
+  subtitle,
+  title,
+  ...props
+}: PageHeaderProps) {
+  return (
+    <header
+      className={cn(
+        "grid gap-4 rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm sm:p-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end",
+        className
+      )}
+      {...props}
+    >
+      <div className="min-w-0">
+        {eyebrow ? (
+          <p className="text-xs font-black uppercase tracking-[0.2em] text-blue-600">
+            {eyebrow}
+          </p>
+        ) : null}
+        <h1 className="mt-2 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
+          {title}
+        </h1>
+        {subtitle ? (
+          <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600 sm:text-base">
+            {subtitle}
+          </p>
+        ) : null}
+      </div>
+      {actions ? <div className="flex flex-wrap gap-3">{actions}</div> : null}
+    </header>
+  );
+}
+
+type SectionCardProps = HTMLAttributes<HTMLElement> & {
+  actions?: ReactNode;
+  children: ReactNode;
+  description?: ReactNode;
+  eyebrow?: string;
+  title?: ReactNode;
+};
+
+export function SectionCard({
+  actions,
+  children,
+  className,
+  description,
+  eyebrow,
+  title,
+  ...props
+}: SectionCardProps) {
+  return (
+    <section
+      className={cn(
+        "rounded-[2rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5",
+        className
+      )}
+      {...props}
+    >
+      {title || eyebrow || description || actions ? (
+        <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0">
+            {eyebrow ? (
+              <p className="text-xs font-black uppercase tracking-[0.2em] text-blue-600">
+                {eyebrow}
+              </p>
+            ) : null}
+            {title ? (
+              <h2 className="mt-1 text-xl font-black tracking-tight text-slate-950">
+                {title}
+              </h2>
+            ) : null}
+            {description ? (
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+                {description}
+              </p>
+            ) : null}
+          </div>
+          {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
+        </div>
+      ) : null}
+      {children}
+    </section>
+  );
+}
+
+export function ActionCard({
+  children,
+  className,
+  ...props
+}: HTMLAttributes<HTMLDivElement> & { children: ReactNode }) {
+  return (
+    <div
+      className={cn(
+        "group rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-md",
+        className
+      )}
+      {...props}
+    >
+      {children}
+    </div>
+  );
+}
+
+type StatusBadgeProps = HTMLAttributes<HTMLSpanElement> & {
+  tone?: "blue" | "green" | "amber" | "red" | "slate" | "purple";
+};
+
+const statusBadgeTones = {
+  amber: "bg-amber-50 text-amber-800 ring-amber-200",
+  blue: "bg-blue-50 text-blue-800 ring-blue-200",
+  green: "bg-emerald-50 text-emerald-800 ring-emerald-200",
+  purple: "bg-violet-50 text-violet-800 ring-violet-200",
+  red: "bg-rose-50 text-rose-800 ring-rose-200",
+  slate: "bg-slate-100 text-slate-700 ring-slate-200"
+};
+
+export function StatusBadge({
+  children,
+  className,
+  tone = "slate",
+  ...props
+}: StatusBadgeProps) {
+  return (
+    <span
+      className={cn(
+        "inline-flex min-h-7 items-center rounded-full px-3 py-1 text-xs font-black ring-1",
+        statusBadgeTones[tone],
+        className
+      )}
+      {...props}
+    >
+      {children}
+    </span>
+  );
+}
+
+type EmptyStateProps = HTMLAttributes<HTMLDivElement> & {
+  action?: ReactNode;
+  description: ReactNode;
+  title: ReactNode;
+};
+
+export function EmptyState({
+  action,
+  className,
+  description,
+  title,
+  ...props
+}: EmptyStateProps) {
+  return (
+    <div
+      className={cn(
+        "rounded-3xl border border-dashed border-slate-300 bg-slate-50 px-5 py-8 text-sm text-slate-600",
+        className
+      )}
+      {...props}
+    >
+      <p className="font-black text-slate-950">{title}</p>
+      <p className="mt-1 max-w-2xl leading-6">{description}</p>
+      {action ? <div className="mt-4">{action}</div> : null}
+    </div>
+  );
+}
+
+type ErrorStateProps = HTMLAttributes<HTMLDivElement> & {
+  action?: ReactNode;
+  message: ReactNode;
+  title?: ReactNode;
+};
+
+export function ErrorState({
+  action,
+  className,
+  message,
+  title = "Something went wrong.",
+  ...props
+}: ErrorStateProps) {
+  return (
+    <div
+      className={cn(
+        "rounded-3xl border border-rose-200 bg-rose-50 px-5 py-6 text-sm text-rose-900",
+        className
+      )}
+      role="alert"
+      {...props}
+    >
+      <p className="font-black">{title}</p>
+      <p className="mt-1 max-w-2xl leading-6">{message}</p>
+      {action ? <div className="mt-4">{action}</div> : null}
+    </div>
+  );
+}
+
+type InlineAlertProps = HTMLAttributes<HTMLDivElement> & {
+  tone?: "amber" | "blue" | "red" | "green";
+};
+
+const alertTones = {
+  amber: "bg-amber-50 text-amber-900 ring-amber-200",
+  blue: "bg-blue-50 text-blue-900 ring-blue-200",
+  green: "bg-emerald-50 text-emerald-900 ring-emerald-200",
+  red: "bg-rose-50 text-rose-900 ring-rose-200"
+};
+
+export function InlineAlert({
+  children,
+  className,
+  tone = "blue",
+  ...props
+}: InlineAlertProps) {
+  return (
+    <div
+      className={cn(
+        "rounded-2xl px-4 py-3 text-sm font-semibold ring-1",
+        alertTones[tone],
+        className
+      )}
+      {...props}
+    >
+      {children}
+    </div>
+  );
+}
+
+type StepperProps = {
+  steps: Array<{ description?: string; label: string }>;
+};
+
+export function Stepper({ steps }: StepperProps) {
+  return (
+    <ol className="grid gap-3 md:grid-cols-3">
+      {steps.map((step, index) => (
+        <li
+          className="grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:grid-cols-[44px_minmax(0,1fr)]"
+          key={step.label}
+        >
+          <span className="grid h-11 w-11 place-items-center rounded-2xl bg-blue-600 text-sm font-black text-white">
+            {index + 1}
+          </span>
+          <span className="min-w-0">
+            <span className="block font-black text-slate-950">{step.label}</span>
+            {step.description ? (
+              <span className="mt-1 block text-sm leading-6 text-slate-600">
+                {step.description}
+              </span>
+            ) : null}
+          </span>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+export const StepIndicator = Stepper;
+
+type ResponsiveTabsProps = HTMLAttributes<HTMLDivElement> & {
+  children: ReactNode;
+};
+
+export function ResponsiveTabs({ children, className, ...props }: ResponsiveTabsProps) {
+  return (
+    <div
+      className={cn(
+        "flex gap-2 overflow-x-auto rounded-2xl bg-slate-100 p-1",
+        className
+      )}
+      {...props}
+    >
+      {children}
+    </div>
+  );
+}
+
+export function PrimaryCTA({
+  children,
+  className,
+  ...props
+}: ButtonHTMLAttributes<HTMLButtonElement> & { children: ReactNode }) {
+  return (
+    <button
+      className={cn(
+        "inline-flex min-h-12 items-center justify-center rounded-2xl bg-blue-600 px-5 text-sm font-black text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60",
+        className
+      )}
+      type="button"
+      {...props}
+    >
+      {children}
+    </button>
+  );
+}
+
+type LoadingStateProps = HTMLAttributes<HTMLDivElement> & {
+  label: string;
+};
+
+export function LoadingState({ className, label, ...props }: LoadingStateProps) {
+  return (
+    <div
+      className={cn(
+        "inline-flex items-center gap-2 rounded-2xl bg-slate-100 px-4 py-3 text-sm font-bold text-slate-700",
+        className
+      )}
+      {...props}
+    >
+      <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+      {label}
+    </div>
+  );
+}
 
 type TripCardProps = HTMLAttributes<HTMLElement> & {
   as?: "article" | "section" | "div" | "header";

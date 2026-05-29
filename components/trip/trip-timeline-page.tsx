@@ -48,9 +48,9 @@ export default function TripTimelinePage({
           </div>
 
           <div className="grid grid-cols-3 gap-2 sm:min-w-[360px]">
-            <StatPill label="Items" value={String(stats.totalItems)} />
-            <StatPill label="Ready" value={`${stats.readyItems}/${stats.totalItems}`} />
-            <StatPill label="Watch" value={String(stats.alerts)} />
+            <StatPill label="Stops" value={String(stats.totalItems)} />
+            <StatPill label="Mapped" value={String(stats.mappedStops)} />
+            <StatPill label="Needs attention" value={String(stats.alerts)} />
           </div>
         </div>
 
@@ -147,8 +147,8 @@ export default function TripTimelinePage({
             ))
           ) : (
             <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-5 py-8 text-sm text-slate-600">
-              <p className="font-bold text-slate-950">No timeline segments yet.</p>
-              <p className="mt-1">Add flights, hotels, meetings, or activities to build the trip timeline.</p>
+              <p className="font-bold text-slate-950">No stops yet.</p>
+              <p className="mt-1">Add inspiration or create a stop to start building your trip.</p>
             </div>
           )}
         </div>
@@ -174,9 +174,9 @@ function TimelineTools({
 }) {
   return (
     <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-      <h3 className="text-base font-black">Timeline tools</h3>
+      <h3 className="text-base font-black">Plan tools</h3>
       <p className="mt-2 text-sm text-slate-600">
-        Keep itinerary changes synced across flights, maps, budget, and calendars.
+        Generate the day order, add stops, and keep the plan ready for maps and sharing.
       </p>
       <div className="mt-4 grid gap-3">
         <GeneratePlanButton context="timeline" tripId={tripId} />
@@ -216,10 +216,10 @@ function TimelineTools({
           className="rounded-2xl bg-slate-100 px-4 py-3 text-left font-semibold transition hover:bg-slate-200"
           href={`/dashboard/trips/${tripId}#new-plan`}
         >
-          Add segment
+            Add stop
         </Link>
         <div id="new-plan">
-          <TripSegmentForm buttonLabel="Add segment" tripId={tripId} />
+          <TripSegmentForm buttonLabel="Add stop" tripId={tripId} />
         </div>
       </div>
     </div>

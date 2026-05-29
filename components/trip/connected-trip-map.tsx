@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import GoogleMapsProvider from "@/components/GoogleMapsProvider";
 import TripMap, { type TripMapItem } from "@/components/TripMap";
@@ -44,23 +45,37 @@ export function ConnectedTripMap({
         <div className="rounded-3xl border border-dashed border-slate-300 bg-slate-50 px-5 py-8 text-sm text-slate-600">
           <p className="font-bold text-slate-950">No mapped stops yet.</p>
           <p className="mt-1">
-            Approve AI places with confirmed locations or add map pins with coordinates to draw the route.
+            Approve places with confirmed locations to build your route.
           </p>
           {unmappedCount ? (
             <p className="mt-3 rounded-2xl bg-amber-50 px-4 py-3 font-semibold text-amber-800">
               {unmappedCount} stop{unmappedCount === 1 ? "" : "s"} need location confirmation before they can appear on the map.
             </p>
           ) : null}
-          {searchUrl ? (
-            <a
-              className="mt-4 inline-flex rounded-2xl bg-blue-600 px-4 py-3 text-sm font-bold text-white transition hover:bg-blue-700"
-              href={searchUrl}
-              rel="noreferrer"
-              target="_blank"
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Link
+              className="inline-flex min-h-11 items-center justify-center rounded-2xl bg-blue-600 px-4 text-sm font-bold text-white transition hover:bg-blue-700"
+              href="/dashboard/imports#ai-review"
             >
-              Open {destination || "destination"} in Google Maps
-            </a>
-          ) : null}
+              Go to AI Review
+            </Link>
+            <Link
+              className="inline-flex min-h-11 items-center justify-center rounded-2xl bg-white px-4 text-sm font-bold text-slate-800 ring-1 ring-slate-200 transition hover:bg-slate-100"
+              href="/dashboard/trips#new-trip"
+            >
+              Add location manually
+            </Link>
+            {searchUrl ? (
+              <a
+                className="inline-flex min-h-11 items-center justify-center rounded-2xl bg-white px-4 text-sm font-bold text-slate-800 ring-1 ring-slate-200 transition hover:bg-slate-100"
+                href={searchUrl}
+                rel="noreferrer"
+                target="_blank"
+              >
+                Search {destination || "destination"}
+              </a>
+            ) : null}
+          </div>
         </div>
       )}
 
@@ -100,13 +115,17 @@ export function ConnectedTripMap({
 
       {unmappedSegments.length ? (
         <div className="grid gap-2 rounded-2xl border border-slate-200 bg-white p-4 text-sm">
-          <p className="font-black text-slate-950">Needs location confirmation</p>
+          <p className="font-black text-slate-950">Needs location</p>
           {unmappedSegments.slice(0, 5).map((segment) => (
             <div className="rounded-xl bg-slate-50 px-3 py-2" key={segment.id}>
               <p className="font-bold text-slate-800">{segment.title}</p>
               {segment.location ? (
                 <p className="text-xs font-semibold text-slate-500">{segment.location}</p>
-              ) : null}
+              ) : (
+                <p className="text-xs font-semibold text-slate-500">
+                  Activity idea - add a meeting point before it appears on the map.
+                </p>
+              )}
             </div>
           ))}
         </div>

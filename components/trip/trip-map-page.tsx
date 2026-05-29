@@ -19,10 +19,15 @@ export default function TripMapPage({
     <div className="grid min-h-[calc(100dvh-220px)] gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
       <section className="flex min-h-[560px] min-w-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div className="border-b border-slate-200 px-5 py-4">
-          <h2 className="text-lg font-black">Map</h2>
+          <h2 className="text-lg font-black">Trip map</h2>
           <p className="mt-1 text-sm text-slate-600">
-            Connected Google Maps route preview for the selected trip stops.
+            Your confirmed stops, needs-location ideas, and route-ready map view.
           </p>
+          <div className="mt-4 grid gap-2 sm:grid-cols-3">
+            <MapSummary label="Mapped stops" value={String(items.length)} />
+            <MapSummary label="Needs location" value={String(unmappedCount)} />
+            <MapSummary label="Suggestions" value={String(recommendations.length)} />
+          </div>
         </div>
         {error ? (
           <p className="mx-5 mt-4 rounded-xl bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
@@ -41,20 +46,24 @@ export default function TripMapPage({
       </section>
 
       <aside className="self-start rounded-2xl border border-slate-200 bg-white p-5 shadow-sm xl:sticky xl:top-24">
-        <h3 className="text-base font-black">Map tools</h3>
+        <h3 className="text-base font-black">Map actions</h3>
         <MapTools tripId={tripId} />
-        <div className="mt-5 rounded-xl bg-slate-50 p-4 text-sm text-slate-600">
-          The map uses the shared Google Maps loader and falls back cleanly when
-          <code className="mx-1 rounded bg-white px-1 py-0.5 text-xs font-bold">
-            NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
-          </code>
-          is not configured.
-        </div>
         <SmartSuggestionsPanel
           recommendations={recommendations}
           tripId={tripId}
         />
       </aside>
+    </div>
+  );
+}
+
+function MapSummary({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl bg-slate-50 px-4 py-3">
+      <p className="text-[0.65rem] font-black uppercase tracking-[0.16em] text-slate-500">
+        {label}
+      </p>
+      <p className="mt-1 text-lg font-black text-slate-950">{value}</p>
     </div>
   );
 }

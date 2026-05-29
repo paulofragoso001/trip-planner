@@ -38,8 +38,13 @@ export function SmartSuggestionsPanel({
     }
   }
 
+  const groups = groupRecommendations(recommendations);
+
   return (
-    <section className="mt-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <section
+      className="mt-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+      id="smart-suggestions"
+    >
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-xs font-black uppercase tracking-[0.18em] text-blue-600">
@@ -49,7 +54,7 @@ export function SmartSuggestionsPanel({
             Nearby ideas for this route
           </h3>
           <p className="mt-1 text-sm leading-6 text-slate-600">
-            Provider-powered options near your mapped stops. Save only what belongs in the trip.
+            Suggestions are based on your mapped stops, destination, travel style, and nearby places.
           </p>
         </div>
         <button
@@ -68,62 +73,69 @@ export function SmartSuggestionsPanel({
       </div>
 
       <div className="mt-4 grid gap-3">
-        {recommendations.map((item) => (
-          <article className="rounded-2xl bg-slate-50 p-4" key={item.id}>
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-sm font-black text-slate-950">{item.title}</p>
-                <p className="mt-1 text-xs font-bold uppercase tracking-[0.14em] text-slate-500">
-                  {item.provider.replace("_", " ")} · {item.type}
-                </p>
-              </div>
-              {item.ratingLabel ? (
-                <span className="rounded-full bg-white px-2 py-1 text-xs font-black text-slate-700">
-                  {item.ratingLabel}
-                </span>
-              ) : null}
-            </div>
-            {item.reason ? (
-              <p className="mt-2 text-sm leading-6 text-slate-600">{item.reason}</p>
-            ) : null}
-            <div className="mt-3 flex flex-wrap gap-2">
-              {item.priceLabel ? (
-                <span className="rounded-full bg-white px-3 py-1 text-xs font-black text-slate-700">
-                  From {item.priceLabel}
-                </span>
-              ) : null}
-              {item.bookingUrl ? (
-                <a
-                  className="inline-flex items-center gap-1 rounded-full bg-white px-3 py-1 text-xs font-black text-blue-700"
-                  href={item.bookingUrl}
-                  rel="noreferrer"
-                  target="_blank"
-                >
-                  Open
-                  <ExternalLink className="h-3 w-3" />
-                </a>
-              ) : null}
-            </div>
-            <div className="mt-3 grid gap-2 sm:grid-cols-2">
-              <button
-                className="inline-flex min-h-10 items-center justify-center rounded-xl bg-blue-600 px-3 text-sm font-black text-white disabled:opacity-60"
-                disabled={Boolean(pendingAction)}
-                onClick={() => run(`/api/trip-recommendations/${item.id}/save`, "Saving suggestion")}
-                type="button"
-              >
-                Save to Trip
-              </button>
-              <button
-                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-white px-3 text-sm font-black text-slate-700 disabled:opacity-60"
-                disabled={Boolean(pendingAction)}
-                onClick={() => run(`/api/trip-recommendations/${item.id}/dismiss`, "Dismissing suggestion")}
-                type="button"
-              >
-                <X className="h-4 w-4" />
-                Dismiss
-              </button>
-            </div>
-          </article>
+        {groups.map((group) => (
+          <div className="grid gap-2" key={group.label}>
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">
+              {group.label}
+            </p>
+            {group.items.map((item) => (
+              <article className="rounded-2xl bg-slate-50 p-4" key={item.id}>
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-black text-slate-950">{item.title}</p>
+                    <p className="mt-1 text-xs font-bold uppercase tracking-[0.14em] text-slate-500">
+                      {item.provider.replace("_", " ")} · {item.type}
+                    </p>
+                  </div>
+                  {item.ratingLabel ? (
+                    <span className="rounded-full bg-white px-2 py-1 text-xs font-black text-slate-700">
+                      {item.ratingLabel}
+                    </span>
+                  ) : null}
+                </div>
+                {item.reason ? (
+                  <p className="mt-2 text-sm leading-6 text-slate-600">{item.reason}</p>
+                ) : null}
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {item.priceLabel ? (
+                    <span className="rounded-full bg-white px-3 py-1 text-xs font-black text-slate-700">
+                      From {item.priceLabel}
+                    </span>
+                  ) : null}
+                  {item.bookingUrl ? (
+                    <a
+                      className="inline-flex items-center gap-1 rounded-full bg-white px-3 py-1 text-xs font-black text-blue-700"
+                      href={item.bookingUrl}
+                      rel="noreferrer"
+                      target="_blank"
+                    >
+                      Open source
+                      <ExternalLink className="h-3 w-3" />
+                    </a>
+                  ) : null}
+                </div>
+                <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_auto]">
+                  <button
+                    className="inline-flex min-h-10 items-center justify-center rounded-xl bg-blue-600 px-3 text-sm font-black text-white disabled:opacity-60"
+                    disabled={Boolean(pendingAction)}
+                    onClick={() => run(`/api/trip-recommendations/${item.id}/save`, "Saving suggestion")}
+                    type="button"
+                  >
+                    Save to Trip
+                  </button>
+                  <button
+                    className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-white px-3 text-sm font-black text-slate-700 disabled:opacity-60"
+                    disabled={Boolean(pendingAction)}
+                    onClick={() => run(`/api/trip-recommendations/${item.id}/dismiss`, "Dismissing suggestion")}
+                    type="button"
+                  >
+                    <X className="h-4 w-4" />
+                    Dismiss
+                  </button>
+                </div>
+              </article>
+            ))}
+          </div>
         ))}
 
         {recommendations.length === 0 ? (
@@ -143,6 +155,25 @@ export function SmartSuggestionsPanel({
       ) : null}
     </section>
   );
+}
+
+function groupRecommendations(items: TripRecommendationView[]) {
+  const groups = [
+    { label: "Near your route", matcher: (item: TripRecommendationView) => /near|route|close/i.test(item.reason || "") },
+    { label: "Food nearby", matcher: (item: TripRecommendationView) => /restaurant|food|meal|bar|cafe/i.test(`${item.type} ${item.title}`) },
+    { label: "Activities", matcher: (item: TripRecommendationView) => /activity|tour|attraction|museum|park/i.test(`${item.type} ${item.title}`) },
+    { label: "Evening options", matcher: (item: TripRecommendationView) => /evening|night|bar|dinner/i.test(`${item.reason || ""} ${item.title}`) },
+    { label: "Popular places", matcher: () => true }
+  ];
+  const used = new Set<string>();
+
+  return groups
+    .map((group) => {
+      const groupItems = items.filter((item) => !used.has(item.id) && group.matcher(item));
+      groupItems.forEach((item) => used.add(item.id));
+      return { items: groupItems, label: group.label };
+    })
+    .filter((group) => group.items.length > 0);
 }
 
 function readError(payload: unknown, status: number) {
