@@ -10,7 +10,6 @@ import {
   Map,
   PanelLeft,
   Plane,
-  Radar,
   Settings,
   Users
 } from "lucide-react";
@@ -110,12 +109,6 @@ export const navSections: NavSection[] = [
           pathname.includes("/sharing") ||
           (pathname === "/dashboard" && view === "sharing")
       },
-      {
-        href: "/dashboard?view=flight-status",
-        icon: Radar,
-        label: "Flight Status",
-        match: (pathname, view) => pathname === "/dashboard" && view === "flight-status"
-      }
     ]
   },
   {

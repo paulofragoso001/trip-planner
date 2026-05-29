@@ -25,11 +25,20 @@ async function resolvePlace(
 ): Promise<ResolvedPlace> {
   const apiKey = googlePlacesApiKey();
   if (!apiKey) {
+    logTravelProviderEvent("place_resolution_not_configured", {
+      provider,
+      query: safeQueryPreview(query.name)
+    });
     return unresolved(query);
   }
 
   const locationContext = destinationContext(query, context);
   const textQuery = buildTextQuery(query, locationContext);
+  logTravelProviderEvent("place_resolution_started", {
+    locationContext,
+    provider,
+    query: safeQueryPreview(textQuery)
+  });
 
   try {
     const url = new URL("https://maps.googleapis.com/maps/api/place/findplacefromtext/json");
@@ -40,11 +49,31 @@ async function resolvePlace(
 
     const response = await fetch(url, { cache: "no-store" });
     if (!response.ok) {
+      logTravelProviderEvent("place_resolution_http_failed", {
+        provider,
+        status: response.status
+      });
       return geocodePlaceFallback(apiKey, query, textQuery, locationContext);
     }
 
     const payload = await response.json();
-    const candidate = Array.isArray(payload.candidates) ? payload.candidates[0] : null;
+    if (payload.status && payload.status !== "OK" && payload.status !== "ZERO_RESULTS") {
+      logTravelProviderEvent("place_resolution_provider_status", {
+        provider,
+        status: payload.status
+      });
+    }
+
+    const candidates = Array.isArray(payload.candidates) ? payload.candidates : [];
+    logTravelProviderEvent("place_resolution_candidates", {
+      count: candidates.length,
+      provider,
+      query: safeQueryPreview(textQuery)
+    });
+    const candidate =
+      candidates.find((item: any) =>
+        matchesLocationContext(item?.formatted_address, locationContext)
+      ) || candidates[0] || null;
 
     if (!candidate?.geometry?.location) {
       return geocodePlaceFallback(apiKey, query, textQuery, locationContext);
@@ -60,6 +89,14 @@ async function resolvePlace(
     }
 
     const item = normalizeGooglePlace(candidate, "place");
+    logTravelProviderEvent("place_resolution_selected", {
+      address: safeAddressPreview(item.address),
+      hasCoordinates: typeof item.latitude === "number" && typeof item.longitude === "number",
+      provider,
+      providerItemId: item.providerItemId ? "present" : "missing",
+      title: safeQueryPreview(item.title)
+    });
+
     return {
       address: item.address || query.address || null,
       city: query.city || null,
@@ -91,10 +128,32 @@ async function geocodePlaceFallback(
     url.searchParams.set("key", apiKey);
 
     const response = await fetch(url, { cache: "no-store" });
-    if (!response.ok) return unresolved(query);
+    if (!response.ok) {
+      logTravelProviderEvent("place_geocode_http_failed", {
+        provider,
+        status: response.status
+      });
+      return unresolved(query);
+    }
 
     const payload = await response.json();
-    const candidate = Array.isArray(payload.results) ? payload.results[0] : null;
+    if (payload.status && payload.status !== "OK" && payload.status !== "ZERO_RESULTS") {
+      logTravelProviderEvent("place_geocode_provider_status", {
+        provider,
+        status: payload.status
+      });
+    }
+
+    const results = Array.isArray(payload.results) ? payload.results : [];
+    logTravelProviderEvent("place_geocode_candidates", {
+      count: results.length,
+      provider,
+      query: safeQueryPreview(textQuery)
+    });
+    const candidate =
+      results.find((item: any) =>
+        matchesLocationContext(item?.formatted_address, locationContext)
+      ) || results[0] || null;
 
     if (!candidate?.geometry?.location) {
       return unresolved(query);
@@ -217,9 +276,16 @@ function googlePlacesApiKey() {
   return (
     process.env.GOOGLE_PLACES_API_KEY ||
     process.env.GOOGLE_MAPS_API_KEY ||
-    process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ||
+    (process.env.NODE_ENV === "production" ? "" : process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY) ||
     ""
   );
+}
+
+export function getGooglePlaceResolutionConfig() {
+  return {
+    configured: Boolean(googlePlacesApiKey()),
+    serverKeyConfigured: Boolean(process.env.GOOGLE_PLACES_API_KEY || process.env.GOOGLE_MAPS_API_KEY)
+  };
 }
 
 function buildTextQuery(query: PlaceResolutionQuery, locationContext: string | null) {
@@ -248,6 +314,26 @@ function matchesLocationContext(address: string | null | undefined, locationCont
   const normalizedAddress = normalizeText(address);
   const normalizedContext = normalizeText(locationContext);
   if (!normalizedContext) return true;
+
+  if (normalizedContext.includes("miami")) {
+    return [
+      "miami",
+      "miami beach",
+      "south beach",
+      "wynwood",
+      "brickell",
+      "fl",
+      "florida",
+      "united states"
+    ].some((token) => normalizedAddress.includes(token));
+  }
+
+  if (normalizedContext.includes("barcelona")) {
+    return ["barcelona", "catalonia", "catalunya", "spain", "espana"].some((token) =>
+      normalizedAddress.includes(token)
+    );
+  }
+
   const contextTokens = normalizedContext
     .split(" ")
     .filter((token) => token.length > 2 && !["trip", "weekend", "travel", "planner"].includes(token));
@@ -257,6 +343,10 @@ function matchesLocationContext(address: string | null | undefined, locationCont
 
 function safeAddressPreview(address: string | null | undefined) {
   return String(address || "").slice(0, 120);
+}
+
+function safeQueryPreview(value: string | null | undefined) {
+  return String(value || "").replace(/\s+/g, " ").trim().slice(0, 90);
 }
 
 function normalizeText(value: string) {

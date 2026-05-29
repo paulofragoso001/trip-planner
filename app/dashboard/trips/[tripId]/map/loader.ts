@@ -2,6 +2,7 @@ import "server-only";
 
 import type { TripMapItem } from "@/components/TripMap";
 import { authorizeDashboardApi } from "@/lib/server/dashboard-test-auth";
+import { resolveUnmappedPhysicalTripSegments } from "@/lib/server/trip-segment-location-resolution";
 import { listTripRecommendations } from "@/lib/server/travel-recommendations";
 import { isDemoTripId, isUuid } from "@/lib/server/trip-id";
 
@@ -35,6 +36,8 @@ export type TripRecommendationView = {
 
 type TripRow = {
   destination: string | null;
+  name?: string | null;
+  title?: string | null;
 };
 
 type TripSegmentMapRow = {
@@ -76,13 +79,37 @@ export async function loadTripMapData(tripId: string): Promise<TripMapData> {
     return emptyMapData(tripId, "Sign in to load trip map data.");
   }
 
-  const [tripResult, itemResult, recommendationsResult] = await Promise.all([
-    auth.supabase
-      .from("trips")
-      .select("destination")
-      .eq("id", tripId)
-      .eq("user_id", auth.userId)
-      .maybeSingle(),
+  const tripResult = await auth.supabase
+    .from("trips")
+    .select("destination,name,title")
+    .eq("id", tripId)
+    .eq("user_id", auth.userId)
+    .maybeSingle();
+
+  if (tripResult.error) {
+    return emptyMapData(tripId, "Could not load trip map data.");
+  }
+
+  if (!tripResult.data) {
+    return emptyMapData(tripId, "Trip not found.");
+  }
+
+  const trip = tripResult.data as TripRow;
+  await resolveUnmappedPhysicalTripSegments(auth.supabase as any, auth.userId, tripId, trip).catch(
+    (error) => {
+      console.info(
+        JSON.stringify({
+          area: "trip_segments",
+          error: error instanceof Error ? error.message : "Unknown location retry failure.",
+          event: "segment_location_retry_failed",
+          tripId,
+          userId: auth.userId
+        })
+      );
+    }
+  );
+
+  const [itemResult, recommendationsResult] = await Promise.all([
     auth.supabase
       .from("trip_segments")
       .select("id,title,location,lat,lng")
@@ -93,15 +120,10 @@ export async function loadTripMapData(tripId: string): Promise<TripMapData> {
     listTripRecommendations(auth.supabase as any, auth.userId, tripId).catch(() => [])
   ]);
 
-  if (tripResult.error || itemResult.error) {
+  if (itemResult.error) {
     return emptyMapData(tripId, "Could not load trip map data.");
   }
 
-  if (!tripResult.data) {
-    return emptyMapData(tripId, "Trip not found.");
-  }
-
-  const trip = tripResult.data as TripRow;
   const rows = (itemResult.data || []) as TripSegmentMapRow[];
   const mappedRows = rows.filter(
     (row) => typeof row.lat === "number" && typeof row.lng === "number"

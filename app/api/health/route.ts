@@ -1,18 +1,20 @@
 import { NextResponse } from "next/server";
 import { validateEnv } from "@/lib/server/env";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getGooglePlaceResolutionConfig } from "@/lib/travel-data/providers/google-places";
 import { getFlightRefreshHealth } from "@/workers/monitor.worker";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   const timestamp = new Date().toISOString();
-  const [envCheck, supabaseCheck, queueCheck] = await Promise.all([
+  const [envCheck, supabaseCheck, queueCheck, travelProvidersCheck] = await Promise.all([
     checkEnv(),
     checkSupabase(),
-    checkFlightRefreshQueue()
+    checkFlightRefreshQueue(),
+    checkTravelProviders()
   ]);
-  const coreHealthy = envCheck.ok && supabaseCheck.ok;
+  const coreHealthy = envCheck.ok && supabaseCheck.ok && travelProvidersCheck.ok;
   const status = coreHealthy ? 200 : 503;
 
   return NextResponse.json(
@@ -20,7 +22,8 @@ export async function GET() {
       checks: {
         env: envCheck,
         flightRefreshQueue: queueCheck,
-        supabase: supabaseCheck
+        supabase: supabaseCheck,
+        travelProviders: travelProvidersCheck
       },
       service: "wayline",
       status: coreHealthy ? "healthy" : "unhealthy",
@@ -80,4 +83,24 @@ async function checkFlightRefreshQueue() {
       optional: true
     };
   }
+}
+
+async function checkTravelProviders() {
+  const googlePlaces = getGooglePlaceResolutionConfig();
+
+  if (!googlePlaces.configured) {
+    return {
+      googlePlaces: {
+        configured: false,
+        serverKeyConfigured: false
+      },
+      error: "GOOGLE_PLACES_API_KEY or GOOGLE_MAPS_API_KEY is not configured.",
+      ok: false
+    };
+  }
+
+  return {
+    googlePlaces,
+    ok: true
+  };
 }

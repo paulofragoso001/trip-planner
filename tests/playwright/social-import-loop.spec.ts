@@ -16,6 +16,11 @@ const socialWorkerSecret =
   readLocalEnv("SOCIAL_IMPORT_WORKER_SECRET") ||
   readLocalEnv("CALENDAR_SYNC_WORKER_SECRET") ||
   readLocalEnv("FLIGHT_REFRESH_CRON_SECRET");
+const googlePlaceResolutionKey =
+  process.env.GOOGLE_PLACES_API_KEY ||
+  process.env.GOOGLE_MAPS_API_KEY ||
+  readLocalEnv("GOOGLE_PLACES_API_KEY") ||
+  readLocalEnv("GOOGLE_MAPS_API_KEY");
 
 test("social inspiration import promotes to timeline/map and generates a plan", async ({
   page,
@@ -317,6 +322,49 @@ test("Miami social inspiration extraction returns only real travel candidates", 
       await admin.from("imported_social_posts").delete().eq("id", importId);
     }
     await admin.from("imported_social_posts").delete().eq("source_title", sourceTitle);
+  }
+});
+
+test("Google place resolution maps physical Miami stops with destination context", async ({
+  request
+}) => {
+  test.setTimeout(60_000);
+  test.skip(
+    !googlePlaceResolutionKey,
+    "Google place resolution requires GOOGLE_PLACES_API_KEY or GOOGLE_MAPS_API_KEY"
+  );
+
+  const preflight = await request.get(`${baseUrl}/api/social-imports`, {
+    headers: dashboardHeaders
+  });
+
+  test.skip(
+    preflight.status() !== 200,
+    "place resolution regression requires dashboard test auth to be enabled"
+  );
+
+  for (const name of [
+    "Wynwood Walls",
+    "Komodo",
+    "Brickell City Centre",
+    "South Pointe Park"
+  ]) {
+    const response = await request.post(`${baseUrl}/api/travel-data/resolve-place`, {
+      data: {
+        city: "Miami",
+        country: "United States",
+        locationHint: "Miami, FL",
+        name
+      },
+      headers: dashboardHeaders
+    });
+    expect(response.status()).toBe(200);
+    const payload = await response.json();
+    const resolved = payload?.data?.resolved;
+    expect(resolved?.provider).toBe("google_places");
+    expect(typeof resolved?.latitude).toBe("number");
+    expect(typeof resolved?.longitude).toBe("number");
+    expect(String(resolved?.address || "").toLowerCase()).not.toContain("fort lauderdale");
   }
 });
 

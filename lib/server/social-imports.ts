@@ -544,7 +544,7 @@ export async function promoteExtractedPlace(
   }
 
   if (typeof place.latitude !== "number" || typeof place.longitude !== "number") {
-    if (isTourOrActivityPlace(place)) {
+    if (isUnmappedActivityIdea(place)) {
       return promoteUnmappedActivityPlace(supabase, userId, place, tripId);
     }
 
@@ -756,6 +756,19 @@ async function resolveExtractedPlaceForPromotion(
   const payload = isRecord(place.ai_payload) ? place.ai_payload : {};
   const locationContext =
     place.city || readString(payload.locationHint) || trip?.destination || null;
+  const resolutionQuery = [
+    place.name,
+    locationContext,
+    place.country
+  ].filter(Boolean).join(" ");
+  logSocialImportEvent("place_resolution_started", {
+    category: place.category || null,
+    cityContext: locationContext || null,
+    extractedPlaceId: id,
+    query: sanitizeLogPreview(resolutionQuery),
+    tripId,
+    userId
+  });
   const resolved = await resolveTravelPlace(
     {
       address: place.address || null,
@@ -773,6 +786,15 @@ async function resolveExtractedPlaceForPromotion(
   );
 
   if (typeof resolved.latitude !== "number" || typeof resolved.longitude !== "number") {
+    logSocialImportEvent("place_resolution_unresolved", {
+      category: place.category || null,
+      cityContext: locationContext || null,
+      extractedPlaceId: id,
+      provider: resolved.provider || null,
+      tripId,
+      userId
+    });
+
     await supabase
       .from("extracted_places")
       .update({ status: "needs_location_confirmation" })
@@ -789,7 +811,13 @@ async function resolveExtractedPlaceForPromotion(
       country: resolved.country || place.country,
       latitude: resolved.latitude,
       longitude: resolved.longitude,
-      place_id: resolved.placeId || place.place_id
+      place_id: resolved.placeId || place.place_id,
+      ai_payload: {
+        ...(isRecord(place.ai_payload) ? place.ai_payload : {}),
+        provider: resolved.provider,
+        providerMetadata: resolved.inventoryItem?.metadata || {},
+        resolvedAt: new Date().toISOString()
+      }
     })
     .eq("id", id)
     .eq("user_id", userId)
@@ -808,8 +836,11 @@ async function resolveExtractedPlaceForPromotion(
   }
 
   logSocialImportEvent("place_resolved", {
+    address: sanitizeLogPreview(resolved.address || ""),
     extractedPlaceId: id,
+    hasCoordinates: true,
     provider: resolved.provider || "google_places",
+    providerPlaceId: resolved.placeId ? "present" : "missing",
     tripId,
     userId
   });
@@ -1793,15 +1824,18 @@ function isMissingDestination(value: string | null | undefined) {
   return !normalized || normalized === "destination not set" || normalized === "not set";
 }
 
-function isTourOrActivityPlace(place: Record<string, any>) {
+function isUnmappedActivityIdea(place: Record<string, any>) {
   const text = normalizeCopy([
-    place.category,
     place.name,
     place.travel_note,
     place.description,
     ...(readStringArray(place.evidence) || [])
   ].filter(Boolean).join(" "));
-  return /\b(tour|activity|experience|excursion|boat|cruise|guided)\b/.test(text);
+  const category = normalizeCategory(String(place.category || ""));
+  return (
+    category === "tour" ||
+    /\b(tour|experience|excursion|boat|cruise|guided|provider|meeting point)\b/.test(text)
+  );
 }
 
 function titleFromUrl(value: string) {
