@@ -1,6 +1,30 @@
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import { Sparkles, MapPinned, Route, Lightbulb } from "lucide-react";
 import { signOut } from "@/app/actions";
+import { createClient } from "@/lib/supabase/server";
+
+const features = [
+  {
+    description: "Paste travel notes, links, or screenshots from the ideas you already saved.",
+    icon: Sparkles,
+    title: "Add inspiration"
+  },
+  {
+    description: "Confirm the places Wayline finds before they become part of your trip.",
+    icon: MapPinned,
+    title: "Review places"
+  },
+  {
+    description: "Turn approved stops into a day-by-day plan with a route-ready map.",
+    icon: Route,
+    title: "Build your route"
+  },
+  {
+    description: "Discover nearby food, activities, and ideas around your confirmed stops.",
+    icon: Lightbulb,
+    title: "Get smart suggestions"
+  }
+];
 
 export default async function HomePage() {
   const supabase = await createClient();
@@ -9,84 +33,89 @@ export default async function HomePage() {
   } = await supabase.auth.getUser();
 
   return (
-    <main className="min-h-screen px-6 py-8">
-      <section className="mx-auto grid max-w-6xl gap-8 lg:grid-cols-[1.15fr_0.85fr] lg:items-center">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-[0.12em] text-slate-500">
-            Wayline Travel
-          </p>
-          <h1 className="mt-3 max-w-3xl text-4xl font-black leading-tight tracking-tight text-ink md:text-6xl">
-            Auth-ready travel planning for every itinerary workflow.
-          </h1>
-          <p className="mt-5 max-w-2xl text-lg leading-8 text-slate-600">
-            This Next.js version includes Supabase authentication, Tailwind styling,
-            protected dashboard access, and a clean foundation for moving the
-            existing itinerary prototype into a production app.
-          </p>
-          <div className="mt-8 flex flex-wrap gap-3">
-            {user ? (
-              <>
-                <Link
-                  href="/dashboard"
-                  className="rounded-lg bg-brand px-5 py-3 text-sm font-bold text-white shadow-panel transition hover:bg-blue-700"
-                >
-                  Open dashboard
-                </Link>
+    <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(37,99,235,0.12),transparent_34%),linear-gradient(180deg,#f8fafc,#eef4fb)] px-5 py-6 sm:px-6 lg:px-8">
+      <section className="mx-auto flex max-w-6xl flex-col gap-10 py-10 sm:py-14 lg:min-h-[calc(100vh-8rem)] lg:justify-center">
+        <div className="grid gap-8 lg:grid-cols-[1.08fr_0.92fr] lg:items-center">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.24em] text-brand">
+              Wayline
+            </p>
+            <h1 className="mt-4 max-w-4xl text-4xl font-black leading-[0.98] tracking-tight text-ink sm:text-5xl lg:text-7xl">
+              Turn saved travel ideas into mapped trip plans.
+            </h1>
+            <p className="mt-6 max-w-2xl text-base leading-8 text-slate-600 sm:text-lg">
+              Paste travel notes, links, or screenshots. Wayline finds the places,
+              builds your trip, maps your stops, and suggests what to do nearby.
+            </p>
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+              <Link
+                className="inline-flex min-h-12 items-center justify-center rounded-xl bg-brand px-6 py-3 text-sm font-black text-white shadow-panel transition hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-200"
+                href={user ? "/dashboard/imports" : "/signup"}
+              >
+                Plan with AI
+              </Link>
+              <Link
+                className="inline-flex min-h-12 items-center justify-center rounded-xl border border-line bg-white px-6 py-3 text-sm font-black text-ink shadow-sm transition hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-blue-100"
+                href={user ? "/dashboard" : "/login"}
+              >
+                {user ? "Open dashboard" : "Log in"}
+              </Link>
+              {user ? (
                 <form action={signOut}>
-                  <button className="rounded-lg border border-line bg-white px-5 py-3 text-sm font-bold text-ink transition hover:bg-slate-50">
+                  <button className="inline-flex min-h-12 w-full items-center justify-center rounded-xl border border-line bg-white px-6 py-3 text-sm font-black text-slate-600 transition hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-blue-100 sm:w-auto">
                     Sign out
                   </button>
                 </form>
-              </>
-            ) : (
-              <>
-                <Link
-                  href="/signup"
-                  className="rounded-lg bg-brand px-5 py-3 text-sm font-bold text-white shadow-panel transition hover:bg-blue-700"
-                >
-                  Create account
-                </Link>
-                <Link
-                  href="/login"
-                  className="rounded-lg border border-line bg-white px-5 py-3 text-sm font-bold text-ink transition hover:bg-slate-50"
-                >
-                  Log in
-                </Link>
-              </>
-            )}
+              ) : null}
+            </div>
           </div>
-        </div>
 
-        <div className="rounded-lg border border-line bg-white p-5 shadow-panel">
-          <div className="rounded-lg bg-slate-950 p-5 text-white">
-            <p className="text-xs font-bold uppercase tracking-[0.12em] text-emerald-200">
-              Auth stack
-            </p>
-            <div className="mt-5 grid gap-3">
-              {["Next.js App Router", "Supabase Auth", "Cookie-based SSR", "Tailwind UI system"].map(
-                (item) => (
-                  <div
-                    key={item}
-                    className="flex items-center justify-between rounded-lg border border-white/10 bg-white/5 px-4 py-3"
-                  >
-                    <span className="font-semibold">{item}</span>
-                    <span className="rounded-full bg-emerald-300 px-2 py-1 text-xs font-black text-emerald-950">
-                      Ready
-                    </span>
-                  </div>
-                )
-              )}
+          <div className="rounded-[2rem] border border-white/80 bg-white/85 p-4 shadow-[0_24px_80px_rgba(15,23,42,0.12)] backdrop-blur">
+            <div className="rounded-[1.5rem] bg-slate-950 p-5 text-white">
+              <p className="text-xs font-black uppercase tracking-[0.22em] text-blue-200">
+                From idea to itinerary
+              </p>
+              <div className="mt-5 grid gap-3">
+                {features.map((feature) => {
+                  const Icon = feature.icon;
+                  return (
+                    <div
+                      className="rounded-2xl border border-white/10 bg-white/[0.06] p-4"
+                      key={feature.title}
+                    >
+                      <div className="flex items-start gap-3">
+                        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white text-brand">
+                          <Icon aria-hidden="true" className="h-5 w-5" />
+                        </span>
+                        <div>
+                          <h2 className="text-base font-black">{feature.title}</h2>
+                          <p className="mt-1 text-sm leading-6 text-slate-300">
+                            {feature.description}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
         </div>
       </section>
-      <footer className="mx-auto mt-10 flex max-w-6xl flex-wrap gap-4 border-t border-line pt-5 text-sm font-semibold text-slate-600">
+
+      <footer className="mx-auto flex max-w-6xl flex-wrap gap-4 border-t border-line/80 py-5 text-sm font-bold text-slate-600">
         <Link className="hover:text-ink" href="/privacy">
           Privacy
         </Link>
         <Link className="hover:text-ink" href="/terms">
           Terms
         </Link>
+        <a className="hover:text-ink" href="mailto:hello@wayline.app">
+          Contact
+        </a>
+        <a className="hover:text-ink" href="mailto:feedback@wayline.app">
+          Feedback
+        </a>
       </footer>
     </main>
   );
