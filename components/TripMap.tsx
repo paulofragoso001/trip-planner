@@ -29,7 +29,7 @@ type TripMapProps = {
   selectedId?: string | null;
   onSelect?: (id: string) => void;
   travelMode?: TripTravelMode;
-  height?: number;
+  height?: number | string;
 };
 
 const fallbackCenter = { lat: 25.7617, lng: -80.1918 };
@@ -56,7 +56,10 @@ export default function TripMap({
   const routeInfo = useMemo(() => getRouteInfo(items), [items]);
   const legsInfo = useMemo(() => getLegsInfo(items), [items]);
   const containerStyle = useMemo(
-    () => ({ width: "100%", height: `${height}px` }),
+    () => ({
+      height: typeof height === "number" ? `${height}px` : height,
+      width: "100%"
+    }),
     [height]
   );
 
@@ -120,7 +123,13 @@ export default function TripMap({
         onLoad={(map) => {
           mapRef.current = map;
         }}
-        options={{ streetViewControl: false, mapTypeControl: false }}
+        options={{
+          clickableIcons: true,
+          fullscreenControl: false,
+          gestureHandling: "greedy",
+          mapTypeControl: false,
+          streetViewControl: false
+        }}
         zoom={12}
       >
         {items.map((item) => (
@@ -181,11 +190,11 @@ export default function TripMap({
   );
 }
 
-function MapUnavailable({ height, message }: { height: number; message: string }) {
+function MapUnavailable({ height, message }: { height: number | string; message: string }) {
   return (
     <div
       className="grid place-items-center bg-slate-100 p-6 text-center text-sm font-bold text-slate-600"
-      style={{ height }}
+      style={{ height: typeof height === "number" ? `${height}px` : height }}
     >
       <p className="max-w-sm">{message}</p>
     </div>

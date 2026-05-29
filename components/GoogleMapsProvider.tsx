@@ -52,7 +52,7 @@ function GoogleMapsLoader({ apiKey, children }: GoogleMapsLoaderProps) {
 
 function MapWarning({ children }: { children: ReactNode }) {
   return (
-    <div className="fixed bottom-4 left-1/2 z-50 w-[min(420px,calc(100vw-32px))] -translate-x-1/2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-center text-xs font-semibold text-amber-800 shadow-panel">
+    <div className="fixed bottom-[calc(6rem+env(safe-area-inset-bottom))] left-1/2 z-30 w-[min(420px,calc(100vw-32px))] -translate-x-1/2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-center text-xs font-semibold text-amber-800 shadow-panel lg:bottom-4 lg:z-50">
       {children}
     </div>
   );

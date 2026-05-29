@@ -17,7 +17,7 @@ export default function TripMapPage({
 }: TripMapPageProps) {
   return (
     <div className="grid min-h-[calc(100dvh-220px)] gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
-      <section className="flex min-h-[520px] min-w-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm sm:min-h-[560px]">
+      <section className="flex min-h-[480px] min-w-0 flex-col rounded-2xl border border-slate-200 bg-white shadow-sm sm:min-h-[560px]">
         <div className="border-b border-slate-200 px-4 py-4 sm:px-5">
           <h2 className="text-lg font-black">Trip map</h2>
           <p className="mt-1 text-sm text-slate-600">

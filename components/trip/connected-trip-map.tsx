@@ -33,9 +33,9 @@ export function ConnectedTripMap({
     <div className="grid h-full min-h-0 gap-4" data-testid="connected-trip-map">
       {items.length ? (
         <GoogleMapsProvider>
-          <div className="min-h-[360px] overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 sm:min-h-[420px]">
+          <div className="min-h-[320px] overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 sm:min-h-[420px]">
             <TripMap
-              height={420}
+              height="clamp(320px, 58dvh, 520px)"
               items={items}
               selectedId={selectedId}
               onSelect={setSelectedId}
