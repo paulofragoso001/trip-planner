@@ -5,8 +5,9 @@ import "./globals.css";
 validateEnv();
 
 export const metadata: Metadata = {
-  title: "Wayline Travel",
-  description: "AI travel command center with Supabase authentication."
+  title: "Wayline — AI Travel Planner",
+  description:
+    "Turn saved travel ideas into mapped trip plans with smart nearby suggestions."
 };
 
 export default function RootLayout({
