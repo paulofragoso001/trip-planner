@@ -25,7 +25,7 @@ const endpointAudits: EndpointAudit[] = [
     family: "itinerary",
     legacyFields: "removed",
     method: "GET",
-    regressionFocus: "Timeline and map consumers must load itinerary reads from data.itinerary.",
+    regressionFocus: "Itinerary and map consumers must load itinerary reads from data.itinerary.",
     route: "/api/itinerary"
   },
   {

@@ -103,7 +103,7 @@ export default function DraggableList<TItem extends DraggableItem>({
           className="mt-5 grid gap-3"
           data-testid="timeline-list"
           role="list"
-          aria-label="Trip timeline"
+          aria-label="Trip itinerary"
         >
           {items.map((item, index) => {
             const currentDateKey = item.date_time ? new Date(item.date_time).toDateString() : "unscheduled";

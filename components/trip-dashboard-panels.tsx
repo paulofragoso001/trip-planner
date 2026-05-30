@@ -317,7 +317,7 @@ export function SelectedTripPanel({
       <BudgetCollaborativeMapPanel trip={trip} />
 
       <div id="trip-timeline-panel">
-        <PanelErrorBoundary fallbackTitle="Timeline and import panel">
+        <PanelErrorBoundary fallbackTitle="Itinerary and import panel">
           <TimelineImportPanelLoader trip={trip} />
         </PanelErrorBoundary>
       </div>
@@ -348,7 +348,7 @@ function TripWorkspaceTabs({ trip }: { trip: Trip }) {
         {
           badge: String(itineraryItems.length),
           id: "timeline",
-          label: "Timeline"
+          label: "Itinerary"
         },
         {
           badge: String(mappedItems.length),

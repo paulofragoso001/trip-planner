@@ -28,7 +28,7 @@ export function ItineraryTimeline({ items }: ItineraryTimelineProps) {
   return (
     <div className="mt-4 rounded-lg bg-white p-4 ring-1 ring-line">
       <p className="text-xs font-bold uppercase tracking-[0.12em] text-slate-500">
-        Timeline
+        Itinerary
       </p>
 
       <div className="mt-4 grid gap-5">

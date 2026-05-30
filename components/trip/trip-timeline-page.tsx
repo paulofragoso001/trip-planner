@@ -1,14 +1,20 @@
 import Link from "next/link";
 import {
   AlertTriangle,
-  CalendarCheck,
-  CheckCircle2,
+  Bed,
+  CalendarDays,
+  Car,
   Clock,
-  Hotel,
+  Flag,
+  Landmark,
   MapPin,
+  MoreHorizontal,
   Plane,
+  Plus,
   ReceiptText,
-  Route,
+  Share2,
+  Sparkles,
+  Train,
   Utensils
 } from "lucide-react";
 import type { ReactNode } from "react";
@@ -21,13 +27,12 @@ import { CalendarSyncPanel } from "@/components/trip/calendar-sync-panel";
 import { GeneratePlanButton } from "@/components/trip/generate-plan-button";
 import { TripSegmentDeleteButton } from "@/components/trip/trip-segment-delete-button";
 import { TripSegmentForm } from "@/components/trip/trip-segment-form";
+import { EmptyState, StatusBadge } from "@/components/trip-ui";
 import { waylineCopy } from "@/lib/copy/wayline-copy";
-import { timelineStatusClass, timelineStatusLabel } from "@/lib/ui/timeline";
 
 type TripTimelinePageProps = TripTimelineData;
 
 export default function TripTimelinePage({
-  dayTabs,
   days,
   description,
   error,
@@ -36,147 +41,305 @@ export default function TripTimelinePage({
   title,
   tripId
 }: TripTimelinePageProps) {
-  const timelineItemIds = days.flatMap((day) => day.items.map((item) => item.id));
+  const items = days.flatMap((day) => day.items);
+  const timelineItemIds = items.map((item) => item.id);
 
   return (
-    <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
+    <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
       <section className="min-w-0">
-        <div className="flex flex-col gap-4 border-b border-slate-200 pb-5 2xl:flex-row 2xl:items-end 2xl:justify-between">
-          <div className="min-w-0">
-            <h2 className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">Itinerary</h2>
-            <p className="mt-1 break-words text-2xl font-black tracking-tight text-slate-950 sm:text-3xl">{title}</p>
-            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">{description}</p>
-          </div>
-
-          <div className="grid grid-cols-3 gap-2 sm:min-w-[360px]">
-            <StatPill label="Places" value={String(stats.totalItems)} />
-            <StatPill label="Mapped" value={String(stats.mappedStops)} />
-            <StatPill label="Needs location" value={String(stats.alerts)} />
-          </div>
-        </div>
+        <ItineraryHero
+          description={description}
+          stats={stats}
+          title={title}
+          tripId={tripId}
+        />
 
         {error ? (
-          <p className="mt-4 rounded-xl bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
+          <p className="mt-4 rounded-2xl bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
             {error}
           </p>
         ) : null}
 
-        {dayTabs.length ? (
-          <div
-            aria-label="Trip days"
-            className="mt-5 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm"
-          >
-            <div className="flex gap-3 overflow-x-auto pb-1">
-            {dayTabs.map((day, index) => (
-              <a
-                className={[
-                  "min-w-[128px] rounded-xl border px-4 py-3 text-left transition",
-                  index === 0
-                    ? "border-slate-950 bg-slate-950 text-white shadow-sm"
-                    : "border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100"
-                ].join(" ")}
-                href={day.href}
-                key={day.date}
-              >
-                <span className="block text-xs font-bold uppercase tracking-[0.18em] opacity-75">
-                  {day.label}
-                </span>
-                <span className="mt-1 block text-sm font-black">{day.date}</span>
-                <span className="mt-1 block text-xs font-semibold opacity-80">
-                  {day.count} place{day.count === 1 ? "" : "s"}
-                </span>
-              </a>
-            ))}
-            </div>
-          </div>
-        ) : null}
-
-        <div className="mt-8 grid gap-10">
-          {days.length ? (
-            days.map((day) => (
-            <section className="grid gap-4 scroll-mt-24" id={day.id} key={day.id}>
-              <div className="grid gap-4 md:grid-cols-[104px_minmax(0,1fr)]">
-                <div className="md:self-start">
-                  <div className="rounded-2xl bg-slate-950 px-4 py-4 text-white shadow-sm">
-                    <span className="block text-xs font-bold uppercase tracking-[0.16em] text-slate-300">
-                      {day.label}
+        {days.length ? (
+          <div className="mt-5 grid gap-5">
+            {days.map((day) => (
+              <section className="scroll-mt-24" id={day.id} key={day.id}>
+                <div className="sticky top-14 z-10 -mx-3 border-y border-slate-200 bg-slate-100/95 px-3 py-2 backdrop-blur sm:static sm:mx-0 sm:rounded-2xl sm:border sm:px-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <h3 className="truncate text-xs font-black uppercase tracking-[0.2em] text-slate-700">
+                        {day.date}
+                      </h3>
+                      <p className="mt-1 text-xs font-semibold text-slate-500">
+                        {day.summary}
+                      </p>
+                    </div>
+                    <span className="shrink-0 rounded-full bg-white px-3 py-1 text-xs font-black text-slate-700">
+                      {day.items.length} place{day.items.length === 1 ? "" : "s"}
                     </span>
-                    <span className="mt-1 block text-3xl font-black leading-none">{day.dayNumber}</span>
                   </div>
                 </div>
 
-                <div className="min-w-0">
-                  <div className="mb-3 flex flex-col gap-1 border-b border-slate-200 pb-3 sm:flex-row sm:items-end sm:justify-between">
-                    <div>
-                      <h3 className="text-xl font-black text-slate-950">{day.date}</h3>
-                      <p className="text-sm text-slate-600">{day.summary}</p>
-                    </div>
-                  <div className="flex flex-wrap gap-2 text-xs font-bold uppercase tracking-[0.12em] text-slate-500">
-                      <span>{day.items.length} place{day.items.length === 1 ? "" : "s"}</span>
-                      <span>{formatDistance(day.routeSummary.totalDistanceMeters)}</span>
-                      <span>{formatDuration(day.routeSummary.estimatedDurationMinutes)}</span>
-                    </div>
-                  </div>
-
-                  {day.routeSummary.warnings.length ? (
-                    <div className="mb-3 grid gap-2">
-                      {day.routeSummary.warnings.map((warning) => (
-                        <p
-                          className="rounded-xl bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-800"
-                          key={warning.code}
-                        >
-                          {warning.message}
-                        </p>
-                      ))}
-                    </div>
-                  ) : null}
-
-                  <DayRoutePreview
-                    day={day}
-                    tripId={tripId}
-                  />
-
-                  <div className="grid gap-4">
-                    {groupItemsByDayPart(day.items).map((group) => (
-                      <section className="grid gap-3" key={group.label}>
-                        <div className="flex items-center gap-3">
-                          <h4 className="text-xs font-black uppercase tracking-[0.18em] text-slate-500">
-                            {group.label}
-                          </h4>
-                          <span className="h-px flex-1 bg-slate-200" />
-                        </div>
-                        <div className="relative grid gap-3">
-                          <div className="absolute bottom-8 left-[23px] top-8 hidden w-px bg-slate-200 sm:block" />
-                          {group.items.map((item) => (
-                            <TimelineCard item={item} key={item.id} tripId={tripId} />
-                          ))}
-                        </div>
-                      </section>
-                    ))}
-                  </div>
+                <div className="mt-4 grid gap-0">
+                  {day.items.map((item, index) => (
+                    <ItineraryRow
+                      isLast={index === day.items.length - 1}
+                      item={item}
+                      key={item.id}
+                      tripId={tripId}
+                    />
+                  ))}
                 </div>
-              </div>
-            </section>
-            ))
-          ) : (
-            <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-5 py-8 text-sm text-slate-600">
-              <p className="font-bold text-slate-950">No places yet.</p>
-              <p className="mt-1">{waylineCopy.emptyStates.timeline}</p>
-            </div>
-          )}
-        </div>
+              </section>
+            ))}
+          </div>
+        ) : (
+          <div className="mt-5">
+            <EmptyState
+              action={
+                <div className="grid gap-2 sm:flex sm:flex-wrap">
+                  <Link
+                    className="inline-flex min-h-11 items-center justify-center rounded-2xl bg-blue-600 px-4 text-sm font-black text-white"
+                    href="/dashboard/imports"
+                  >
+                    Plan with AI
+                  </Link>
+                  <Link
+                    className="inline-flex min-h-11 items-center justify-center rounded-2xl bg-white px-4 text-sm font-black text-slate-800 ring-1 ring-slate-200"
+                    href="#new-plan"
+                  >
+                    Add place
+                  </Link>
+                </div>
+              }
+              description="Add inspiration or create a place to start building your trip."
+              title="No itinerary yet."
+            />
+          </div>
+        )}
       </section>
 
       <aside className="grid content-start gap-4 xl:sticky xl:top-24 xl:self-start">
-        <TimelineTools firstFlight={firstFlight} tripId={tripId} timelineItemIds={timelineItemIds} />
-        <TripOpsSummary mappedStops={stats.mappedStops} readyItems={stats.readyItems} totalItems={stats.totalItems} watchItems={stats.alerts} />
+        <ItineraryActions firstFlight={firstFlight} timelineItemIds={timelineItemIds} tripId={tripId} />
+        <ItinerarySummary stats={stats} />
         <CalendarSyncPanel tripId={tripId} />
       </aside>
+
+      <Link
+        aria-label="Add itinerary item"
+        className="fixed bottom-[calc(6rem+env(safe-area-inset-bottom))] right-4 z-30 grid h-14 w-14 place-items-center rounded-full bg-blue-600 text-white shadow-2xl ring-4 ring-white transition hover:bg-blue-700 focus:outline-none focus:ring-blue-200 md:hidden"
+        href="#new-plan"
+      >
+        <Plus className="h-6 w-6" aria-hidden="true" />
+      </Link>
     </div>
   );
 }
 
-function TimelineTools({
+function ItineraryHero({
+  description,
+  stats,
+  title,
+  tripId
+}: {
+  description: string;
+  stats: TripTimelineData["stats"];
+  title: string;
+  tripId: string;
+}) {
+  return (
+    <header className="overflow-hidden rounded-[1.75rem] border border-slate-200 bg-white shadow-sm">
+      <div className="grid gap-4 p-4 sm:p-5 md:grid-cols-[minmax(0,1fr)_180px] md:items-stretch">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 text-sm font-black text-slate-600">
+            <Link className="rounded-full bg-slate-100 px-3 py-2 transition hover:bg-slate-200" href="/dashboard/trips">
+              Back
+            </Link>
+            <span className="text-xs uppercase tracking-[0.18em] text-blue-600">Itinerary</span>
+          </div>
+          <h1 className="mt-4 break-words text-3xl font-black leading-tight tracking-tight text-slate-950 sm:text-4xl">
+            {title}
+          </h1>
+          <p className="mt-2 max-w-2xl text-sm font-semibold leading-6 text-slate-600">
+            {description}
+          </p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <StatusBadge tone="blue">{stats.totalItems} places</StatusBadge>
+            <StatusBadge tone={stats.mappedStops ? "green" : "slate"}>
+              {stats.mappedStops} mapped
+            </StatusBadge>
+            <StatusBadge tone={stats.alerts ? "amber" : "green"}>
+              {stats.alerts} needs location
+            </StatusBadge>
+          </div>
+        </div>
+
+        <div className="relative min-h-28 overflow-hidden rounded-3xl bg-[linear-gradient(135deg,#2563eb,#0f172a)] p-4 text-white">
+          <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-white/20" />
+          <div className="absolute -bottom-8 left-5 h-24 w-24 rounded-full bg-sky-300/20" />
+          <div className="relative flex h-full flex-col justify-between gap-4">
+            <div className="flex justify-end gap-2">
+              <Link
+                aria-label="Share trip"
+                className="grid h-10 w-10 place-items-center rounded-full bg-white/15 backdrop-blur transition hover:bg-white/25"
+                href={`/dashboard/trips/${tripId}/sharing`}
+              >
+                <Share2 className="h-4 w-4" />
+              </Link>
+              <button
+                aria-label="More itinerary actions"
+                className="grid h-10 w-10 place-items-center rounded-full bg-white/15 backdrop-blur"
+                type="button"
+              >
+                <MoreHorizontal className="h-4 w-4" />
+              </button>
+            </div>
+            <p className="text-sm font-black">Route-ready trip plan</p>
+          </div>
+        </div>
+      </div>
+    </header>
+  );
+}
+
+function ItineraryRow({
+  isLast,
+  item,
+  tripId
+}: {
+  isLast: boolean;
+  item: TimelineItemView;
+  tripId: string;
+}) {
+  const display = getSegmentDisplay(item);
+  const status = getItemStatus(item);
+
+  return (
+    <article className="grid grid-cols-[68px_34px_minmax(0,1fr)] gap-2 sm:grid-cols-[92px_44px_minmax(0,1fr)] sm:gap-3">
+      <div className="pt-5 text-right">
+        <p className="text-sm font-black text-slate-950">{formatPrimaryTime(item)}</p>
+        <p className="mt-1 text-[0.65rem] font-bold uppercase tracking-[0.12em] text-slate-500">
+          {item.startAt ? "Local" : "Anytime"}
+        </p>
+      </div>
+
+      <div className="relative flex justify-center">
+        {!isLast ? <span className={`absolute bottom-0 top-0 w-0.5 ${display.lineClass}`} /> : null}
+        <span className={`relative mt-5 grid h-9 w-9 place-items-center rounded-full border-4 border-white shadow-sm ${display.iconClass}`}>
+          {display.icon}
+        </span>
+      </div>
+
+      <div className="min-w-0 pb-4 pt-3">
+        <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm transition hover:border-slate-300 hover:shadow-md sm:p-4">
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div className="min-w-0">
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">
+                {display.label}
+              </p>
+              <h4 className="mt-1 break-words text-lg font-black leading-tight text-slate-950">
+                {item.title}
+              </h4>
+            </div>
+            <span className={status.className}>{status.label}</span>
+          </div>
+
+          <div className="mt-3 grid gap-2 text-sm text-slate-700">
+            <Detail icon={<Clock className="h-4 w-4" />} value={item.timeRange} />
+            <Detail icon={<MapPin className="h-4 w-4" />} value={item.location} />
+            {item.confirmationCode ? (
+              <Detail icon={<ReceiptText className="h-4 w-4" />} value={`Confirmation ${item.confirmationCode}`} />
+            ) : null}
+            {item.durationLabel ? <Detail icon={<CalendarDays className="h-4 w-4" />} value={item.durationLabel} /> : null}
+            {item.provider ? <Detail icon={<Sparkles className="h-4 w-4" />} value={item.provider.replace(/_/g, " ")} /> : null}
+          </div>
+
+          <StateCopy item={item} />
+
+          {item.notes ? (
+            <details className="mt-3">
+              <summary className="cursor-pointer text-sm font-bold text-slate-700">Notes</summary>
+              <p className="mt-2 break-words rounded-xl bg-slate-50 p-3 text-sm leading-6 text-slate-600">
+                {item.notes}
+              </p>
+            </details>
+          ) : null}
+
+          <div className="mt-4 grid gap-2 sm:flex sm:flex-wrap">
+            {item.lat !== null && item.lng !== null ? (
+              <Link className="inline-flex min-h-11 items-center justify-center rounded-xl bg-slate-950 px-4 text-sm font-bold text-white transition hover:bg-slate-800" href={`/dashboard/trips/${tripId}/map`}>
+                View on map
+              </Link>
+            ) : null}
+            {item.locationStatus !== "resolved" && item.locationStatus !== "needs_activity_provider" ? (
+              <AsyncActionButton endpoint={`/api/trip-segments/${item.id}/retry-location`} successMessage="Location matching updated.">
+                Retry location
+              </AsyncActionButton>
+            ) : null}
+            {item.locationStatus === "needs_activity_provider" ? (
+              <Link className="inline-flex min-h-11 items-center justify-center rounded-xl bg-blue-50 px-4 text-sm font-bold text-blue-700" href={`/dashboard/trips/${tripId}/map#smart-suggestions`}>
+                Find suggestions
+              </Link>
+            ) : null}
+            <details className="min-w-0 flex-1">
+              <summary className="flex min-h-11 cursor-pointer list-none items-center justify-center rounded-xl bg-slate-100 px-4 text-sm font-bold text-slate-700 transition hover:bg-slate-200 sm:justify-start">
+                Edit
+              </summary>
+              <div className="mt-3 grid gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                <TripSegmentForm
+                  buttonLabel="Save edits"
+                  defaultEndTime={item.endAt}
+                  defaultKind={item.kind}
+                  defaultLat={item.lat}
+                  defaultLng={item.lng}
+                  defaultLocation={item.location === "Location not set" ? null : item.location}
+                  defaultNotes={item.notes}
+                  defaultStartTime={item.startAt}
+                  defaultTitle={item.title}
+                  includeCoordinates
+                  segmentId={item.id}
+                  tripId={tripId}
+                />
+                <TripSegmentDeleteButton segmentId={item.id} />
+              </div>
+            </details>
+          </div>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function Detail({ icon, value }: { icon: ReactNode; value: string }) {
+  return (
+    <div className="flex min-w-0 items-start gap-2">
+      <span className="mt-0.5 shrink-0 text-slate-400">{icon}</span>
+      <span className="min-w-0 break-words">{value}</span>
+    </div>
+  );
+}
+
+function StateCopy({ item }: { item: TimelineItemView }) {
+  if (item.locationStatus === "needs_activity_provider") {
+    return (
+      <p className="mt-3 rounded-xl bg-blue-50 px-3 py-2 text-sm font-semibold text-blue-800">
+        Add a meeting point or provider before this appears on the map.
+      </p>
+    );
+  }
+
+  if (item.locationStatus !== "resolved") {
+    return (
+      <p className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-800">
+        Add or retry a location before this appears on the map.
+      </p>
+    );
+  }
+
+  return null;
+}
+
+function ItineraryActions({
   firstFlight,
   timelineItemIds,
   tripId
@@ -187,10 +350,8 @@ function TimelineTools({
 }) {
   return (
     <div className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:rounded-3xl sm:p-5">
-      <h3 className="text-base font-black">Itinerary actions</h3>
-      <p className="mt-2 text-sm text-slate-600">
-        Generate day order or add a place.
-      </p>
+      <h3 className="text-base font-black">Add to itinerary</h3>
+      <p className="mt-2 text-sm text-slate-600">Add a place, reservation, or activity idea.</p>
       <div className="mt-4 grid gap-3">
         <GeneratePlanButton context="timeline" tripId={tripId} />
         <AsyncActionButton
@@ -220,17 +381,7 @@ function TimelineTools({
           >
             Refresh flights
           </AsyncActionButton>
-        ) : (
-          <p className="rounded-2xl bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-600">
-            Add a flight segment to enable flight refresh.
-          </p>
-        )}
-        <Link
-          className="rounded-2xl bg-slate-100 px-4 py-3 text-left font-semibold transition hover:bg-slate-200"
-          href={`/dashboard/trips/${tripId}#new-plan`}
-        >
-            Add place
-        </Link>
+        ) : null}
         <div id="new-plan">
           <TripSegmentForm buttonLabel="Add place" tripId={tripId} />
         </div>
@@ -239,290 +390,61 @@ function TimelineTools({
   );
 }
 
-function TimelineCard({ item, tripId }: { item: TimelineItemView; tripId: string }) {
-  return (
-    <article className="relative grid gap-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm transition hover:border-slate-300 hover:shadow-md sm:grid-cols-[48px_minmax(0,1fr)] sm:p-4">
-      <div className="relative hidden sm:block">
-        <div className="relative z-10 grid h-12 w-12 place-items-center rounded-2xl bg-blue-50 text-blue-700 ring-8 ring-white">
-          {iconForKind(item.kind)}
-        </div>
-      </div>
-
-      <div className="min-w-0">
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_180px]">
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="grid h-9 w-9 place-items-center rounded-xl bg-blue-50 text-blue-700 sm:hidden">
-                {iconForKind(item.kind)}
-              </span>
-              <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">
-                {item.typeLabel}
-              </p>
-              <span className={timelineStatusClass(item.status)}>
-                {timelineStatusLabel(item.status)}
-              </span>
-            </div>
-            <h4 className="mt-2 break-words text-lg font-black leading-tight text-slate-950 sm:text-xl">
-              {item.title}
-            </h4>
-            <p className="mt-1 text-sm font-semibold text-slate-700">{item.meta}</p>
-          </div>
-
-          <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-left">
-            <div className="flex items-center gap-2 text-sm font-black text-slate-950">
-              <Clock className="h-4 w-4 text-slate-500" />
-              {item.timeRange}
-            </div>
-            <p className="mt-1 text-xs font-semibold text-slate-500">
-              Conf. {item.confirmation}
-            </p>
-          </div>
-        </div>
-
-        <div className="mt-4 grid gap-3 xl:grid-cols-[minmax(0,1fr)_150px]">
-          <div className="min-w-0">
-            <div className="flex items-start gap-2 text-sm text-slate-700">
-              <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-slate-500" />
-              <span className="min-w-0">{item.location}</span>
-            </div>
-
-            <div className="mt-3 flex flex-wrap gap-2">
-              {item.details.map((detail) => (
-                <span
-                  className="rounded-full bg-slate-50 px-3 py-1 text-xs font-bold text-slate-600 ring-1 ring-slate-200"
-                  key={detail}
-                >
-                  {detail}
-                </span>
-              ))}
-            </div>
-          </div>
-
-          <div className="rounded-xl bg-slate-950 px-4 py-3 text-white">
-            <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-300">
-              Cost
-            </p>
-            <p className="mt-1 text-lg font-black">{item.costLabel}</p>
-          </div>
-        </div>
-
-        <div className="mt-4 grid gap-2 border-t border-slate-200 pt-3 sm:flex sm:flex-wrap">
-          <Link
-            className="inline-flex min-h-11 items-center justify-center rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-slate-800"
-            href={`/dashboard/trips/${tripId}/map`}
-          >
-            {item.actionLabel}
-          </Link>
-          <details className="group min-w-0 flex-1">
-            <summary className="flex min-h-11 cursor-pointer list-none items-center rounded-xl bg-slate-100 px-4 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-slate-200">
-              Edit details
-            </summary>
-            <div className="mt-3 grid gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
-              <TripSegmentForm
-                buttonLabel="Save edits"
-                defaultEndTime={item.endAt}
-                defaultKind={item.kind}
-                defaultLat={item.lat}
-                defaultLng={item.lng}
-                defaultLocation={item.location === "Location not set" ? null : item.location}
-                defaultNotes={item.notes}
-                defaultStartTime={item.startAt}
-                defaultTitle={item.title}
-                includeCoordinates
-                segmentId={item.id}
-                tripId={tripId}
-              />
-              <TripSegmentDeleteButton segmentId={item.id} />
-            </div>
-          </details>
-        </div>
-      </div>
-    </article>
-  );
-}
-
-function DayRoutePreview({
-  day,
-  tripId
-}: {
-  day: TripTimelineData["days"][number];
-  tripId: string;
-}) {
-  const mappedItems = day.items.filter((item) => item.lat !== null && item.lng !== null);
-
-  return (
-    <Link
-      className="mb-4 grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 text-slate-950 shadow-sm transition hover:border-slate-300 hover:shadow-md sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
-      href={`/dashboard/trips/${tripId}/map`}
-    >
-      <div className="min-w-0">
-          <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-500">
-          Route preview
-        </p>
-        <div className="mt-2 flex items-center gap-2 overflow-hidden">
-          {day.items.slice(0, 5).map((item, index) => (
-            <span className="flex items-center gap-2" key={item.id}>
-              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-slate-950 text-xs font-black text-white">
-                {index + 1}
-              </span>
-              {index < Math.min(day.items.length, 5) - 1 ? (
-                <span className="h-px w-5 shrink-0 bg-slate-300" />
-              ) : null}
-            </span>
-          ))}
-        </div>
-        <p className="mt-2 truncate text-sm font-semibold text-slate-600">
-          {mappedItems.length ? `${mappedItems.length} mapped place${mappedItems.length === 1 ? "" : "s"}` : "Add locations to preview the route"}
-        </p>
-      </div>
-      <div className="grid grid-cols-2 gap-2 text-sm sm:min-w-[170px]">
-        <span className="rounded-xl bg-slate-100 px-3 py-2 font-bold text-slate-700">
-          {formatDistance(day.routeSummary.totalDistanceMeters)}
-        </span>
-        <span className="rounded-xl bg-slate-100 px-3 py-2 font-bold text-slate-700">
-          {formatDuration(day.routeSummary.estimatedDurationMinutes)}
-        </span>
-      </div>
-    </Link>
-  );
-}
-
-function StatPill({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-xl border border-slate-200 bg-white px-3 py-2 shadow-sm sm:px-4 sm:py-3">
-      <p className="text-[0.62rem] font-bold uppercase tracking-[0.12em] text-slate-500 sm:text-xs sm:tracking-[0.16em]">
-        {label}
-      </p>
-      <p className="mt-1 text-lg font-black text-slate-950 sm:text-xl">{value}</p>
-    </div>
-  );
-}
-
-function TripOpsSummary({
-  mappedStops,
-  readyItems,
-  totalItems,
-  watchItems
-}: {
-  mappedStops: number;
-  readyItems: number;
-  totalItems: number;
-  watchItems: number;
-}) {
+function ItinerarySummary({ stats }: { stats: TripTimelineData["stats"] }) {
   return (
     <div className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:rounded-3xl sm:p-5">
-      <h3 className="text-base font-black">Trip readiness</h3>
+      <h3 className="text-base font-black">Trip summary</h3>
       <div className="mt-4 grid gap-3">
-        <SummaryRow
-          icon={<CheckCircle2 className="h-4 w-4" />}
-          label="Scheduled"
-          value={`${readyItems} of ${totalItems}`}
-        />
-        <SummaryRow
-          icon={<AlertTriangle className="h-4 w-4" />}
-          label="Needs location"
-          value={`${watchItems} items`}
-        />
-        <SummaryRow
-          icon={<Route className="h-4 w-4" />}
-          label="Mapped places"
-          value={`${mappedStops} pins`}
-        />
+        <SummaryRow label="Places" value={String(stats.totalItems)} />
+        <SummaryRow label="Mapped" value={`${stats.mappedStops} pins`} />
+        <SummaryRow label="Needs location" value={String(stats.alerts)} />
       </div>
     </div>
   );
 }
 
-function SummaryRow({
-  icon,
-  label,
-  value
-}: {
-  icon: ReactNode;
-  label: string;
-  value: string;
-}) {
+function SummaryRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between gap-3 rounded-2xl bg-slate-50 px-4 py-3 text-sm">
-      <div className="flex min-w-0 items-center gap-2 font-semibold text-slate-700">
-        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-white text-slate-600 ring-1 ring-slate-200">
-          {icon}
-        </span>
-        <span className="truncate">{label}</span>
-      </div>
-      <strong className="shrink-0 text-slate-950">{value}</strong>
+      <span className="font-semibold text-slate-700">{label}</span>
+      <strong className="text-slate-950">{value}</strong>
     </div>
   );
 }
 
-function groupItemsByDayPart(items: TimelineItemView[]) {
-  const groups = [
-    { items: [] as TimelineItemView[], label: "Morning" },
-    { items: [] as TimelineItemView[], label: "Afternoon" },
-    { items: [] as TimelineItemView[], label: "Evening" },
-    { items: [] as TimelineItemView[], label: "Unscheduled ideas" }
-  ];
+function getSegmentDisplay(item: TimelineItemView) {
+  const category = `${item.kind} ${item.typeLabel} ${item.meta}`.toLowerCase();
+  const needsLocation = item.locationStatus !== "resolved";
+  const activityIdea = item.locationStatus === "needs_activity_provider";
 
-  for (const item of items) {
-    const hour = readHour(item.startAt);
-    if (hour === null) {
-      groups[3].items.push(item);
-    } else if (hour < 12) {
-      groups[0].items.push(item);
-    } else if (hour < 17) {
-      groups[1].items.push(item);
-    } else {
-      groups[2].items.push(item);
-    }
-  }
-
-  return groups.filter((group) => group.items.length > 0);
+  if (category.includes("flight")) return display("Flight", <Plane className="h-4 w-4" />, "bg-emerald-600 text-white", "bg-emerald-200");
+  if (category.includes("hotel")) return display("Hotel", <Bed className="h-4 w-4" />, "bg-violet-600 text-white", "bg-violet-200");
+  if (category.includes("restaurant") || category.includes("dinner")) return display("Restaurant", <Utensils className="h-4 w-4" />, "bg-rose-600 text-white", "bg-rose-200");
+  if (category.includes("transport")) return display("Transportation", <Car className="h-4 w-4" />, "bg-emerald-600 text-white", "bg-emerald-200");
+  if (category.includes("train")) return display("Transportation", <Train className="h-4 w-4" />, "bg-emerald-600 text-white", "bg-emerald-200");
+  if (activityIdea) return display("Activity idea", <Flag className="h-4 w-4" />, "bg-slate-500 text-white", "bg-slate-200");
+  if (needsLocation) return display("Needs location", <AlertTriangle className="h-4 w-4" />, "bg-amber-500 text-white", "bg-amber-200");
+  return display("Place", <Landmark className="h-4 w-4" />, "bg-blue-600 text-white", "bg-blue-200");
 }
 
-function readHour(value: string | null) {
-  if (!value) {
-    return null;
-  }
-
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return null;
-  }
-
-  return date.getHours();
+function display(label: string, icon: ReactNode, iconClass: string, lineClass: string) {
+  return { icon, iconClass, label, lineClass };
 }
 
-function formatDistance(value: number) {
-  if (!value) return "Route TBD";
-  if (value < 1000) return `${Math.round(value)} m`;
-  return `${Math.round(value / 1000)} km`;
+function getItemStatus(item: TimelineItemView) {
+  const base = "inline-flex min-h-7 items-center rounded-full px-2.5 text-xs font-black";
+  if (item.locationStatus === "resolved" && item.startAt) return { className: `${base} bg-emerald-50 text-emerald-700`, label: "Scheduled" };
+  if (item.locationStatus === "resolved") return { className: `${base} bg-blue-50 text-blue-700`, label: "Mapped" };
+  if (item.locationStatus === "needs_activity_provider") return { className: `${base} bg-slate-100 text-slate-700`, label: "Activity idea" };
+  if (item.locationStatus === "provider_failed") return { className: `${base} bg-red-50 text-red-700`, label: "Provider failed" };
+  return { className: `${base} bg-amber-50 text-amber-700`, label: "Needs location" };
 }
 
-function formatDuration(value: number) {
-  if (!value) return "Time TBD";
-  if (value < 60) return `${value} min`;
-  const hours = Math.floor(value / 60);
-  const minutes = value % 60;
-  return minutes ? `${hours}h ${minutes}m` : `${hours}h`;
-}
-
-function iconForKind(kind: TimelineItemView["kind"]) {
-  switch (kind) {
-    case "dinner":
-      return <Utensils className="h-5 w-5" />;
-    case "expense":
-      return <ReceiptText className="h-5 w-5" />;
-    case "flight":
-      return <Plane className="h-5 w-5" />;
-    case "hotel":
-      return <Hotel className="h-5 w-5" />;
-    case "meeting":
-      return <CalendarCheck className="h-5 w-5" />;
-    default:
-      return exhaustive(kind);
-  }
-}
-
-function exhaustive(value: never): never {
-  throw new Error(`Unhandled timeline item kind: ${String(value)}`);
+function formatPrimaryTime(item: TimelineItemView) {
+  if (!item.startAt) return item.locationStatus === "needs_activity_provider" ? "Idea" : "Anytime";
+  return new Intl.DateTimeFormat("en", {
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: "UTC"
+  }).format(new Date(item.startAt));
 }

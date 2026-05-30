@@ -3,26 +3,34 @@ import type { TimelineStatus } from "@/lib/ui/timeline";
 
 export type TimelineItemView = {
   actionLabel: string;
+  bookingUrl: string | null;
   confirmation: string;
+  confirmationCode: string | null;
   costLabel: string;
   details: string[];
+  displayDate: string;
+  durationLabel: string | null;
   id: string;
   kind: TripSegmentType;
   lat: number | null;
   lng: number | null;
   location: string;
+  locationStatus: string;
   meta: string;
   notes: string | null;
+  provider: string | null;
   status: TimelineStatus;
   startAt: string | null;
   endAt: string | null;
   timeRange: string;
+  timeZoneLabel: string;
   title: string;
   typeLabel: string;
 };
 
 export type TimelineDayView = {
   date: string;
+  dateIso: string | null;
   dayNumber: string;
   id: string;
   items: TimelineItemView[];

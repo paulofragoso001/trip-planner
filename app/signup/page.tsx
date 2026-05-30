@@ -29,7 +29,7 @@ export default async function SignupPage({
 
           <div className="mt-8 grid gap-3 text-sm text-slate-200 sm:grid-cols-3 lg:grid-cols-1">
             <div className="rounded-lg border border-white/10 bg-white/5 p-3">
-              Smart trip timeline
+              Smart trip itinerary
             </div>
             <div className="rounded-lg border border-white/10 bg-white/5 p-3">
               Maps and routes

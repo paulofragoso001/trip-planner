@@ -8,10 +8,14 @@ import type { TimelineDayView, TripTimelineData } from "./types";
 
 type TripRow = {
   destination: string | null;
+  end_date?: string | null;
   name: string;
+  start_date?: string | null;
 };
 
 type TripSegmentRow = {
+  booking_url: string | null;
+  confirmation_code: string | null;
   end_time: string | null;
   id: string;
   inserted_at: string;
@@ -19,8 +23,10 @@ type TripSegmentRow = {
   lat: number | null;
   lng: number | null;
   location: string | null;
+  location_status: string | null;
   notes: string | null;
   position: number | null;
+  provider: string | null;
   start_time: string | null;
   title: string;
   trip_id: string;
@@ -132,15 +138,15 @@ export async function loadTripTimelineData(tripId: string): Promise<TripTimeline
   }
 
   const [tripResult, segmentResult, budgetResult] = await Promise.all([
-    auth.supabase
-      .from("trips")
-      .select("name,destination")
-      .eq("id", tripId)
-      .eq("user_id", auth.userId)
-      .maybeSingle(),
+      auth.supabase
+        .from("trips")
+        .select("name,destination,start_date,end_date")
+        .eq("id", tripId)
+        .eq("user_id", auth.userId)
+        .maybeSingle(),
     auth.supabase
       .from("trip_segments")
-      .select("id,trip_id,kind,title,location,start_time,end_time,lat,lng,notes,position,inserted_at")
+      .select("id,trip_id,kind,title,location,start_time,end_time,lat,lng,notes,position,inserted_at,provider,confirmation_code,booking_url,location_status")
       .eq("trip_id", tripId)
       .eq("user_id", auth.userId)
       .order("start_time", { ascending: true, nullsFirst: false })
@@ -165,10 +171,12 @@ export async function loadTripTimelineData(tripId: string): Promise<TripTimeline
     mapSegmentRow(row, budgetBySegment)
   );
 
+  const trip = tripResult.data as TripRow;
+
   return buildTimelineData({
-    description: `Plans loaded for ${(tripResult.data as TripRow).destination || "this trip"}.`,
+    description: formatTripSubtitle(trip),
     segments,
-    title: `${(tripResult.data as TripRow).name} itinerary`,
+    title: trip.name,
     tripId
   });
 }
@@ -240,29 +248,36 @@ function groupSegmentsByDay(segments: TripSegment[]): TimelineDayView[] {
   const groups = new Map<string, TripSegment[]>();
 
   for (const segment of segments) {
-    const key = formatDayDate(segment.startAt);
+    const key = segment.startAt ? formatDayKey(segment.startAt) : "unscheduled";
     groups.set(key, [...(groups.get(key) || []), segment]);
   }
 
   return Array.from(groups.entries()).map(([date, items]) => {
     const orderedItems = items
-      .sort((a, b) => a.startAt.localeCompare(b.startAt))
+      .sort((a, b) => (a.startAt || "").localeCompare(b.startAt || ""))
       .map((segment) => ({
         actionLabel: segment.actionLabel,
+        bookingUrl: readExtra(segment, "bookingUrl"),
         confirmation: segment.confirmation,
+        confirmationCode: readExtra(segment, "confirmationCode"),
         costLabel: segment.costLabel,
         details: segment.details,
+        displayDate: segment.startAt ? formatDayHeader(segment.startAt) : "Unscheduled",
+        durationLabel: segment.startAt && segment.endAt ? formatDurationBetween(segment.startAt, segment.endAt) : null,
         endAt: segment.endAt,
         id: segment.id,
         kind: segment.type,
         lat: segment.lat ?? null,
         lng: segment.lng ?? null,
         location: segment.location,
+        locationStatus: readExtra(segment, "locationStatus") || inferLocationStatus(segment),
         meta: segment.meta,
         notes: segment.notes ?? null,
+        provider: readExtra(segment, "provider"),
         startAt: segment.startAt,
         status: segment.status === "pending" ? "watch" : segment.status,
         timeRange: formatTimeRange(segment.startAt, segment.endAt),
+        timeZoneLabel: "Local time",
         title: segment.title,
         typeLabel: segmentTypeLabel(segment.type)
       }));
@@ -280,18 +295,21 @@ function groupSegmentsByDay(segments: TripSegment[]): TimelineDayView[] {
     )[0];
 
     return {
-      date,
-      dayNumber: date.slice(4),
-      id: dayIdFromDate(date),
+      date: date === "unscheduled" ? "Unscheduled" : formatDayHeader(items[0]?.startAt || new Date().toISOString()),
+      dateIso: date === "unscheduled" ? null : date,
+      dayNumber: date === "unscheduled" ? "" : formatDayNumber(items[0]?.startAt || new Date().toISOString()),
+      id: date === "unscheduled" ? "unscheduled" : dayIdFromDate(date),
       items: orderedItems,
-      label: formatWeekday(items[0]?.startAt || new Date().toISOString()),
+      label: date === "unscheduled" ? "Ideas" : formatWeekday(items[0]?.startAt || new Date().toISOString()),
       routeSummary: {
         estimatedDurationMinutes: routeSummary?.estimatedDurationMinutes || 0,
         provider: routeSummary?.provider || "estimate",
         totalDistanceMeters: routeSummary?.totalDistanceMeters || 0,
         warnings: routeSummary?.warnings || []
       },
-      summary: summariesByDate.get(date) || `${items.length} planned item${items.length === 1 ? "" : "s"}`
+      summary: date === "unscheduled"
+        ? "Add a date or time when you are ready."
+        : summariesByDate.get(formatShortDay(items[0]?.startAt || new Date().toISOString())) || `${items.length} planned place${items.length === 1 ? "" : "s"}`
     };
   });
 }
@@ -305,7 +323,7 @@ function mapSegmentRow(
 
   return {
     actionLabel: actionLabelForKind(kind),
-    confirmation: "Not set",
+    confirmation: row.confirmation_code || "Not set",
     costLabel: cost ? formatMoney(cost.amount, cost.currency) : "$0",
     details: buildDetails(row),
     endAt: row.end_time,
@@ -315,11 +333,20 @@ function mapSegmentRow(
     location: row.location || "Location not set",
     meta: segmentTypeLabel(kind),
     notes: row.notes,
-    startAt: row.start_time || row.inserted_at,
-    status: row.start_time ? "confirmed" : "watch",
+    startAt: row.start_time,
+    status: statusForRow(row),
     title: row.title,
     tripId: row.trip_id,
-    type: kind
+    type: kind,
+    bookingUrl: row.booking_url,
+    confirmationCode: row.confirmation_code,
+    locationStatus: row.location_status || inferRowLocationStatus(row),
+    provider: row.provider
+  } as TripSegment & {
+    bookingUrl: string | null;
+    confirmationCode: string | null;
+    locationStatus: string;
+    provider: string | null;
   };
 }
 
@@ -384,14 +411,41 @@ function buildDetails(row: TripSegmentRow) {
   return [
     row.kind ? `Type: ${row.kind}` : null,
     row.location ? `Location: ${row.location}` : null,
+    row.provider ? `Source: ${row.provider}` : null,
     row.end_time ? `Ends ${formatTime(row.end_time)}` : null
   ].filter((detail): detail is string => Boolean(detail));
 }
 
-function formatDayDate(value: string) {
+function formatDayKey(value: string) {
+  return new Intl.DateTimeFormat("en-CA", {
+    day: "2-digit",
+    month: "2-digit",
+    timeZone: "UTC",
+    year: "numeric"
+  }).format(new Date(value));
+}
+
+function formatShortDay(value: string) {
   return new Intl.DateTimeFormat("en", {
     day: "2-digit",
     month: "short",
+    timeZone: "UTC"
+  }).format(new Date(value));
+}
+
+function formatDayHeader(value: string) {
+  return new Intl.DateTimeFormat("en", {
+    day: "numeric",
+    month: "long",
+    timeZone: "UTC",
+    weekday: "long",
+    year: "numeric"
+  }).format(new Date(value)).toUpperCase();
+}
+
+function formatDayNumber(value: string) {
+  return new Intl.DateTimeFormat("en", {
+    day: "numeric",
     timeZone: "UTC"
   }).format(new Date(value));
 }
@@ -403,7 +457,11 @@ function formatWeekday(value: string) {
   }).format(new Date(value));
 }
 
-function formatTimeRange(startAt: string, endAt: string | null) {
+function formatTimeRange(startAt: string | null, endAt: string | null) {
+  if (!startAt) {
+    return "Unscheduled";
+  }
+
   const start = formatTime(startAt);
 
   if (!endAt) {
@@ -411,6 +469,63 @@ function formatTimeRange(startAt: string, endAt: string | null) {
   }
 
   return `${start} - ${formatTime(endAt)}`;
+}
+
+function formatTripSubtitle(trip: TripRow) {
+  const destination = trip.destination || "Destination not set";
+  const range = formatTripDateRange(trip.start_date || null, trip.end_date || null);
+  return range ? `${destination} · ${range}` : destination;
+}
+
+function formatTripDateRange(startDate: string | null, endDate: string | null) {
+  if (!startDate && !endDate) return "";
+  if (startDate && !endDate) return formatTripDate(startDate);
+  if (!startDate && endDate) return formatTripDate(endDate);
+  return `${formatTripDate(startDate!)} - ${formatTripDate(endDate!)}`;
+}
+
+function formatTripDate(value: string) {
+  return new Intl.DateTimeFormat("en", {
+    day: "numeric",
+    month: "short",
+    timeZone: "UTC",
+    year: "numeric"
+  }).format(new Date(value));
+}
+
+function formatDurationBetween(startAt: string, endAt: string) {
+  const start = new Date(startAt).getTime();
+  const end = new Date(endAt).getTime();
+  if (Number.isNaN(start) || Number.isNaN(end) || end <= start) return null;
+  const minutes = Math.round((end - start) / 60000);
+  if (minutes < 60) return `${minutes} min`;
+  const hours = Math.floor(minutes / 60);
+  const remainder = minutes % 60;
+  return remainder ? `${hours}h ${remainder}m` : `${hours}h`;
+}
+
+function readExtra(segment: TripSegment, key: "bookingUrl" | "confirmationCode" | "locationStatus" | "provider") {
+  const value = (segment as TripSegment & Record<typeof key, unknown>)[key];
+  return typeof value === "string" && value ? value : null;
+}
+
+function statusForRow(row: TripSegmentRow) {
+  if (row.location_status && row.location_status !== "resolved") return "watch";
+  if (row.start_time) return "confirmed";
+  return "watch";
+}
+
+function inferRowLocationStatus(row: TripSegmentRow) {
+  if (row.lat !== null && row.lng !== null) return "resolved";
+  if ((row.kind || "").toLowerCase().includes("tour") || (row.kind || "").toLowerCase().includes("activity")) {
+    return "needs_activity_provider";
+  }
+  return "needs_location_confirmation";
+}
+
+function inferLocationStatus(segment: TripSegment) {
+  if (segment.lat !== null && segment.lng !== null) return "resolved";
+  return segment.startAt ? "needs_location_confirmation" : "needs_activity_provider";
 }
 
 function formatTime(value: string) {

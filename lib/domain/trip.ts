@@ -14,7 +14,7 @@ export type TripSegment = {
   location: string;
   meta: string;
   notes?: string | null;
-  startAt: string;
+  startAt: string | null;
   status: TripSegmentStatus;
   title: string;
   tripId: string;

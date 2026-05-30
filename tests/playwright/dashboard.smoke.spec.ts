@@ -46,9 +46,10 @@ test("loads dashboard summary and route-split pages", async ({ page }) => {
   await openDashboardRoute("/dashboard/trips/demo/timeline");
   await expect(page.getByTestId("trip-workspace-layout")).toBeVisible();
   await expect(
-    page.getByTestId("app-shell-content").getByRole("heading", { exact: true, name: "Itinerary" })
+    page.getByTestId("app-shell-content").getByText("Itinerary", { exact: true }).first()
   ).toBeVisible();
-  await expect(page.getByText("Itinerary actions")).toBeVisible();
+  await expect(page.getByText("Add to itinerary")).toBeVisible();
+  await expect(page.getByText("THURSDAY, JUNE 11, 2026")).toBeVisible();
   await expect(page.getByTestId("app-shell-content").getByRole("link", { name: "Itinerary" })).toBeVisible();
   await expect(page.getByTestId("app-shell-content").getByRole("link", { name: "Ideas" })).toBeVisible();
   await expect(page.getByRole("heading", { exact: true, name: "Calendar sync" })).toBeVisible();

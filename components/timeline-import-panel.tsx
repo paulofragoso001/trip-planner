@@ -86,7 +86,7 @@ export function TimelineImportPanel({ trip }: TimelineImportPanelProps) {
   const [sourceType, setSourceType] = useState("email");
   const [sourceLabel, setSourceLabel] = useState("");
   const [rawText, setRawText] = useState("");
-  const [message, setMessage] = useState("Timeline ready.");
+  const [message, setMessage] = useState("Itinerary ready.");
   const [error, setError] = useState("");
   const [selectedMapItemId, setSelectedMapItemId] = useState<string | null>(null);
 
@@ -129,7 +129,7 @@ export function TimelineImportPanel({ trip }: TimelineImportPanelProps) {
           ? current
           : null
       );
-      setMessage("Timeline refreshed.");
+      setMessage("Itinerary refreshed.");
     } catch (error) {
       setError(error instanceof Error ? error.message : "Could not load itinerary timeline.");
     } finally {
@@ -192,10 +192,10 @@ export function TimelineImportPanel({ trip }: TimelineImportPanelProps) {
         throw new Error(`Failed to reorder itinerary: ${response.status}`);
       }
 
-      setMessage("Timeline order updated.");
+      setMessage("Itinerary order updated.");
     } catch (error) {
       setTimelineItems(previousItems);
-      setError(error instanceof Error ? error.message : "Could not update timeline order.");
+      setError(error instanceof Error ? error.message : "Could not update itinerary order.");
       throw error;
     }
   }
@@ -381,7 +381,7 @@ export function TimelineImportPanel({ trip }: TimelineImportPanelProps) {
       setUnfiledItems((current) =>
         current.map((currentItem) => (currentItem.id === item.id ? updatedItem : currentItem))
       );
-      setMessage(`${item.title} promoted to the timeline.`);
+      setMessage(`${item.title} promoted to the itinerary.`);
     } catch (error) {
       setError(error instanceof Error ? error.message : "Could not promote unfiled item.");
     }
@@ -392,18 +392,18 @@ export function TimelineImportPanel({ trip }: TimelineImportPanelProps) {
       <TripCard as="section" className="p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <TripEyebrow>Timeline</TripEyebrow>
+            <TripEyebrow>Itinerary</TripEyebrow>
             <h3 className="mt-2 text-2xl font-black">Itinerary sequence</h3>
             <p className={`mt-2 text-sm ${tripUi.text.bodyMuted}`}>{trip.destination}</p>
           </div>
           <TripButton disabled={loadingTimeline} onClick={loadTimeline}>
-            {loadingTimeline ? "Refreshing..." : "Refresh timeline"}
+            {loadingTimeline ? "Refreshing..." : "Refresh itinerary"}
           </TripButton>
         </div>
 
         {timelineItems.length === 0 ? (
           <div className={`mt-5 rounded-2xl border border-dashed border-black/15 p-4 text-sm ${tripUi.text.bodyMuted}`}>
-            No timeline items yet. Import a confirmation below, then promote it into this trip.
+            No itinerary items yet. Import a confirmation below, then promote it into this trip.
           </div>
         ) : (
           <div className="mt-5">
@@ -434,7 +434,7 @@ export function TimelineImportPanel({ trip }: TimelineImportPanelProps) {
             <TripEyebrow>Import automation</TripEyebrow>
             <h3 className="mt-2 text-2xl font-black">Unfiled Items</h3>
             <p className={`mt-2 max-w-2xl text-sm leading-6 ${tripUi.text.bodyMuted}`}>
-              Paste confirmation text here. Items stay in review until promoted into the timeline.
+              Paste confirmation text here. Items stay in review until promoted into the itinerary.
             </p>
           </div>
           <span className="rounded-full bg-[#f7f6f2] px-3 py-1 text-xs font-black uppercase tracking-[0.08em] text-evergreen ring-1 ring-black/10">

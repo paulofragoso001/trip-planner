@@ -75,7 +75,7 @@ function inferPanelName(filename?: string, message = "") {
   }
 
   if (value.includes("timeline-import")) {
-    return "Timeline and import panel";
+    return "Itinerary and import panel";
   }
 
   if (value.includes("flight-status") || value.includes("flight-panel")) {

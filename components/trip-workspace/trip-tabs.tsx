@@ -10,7 +10,7 @@ export type TripTabItem = {
 
 const defaultTabs: TripTabItem[] = [
   { id: "overview", label: "Overview" },
-  { id: "timeline", label: "Timeline" },
+  { id: "timeline", label: "Itinerary" },
   { id: "map", label: "Map" },
   { id: "budget", label: "Budget" },
   { id: "activity", label: "Activity" },

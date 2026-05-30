@@ -763,7 +763,7 @@ const presetCards: Record<MockPreset, Array<[string, string, string]>> = {
     ["Route overlay", "Enabled", "JFK to MIA"],
     ["Weather", "Moderate", "Thunderstorm cell"],
     ["Ground ops", "Clear", "No taxi alerts"],
-    ["Companion list", "8 items", "Timeline synced"],
+    ["Companion list", "8 items", "Itinerary synced"],
     ["Position feed", "Healthy", "Cirium active"]
   ],
   overview: [
@@ -772,7 +772,7 @@ const presetCards: Record<MockPreset, Array<[string, string, string]>> = {
     ["Imports", "27 queued", "9 ready"],
     ["Flights", "18 live", "4 delayed"],
     ["Reports", "99.8%", "API success"],
-    ["Timeline", "42 plans", "6 unscheduled"]
+    ["Itinerary", "42 plans", "6 unscheduled"]
   ],
   "trip-detail": [
     ["Miami Launch", "In transit", "JFK to MIA"],
@@ -852,10 +852,10 @@ function TimelinePanel({
     <section
       className={cn("border bg-white p-4 dark:border-white/10 dark:bg-[#111827]", radius)}
       data-testid="layout-preview-timeline"
-      aria-label="Timeline preview"
+      aria-label="Itinerary preview"
     >
       <div className="flex items-center justify-between gap-3">
-        <h3 className="font-black">Operational timeline</h3>
+        <h3 className="font-black">Operational itinerary</h3>
         <span className={cn("rounded-full px-2 py-1 text-[11px] font-black ring-1", accent.muted)}>synced</span>
       </div>
       <div className="mt-4 grid gap-3">

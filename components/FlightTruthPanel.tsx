@@ -186,7 +186,7 @@ export function FlightTruthPanel({
         </div>
 
         <div className="rounded-2xl border border-black/10 bg-white p-4">
-          <h4 className="font-black">Timeline sync preview</h4>
+          <h4 className="font-black">Itinerary sync preview</h4>
           <div className="mt-3 grid gap-2 text-sm">
             {flights.map((flight) => (
               <p
@@ -445,11 +445,11 @@ function gateTerminalLabel(flight: DashboardTimelineItem) {
 
 function syncMessage(flight: DashboardTimelineItem) {
   if (flight.flight_status === "cancelled") {
-    return `${flight.title} remains in the timeline as cancelled so downstream plans can be reviewed.`;
+    return `${flight.title} remains in the itinerary as cancelled so downstream plans can be reviewed.`;
   }
 
   if (flight.estimated_departure) {
-    return `${flight.title} timeline time syncs to ${formatDateTime(flight.estimated_departure)}.`;
+    return `${flight.title} itinerary time syncs to ${formatDateTime(flight.estimated_departure)}.`;
   }
 
   return `${flight.title} will sync once a provider returns a schedule update.`;

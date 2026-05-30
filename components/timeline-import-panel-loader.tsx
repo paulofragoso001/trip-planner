@@ -9,7 +9,7 @@ const TimelineImportPanel = dynamic(
     ssr: false,
     loading: () => (
       <div className="mt-6 rounded-2xl border border-dashed border-black/15 bg-[#f7f6f2] p-4 text-sm font-semibold text-slate-500">
-        Loading timeline and import tools...
+        Loading itinerary and import tools...
       </div>
     )
   }

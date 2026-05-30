@@ -105,7 +105,7 @@ type SelectedTripTab = "overview" | "timeline" | "map";
 
 const selectedTripTabs: Array<{ id: SelectedTripTab; label: string }> = [
   { id: "overview", label: "Overview" },
-  { id: "timeline", label: "Timeline" },
+  { id: "timeline", label: "Itinerary" },
   { id: "map", label: "Map" }
 ];
 
@@ -630,7 +630,7 @@ export function TripDashboard({ userEmail }: TripDashboardProps) {
 
         await response.json();
         await refreshTripItinerary(tripId);
-        announce("Timeline order updated successfully.");
+        announce("Itinerary order updated successfully.");
         requestAnimationFrame(() => addSegmentButtonRef.current?.focus());
       } catch (error) {
         setTimelineOrder(previousOrder);
@@ -1001,7 +1001,7 @@ function ImportSourcesPanel({
         <h3 className="text-lg font-black">Import Sources</h3>
         <p className={`mt-1 text-sm ${tripUi.text.bodyMuted}`}>
           Connect sources that produce itinerary items, then review anything uncertain
-          in Unfiled Items before it becomes part of the trip timeline.
+          in Unfiled Items before it becomes part of the trip itinerary.
         </p>
       </div>
 
@@ -1626,7 +1626,7 @@ function TimelinePanel({
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h3 className="text-xl font-black">Timeline</h3>
+          <h3 className="text-xl font-black">Itinerary</h3>
           <p className={`text-sm ${tripUi.text.bodyMuted}`}>{trip.destination}</p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -1690,7 +1690,7 @@ function TimelinePanel({
 
       {timelineItems.length === 0 ? (
         <div className={`rounded-2xl border border-dashed border-black/15 p-4 text-sm ${tripUi.text.bodyMuted}`}>
-          No segments yet. Add a hotel or meeting to start the timeline.
+          No itinerary items yet. Add a place, hotel, or meeting to start planning.
         </div>
       ) : (
         <DraggableList
