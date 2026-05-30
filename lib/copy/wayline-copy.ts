@@ -1,7 +1,7 @@
 export const waylineCopy = {
   productPromise: "Turn saved travel ideas into mapped trip plans.",
   productDescription:
-    "Paste travel notes, links, or screenshots. Wayline finds the places, builds your trip, maps your stops, and suggests what to do nearby.",
+    "Paste travel notes, links, or screenshots. Wayline finds the places, builds your trip, maps your places, and suggests what to do nearby.",
   onboardingSteps: [
     { description: "Add one note, link, or screenshot.", label: "Add" },
     { description: "Approve the places that belong.", label: "Review" },
@@ -13,7 +13,7 @@ export const waylineCopy = {
     myTrips: "Create one manually or build one from inspiration.",
     savedInspiration: "Paste a note, link, or screenshot.",
       smartSuggestions: "Add a mapped place to get nearby ideas.",
-    timeline: "Add a stop to start this timeline.",
+    timeline: "Add a place to start this itinerary.",
     tripDrafts: "Approve places from AI Review to create a draft."
   },
   location: {

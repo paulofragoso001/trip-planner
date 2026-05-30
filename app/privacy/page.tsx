@@ -38,7 +38,7 @@ export default function PrivacyPage() {
             <ul className="mt-2 list-disc space-y-2 pl-5">
               <li>To create, store, and display trip workspaces.</li>
               <li>To classify imported travel records and help convert them into itinerary items.</li>
-              <li>To sync selected trip stops to connected Google or Microsoft calendars.</li>
+              <li>To sync selected trip places to connected Google or Microsoft calendars.</li>
               <li>To send account, invite, or operational notifications.</li>
               <li>To monitor reliability, security, abuse prevention, and product quality.</li>
             </ul>

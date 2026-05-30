@@ -79,7 +79,7 @@ export default function TripsPage({ error, trips }: TripsPageProps) {
                     </p>
                   </div>
                   <div className="grid grid-cols-3 gap-2 xl:min-w-[300px]">
-                    <MiniStat label="Stops" value={String(trip.stopCount)} />
+                    <MiniStat label="Places" value={String(trip.stopCount)} />
                     <MiniStat label="Mapped" value={String(trip.mappedStops)} />
                     <MiniStat label="Needs location" value={String(trip.needsLocationStops)} />
                   </div>

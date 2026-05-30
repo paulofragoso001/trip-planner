@@ -678,7 +678,7 @@ function WaylineOperatingSystemPanel({ trip }: { trip: Trip }) {
           detail={
             trip.route
               ? `Route context: ${trip.route}`
-              : "Add a route summary or mapped stops to reason about travel time."
+              : "Add a route summary or mapped places to reason about travel time."
           }
           label="Map-first planning"
           status={trip.route ? "Route captured" : "Route needed"}

@@ -62,7 +62,7 @@ export function createMockTripPreview(options: MockOptions = {}): TripPreviewDat
     id: `leg-${index + 1}`,
     fromPlanId: plan.id,
     toPlanId: pinnedPlans[index + 1].id,
-    summary: "Suggested route between itinerary stops.",
+    summary: "Suggested route between itinerary places.",
     distance: `${2 + index} mi`,
     duration: `${12 + index * 3} min`,
     mapNote: "Verify traffic before departure."

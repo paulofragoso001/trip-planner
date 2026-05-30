@@ -277,7 +277,7 @@ export function TripDashboard({ userEmail }: TripDashboardProps) {
       const segmentPayload = await segmentResponse.json();
 
       if (!segmentResponse.ok) {
-        throw new Error(getApiErrorMessage(segmentPayload, "Could not load trip stops."));
+        throw new Error(getApiErrorMessage(segmentPayload, "Could not load trip places."));
       }
 
       itinerary = readLegacyArrayOrField<Record<string, unknown>>(

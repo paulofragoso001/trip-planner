@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarDays, MapPin, Sparkles, WandSparkles } from "lucide-react";
+import { WandSparkles } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
@@ -96,36 +96,8 @@ export function AiTravelPlannerForm({ trips }: AiTravelPlannerFormProps) {
   }
 
   return (
-    <section className="overflow-hidden rounded-[2rem] border border-slate-200 bg-slate-950 text-white shadow-sm">
-      <div className="grid gap-5 p-4 sm:p-5 lg:grid-cols-[minmax(0,0.95fr)_minmax(320px,1.05fr)] lg:items-center">
-        <div>
-          <p className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-black uppercase text-blue-100">
-            <Sparkles className="h-3.5 w-3.5" />
-            Plan
-          </p>
-          <h2 className="mt-4 max-w-xl text-3xl font-black tracking-tight sm:text-4xl">
-            Create a trip from saved ideas.
-          </h2>
-          <p className="mt-3 max-w-xl text-sm leading-6 text-slate-300">
-            Add a destination, trip style, and interests. Review the places before they become itinerary and map data.
-          </p>
-          <div className="mt-5 grid gap-3 text-sm font-bold text-slate-200 sm:grid-cols-3">
-            <div className="rounded-2xl bg-white/10 px-4 py-3">
-              <MapPin className="mb-2 h-4 w-4 text-blue-200" />
-              Place extraction
-            </div>
-            <div className="rounded-2xl bg-white/10 px-4 py-3">
-              <CalendarDays className="mb-2 h-4 w-4 text-blue-200" />
-              Day planning
-            </div>
-            <div className="rounded-2xl bg-white/10 px-4 py-3">
-              <WandSparkles className="mb-2 h-4 w-4 text-blue-200" />
-              Human review
-            </div>
-          </div>
-        </div>
-
-        <div className="grid gap-3 rounded-[1.5rem] bg-white p-3 text-slate-950 sm:p-4">
+    <section className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-3 shadow-sm sm:p-4">
+        <div className="grid gap-3 text-slate-950">
           <select
             className="min-h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold outline-none focus:border-blue-500"
             onChange={(event) => selectTrip(event.target.value)}
@@ -185,7 +157,6 @@ export function AiTravelPlannerForm({ trips }: AiTravelPlannerFormProps) {
               {message}
             </p>
           ) : null}
-        </div>
       </div>
     </section>
   );

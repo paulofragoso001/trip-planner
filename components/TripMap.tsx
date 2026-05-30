@@ -97,7 +97,7 @@ export default function TripMap({
     return (
       <MapUnavailable
         height={height}
-        message="Maps are temporarily unavailable. You can still save stops and try again later."
+        message="Maps are temporarily unavailable. You can still save places and try again later."
       />
     );
   }

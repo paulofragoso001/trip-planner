@@ -19,13 +19,14 @@ test("loads dashboard summary and route-split pages", async ({ page }) => {
     dashboardContent.getByRole("link", { name: /Plan/ }).first()
   ).toBeVisible();
   await expect(
-    dashboardContent.getByRole("link", { name: /Trips/ }).first()
+    dashboardContent.getByRole("link", { name: /View trips/ }).first()
   ).toBeVisible();
   await expect(page.getByTestId("app-shell-nav").getByRole("link", { name: "Saved Inspiration" })).toHaveCount(0);
   await expect(page.getByText("Turn saved travel ideas into mapped trip plans.")).toHaveCount(0);
-  await expect(page.getByText("Trips saved")).toBeVisible();
-  await expect(page.getByText("Continue planning")).toBeVisible();
-  await expect(page.getByText("Quick actions")).toBeVisible();
+  await expect(page.getByText("First Plan Guide")).toHaveCount(0);
+  await expect(page.getByText("Add, review, create.")).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Plan a trip" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Open my trips" })).toBeVisible();
 
   await openDashboardRoute("/dashboard/trips");
   await expect(page.getByTestId("app-shell-topbar").getByRole("heading", { name: "Trips" })).toBeVisible();
@@ -84,6 +85,8 @@ test("loads dashboard summary and route-split pages", async ({ page }) => {
   await expect(importsRoute.getByRole("heading", { exact: true, name: "Add an idea" })).toBeVisible();
   await expect(importsRoute.getByRole("heading", { exact: true, name: "Review places" })).toBeVisible();
   await expect(importsRoute.getByRole("heading", { exact: true, name: "Create trip plan" })).toBeVisible();
+  await expect(importsRoute.getByText("Optional trip context")).toBeVisible();
+  await expect(importsRoute.getByText("Create a trip from saved ideas.")).toHaveCount(0);
   await expect(importsRoute.getByText("Advanced sources")).toBeVisible();
 
   await openDashboardRoute("/dashboard/admin");

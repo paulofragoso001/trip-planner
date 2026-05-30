@@ -42,6 +42,25 @@ test.describe("mobile soft-launch UX", () => {
     await expect(nav.getByRole("link", { name: /Trips/ })).toBeVisible();
     await expect(nav.getByRole("link", { name: /Map/ })).toBeVisible();
     await expect(nav.getByRole("link", { name: /Profile/ })).toBeVisible();
+    await expect(nav.getByRole("link")).toHaveCount(5);
     await expect(nav.getByRole("link", { name: /Saved/ })).toHaveCount(0);
+    await expect(nav.getByRole("link", { name: /Plan with AI/ })).toHaveCount(0);
+    await expect(nav.getByRole("link", { name: /My Trips/ })).toHaveCount(0);
+  });
+
+  test("home and plan keep mobile guidance compact", async ({ page }) => {
+    await page.setViewportSize({ height: 900, width: 390 });
+    await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
+
+    await page.goto("http://127.0.0.1:3000/dashboard", { waitUntil: "commit" });
+    await expect(page.getByRole("heading", { name: "Where do you want to start?" })).toBeVisible();
+    await expect(page.getByText("Turn saved travel ideas into mapped trip plans.")).toHaveCount(0);
+    await expect(page.getByText("First Plan Guide")).toHaveCount(0);
+    await expect(page.getByText("Add, review, create.")).toHaveCount(0);
+
+    await page.goto("http://127.0.0.1:3000/dashboard/imports", { waitUntil: "commit" });
+    await expect(page.getByTestId("imports-route")).toBeVisible();
+    await expect(page.getByText("Create a trip from saved ideas.")).toHaveCount(0);
+    await expect(page.locator("ol").filter({ hasText: "Add" })).toHaveCount(1);
   });
 });

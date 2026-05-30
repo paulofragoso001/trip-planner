@@ -72,7 +72,7 @@ export default function TripView({ trip, items }: TripViewProps) {
         />
       ) : (
         <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 p-6 text-sm font-semibold text-slate-600">
-          No mapped stops yet. Add locations with coordinates to show this trip on a map.
+          No mapped places yet. Add locations with coordinates to show this trip on a map.
         </div>
       )}
 

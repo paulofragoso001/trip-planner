@@ -16,12 +16,12 @@ const features = [
     title: "Review places"
   },
   {
-    description: "Turn approved stops into a day-by-day plan with a route-ready map.",
+    description: "Turn approved places into a day-by-day plan with a route-ready map.",
     icon: Route,
     title: "Build your route"
   },
   {
-    description: "Discover nearby food, activities, and ideas around your confirmed stops.",
+    description: "Discover nearby food, activities, and ideas around your confirmed places.",
     icon: Lightbulb,
     title: "Get smart suggestions"
   }

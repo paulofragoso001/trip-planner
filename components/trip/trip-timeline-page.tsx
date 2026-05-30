@@ -49,7 +49,7 @@ export default function TripTimelinePage({
           </div>
 
           <div className="grid grid-cols-3 gap-2 sm:min-w-[360px]">
-            <StatPill label="Stops" value={String(stats.totalItems)} />
+            <StatPill label="Places" value={String(stats.totalItems)} />
             <StatPill label="Mapped" value={String(stats.mappedStops)} />
             <StatPill label="Needs location" value={String(stats.alerts)} />
           </div>

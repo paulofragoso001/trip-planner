@@ -109,28 +109,24 @@ export async function loadDashboardData(): Promise<DashboardData> {
         .is("read_at", null)
     ]);
 
-  const firstError = [
-    tripsResult.error,
-    tripCountResult.error,
-    activeTripsResult.error,
-    segmentsResult.error,
-    mappedSegmentsResult.error,
-    importsResult.error,
-    socialImportsResult.error,
-    approvedPlacesResult.error,
-    alertsResult.error
-  ].find(Boolean);
+  logOptionalDashboardErrors({
+    activeTrips: activeTripsResult.error,
+    alerts: alertsResult.error,
+    approvedPlaces: approvedPlacesResult.error,
+    importedSocialPosts: socialImportsResult.error,
+    trips: tripsResult.error,
+    tripCount: tripCountResult.error,
+    tripSegments: segmentsResult.error,
+    mappedTripSegments: mappedSegmentsResult.error,
+    unfiledItems: importsResult.error
+  });
 
-  if (firstError) {
-    return emptyDashboardData("Could not load dashboard details right now.");
-  }
-
-  const recentTrips = ((tripsResult.data || []) as TripRow[]).map(mapRecentTrip);
-  const tripCount = tripCountResult.count || 0;
-  const segmentCount = segmentsResult.count || 0;
-  const mappedSegmentCount = mappedSegmentsResult.count || 0;
-  const savedInspirationCount = (importsResult.count || 0) + (socialImportsResult.count || 0);
-  const approvedPlacesCount = approvedPlacesResult.count || 0;
+  const recentTrips = tripsResult.error ? [] : ((tripsResult.data || []) as TripRow[]).map(mapRecentTrip);
+  const tripCount = safeCount(tripCountResult);
+  const segmentCount = safeCount(segmentsResult);
+  const mappedSegmentCount = safeCount(mappedSegmentsResult);
+  const savedInspirationCount = safeCount(importsResult) + safeCount(socialImportsResult);
+  const approvedPlacesCount = safeCount(approvedPlacesResult);
 
   return {
     error: null,
@@ -143,10 +139,10 @@ export async function loadDashboardData(): Promise<DashboardData> {
     }),
     metrics: [
       { label: "Trips saved", value: String(tripCount) },
-      { label: "Active plans", value: String(activeTripsResult.count || 0) },
-      { label: "Stops", value: String(segmentCount) },
+      { label: "Active plans", value: String(safeCount(activeTripsResult)) },
+      { label: "Places", value: String(segmentCount) },
       { label: "Ideas waiting", value: String(savedInspirationCount) },
-      { label: "Alerts", value: String(alertsResult.count || 0) }
+      { label: "Alerts", value: String(safeCount(alertsResult)) }
     ],
     recentTrips
   };
@@ -159,11 +155,40 @@ function emptyDashboardData(error: string): DashboardData {
     metrics: [
       { label: "Trips saved", value: "0" },
       { label: "Active plans", value: "0" },
-      { label: "Stops", value: "0" },
+      { label: "Places", value: "0" },
       { label: "Ideas waiting", value: "0" },
       { label: "Alerts", value: "0" }
     ],
     recentTrips: []
+  };
+}
+
+function safeCount(result: { count: number | null; error?: unknown }) {
+  return result.error ? 0 : result.count || 0;
+}
+
+function logOptionalDashboardErrors(errors: Record<string, unknown>) {
+  const entries = Object.entries(errors)
+    .filter(([, error]) => Boolean(error))
+    .map(([query, error]) => ({
+      error: sanitizeDashboardError(error),
+      query
+    }));
+
+  if (entries.length) {
+    console.warn("[dashboard] optional dashboard details unavailable", { failures: entries });
+  }
+}
+
+function sanitizeDashboardError(error: unknown) {
+  if (!error || typeof error !== "object") {
+    return { message: "Unknown dashboard query error" };
+  }
+
+  const record = error as Record<string, unknown>;
+  return {
+    code: typeof record.code === "string" ? record.code : undefined,
+    message: typeof record.message === "string" ? record.message : "Dashboard query failed"
   };
 }
 

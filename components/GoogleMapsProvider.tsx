@@ -71,7 +71,7 @@ export default function GoogleMapsProvider({ children }: GoogleMapsProviderProps
     return (
       <>
         <MapWarning>
-          Maps are temporarily unavailable. You can still save trips and add stops.
+          Maps are temporarily unavailable. You can still save trips and add places.
         </MapWarning>
         {children}
       </>

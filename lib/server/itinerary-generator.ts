@@ -392,7 +392,7 @@ function buildRouteWarnings(
   if (itemCount > maxStopsPerDay) {
     warnings.push({
       code: "too_many_stops",
-      message: `${itemCount} stops today. Consider moving a few to another day.`
+      message: `${itemCount} places today. Consider moving a few to another day.`
     });
   }
 

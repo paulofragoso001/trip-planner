@@ -36,29 +36,19 @@ export default function ImportsPage({
       <section className="grid gap-6">
         <PageHeader
           actions={
-            <>
-              <a
-                className="inline-flex min-h-11 items-center justify-center rounded-2xl bg-blue-600 px-4 text-sm font-black text-white transition hover:bg-blue-700"
-                href="#saved-inspiration"
-              >
-                Add inspiration
-              </a>
-              <a
-                className="inline-flex min-h-11 items-center justify-center rounded-2xl bg-slate-100 px-4 text-sm font-black text-slate-800 transition hover:bg-slate-200"
-                href="#ai-review"
-              >
-                Review places
-              </a>
-            </>
+            <a
+              className="inline-flex min-h-11 items-center justify-center rounded-2xl bg-blue-600 px-4 text-sm font-black text-white transition hover:bg-blue-700"
+              href="#saved-inspiration"
+            >
+              Add idea
+            </a>
           }
           eyebrow="Plan"
-          subtitle="Add an idea, review places, then create the trip."
+          subtitle="Add a note, link, or screenshot. Wayline will find places for you to review."
           title="Plan"
         />
 
         <Stepper steps={[...waylineCopy.onboardingSteps]} />
-
-        <AiTravelPlannerForm trips={trips} />
 
         <SectionCard
           description="Paste a link, note, or screenshot."
@@ -115,6 +105,18 @@ export default function ImportsPage({
         <TripDraftQueue drafts={tripDrafts} />
 
         <details className="rounded-[2rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+          <summary className="cursor-pointer text-lg font-black text-slate-950">
+            Optional trip context
+          </summary>
+          <p className="mt-2 text-sm text-slate-600">
+            Add destination, style, and interests when you want Wayline to suggest places from trip details.
+          </p>
+          <div className="mt-4">
+            <AiTravelPlannerForm trips={trips} />
+          </div>
+        </details>
+
+        <details className="rounded-[2rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
         <summary className="cursor-pointer text-lg font-black text-slate-950">Advanced sources</summary>
         <p className="mt-2 text-sm text-slate-600">
           Optional inbox, calendar, and source connections that can feed Wayline later.
@@ -157,8 +159,8 @@ export default function ImportsPage({
 
       <aside className="grid content-start gap-5 xl:sticky xl:top-24">
         <section className="rounded-[2rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-          <p className="text-xs font-black uppercase tracking-[0.2em] text-blue-600">Feed</p>
-          <h3 className="mt-1 text-base font-black">Recent saved inspiration</h3>
+          <p className="text-xs font-black uppercase tracking-[0.2em] text-blue-600">Ideas</p>
+          <h3 className="mt-1 text-base font-black">Recent ideas</h3>
           <div className="mt-4 grid gap-3">
             {importedContent.slice(0, 6).map((post) => (
               <div className="grid grid-cols-[56px_minmax(0,1fr)] gap-3 rounded-2xl bg-slate-50 px-3 py-3" key={post.id}>

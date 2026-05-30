@@ -44,7 +44,7 @@ export async function generateTripRecommendations(
     .limit(5);
 
   if (segmentError) {
-    throw new ApiError("internal_error", "Could not load mapped trip stops.", 500, {
+    throw new ApiError("internal_error", "Could not load mapped trip places.", 500, {
       supabaseMessage: segmentError.message
     });
   }
