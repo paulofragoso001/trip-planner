@@ -41,6 +41,7 @@ test.describe("mobile soft-launch UX", () => {
     await expect(nav.getByRole("link", { name: /Plan/ })).toBeVisible();
     await expect(nav.getByRole("link", { name: /Trips/ })).toBeVisible();
     await expect(nav.getByRole("link", { name: /Map/ })).toBeVisible();
-    await expect(nav.getByRole("link", { name: /Saved/ })).toBeVisible();
+    await expect(nav.getByRole("link", { name: /Profile/ })).toBeVisible();
+    await expect(nav.getByRole("link", { name: /Saved/ })).toHaveCount(0);
   });
 });

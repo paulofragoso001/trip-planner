@@ -4,6 +4,7 @@ import { TripCreateForm } from "@/components/dashboard/trip-create-form";
 import { TripRowActions } from "@/components/dashboard/trip-row-actions";
 import type { TripsData } from "@/app/dashboard/trips/loader";
 import { EmptyState, PageHeader, SectionCard, StatusBadge } from "@/components/trip-ui";
+import { waylineCopy } from "@/lib/copy/wayline-copy";
 
 type TripsPageProps = TripsData;
 
@@ -12,14 +13,14 @@ export default function TripsPage({ error, trips }: TripsPageProps) {
     <div className="grid gap-6">
       <PageHeader
         eyebrow="My Trips"
-        subtitle="Create, organize, and continue your travel plans."
-        title="Your trip workspace"
+        subtitle="Create and continue confirmed plans."
+        title="My Trips"
       />
 
       <div className="grid gap-6 lg:grid-cols-[380px_minmax(0,1fr)]">
         <SectionCard
           className="lg:sticky lg:top-24 lg:self-start"
-          description="Set the destination first so Wayline can match AI places to the right trip."
+          description="Destination helps match places."
           id="new-trip"
           title="Create a new trip"
         >
@@ -54,7 +55,7 @@ export default function TripsPage({ error, trips }: TripsPageProps) {
                     </Link>
                   </div>
                 }
-                description="Create one manually or let Wayline build one from inspiration."
+                description={waylineCopy.emptyStates.myTrips}
                 title="No trips yet."
               />
             ) : null}

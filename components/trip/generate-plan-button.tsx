@@ -96,7 +96,7 @@ function buildFeedback(
       (total, day) => total + (day.warnings?.length || 0),
       0
     ) ?? 0;
-  const surface = context === "map" ? "Map" : "Timeline";
+  const surface = context === "map" ? "Map" : "Itinerary";
   const warningText = warningCount ? ` ${warningCount} route warning${warningCount === 1 ? "" : "s"} found.` : "";
 
   return `${surface} order updated: ${assigned} stop${assigned === 1 ? "" : "s"} across ${days} day${days === 1 ? "" : "s"}.${warningText}`;

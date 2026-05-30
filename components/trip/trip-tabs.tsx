@@ -5,9 +5,9 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
 const tabs = [
-  { label: "Timeline", href: "/timeline" },
+  { label: "Itinerary", href: "/timeline" },
   { label: "Map", href: "/map" },
-  { label: "Suggestions", href: "/map#smart-suggestions" },
+  { label: "Ideas", href: "/map#smart-suggestions" },
   { label: "Budget", href: "/budget" },
   { label: "Share", href: "/sharing" }
 ] as const;

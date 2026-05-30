@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Sparkles, MapPinned, Route, Lightbulb } from "lucide-react";
 import { signOut } from "@/app/actions";
 import { createClient } from "@/lib/supabase/server";
+import { waylineCopy } from "@/lib/copy/wayline-copy";
 
 const features = [
   {
@@ -41,11 +42,10 @@ export default async function HomePage() {
               Wayline
             </p>
             <h1 className="mt-4 max-w-4xl text-4xl font-black leading-[0.98] tracking-tight text-ink sm:text-5xl lg:text-7xl">
-              Turn saved travel ideas into mapped trip plans.
+              {waylineCopy.productPromise}
             </h1>
             <p className="mt-6 max-w-2xl text-base leading-8 text-slate-600 sm:text-lg">
-              Paste travel notes, links, or screenshots. Wayline finds the places,
-              builds your trip, maps your stops, and suggests what to do nearby.
+              {waylineCopy.productDescription}
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <Link

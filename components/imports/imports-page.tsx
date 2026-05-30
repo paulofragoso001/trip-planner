@@ -7,6 +7,7 @@ import { TripDraftQueue } from "@/components/imports/trip-draft-queue";
 import { UnfiledItemForm } from "@/components/imports/unfiled-item-form";
 import { EmptyState, PageHeader, SectionCard, Stepper, StatusBadge } from "@/components/trip-ui";
 import type { WaylineSampleKey } from "@/lib/wayline-onboarding";
+import { waylineCopy } from "@/lib/copy/wayline-copy";
 
 type ImportsPageProps = ImportsData & {
   sampleInspiration?: {
@@ -50,35 +51,20 @@ export default function ImportsPage({
               </a>
             </>
           }
-          eyebrow="Plan with AI"
-          subtitle="Paste a link, note, or screenshot. Wayline finds the places, checks the destination, and turns approved ideas into a mapped trip plan."
-          title="Turn saved inspiration into a trip."
+          eyebrow="Plan"
+          subtitle="Add an idea, review places, then create the trip."
+          title="Plan"
         />
 
-        <Stepper
-          steps={[
-            {
-              description: "Paste travel links, screenshots, or notes.",
-              label: "Add"
-            },
-            {
-              description: "Approve, edit, merge, or dismiss AI places.",
-              label: "Review"
-            },
-            {
-              description: "Create a confirmed trip with timeline and map stops.",
-              label: "Plan"
-            }
-          ]}
-        />
+        <Stepper steps={[...waylineCopy.onboardingSteps]} />
 
         <AiTravelPlannerForm trips={trips} />
 
         <SectionCard
-          description="Paste a TikTok, Instagram, travel note, or screenshot. Wayline will find the places for you."
-          eyebrow="Saved Inspiration"
+          description="Paste a link, note, or screenshot."
+          eyebrow="Ideas"
           id="saved-inspiration"
-          title="Add travel ideas"
+          title="Add an idea"
         >
           <div className="mt-5">
             <SocialImportForm
@@ -95,10 +81,10 @@ export default function ImportsPage({
               {aiReviewItems.length} to review
             </StatusBadge>
           }
-          description="Review these places before adding them to your trip."
+          description="Approve, edit, merge, or dismiss each place."
           eyebrow="AI Review"
           id="ai-review"
-          title="Review places Wayline found"
+          title="Review places"
         >
           <div className="mt-4 grid gap-4">
             {aiReviewItems.map((place) => (
@@ -119,7 +105,7 @@ export default function ImportsPage({
                     Try sample inspiration
                   </a>
                 }
-                description="Add inspiration and Wayline will find real places and activities for your trip."
+                description={waylineCopy.emptyStates.aiReview}
                 title="No places to review yet."
               />
             ) : null}
@@ -210,7 +196,7 @@ export default function ImportsPage({
                   </a>
                 }
                 className="rounded-2xl px-4 py-6"
-                description="Paste a note, link, or screenshot. Wayline will extract places for you."
+                description={waylineCopy.emptyStates.savedInspiration}
                 title="No saved inspiration yet."
               />
             ) : null}
@@ -231,7 +217,7 @@ export default function ImportsPage({
               </div>
               {item.parseStatus === "promoted" ? (
                 <p className="rounded-xl bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700">
-                  Promoted to timeline
+                  Added to itinerary
                 </p>
               ) : trips.length ? (
                 <AsyncActionButton
@@ -239,7 +225,7 @@ export default function ImportsPage({
                     tripId: item.tripId || trips[0].id
                   }}
                   endpoint={`/api/unfiled-items/${item.id}/promote`}
-                  successMessage={`${item.title} promoted to timeline.`}
+                  successMessage={`${item.title} added to itinerary.`}
                 >
                   Promote to {trips[0].name}
                 </AsyncActionButton>

@@ -21,6 +21,7 @@ import { CalendarSyncPanel } from "@/components/trip/calendar-sync-panel";
 import { GeneratePlanButton } from "@/components/trip/generate-plan-button";
 import { TripSegmentDeleteButton } from "@/components/trip/trip-segment-delete-button";
 import { TripSegmentForm } from "@/components/trip/trip-segment-form";
+import { waylineCopy } from "@/lib/copy/wayline-copy";
 import { timelineStatusClass, timelineStatusLabel } from "@/lib/ui/timeline";
 
 type TripTimelinePageProps = TripTimelineData;
@@ -42,7 +43,7 @@ export default function TripTimelinePage({
       <section className="min-w-0">
         <div className="flex flex-col gap-4 border-b border-slate-200 pb-5 2xl:flex-row 2xl:items-end 2xl:justify-between">
           <div className="min-w-0">
-            <h2 className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">Timeline</h2>
+            <h2 className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">Itinerary</h2>
             <p className="mt-1 break-words text-2xl font-black tracking-tight text-slate-950 sm:text-3xl">{title}</p>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">{description}</p>
           </div>
@@ -82,7 +83,7 @@ export default function TripTimelinePage({
                 </span>
                 <span className="mt-1 block text-sm font-black">{day.date}</span>
                 <span className="mt-1 block text-xs font-semibold opacity-80">
-                  {day.count} plans
+                  {day.count} place{day.count === 1 ? "" : "s"}
                 </span>
               </a>
             ))}
@@ -111,7 +112,7 @@ export default function TripTimelinePage({
                       <p className="text-sm text-slate-600">{day.summary}</p>
                     </div>
                   <div className="flex flex-wrap gap-2 text-xs font-bold uppercase tracking-[0.12em] text-slate-500">
-                      <span>{day.items.length} stop{day.items.length === 1 ? "" : "s"}</span>
+                      <span>{day.items.length} place{day.items.length === 1 ? "" : "s"}</span>
                       <span>{formatDistance(day.routeSummary.totalDistanceMeters)}</span>
                       <span>{formatDuration(day.routeSummary.estimatedDurationMinutes)}</span>
                     </div>
@@ -135,10 +136,22 @@ export default function TripTimelinePage({
                     tripId={tripId}
                   />
 
-                  <div className="relative grid gap-3">
-                    <div className="absolute bottom-8 left-[23px] top-8 hidden w-px bg-slate-200 sm:block" />
-                    {day.items.map((item) => (
-                      <TimelineCard item={item} key={item.id} tripId={tripId} />
+                  <div className="grid gap-4">
+                    {groupItemsByDayPart(day.items).map((group) => (
+                      <section className="grid gap-3" key={group.label}>
+                        <div className="flex items-center gap-3">
+                          <h4 className="text-xs font-black uppercase tracking-[0.18em] text-slate-500">
+                            {group.label}
+                          </h4>
+                          <span className="h-px flex-1 bg-slate-200" />
+                        </div>
+                        <div className="relative grid gap-3">
+                          <div className="absolute bottom-8 left-[23px] top-8 hidden w-px bg-slate-200 sm:block" />
+                          {group.items.map((item) => (
+                            <TimelineCard item={item} key={item.id} tripId={tripId} />
+                          ))}
+                        </div>
+                      </section>
                     ))}
                   </div>
                 </div>
@@ -147,8 +160,8 @@ export default function TripTimelinePage({
             ))
           ) : (
             <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-5 py-8 text-sm text-slate-600">
-              <p className="font-bold text-slate-950">No stops yet.</p>
-              <p className="mt-1">Add inspiration or create a stop to start building your trip.</p>
+              <p className="font-bold text-slate-950">No places yet.</p>
+              <p className="mt-1">{waylineCopy.emptyStates.timeline}</p>
             </div>
           )}
         </div>
@@ -174,18 +187,18 @@ function TimelineTools({
 }) {
   return (
     <div className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:rounded-3xl sm:p-5">
-      <h3 className="text-base font-black">Plan tools</h3>
+      <h3 className="text-base font-black">Itinerary actions</h3>
       <p className="mt-2 text-sm text-slate-600">
-        Generate the day order, add stops, and keep the plan ready for maps and sharing.
+        Generate day order or add a place.
       </p>
       <div className="mt-4 grid gap-3">
         <GeneratePlanButton context="timeline" tripId={tripId} />
         <AsyncActionButton
           body={{ orderedItemIds: timelineItemIds, tripId }}
           endpoint="/api/itinerary/reorder"
-          successMessage="Timeline order saved."
+          successMessage="Itinerary order saved."
         >
-          Reorder items
+          Reorder places
         </AsyncActionButton>
         {firstFlight ? (
           <AsyncActionButton
@@ -216,10 +229,10 @@ function TimelineTools({
           className="rounded-2xl bg-slate-100 px-4 py-3 text-left font-semibold transition hover:bg-slate-200"
           href={`/dashboard/trips/${tripId}#new-plan`}
         >
-            Add stop
+            Add place
         </Link>
         <div id="new-plan">
-          <TripSegmentForm buttonLabel="Add stop" tripId={tripId} />
+          <TripSegmentForm buttonLabel="Add place" tripId={tripId} />
         </div>
       </div>
     </div>
@@ -343,8 +356,8 @@ function DayRoutePreview({
       href={`/dashboard/trips/${tripId}/map`}
     >
       <div className="min-w-0">
-        <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-500">
-          Day route
+          <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-500">
+          Route preview
         </p>
         <div className="mt-2 flex items-center gap-2 overflow-hidden">
           {day.items.slice(0, 5).map((item, index) => (
@@ -359,7 +372,7 @@ function DayRoutePreview({
           ))}
         </div>
         <p className="mt-2 truncate text-sm font-semibold text-slate-600">
-          {mappedItems.length ? `${mappedItems.length} mapped stop${mappedItems.length === 1 ? "" : "s"}` : "Add coordinates to preview the route"}
+          {mappedItems.length ? `${mappedItems.length} mapped place${mappedItems.length === 1 ? "" : "s"}` : "Add locations to preview the route"}
         </p>
       </div>
       <div className="grid grid-cols-2 gap-2 text-sm sm:min-w-[170px]">
@@ -402,7 +415,7 @@ function TripOpsSummary({
       <div className="mt-4 grid gap-3">
         <SummaryRow
           icon={<CheckCircle2 className="h-4 w-4" />}
-          label="Confirmed plans"
+          label="Scheduled"
           value={`${readyItems} of ${totalItems}`}
         />
         <SummaryRow
@@ -412,7 +425,7 @@ function TripOpsSummary({
         />
         <SummaryRow
           icon={<Route className="h-4 w-4" />}
-          label="Mapped stops"
+          label="Mapped places"
           value={`${mappedStops} pins`}
         />
       </div>
@@ -440,6 +453,43 @@ function SummaryRow({
       <strong className="shrink-0 text-slate-950">{value}</strong>
     </div>
   );
+}
+
+function groupItemsByDayPart(items: TimelineItemView[]) {
+  const groups = [
+    { items: [] as TimelineItemView[], label: "Morning" },
+    { items: [] as TimelineItemView[], label: "Afternoon" },
+    { items: [] as TimelineItemView[], label: "Evening" },
+    { items: [] as TimelineItemView[], label: "Unscheduled ideas" }
+  ];
+
+  for (const item of items) {
+    const hour = readHour(item.startAt);
+    if (hour === null) {
+      groups[3].items.push(item);
+    } else if (hour < 12) {
+      groups[0].items.push(item);
+    } else if (hour < 17) {
+      groups[1].items.push(item);
+    } else {
+      groups[2].items.push(item);
+    }
+  }
+
+  return groups.filter((group) => group.items.length > 0);
+}
+
+function readHour(value: string | null) {
+  if (!value) {
+    return null;
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  return date.getHours();
 }
 
 function formatDistance(value: number) {

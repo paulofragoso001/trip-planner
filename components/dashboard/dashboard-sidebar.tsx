@@ -5,8 +5,8 @@ import { usePathname } from "next/navigation";
 
 const items = [
   { label: "Home", href: "/dashboard" },
-  { label: "My Trips", href: "/dashboard/trips" },
-  { label: "Plan with AI", href: "/dashboard/imports" }
+  { label: "Trips", href: "/dashboard/trips" },
+  { label: "Plan", href: "/dashboard/imports" }
 ] as const;
 
 export function DashboardSidebar() {

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { TripDraftView } from "@/app/dashboard/imports/loader";
+import { waylineCopy } from "@/lib/copy/wayline-copy";
 
 type TripDraftQueueProps = {
   drafts: TripDraftView[];
@@ -61,13 +62,13 @@ export function TripDraftQueue({ drafts }: TripDraftQueueProps) {
       <div className="grid gap-3 sm:flex sm:flex-wrap sm:items-center sm:justify-between">
         <div>
           <p className="text-xs font-black uppercase tracking-[0.2em] text-blue-600">
-            Trip drafts
+            Trip plan
           </p>
           <h3 className="mt-1 text-xl font-black tracking-tight text-slate-950">
-            Create your trip plan
+            Create trip plan
           </h3>
           <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-600">
-            Approved places become a mapped trip plan when you are ready.
+            Build the confirmed plan when the draft looks right.
           </p>
         </div>
         <span className="inline-flex min-h-9 w-fit items-center rounded-full bg-slate-100 px-3 text-xs font-black text-slate-600">
@@ -170,7 +171,7 @@ export function TripDraftQueue({ drafts }: TripDraftQueueProps) {
           <div className="rounded-3xl border border-dashed border-slate-300 px-4 py-8 text-sm text-slate-600">
             <p className="font-black text-slate-950">No trip drafts yet.</p>
             <p className="mt-1 max-w-2xl leading-6">
-              Approve places from AI Review to create a draft. Drafts become confirmed trips only when you choose Create Trip Plan.
+              {waylineCopy.emptyStates.tripDrafts}
             </p>
           </div>
         ) : null}

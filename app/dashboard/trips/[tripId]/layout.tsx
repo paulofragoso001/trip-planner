@@ -20,7 +20,7 @@ export default async function TripLayout({ children, params }: TripLayoutProps) 
         data-testid="trip-workspace-layout"
       >
         <p className="text-xs font-black uppercase tracking-[0.2em] text-blue-600">
-          Trip workspace
+          Current trip
         </p>
         <div className="mt-2 grid gap-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
           <div className="min-w-0">
@@ -30,13 +30,13 @@ export default async function TripLayout({ children, params }: TripLayoutProps) 
               <StatusBadge>{trip.dateRange}</StatusBadge>
               <StatusBadge tone="purple">{trip.travelStyle}</StatusBadge>
               <StatusBadge tone={trip.mappedStops ? "green" : "slate"}>
-                {trip.mappedStops} mapped
+                {trip.mappedStops} mapped places
               </StatusBadge>
               <StatusBadge tone={trip.needsLocationStops ? "amber" : "green"}>
                 {trip.needsLocationStops} needs location
               </StatusBadge>
               <StatusBadge tone={trip.suggestionsCount ? "blue" : "slate"}>
-                {trip.suggestionsCount} suggestions
+                {trip.suggestionsCount} nearby ideas
               </StatusBadge>
             </div>
             {trip.error ? (

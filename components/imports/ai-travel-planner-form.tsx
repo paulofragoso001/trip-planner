@@ -101,13 +101,13 @@ export function AiTravelPlannerForm({ trips }: AiTravelPlannerFormProps) {
         <div>
           <p className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-black uppercase text-blue-100">
             <Sparkles className="h-3.5 w-3.5" />
-            Plan with AI
+            Plan
           </p>
           <h2 className="mt-4 max-w-xl text-3xl font-black tracking-tight sm:text-4xl">
-            Turn saved ideas into a reviewable trip plan.
+            Create a trip from saved ideas.
           </h2>
           <p className="mt-3 max-w-xl text-sm leading-6 text-slate-300">
-            Describe the destination, trip style, and interests. Wayline creates reviewable places, then you approve what becomes timeline and map data.
+            Add a destination, trip style, and interests. Review the places before they become itinerary and map data.
           </p>
           <div className="mt-5 grid gap-3 text-sm font-bold text-slate-200 sm:grid-cols-3">
             <div className="rounded-2xl bg-white/10 px-4 py-3">

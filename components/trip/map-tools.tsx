@@ -5,6 +5,7 @@ import { Loader2 } from "lucide-react";
 import { useState } from "react";
 import { GeneratePlanButton } from "@/components/trip/generate-plan-button";
 import { TripSegmentForm } from "@/components/trip/trip-segment-form";
+import { waylineCopy } from "@/lib/copy/wayline-copy";
 
 export function MapTools({
   hasMappedStops = false,
@@ -63,17 +64,17 @@ export function MapTools({
         className="rounded-2xl bg-slate-100 px-4 py-3 text-left font-semibold transition hover:bg-slate-200"
         href={`/dashboard/trips/${encodeURIComponent(tripId)}/timeline#new-plan`}
       >
-        Add stop
+        Add place
       </Link>
       <TripSegmentForm
-        buttonLabel="Save map pin"
+        buttonLabel="Save place"
         defaultKind="activity"
         includeCoordinates
         tripId={tripId}
       />
       {!hasMappedStops ? (
         <p className="rounded-2xl bg-blue-50 px-4 py-3 text-sm font-semibold text-blue-900">
-          Add at least one mapped stop to unlock nearby suggestions.
+          {waylineCopy.suggestions.noMappedStops}
         </p>
       ) : null}
       <button

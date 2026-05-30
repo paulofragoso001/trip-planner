@@ -33,9 +33,9 @@ export default function TripOverviewPage({
           <h3 className="text-base font-black">Next steps</h3>
           <div className="mt-4 grid gap-3">
             {[
-              `${segmentCount} stop${segmentCount === 1 ? "" : "s"} loaded`,
-              "Review saved inspiration for new trip ideas",
-              "Share the workspace when collaborators are ready"
+              `${segmentCount} place${segmentCount === 1 ? "" : "s"} loaded`,
+              "Review ideas before adding more places",
+              "Share the trip when collaborators are ready"
             ].map((item) => (
               <div
                 className="rounded-2xl bg-slate-50 px-4 py-3 text-sm font-medium text-slate-700"
@@ -70,7 +70,7 @@ export default function TripOverviewPage({
         <article className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
           <h3 className="text-base font-black">Trip summary</h3>
           <p className="mt-2 text-sm text-slate-600">
-            Timeline, map, budget, and sharing stay connected to this trip so your confirmed plan stays in one place.
+            Itinerary, map, ideas, budget, and sharing stay connected to this trip.
           </p>
         </article>
       </aside>

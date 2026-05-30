@@ -3,10 +3,10 @@ import {
   CircleDollarSign,
   CalendarDays,
   Compass,
-  Inbox,
   LayoutDashboard,
   Map,
   Plane,
+  User,
   Sparkles,
   Users
 } from "lucide-react";
@@ -53,7 +53,7 @@ export const navSections: NavSection[] = [
       {
         href: "/dashboard/imports",
         icon: Compass,
-        label: "Plan with AI",
+        label: "Plan",
         match: (pathname, view, hash) =>
           (pathname.startsWith("/dashboard/imports") && hash !== "#saved-inspiration") ||
           (pathname === "/dashboard" && view === "imports")
@@ -61,18 +61,10 @@ export const navSections: NavSection[] = [
       {
         href: "/dashboard/trips",
         icon: Plane,
-        label: "My Trips",
+        label: "Trips",
         match: (pathname, view) =>
           pathname === "/dashboard/trips" ||
           (pathname === "/dashboard" && view === "trips")
-      },
-      {
-        href: "/dashboard/imports#saved-inspiration",
-        icon: Inbox,
-        label: "Saved Inspiration",
-        match: (pathname, view, hash) =>
-          (pathname.startsWith("/dashboard/imports") && hash === "#saved-inspiration") ||
-          (pathname === "/dashboard" && view === "saved-inspiration")
       },
       {
         href: "/dashboard/trips",
@@ -82,6 +74,14 @@ export const navSections: NavSection[] = [
         match: (pathname, view) =>
           pathname.includes("/map") ||
           (pathname === "/dashboard" && view === "map")
+      },
+      {
+        href: "/dashboard/account",
+        icon: User,
+        label: "Profile",
+        match: (pathname, view) =>
+          pathname === "/dashboard/account" ||
+          (pathname === "/dashboard" && view === "account")
       }
     ]
   },
@@ -91,7 +91,7 @@ export const navSections: NavSection[] = [
       {
         href: "/dashboard/trips",
         icon: CalendarDays,
-        label: "Timeline",
+        label: "Itinerary",
         getHref: (pathname, tripId) => currentTripHref(pathname, "/timeline", tripId),
         match: (pathname, view) =>
           pathname.includes("/timeline") ||
@@ -109,7 +109,7 @@ export const navSections: NavSection[] = [
       {
         href: "/dashboard/trips",
         icon: Sparkles,
-        label: "Suggestions",
+        label: "Ideas",
         getHref: (pathname, tripId) => currentTripHref(pathname, "/map#smart-suggestions", tripId),
         match: () => false
       },
@@ -150,8 +150,8 @@ export const mobileNavItems: NavItem[] = [
   navSections[0].items[0],
   navSections[0].items[1],
   navSections[0].items[2],
-  navSections[0].items[4],
-  navSections[0].items[3]
+  navSections[0].items[3],
+  navSections[0].items[4]
 ];
 
 export function resolveNavTitle(pathname: string, view: string | null) {

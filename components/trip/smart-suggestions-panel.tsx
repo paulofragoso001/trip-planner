@@ -4,6 +4,7 @@ import { ExternalLink, Loader2, Sparkles, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { TripRecommendationView } from "@/app/dashboard/trips/[tripId]/map/loader";
+import { waylineCopy } from "@/lib/copy/wayline-copy";
 
 type SmartSuggestionsPanelProps = {
   mappedStopCount: number;
@@ -32,9 +33,9 @@ export function SmartSuggestionsPanel({
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(readError(payload, response.status));
       if (payload?.data?.skippedReason === "no_mapped_segments") {
-        setMessage("Add at least one mapped stop to get nearby suggestions.");
+        setMessage(waylineCopy.suggestions.noMappedStops);
       } else if (payload?.data?.partialFailure) {
-        setMessage("Some suggestions could not be loaded. Showing what is available.");
+        setMessage(waylineCopy.suggestions.partialFailure);
       } else {
         setMessage(label === "Generating suggestions" ? "Suggestions updated." : "Done.");
       }
@@ -43,7 +44,7 @@ export function SmartSuggestionsPanel({
       setMessage(
         error instanceof Error
           ? error.message
-          : "Suggestions are temporarily unavailable. Try again."
+          : waylineCopy.suggestions.unavailable
       );
     } finally {
       setPendingAction(null);
@@ -60,21 +61,19 @@ export function SmartSuggestionsPanel({
       <div className="grid gap-3 sm:flex sm:items-start sm:justify-between">
         <div>
           <p className="text-xs font-black uppercase tracking-[0.18em] text-blue-600">
-            Smart Suggestions
+            Nearby Ideas
           </p>
           <h3 className="mt-1 text-base font-black text-slate-950">
-            Nearby ideas for this route
+            Ideas near this route
           </h3>
-          <p className="mt-1 text-sm leading-6 text-slate-600">
-            Suggestions are based on your mapped stops, destination, travel style, and nearby places.
-          </p>
+          <p className="mt-1 text-sm leading-6 text-slate-600">{waylineCopy.suggestions.intro}</p>
         </div>
         <button
           className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-slate-950 px-3 text-xs font-black text-white disabled:opacity-60 sm:w-auto"
           disabled={Boolean(pendingAction) || mappedStopCount === 0}
           onClick={() => run(`/api/trips/${tripId}/generate-suggestions`, "Generating suggestions")}
           type="button"
-          title={mappedStopCount === 0 ? "Add a mapped stop before finding suggestions." : undefined}
+          title={mappedStopCount === 0 ? waylineCopy.suggestions.noMappedStops : undefined}
         >
           {pendingAction?.includes("generate-suggestions") ? (
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -156,7 +155,7 @@ export function SmartSuggestionsPanel({
             <p className="font-black text-slate-950">No suggestions yet.</p>
             <p className="mt-1 leading-6">
               {mappedStopCount === 0
-                ? "Add at least one mapped stop to get nearby suggestions."
+                ? waylineCopy.emptyStates.smartSuggestions
                 : "Find ideas to load suggestions near your route."}
             </p>
           </div>

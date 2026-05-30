@@ -3,6 +3,7 @@ import { ArrowRight, Compass, Map, Plane, Radar } from "lucide-react";
 import type { DashboardData } from "@/app/dashboard/loader";
 import { FirstRunOnboarding, FirstRunProgress } from "@/components/dashboard/first-run-onboarding";
 import { EmptyState, PageHeader, SectionCard } from "@/components/trip-ui";
+import { waylineCopy } from "@/lib/copy/wayline-copy";
 
 type DashboardPageProps = DashboardData & {
   view?: string;
@@ -41,19 +42,19 @@ export default function DashboardPage({
               className="inline-flex min-h-11 items-center justify-center rounded-2xl bg-blue-600 px-4 text-sm font-black text-white transition hover:bg-blue-700"
               href="/dashboard/imports"
             >
-              Plan with AI
+              Plan
             </Link>
             <Link
               className="inline-flex min-h-11 items-center justify-center rounded-2xl bg-slate-100 px-4 text-sm font-black text-slate-800 transition hover:bg-slate-200"
               href="/dashboard/trips"
             >
-              Open My Trips
+              Open Trips
             </Link>
           </>
         }
         eyebrow="Wayline"
-        subtitle="Start with messy saved posts and notes, then move the approved plan into your trip workspace."
-        title="Turn saved travel ideas into a mapped trip plan."
+        subtitle="Choose the fastest path for where you are now."
+        title="Where do you want to start?"
       />
 
       <FirstRunProgress firstRun={firstRun} />
@@ -68,13 +69,13 @@ export default function DashboardPage({
               <Compass className="h-5 w-5" aria-hidden="true" />
             </span>
             <span>
-              <span className="block text-xl font-black sm:text-2xl">Plan with AI</span>
+              <span className="block text-xl font-black sm:text-2xl">Plan a new trip</span>
               <span className="mt-2 block max-w-md text-sm leading-6 text-slate-300">
-                Import Instagram, TikTok, Pinterest, YouTube links, screenshots, or notes. Wayline extracts places and drafts the route.
+                Add saved ideas and review the places Wayline finds.
               </span>
             </span>
             <span className="mt-5 inline-flex items-center gap-2 text-sm font-black">
-              Open AI planner
+              Start planning
               <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" aria-hidden="true" />
             </span>
           </Link>
@@ -87,13 +88,13 @@ export default function DashboardPage({
               <Plane className="h-5 w-5" aria-hidden="true" />
             </span>
             <span>
-              <span className="block text-xl font-black sm:text-2xl">My Trips</span>
+              <span className="block text-xl font-black sm:text-2xl">Trips</span>
               <span className="mt-2 block max-w-md text-sm leading-6 text-slate-600">
-                Manage confirmed itineraries, maps, reservations, shared access, budgets, and travel notes in one place.
+                Continue confirmed plans, maps, budgets, and sharing.
               </span>
             </span>
             <span className="mt-5 inline-flex items-center gap-2 text-sm font-black text-blue-700">
-              Open trip planner
+              Open trips
               <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" aria-hidden="true" />
             </span>
           </Link>
@@ -148,17 +149,17 @@ export default function DashboardPage({
                     className="inline-flex min-h-11 items-center justify-center rounded-2xl bg-blue-600 px-4 text-sm font-black text-white"
                     href="/dashboard/imports"
                   >
-                    Plan with AI
+                    Plan
                   </Link>
                 }
-                description="Start with a travel idea. Wayline will turn it into places, stops, and a map."
+                description={waylineCopy.emptyStates.myTrips}
                 title="No recent trips."
               />
             )}
           </div>
         </SectionCard>
 
-        <SectionCard eyebrow="Saved Inspiration" title="Ready for review">
+        <SectionCard eyebrow="Ideas" title="Ready for review">
           <div className="mt-4 rounded-2xl bg-slate-50 p-4">
             <div className="flex items-start gap-3">
               <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white text-blue-700 shadow-sm">
@@ -169,7 +170,7 @@ export default function DashboardPage({
                   {importsWaiting} item{importsWaiting === "1" ? "" : "s"} waiting
                 </p>
                 <p className="mt-1 text-sm leading-6 text-slate-600">
-                  Review AI places, approve what belongs, then create the trip plan.
+                  Review waiting places when you are ready.
                 </p>
               </div>
             </div>
@@ -195,7 +196,7 @@ export default function DashboardPage({
               className="rounded-2xl bg-slate-100 px-4 py-3 text-left font-semibold text-slate-800"
               href="/dashboard/trips"
             >
-              Open My Trips
+              Open Trips
             </Link>
           </div>
         </SectionCard>

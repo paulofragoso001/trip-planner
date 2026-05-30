@@ -192,6 +192,9 @@ function buildTimelineData({
   const alerts = days
     .flatMap((day) => day.items)
     .filter((item) => item.status === "watch").length;
+  const mappedStops = days
+    .flatMap((day) => day.items)
+    .filter((item) => item.lat !== null && item.lng !== null).length;
 
   return {
     dayTabs: days.map((day) => ({
@@ -206,7 +209,7 @@ function buildTimelineData({
     firstFlight: days.flatMap((day) => day.items).find((item) => item.kind === "flight") ?? null,
     stats: {
       alerts,
-      mappedStops: totalItems,
+      mappedStops,
       readyItems,
       totalItems
     },
@@ -219,7 +222,7 @@ function emptyTimelineData(tripId: string, error: string): TripTimelineData {
   return {
     dayTabs: [],
     days: [],
-    description: "Your timeline will appear after stops are available.",
+    description: "Your itinerary will appear after places are available.",
     error,
     firstFlight: null,
     stats: {

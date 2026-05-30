@@ -7,6 +7,7 @@ import { useState } from "react";
 import GoogleMapsProvider from "@/components/GoogleMapsProvider";
 import TripMap, { type TripMapItem } from "@/components/TripMap";
 import type { UnmappedMapSegment } from "@/app/dashboard/trips/[tripId]/map/loader";
+import { waylineCopy } from "@/lib/copy/wayline-copy";
 
 type ConnectedTripMapProps = {
   destination: string | null;
@@ -69,18 +70,18 @@ export function ConnectedTripMap({
         </GoogleMapsProvider>
       ) : (
         <div className="rounded-3xl border border-dashed border-slate-300 bg-slate-50 px-5 py-8 text-sm text-slate-600">
-          <p className="font-bold text-slate-950">No mapped stops yet.</p>
+          <p className="font-bold text-slate-950">No mapped places yet.</p>
           <p className="mt-1">
-            Retry location matching or add locations manually to build your route.
+            {waylineCopy.emptyStates.map}
           </p>
           {unmappedCount ? (
             <p className="mt-3 rounded-2xl bg-amber-50 px-4 py-3 font-semibold text-amber-800">
-              {unmappedCount} stop{unmappedCount === 1 ? "" : "s"} need confirmed locations before they can appear on the map.
+              {unmappedCount} place{unmappedCount === 1 ? "" : "s"} need confirmed locations.
             </p>
           ) : null}
           {!unmappedCount && activitySegments.length ? (
             <p className="mt-3 rounded-2xl bg-blue-50 px-4 py-3 font-semibold text-blue-900">
-              You have activity ideas, but no mapped stops yet. Add a meeting point or approve a physical place to build your map.
+              You have unscheduled activities, but no mapped places yet.
             </p>
           ) : null}
           <div className="mt-4 grid gap-2 sm:flex sm:flex-wrap">
@@ -115,7 +116,7 @@ export function ConnectedTripMap({
 
       {items.length && unmappedCount ? (
         <div className="rounded-2xl bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
-          Some stops need confirmed locations before they can appear on the map.
+          Some places need confirmed locations.
         </div>
       ) : null}
 
@@ -138,7 +139,7 @@ export function ConnectedTripMap({
                 type="button"
               >
                 <span className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">
-                  Stop {index + 1}
+                  Place {index + 1}
                 </span>
                 <span className="mt-1 block break-words font-semibold">{item.title}</span>
               </button>
@@ -185,12 +186,12 @@ export function ConnectedTripMap({
 
       {activitySegments.length ? (
         <div className="grid gap-2 rounded-2xl border border-blue-100 bg-blue-50 p-3 text-sm sm:p-4">
-          <p className="font-black text-blue-950">Activity ideas</p>
+          <p className="font-black text-blue-950">Unscheduled activities</p>
           {activitySegments.slice(0, 5).map((segment) => (
             <div className="rounded-xl bg-white/80 px-3 py-3" key={segment.id}>
               <p className="break-words font-bold text-blue-950">{segment.title}</p>
               <p className="mt-1 text-xs font-semibold text-blue-800">
-                Activity idea — add a meeting point or provider before it appears on your map.
+                {waylineCopy.location.activityIdea}
               </p>
               <div className="mt-3 grid gap-2 sm:flex sm:flex-wrap">
                 <Link
@@ -252,15 +253,15 @@ function RetryAllButton({ tripId }: { tripId: string }) {
 
 function copyForLocationStatus(segment: UnmappedMapSegment) {
   if (segment.locationStatus === "wrong_city_rejected") {
-    return "Wayline found a place with this name, but it was outside your trip destination.";
+    return waylineCopy.location.wrongCity;
   }
   if (segment.locationStatus === "provider_failed") {
-    return "Location matching is temporarily unavailable. Try again.";
+    return waylineCopy.location.providerFailed;
   }
   if (segment.locationStatus === "manual_location_required") {
     return "Add a confirmed location before this stop appears on the map.";
   }
-  return "Wayline needs a confirmed location before this stop can appear on the map.";
+  return waylineCopy.location.needsLocation;
 }
 
 function readError(payload: unknown, fallback: string) {

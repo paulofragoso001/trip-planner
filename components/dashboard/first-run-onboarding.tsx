@@ -5,6 +5,7 @@ import { Check, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { FirstRunState, FirstRunStep } from "@/lib/wayline-onboarding";
 import { cn } from "@/components/trip-ui";
+import { waylineCopy } from "@/lib/copy/wayline-copy";
 
 type FirstRunOnboardingProps = {
   firstRun: FirstRunState;
@@ -12,11 +13,12 @@ type FirstRunOnboardingProps = {
 
 const dismissalKey = "wayline:first-run-dismissed";
 
-const steps: Array<{ key: FirstRunStep; label: string; shortLabel: string }> = [
-  { key: "add_inspiration", label: "Add inspiration", shortLabel: "Add" },
-  { key: "review_places", label: "Review places", shortLabel: "Review" },
-  { key: "create_trip_plan", label: "Create trip plan", shortLabel: "Plan" }
-];
+const steps: Array<{ key: FirstRunStep; label: string; shortLabel: string }> =
+  waylineCopy.onboardingSteps.map((step, index) => ({
+    key: ["add_inspiration", "review_places", "create_trip_plan"][index] as FirstRunStep,
+    label: step.label,
+    shortLabel: step.label
+  }));
 
 export function FirstRunOnboarding({ firstRun }: FirstRunOnboardingProps) {
   const [dismissed, setDismissed] = useState(true);
@@ -46,7 +48,7 @@ export function FirstRunOnboarding({ firstRun }: FirstRunOnboardingProps) {
             Plan your first trip with Wayline
           </h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600 sm:text-base">
-            Add a travel note, link, or screenshot. Wayline will find the places, help you review them, and turn them into a mapped trip plan.
+            Add one idea, review the places, then create your first mapped trip.
           </p>
         </div>
 
@@ -101,11 +103,11 @@ export function FirstRunProgress({ firstRun }: FirstRunProgressProps) {
             First plan guide
           </p>
           <h2 className="mt-1 text-lg font-black text-slate-950">
-            Start with a travel idea. Wayline will turn it into places, stops, and a map.
+            Add, review, create.
           </h2>
         </div>
         <Link className="text-sm font-black text-blue-700" href="/dashboard/imports">
-          Plan with AI
+          Plan
         </Link>
       </div>
 
