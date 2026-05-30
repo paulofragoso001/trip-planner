@@ -149,7 +149,7 @@ function normalizePoint(item: unknown, index: number): MapPoint | null {
       readString(record.title) ||
       readString(record.name) ||
       readString(record.summary) ||
-      `Stop ${index + 1}`,
+      `Place ${index + 1}`,
     latitude,
     longitude,
     date:

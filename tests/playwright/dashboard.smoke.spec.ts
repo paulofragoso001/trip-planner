@@ -22,6 +22,10 @@ test("loads dashboard summary and route-split pages", async ({ page }) => {
     dashboardContent.getByRole("link", { name: /View trips/ }).first()
   ).toBeVisible();
   await expect(page.getByTestId("app-shell-nav").getByRole("link", { name: "Saved Inspiration" })).toHaveCount(0);
+  await expect(page.getByTestId("app-shell-nav").getByRole("link", { name: "Flight Status" })).toHaveCount(0);
+  await expect(page.getByTestId("app-shell-nav").getByRole("link", { name: "Reports" })).toHaveCount(0);
+  await expect(page.getByTestId("app-shell-nav").getByRole("link", { name: "Layout Simulator" })).toHaveCount(0);
+  await expect(page.getByTestId("app-shell-nav").getByRole("link", { name: "Admin" })).toHaveCount(0);
   await expect(page.getByText("Turn saved travel ideas into mapped trip plans.")).toHaveCount(0);
   await expect(page.getByText("First Plan Guide")).toHaveCount(0);
   await expect(page.getByText("Add, review, create.")).toHaveCount(0);
@@ -89,19 +93,5 @@ test("loads dashboard summary and route-split pages", async ({ page }) => {
   await expect(importsRoute.getByText("Create a trip from saved ideas.")).toHaveCount(0);
   await expect(importsRoute.getByText("Advanced sources")).toBeVisible();
 
-  await openDashboardRoute("/dashboard/admin");
-  const adminRoute = page.getByTestId("admin-route");
-  await expect(adminRoute).toBeVisible();
-  await expect(adminRoute.getByRole("heading", { exact: true, name: "Admin tools" })).toBeVisible();
-  await expect(adminRoute.getByRole("heading", { exact: true, name: "Internal status" })).toBeVisible();
-  await expect(adminRoute.getByRole("heading", { exact: true, name: "OAuth observability" })).toBeVisible();
-  await expect(adminRoute.getByRole("heading", { exact: true, name: "Import parse observability" })).toBeVisible();
-  await expect(adminRoute.getByText("Weekly reviewed")).toBeVisible();
-  await expect(adminRoute.getByText("Impact score")).toBeVisible();
-  await expect(adminRoute.getByText("24h predictions")).toBeVisible();
-  await expect(adminRoute.getByRole("heading", { exact: true, name: "Import anomalies" })).toBeVisible();
-  await expect(adminRoute.getByRole("button", { name: "All" })).toBeVisible();
-  await expect(adminRoute.getByRole("heading", { exact: true, name: "Accuracy trend by parser" })).toBeVisible();
-  await expect(adminRoute.getByRole("heading", { exact: true, name: "Correction rate by segment type" })).toBeVisible();
-  await expect(adminRoute.getByRole("heading", { exact: true, name: "Live import metrics" })).toBeVisible();
+  await expect(page.getByTestId("app-shell-nav").getByRole("link", { name: "Admin" })).toHaveCount(0);
 });

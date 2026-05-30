@@ -213,8 +213,8 @@ function getRouteInfo(items: TripMapItem[]) {
 function getLegsInfo(items: TripMapItem[]) {
   return items.slice(0, -1).map((item, index) => ({
     id: `${items[index]?.id || "origin"}-${items[index + 1]?.id || "destination"}`,
-    from: item.title || `Stop ${index + 1}`,
-    to: items[index + 1]?.title || `Stop ${index + 2}`,
+    from: item.title || `Place ${index + 1}`,
+    to: items[index + 1]?.title || `Place ${index + 2}`,
     distance: formatDistance(getDistanceMeters(item, items[index + 1])),
     duration: "Coordinate path"
   }));
