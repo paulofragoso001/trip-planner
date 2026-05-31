@@ -97,6 +97,7 @@ export function SmartSuggestionsPanel({
                   alt={item.imageAlt || `Photo of ${item.title}`}
                   attribution={item.imageAttribution}
                   className="h-36 w-full rounded-none"
+                  fallbackLabel={item.category || item.type}
                   src={item.imageUrl}
                 />
                 <div className="p-3 sm:p-4">

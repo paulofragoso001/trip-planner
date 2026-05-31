@@ -64,6 +64,7 @@ export const navSections: NavSection[] = [
         label: "Trips",
         match: (pathname, view) =>
           pathname === "/dashboard/trips" ||
+          /^\/dashboard\/trips\/[^/]+(?:\/timeline)?$/.test(pathname) ||
           (pathname === "/dashboard" && view === "trips")
       },
       {

@@ -259,7 +259,7 @@ export function AppShell({
 
           <main
             className={cn(
-              "min-h-0 flex-1 overflow-y-auto px-3 pb-[calc(6.5rem+env(safe-area-inset-bottom))] pt-4 sm:px-6 sm:pt-6 lg:pb-6",
+              "min-h-0 flex-1 overflow-y-auto px-3 pb-32 pt-4 sm:px-6 sm:pb-36 sm:pt-6 lg:pb-6",
               fullBleedContent ? "lg:px-6" : "lg:px-8",
               density === "compact" ? "lg:py-4" : "lg:py-6"
             )}
@@ -408,13 +408,13 @@ function MobileBottomNav({
   return (
     <nav
       aria-label="Primary mobile navigation"
-      className="fixed inset-x-2 bottom-[calc(0.5rem+env(safe-area-inset-bottom))] z-40 rounded-[1.25rem] border border-slate-200 bg-white/95 p-1.5 shadow-2xl backdrop-blur dark:border-white/10 dark:bg-[#111827]/95 sm:inset-x-3 sm:bottom-[calc(0.75rem+env(safe-area-inset-bottom))] sm:rounded-[1.4rem] sm:p-2 lg:hidden"
+      className="fixed bottom-[calc(0.5rem+env(safe-area-inset-bottom))] left-1/2 z-40 w-[calc(100vw-1rem)] max-w-[520px] -translate-x-1/2 rounded-[1.25rem] border border-slate-200 bg-white/95 p-1.5 shadow-2xl backdrop-blur dark:border-white/10 dark:bg-[#111827]/95 sm:bottom-[calc(0.75rem+env(safe-area-inset-bottom))] sm:w-[calc(100vw-1.5rem)] sm:rounded-[1.4rem] sm:p-2 lg:hidden"
       data-testid="app-shell-mobile-bottom-nav"
     >
       <div className="grid grid-cols-5 gap-1">
         {mobileNavItems.map((item) => {
           const href = item.getHref?.(pathname) || item.href;
-          const active = Boolean(item.match?.(pathname, view, hash));
+          const active = isMobileNavActive(item.label, pathname, view, hash);
           const Icon = item.icon;
 
           return (
@@ -441,4 +441,30 @@ function MobileBottomNav({
       </div>
     </nav>
   );
+}
+
+function isMobileNavActive(
+  label: string,
+  pathname: string,
+  view: string | null,
+  hash: string
+) {
+  switch (label) {
+    case "Home":
+      return pathname === "/dashboard" && !view;
+    case "Plan":
+      return pathname.startsWith("/dashboard/imports") || (pathname === "/dashboard" && view === "imports");
+    case "Trips":
+      return (
+        pathname === "/dashboard/trips" ||
+        /^\/dashboard\/trips\/[^/]+(?:\/timeline)?$/.test(pathname) ||
+        (pathname === "/dashboard" && view === "trips")
+      );
+    case "Map":
+      return pathname.includes("/map") || (pathname === "/dashboard" && view === "map");
+    case "Profile":
+      return pathname === "/dashboard/account" || (pathname === "/dashboard" && view === "account");
+    default:
+      return Boolean(mobileNavItems.find((item) => item.label === label)?.match?.(pathname, view, hash));
+  }
 }

@@ -252,6 +252,7 @@ function ItineraryRow({
                 alt={item.imageAlt || `Photo of ${item.title}`}
                 attribution={item.imageAttribution}
                 className="h-24 w-full rounded-2xl sm:h-24 sm:w-24"
+                fallbackLabel={item.typeLabel || "Place"}
                 src={item.imageUrl}
               />
             ) : null}

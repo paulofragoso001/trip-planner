@@ -133,6 +133,7 @@ export function ConnectedTripMap({
               alt={selectedItem.imageAlt || `Photo of ${selectedItem.title}`}
               attribution={selectedItem.imageAttribution}
               className="h-32 w-full rounded-2xl sm:h-28 sm:w-28"
+              fallbackLabel={selectedItem.category || "Place"}
               src={selectedItem.imageUrl}
             />
             <div className="min-w-0">
@@ -140,7 +141,7 @@ export function ConnectedTripMap({
                 Place {selectedItem.routeOrder || 1} of {items.length}
               </p>
               <h3 className="mt-1 break-words text-base font-black text-slate-950">
-                {selectedItem.title}
+                {selectedItem.routeOrder || 1}. {selectedItem.title}
               </h3>
               <p className="mt-1 text-xs font-semibold text-slate-500">
                 {[selectedItem.dayLabel, selectedItem.timeLabel, selectedItem.category]
@@ -196,6 +197,7 @@ export function ConnectedTripMap({
                     alt={item.imageAlt || `Photo of ${item.title}`}
                     attribution={item.imageAttribution}
                     className="h-14 w-14 shrink-0 rounded-xl"
+                    fallbackLabel={item.category || "Place"}
                     src={item.imageUrl}
                   />
                   <span className="min-w-0">

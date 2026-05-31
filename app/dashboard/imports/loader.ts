@@ -44,6 +44,7 @@ export type AiReviewItemView = {
   duplicateOf: string | null;
   evidence: string[];
   id: string;
+  hasPhoto: boolean;
   imageAlt: string | null;
   imageAttribution: string | null;
   imageUrl: string | null;
@@ -52,6 +53,8 @@ export type AiReviewItemView = {
   locationHint: string | null;
   longitude: number | null;
   name: string;
+  providerPhotoName: string | null;
+  providerPlaceId: string | null;
   promotedTripSegmentId: string | null;
   reviewReason: "low_confidence" | "needs_location" | "ready";
   sourcePlatform: string;
@@ -166,6 +169,7 @@ export async function loadImportsData(
       );
       const providerMetadata = readProviderMetadata(place.ai_payload);
       const providerPhoto = readProviderPhoto(providerMetadata);
+      const imageUrl = buildPlacePhotoUrl(providerMetadata, 400);
 
       return {
         address: place.address || null,
@@ -175,15 +179,18 @@ export async function loadImportsData(
         country: place.country || null,
         duplicateOf: place.duplicate_of || null,
         evidence: readEvidence(place.evidence),
+        hasPhoto: Boolean(imageUrl),
         id: place.id,
         imageAlt: providerPhoto?.imageAlt || null,
         imageAttribution: providerPhoto?.attribution || null,
-        imageUrl: buildPlacePhotoUrl(providerMetadata, 400),
+        imageUrl,
         importedPostId: place.imported_post_id,
         latitude: typeof place.latitude === "number" ? place.latitude : null,
         locationHint: readLocationHint(place.ai_payload),
         longitude: typeof place.longitude === "number" ? place.longitude : null,
         name: place.name || "Imported place",
+        providerPhotoName: providerPhoto?.photoName || null,
+        providerPlaceId: place.place_id || readProviderPlaceId(providerMetadata) || null,
         promotedTripSegmentId: place.promoted_trip_segment_id || null,
         reviewReason: place.status === "needs_location_confirmation"
           ? "needs_location"
@@ -396,6 +403,12 @@ function readProviderMetadata(value: unknown): Record<string, unknown> | null {
   const providerMetadata = (value as Record<string, unknown>).providerMetadata;
   return providerMetadata && typeof providerMetadata === "object" && !Array.isArray(providerMetadata)
     ? providerMetadata as Record<string, unknown>
+    : null;
+}
+
+function readProviderPlaceId(value: Record<string, unknown> | null) {
+  return typeof value?.providerPlaceId === "string" && value.providerPlaceId.trim()
+    ? value.providerPlaceId.trim()
     : null;
 }
 

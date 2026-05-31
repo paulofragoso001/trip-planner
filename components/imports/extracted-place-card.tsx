@@ -253,11 +253,16 @@ export function ExtractedPlaceCard({ mergeTargets = [], place, trips }: Extracte
         </form>
       ) : (
         <>
-          <div className="grid gap-3 sm:grid-cols-[72px_minmax(0,1fr)_auto] sm:items-start">
+          <div className="grid gap-3 sm:grid-cols-[88px_minmax(0,1fr)_auto] sm:items-start">
             <PlacePhoto
               alt={place.imageAlt || `Photo of ${place.name}`}
               attribution={place.imageAttribution}
-              className="h-20 w-full rounded-2xl sm:h-[4.5rem] sm:w-[4.5rem]"
+              className={
+                place.imageUrl
+                  ? "aspect-[4/3] w-full rounded-2xl sm:h-[5.5rem] sm:w-[5.5rem]"
+                  : "h-14 w-full rounded-2xl sm:h-[5.5rem] sm:w-[5.5rem]"
+              }
+              fallbackLabel={place.category.replace("_", " ")}
               src={place.imageUrl}
             />
             <div className="min-w-0">

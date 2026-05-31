@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-const viewports = [360, 390, 430] as const;
+const viewports = [360, 390, 430, 768, 1024] as const;
 const routes = [
   "/dashboard",
   "/dashboard/imports",
@@ -46,6 +46,40 @@ test.describe("mobile soft-launch UX", () => {
     await expect(nav.getByRole("link", { name: /Saved/ })).toHaveCount(0);
     await expect(nav.getByRole("link", { name: /Plan with AI/ })).toHaveCount(0);
     await expect(nav.getByRole("link", { name: /My Trips/ })).toHaveCount(0);
+  });
+
+  test("mobile bottom navigation has one active item for trips and map", async ({ page }) => {
+    await page.setViewportSize({ height: 900, width: 390 });
+    await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
+
+    await page.goto("http://127.0.0.1:3000/dashboard/trips/demo/timeline", { waitUntil: "commit" });
+    const nav = page.getByRole("navigation", { name: "Primary mobile navigation" });
+    await expect(nav.locator('[aria-current="page"]')).toHaveCount(1);
+    await expect(nav.getByRole("link", { name: /Trips/ })).toHaveAttribute("aria-current", "page");
+    await expect(nav.getByRole("link", { name: /Map/ })).not.toHaveAttribute("aria-current", "page");
+
+    await page.goto("http://127.0.0.1:3000/dashboard/trips/demo/map", { waitUntil: "commit" });
+    await expect(nav.locator('[aria-current="page"]')).toHaveCount(1);
+    await expect(nav.getByRole("link", { name: /Map/ })).toHaveAttribute("aria-current", "page");
+    await expect(nav.getByRole("link", { name: /Trips/ })).not.toHaveAttribute("aria-current", "page");
+  });
+
+  test("bottom nav does not cover the scrollable content area", async ({ page }) => {
+    await page.setViewportSize({ height: 900, width: 390 });
+    await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
+    await page.goto("http://127.0.0.1:3000/dashboard/imports", { waitUntil: "commit" });
+    await expect(page.getByTestId("app-shell-main")).toBeVisible();
+    await expect(page.getByTestId("app-shell-mobile-bottom-nav")).toBeVisible();
+
+    const spacing = await page.evaluate(() => {
+      const main = document.querySelector('[data-testid="app-shell-main"]');
+      const nav = document.querySelector('[data-testid="app-shell-mobile-bottom-nav"]');
+      const mainPaddingBottom = main ? Number.parseFloat(getComputedStyle(main).paddingBottom) : 0;
+      const navHeight = nav?.getBoundingClientRect().height || 0;
+      return { mainPaddingBottom, navHeight };
+    });
+
+    expect(spacing.mainPaddingBottom).toBeGreaterThanOrEqual(spacing.navHeight + 20);
   });
 
   test("home and plan keep mobile guidance compact", async ({ page }) => {
