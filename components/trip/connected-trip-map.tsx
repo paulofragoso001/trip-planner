@@ -34,6 +34,11 @@ export function ConnectedTripMap({
   const [pendingRetry, setPendingRetry] = useState<string | null>(null);
   const [retryMessage, setRetryMessage] = useState<string | null>(null);
   const selectedItem = items.find((item) => item.id === selectedId) ?? items[0];
+  const selectedPlaceUrl = selectedItem
+    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+        selectedItem.address || selectedItem.title
+      )}`
+    : null;
 
   async function retryLocation(segmentId: string) {
     setPendingRetry(segmentId);
@@ -123,20 +128,46 @@ export function ConnectedTripMap({
 
       {items.length ? (
         selectedItem ? (
-          <div className="grid gap-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:grid-cols-[96px_minmax(0,1fr)] sm:items-center">
+          <div className="grid gap-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:grid-cols-[112px_minmax(0,1fr)] sm:items-center">
             <PlacePhoto
               alt={selectedItem.imageAlt || `Photo of ${selectedItem.title}`}
               attribution={selectedItem.imageAttribution}
-              className="h-28 w-full rounded-2xl sm:h-24 sm:w-24"
+              className="h-32 w-full rounded-2xl sm:h-28 sm:w-28"
               src={selectedItem.imageUrl}
             />
             <div className="min-w-0">
               <p className="text-xs font-black uppercase tracking-[0.16em] text-blue-600">
-                Selected place
+                Place {selectedItem.routeOrder || 1} of {items.length}
               </p>
               <h3 className="mt-1 break-words text-base font-black text-slate-950">
                 {selectedItem.title}
               </h3>
+              <p className="mt-1 text-xs font-semibold text-slate-500">
+                {[selectedItem.dayLabel, selectedItem.timeLabel, selectedItem.category]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </p>
+              {selectedItem.address ? (
+                <p className="mt-1 line-clamp-2 text-xs text-slate-500">{selectedItem.address}</p>
+              ) : null}
+              <div className="mt-3 grid gap-2 sm:flex sm:flex-wrap">
+                {selectedPlaceUrl ? (
+                  <a
+                    className="inline-flex min-h-10 items-center justify-center rounded-xl bg-slate-950 px-3 text-xs font-black text-white"
+                    href={selectedPlaceUrl}
+                    rel="noreferrer"
+                    target="_blank"
+                  >
+                    View in Google Maps
+                  </a>
+                ) : null}
+                <Link
+                  className="inline-flex min-h-10 items-center justify-center rounded-xl bg-white px-3 text-xs font-black text-slate-800 ring-1 ring-slate-200"
+                  href={`/dashboard/trips/${encodeURIComponent(tripId)}/timeline#${selectedItem.id}`}
+                >
+                  Open itinerary
+                </Link>
+              </div>
             </div>
           </div>
         ) : null
@@ -168,10 +199,18 @@ export function ConnectedTripMap({
                     src={item.imageUrl}
                   />
                   <span className="min-w-0">
-                    <span className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">
-                      Place {index + 1}
+                    <span className="inline-flex h-7 min-w-7 items-center justify-center rounded-full bg-blue-600 px-2 text-xs font-black text-white">
+                      {item.routeOrder || index + 1}
                     </span>
                     <span className="mt-1 block break-words font-semibold">{item.title}</span>
+                    <span className="mt-0.5 block text-xs font-semibold text-slate-500">
+                      {[item.dayLabel, item.timeLabel].filter(Boolean).join(" · ")}
+                    </span>
+                    {item.address ? (
+                      <span className="mt-0.5 line-clamp-1 block text-xs text-slate-500">
+                        {item.address}
+                      </span>
+                    ) : null}
                   </span>
                 </span>
               </button>

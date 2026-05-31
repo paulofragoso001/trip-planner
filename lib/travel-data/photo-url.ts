@@ -35,7 +35,7 @@ export function readProviderPhoto(metadata: Record<string, unknown> | null | und
 
   return {
     attribution:
-      readString(metadata.imageAttribution) ||
+      readString(source.imageAttribution) ||
       formatPhotoAttributions(source.primaryPhotoAttributions),
     imageAlt: readString(source.imageAlt) || buildImageAlt(source),
     imageProvider: readString(source.imageProvider) || "Google",

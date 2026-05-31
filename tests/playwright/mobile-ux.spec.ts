@@ -63,4 +63,15 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByText("Create a trip from saved ideas.")).toHaveCount(0);
     await expect(page.locator("ol").filter({ hasText: "Add" })).toHaveCount(1);
   });
+
+  test("demo map exposes ordered route cards on mobile", async ({ page }) => {
+    await page.setViewportSize({ height: 900, width: 390 });
+    await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
+    await page.goto("http://127.0.0.1:3000/dashboard/trips/demo/map", { waitUntil: "commit" });
+
+    await expect(page.getByTestId("connected-trip-map")).toBeVisible();
+    await expect(page.getByText("Place 1 of 4")).toBeVisible();
+    await expect(page.getByRole("button", { name: /1 Barcelona-El Prat Airport/ })).toBeVisible();
+    await expect(page.getByRole("button", { name: /4 Fira Barcelona meeting/ })).toBeVisible();
+  });
 });

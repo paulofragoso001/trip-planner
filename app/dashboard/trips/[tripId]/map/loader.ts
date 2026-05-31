@@ -2,6 +2,7 @@ import "server-only";
 
 import type { TripMapItem } from "@/components/TripMap";
 import { authorizeDashboardApi } from "@/lib/server/dashboard-test-auth";
+import { enrichTripSegmentPhotos } from "@/lib/server/trip-segment-photo-enrichment";
 import { resolveUnmappedPhysicalTripSegments } from "@/lib/server/trip-segment-location-resolution";
 import { listTripRecommendations } from "@/lib/server/travel-recommendations";
 import { isDemoTripId, isUuid } from "@/lib/server/trip-id";
@@ -50,20 +51,25 @@ type TripRow = {
 };
 
 type TripSegmentMapRow = {
+  inserted_at: string | null;
+  kind: string | null;
   id: string;
   lat: number | null;
   lng: number | null;
   location: string | null;
   location_status: string | null;
+  position: number | null;
   provider_metadata: Record<string, unknown> | null;
+  provider_place_id: string | null;
+  start_time: string | null;
   title: string;
 };
 
 const demoItems: TripMapItem[] = [
-  { id: "bcn-airport", lat: 41.2974, lng: 2.0833, title: "Barcelona-El Prat Airport" },
-  { id: "hotel-arts", lat: 41.3864, lng: 2.1963, title: "Hotel Arts Barcelona" },
-  { id: "el-born-dinner", lat: 41.3839, lng: 2.1823, title: "Team dinner in El Born" },
-  { id: "fira-meeting", lat: 41.3547, lng: 2.1287, title: "Fira Barcelona meeting" }
+  { id: "bcn-airport", category: "transportation", lat: 41.2974, lng: 2.0833, routeOrder: 1, status: "resolved", title: "Barcelona-El Prat Airport" },
+  { id: "hotel-arts", category: "hotel", lat: 41.3864, lng: 2.1963, routeOrder: 2, status: "resolved", title: "Hotel Arts Barcelona" },
+  { id: "el-born-dinner", category: "restaurant", lat: 41.3839, lng: 2.1823, routeOrder: 3, status: "resolved", title: "Team dinner in El Born" },
+  { id: "fira-meeting", category: "meeting", lat: 41.3547, lng: 2.1287, routeOrder: 4, status: "resolved", title: "Fira Barcelona meeting" }
 ];
 
 export async function loadTripMapData(tripId: string): Promise<TripMapData> {
@@ -120,15 +126,27 @@ export async function loadTripMapData(tripId: string): Promise<TripMapData> {
       );
     }
   );
+  await enrichTripSegmentPhotos(auth.supabase as any, auth.userId, tripId).catch((error) => {
+    console.info(
+      JSON.stringify({
+        area: "trip_segments",
+        error: error instanceof Error ? error.message : "Unknown photo enrichment failure.",
+        event: "segment_photo_enrichment_failed",
+        tripId,
+        userId: auth.userId
+      })
+    );
+  });
 
   const [itemResult, recommendationsResult] = await Promise.all([
     auth.supabase
       .from("trip_segments")
-      .select("id,title,location,lat,lng,location_status,provider_metadata")
+      .select("id,title,kind,location,lat,lng,location_status,provider_metadata,provider_place_id,start_time,position,inserted_at")
       .eq("trip_id", tripId)
       .eq("user_id", auth.userId)
+      .order("start_time", { ascending: true, nullsFirst: false })
       .order("position", { ascending: true, nullsFirst: false })
-      .order("start_time", { ascending: true, nullsFirst: false }),
+      .order("inserted_at", { ascending: true }),
     listTripRecommendations(auth.supabase as any, auth.userId, tripId).catch(() => [])
   ]);
 
@@ -137,9 +155,9 @@ export async function loadTripMapData(tripId: string): Promise<TripMapData> {
   }
 
   const rows = (itemResult.data || []) as TripSegmentMapRow[];
-  const mappedRows = rows.filter(
+  const mappedRows = sortRouteRows(rows.filter(
     (row) => typeof row.lat === "number" && typeof row.lng === "number"
-  );
+  ));
   const unresolvedRows = rows.filter(
     (row) => typeof row.lat !== "number" || typeof row.lng !== "number"
   );
@@ -207,17 +225,61 @@ function isRecord(value: unknown): value is Record<string, any> {
   return Boolean(value && typeof value === "object" && !Array.isArray(value));
 }
 
-function mapItem(row: TripSegmentMapRow): TripMapItem {
+function mapItem(row: TripSegmentMapRow, index: number): TripMapItem {
   const photo = readProviderPhoto(row.provider_metadata);
   return {
+    address: row.location,
+    category: row.kind,
+    dayLabel: formatMapDayLabel(row.start_time),
     id: row.id,
     imageAlt: photo?.imageAlt || null,
     imageAttribution: photo?.attribution || null,
     imageUrl: buildPlacePhotoUrl(row.provider_metadata, 400),
     lat: Number(row.lat),
     lng: Number(row.lng),
+    routeOrder: index + 1,
+    status: row.location_status || "resolved",
+    timeLabel: formatMapTimeLabel(row.start_time),
     title: row.title || row.location || "Trip stop"
   };
+}
+
+function sortRouteRows(rows: TripSegmentMapRow[]) {
+  return [...rows].sort((a, b) => {
+    const timeCompare = sortableTime(a.start_time).localeCompare(sortableTime(b.start_time));
+    if (timeCompare !== 0) return timeCompare;
+
+    const positionCompare = sortableNumber(a.position) - sortableNumber(b.position);
+    if (positionCompare !== 0) return positionCompare;
+
+    return sortableTime(a.inserted_at).localeCompare(sortableTime(b.inserted_at));
+  });
+}
+
+function sortableTime(value: string | null) {
+  return value || "9999-12-31T23:59:59.999Z";
+}
+
+function sortableNumber(value: number | null) {
+  return typeof value === "number" ? value : Number.MAX_SAFE_INTEGER;
+}
+
+function formatMapDayLabel(value: string | null) {
+  if (!value) return "Unscheduled";
+  return new Intl.DateTimeFormat("en", {
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC"
+  }).format(new Date(value));
+}
+
+function formatMapTimeLabel(value: string | null) {
+  if (!value) return "Anytime";
+  return new Intl.DateTimeFormat("en", {
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: "UTC"
+  }).format(new Date(value));
 }
 
 function googleMapsSearchUrl(value: string) {

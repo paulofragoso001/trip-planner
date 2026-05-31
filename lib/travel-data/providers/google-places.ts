@@ -21,6 +21,58 @@ export const googlePlacesProvider: ProviderAdapter = {
   searchNearbyActivities
 };
 
+export async function getGooglePlacePhotoMetadata(placeId: string) {
+  const apiKey = googlePlacesApiKey();
+  const safePlaceId = safeQueryPreview(placeId);
+  if (!apiKey || !placeId.trim()) return null;
+
+  try {
+    const url = new URL("https://maps.googleapis.com/maps/api/place/details/json");
+    url.searchParams.set("place_id", placeId);
+    url.searchParams.set("fields", "place_id,name,formatted_address,photos,url");
+    url.searchParams.set("key", apiKey);
+
+    const response = await fetchWithTimeout(url);
+    if (!response.ok) {
+      logTravelProviderEvent("place_photo_details_http_failed", {
+        provider,
+        providerPlaceId: safePlaceId ? "present" : "missing",
+        status: response.status
+      });
+      return null;
+    }
+
+    const payload = await response.json();
+    const result = payload?.result;
+    if (!result || !Array.isArray(result.photos) || result.photos.length === 0) {
+      logTravelProviderEvent("place_photo_details_empty", {
+        provider,
+        providerPlaceId: safePlaceId ? "present" : "missing",
+        status: payload?.status || "unknown"
+      });
+      return null;
+    }
+
+    const metadata = googlePhotoMetadata(result);
+    return {
+      ...metadata,
+      formattedAddress: result.formatted_address || null,
+      googleMapsUri: result.url || null,
+      googlePlaceUri: result.place_id
+        ? `https://www.google.com/maps/place/?q=place_id:${result.place_id}`
+        : null,
+      providerPlaceId: result.place_id || placeId
+    };
+  } catch (error) {
+    logTravelProviderEvent("place_photo_details_failed", {
+      error: safeProviderError(error),
+      provider,
+      providerPlaceId: safePlaceId ? "present" : "missing"
+    });
+    return null;
+  }
+}
+
 async function resolvePlace(
   query: PlaceResolutionQuery,
   context?: TripContext
@@ -400,8 +452,10 @@ function normalizeGooglePlace(item: any, type: TravelInventoryItem["type"]) {
       businessStatus: item.business_status || null,
       ...photoMetadata,
       formattedAddress: item.formatted_address || item.vicinity || null,
+      googleMapsUri: item.url || (item.place_id ? `https://www.google.com/maps/place/?q=place_id:${item.place_id}` : null),
       googlePlaceUri: item.place_id ? `https://www.google.com/maps/place/?q=place_id:${item.place_id}` : null,
-      placeTypes: item.types || []
+      placeTypes: item.types || [],
+      providerPlaceId: item.place_id || null
     },
     provider,
     providerItemId: item.place_id || null,

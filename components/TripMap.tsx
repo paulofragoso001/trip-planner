@@ -2,12 +2,15 @@
 
 import {
   GoogleMap,
-  Marker,
+  OverlayView,
   Polyline
 } from "@react-google-maps/api";
 import { useEffect, useMemo, useRef } from "react";
 
 export type TripMapItem = {
+  address?: string | null;
+  category?: string | null;
+  dayLabel?: string | null;
   id: string;
   imageAlt?: string | null;
   imageAttribution?: string | null;
@@ -15,6 +18,9 @@ export type TripMapItem = {
   title: string;
   lat: number;
   lng: number;
+  routeOrder?: number | null;
+  status?: string | null;
+  timeLabel?: string | null;
 };
 
 export type TripTravelMode = "DRIVING" | "WALKING" | "BICYCLING" | "TRANSIT";
@@ -43,7 +49,6 @@ export default function TripMap({
   items,
   selectedId,
   onSelect,
-  travelMode = "WALKING",
   height = 420
 }: TripMapProps) {
   const mapRef = useRef<google.maps.Map | null>(null);
@@ -135,47 +140,63 @@ export default function TripMap({
         }}
         zoom={12}
       >
-        {items.map((item) => (
-          <Marker
-            key={item.id}
-            icon={
-              selectedId === item.id
-                ? { url: "http://maps.google.com/mapfiles/ms/icons/blue-dot.png" }
-                : undefined
-            }
-            position={{ lat: item.lat, lng: item.lng }}
-            title={item.title}
-            onClick={() => onSelect?.(item.id)}
-          />
-        ))}
-
         {routePath.length > 1 ? (
           <Polyline
             path={routePath}
             options={{
               geodesic: true,
-              strokeColor: "#111827",
-              strokeOpacity: 0.78,
-              strokeWeight: 4
+              strokeColor: "#2563eb",
+              strokeOpacity: 0.82,
+              strokeWeight: 5
             }}
           />
         ) : null}
+
+        {items.map((item, index) => {
+          const active = selectedId === item.id;
+          const order = item.routeOrder || index + 1;
+
+          return (
+          <OverlayView
+            key={item.id}
+            position={{ lat: item.lat, lng: item.lng }}
+            mapPaneName={OverlayView.OVERLAY_MOUSE_TARGET}
+          >
+            <button
+              aria-label={`Select place ${order}: ${item.title}`}
+              className={[
+                "grid place-items-center rounded-full border-2 border-white text-sm font-black text-white shadow-lg transition",
+                active ? "h-11 w-11 ring-4 ring-green-200" : "h-9 w-9 hover:scale-105"
+              ].join(" ")}
+              onClick={() => onSelect?.(item.id)}
+              style={{
+                backgroundColor: active ? "#16a34a" : colorForMarker(item),
+                transform: "translate(-50%, -50%)"
+              }}
+              title={`${order}. ${item.title}`}
+              type="button"
+            >
+              {order}
+            </button>
+          </OverlayView>
+          );
+        })}
       </GoogleMap>
 
       {routeInfo.distance || routeInfo.duration ? (
         <div className="mb-3 mt-3 rounded-lg border border-line bg-white p-4 shadow-sm">
           <div className="flex items-center justify-between">
             <div>
-              <div className="text-xs text-gray-500">Total Distance</div>
+              <div className="text-xs text-gray-500">Route preview</div>
               <div className="text-lg font-semibold">{routeInfo.distance}</div>
             </div>
             <div>
-              <div className="text-xs text-gray-500">Route Type</div>
-              <div className="text-lg font-semibold">{routeInfo.duration}</div>
+              <div className="text-xs text-gray-500">Places mapped</div>
+              <div className="text-lg font-semibold">{items.length}</div>
             </div>
           </div>
           <div className="mt-1 text-xs text-gray-400">
-            Mode: {travelMode.toLowerCase()} coordinate path
+            Approximate path between your ordered places.
           </div>
         </div>
       ) : null}
@@ -191,6 +212,16 @@ export default function TripMap({
       ) : null}
     </div>
   );
+}
+
+function colorForMarker(item: TripMapItem) {
+  const text = `${item.category || ""} ${item.status || ""}`.toLowerCase();
+  if (text.includes("restaurant") || text.includes("dinner") || text.includes("food")) return "#7c3aed";
+  if (text.includes("park") || text.includes("garden")) return "#059669";
+  if (text.includes("shopping")) return "#db2777";
+  if (text.includes("tour") || text.includes("activity")) return "#2563eb";
+  if (text.includes("unscheduled")) return "#64748b";
+  return "#2563eb";
 }
 
 function MapUnavailable({ height, message }: { height: number | string; message: string }) {

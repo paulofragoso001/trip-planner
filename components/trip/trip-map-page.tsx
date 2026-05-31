@@ -22,9 +22,9 @@ export default function TripMapPage({
         <h2 className="sr-only">Map</h2>
         {items.length ? (
           <div className="pointer-events-none absolute left-4 right-4 top-4 z-10 grid grid-cols-3 gap-2 sm:left-5 sm:right-auto sm:w-[420px]">
-            <MapSummary label="Places" value={String(items.length)} />
+            <MapSummary label="Route ready" value={`${items.length}/${items.length + unmappedCount}`} />
             <MapSummary label="Needs location" value={String(unmappedCount)} />
-            <MapSummary label="Ideas" value={String(activitySegments.length)} />
+            <MapSummary label="Adventure" value="Preview" />
           </div>
         ) : null}
         {error ? (

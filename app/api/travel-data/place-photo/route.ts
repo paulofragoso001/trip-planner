@@ -24,10 +24,7 @@ export async function GET(request: Request) {
   }
 
   try {
-    const response = await fetch(providerUrl, {
-      cache: "no-store",
-      redirect: "follow"
-    });
+    const response = await fetchProviderPhoto(providerUrl);
 
     if (!response.ok) {
       return NextResponse.json({ error: "Place photo is temporarily unavailable." }, { status: 502 });
@@ -56,13 +53,27 @@ export async function GET(request: Request) {
   }
 }
 
+async function fetchProviderPhoto(url: URL) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5000);
+  try {
+    return await fetch(url, {
+      cache: "no-store",
+      redirect: "follow",
+      signal: controller.signal
+    });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 function isValidPhotoRequest(photoName: string | null, photoReference: string | null) {
   if (photoName) {
     return /^places\/[^/?#]+\/photos\/[^/?#]+(?:\/media)?$/.test(photoName);
   }
 
   if (photoReference) {
-    return /^[A-Za-z0-9._~:-]{10,1200}$/.test(photoReference);
+    return /^[A-Za-z0-9._~:+=-]{10,1800}$/.test(photoReference);
   }
 
   return false;
@@ -89,7 +100,7 @@ function buildProviderPhotoUrl({
   }
 
   if (photoReference) {
-    if (!/^[A-Za-z0-9._~:-]{10,1200}$/.test(photoReference)) return null;
+    if (!/^[A-Za-z0-9._~:+=-]{10,1800}$/.test(photoReference)) return null;
     const url = new URL("https://maps.googleapis.com/maps/api/place/photo");
     url.searchParams.set("maxwidth", String(maxWidth));
     url.searchParams.set("photo_reference", photoReference);
