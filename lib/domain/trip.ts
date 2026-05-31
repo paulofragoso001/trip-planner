@@ -9,6 +9,9 @@ export type TripSegment = {
   details: string[];
   endAt: string | null;
   id: string;
+  imageAlt?: string | null;
+  imageAttribution?: string | null;
+  imageUrl?: string | null;
   lat?: number | null;
   lng?: number | null;
   location: string;

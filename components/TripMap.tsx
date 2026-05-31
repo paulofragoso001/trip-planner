@@ -9,6 +9,9 @@ import { useEffect, useMemo, useRef } from "react";
 
 export type TripMapItem = {
   id: string;
+  imageAlt?: string | null;
+  imageAttribution?: string | null;
+  imageUrl?: string | null;
   title: string;
   lat: number;
   lng: number;

@@ -4,6 +4,7 @@ import { ExternalLink, Loader2, Sparkles, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { TripRecommendationView } from "@/app/dashboard/trips/[tripId]/map/loader";
+import { PlacePhoto } from "@/components/place-photo";
 import { waylineCopy } from "@/lib/copy/wayline-copy";
 
 type SmartSuggestionsPanelProps = {
@@ -91,7 +92,14 @@ export function SmartSuggestionsPanel({
               {group.label}
             </p>
             {group.items.map((item) => (
-              <article className="rounded-2xl bg-slate-50 p-3 sm:p-4" key={item.id}>
+              <article className="overflow-hidden rounded-2xl bg-slate-50" key={item.id}>
+                <PlacePhoto
+                  alt={item.imageAlt || `Photo of ${item.title}`}
+                  attribution={item.imageAttribution}
+                  className="h-36 w-full rounded-none"
+                  src={item.imageUrl}
+                />
+                <div className="p-3 sm:p-4">
                 <div className="grid gap-2 sm:flex sm:items-start sm:justify-between sm:gap-3">
                   <div>
                     <p className="text-sm font-black text-slate-950">{item.title}</p>
@@ -144,6 +152,7 @@ export function SmartSuggestionsPanel({
                     <X className="h-4 w-4" />
                     Dismiss
                   </button>
+                </div>
                 </div>
               </article>
             ))}

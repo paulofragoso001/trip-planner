@@ -5,6 +5,7 @@ import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import GoogleMapsProvider from "@/components/GoogleMapsProvider";
+import { PlacePhoto } from "@/components/place-photo";
 import TripMap, { type TripMapItem } from "@/components/TripMap";
 import type { UnmappedMapSegment } from "@/app/dashboard/trips/[tripId]/map/loader";
 import { waylineCopy } from "@/lib/copy/wayline-copy";
@@ -121,6 +122,27 @@ export function ConnectedTripMap({
       ) : null}
 
       {items.length ? (
+        selectedItem ? (
+          <div className="grid gap-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:grid-cols-[96px_minmax(0,1fr)] sm:items-center">
+            <PlacePhoto
+              alt={selectedItem.imageAlt || `Photo of ${selectedItem.title}`}
+              attribution={selectedItem.imageAttribution}
+              className="h-28 w-full rounded-2xl sm:h-24 sm:w-24"
+              src={selectedItem.imageUrl}
+            />
+            <div className="min-w-0">
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-blue-600">
+                Selected place
+              </p>
+              <h3 className="mt-1 break-words text-base font-black text-slate-950">
+                {selectedItem.title}
+              </h3>
+            </div>
+          </div>
+        ) : null
+      ) : null}
+
+      {items.length ? (
         <div className="grid gap-3 sm:grid-cols-2">
           {items.map((item, index) => {
             const active = item.id === selectedItem?.id;
@@ -138,10 +160,20 @@ export function ConnectedTripMap({
                 onClick={() => setSelectedId(item.id)}
                 type="button"
               >
-                <span className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">
-                  Place {index + 1}
+                <span className="flex items-center gap-3">
+                  <PlacePhoto
+                    alt={item.imageAlt || `Photo of ${item.title}`}
+                    attribution={item.imageAttribution}
+                    className="h-14 w-14 shrink-0 rounded-xl"
+                    src={item.imageUrl}
+                  />
+                  <span className="min-w-0">
+                    <span className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">
+                      Place {index + 1}
+                    </span>
+                    <span className="mt-1 block break-words font-semibold">{item.title}</span>
+                  </span>
                 </span>
-                <span className="mt-1 block break-words font-semibold">{item.title}</span>
               </button>
             );
           })}

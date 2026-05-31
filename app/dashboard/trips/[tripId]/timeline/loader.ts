@@ -3,6 +3,7 @@ import type { TripSegmentType } from "@/lib/domain/trip";
 import { authorizeDashboardApi } from "@/lib/server/dashboard-test-auth";
 import { summarizeEstimatedRoutes } from "@/lib/server/itinerary-generator";
 import { isDemoTripId, isUuid } from "@/lib/server/trip-id";
+import { buildPlacePhotoUrl, readProviderPhoto } from "@/lib/travel-data/photo-url";
 import { dayIdFromDate, segmentTypeLabel } from "@/lib/ui/timeline";
 import type { TimelineDayView, TripTimelineData } from "./types";
 
@@ -27,6 +28,7 @@ type TripSegmentRow = {
   notes: string | null;
   position: number | null;
   provider: string | null;
+  provider_metadata: Record<string, unknown> | null;
   start_time: string | null;
   title: string;
   trip_id: string;
@@ -146,7 +148,7 @@ export async function loadTripTimelineData(tripId: string): Promise<TripTimeline
         .maybeSingle(),
     auth.supabase
       .from("trip_segments")
-      .select("id,trip_id,kind,title,location,start_time,end_time,lat,lng,notes,position,inserted_at,provider,confirmation_code,booking_url,location_status")
+      .select("id,trip_id,kind,title,location,start_time,end_time,lat,lng,notes,position,inserted_at,provider,provider_metadata,confirmation_code,booking_url,location_status")
       .eq("trip_id", tripId)
       .eq("user_id", auth.userId)
       .order("start_time", { ascending: true, nullsFirst: false })
@@ -266,6 +268,9 @@ function groupSegmentsByDay(segments: TripSegment[]): TimelineDayView[] {
         durationLabel: segment.startAt && segment.endAt ? formatDurationBetween(segment.startAt, segment.endAt) : null,
         endAt: segment.endAt,
         id: segment.id,
+        imageAlt: readExtra(segment, "imageAlt"),
+        imageAttribution: readExtra(segment, "imageAttribution"),
+        imageUrl: readExtra(segment, "imageUrl"),
         kind: segment.type,
         lat: segment.lat ?? null,
         lng: segment.lng ?? null,
@@ -320,6 +325,7 @@ function mapSegmentRow(
 ): TripSegment {
   const kind = mapSegmentKind(row.kind);
   const cost = budgetBySegment.get(row.id);
+  const photo = readProviderPhoto(row.provider_metadata);
 
   return {
     actionLabel: actionLabelForKind(kind),
@@ -328,6 +334,9 @@ function mapSegmentRow(
     details: buildDetails(row),
     endAt: row.end_time,
     id: row.id,
+    imageAlt: photo?.imageAlt || null,
+    imageAttribution: photo?.attribution || null,
+    imageUrl: buildPlacePhotoUrl(row.provider_metadata, 400),
     lat: row.lat,
     lng: row.lng,
     location: row.location || "Location not set",
@@ -504,7 +513,10 @@ function formatDurationBetween(startAt: string, endAt: string) {
   return remainder ? `${hours}h ${remainder}m` : `${hours}h`;
 }
 
-function readExtra(segment: TripSegment, key: "bookingUrl" | "confirmationCode" | "locationStatus" | "provider") {
+function readExtra(
+  segment: TripSegment,
+  key: "bookingUrl" | "confirmationCode" | "imageAlt" | "imageAttribution" | "imageUrl" | "locationStatus" | "provider"
+) {
   const value = (segment as TripSegment & Record<typeof key, unknown>)[key];
   return typeof value === "string" && value ? value : null;
 }

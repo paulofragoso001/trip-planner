@@ -10,6 +10,7 @@ import {
   type UnfiledItemsClient
 } from "@/lib/server/unfiled-items";
 import { listSocialImportWorkspace } from "@/lib/server/social-imports";
+import { buildPlacePhotoUrl, readProviderPhoto } from "@/lib/travel-data/photo-url";
 import {
   TRIP_TRAVEL_STYLE_LABELS,
   normalizeTravelStyle,
@@ -43,6 +44,9 @@ export type AiReviewItemView = {
   duplicateOf: string | null;
   evidence: string[];
   id: string;
+  imageAlt: string | null;
+  imageAttribution: string | null;
+  imageUrl: string | null;
   importedPostId: string;
   latitude: number | null;
   locationHint: string | null;
@@ -160,6 +164,8 @@ export async function loadImportsData(
       const post = socialWorkspace.socialImports.find(
         (source: any) => source.id === place.imported_post_id
       );
+      const providerMetadata = readProviderMetadata(place.ai_payload);
+      const providerPhoto = readProviderPhoto(providerMetadata);
 
       return {
         address: place.address || null,
@@ -170,6 +176,9 @@ export async function loadImportsData(
         duplicateOf: place.duplicate_of || null,
         evidence: readEvidence(place.evidence),
         id: place.id,
+        imageAlt: providerPhoto?.imageAlt || null,
+        imageAttribution: providerPhoto?.attribution || null,
+        imageUrl: buildPlacePhotoUrl(providerMetadata, 400),
         importedPostId: place.imported_post_id,
         latitude: typeof place.latitude === "number" ? place.latitude : null,
         locationHint: readLocationHint(place.ai_payload),
@@ -380,6 +389,14 @@ function readEvidence(value: unknown) {
   return Array.isArray(value)
     ? value.filter((item): item is string => typeof item === "string").slice(0, 3)
     : [];
+}
+
+function readProviderMetadata(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const providerMetadata = (value as Record<string, unknown>).providerMetadata;
+  return providerMetadata && typeof providerMetadata === "object" && !Array.isArray(providerMetadata)
+    ? providerMetadata as Record<string, unknown>
+    : null;
 }
 
 function labelForSource(sourceType: string) {

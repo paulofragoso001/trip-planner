@@ -1,9 +1,10 @@
 "use client";
 
-import { Check, GitMerge, ImageIcon, MapPin, Pencil, X } from "lucide-react";
+import { Check, GitMerge, MapPin, Pencil, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { AiReviewItemView } from "@/app/dashboard/imports/loader";
+import { PlacePhoto } from "@/components/place-photo";
 import { InlineAlert, StatusBadge } from "@/components/trip-ui";
 
 type TripOption = {
@@ -252,10 +253,13 @@ export function ExtractedPlaceCard({ mergeTargets = [], place, trips }: Extracte
         </form>
       ) : (
         <>
-          <div className="grid gap-3 sm:grid-cols-[56px_minmax(0,1fr)_auto] sm:items-start">
-            <div className="grid h-14 w-14 place-items-center rounded-2xl bg-gradient-to-br from-slate-100 to-blue-50 text-blue-700">
-              <ImageIcon className="h-6 w-6" />
-            </div>
+          <div className="grid gap-3 sm:grid-cols-[72px_minmax(0,1fr)_auto] sm:items-start">
+            <PlacePhoto
+              alt={place.imageAlt || `Photo of ${place.name}`}
+              attribution={place.imageAttribution}
+              className="h-20 w-full rounded-2xl sm:h-[4.5rem] sm:w-[4.5rem]"
+              src={place.imageUrl}
+            />
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
                 <p className="min-w-0 break-words text-lg font-black leading-tight text-slate-950 sm:text-xl">{place.name}</p>

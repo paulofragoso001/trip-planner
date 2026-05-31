@@ -603,6 +603,7 @@ export async function promoteExtractedPlace(
       position: nextPosition,
       provider: place.place_id ? "google_places" : "wayline_social_import",
       provider_metadata: {
+        ...readProviderMetadata(place.ai_payload),
         evidence: readStringArray(place.evidence),
         extractedPlaceId: place.id,
         locationDiagnostics: readLocationDiagnostics(place.ai_payload),
@@ -2335,6 +2336,11 @@ function buildPromotedNotes(place: any) {
 function readLocationDiagnostics(payload: unknown) {
   if (!isRecord(payload)) return null;
   return isRecord(payload.locationDiagnostics) ? payload.locationDiagnostics : null;
+}
+
+function readProviderMetadata(payload: unknown) {
+  if (!isRecord(payload)) return {};
+  return isRecord(payload.providerMetadata) ? payload.providerMetadata : {};
 }
 
 function safeFileExtension(name: string, type: string) {

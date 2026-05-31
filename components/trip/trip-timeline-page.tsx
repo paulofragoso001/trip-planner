@@ -23,6 +23,7 @@ import type {
   TripTimelineData
 } from "@/app/dashboard/trips/[tripId]/timeline/types";
 import { AsyncActionButton } from "@/components/dashboard/async-action-button";
+import { PlacePhoto } from "@/components/place-photo";
 import { CalendarSyncPanel } from "@/components/trip/calendar-sync-panel";
 import { GeneratePlanButton } from "@/components/trip/generate-plan-button";
 import { TripSegmentDeleteButton } from "@/components/trip/trip-segment-delete-button";
@@ -232,16 +233,28 @@ function ItineraryRow({
 
       <div className="min-w-0 pb-4 pt-3">
         <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm transition hover:border-slate-300 hover:shadow-md sm:p-4">
-          <div className="flex flex-wrap items-start justify-between gap-2">
+          <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_96px] sm:items-start">
             <div className="min-w-0">
-              <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">
-                {display.label}
-              </p>
-              <h4 className="mt-1 break-words text-lg font-black leading-tight text-slate-950">
-                {item.title}
-              </h4>
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">
+                    {display.label}
+                  </p>
+                  <h4 className="mt-1 break-words text-lg font-black leading-tight text-slate-950">
+                    {item.title}
+                  </h4>
+                </div>
+                <span className={status.className}>{status.label}</span>
+              </div>
             </div>
-            <span className={status.className}>{status.label}</span>
+            {shouldShowPlacePhoto(item) ? (
+              <PlacePhoto
+                alt={item.imageAlt || `Photo of ${item.title}`}
+                attribution={item.imageAttribution}
+                className="h-24 w-full rounded-2xl sm:h-24 sm:w-24"
+                src={item.imageUrl}
+              />
+            ) : null}
           </div>
 
           <div className="mt-3 grid gap-2 text-sm text-slate-700">
@@ -337,6 +350,11 @@ function StateCopy({ item }: { item: TimelineItemView }) {
   }
 
   return null;
+}
+
+function shouldShowPlacePhoto(item: TimelineItemView) {
+  if (!item.imageUrl) return false;
+  return !["flight", "hotel"].includes(item.kind);
 }
 
 function ItineraryActions({

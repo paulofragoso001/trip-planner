@@ -5,6 +5,7 @@ import { authorizeDashboardApi } from "@/lib/server/dashboard-test-auth";
 import { resolveUnmappedPhysicalTripSegments } from "@/lib/server/trip-segment-location-resolution";
 import { listTripRecommendations } from "@/lib/server/travel-recommendations";
 import { isDemoTripId, isUuid } from "@/lib/server/trip-id";
+import { buildPlacePhotoUrl, readProviderPhoto } from "@/lib/travel-data/photo-url";
 
 export type TripMapData = {
   destination: string | null;
@@ -30,6 +31,9 @@ export type TripRecommendationView = {
   bookingUrl: string | null;
   category: string | null;
   id: string;
+  imageAlt: string | null;
+  imageAttribution: string | null;
+  imageUrl: string | null;
   priceLabel: string | null;
   provider: string;
   ratingLabel: string | null;
@@ -204,8 +208,12 @@ function isRecord(value: unknown): value is Record<string, any> {
 }
 
 function mapItem(row: TripSegmentMapRow): TripMapItem {
+  const photo = readProviderPhoto(row.provider_metadata);
   return {
     id: row.id,
+    imageAlt: photo?.imageAlt || null,
+    imageAttribution: photo?.attribution || null,
+    imageUrl: buildPlacePhotoUrl(row.provider_metadata, 400),
     lat: Number(row.lat),
     lng: Number(row.lng),
     title: row.title || row.location || "Trip stop"
@@ -222,10 +230,16 @@ function mapRecommendations(value: unknown): TripRecommendationView[] {
       ? row.travel_inventory[0]
       : row.travel_inventory;
 
+    const metadata = isRecord(inventory?.metadata) ? inventory.metadata : null;
+    const photo = readProviderPhoto(metadata);
+
     return {
       bookingUrl: inventory?.booking_url || inventory?.source_url || null,
       category: inventory?.category || null,
       id: row.id,
+      imageAlt: inventory?.image_alt || photo?.imageAlt || null,
+      imageAttribution: inventory?.image_attribution || photo?.attribution || null,
+      imageUrl: inventory?.image_url || buildPlacePhotoUrl(metadata, 800),
       priceLabel:
         typeof inventory?.price_from === "number"
           ? `${inventory.currency || "USD"} ${inventory.price_from}`

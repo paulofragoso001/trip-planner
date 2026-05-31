@@ -29,6 +29,9 @@ export type TravelInventoryItem = {
   currency: string | null;
   description: string | null;
   durationMinutes: number | null;
+  imageAlt: string | null;
+  imageAttribution: string | null;
+  imageProvider: string | null;
   id: string;
   imageUrl: string | null;
   latitude: number | null;

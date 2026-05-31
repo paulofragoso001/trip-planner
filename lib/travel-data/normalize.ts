@@ -15,6 +15,9 @@ export function normalizeInventoryItem(input: {
   currency?: string | null;
   description?: string | null;
   durationMinutes?: number | null;
+  imageAlt?: string | null;
+  imageAttribution?: string | null;
+  imageProvider?: string | null;
   id?: string | null;
   imageUrl?: string | null;
   latitude?: number | null;
@@ -39,6 +42,9 @@ export function normalizeInventoryItem(input: {
     currency: input.currency || null,
     description: input.description || null,
     durationMinutes: normalizeInteger(input.durationMinutes),
+    imageAlt: input.imageAlt || null,
+    imageAttribution: input.imageAttribution || null,
+    imageProvider: input.imageProvider || null,
     id: input.id || `${input.provider}:${providerItemId || stableSlug(input.title)}`,
     imageUrl: input.imageUrl || null,
     latitude: normalizeCoordinate(input.latitude),

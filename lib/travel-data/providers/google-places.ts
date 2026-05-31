@@ -2,6 +2,7 @@ import "server-only";
 
 import { logTravelProviderEvent } from "@/lib/travel-data/errors";
 import { normalizeInventoryItem } from "@/lib/travel-data/normalize";
+import { buildPlacePhotoUrl, readProviderPhoto } from "@/lib/travel-data/photo-url";
 import type {
   LocationDiagnostics,
   NearbyActivitySearchInput,
@@ -383,16 +384,23 @@ async function searchNearbyActivities(
 }
 
 function normalizeGooglePlace(item: any, type: TravelInventoryItem["type"]) {
-  const photoReference = Array.isArray(item.photos) ? item.photos[0]?.photo_reference : null;
+  const photoMetadata = googlePhotoMetadata(item);
+  const photo = readProviderPhoto(photoMetadata);
   return normalizeInventoryItem({
     address: item.formatted_address || item.vicinity || null,
     category: Array.isArray(item.types) ? item.types[0] || null : null,
     description: Array.isArray(item.types) ? item.types.join(", ") : null,
-    imageUrl: photoReference ? googlePhotoUrl(photoReference) : null,
+    imageAlt: photo?.imageAlt || null,
+    imageAttribution: photo?.attribution || null,
+    imageProvider: photo?.imageProvider || null,
+    imageUrl: buildPlacePhotoUrl(photoMetadata, 800),
     latitude: item.geometry?.location?.lat ?? null,
     longitude: item.geometry?.location?.lng ?? null,
     metadata: {
       businessStatus: item.business_status || null,
+      ...photoMetadata,
+      formattedAddress: item.formatted_address || item.vicinity || null,
+      googlePlaceUri: item.place_id ? `https://www.google.com/maps/place/?q=place_id:${item.place_id}` : null,
       placeTypes: item.types || []
     },
     provider,
@@ -405,21 +413,62 @@ function normalizeGooglePlace(item: any, type: TravelInventoryItem["type"]) {
   });
 }
 
+function googlePhotoMetadata(item: any) {
+  const photos = Array.isArray(item.photos) ? item.photos : [];
+  const primaryPhoto = photos[0] || null;
+  const primaryPhotoName =
+    typeof primaryPhoto?.name === "string"
+      ? primaryPhoto.name.replace(/\/media$/, "")
+      : null;
+  const primaryPhotoReference =
+    typeof primaryPhoto?.photo_reference === "string" ? primaryPhoto.photo_reference : null;
+  const primaryPhotoAttributions =
+    primaryPhoto?.authorAttributions || primaryPhoto?.html_attributions || [];
+  const displayName =
+    typeof item.displayName?.text === "string"
+      ? item.displayName.text
+      : typeof item.name === "string"
+        ? item.name
+        : null;
+
+  return {
+    displayName,
+    imageAlt: displayName ? `Photo of ${displayName}` : null,
+    imageAttribution: formatGoogleAttribution(primaryPhotoAttributions),
+    imageProvider: primaryPhotoName || primaryPhotoReference ? "Google" : null,
+    photos: photos.map((photo: any) => ({
+      authorAttributions: photo?.authorAttributions || null,
+      heightPx: typeof photo?.heightPx === "number" ? photo.heightPx : photo?.height || null,
+      htmlAttributions: photo?.html_attributions || null,
+      name: typeof photo?.name === "string" ? photo.name.replace(/\/media$/, "") : null,
+      photoReference: typeof photo?.photo_reference === "string" ? photo.photo_reference : null,
+      widthPx: typeof photo?.widthPx === "number" ? photo.widthPx : photo?.width || null
+    })),
+    primaryPhotoAttributions,
+    primaryPhotoName,
+    primaryPhotoReference
+  };
+}
+
+function formatGoogleAttribution(value: unknown) {
+  if (!Array.isArray(value)) return null;
+  const labels = value
+    .map((item) => {
+      if (typeof item === "string") return stripHtml(item);
+      if (item && typeof item === "object" && "displayName" in item) {
+        return typeof item.displayName === "string" ? item.displayName : null;
+      }
+      return null;
+    })
+    .filter((item): item is string => Boolean(item));
+  return labels.length ? labels.join(", ") : null;
+}
+
 function inferInventoryType(item: any): TravelInventoryItem["type"] {
   const types = Array.isArray(item.types) ? item.types.join(" ") : "";
   if (/restaurant|cafe|bar|bakery|meal/.test(types)) return "restaurant";
   if (/lodging/.test(types)) return "hotel";
   return "activity";
-}
-
-function googlePhotoUrl(photoReference: string) {
-  const apiKey = googlePlacesApiKey();
-  if (!apiKey) return null;
-  const url = new URL("https://maps.googleapis.com/maps/api/place/photo");
-  url.searchParams.set("maxwidth", "800");
-  url.searchParams.set("photo_reference", photoReference);
-  url.searchParams.set("key", apiKey);
-  return url.toString();
 }
 
 function googlePlacesApiKey() {
@@ -580,4 +629,8 @@ function safeProviderError(error: unknown) {
 
 function safeProviderMessage(value: string) {
   return value.replace(/key=[^&\s]+/gi, "key=[redacted]").replace(/\s+/g, " ").slice(0, 160);
+}
+
+function stripHtml(value: string) {
+  return value.replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim();
 }
