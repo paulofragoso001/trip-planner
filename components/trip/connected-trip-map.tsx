@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import GoogleMapsProvider from "@/components/GoogleMapsProvider";
 import { PlacePhoto } from "@/components/place-photo";
 import TripMap, { type TripMapItem } from "@/components/TripMap";
@@ -30,15 +30,53 @@ export function ConnectedTripMap({
   unmappedSegments = []
 }: ConnectedTripMapProps) {
   const router = useRouter();
-  const [selectedId, setSelectedId] = useState<string | null>(items[0]?.id ?? null);
+  const [showAllPlaces, setShowAllPlaces] = useState(false);
+  const dayLabels = useMemo(
+    () => Array.from(new Set(items.map((item) => item.dayLabel).filter(Boolean))) as string[],
+    [items]
+  );
+  const hasDayFilter = dayLabels.length > 1;
+  const [selectedDay, setSelectedDay] = useState<string>("");
+  const selectedDayKey = hasDayFilter ? selectedDay || dayLabels[0] : "";
+  const dayFilteredItems = useMemo(
+    () =>
+      hasDayFilter && selectedDayKey !== "all"
+        ? items.filter((item) => item.dayLabel === selectedDayKey)
+        : items,
+    [hasDayFilter, items, selectedDayKey]
+  );
+  const visibleItems = useMemo(
+    () =>
+      hasDayFilter || showAllPlaces || dayFilteredItems.length <= 5
+        ? dayFilteredItems
+        : dayFilteredItems.slice(0, 5),
+    [dayFilteredItems, hasDayFilter, showAllPlaces]
+  );
+  const [selectedId, setSelectedId] = useState<string | null>(visibleItems[0]?.id ?? null);
   const [pendingRetry, setPendingRetry] = useState<string | null>(null);
   const [retryMessage, setRetryMessage] = useState<string | null>(null);
-  const selectedItem = items.find((item) => item.id === selectedId) ?? items[0];
+  const selectedItem = visibleItems.find((item) => item.id === selectedId) ?? visibleItems[0];
   const selectedPlaceUrl = selectedItem
     ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
         selectedItem.address || selectedItem.title
       )}`
     : null;
+
+  useEffect(() => {
+    if (hasDayFilter && (!selectedDay || (!dayLabels.includes(selectedDay) && selectedDay !== "all"))) {
+      setSelectedDay(dayLabels[0] || "");
+    }
+  }, [dayLabels, hasDayFilter, selectedDay]);
+
+  useEffect(() => {
+    if (!visibleItems.length) {
+      setSelectedId(null);
+      return;
+    }
+    if (!selectedId || !visibleItems.some((item) => item.id === selectedId)) {
+      setSelectedId(visibleItems[0]?.id ?? null);
+    }
+  }, [selectedId, visibleItems]);
 
   async function retryLocation(segmentId: string) {
     setPendingRetry(segmentId);
@@ -61,15 +99,16 @@ export function ConnectedTripMap({
   }
 
   return (
-    <div className="grid h-full min-h-0 gap-4" data-testid="connected-trip-map">
+    <div className="flex min-h-0 flex-col gap-4" data-testid="connected-trip-map">
       {items.length ? (
         <GoogleMapsProvider>
           <div className="min-h-[320px] overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 sm:min-h-[420px]">
             <TripMap
               height="clamp(320px, 58dvh, 520px)"
-              items={items}
+              items={visibleItems}
               selectedId={selectedId}
               onSelect={setSelectedId}
+              showRouteDetails={false}
               travelMode="TRANSIT"
             />
           </div>
@@ -126,9 +165,57 @@ export function ConnectedTripMap({
         </div>
       ) : null}
 
+      {hasDayFilter ? (
+        <div className="flex gap-2 overflow-x-auto rounded-2xl border border-slate-200 bg-white p-2 text-xs font-black text-slate-700" aria-label="Map day filter">
+          {["all", ...dayLabels].map((day) => {
+            const active = (selectedDayKey || dayLabels[0]) === day;
+            return (
+              <button
+                className={[
+                  "min-h-10 shrink-0 rounded-xl px-3 transition",
+                  active ? "bg-slate-950 text-white" : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                ].join(" ")}
+                key={day}
+                onClick={() => {
+                  setSelectedDay(day);
+                  setShowAllPlaces(false);
+                }}
+                type="button"
+              >
+                {day === "all" ? "All" : day}
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
+
       {items.length ? (
         selectedItem ? (
-          <div className="grid gap-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:grid-cols-[112px_minmax(0,1fr)] sm:items-center">
+          <div className="rounded-t-[1.75rem] border border-slate-200 bg-white p-3 shadow-lg sm:rounded-2xl sm:shadow-sm">
+            {!hasDayFilter && items.length > visibleItems.length ? (
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-blue-50 px-3 py-2 text-xs font-bold text-blue-900">
+                <span>Showing first {visibleItems.length} of {items.length} places</span>
+                <button
+                  className="inline-flex min-h-9 items-center justify-center rounded-xl bg-white px-3 font-black text-blue-800 ring-1 ring-blue-100"
+                  onClick={() => setShowAllPlaces(true)}
+                  type="button"
+                >
+                  Show all places
+                </button>
+              </div>
+            ) : !hasDayFilter && showAllPlaces && items.length > 5 ? (
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-slate-50 px-3 py-2 text-xs font-bold text-slate-700">
+                <span>Showing all {items.length} places</span>
+                <button
+                  className="inline-flex min-h-9 items-center justify-center rounded-xl bg-white px-3 font-black text-slate-700 ring-1 ring-slate-200"
+                  onClick={() => setShowAllPlaces(false)}
+                  type="button"
+                >
+                  Show first 5
+                </button>
+              </div>
+            ) : null}
+            <div className="grid gap-3 sm:grid-cols-[112px_minmax(0,1fr)] sm:items-center">
             <PlacePhoto
               alt={selectedItem.imageAlt || `Photo of ${selectedItem.title}`}
               attribution={selectedItem.imageAttribution}
@@ -138,7 +225,7 @@ export function ConnectedTripMap({
             />
             <div className="min-w-0">
               <p className="text-xs font-black uppercase tracking-[0.16em] text-blue-600">
-                Place {selectedItem.routeOrder || 1} of {items.length}
+                Place {visibleItems.findIndex((item) => item.id === selectedItem.id) + 1} of {visibleItems.length}
               </p>
               <h3 className="mt-1 break-words text-base font-black text-slate-950">
                 {selectedItem.routeOrder || 1}. {selectedItem.title}
@@ -170,13 +257,14 @@ export function ConnectedTripMap({
                 </Link>
               </div>
             </div>
+            </div>
           </div>
         ) : null
       ) : null}
 
       {items.length ? (
-        <div className="grid gap-3 sm:grid-cols-2">
-          {items.map((item, index) => {
+        <div className="grid content-start items-start gap-2 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm sm:grid-cols-2 sm:gap-3 sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none" data-testid="map-route-list">
+          {visibleItems.map((item, index) => {
             const active = item.id === selectedItem?.id;
 
             return (
@@ -184,6 +272,7 @@ export function ConnectedTripMap({
                 aria-current={active ? "true" : undefined}
                 className={[
                   "min-h-16 rounded-xl border px-4 py-3 text-left text-sm transition",
+                  "h-auto self-start",
                   active
                     ? "border-blue-300 bg-blue-50 text-blue-950"
                     : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"

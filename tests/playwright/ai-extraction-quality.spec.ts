@@ -48,6 +48,7 @@ const fixtures = [
     }
   },
   {
+    exactForbidden: ["Wynwood"],
     forbidden: ["BEST MIAMI SPOTS", "Follow for more travel tips", "#fyp", "#ad", "travel tips"],
     input:
       "BEST MIAMI SPOTS ✨\nWYNW00D WALLS\nK0MODO\nBR1CKELL CITY CENTRE\nSOUTH POINTE PARK\nFollow for more travel tips\n#miamitravel #fyp #ad",
@@ -55,6 +56,7 @@ const fixtures = [
     required: ["Wynwood Walls", "Komodo", "Brickell City Centre", "South Pointe Park"]
   },
   {
+    exactForbidden: ["Wynwood"],
     forbidden: ["POV", "save this", "perfect Miami weekend", "travelhack", "thingstodo"],
     input:
       "POV: you found the perfect Miami weekend 😍 save this!! Wynwood Walls → Komodo → Brickell City Centre → South Pointe Park. Boat day on Biscayne Bay if you have time. #miami #travelhack #thingstodo",
@@ -62,6 +64,7 @@ const fixtures = [
     required: ["Wynwood Walls", "Komodo", "Brickell City Centre", "South Pointe Park", "Biscayne Bay boat tour"]
   },
   {
+    exactForbidden: ["Wynwood"],
     input:
       "Wynwood Walls, Wynwood Wall, The Wynwood Walls, Komodo Miami, Komodo, dinner at Komodo.",
     maxCounts: {
@@ -157,6 +160,13 @@ test("AI extraction quality fixtures return only travel candidates", async ({ re
         expect(
           normalizedNames.some((name) => name.includes(normalizeNameForAssertion(forbidden))),
           `${fixture.name} included forbidden ${forbidden}; got ${names.join(", ")}`
+        ).toBeFalsy();
+      }
+
+      for (const forbidden of fixture.exactForbidden || []) {
+        expect(
+          normalizedNames.some((name) => name === normalizeNameForAssertion(forbidden)),
+          `${fixture.name} included exact forbidden ${forbidden}; got ${names.join(", ")}`
         ).toBeFalsy();
       }
 

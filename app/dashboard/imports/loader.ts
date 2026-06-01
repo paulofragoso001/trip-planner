@@ -10,6 +10,7 @@ import {
   type UnfiledItemsClient
 } from "@/lib/server/unfiled-items";
 import { listSocialImportWorkspace } from "@/lib/server/social-imports";
+import { resolvePlace as resolveTravelPlace } from "@/lib/travel-data";
 import { buildPlacePhotoUrl, readProviderPhoto } from "@/lib/travel-data/photo-url";
 import {
   TRIP_TRAVEL_STYLE_LABELS,
@@ -55,6 +56,7 @@ export type AiReviewItemView = {
   name: string;
   providerPhotoName: string | null;
   providerPlaceId: string | null;
+  previewAddress: string | null;
   promotedTripSegmentId: string | null;
   reviewReason: "low_confidence" | "needs_location" | "ready";
   sourcePlatform: string;
@@ -161,7 +163,18 @@ export async function loadImportsData(
   }
 
   const trips = ((tripsResult.data || []) as TripSelectRow[]).map(mapTripPicker);
-  const extractedPlaces: AiReviewItemView[] = socialWorkspace.extractedPlaces
+  const previewPlaces = await withTimeout(
+    enrichReviewPlacePreviews(
+      auth.supabase,
+      auth.userId,
+      socialWorkspace.extractedPlaces,
+      socialWorkspace.socialImports,
+      trips
+    ),
+    1200,
+    socialWorkspace.extractedPlaces
+  );
+  const extractedPlaces: AiReviewItemView[] = previewPlaces
     .filter((place: any) => place.status !== "promoted")
     .map((place: any) => {
       const post = socialWorkspace.socialImports.find(
@@ -191,6 +204,7 @@ export async function loadImportsData(
         name: place.name || "Imported place",
         providerPhotoName: providerPhoto?.photoName || null,
         providerPlaceId: place.place_id || readProviderPlaceId(providerMetadata) || null,
+        previewAddress: readFormattedAddress(providerMetadata),
         promotedTripSegmentId: place.promoted_trip_segment_id || null,
         reviewReason: place.status === "needs_location_confirmation"
           ? "needs_location"
@@ -412,6 +426,129 @@ function readProviderPlaceId(value: Record<string, unknown> | null) {
     : null;
 }
 
+async function enrichReviewPlacePreviews(
+  supabase: ImportsClient,
+  userId: string,
+  places: any[],
+  posts: any[],
+  trips: TripPickerView[]
+) {
+  const previewable = places
+    .filter((place) => place.status === "needs_review" || place.status === "needs_location_confirmation")
+    .filter((place) => !readProviderPhoto(readProviderMetadata(place.ai_payload)))
+    .filter((place) => shouldPreviewResolve(place))
+    .slice(0, 8);
+
+  if (!previewable.length) return places;
+
+  const updates = await Promise.allSettled(
+    previewable.map(async (place) => {
+      const post = posts.find((source) => source.id === place.imported_post_id);
+      const trip = trips.find((candidate) => candidate.id === (place.trip_id || post?.trip_id));
+      const destination =
+        place.city || readLocationHint(place.ai_payload) || trip?.destination || inferDestinationFromPost(post);
+      const resolved = await resolveTravelPlace(
+        {
+          address: place.address || null,
+          city: place.city || destination || null,
+          country: place.country || null,
+          locationHint: destination || place.address || null,
+          name: place.name || "Imported place",
+          sourceTitle: post?.source_title || null
+        },
+        {
+          city: place.city || destination || null,
+          destination: destination || null,
+          tripId: place.trip_id || post?.trip_id || null
+        }
+      );
+
+      const providerMetadata = resolved.inventoryItem?.metadata;
+      if (!providerMetadata || !readProviderPhoto(providerMetadata)) return null;
+
+      const payload = isRecord(place.ai_payload) ? place.ai_payload : {};
+      const mergedProviderMetadata = {
+        ...(readProviderMetadata(payload) || {}),
+        ...providerMetadata,
+        formattedAddress:
+          readFormattedAddress(providerMetadata) || resolved.address || place.address || null,
+        providerPlaceId: resolved.placeId || readProviderPlaceId(providerMetadata)
+      };
+      const mergedPayload = {
+        ...payload,
+        providerMetadata: mergedProviderMetadata
+      };
+
+      const { error } = await supabase
+        .from("extracted_places")
+        .update({
+          address: place.address || resolved.address || readFormattedAddress(providerMetadata) || null,
+          ai_payload: mergedPayload,
+          place_id: place.place_id || resolved.placeId || readProviderPlaceId(providerMetadata) || null,
+          updated_at: new Date().toISOString()
+        })
+        .eq("id", place.id)
+        .eq("user_id", userId);
+
+      if (error) return null;
+
+      return {
+        id: place.id,
+        place: {
+          ...place,
+          address: place.address || resolved.address || readFormattedAddress(providerMetadata) || null,
+          ai_payload: mergedPayload,
+          place_id: place.place_id || resolved.placeId || readProviderPlaceId(providerMetadata) || null
+        }
+      };
+    })
+  );
+
+  const byId = new Map<string, any>();
+  for (const update of updates) {
+    if (update.status === "fulfilled" && update.value?.id) {
+      byId.set(update.value.id, update.value.place);
+    }
+  }
+
+  return places.map((place) => byId.get(place.id) || place);
+}
+
+function shouldPreviewResolve(place: any) {
+  const category = String(place.category || "").toLowerCase();
+  const payload = isRecord(place.ai_payload) ? place.ai_payload : {};
+  const candidateType = String(payload.candidateType || payload.candidate_type || "").toLowerCase();
+  if (category.includes("tour") || candidateType === "tour" || candidateType === "activity_idea") {
+    return false;
+  }
+  return Boolean(place.name && String(place.name).trim().length >= 3);
+}
+
+function readFormattedAddress(value: Record<string, unknown> | null) {
+  return typeof value?.formattedAddress === "string" && value.formattedAddress.trim()
+    ? value.formattedAddress.trim()
+    : null;
+}
+
+function inferDestinationFromPost(post: any) {
+  const text = [post?.source_title, post?.source_caption, post?.raw_text]
+    .filter(Boolean)
+    .join(" ");
+  const match =
+    text.match(/\bPlanning\s+([A-Z][A-Za-z\s]+?)(?:\s+weekend|\s+trip|:|\.|,|$)/) ||
+    text.match(/\bin\s+([A-Z][A-Za-z\s]+?)(?:,|\.|$)/);
+  return match?.[1]?.trim() || null;
+}
+
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, fallback: T) {
+  return Promise.race([
+    promise,
+    new Promise<T>((resolve) => {
+      setTimeout(() => resolve(fallback), timeoutMs);
+    })
+  ]);
+}
+
 function labelForSource(sourceType: string) {
   if (sourceType === "gmail") return "Gmail inbox sync";
   if (sourceType === "outlook") return "Outlook inbox sync";
@@ -449,4 +586,8 @@ function readLocationHint(value: unknown) {
 
 function isMissingColumn(message: string) {
   return /column .*travel_style.* does not exist/i.test(message);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value));
 }

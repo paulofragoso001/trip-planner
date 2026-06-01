@@ -10,8 +10,11 @@ export type TripSegmentWriteInput = {
   lat: number | null;
   lng: number | null;
   location: string | null;
+  locationStatus?: string | null;
   notes: string | null;
   provider: string | null;
+  providerMetadata?: Record<string, unknown> | null;
+  providerPlaceId?: string | null;
   startTime: string | null;
   title: string;
   tripId: string;
@@ -81,8 +84,11 @@ export function validateTripSegmentWrite(
       lat,
       lng,
       location: readNullableString(value.location, 500),
+      locationStatus: readNullableString(value.locationStatus ?? value.location_status, 80),
       notes: readNullableString(value.notes, 5000),
       provider: readNullableString(value.provider, 200),
+      providerMetadata: readNullableRecord(value.providerMetadata ?? value.provider_metadata),
+      providerPlaceId: readNullableString(value.providerPlaceId ?? value.provider_place_id, 240),
       startTime: readNullableString(value.startTime ?? value.start_time, 120),
       title,
       tripId
@@ -119,8 +125,17 @@ export function validateTripSegmentPatch(
   }
 
   if ("location" in value) update.location = readNullableString(value.location, 500);
+  if ("locationStatus" in value || "location_status" in value) {
+    update.locationStatus = readNullableString(value.locationStatus ?? value.location_status, 80);
+  }
   if ("notes" in value) update.notes = readNullableString(value.notes, 5000);
   if ("provider" in value) update.provider = readNullableString(value.provider, 200);
+  if ("providerMetadata" in value || "provider_metadata" in value) {
+    update.providerMetadata = readNullableRecord(value.providerMetadata ?? value.provider_metadata);
+  }
+  if ("providerPlaceId" in value || "provider_place_id" in value) {
+    update.providerPlaceId = readNullableString(value.providerPlaceId ?? value.provider_place_id, 240);
+  }
   if ("confirmationCode" in value || "confirmation_code" in value) {
     update.confirmationCode = readNullableString(
       value.confirmationCode ?? value.confirmation_code,
@@ -166,4 +181,9 @@ function readNullableNumber(
   }
   details[field] = `Expected a number from ${min} to ${max}.`;
   return null;
+}
+
+function readNullableRecord(value: unknown) {
+  if (value == null) return null;
+  return isRecord(value) ? value : null;
 }

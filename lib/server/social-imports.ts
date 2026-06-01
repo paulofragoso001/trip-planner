@@ -1410,7 +1410,7 @@ async function extractWithOpenAi(input: {
   );
   const ruleSignals = extractWithRules(input.sourceText, input.sourceUrl);
   return filterTravelSignals(
-    dedupeSignals([...modelSignals, ...ruleSignals])
+    removeLessSpecificDuplicateSignals(dedupeSignals([...modelSignals, ...ruleSignals]))
   );
 }
 
@@ -1435,7 +1435,7 @@ function extractWithRules(sourceText: string, sourceUrl: string | null): Extract
     candidates.push(titleFromUrl(sourceUrl));
   }
 
-  return filterTravelSignals(validateExtractedTravelSignals(candidates.map((name) => ({
+  return filterTravelSignals(removeLessSpecificDuplicateSignals(validateExtractedTravelSignals(candidates.map((name) => ({
     category: inferCategory(name),
     confidence: sourceText ? confidenceForRuleCandidate(name, sourceText) : 0.4,
     evidence: sourceText ? [evidenceForCandidate(name, sourceText)] : [sourceUrl || "Imported URL"],
@@ -1446,7 +1446,7 @@ function extractWithRules(sourceText: string, sourceUrl: string | null): Extract
     summary: sourceText
       ? summarizeText(sourceText)
       : "Imported travel inspiration. Confirm the place before promoting it."
-  })), "rules"));
+  })), "rules")));
 }
 
 function extractRuleCandidateNames(sourceText: string) {
@@ -1730,6 +1730,55 @@ function filterTravelSignals(signals: ExtractedTravelSignal[]) {
     }
     return true;
   });
+}
+
+function removeLessSpecificDuplicateSignals(signals: ExtractedTravelSignal[]) {
+  return signals.filter((signal) => {
+    const current = normalizeCopy(signal.name);
+    if (!current) return false;
+    return !signals.some((other) => {
+      if (other === signal) return false;
+      const candidate = normalizeCopy(other.name);
+      if (!candidate || candidate === current) return false;
+      if (!canReplaceLessSpecificSignal(other.name)) return false;
+      if (!namesShareDestination(signal, other)) return false;
+      if (!isMoreSpecificName(candidate, current)) return false;
+      logSocialImportEvent("ai_extraction_candidate_rejected", {
+        name: sanitizeLogPreview(signal.name),
+        reason: "less_specific_duplicate",
+        replacement: sanitizeLogPreview(other.name)
+      });
+      return true;
+    });
+  });
+}
+
+function namesShareDestination(
+  current: ExtractedTravelSignal,
+  other: ExtractedTravelSignal
+) {
+  const currentContext = normalizeCopy([current.city, current.locationHint, current.country].filter(Boolean).join(" "));
+  const otherContext = normalizeCopy([other.city, other.locationHint, other.country].filter(Boolean).join(" "));
+  return !currentContext || !otherContext || currentContext === otherContext;
+}
+
+function isMoreSpecificName(candidate: string, current: string) {
+  if (candidate === "wynwood walls" && current === "wynwood") return true;
+  const candidateTokens = candidate.split(" ").filter(Boolean);
+  const currentTokens = current.split(" ").filter(Boolean);
+  if (candidateTokens.length <= currentTokens.length) return false;
+  if (candidateTokens.length > 5) return false;
+  return currentTokens.every((token) => candidateTokens.includes(token));
+}
+
+function canReplaceLessSpecificSignal(name: string) {
+  const normalized = normalizeCopy(name);
+  return (
+    !looksLikeRawInspirationNote(name) &&
+    !looksLikeSentenceFragment(name) &&
+    !isSocialFillerCandidate(normalized) &&
+    !containsInstructionalPhrase(normalized)
+  );
 }
 
 function filterStoredExtractedPlaces<TPlace extends Record<string, any>>(places: TPlace[]) {

@@ -39,6 +39,7 @@ type TripMapProps = {
   onSelect?: (id: string) => void;
   travelMode?: TripTravelMode;
   height?: number | string;
+  showRouteDetails?: boolean;
 };
 
 const fallbackCenter = { lat: 25.7617, lng: -80.1918 };
@@ -49,7 +50,8 @@ export default function TripMap({
   items,
   selectedId,
   onSelect,
-  height = 420
+  height = 420,
+  showRouteDetails = false
 }: TripMapProps) {
   const mapRef = useRef<google.maps.Map | null>(null);
 
@@ -61,6 +63,7 @@ export default function TripMap({
     () => items.map((item) => ({ lat: item.lat, lng: item.lng })),
     [items]
   );
+  const markerPositions = useMemo(() => getMarkerPositions(items), [items]);
   const routeInfo = useMemo(() => getRouteInfo(items), [items]);
   const legsInfo = useMemo(() => getLegsInfo(items), [items]);
   const containerStyle = useMemo(
@@ -159,7 +162,7 @@ export default function TripMap({
           return (
           <OverlayView
             key={item.id}
-            position={{ lat: item.lat, lng: item.lng }}
+            position={markerPositions[index] || { lat: item.lat, lng: item.lng }}
             mapPaneName={OverlayView.OVERLAY_MOUSE_TARGET}
           >
             <button
@@ -183,7 +186,7 @@ export default function TripMap({
         })}
       </GoogleMap>
 
-      {routeInfo.distance || routeInfo.duration ? (
+      {showRouteDetails && (routeInfo.distance || routeInfo.duration) ? (
         <div className="mb-3 mt-3 rounded-lg border border-line bg-white p-4 shadow-sm">
           <div className="flex items-center justify-between">
             <div>
@@ -201,7 +204,7 @@ export default function TripMap({
         </div>
       ) : null}
 
-      {legsInfo.length > 0 ? (
+      {showRouteDetails && legsInfo.length > 0 ? (
         <div className="mt-4 space-y-2 rounded-lg border border-line bg-white p-3 shadow-sm">
           {legsInfo.map((leg, index) => (
             <div key={leg.id || index} className="text-sm text-gray-600">
@@ -250,7 +253,7 @@ function getLegsInfo(items: TripMapItem[]) {
     from: item.title || `Place ${index + 1}`,
     to: items[index + 1]?.title || `Place ${index + 2}`,
     distance: formatDistance(getDistanceMeters(item, items[index + 1])),
-    duration: "Coordinate path"
+    duration: "Route leg"
   }));
 }
 
@@ -258,6 +261,22 @@ function getTotalDistanceMeters(items: TripMapItem[]) {
   return items
     .slice(0, -1)
     .reduce((total, item, index) => total + getDistanceMeters(item, items[index + 1]), 0);
+}
+
+function getMarkerPositions(items: TripMapItem[]) {
+  const seen = new Map<string, number>();
+  return items.map((item) => {
+    const key = `${item.lat.toFixed(5)}:${item.lng.toFixed(5)}`;
+    const count = seen.get(key) || 0;
+    seen.set(key, count + 1);
+    if (!count) return { lat: item.lat, lng: item.lng };
+    const angle = count * 1.7;
+    const radius = 0.00008 * Math.min(count, 4);
+    return {
+      lat: item.lat + Math.sin(angle) * radius,
+      lng: item.lng + Math.cos(angle) * radius
+    };
+  });
 }
 
 function getDistanceMeters(a: TripMapItem, b: TripMapItem) {

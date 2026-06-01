@@ -19,9 +19,13 @@ type LocationAutocompleteProps = {
   country?: string;
   biasToUserLocation?: boolean;
   inputClassName?: string;
+  loadingMessage?: string;
+  manualWarning?: string;
   name?: string;
   placeholder?: string;
   required?: boolean;
+  resolveErrorMessage?: string;
+  unresolvedMessage?: string;
   value?: string;
   onInputChange?: (value: string) => void;
 };
@@ -42,9 +46,13 @@ export default function LocationAutocomplete({
   country,
   biasToUserLocation: _biasToUserLocation = true,
   inputClassName = "google-places-autocomplete",
+  loadingMessage = "Places autocomplete is loading. You can still type a destination.",
+  manualWarning = "Destination saved manually. Map and AI matching may work better after selecting a Google result.",
   name,
   placeholder = "Search for a place (hotel, restaurant, attraction...)",
   required = false,
+  resolveErrorMessage = "Wayline could not resolve that Google result. Try another destination.",
+  unresolvedMessage = "Choose a destination with a mapped location.",
   value = "",
   onInputChange
 }: LocationAutocompleteProps) {
@@ -155,7 +163,7 @@ export default function LocationAutocomplete({
       const address = place.formatted_address || place.name || input.value;
 
       if (!address || typeof lat !== "number" || typeof lng !== "number") {
-        setPlaceError("Choose a destination with a mapped location.");
+        setPlaceError(unresolvedMessage);
         return;
       }
 
@@ -180,7 +188,7 @@ export default function LocationAutocomplete({
     return () => {
       listener.remove();
     };
-  }, [_onSelect, bounds, country, mode, onInputChange]);
+  }, [_onSelect, bounds, country, mode, onInputChange, unresolvedMessage]);
 
   useEffect(() => {
     if (mode !== "suggestions" || modernSuggestionsFailed) {
@@ -243,7 +251,7 @@ export default function LocationAutocomplete({
             setPlaceError("");
           } else {
             setMode("unavailable");
-            setPlaceError("Places suggestions are unavailable. You can still type a destination.");
+            setPlaceError("Places suggestions are unavailable. You can still type a location.");
           }
         }
       }
@@ -267,7 +275,7 @@ export default function LocationAutocomplete({
       const selected = selectionFromPlace(resolvedPlace, option.label);
 
       if (!selected) {
-        setPlaceError("Choose a destination with a mapped location.");
+        setPlaceError(unresolvedMessage);
         return;
       }
 
@@ -277,7 +285,7 @@ export default function LocationAutocomplete({
       onInputChange?.(selected.address);
       _onSelect(selected);
     } catch {
-      setPlaceError("Wayline could not resolve that Google result. Try another destination.");
+      setPlaceError(resolveErrorMessage);
     } finally {
       setIsResolvingSuggestion(false);
     }
@@ -335,12 +343,12 @@ export default function LocationAutocomplete({
       ) : null}
       {mode === "loading" ? (
         <p className="text-xs font-semibold text-slate-500">
-          Places autocomplete is loading. You can still type a destination.
+          {loadingMessage}
         </p>
       ) : null}
       {showManualWarning ? (
         <p className="text-xs font-semibold text-amber-700">
-          Destination saved manually. Map and AI matching may work better after selecting a Google result.
+          {manualWarning}
         </p>
       ) : null}
       {placeError ? (

@@ -3,6 +3,10 @@
 import { useRouter } from "next/navigation";
 import type { FormEvent } from "react";
 import { useState } from "react";
+import GoogleMapsProvider from "@/components/GoogleMapsProvider";
+import LocationAutocomplete, {
+  type LocationSelection
+} from "@/components/LocationAutocomplete";
 import { useWaylineAction } from "@/hooks/use-wayline-action";
 
 type TripSegmentFormProps = {
@@ -40,10 +44,35 @@ export function TripSegmentForm({
   const [lat, setLat] = useState(defaultLat == null ? "" : String(defaultLat));
   const [lng, setLng] = useState(defaultLng == null ? "" : String(defaultLng));
   const [location, setLocation] = useState(defaultLocation || "");
+  const [locationSelected, setLocationSelected] = useState(
+    Boolean(defaultLocation && defaultLat != null && defaultLng != null)
+  );
   const [notes, setNotes] = useState(defaultNotes || "");
+  const [providerMetadata, setProviderMetadata] = useState<Record<string, unknown> | null>(null);
+  const [providerPlaceId, setProviderPlaceId] = useState<string | null>(null);
   const [startTime, setStartTime] = useState(toDateTimeLocal(defaultStartTime));
   const [title, setTitle] = useState(defaultTitle);
   const { isPending, run, state } = useWaylineAction();
+
+  function handleLocationInputChange(nextLocation: string) {
+    setLocation(nextLocation);
+    setProviderMetadata(null);
+    setProviderPlaceId(null);
+    setLocationSelected(false);
+    if (!includeCoordinates) {
+      setLat("");
+      setLng("");
+    }
+  }
+
+  function handleLocationSelect(selection: LocationSelection) {
+    setLocation(selection.formattedAddress || selection.address);
+    setLat(String(selection.lat));
+    setLng(String(selection.lng));
+    setProviderMetadata(selection.providerMetadata || null);
+    setProviderPlaceId(selection.placeId || null);
+    setLocationSelected(true);
+  }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -55,7 +84,16 @@ export function TripSegmentForm({
         lat: lat.trim() ? Number(lat) : null,
         lng: lng.trim() ? Number(lng) : null,
         location,
+        locationStatus:
+          lat.trim() && lng.trim()
+            ? "resolved"
+            : location.trim()
+              ? "manual_location_required"
+              : "needs_location_confirmation",
         notes,
+        provider: providerPlaceId ? "google_places" : null,
+        providerMetadata,
+        providerPlaceId,
         startTime: fromDateTimeLocal(startTime),
         title,
         tripId
@@ -73,7 +111,10 @@ export function TripSegmentForm({
         setLat("");
         setLng("");
         setLocation("");
+        setLocationSelected(false);
         setNotes("");
+        setProviderMetadata(null);
+        setProviderPlaceId(null);
         setStartTime("");
         setTitle("");
       }
@@ -112,12 +153,27 @@ export function TripSegmentForm({
         <option value="transport">Transport</option>
         <option value="note">Note</option>
       </select>
-      <input
-        className="min-h-11 rounded-xl border border-slate-200 px-3 text-sm"
-        onChange={(event) => setLocation(event.target.value)}
-        placeholder="Location"
-        value={location}
-      />
+      <div>
+        <GoogleMapsProvider>
+          <LocationAutocomplete
+            ariaLabel="Stop location"
+            inputClassName="min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+            loadingMessage="Places autocomplete is loading. You can still type a location."
+            manualWarning="Select a suggested place to map this stop."
+            onInputChange={handleLocationInputChange}
+            onSelect={handleLocationSelect}
+            placeholder="Search location"
+            resolveErrorMessage="Wayline could not map that Google result. Try another location."
+            unresolvedMessage="Select a suggested place with a mapped location."
+            value={location}
+          />
+        </GoogleMapsProvider>
+        {location.trim() && !locationSelected ? (
+          <p className="mt-2 text-xs font-semibold text-amber-700">
+            Select a suggested place to map this stop.
+          </p>
+        ) : null}
+      </div>
       <div className="grid gap-2 sm:grid-cols-2">
         <input
           className="min-h-11 rounded-xl border border-slate-200 px-3 text-sm"

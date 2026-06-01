@@ -10,7 +10,7 @@ export type TripSegmentsClient = {
 };
 
 const segmentSelect =
-  "id,trip_id,user_id,title,location,kind,start_time,end_time,lat,lng,notes,provider,provider_metadata,location_status,confirmation_code,booking_url,position,inserted_at,updated_at";
+  "id,trip_id,user_id,title,location,kind,start_time,end_time,lat,lng,notes,provider,provider_metadata,provider_place_id,location_status,confirmation_code,booking_url,position,inserted_at,updated_at";
 
 export async function listTripSegments(
   supabase: TripSegmentsClient,
@@ -51,15 +51,17 @@ export async function createTripSegment(
       lng: input.lng,
       location: input.location,
       location_status:
-        typeof input.lat === "number" && typeof input.lng === "number"
+        input.locationStatus ||
+        (typeof input.lat === "number" && typeof input.lng === "number"
           ? "resolved"
-          : "needs_location_confirmation",
+          : "needs_location_confirmation"),
       notes: input.notes,
       position: nextPosition,
       provider: input.provider,
+      provider_place_id: input.providerPlaceId || null,
       provider_metadata:
         typeof input.lat === "number" && typeof input.lng === "number"
-          ? manualLocationMetadata(input.location)
+          ? locationMetadata(input.location, input.providerMetadata, input.providerPlaceId)
           : {},
       start_time: input.startTime,
       title: input.title,
@@ -93,12 +95,19 @@ export async function updateTripSegment(
   if ("lat" in input) updates.lat = input.lat;
   if ("lng" in input) updates.lng = input.lng;
   if ("location" in input) updates.location = input.location;
+  if ("locationStatus" in input) updates.location_status = input.locationStatus;
+  if ("providerMetadata" in input) updates.provider_metadata = input.providerMetadata || {};
+  if ("providerPlaceId" in input) updates.provider_place_id = input.providerPlaceId || null;
   if (
     typeof input.lat === "number" &&
     typeof input.lng === "number"
   ) {
     updates.location_status = "resolved";
-    updates.provider_metadata = manualLocationMetadata(input.location);
+    updates.provider_metadata = locationMetadata(
+      input.location,
+      input.providerMetadata,
+      input.providerPlaceId
+    );
   } else if ("lat" in input || "lng" in input) {
     updates.location_status = "manual_location_required";
   }
@@ -124,7 +133,31 @@ export async function updateTripSegment(
   return data;
 }
 
-function manualLocationMetadata(location: string | null | undefined) {
+function locationMetadata(
+  location: string | null | undefined,
+  providerMetadata?: Record<string, unknown> | null,
+  providerPlaceId?: string | null
+) {
+  if (providerMetadata && Object.keys(providerMetadata).length) {
+    return {
+      ...providerMetadata,
+      locationDiagnostics: {
+        ...(isRecord(providerMetadata.locationDiagnostics)
+          ? providerMetadata.locationDiagnostics
+          : {}),
+        attemptedAt: new Date().toISOString(),
+        provider: "google_places",
+        query: location || null,
+        retryable: false,
+        selectedFormattedAddress: location || null,
+        selectedProviderPlaceId: providerPlaceId || readProviderPlaceId(providerMetadata),
+        status: "manually_resolved"
+      },
+      manualOverride: true,
+      providerPlaceId: providerPlaceId || readProviderPlaceId(providerMetadata)
+    };
+  }
+
   return {
     locationDiagnostics: {
       attemptedAt: new Date().toISOString(),
@@ -138,11 +171,20 @@ function manualLocationMetadata(location: string | null | undefined) {
       retryable: false,
       retryCount: 0,
       selectedFormattedAddress: location || null,
-      selectedProviderPlaceId: null,
+      selectedProviderPlaceId: providerPlaceId || null,
       status: "manually_resolved"
     },
-    manualOverride: true
+    manualOverride: true,
+    providerPlaceId: providerPlaceId || null
   };
+}
+
+function readProviderPlaceId(metadata: Record<string, unknown>) {
+  return typeof metadata.providerPlaceId === "string" ? metadata.providerPlaceId : null;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value));
 }
 
 export async function deleteTripSegment(

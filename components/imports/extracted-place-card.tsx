@@ -311,10 +311,10 @@ export function ExtractedPlaceCard({ mergeTargets = [], place, trips }: Extracte
               <Pencil className="h-4 w-4" />
             </button>
           </div>
-          {place.address ? (
+          {place.address || place.previewAddress ? (
             <p className="flex items-start gap-2 text-sm font-semibold text-slate-700">
               <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-slate-500" />
-              {place.address}
+              {place.address || place.previewAddress}
             </p>
           ) : null}
           {place.travelNote ? (

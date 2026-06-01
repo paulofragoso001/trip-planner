@@ -26,7 +26,7 @@ import { AsyncActionButton } from "@/components/dashboard/async-action-button";
 import { PlacePhoto } from "@/components/place-photo";
 import { CalendarSyncPanel } from "@/components/trip/calendar-sync-panel";
 import { GeneratePlanButton } from "@/components/trip/generate-plan-button";
-import { TripSegmentDeleteButton } from "@/components/trip/trip-segment-delete-button";
+import { ItineraryCardActions } from "@/components/trip/itinerary-card-actions";
 import { TripSegmentForm } from "@/components/trip/trip-segment-form";
 import { EmptyState, StatusBadge } from "@/components/trip-ui";
 import { waylineCopy } from "@/lib/copy/wayline-copy";
@@ -216,7 +216,10 @@ function ItineraryRow({
   const status = getItemStatus(item);
 
   return (
-    <article className="grid grid-cols-[68px_34px_minmax(0,1fr)] gap-2 sm:grid-cols-[92px_44px_minmax(0,1fr)] sm:gap-3">
+    <article
+      className="grid grid-cols-[68px_34px_minmax(0,1fr)] gap-2 sm:grid-cols-[92px_44px_minmax(0,1fr)] sm:gap-3"
+      id={item.id}
+    >
       <div className="pt-5 text-right">
         <p className="text-sm font-black text-slate-950">{formatPrimaryTime(item)}</p>
         <p className="mt-1 text-[0.65rem] font-bold uppercase tracking-[0.12em] text-slate-500">
@@ -270,54 +273,7 @@ function ItineraryRow({
 
           <StateCopy item={item} />
 
-          {item.notes ? (
-            <details className="mt-3">
-              <summary className="cursor-pointer text-sm font-bold text-slate-700">Notes</summary>
-              <p className="mt-2 break-words rounded-xl bg-slate-50 p-3 text-sm leading-6 text-slate-600">
-                {item.notes}
-              </p>
-            </details>
-          ) : null}
-
-          <div className="mt-4 grid gap-2 sm:flex sm:flex-wrap">
-            {item.lat !== null && item.lng !== null ? (
-              <Link className="inline-flex min-h-11 items-center justify-center rounded-xl bg-slate-950 px-4 text-sm font-bold text-white transition hover:bg-slate-800" href={`/dashboard/trips/${tripId}/map`}>
-                View on map
-              </Link>
-            ) : null}
-            {item.locationStatus !== "resolved" && item.locationStatus !== "needs_activity_provider" ? (
-              <AsyncActionButton endpoint={`/api/trip-segments/${item.id}/retry-location`} successMessage="Location matching updated.">
-                Retry location
-              </AsyncActionButton>
-            ) : null}
-            {item.locationStatus === "needs_activity_provider" ? (
-              <Link className="inline-flex min-h-11 items-center justify-center rounded-xl bg-blue-50 px-4 text-sm font-bold text-blue-700" href={`/dashboard/trips/${tripId}/map#smart-suggestions`}>
-                Find suggestions
-              </Link>
-            ) : null}
-            <details className="min-w-0 flex-1">
-              <summary className="flex min-h-11 cursor-pointer list-none items-center justify-center rounded-xl bg-slate-100 px-4 text-sm font-bold text-slate-700 transition hover:bg-slate-200 sm:justify-start">
-                Edit
-              </summary>
-              <div className="mt-3 grid gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
-                <TripSegmentForm
-                  buttonLabel="Save edits"
-                  defaultEndTime={item.endAt}
-                  defaultKind={item.kind}
-                  defaultLat={item.lat}
-                  defaultLng={item.lng}
-                  defaultLocation={item.location === "Location not set" ? null : item.location}
-                  defaultNotes={item.notes}
-                  defaultStartTime={item.startAt}
-                  defaultTitle={item.title}
-                  includeCoordinates
-                  segmentId={item.id}
-                  tripId={tripId}
-                />
-                <TripSegmentDeleteButton segmentId={item.id} />
-              </div>
-            </details>
-          </div>
+          <ItineraryCardActions item={item} tripId={tripId} />
         </div>
       </div>
     </article>
