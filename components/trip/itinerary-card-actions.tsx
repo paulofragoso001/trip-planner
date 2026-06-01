@@ -1,8 +1,5 @@
-"use client";
-
 import Link from "next/link";
 import { MapPin, Pencil } from "lucide-react";
-import { useState } from "react";
 import type { TimelineItemView } from "@/app/dashboard/trips/[tripId]/timeline/types";
 import { AsyncActionButton } from "@/components/dashboard/async-action-button";
 import { TripSegmentDeleteButton } from "@/components/trip/trip-segment-delete-button";
@@ -14,24 +11,26 @@ type ItineraryCardActionsProps = {
 };
 
 export function ItineraryCardActions({ item, tripId }: ItineraryCardActionsProps) {
-  const [editing, setEditing] = useState(false);
   const hasMappedLocation = item.lat !== null && item.lng !== null;
   const canRetry =
     item.locationStatus !== "resolved" && item.locationStatus !== "needs_activity_provider";
 
   return (
-    <div className="mt-3 border-t border-slate-100 pt-3">
-      <div className="flex items-start justify-between gap-3">
+    <details className="mt-3 border-t border-slate-100 pt-3" suppressHydrationWarning>
+      <summary
+        aria-label={`Edit ${item.title}`}
+        className="group flex cursor-pointer list-none items-start justify-between gap-3 marker:content-none"
+        role="button"
+      >
+        <span className="sr-only">Edit {item.title}</span>
         <div className="min-w-0 flex-1">
           {item.notes ? (
-            <details>
-              <summary className="cursor-pointer text-sm font-bold text-slate-700">
+            <p className="break-words rounded-xl bg-slate-50 p-3 text-sm leading-6 text-slate-600">
+              <span className="mb-1 block text-xs font-bold uppercase tracking-[0.12em] text-slate-400">
                 Notes
-              </summary>
-              <p className="mt-2 break-words rounded-xl bg-slate-50 p-3 text-sm leading-6 text-slate-600">
-                {item.notes}
-              </p>
-            </details>
+              </span>
+              {item.notes}
+            </p>
           ) : (
             <p className="min-h-11 py-3 text-xs font-bold uppercase tracking-[0.12em] text-slate-400">
               Notes
@@ -50,18 +49,14 @@ export function ItineraryCardActions({ item, tripId }: ItineraryCardActionsProps
               <MapPin className="h-4 w-4" aria-hidden="true" />
             </Link>
           ) : null}
-          <button
-            aria-expanded={editing}
-            aria-label={`${editing ? "Close edit" : "Edit"} ${item.title}`}
-            className="grid h-11 w-11 place-items-center rounded-full bg-slate-100 text-slate-700 shadow-sm transition hover:bg-slate-200 focus:outline-none focus:ring-4 focus:ring-blue-100"
-            onClick={() => setEditing((current) => !current)}
-            title={editing ? "Close edit" : "Edit"}
-            type="button"
+          <span
+            className="grid h-11 w-11 place-items-center rounded-full bg-slate-100 text-slate-700 shadow-sm transition group-hover:bg-slate-200 group-focus:outline-none group-focus:ring-4 group-focus:ring-blue-100"
+            title="Edit"
           >
             <Pencil className="h-4 w-4" aria-hidden="true" />
-          </button>
+          </span>
         </div>
-      </div>
+      </summary>
 
       {canRetry || item.locationStatus === "needs_activity_provider" ? (
         <div className="mt-3 flex flex-wrap gap-2">
@@ -84,25 +79,25 @@ export function ItineraryCardActions({ item, tripId }: ItineraryCardActionsProps
         </div>
       ) : null}
 
-      {editing ? (
-        <div className="mt-3 grid gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
-          <TripSegmentForm
-            buttonLabel="Save edits"
-            defaultEndTime={item.endAt}
-            defaultKind={item.kind}
-            defaultLat={item.lat}
-            defaultLng={item.lng}
-            defaultLocation={item.location === "Location not set" ? null : item.location}
-            defaultNotes={item.notes}
-            defaultStartTime={item.startAt}
-            defaultTitle={item.title}
-            includeCoordinates
-            segmentId={item.id}
-            tripId={tripId}
-          />
-          <TripSegmentDeleteButton segmentId={item.id} />
-        </div>
-      ) : null}
-    </div>
+      <div className="mt-3 grid gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
+        <TripSegmentForm
+          buttonLabel="Save edits"
+          defaultEndTime={item.endAt}
+          defaultHasEndTime={item.hasEndTime}
+          defaultHasStartTime={item.hasStartTime}
+          defaultKind={item.kind}
+          defaultLat={item.lat}
+          defaultLng={item.lng}
+          defaultLocation={item.location === "Location not set" ? null : item.location}
+          defaultNotes={item.notes}
+          defaultStartTime={item.startAt}
+          defaultTitle={item.title}
+          includeCoordinates
+          segmentId={item.id}
+          tripId={tripId}
+        />
+        <TripSegmentDeleteButton segmentId={item.id} />
+      </div>
+    </details>
   );
 }

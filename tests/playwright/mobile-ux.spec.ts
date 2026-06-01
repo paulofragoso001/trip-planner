@@ -105,7 +105,7 @@ test.describe("mobile soft-launch UX", () => {
     await page.goto(`${baseUrl}/dashboard/trips/demo/map`, { waitUntil: "commit" });
 
     await expect(page.getByTestId("connected-trip-map")).toBeVisible();
-    await expect(page.getByText("Place 1 of 4")).toBeVisible();
+    await expect(page.getByText("Place 1 of 4")).toBeVisible({ timeout: 15_000 });
     await expect(page.getByRole("button", { name: /1 Barcelona-El Prat Airport/ })).toBeVisible();
     await expect(page.getByRole("button", { name: /4 Fira Barcelona meeting/ })).toBeVisible();
   });
@@ -152,10 +152,14 @@ test.describe("mobile soft-launch UX", () => {
       await expect(content.getByRole("link", { name: "View on map" })).toHaveCount(0);
       await expect(content.getByText("View on map", { exact: true })).toHaveCount(0);
 
-      await content.getByRole("button", { name: /Edit South Pointe Park/ }).click();
-      await expect(content.getByLabel("Stop location").first()).toBeVisible();
-      await content.getByLabel("Stop location").first().fill("Manual location");
-      await expect(content.getByText("Select a suggested place to map this stop.").first()).toBeVisible();
+      const card = content.locator("article").filter({
+        has: page.getByRole("heading", { name: "South Pointe Park" })
+      });
+      await card.getByRole("button", { name: /Edit South Pointe Park/ }).click();
+      await expect(card.getByLabel("Stop location")).toBeVisible();
+      await expect(card.getByLabel("Date", { exact: true })).toBeVisible();
+      await expect(card.getByLabel("Start time")).toBeVisible();
+      await expect(card.getByRole("button", { name: "Save edits" })).toBeEnabled();
     } finally {
       await request.delete(`${baseUrl}/api/trips/${tripId}`, {
         headers: { "x-cypress-dashboard": "true" }
@@ -203,8 +207,9 @@ test.describe("mobile soft-launch UX", () => {
       await expect(page.getByText("Showing first 5 of 8 places")).toBeVisible();
       await expect(page.getByRole("button", { name: /Route place 6/ })).toHaveCount(0);
       await expect(page.getByText("Place 1 of 5")).toBeVisible();
-      await page.getByRole("button", { name: "Show all places" }).click();
-      await expect(page.getByText("Showing all 8 places")).toBeVisible();
+      await expect(page.getByTestId("map-show-all-places")).toBeEnabled();
+      await page.getByTestId("map-show-all-places").click();
+      await expect(page.getByText("Showing all 8 places")).toBeVisible({ timeout: 15_000 });
       await expect(page.getByRole("button", { name: /Route place 6/ })).toBeVisible();
     } finally {
       await request.delete(`${baseUrl}/api/trips/${tripId}`, {

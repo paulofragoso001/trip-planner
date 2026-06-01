@@ -30,6 +30,7 @@ export function ConnectedTripMap({
   unmappedSegments = []
 }: ConnectedTripMapProps) {
   const router = useRouter();
+  const [hydrated, setHydrated] = useState(false);
   const [showAllPlaces, setShowAllPlaces] = useState(false);
   const dayLabels = useMemo(
     () => Array.from(new Set(items.map((item) => item.dayLabel).filter(Boolean))) as string[],
@@ -61,6 +62,10 @@ export function ConnectedTripMap({
         selectedItem.address || selectedItem.title
       )}`
     : null;
+
+  useEffect(() => {
+    setHydrated(true);
+  }, []);
 
   useEffect(() => {
     if (hasDayFilter && (!selectedDay || (!dayLabels.includes(selectedDay) && selectedDay !== "all"))) {
@@ -196,18 +201,22 @@ export function ConnectedTripMap({
               <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-blue-50 px-3 py-2 text-xs font-bold text-blue-900">
                 <span>Showing first {visibleItems.length} of {items.length} places</span>
                 <button
-                  className="inline-flex min-h-9 items-center justify-center rounded-xl bg-white px-3 font-black text-blue-800 ring-1 ring-blue-100"
+                  className="inline-flex min-h-9 items-center justify-center rounded-xl bg-white px-3 font-black text-blue-800 ring-1 ring-blue-100 disabled:opacity-60"
+                  data-testid="map-show-all-places"
+                  disabled={!hydrated}
                   onClick={() => setShowAllPlaces(true)}
                   type="button"
                 >
-                  Show all places
+                  {hydrated ? "Show all places" : "Preparing..."}
                 </button>
               </div>
             ) : !hasDayFilter && showAllPlaces && items.length > 5 ? (
               <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-slate-50 px-3 py-2 text-xs font-bold text-slate-700">
                 <span>Showing all {items.length} places</span>
                 <button
-                  className="inline-flex min-h-9 items-center justify-center rounded-xl bg-white px-3 font-black text-slate-700 ring-1 ring-slate-200"
+                  className="inline-flex min-h-9 items-center justify-center rounded-xl bg-white px-3 font-black text-slate-700 ring-1 ring-slate-200 disabled:opacity-60"
+                  data-testid="map-show-first-places"
+                  disabled={!hydrated}
                   onClick={() => setShowAllPlaces(false)}
                   type="button"
                 >

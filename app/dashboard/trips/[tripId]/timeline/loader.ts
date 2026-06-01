@@ -256,7 +256,7 @@ function groupSegmentsByDay(segments: TripSegment[]): TimelineDayView[] {
 
   return Array.from(groups.entries()).map(([date, items]) => {
     const orderedItems = items
-      .sort((a, b) => (a.startAt || "").localeCompare(b.startAt || ""))
+      .sort(compareSegmentsForTimeline)
       .map((segment) => ({
         actionLabel: segment.actionLabel,
         bookingUrl: readExtra(segment, "bookingUrl"),
@@ -271,6 +271,8 @@ function groupSegmentsByDay(segments: TripSegment[]): TimelineDayView[] {
         imageAlt: readExtra(segment, "imageAlt"),
         imageAttribution: readExtra(segment, "imageAttribution"),
         imageUrl: readExtra(segment, "imageUrl"),
+        hasEndTime: Boolean(segment.hasEndTime),
+        hasStartTime: Boolean(segment.hasStartTime),
         kind: segment.type,
         lat: segment.lat ?? null,
         lng: segment.lng ?? null,
@@ -281,7 +283,12 @@ function groupSegmentsByDay(segments: TripSegment[]): TimelineDayView[] {
         provider: readExtra(segment, "provider"),
         startAt: segment.startAt,
         status: segment.status === "pending" ? "watch" : segment.status,
-        timeRange: formatTimeRange(segment.startAt, segment.endAt),
+        timeRange: formatTimeRange(
+          segment.startAt,
+          segment.endAt,
+          Boolean(segment.hasStartTime),
+          Boolean(segment.hasEndTime)
+        ),
         timeZoneLabel: "Local time",
         title: segment.title,
         typeLabel: segmentTypeLabel(segment.type)
@@ -326,22 +333,27 @@ function mapSegmentRow(
   const kind = mapSegmentKind(row.kind);
   const cost = budgetBySegment.get(row.id);
   const photo = readProviderPhoto(row.provider_metadata);
+  const schedule = readScheduleMetadata(row.provider_metadata, row.start_time, row.end_time);
 
   return {
     actionLabel: actionLabelForKind(kind),
     confirmation: row.confirmation_code || "Not set",
     costLabel: cost ? formatMoney(cost.amount, cost.currency) : "$0",
-    details: buildDetails(row),
+    details: buildDetails(row, schedule),
     endAt: row.end_time,
     id: row.id,
     imageAlt: photo?.imageAlt || null,
     imageAttribution: photo?.attribution || null,
     imageUrl: buildPlacePhotoUrl(row.provider_metadata, 400),
+    hasEndTime: schedule.hasEndTime,
+    hasStartTime: schedule.hasStartTime,
+    insertedAt: row.inserted_at,
     lat: row.lat,
     lng: row.lng,
     location: row.location || "Location not set",
     meta: segmentTypeLabel(kind),
     notes: row.notes,
+    position: row.position,
     startAt: row.start_time,
     status: statusForRow(row),
     title: row.title,
@@ -357,6 +369,35 @@ function mapSegmentRow(
     locationStatus: string;
     provider: string | null;
   };
+}
+
+function compareSegmentsForTimeline(a: TripSegment, b: TripSegment) {
+  const dateCompare = sortableDay(a.startAt).localeCompare(sortableDay(b.startAt));
+  if (dateCompare !== 0) return dateCompare;
+
+  if (a.hasStartTime && b.hasStartTime && a.startAt && b.startAt) {
+    const timeCompare = a.startAt.localeCompare(b.startAt);
+    if (timeCompare !== 0) return timeCompare;
+  }
+
+  if (a.hasStartTime !== b.hasStartTime) return a.hasStartTime ? -1 : 1;
+
+  const positionCompare = sortableNumber(a.position) - sortableNumber(b.position);
+  if (positionCompare !== 0) return positionCompare;
+
+  return sortableDate(a.insertedAt).localeCompare(sortableDate(b.insertedAt));
+}
+
+function sortableDay(value: string | null | undefined) {
+  return value?.slice(0, 10) || "9999-12-31";
+}
+
+function sortableDate(value: string | null | undefined) {
+  return value || "9999-12-31T23:59:59.999Z";
+}
+
+function sortableNumber(value: number | null | undefined) {
+  return typeof value === "number" ? value : Number.MAX_SAFE_INTEGER;
 }
 
 function buildBudgetBySegment(rows: BudgetRecordRow[]) {
@@ -416,12 +457,15 @@ function actionLabelForKind(kind: TripSegmentType) {
   }
 }
 
-function buildDetails(row: TripSegmentRow) {
+function buildDetails(
+  row: TripSegmentRow,
+  schedule: { hasEndTime: boolean; hasStartTime: boolean }
+) {
   return [
     row.kind ? `Type: ${row.kind}` : null,
     row.location ? `Location: ${row.location}` : null,
     row.provider ? `Source: ${row.provider}` : null,
-    row.end_time ? `Ends ${formatTime(row.end_time)}` : null
+    row.end_time && schedule.hasEndTime ? `Ends ${formatTime(row.end_time)}` : null
   ].filter((detail): detail is string => Boolean(detail));
 }
 
@@ -466,14 +510,19 @@ function formatWeekday(value: string) {
   }).format(new Date(value));
 }
 
-function formatTimeRange(startAt: string | null, endAt: string | null) {
-  if (!startAt) {
+function formatTimeRange(
+  startAt: string | null,
+  endAt: string | null,
+  hasStartTime: boolean,
+  hasEndTime: boolean
+) {
+  if (!startAt || !hasStartTime) {
     return "Unscheduled";
   }
 
   const start = formatTime(startAt);
 
-  if (!endAt) {
+  if (!endAt || !hasEndTime) {
     return start;
   }
 
@@ -546,6 +595,37 @@ function formatTime(value: string) {
     minute: "2-digit",
     timeZone: "UTC"
   }).format(new Date(value));
+}
+
+function readScheduleMetadata(
+  metadata: Record<string, unknown> | null,
+  startTime: string | null,
+  endTime: string | null
+) {
+  const schedule = isRecord(metadata?.schedule) ? metadata.schedule : null;
+  const explicitStart = typeof schedule?.hasStartTime === "boolean"
+    ? schedule.hasStartTime
+    : startTime
+      ? !isMidnight(startTime)
+      : false;
+  const explicitEnd = typeof schedule?.hasEndTime === "boolean"
+    ? schedule.hasEndTime
+    : endTime
+      ? !isMidnight(endTime)
+      : false;
+
+  return {
+    hasEndTime: explicitEnd,
+    hasStartTime: explicitStart
+  };
+}
+
+function isMidnight(value: string) {
+  return value.slice(11, 16) === "00:00";
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value));
 }
 
 function formatMoney(value: number, currency = "USD") {

@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import type { FormEvent } from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import GoogleMapsProvider from "@/components/GoogleMapsProvider";
 import LocationAutocomplete, {
   type LocationSelection
@@ -17,6 +17,8 @@ type TripSegmentFormProps = {
   defaultLng?: number | null;
   defaultLocation?: string | null;
   defaultNotes?: string | null;
+  defaultHasEndTime?: boolean;
+  defaultHasStartTime?: boolean;
   defaultStartTime?: string | null;
   defaultTitle?: string;
   includeCoordinates?: boolean;
@@ -32,6 +34,8 @@ export function TripSegmentForm({
   defaultLng = null,
   defaultLocation = null,
   defaultNotes = null,
+  defaultHasEndTime,
+  defaultHasStartTime,
   defaultStartTime = null,
   defaultTitle = "",
   includeCoordinates = false,
@@ -39,7 +43,10 @@ export function TripSegmentForm({
   tripId
 }: TripSegmentFormProps) {
   const router = useRouter();
-  const [endTime, setEndTime] = useState(toDateTimeLocal(defaultEndTime));
+  const defaultStart = toScheduleParts(defaultStartTime, defaultHasStartTime);
+  const defaultEnd = toScheduleParts(defaultEndTime, defaultHasEndTime);
+  const [endClockTime, setEndClockTime] = useState(defaultEnd.clockTime);
+  const [endDate, setEndDate] = useState(defaultEnd.date || defaultStart.date);
   const [kind, setKind] = useState(defaultKind);
   const [lat, setLat] = useState(defaultLat == null ? "" : String(defaultLat));
   const [lng, setLng] = useState(defaultLng == null ? "" : String(defaultLng));
@@ -50,9 +57,16 @@ export function TripSegmentForm({
   const [notes, setNotes] = useState(defaultNotes || "");
   const [providerMetadata, setProviderMetadata] = useState<Record<string, unknown> | null>(null);
   const [providerPlaceId, setProviderPlaceId] = useState<string | null>(null);
-  const [startTime, setStartTime] = useState(toDateTimeLocal(defaultStartTime));
+  const [startClockTime, setStartClockTime] = useState(defaultStart.clockTime);
+  const [startDate, setStartDate] = useState(defaultStart.date);
+  const [timeZone] = useState(() => Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC");
   const [title, setTitle] = useState(defaultTitle);
+  const [hydrated, setHydrated] = useState(false);
   const { isPending, run, state } = useWaylineAction();
+
+  useEffect(() => {
+    setHydrated(true);
+  }, []);
 
   function handleLocationInputChange(nextLocation: string) {
     setLocation(nextLocation);
@@ -76,28 +90,35 @@ export function TripSegmentForm({
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const body: Record<string, unknown> = {
+      endClockTime,
+      endDate: endDate || startDate,
+      kind,
+      lat: lat.trim() ? Number(lat) : null,
+      lng: lng.trim() ? Number(lng) : null,
+      location,
+      locationStatus:
+        lat.trim() && lng.trim()
+          ? "resolved"
+          : location.trim()
+            ? "manual_location_required"
+            : "needs_location_confirmation",
+      notes,
+      startClockTime,
+      startDate,
+      timeZone,
+      title,
+      tripId
+    };
+
+    if (providerPlaceId || providerMetadata) {
+      body.provider = "google_places";
+      body.providerMetadata = providerMetadata;
+      body.providerPlaceId = providerPlaceId;
+    }
 
     const result = await run({
-      body: {
-        endTime: fromDateTimeLocal(endTime),
-        kind,
-        lat: lat.trim() ? Number(lat) : null,
-        lng: lng.trim() ? Number(lng) : null,
-        location,
-        locationStatus:
-          lat.trim() && lng.trim()
-            ? "resolved"
-            : location.trim()
-              ? "manual_location_required"
-              : "needs_location_confirmation",
-        notes,
-        provider: providerPlaceId ? "google_places" : null,
-        providerMetadata,
-        providerPlaceId,
-        startTime: fromDateTimeLocal(startTime),
-        title,
-        tripId
-      },
+      body,
       method: segmentId ? "PATCH" : "POST",
       timeoutMs: 7000,
       url: segmentId
@@ -107,7 +128,8 @@ export function TripSegmentForm({
 
     if (result.status === "success") {
       if (!segmentId) {
-        setEndTime("");
+        setEndClockTime("");
+        setEndDate("");
         setLat("");
         setLng("");
         setLocation("");
@@ -115,7 +137,8 @@ export function TripSegmentForm({
         setNotes("");
         setProviderMetadata(null);
         setProviderPlaceId(null);
-        setStartTime("");
+        setStartClockTime("");
+        setStartDate("");
         setTitle("");
       }
       router.refresh();
@@ -175,18 +198,45 @@ export function TripSegmentForm({
         ) : null}
       </div>
       <div className="grid gap-2 sm:grid-cols-2">
-        <input
-          className="min-h-11 rounded-xl border border-slate-200 px-3 text-sm"
-          onChange={(event) => setStartTime(event.target.value)}
-          type="datetime-local"
-          value={startTime}
-        />
-        <input
-          className="min-h-11 rounded-xl border border-slate-200 px-3 text-sm"
-          onChange={(event) => setEndTime(event.target.value)}
-          type="datetime-local"
-          value={endTime}
-        />
+        <label className="grid gap-1 text-xs font-bold uppercase tracking-[0.12em] text-slate-500">
+          Date
+          <input
+            className="min-h-11 rounded-xl border border-slate-200 px-3 text-sm font-medium normal-case tracking-normal text-slate-900"
+            onChange={(event) => {
+              setStartDate(event.target.value);
+              if (!endDate) setEndDate(event.target.value);
+            }}
+            type="date"
+            value={startDate}
+          />
+        </label>
+        <label className="grid gap-1 text-xs font-bold uppercase tracking-[0.12em] text-slate-500">
+          Start time
+          <input
+            className="min-h-11 rounded-xl border border-slate-200 px-3 text-sm font-medium normal-case tracking-normal text-slate-900"
+            onChange={(event) => setStartClockTime(event.target.value)}
+            type="time"
+            value={startClockTime}
+          />
+        </label>
+        <label className="grid gap-1 text-xs font-bold uppercase tracking-[0.12em] text-slate-500">
+          End date
+          <input
+            className="min-h-11 rounded-xl border border-slate-200 px-3 text-sm font-medium normal-case tracking-normal text-slate-900"
+            onChange={(event) => setEndDate(event.target.value)}
+            type="date"
+            value={endDate}
+          />
+        </label>
+        <label className="grid gap-1 text-xs font-bold uppercase tracking-[0.12em] text-slate-500">
+          End time
+          <input
+            className="min-h-11 rounded-xl border border-slate-200 px-3 text-sm font-medium normal-case tracking-normal text-slate-900"
+            onChange={(event) => setEndClockTime(event.target.value)}
+            type="time"
+            value={endClockTime}
+          />
+        </label>
       </div>
       {includeCoordinates ? (
         <div className="grid gap-2 sm:grid-cols-2">
@@ -214,10 +264,10 @@ export function TripSegmentForm({
       />
       <button
         className="min-h-11 rounded-xl bg-blue-600 px-4 text-sm font-bold text-white disabled:opacity-60"
-        disabled={isPending}
+        disabled={isPending || !hydrated}
         type="submit"
       >
-        {isPending ? "Saving..." : buttonLabel}
+        {!hydrated ? "Preparing..." : isPending ? "Saving..." : buttonLabel}
       </button>
       {state.status !== "idle" && message ? (
         <p className={`rounded-xl px-3 py-2 text-xs font-semibold ${tone}`}>{message}</p>
@@ -226,11 +276,15 @@ export function TripSegmentForm({
   );
 }
 
-function toDateTimeLocal(value: string | null) {
-  if (!value) return "";
-  return value.slice(0, 16);
+function toScheduleParts(value: string | null, hasExplicitTime?: boolean) {
+  if (!value) return { clockTime: "", date: "" };
+
+  return {
+    clockTime: isMidnight(value) && hasExplicitTime !== true ? "" : value.slice(11, 16),
+    date: value.slice(0, 10)
+  };
 }
 
-function fromDateTimeLocal(value: string) {
-  return value ? new Date(value).toISOString() : null;
+function isMidnight(value: string) {
+  return value.slice(11, 16) === "00:00";
 }

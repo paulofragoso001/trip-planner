@@ -15,7 +15,12 @@ export type TripSegmentWriteInput = {
   provider: string | null;
   providerMetadata?: Record<string, unknown> | null;
   providerPlaceId?: string | null;
+  endDate?: string | null;
+  endClockTime?: string | null;
+  startDate?: string | null;
+  startClockTime?: string | null;
   startTime: string | null;
+  timeZone?: string | null;
   title: string;
   tripId: string;
 };
@@ -63,6 +68,7 @@ export function validateTripSegmentWrite(
   const kind = readString(value.kind, 40) || readString(value.segmentType, 40) || "activity";
   const lat = readNullableNumber(value.lat, "lat", details, -90, 90);
   const lng = readNullableNumber(value.lng, "lng", details, -180, 180);
+  const schedule = readSchedule(value, details);
 
   if (!tripId) details.tripId = "tripId is required.";
   if (!title) details.title = "title is required.";
@@ -79,7 +85,11 @@ export function validateTripSegmentWrite(
         value.confirmationCode ?? value.confirmation_code,
         120
       ),
-      endTime: readNullableString(value.endTime ?? value.end_time, 120),
+      endClockTime: schedule.endClockTime,
+      endDate: schedule.endDate,
+      endTime: schedule.hasScheduleFields
+        ? schedule.endTime
+        : readNullableString(value.endTime ?? value.end_time, 120),
       kind,
       lat,
       lng,
@@ -89,7 +99,12 @@ export function validateTripSegmentWrite(
       provider: readNullableString(value.provider, 200),
       providerMetadata: readNullableRecord(value.providerMetadata ?? value.provider_metadata),
       providerPlaceId: readNullableString(value.providerPlaceId ?? value.provider_place_id, 240),
-      startTime: readNullableString(value.startTime ?? value.start_time, 120),
+      startClockTime: schedule.startClockTime,
+      startDate: schedule.startDate,
+      startTime: schedule.hasScheduleFields
+        ? schedule.startTime
+        : readNullableString(value.startTime ?? value.start_time, 120),
+      timeZone: schedule.timeZone,
       title,
       tripId
     }
@@ -122,6 +137,17 @@ export function validateTripSegmentPatch(
 
   if ("endTime" in value || "end_time" in value) {
     update.endTime = readNullableString(value.endTime ?? value.end_time, 120);
+  }
+
+  if (hasScheduleFields(value)) {
+    const schedule = readSchedule(value, details);
+    update.endClockTime = schedule.endClockTime;
+    update.endDate = schedule.endDate;
+    update.endTime = schedule.endTime;
+    update.startClockTime = schedule.startClockTime;
+    update.startDate = schedule.startDate;
+    update.startTime = schedule.startTime;
+    update.timeZone = schedule.timeZone;
   }
 
   if ("location" in value) update.location = readNullableString(value.location, 500);
@@ -186,4 +212,69 @@ function readNullableNumber(
 function readNullableRecord(value: unknown) {
   if (value == null) return null;
   return isRecord(value) ? value : null;
+}
+
+function hasScheduleFields(value: Record<string, unknown>) {
+  return (
+    "startDate" in value ||
+    "start_date" in value ||
+    "startClockTime" in value ||
+    "start_clock_time" in value ||
+    "endDate" in value ||
+    "end_date" in value ||
+    "endClockTime" in value ||
+    "end_clock_time" in value ||
+    "timeZone" in value ||
+    "timezone" in value
+  );
+}
+
+function readSchedule(value: Record<string, unknown>, details: Record<string, string>) {
+  const startDate = readDate(value.startDate ?? value.start_date, "startDate", details);
+  const startClockTime = readClockTime(
+    value.startClockTime ?? value.start_clock_time,
+    "startClockTime",
+    details
+  );
+  const endClockTime = readClockTime(
+    value.endClockTime ?? value.end_clock_time,
+    "endClockTime",
+    details
+  );
+  const endDate =
+    readDate(value.endDate ?? value.end_date, "endDate", details) ||
+    (endClockTime ? startDate : null);
+  const timeZone =
+    readNullableString(value.timeZone ?? value.timezone, 80) ||
+    Intl.DateTimeFormat().resolvedOptions().timeZone ||
+    "UTC";
+
+  return {
+    endClockTime,
+    endDate,
+    endTime: endDate && endClockTime ? combineDateAndClockTime(endDate, endClockTime) : null,
+    hasScheduleFields: hasScheduleFields(value),
+    startClockTime,
+    startDate,
+    startTime: startDate ? combineDateAndClockTime(startDate, startClockTime || "00:00") : null,
+    timeZone
+  };
+}
+
+function readDate(value: unknown, field: string, details: Record<string, string>) {
+  if (value == null || value === "") return null;
+  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+  details[field] = "Expected date in YYYY-MM-DD format.";
+  return null;
+}
+
+function readClockTime(value: unknown, field: string, details: Record<string, string>) {
+  if (value == null || value === "") return null;
+  if (typeof value === "string" && /^([01]\d|2[0-3]):[0-5]\d$/.test(value)) return value;
+  details[field] = "Expected time in HH:mm format.";
+  return null;
+}
+
+function combineDateAndClockTime(date: string, clockTime: string) {
+  return `${date}T${clockTime}:00.000Z`;
 }

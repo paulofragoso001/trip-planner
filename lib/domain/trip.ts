@@ -12,11 +12,15 @@ export type TripSegment = {
   imageAlt?: string | null;
   imageAttribution?: string | null;
   imageUrl?: string | null;
+  insertedAt?: string | null;
+  hasEndTime?: boolean;
+  hasStartTime?: boolean;
   lat?: number | null;
   lng?: number | null;
   location: string;
   meta: string;
   notes?: string | null;
+  position?: number | null;
   startAt: string | null;
   status: TripSegmentStatus;
   title: string;

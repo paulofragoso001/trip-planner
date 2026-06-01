@@ -40,6 +40,12 @@ export async function createTripSegment(
   input: TripSegmentWriteInput
 ) {
   const nextPosition = await loadNextPosition(supabase, userId, input.tripId);
+  const providerMetadata = withScheduleMetadata(
+    typeof input.lat === "number" && typeof input.lng === "number"
+      ? locationMetadata(input.location, input.providerMetadata, input.providerPlaceId)
+      : input.providerMetadata || {},
+    input
+  );
   const { data, error } = await supabase
     .from("trip_segments")
     .insert({
@@ -59,10 +65,7 @@ export async function createTripSegment(
       position: nextPosition,
       provider: input.provider,
       provider_place_id: input.providerPlaceId || null,
-      provider_metadata:
-        typeof input.lat === "number" && typeof input.lng === "number"
-          ? locationMetadata(input.location, input.providerMetadata, input.providerPlaceId)
-          : {},
+      provider_metadata: providerMetadata,
       start_time: input.startTime,
       title: input.title,
       trip_id: input.tripId,
@@ -87,6 +90,14 @@ export async function updateTripSegment(
   input: Partial<Omit<TripSegmentWriteInput, "tripId">>
 ) {
   const updates: Record<string, unknown> = {};
+  const shouldMergeMetadata =
+    "providerMetadata" in input ||
+    "providerPlaceId" in input ||
+    hasScheduleInput(input) ||
+    (typeof input.lat === "number" && typeof input.lng === "number");
+  const currentMetadata = shouldMergeMetadata
+    ? await loadCurrentProviderMetadata(supabase, userId, segmentId)
+    : {};
 
   if ("bookingUrl" in input) updates.booking_url = input.bookingUrl;
   if ("confirmationCode" in input) updates.confirmation_code = input.confirmationCode;
@@ -96,17 +107,24 @@ export async function updateTripSegment(
   if ("lng" in input) updates.lng = input.lng;
   if ("location" in input) updates.location = input.location;
   if ("locationStatus" in input) updates.location_status = input.locationStatus;
-  if ("providerMetadata" in input) updates.provider_metadata = input.providerMetadata || {};
+  if ("providerMetadata" in input) {
+    updates.provider_metadata = withScheduleMetadata(
+      { ...currentMetadata, ...(input.providerMetadata || {}) },
+      input
+    );
+  }
   if ("providerPlaceId" in input) updates.provider_place_id = input.providerPlaceId || null;
   if (
     typeof input.lat === "number" &&
     typeof input.lng === "number"
   ) {
     updates.location_status = "resolved";
-    updates.provider_metadata = locationMetadata(
-      input.location,
-      input.providerMetadata,
-      input.providerPlaceId
+    updates.provider_metadata = withScheduleMetadata(
+      {
+        ...currentMetadata,
+        ...locationMetadata(input.location, input.providerMetadata, input.providerPlaceId)
+      },
+      input
     );
   } else if ("lat" in input || "lng" in input) {
     updates.location_status = "manual_location_required";
@@ -114,6 +132,9 @@ export async function updateTripSegment(
   if ("notes" in input) updates.notes = input.notes;
   if ("provider" in input) updates.provider = input.provider;
   if ("startTime" in input) updates.start_time = input.startTime;
+  if (hasScheduleInput(input) && !("provider_metadata" in updates)) {
+    updates.provider_metadata = withScheduleMetadata(currentMetadata, input);
+  }
   if ("title" in input) updates.title = input.title;
 
   const { data, error } = await supabase
@@ -131,6 +152,52 @@ export async function updateTripSegment(
   }
 
   return data;
+}
+
+async function loadCurrentProviderMetadata(
+  supabase: TripSegmentsClient,
+  userId: string,
+  segmentId: string
+) {
+  const { data } = await supabase
+    .from("trip_segments")
+    .select("provider_metadata")
+    .eq("id", segmentId)
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  return isRecord(data?.provider_metadata) ? data.provider_metadata : {};
+}
+
+function hasScheduleInput(input: Partial<Omit<TripSegmentWriteInput, "tripId">>) {
+  return (
+    "startDate" in input ||
+    "startClockTime" in input ||
+    "endDate" in input ||
+    "endClockTime" in input ||
+    "timeZone" in input
+  );
+}
+
+function withScheduleMetadata(
+  metadata: Record<string, unknown>,
+  input: Partial<Omit<TripSegmentWriteInput, "tripId">>
+) {
+  if (!hasScheduleInput(input)) return metadata;
+
+  return {
+    ...metadata,
+    schedule: {
+      ...(isRecord(metadata.schedule) ? metadata.schedule : {}),
+      endDate: input.endDate || null,
+      endTime: input.endClockTime || null,
+      hasEndTime: Boolean(input.endDate && input.endClockTime),
+      hasStartTime: Boolean(input.startDate && input.startClockTime),
+      startDate: input.startDate || null,
+      startTime: input.startClockTime || null,
+      timeZone: input.timeZone || null
+    }
+  };
 }
 
 function locationMetadata(

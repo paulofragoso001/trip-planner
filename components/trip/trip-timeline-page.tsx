@@ -223,7 +223,7 @@ function ItineraryRow({
       <div className="pt-5 text-right">
         <p className="text-sm font-black text-slate-950">{formatPrimaryTime(item)}</p>
         <p className="mt-1 text-[0.65rem] font-bold uppercase tracking-[0.12em] text-slate-500">
-          {item.startAt ? "Local" : "Anytime"}
+          {item.startAt && item.hasStartTime ? "Local" : "Anytime"}
         </p>
       </div>
 
@@ -408,7 +408,7 @@ function display(label: string, icon: ReactNode, iconClass: string, lineClass: s
 
 function getItemStatus(item: TimelineItemView) {
   const base = "inline-flex min-h-7 items-center rounded-full px-2.5 text-xs font-black";
-  if (item.locationStatus === "resolved" && item.startAt) return { className: `${base} bg-emerald-50 text-emerald-700`, label: "Scheduled" };
+  if (item.locationStatus === "resolved" && item.startAt && item.hasStartTime) return { className: `${base} bg-emerald-50 text-emerald-700`, label: "Scheduled" };
   if (item.locationStatus === "resolved") return { className: `${base} bg-blue-50 text-blue-700`, label: "Mapped" };
   if (item.locationStatus === "needs_activity_provider") return { className: `${base} bg-slate-100 text-slate-700`, label: "Activity idea" };
   if (item.locationStatus === "provider_failed") return { className: `${base} bg-red-50 text-red-700`, label: "Provider failed" };
@@ -416,7 +416,9 @@ function getItemStatus(item: TimelineItemView) {
 }
 
 function formatPrimaryTime(item: TimelineItemView) {
-  if (!item.startAt) return item.locationStatus === "needs_activity_provider" ? "Idea" : "Anytime";
+  if (!item.startAt || !item.hasStartTime) {
+    return item.locationStatus === "needs_activity_provider" ? "Idea" : "Anytime";
+  }
   return new Intl.DateTimeFormat("en", {
     hour: "numeric",
     minute: "2-digit",

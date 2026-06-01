@@ -14,6 +14,8 @@ export type TimelineItemView = {
   imageAlt: string | null;
   imageAttribution: string | null;
   imageUrl: string | null;
+  hasEndTime: boolean;
+  hasStartTime: boolean;
   kind: TripSegmentType;
   lat: number | null;
   lng: number | null;
