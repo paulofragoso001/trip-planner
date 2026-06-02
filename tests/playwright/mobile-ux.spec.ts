@@ -100,10 +100,14 @@ test.describe("mobile soft-launch UX", () => {
   });
 
   test("demo map exposes ordered route cards on mobile", async ({ page }) => {
+    test.setTimeout(90_000);
     await page.setViewportSize({ height: 900, width: 390 });
     await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
     await page.goto(`${baseUrl}/dashboard/trips/demo/map`, { waitUntil: "commit" });
 
+    await expect(page.getByTestId("trip-pass-hero")).toBeVisible();
+    await expect(page.getByText("Trip pass")).toBeVisible();
+    await expect(page.getByText("Current trip")).toHaveCount(0);
     await expect(page.getByTestId("connected-trip-map")).toBeVisible();
     await expect(page.getByText("Place 1 of 4")).toBeVisible({ timeout: 15_000 });
     await expect(page.getByRole("button", { name: /1 Barcelona-El Prat Airport/ })).toBeVisible();

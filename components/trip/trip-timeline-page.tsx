@@ -8,11 +8,9 @@ import {
   Flag,
   Landmark,
   MapPin,
-  MoreHorizontal,
   Plane,
   Plus,
   ReceiptText,
-  Share2,
   Sparkles,
   Train,
   Utensils
@@ -28,18 +26,16 @@ import { CalendarSyncPanel } from "@/components/trip/calendar-sync-panel";
 import { GeneratePlanButton } from "@/components/trip/generate-plan-button";
 import { ItineraryCardActions } from "@/components/trip/itinerary-card-actions";
 import { TripSegmentForm } from "@/components/trip/trip-segment-form";
-import { EmptyState, StatusBadge } from "@/components/trip-ui";
+import { EmptyState } from "@/components/trip-ui";
 import { waylineCopy } from "@/lib/copy/wayline-copy";
 
 type TripTimelinePageProps = TripTimelineData;
 
 export default function TripTimelinePage({
   days,
-  description,
   error,
   firstFlight,
   stats,
-  title,
   tripId
 }: TripTimelinePageProps) {
   const items = days.flatMap((day) => day.items);
@@ -48,21 +44,14 @@ export default function TripTimelinePage({
   return (
     <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
       <section className="min-w-0">
-        <ItineraryHero
-          description={description}
-          stats={stats}
-          title={title}
-          tripId={tripId}
-        />
-
         {error ? (
-          <p className="mt-4 rounded-2xl bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
+          <p className="rounded-2xl bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
             {error}
           </p>
         ) : null}
 
         {days.length ? (
-          <div className="mt-5 grid gap-5">
+          <div className="grid gap-5">
             {days.map((day) => (
               <section className="scroll-mt-24" id={day.id} key={day.id}>
                 <div className="sticky top-14 z-10 -mx-3 border-y border-slate-200 bg-slate-100/95 px-3 py-2 backdrop-blur sm:static sm:mx-0 sm:rounded-2xl sm:border sm:px-4">
@@ -134,72 +123,6 @@ export default function TripTimelinePage({
         <Plus className="h-6 w-6" aria-hidden="true" />
       </Link>
     </div>
-  );
-}
-
-function ItineraryHero({
-  description,
-  stats,
-  title,
-  tripId
-}: {
-  description: string;
-  stats: TripTimelineData["stats"];
-  title: string;
-  tripId: string;
-}) {
-  return (
-    <header className="overflow-hidden rounded-[1.75rem] border border-slate-200 bg-white shadow-sm">
-      <div className="grid gap-4 p-4 sm:p-5 md:grid-cols-[minmax(0,1fr)_180px] md:items-stretch">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2 text-sm font-black text-slate-600">
-            <Link className="rounded-full bg-slate-100 px-3 py-2 transition hover:bg-slate-200" href="/dashboard/trips">
-              Back
-            </Link>
-            <span className="text-xs uppercase tracking-[0.18em] text-blue-600">Itinerary</span>
-          </div>
-          <h1 className="mt-4 break-words text-3xl font-black leading-tight tracking-tight text-slate-950 sm:text-4xl">
-            {title}
-          </h1>
-          <p className="mt-2 max-w-2xl text-sm font-semibold leading-6 text-slate-600">
-            {description}
-          </p>
-          <div className="mt-4 flex flex-wrap gap-2">
-            <StatusBadge tone="blue">{stats.totalItems} places</StatusBadge>
-            <StatusBadge tone={stats.mappedStops ? "green" : "slate"}>
-              {stats.mappedStops} mapped
-            </StatusBadge>
-            <StatusBadge tone={stats.alerts ? "amber" : "green"}>
-              {stats.alerts} needs location
-            </StatusBadge>
-          </div>
-        </div>
-
-        <div className="relative min-h-28 overflow-hidden rounded-3xl bg-[linear-gradient(135deg,#2563eb,#0f172a)] p-4 text-white">
-          <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-white/20" />
-          <div className="absolute -bottom-8 left-5 h-24 w-24 rounded-full bg-sky-300/20" />
-          <div className="relative flex h-full flex-col justify-between gap-4">
-            <div className="flex justify-end gap-2">
-              <Link
-                aria-label="Share trip"
-                className="grid h-10 w-10 place-items-center rounded-full bg-white/15 backdrop-blur transition hover:bg-white/25"
-                href={`/dashboard/trips/${tripId}/sharing`}
-              >
-                <Share2 className="h-4 w-4" />
-              </Link>
-              <button
-                aria-label="More itinerary actions"
-                className="grid h-10 w-10 place-items-center rounded-full bg-white/15 backdrop-blur"
-                type="button"
-              >
-                <MoreHorizontal className="h-4 w-4" />
-              </button>
-            </div>
-            <p className="text-sm font-black">Route-ready trip plan</p>
-          </div>
-        </div>
-      </div>
-    </header>
   );
 }
 

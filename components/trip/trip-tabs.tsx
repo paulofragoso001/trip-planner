@@ -26,7 +26,10 @@ export function TripTabs({ tripId }: { tripId: string }) {
   }, [pathname]);
 
   return (
-    <nav aria-label="Trip tabs" className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0">
+    <nav
+      aria-label="Trip tabs"
+      className="-mx-1 flex gap-2 overflow-x-auto rounded-[1.5rem] bg-white/80 p-1 shadow-sm ring-1 ring-slate-200 backdrop-blur sm:mx-0 sm:flex-wrap sm:overflow-visible"
+    >
       {tabs.map((tab) => {
         const href = `${base}${tab.href}`;
         const active =
@@ -40,10 +43,10 @@ export function TripTabs({ tripId }: { tripId: string }) {
           <Link
             aria-current={active ? "page" : undefined}
             className={[
-              "inline-flex min-h-11 shrink-0 items-center justify-center rounded-full px-4 text-sm font-semibold transition",
+              "inline-flex min-h-11 shrink-0 items-center justify-center rounded-[1.15rem] px-4 text-sm font-black transition",
               active
-                ? "bg-blue-600 text-white"
-                : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                ? "bg-slate-950 text-white shadow-sm"
+                : "text-slate-600 hover:bg-slate-100 hover:text-slate-950"
             ].join(" ")}
             href={href}
             key={tab.label}
