@@ -56,7 +56,7 @@ export function SmartSuggestionsPanel({
 
   return (
     <section
-      className="mt-5 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5"
+      className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5"
       id="smart-suggestions"
     >
       <div className="grid gap-3 sm:flex sm:items-start sm:justify-between">

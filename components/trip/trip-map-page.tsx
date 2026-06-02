@@ -17,7 +17,7 @@ export default function TripMapPage({
   unmappedSegments
 }: TripMapPageProps) {
   return (
-    <div className="grid min-h-[calc(100dvh-220px)] gap-4 xl:grid-cols-[minmax(0,1fr)_380px] xl:items-start">
+    <div className="grid min-h-[calc(100dvh-220px)] gap-4">
       <section className="relative min-w-0">
         <h2 className="sr-only">Map</h2>
         {error ? (
@@ -36,14 +36,16 @@ export default function TripMapPage({
         />
       </section>
 
-      <aside className="self-start rounded-[1.75rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5 xl:sticky xl:top-24">
-        <div className="mb-4">
-          <p className="text-xs font-black uppercase tracking-[0.18em] text-blue-600">
-            Route tools
-          </p>
-          <h3 className="mt-1 text-base font-black">Build this map</h3>
+      <aside className="grid gap-4 rounded-[1.75rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5 lg:grid-cols-[280px_minmax(0,1fr)]">
+        <div>
+          <div className="mb-4">
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-blue-600">
+              Route tools
+            </p>
+            <h3 className="mt-1 text-base font-black">Build this map</h3>
+          </div>
+          <MapTools hasMappedStops={items.length > 0} hasUnmappedStops={unmappedCount > 0} tripId={tripId} />
         </div>
-        <MapTools hasMappedStops={items.length > 0} hasUnmappedStops={unmappedCount > 0} tripId={tripId} />
         <SmartSuggestionsPanel
           mappedStopCount={items.length}
           recommendations={recommendations}

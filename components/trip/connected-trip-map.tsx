@@ -107,47 +107,194 @@ export function ConnectedTripMap({
   return (
     <div className="flex min-h-0 flex-col gap-0" data-testid="connected-trip-map">
       {items.length ? (
-        <div className="relative overflow-hidden rounded-[1.75rem] border border-slate-200 bg-slate-100 shadow-sm">
-          <GoogleMapsProvider>
-            <TripMap
-              height="clamp(360px, 62dvh, 680px)"
-              items={visibleItems}
-              selectedId={selectedId}
-              onSelect={setSelectedId}
-              showRouteDetails={false}
-              travelMode="TRANSIT"
-            />
-          </GoogleMapsProvider>
+        <div className="grid gap-0 xl:grid-cols-[minmax(0,1fr)_390px] xl:items-start xl:gap-4">
+          <div className="relative overflow-hidden rounded-[1.75rem] border border-slate-200 bg-slate-100 shadow-sm">
+            <GoogleMapsProvider>
+              <TripMap
+                height="clamp(360px, 62dvh, 720px)"
+                items={visibleItems}
+                selectedId={selectedId}
+                onSelect={setSelectedId}
+                showRouteDetails={false}
+                travelMode="TRANSIT"
+              />
+            </GoogleMapsProvider>
 
-          <div className="pointer-events-none absolute left-3 right-3 top-3 z-10 grid grid-cols-3 gap-2 sm:left-4 sm:right-auto sm:w-[430px]">
-            <RouteMetric label="Places" value={`${visibleItems.length}/${items.length}`} />
-            <RouteMetric label="Needs location" value={String(unmappedCount)} />
-            <RouteMetric label="Route" value="Preview" />
+            <div className="pointer-events-none absolute left-3 right-3 top-3 z-10 grid grid-cols-3 gap-2 sm:left-4 sm:right-auto sm:w-[430px]">
+              <RouteMetric label="Places" value={`${visibleItems.length}/${items.length}`} />
+              <RouteMetric label="Needs location" value={String(unmappedCount)} />
+              <RouteMetric label="Route" value="Preview" />
+            </div>
+
+            {hasDayFilter ? (
+              <div className="absolute bottom-3 left-3 right-3 z-10 flex gap-2 overflow-x-auto rounded-2xl bg-white/90 p-2 text-xs font-black text-slate-700 shadow-lg ring-1 ring-slate-200 backdrop-blur" aria-label="Map day filter">
+                {["all", ...dayLabels].map((day) => {
+                  const active = (selectedDayKey || dayLabels[0]) === day;
+                  return (
+                    <button
+                      className={[
+                        "min-h-10 shrink-0 rounded-xl px-3 transition",
+                        active ? "bg-slate-950 text-white" : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                      ].join(" ")}
+                      key={day}
+                      onClick={() => {
+                        setSelectedDay(day);
+                        setShowAllPlaces(false);
+                      }}
+                      type="button"
+                    >
+                      {day === "all" ? "All" : day}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : null}
           </div>
 
-          {hasDayFilter ? (
-            <div className="absolute bottom-3 left-3 right-3 z-10 flex gap-2 overflow-x-auto rounded-2xl bg-white/90 p-2 text-xs font-black text-slate-700 shadow-lg ring-1 ring-slate-200 backdrop-blur" aria-label="Map day filter">
-              {["all", ...dayLabels].map((day) => {
-                const active = (selectedDayKey || dayLabels[0]) === day;
-                return (
+          <div
+            className="relative z-10 -mt-7 grid gap-3 rounded-t-[2rem] border border-slate-200 bg-white p-3 pb-5 shadow-2xl sm:mt-4 sm:rounded-[1.75rem] sm:p-4 sm:shadow-sm xl:mt-0 xl:max-h-[calc(100dvh-230px)] xl:overflow-y-auto"
+            data-testid="map-route-panel"
+          >
+            {selectedItem ? (
+            <>
+              {!hasDayFilter && items.length > visibleItems.length ? (
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-blue-50 px-3 py-2 text-xs font-bold text-blue-900">
+                  <span>Showing first {visibleItems.length} of {items.length} places</span>
                   <button
-                    className={[
-                      "min-h-10 shrink-0 rounded-xl px-3 transition",
-                      active ? "bg-slate-950 text-white" : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-                    ].join(" ")}
-                    key={day}
-                    onClick={() => {
-                      setSelectedDay(day);
-                      setShowAllPlaces(false);
-                    }}
+                    className="inline-flex min-h-9 items-center justify-center rounded-xl bg-white px-3 font-black text-blue-800 ring-1 ring-blue-100 disabled:opacity-60"
+                    data-testid="map-show-all-places"
+                    disabled={!hydrated}
+                    onClick={() => setShowAllPlaces(true)}
                     type="button"
                   >
-                    {day === "all" ? "All" : day}
+                    {hydrated ? "Show all places" : "Preparing..."}
                   </button>
-                );
-              })}
+                </div>
+              ) : !hasDayFilter && showAllPlaces && items.length > 5 ? (
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-slate-50 px-3 py-2 text-xs font-bold text-slate-700">
+                  <span>Showing all {items.length} places</span>
+                  <button
+                    className="inline-flex min-h-9 items-center justify-center rounded-xl bg-white px-3 font-black text-slate-700 ring-1 ring-slate-200 disabled:opacity-60"
+                    data-testid="map-show-first-places"
+                    disabled={!hydrated}
+                    onClick={() => setShowAllPlaces(false)}
+                    type="button"
+                  >
+                    Show first 5
+                  </button>
+                </div>
+              ) : null}
+              <div className="grid gap-3 sm:grid-cols-[104px_minmax(0,1fr)] sm:items-center xl:grid-cols-1">
+                <div className="relative">
+                  <PlacePhoto
+                    alt={selectedItem.imageAlt || `Photo of ${selectedItem.title}`}
+                    attribution={selectedItem.imageAttribution}
+                    className="h-28 w-full rounded-2xl sm:h-24 sm:w-24 xl:h-40 xl:w-full"
+                    fallbackLabel={selectedItem.category || "Place"}
+                    src={selectedItem.imageUrl}
+                  />
+                  <span className="absolute -right-2 -top-2 grid h-9 min-w-9 place-items-center rounded-full bg-blue-600 px-2 text-sm font-black text-white shadow-lg ring-4 ring-white">
+                    {selectedItem.routeOrder || visibleItems.findIndex((item) => item.id === selectedItem.id) + 1}
+                  </span>
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs font-black uppercase tracking-[0.16em] text-blue-600">
+                    Place {visibleItems.findIndex((item) => item.id === selectedItem.id) + 1} of {visibleItems.length}
+                  </p>
+                  <h3 className="mt-1 break-words text-lg font-black leading-tight text-slate-950">
+                    {selectedItem.title}
+                  </h3>
+                  <p className="mt-1 text-xs font-semibold text-slate-500">
+                    {[selectedItem.dayLabel, selectedItem.timeLabel, selectedItem.category]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </p>
+                  {selectedItem.address ? (
+                    <p className="mt-1 line-clamp-2 text-xs text-slate-500">{selectedItem.address}</p>
+                  ) : null}
+                  <div className="mt-3 grid grid-cols-2 gap-2">
+                    {selectedPlaceUrl ? (
+                      <a
+                        className="inline-flex min-h-10 items-center justify-center rounded-xl bg-slate-950 px-3 text-xs font-black text-white"
+                        href={selectedPlaceUrl}
+                        rel="noreferrer"
+                        target="_blank"
+                      >
+                        Google Maps
+                      </a>
+                    ) : null}
+                    <Link
+                      className="inline-flex min-h-10 items-center justify-center rounded-xl bg-white px-3 text-xs font-black text-slate-800 ring-1 ring-slate-200"
+                      href={`/dashboard/trips/${encodeURIComponent(tripId)}/timeline#${selectedItem.id}`}
+                    >
+                      Itinerary
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            </>
+            ) : null}
+
+            <div>
+              <div className="mb-2 flex items-center justify-between gap-3">
+                <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">Route places</p>
+                {hiddenPlaceCount ? (
+                  <p className="text-xs font-bold text-slate-500">{hiddenPlaceCount} hidden</p>
+                ) : null}
+              </div>
+              <div className="grid max-h-[38dvh] content-start items-start gap-2 overflow-y-auto pr-1 sm:max-h-none sm:grid-cols-2 sm:gap-3 sm:overflow-visible sm:pr-0 xl:max-h-none xl:grid-cols-1" data-testid="map-route-list">
+                {visibleItems.map((item, index) => {
+                  const active = item.id === selectedItem?.id;
+
+                  return (
+                    <button
+                      aria-current={active ? "true" : undefined}
+                      className={[
+                        "min-h-16 rounded-2xl border px-3 py-3 text-left text-sm transition",
+                        "h-auto self-start",
+                        active
+                          ? "border-blue-300 bg-blue-50 text-blue-950"
+                          : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                      ].join(" ")}
+                      key={item.id}
+                      onClick={() => setSelectedId(item.id)}
+                      type="button"
+                    >
+                      <span className="flex items-center gap-3">
+                        <PlacePhoto
+                          alt={item.imageAlt || `Photo of ${item.title}`}
+                          attribution={item.imageAttribution}
+                          className="h-12 w-12 shrink-0 rounded-xl"
+                          fallbackLabel={item.category || "Place"}
+                          src={item.imageUrl}
+                        />
+                        <span className="min-w-0">
+                          <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-blue-600 px-2 text-[0.7rem] font-black text-white">
+                            {item.routeOrder || index + 1}
+                          </span>
+                          <span className="mt-1 block break-words font-semibold leading-tight">{item.title}</span>
+                          <span className="mt-0.5 block text-xs font-semibold text-slate-500">
+                            {[item.dayLabel, item.timeLabel].filter(Boolean).join(" · ")}
+                          </span>
+                          {item.address ? (
+                            <span className="mt-0.5 line-clamp-1 block text-xs text-slate-500">
+                              {item.address}
+                            </span>
+                          ) : null}
+                        </span>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-          ) : null}
+
+            {items.length && unmappedCount ? (
+              <div className="rounded-2xl bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
+                Some places need confirmed locations.
+              </div>
+            ) : null}
+          </div>
         </div>
       ) : (
         <div className="rounded-[1.75rem] border border-dashed border-slate-300 bg-slate-50 px-5 py-8 text-sm text-slate-600">
@@ -194,153 +341,6 @@ export function ConnectedTripMap({
           </div>
         </div>
       )}
-
-      {items.length ? (
-        <div
-          className="relative z-10 -mt-7 grid gap-3 rounded-t-[2rem] border border-slate-200 bg-white p-3 pb-5 shadow-2xl sm:mt-4 sm:rounded-[1.75rem] sm:p-4 sm:shadow-sm"
-          data-testid="map-route-panel"
-        >
-          {selectedItem ? (
-          <>
-            {!hasDayFilter && items.length > visibleItems.length ? (
-              <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-blue-50 px-3 py-2 text-xs font-bold text-blue-900">
-                <span>Showing first {visibleItems.length} of {items.length} places</span>
-                <button
-                  className="inline-flex min-h-9 items-center justify-center rounded-xl bg-white px-3 font-black text-blue-800 ring-1 ring-blue-100 disabled:opacity-60"
-                  data-testid="map-show-all-places"
-                  disabled={!hydrated}
-                  onClick={() => setShowAllPlaces(true)}
-                  type="button"
-                >
-                  {hydrated ? "Show all places" : "Preparing..."}
-                </button>
-              </div>
-            ) : !hasDayFilter && showAllPlaces && items.length > 5 ? (
-              <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-slate-50 px-3 py-2 text-xs font-bold text-slate-700">
-                <span>Showing all {items.length} places</span>
-                <button
-                  className="inline-flex min-h-9 items-center justify-center rounded-xl bg-white px-3 font-black text-slate-700 ring-1 ring-slate-200 disabled:opacity-60"
-                  data-testid="map-show-first-places"
-                  disabled={!hydrated}
-                  onClick={() => setShowAllPlaces(false)}
-                  type="button"
-                >
-                  Show first 5
-                </button>
-              </div>
-            ) : null}
-            <div className="grid gap-3 sm:grid-cols-[104px_minmax(0,1fr)] sm:items-center">
-              <div className="relative">
-                <PlacePhoto
-                  alt={selectedItem.imageAlt || `Photo of ${selectedItem.title}`}
-                  attribution={selectedItem.imageAttribution}
-                  className="h-28 w-full rounded-2xl sm:h-24 sm:w-24"
-                  fallbackLabel={selectedItem.category || "Place"}
-                  src={selectedItem.imageUrl}
-                />
-                <span className="absolute -right-2 -top-2 grid h-9 min-w-9 place-items-center rounded-full bg-blue-600 px-2 text-sm font-black text-white shadow-lg ring-4 ring-white">
-                  {selectedItem.routeOrder || visibleItems.findIndex((item) => item.id === selectedItem.id) + 1}
-                </span>
-              </div>
-              <div className="min-w-0">
-                <p className="text-xs font-black uppercase tracking-[0.16em] text-blue-600">
-                  Place {visibleItems.findIndex((item) => item.id === selectedItem.id) + 1} of {visibleItems.length}
-                </p>
-                <h3 className="mt-1 break-words text-lg font-black leading-tight text-slate-950">
-                  {selectedItem.title}
-                </h3>
-                <p className="mt-1 text-xs font-semibold text-slate-500">
-                  {[selectedItem.dayLabel, selectedItem.timeLabel, selectedItem.category]
-                    .filter(Boolean)
-                    .join(" · ")}
-                </p>
-                {selectedItem.address ? (
-                  <p className="mt-1 line-clamp-2 text-xs text-slate-500">{selectedItem.address}</p>
-                ) : null}
-                <div className="mt-3 grid grid-cols-2 gap-2">
-                  {selectedPlaceUrl ? (
-                    <a
-                      className="inline-flex min-h-10 items-center justify-center rounded-xl bg-slate-950 px-3 text-xs font-black text-white"
-                      href={selectedPlaceUrl}
-                      rel="noreferrer"
-                      target="_blank"
-                    >
-                      Google Maps
-                    </a>
-                  ) : null}
-                  <Link
-                    className="inline-flex min-h-10 items-center justify-center rounded-xl bg-white px-3 text-xs font-black text-slate-800 ring-1 ring-slate-200"
-                    href={`/dashboard/trips/${encodeURIComponent(tripId)}/timeline#${selectedItem.id}`}
-                  >
-                    Itinerary
-                  </Link>
-                </div>
-              </div>
-            </div>
-          </>
-          ) : null}
-
-          <div>
-            <div className="mb-2 flex items-center justify-between gap-3">
-              <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">Route places</p>
-              {hiddenPlaceCount ? (
-                <p className="text-xs font-bold text-slate-500">{hiddenPlaceCount} hidden</p>
-              ) : null}
-            </div>
-            <div className="grid max-h-[38dvh] content-start items-start gap-2 overflow-y-auto pr-1 sm:max-h-none sm:grid-cols-2 sm:gap-3 sm:overflow-visible sm:pr-0" data-testid="map-route-list">
-              {visibleItems.map((item, index) => {
-                const active = item.id === selectedItem?.id;
-
-                return (
-                  <button
-                    aria-current={active ? "true" : undefined}
-                    className={[
-                      "min-h-16 rounded-2xl border px-3 py-3 text-left text-sm transition",
-                      "h-auto self-start",
-                      active
-                        ? "border-blue-300 bg-blue-50 text-blue-950"
-                        : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-                    ].join(" ")}
-                    key={item.id}
-                    onClick={() => setSelectedId(item.id)}
-                    type="button"
-                  >
-                    <span className="flex items-center gap-3">
-                      <PlacePhoto
-                        alt={item.imageAlt || `Photo of ${item.title}`}
-                        attribution={item.imageAttribution}
-                        className="h-12 w-12 shrink-0 rounded-xl"
-                        fallbackLabel={item.category || "Place"}
-                        src={item.imageUrl}
-                      />
-                      <span className="min-w-0">
-                        <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-blue-600 px-2 text-[0.7rem] font-black text-white">
-                          {item.routeOrder || index + 1}
-                        </span>
-                        <span className="mt-1 block break-words font-semibold leading-tight">{item.title}</span>
-                        <span className="mt-0.5 block text-xs font-semibold text-slate-500">
-                          {[item.dayLabel, item.timeLabel].filter(Boolean).join(" · ")}
-                        </span>
-                        {item.address ? (
-                          <span className="mt-0.5 line-clamp-1 block text-xs text-slate-500">
-                            {item.address}
-                          </span>
-                        ) : null}
-                      </span>
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {items.length && unmappedCount ? (
-            <div className="rounded-2xl bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
-              Some places need confirmed locations.
-            </div>
-          ) : null}
-        </div>
-      ) : null}
 
       {unmappedSegments.length ? (
         <div className="grid gap-2 rounded-2xl border border-slate-200 bg-white p-3 text-sm sm:p-4">
