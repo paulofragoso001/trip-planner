@@ -15,6 +15,7 @@ import {
 } from "@/lib/trips";
 
 type TripRowActionsProps = {
+  compact?: boolean;
   destination: string;
   endDate: string | null;
   id: string;
@@ -24,6 +25,7 @@ type TripRowActionsProps = {
 };
 
 export function TripRowActions({
+  compact = false,
   destination,
   endDate,
   id,
@@ -83,23 +85,29 @@ export function TripRowActions({
   }
 
   return (
-    <div className="mt-3 grid gap-2">
-      <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+    <div className={compact ? "grid gap-2" : "mt-3 grid gap-2"}>
+      <div className={compact ? "flex justify-end" : "grid grid-cols-2 gap-2 sm:flex sm:flex-wrap"}>
         <button
-          className="min-h-11 rounded-xl bg-slate-100 px-3 text-xs font-bold text-slate-700"
+          className={
+            compact
+              ? "inline-flex min-h-11 items-center justify-center rounded-full bg-slate-100 px-4 text-xs font-black text-slate-700 transition hover:bg-slate-200"
+              : "min-h-11 rounded-xl bg-slate-100 px-3 text-xs font-bold text-slate-700"
+          }
           onClick={() => setEditing((current) => !current)}
           type="button"
         >
           {editing ? "Close edit" : "Edit"}
         </button>
-        <button
-          className="min-h-11 rounded-xl bg-red-50 px-3 text-xs font-bold text-red-700 disabled:opacity-60"
-          disabled={isPending}
-          onClick={deleteTrip}
-          type="button"
-        >
-          {isPending ? "Working..." : "Delete"}
-        </button>
+        {!compact ? (
+          <button
+            className="min-h-11 rounded-xl bg-red-50 px-3 text-xs font-bold text-red-700 disabled:opacity-60"
+            disabled={isPending}
+            onClick={deleteTrip}
+            type="button"
+          >
+            {isPending ? "Working..." : "Delete"}
+          </button>
+        ) : null}
       </div>
       {editing ? (
         <form className="grid gap-2 rounded-2xl bg-slate-50 p-3" onSubmit={save}>
@@ -165,6 +173,16 @@ export function TripRowActions({
           >
             {isPending ? "Saving..." : "Save changes"}
           </button>
+          {compact ? (
+            <button
+              className="min-h-11 rounded-xl bg-red-50 px-3 text-xs font-bold text-red-700 disabled:opacity-60"
+              disabled={isPending}
+              onClick={deleteTrip}
+              type="button"
+            >
+              {isPending ? "Working..." : "Delete trip"}
+            </button>
+          ) : null}
         </form>
       ) : null}
       {state.status === "error" ? (

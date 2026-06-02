@@ -10,10 +10,14 @@ import {
 export type TripListItemView = {
   dateRange: string;
   destination: string;
+  imageAlt: string;
+  imageAttribution: string | null;
+  imageUrl: string | null;
   href: string;
   id: string;
   mappedStops: number;
   name: string;
+  nearbyIdeasCount: number;
   needsLocationStops: number;
   endDate: string | null;
   startDate: string | null;
@@ -44,6 +48,10 @@ type TripSegmentSummary = {
   location_status: string | null;
   lng?: number | null;
   longitude?: number | null;
+  trip_id: string;
+};
+
+type TripRecommendationSummary = {
   trip_id: string;
 };
 
@@ -79,10 +87,13 @@ export async function loadTripsData(): Promise<TripsData> {
   const summaries = tripRows.length
     ? await loadTripSegmentSummaries(auth.supabase, tripRows.map((trip) => trip.id), auth.userId)
     : new Map<string, SegmentCounts>();
+  const recommendationCounts = tripRows.length
+    ? await loadTripRecommendationSummaries(auth.supabase, tripRows.map((trip) => trip.id), auth.userId)
+    : new Map<string, number>();
 
   return {
     error: null,
-    trips: tripRows.map((row) => mapTrip(row, summaries.get(row.id)))
+    trips: tripRows.map((row) => mapTrip(row, summaries.get(row.id), recommendationCounts.get(row.id) || 0))
   };
 }
 
@@ -178,16 +189,49 @@ function isMissingLatLngColumns(message: string) {
   return /lat|lng/i.test(message) && /column|schema cache|could not find/i.test(message);
 }
 
-function mapTrip(row: TripRow, counts?: SegmentCounts): TripListItemView {
+async function loadTripRecommendationSummaries(
+  supabase: any,
+  tripIds: string[],
+  userId: string
+): Promise<Map<string, number>> {
+  const { data, error } = await supabase
+    .from("trip_recommendations")
+    .select("trip_id")
+    .in("trip_id", tripIds);
+
+  if (error) {
+    console.warn(
+      JSON.stringify({
+        area: "trips",
+        event: "trip_recommendation_summary_load_failed",
+        message: error.message,
+        userId
+      })
+    );
+    return new Map();
+  }
+
+  const counts = new Map<string, number>();
+  for (const row of (data || []) as TripRecommendationSummary[]) {
+    counts.set(row.trip_id, (counts.get(row.trip_id) || 0) + 1);
+  }
+  return counts;
+}
+
+function mapTrip(row: TripRow, counts?: SegmentCounts, nearbyIdeasCount = 0): TripListItemView {
   const travelStyle = normalizeTravelStyle(row.travel_style);
 
   return {
     dateRange: formatDateRange(row.start_date, row.end_date),
     destination: row.destination || "No destination set",
+    imageAlt: row.destination ? `Photo of ${row.destination}` : `Trip image for ${row.name}`,
+    imageAttribution: null,
+    imageUrl: null,
     href: `/dashboard/trips/${row.id}`,
     id: row.id,
     mappedStops: counts?.mappedStops || 0,
     name: row.name,
+    nearbyIdeasCount,
     needsLocationStops: counts?.needsLocationStops || 0,
     endDate: row.end_date,
     startDate: row.start_date,

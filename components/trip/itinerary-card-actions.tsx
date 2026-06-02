@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { MapPin, Pencil } from "lucide-react";
+import { MapPin, MoreHorizontal, Pencil } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import type { TimelineItemView } from "@/app/dashboard/trips/[tripId]/timeline/types";
@@ -39,12 +39,12 @@ export function ItineraryCardActions({ item, tripId }: ItineraryCardActionsProps
           {item.notes ? (
             <button
               aria-expanded={showNotes}
-              className="inline-flex min-h-10 max-w-full items-center rounded-full bg-slate-50 px-3 text-xs font-black uppercase tracking-[0.12em] text-slate-500 ring-1 ring-slate-100 transition hover:bg-slate-100 focus:outline-none focus:ring-4 focus:ring-blue-100 disabled:opacity-60"
+              className="inline-flex min-h-10 max-w-full items-center rounded-full bg-transparent px-0 text-xs font-black uppercase tracking-[0.12em] text-slate-500 transition hover:text-slate-950 focus:outline-none focus:ring-4 focus:ring-blue-100 disabled:opacity-60"
               disabled={!hydrated}
               onClick={() => setShowNotes((value) => !value)}
               type="button"
             >
-              {showNotes ? "Hide notes" : "View notes"}
+              Notes
             </button>
           ) : null}
         </div>
@@ -70,6 +70,14 @@ export function ItineraryCardActions({ item, tripId }: ItineraryCardActionsProps
             type="button"
           >
             <Pencil className="h-4 w-4" aria-hidden="true" />
+          </button>
+          <button
+            aria-label={`More actions for ${item.title}`}
+            className="grid h-11 w-11 place-items-center rounded-full bg-slate-100 text-slate-700 shadow-sm transition hover:bg-slate-200 focus:outline-none focus:ring-4 focus:ring-blue-100 disabled:opacity-60"
+            disabled={!hydrated}
+            type="button"
+          >
+            <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
           </button>
         </div>
       </div>
@@ -105,9 +113,9 @@ export function ItineraryCardActions({ item, tripId }: ItineraryCardActionsProps
       ) : null}
 
       {editing ? (
-        <div className="mt-3 grid gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
+        <div className="mt-3">
           <TripSegmentForm
-            buttonLabel="Save edits"
+            buttonLabel="Save changes"
             defaultEndTime={item.endAt}
             defaultHasEndTime={item.hasEndTime}
             defaultHasStartTime={item.hasStartTime}
@@ -119,11 +127,19 @@ export function ItineraryCardActions({ item, tripId }: ItineraryCardActionsProps
             defaultStartTime={item.startAt}
             defaultTitle={item.title}
             includeCoordinates
+            onCancel={() => setEditing(false)}
             onSaved={handleSaved}
             segmentId={item.id}
             tripId={tripId}
           />
-          <TripSegmentDeleteButton segmentId={item.id} />
+          <details className="mt-2 rounded-xl bg-slate-50 px-3 py-2">
+            <summary className="cursor-pointer text-xs font-black uppercase tracking-[0.12em] text-slate-500">
+              More actions
+            </summary>
+            <div className="mt-3">
+              <TripSegmentDeleteButton segmentId={item.id} />
+            </div>
+          </details>
         </div>
       ) : null}
     </div>

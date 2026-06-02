@@ -13,7 +13,7 @@ export default async function TripLayout({ children, params }: TripLayoutProps) 
   const trip = await loadTripWorkspaceData(tripId);
 
   return (
-    <div className="grid gap-6">
+    <div className="grid gap-4">
       <div data-testid="trip-workspace-layout">
         <TripPassHero trip={trip} tripId={tripId} />
       </div>

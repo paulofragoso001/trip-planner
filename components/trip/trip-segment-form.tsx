@@ -22,6 +22,7 @@ type TripSegmentFormProps = {
   defaultStartTime?: string | null;
   defaultTitle?: string;
   includeCoordinates?: boolean;
+  onCancel?: () => void;
   onSaved?: () => void;
   segmentId?: string;
   tripId: string;
@@ -40,6 +41,7 @@ export function TripSegmentForm({
   defaultStartTime = null,
   defaultTitle = "",
   includeCoordinates = false,
+  onCancel,
   onSaved,
   segmentId,
   tripId
@@ -156,39 +158,68 @@ export function TripSegmentForm({
       : state.status === "error" || state.status === "timeout"
         ? "bg-red-50 text-red-700"
         : "bg-slate-50 text-slate-700";
+  const isEditing = Boolean(segmentId);
+  const fieldClass = "min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:ring-4 focus:ring-blue-100";
+  const labelClass = "grid gap-1.5 text-xs font-bold uppercase tracking-[0.12em] text-slate-500";
 
   return (
-    <form className="grid gap-3 rounded-2xl bg-slate-50 p-3" onSubmit={submit}>
-      <input
-        className="min-h-11 rounded-xl border border-slate-200 px-3 text-sm"
-        onChange={(event) => setTitle(event.target.value)}
-        placeholder="Title"
-        required
-        value={title}
-      />
-      <select
-        className="min-h-11 rounded-xl border border-slate-200 px-3 text-sm"
-        onChange={(event) => setKind(event.target.value)}
-        value={kind}
-      >
-        <option value="flight">Flight</option>
-        <option value="hotel">Hotel</option>
-        <option value="meeting">Meeting</option>
-        <option value="restaurant">Restaurant</option>
-        <option value="activity">Activity</option>
-        <option value="transport">Transport</option>
-        <option value="note">Note</option>
-      </select>
-      <div>
+    <form className="grid gap-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm" onSubmit={submit}>
+      {isEditing ? (
+        <div className="flex items-center justify-between gap-3">
+          <h5 className="text-base font-black text-slate-950">Edit place</h5>
+          {onCancel ? (
+            <button
+              className="inline-flex min-h-10 items-center justify-center rounded-full px-3 text-xs font-black text-slate-600 transition hover:bg-slate-100 hover:text-slate-950"
+              onClick={onCancel}
+              type="button"
+            >
+              Cancel
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+
+      <label className={labelClass}>
+        Title
+        <input
+          className={fieldClass}
+          onChange={(event) => setTitle(event.target.value)}
+          placeholder="Wynwood Walls"
+          required
+          value={title}
+        />
+      </label>
+
+      {!isEditing ? (
+        <label className={labelClass}>
+          Type
+          <select
+            className={fieldClass}
+            onChange={(event) => setKind(event.target.value)}
+            value={kind}
+          >
+            <option value="flight">Flight</option>
+            <option value="hotel">Hotel</option>
+            <option value="meeting">Meeting</option>
+            <option value="restaurant">Restaurant</option>
+            <option value="activity">Activity</option>
+            <option value="transport">Transport</option>
+            <option value="note">Note</option>
+          </select>
+        </label>
+      ) : null}
+
+      <label className={labelClass}>
+        Location
         <GoogleMapsProvider>
           <LocationAutocomplete
             ariaLabel="Stop location"
-            inputClassName="min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+            inputClassName={fieldClass}
             loadingMessage="Places autocomplete is loading. You can still type a location."
             manualWarning="Select a suggested place to map this stop."
             onInputChange={handleLocationInputChange}
             onSelect={handleLocationSelect}
-            placeholder="Search location"
+            placeholder="Search Google Places..."
             resolveErrorMessage="Wayline could not map that Google result. Try another location."
             unresolvedMessage="Select a suggested place with a mapped location."
             value={location}
@@ -196,15 +227,16 @@ export function TripSegmentForm({
         </GoogleMapsProvider>
         {location.trim() && !locationSelected ? (
           <p className="mt-2 text-xs font-semibold text-amber-700">
-            Select a suggested place to map this stop.
+            Select a suggested place to map this.
           </p>
         ) : null}
-      </div>
+      </label>
+
       <div className="grid gap-2 sm:grid-cols-2">
-        <label className="grid gap-1 text-xs font-bold uppercase tracking-[0.12em] text-slate-500">
+        <label className={labelClass}>
           Date
           <input
-            className="min-h-11 rounded-xl border border-slate-200 px-3 text-sm font-medium normal-case tracking-normal text-slate-900"
+            className={fieldClass}
             onChange={(event) => {
               setStartDate(event.target.value);
               if (!endDate) setEndDate(event.target.value);
@@ -213,65 +245,156 @@ export function TripSegmentForm({
             value={startDate}
           />
         </label>
-        <label className="grid gap-1 text-xs font-bold uppercase tracking-[0.12em] text-slate-500">
+        <label className={labelClass}>
           Start time
           <input
-            className="min-h-11 rounded-xl border border-slate-200 px-3 text-sm font-medium normal-case tracking-normal text-slate-900"
+            className={fieldClass}
             onChange={(event) => setStartClockTime(event.target.value)}
             type="time"
             value={startClockTime}
           />
         </label>
-        <label className="grid gap-1 text-xs font-bold uppercase tracking-[0.12em] text-slate-500">
-          End date
-          <input
-            className="min-h-11 rounded-xl border border-slate-200 px-3 text-sm font-medium normal-case tracking-normal text-slate-900"
-            onChange={(event) => setEndDate(event.target.value)}
-            type="date"
-            value={endDate}
-          />
-        </label>
-        <label className="grid gap-1 text-xs font-bold uppercase tracking-[0.12em] text-slate-500">
-          End time
-          <input
-            className="min-h-11 rounded-xl border border-slate-200 px-3 text-sm font-medium normal-case tracking-normal text-slate-900"
-            onChange={(event) => setEndClockTime(event.target.value)}
-            type="time"
-            value={endClockTime}
-          />
-        </label>
       </div>
-      {includeCoordinates ? (
-        <div className="grid gap-2 sm:grid-cols-2">
-          <input
-            className="min-h-11 rounded-xl border border-slate-200 px-3 text-sm"
-            inputMode="decimal"
-            onChange={(event) => setLat(event.target.value)}
-            placeholder="Latitude"
-            value={lat}
-          />
-          <input
-            className="min-h-11 rounded-xl border border-slate-200 px-3 text-sm"
-            inputMode="decimal"
-            onChange={(event) => setLng(event.target.value)}
-            placeholder="Longitude"
-            value={lng}
-          />
-        </div>
-      ) : null}
-      <textarea
-        className="min-h-20 rounded-xl border border-slate-200 px-3 py-2 text-sm"
-        onChange={(event) => setNotes(event.target.value)}
-        placeholder="Notes"
-        value={notes}
-      />
-      <button
-        className="min-h-11 rounded-xl bg-blue-600 px-4 text-sm font-bold text-white disabled:opacity-60"
-        disabled={isPending || !hydrated}
-        type="submit"
-      >
-        {!hydrated ? "Preparing..." : isPending ? "Saving..." : buttonLabel}
-      </button>
+
+      <label className={labelClass}>
+        Notes
+        <textarea
+          className="min-h-24 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+          onChange={(event) => setNotes(event.target.value)}
+          placeholder="Add notes..."
+          value={notes}
+        />
+      </label>
+
+      {isEditing ? (
+        <details className="rounded-xl bg-slate-50 px-3 py-2">
+          <summary className="cursor-pointer text-xs font-black uppercase tracking-[0.12em] text-slate-500">
+            More details
+          </summary>
+          <div className="mt-3 grid gap-3">
+            <label className={labelClass}>
+              Type
+              <select
+                className={fieldClass}
+                onChange={(event) => setKind(event.target.value)}
+                value={kind}
+              >
+                <option value="flight">Flight</option>
+                <option value="hotel">Hotel</option>
+                <option value="meeting">Meeting</option>
+                <option value="restaurant">Restaurant</option>
+                <option value="activity">Activity</option>
+                <option value="transport">Transport</option>
+                <option value="note">Note</option>
+              </select>
+            </label>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <label className={labelClass}>
+                End date
+                <input
+                  className={fieldClass}
+                  onChange={(event) => setEndDate(event.target.value)}
+                  type="date"
+                  value={endDate}
+                />
+              </label>
+              <label className={labelClass}>
+                End time
+                <input
+                  className={fieldClass}
+                  onChange={(event) => setEndClockTime(event.target.value)}
+                  type="time"
+                  value={endClockTime}
+                />
+              </label>
+            </div>
+            {includeCoordinates ? (
+              <div className="grid gap-2 sm:grid-cols-2">
+                <label className={labelClass}>
+                  Latitude
+                  <input
+                    className={fieldClass}
+                    inputMode="decimal"
+                    onChange={(event) => setLat(event.target.value)}
+                    placeholder="Latitude"
+                    value={lat}
+                  />
+                </label>
+                <label className={labelClass}>
+                  Longitude
+                  <input
+                    className={fieldClass}
+                    inputMode="decimal"
+                    onChange={(event) => setLng(event.target.value)}
+                    placeholder="Longitude"
+                    value={lng}
+                  />
+                </label>
+              </div>
+            ) : null}
+          </div>
+        </details>
+      ) : (
+        <>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <label className={labelClass}>
+              End date
+              <input
+                className={fieldClass}
+                onChange={(event) => setEndDate(event.target.value)}
+                type="date"
+                value={endDate}
+              />
+            </label>
+            <label className={labelClass}>
+              End time
+              <input
+                className={fieldClass}
+                onChange={(event) => setEndClockTime(event.target.value)}
+                type="time"
+                value={endClockTime}
+              />
+            </label>
+          </div>
+          {includeCoordinates ? (
+            <div className="grid gap-2 sm:grid-cols-2">
+              <input
+                className={fieldClass}
+                inputMode="decimal"
+                onChange={(event) => setLat(event.target.value)}
+                placeholder="Latitude"
+                value={lat}
+              />
+              <input
+                className={fieldClass}
+                inputMode="decimal"
+                onChange={(event) => setLng(event.target.value)}
+                placeholder="Longitude"
+                value={lng}
+              />
+            </div>
+          ) : null}
+        </>
+      )}
+
+      <div className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-center">
+        <button
+          className="min-h-11 rounded-xl bg-blue-600 px-4 text-sm font-bold text-white disabled:opacity-60"
+          disabled={isPending || !hydrated}
+          type="submit"
+        >
+          {!hydrated ? "Preparing..." : isPending ? "Saving..." : buttonLabel}
+        </button>
+        {onCancel ? (
+          <button
+            className="min-h-11 rounded-xl bg-slate-100 px-4 text-sm font-bold text-slate-700 transition hover:bg-slate-200"
+            onClick={onCancel}
+            type="button"
+          >
+            Cancel
+          </button>
+        ) : null}
+      </div>
       {state.status !== "idle" && message ? (
         <p className={`rounded-xl px-3 py-2 text-xs font-semibold ${tone}`}>{message}</p>
       ) : null}

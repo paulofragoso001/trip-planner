@@ -57,12 +57,17 @@ export function ConnectedTripMap({
   const [pendingRetry, setPendingRetry] = useState<string | null>(null);
   const [retryMessage, setRetryMessage] = useState<string | null>(null);
   const selectedItem = visibleItems.find((item) => item.id === selectedId) ?? visibleItems[0];
+  const selectedIndex = selectedItem
+    ? Math.max(visibleItems.findIndex((item) => item.id === selectedItem.id), 0)
+    : 0;
+  const selectedPosition = selectedIndex + 1;
   const selectedPlaceUrl = selectedItem
     ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
         selectedItem.address || selectedItem.title
       )}`
     : null;
   const hiddenPlaceCount = Math.max(dayFilteredItems.length - visibleItems.length, 0);
+  const routeSummary = `${visibleItems.length} place${visibleItems.length === 1 ? "" : "s"} · Route preview`;
 
   useEffect(() => {
     setHydrated(true);
@@ -120,14 +125,14 @@ export function ConnectedTripMap({
               />
             </GoogleMapsProvider>
 
-            <div className="pointer-events-none absolute left-3 right-3 top-3 z-10 grid grid-cols-3 gap-2 sm:left-4 sm:right-auto sm:w-[430px]">
-              <RouteMetric label="Places" value={`${visibleItems.length}/${items.length}`} />
-              <RouteMetric label="Needs location" value={String(unmappedCount)} />
-              <RouteMetric label="Route" value="Preview" />
+            <div className="pointer-events-none absolute bottom-3 left-1/2 z-10 -translate-x-1/2">
+              <div className="whitespace-nowrap rounded-full bg-white/95 px-4 py-2 text-xs font-black text-slate-950 shadow-lg ring-1 ring-slate-200 backdrop-blur sm:text-sm">
+                {routeSummary}
+              </div>
             </div>
 
             {hasDayFilter ? (
-              <div className="absolute bottom-3 left-3 right-3 z-10 flex gap-2 overflow-x-auto rounded-2xl bg-white/90 p-2 text-xs font-black text-slate-700 shadow-lg ring-1 ring-slate-200 backdrop-blur" aria-label="Map day filter">
+              <div className="absolute left-3 right-3 top-3 z-10 flex gap-2 overflow-x-auto rounded-2xl bg-white/90 p-2 text-xs font-black text-slate-700 shadow-lg ring-1 ring-slate-200 backdrop-blur" aria-label="Map day filter">
                 {["all", ...dayLabels].map((day) => {
                   const active = (selectedDayKey || dayLabels[0]) === day;
                   return (
@@ -152,7 +157,7 @@ export function ConnectedTripMap({
           </div>
 
           <div
-            className="relative z-10 -mt-7 grid gap-3 rounded-t-[2rem] border border-slate-200 bg-white p-3 pb-5 shadow-2xl sm:mt-4 sm:rounded-[1.75rem] sm:p-4 sm:shadow-sm xl:mt-0 xl:max-h-[calc(100dvh-230px)] xl:overflow-y-auto"
+            className="relative z-10 -mt-7 grid gap-3 rounded-t-[2rem] border border-slate-200 bg-white p-3 pb-[calc(1.25rem+env(safe-area-inset-bottom))] shadow-2xl sm:mt-4 sm:rounded-[1.75rem] sm:p-4 sm:shadow-sm xl:mt-0 xl:max-h-[calc(100dvh-230px)] xl:overflow-y-auto"
             data-testid="map-route-panel"
           >
             {selectedItem ? (
@@ -184,24 +189,25 @@ export function ConnectedTripMap({
                   </button>
                 </div>
               ) : null}
-              <div className="grid gap-3 sm:grid-cols-[104px_minmax(0,1fr)] sm:items-center xl:grid-cols-1">
-                <div className="relative">
+              <div className="rounded-[1.5rem] bg-slate-50 p-3 ring-1 ring-slate-100">
+                <p className="text-xs font-black uppercase tracking-[0.16em] text-blue-600">
+                  {selectedPosition} of {visibleItems.length}
+                </p>
+                <div className="mt-3 grid grid-cols-[80px_minmax(0,1fr)] gap-3 sm:grid-cols-[104px_minmax(0,1fr)] sm:items-center xl:grid-cols-[112px_minmax(0,1fr)]">
+                  <div className="relative">
                   <PlacePhoto
                     alt={selectedItem.imageAlt || `Photo of ${selectedItem.title}`}
                     attribution={selectedItem.imageAttribution}
-                    className="h-28 w-full rounded-2xl sm:h-24 sm:w-24 xl:h-40 xl:w-full"
+                    className="h-20 w-20 rounded-2xl sm:h-24 sm:w-24 xl:h-28 xl:w-28"
                     fallbackLabel={selectedItem.category || "Place"}
                     src={selectedItem.imageUrl}
                   />
                   <span className="absolute -right-2 -top-2 grid h-9 min-w-9 place-items-center rounded-full bg-blue-600 px-2 text-sm font-black text-white shadow-lg ring-4 ring-white">
-                    {selectedItem.routeOrder || visibleItems.findIndex((item) => item.id === selectedItem.id) + 1}
+                    {selectedItem.routeOrder || selectedPosition}
                   </span>
-                </div>
-                <div className="min-w-0">
-                  <p className="text-xs font-black uppercase tracking-[0.16em] text-blue-600">
-                    Place {visibleItems.findIndex((item) => item.id === selectedItem.id) + 1} of {visibleItems.length}
-                  </p>
-                  <h3 className="mt-1 break-words text-lg font-black leading-tight text-slate-950">
+                  </div>
+                  <div className="min-w-0">
+                  <h3 className="break-words text-lg font-black leading-tight text-slate-950">
                     {selectedItem.title}
                   </h3>
                   <p className="mt-1 text-xs font-semibold text-slate-500">
@@ -212,7 +218,7 @@ export function ConnectedTripMap({
                   {selectedItem.address ? (
                     <p className="mt-1 line-clamp-2 text-xs text-slate-500">{selectedItem.address}</p>
                   ) : null}
-                  <div className="mt-3 grid grid-cols-2 gap-2">
+                  <div className="mt-3 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
                     {selectedPlaceUrl ? (
                       <a
                         className="inline-flex min-h-10 items-center justify-center rounded-xl bg-slate-950 px-3 text-xs font-black text-white"
@@ -230,6 +236,7 @@ export function ConnectedTripMap({
                       Itinerary
                     </Link>
                   </div>
+                  </div>
                 </div>
               </div>
             </>
@@ -242,15 +249,16 @@ export function ConnectedTripMap({
                   <p className="text-xs font-bold text-slate-500">{hiddenPlaceCount} hidden</p>
                 ) : null}
               </div>
-              <div className="grid max-h-[38dvh] content-start items-start gap-2 overflow-y-auto pr-1 sm:max-h-none sm:grid-cols-2 sm:gap-3 sm:overflow-visible sm:pr-0 xl:max-h-none xl:grid-cols-1" data-testid="map-route-list">
+              <div className="grid max-h-[38dvh] content-start items-start gap-1.5 overflow-y-auto pr-1 sm:max-h-none sm:grid-cols-2 sm:gap-2 sm:overflow-visible sm:pr-0 xl:max-h-none xl:grid-cols-1" data-testid="map-route-list">
                 {visibleItems.map((item, index) => {
                   const active = item.id === selectedItem?.id;
+                  const routeNumber = item.routeOrder || index + 1;
 
                   return (
                     <button
                       aria-current={active ? "true" : undefined}
                       className={[
-                        "min-h-16 rounded-2xl border px-3 py-3 text-left text-sm transition",
+                        "min-h-11 rounded-2xl border px-2.5 py-2 text-left text-sm transition",
                         "h-auto self-start",
                         active
                           ? "border-blue-300 bg-blue-50 text-blue-950"
@@ -261,26 +269,14 @@ export function ConnectedTripMap({
                       type="button"
                     >
                       <span className="flex items-center gap-3">
-                        <PlacePhoto
-                          alt={item.imageAlt || `Photo of ${item.title}`}
-                          attribution={item.imageAttribution}
-                          className="h-12 w-12 shrink-0 rounded-xl"
-                          fallbackLabel={item.category || "Place"}
-                          src={item.imageUrl}
-                        />
-                        <span className="min-w-0">
-                          <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-blue-600 px-2 text-[0.7rem] font-black text-white">
-                            {item.routeOrder || index + 1}
+                        <span className="grid h-8 min-w-8 shrink-0 place-items-center rounded-full bg-blue-600 px-2 text-xs font-black text-white">
+                          {routeNumber}
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate font-black leading-tight">{item.title}</span>
+                          <span className="mt-0.5 block truncate text-xs font-semibold text-slate-500">
+                            {[item.dayLabel, item.timeLabel, item.category].filter(Boolean).join(" · ")}
                           </span>
-                          <span className="mt-1 block break-words font-semibold leading-tight">{item.title}</span>
-                          <span className="mt-0.5 block text-xs font-semibold text-slate-500">
-                            {[item.dayLabel, item.timeLabel].filter(Boolean).join(" · ")}
-                          </span>
-                          {item.address ? (
-                            <span className="mt-0.5 line-clamp-1 block text-xs text-slate-500">
-                              {item.address}
-                            </span>
-                          ) : null}
                         </span>
                       </span>
                     </button>
@@ -442,17 +438,6 @@ function RetryAllButton({ tripId }: { tripId: string }) {
       {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
       Retry all locations
     </button>
-  );
-}
-
-function RouteMetric({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-2xl bg-white/92 px-3 py-2 text-center shadow-lg ring-1 ring-slate-200 backdrop-blur">
-      <p className="text-[0.62rem] font-black uppercase tracking-[0.12em] text-slate-500">
-        {label}
-      </p>
-      <p className="mt-0.5 text-sm font-black text-slate-950 sm:text-base">{value}</p>
-    </div>
   );
 }
 

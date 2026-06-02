@@ -1,17 +1,13 @@
 import Link from "next/link";
 import {
   AlertTriangle,
+  ArrowRight,
   Bed,
-  CalendarDays,
   Car,
-  Clock,
   Flag,
   Landmark,
-  MapPin,
   Plane,
   Plus,
-  ReceiptText,
-  Sparkles,
   Train,
   Utensils
 } from "lucide-react";
@@ -54,20 +50,18 @@ export default function TripTimelinePage({
           <div className="grid gap-5">
             {days.map((day) => (
               <section className="scroll-mt-24" id={day.id} key={day.id}>
-                <div className="sticky top-14 z-10 -mx-3 border-y border-slate-200 bg-slate-100/95 px-3 py-2 backdrop-blur sm:static sm:mx-0 sm:rounded-2xl sm:border sm:px-4">
+                <div className="sticky top-14 z-10 -mx-3 border-y border-slate-200 bg-slate-100/95 px-3 py-2.5 backdrop-blur sm:static sm:mx-0 sm:rounded-2xl sm:border sm:bg-white/78 sm:px-4 sm:shadow-sm sm:ring-1 sm:ring-white/70">
                   <div className="flex items-center justify-between gap-3">
-                    <div className="min-w-0">
-                      <h3 className="truncate text-xs font-black uppercase tracking-[0.2em] text-slate-700">
-                        {day.date}
-                      </h3>
-                      <p className="mt-1 text-xs font-semibold text-slate-500">
-                        {day.summary}
-                      </p>
-                    </div>
-                    <span className="shrink-0 rounded-full bg-white px-3 py-1 text-xs font-black text-slate-700">
+                    <h3 className="min-w-0 truncate text-xs font-black uppercase tracking-[0.2em] text-slate-700 sm:text-sm">
+                      {day.date}
+                    </h3>
+                    <span className="shrink-0 rounded-full bg-white px-3 py-1 text-xs font-black text-slate-700 shadow-sm ring-1 ring-slate-200">
                       {day.items.length} place{day.items.length === 1 ? "" : "s"}
                     </span>
                   </div>
+                  <p className="mt-1 text-xs font-semibold text-slate-500">
+                    {day.items.length} place{day.items.length === 1 ? "" : "s"} planned
+                  </p>
                 </div>
 
                 <div className="mt-4 grid gap-0">
@@ -145,9 +139,11 @@ function ItineraryRow({
     >
       <div className="pt-5 text-right">
         <p className="text-sm font-black text-slate-950">{formatPrimaryTime(item)}</p>
-        <p className="mt-1 text-[0.65rem] font-bold uppercase tracking-[0.12em] text-slate-500">
-          {item.startAt && item.hasStartTime ? "Local" : "Anytime"}
-        </p>
+        {formatSecondaryTimeLabel(item) ? (
+          <p className="mt-1 text-[0.65rem] font-bold uppercase tracking-[0.12em] text-slate-500">
+            {formatSecondaryTimeLabel(item)}
+          </p>
+        ) : null}
       </div>
 
       <div className="relative flex justify-center">
@@ -158,58 +154,293 @@ function ItineraryRow({
       </div>
 
       <div className="min-w-0 pb-4 pt-3">
+        {item.kind === "flight" ? (
+          <FlightBoardingPassCard item={item} status={status} tripId={tripId} />
+        ) : item.kind === "hotel" ? (
+          <HotelPassCard item={item} status={status} tripId={tripId} />
+        ) : item.kind === "dinner" ? (
+          <RestaurantReservationCard item={item} status={status} tripId={tripId} />
+        ) : (
         <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm transition hover:border-slate-300 hover:shadow-md sm:p-4">
-          <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_96px] sm:items-start">
+          <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <div className="flex flex-wrap items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">
-                    {display.label}
-                  </p>
-                  <h4 className="mt-1 break-words text-lg font-black leading-tight text-slate-950">
-                    {item.title}
-                  </h4>
-                </div>
-                <span className={status.className}>{status.label}</span>
-              </div>
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">
+                {display.label}
+              </p>
             </div>
+            <span className={status.className}>{status.label}</span>
+          </div>
+
+          <div className="mt-3 grid gap-3 sm:grid-cols-[minmax(0,1fr)_128px] sm:items-start">
+            <div className="min-w-0">
+              <h4 className="break-words text-lg font-black leading-tight text-slate-950 sm:text-xl">
+                {item.title}
+              </h4>
+              <p className="mt-2 break-words text-sm leading-6 text-slate-600">
+                {item.location}
+              </p>
+              {item.confirmationCode || item.durationLabel ? (
+                <div className="mt-2 flex flex-wrap gap-2 text-xs font-semibold text-slate-500">
+                  {item.confirmationCode ? (
+                    <span>Confirmation {item.confirmationCode}</span>
+                  ) : null}
+                  {item.durationLabel ? <span>{item.durationLabel}</span> : null}
+                </div>
+              ) : null}
+            </div>
+
             {shouldShowPlacePhoto(item) ? (
               <PlacePhoto
                 alt={item.imageAlt || `Photo of ${item.title}`}
                 attribution={item.imageAttribution}
-                className="h-24 w-full rounded-2xl sm:h-24 sm:w-24"
+                className="h-36 w-full rounded-2xl sm:h-28 sm:w-32"
                 fallbackLabel={item.typeLabel || "Place"}
                 src={item.imageUrl}
               />
             ) : null}
           </div>
 
-          <div className="mt-3 grid gap-2 text-sm text-slate-700">
-            <Detail icon={<Clock className="h-4 w-4" />} value={item.timeRange} />
-            <Detail icon={<MapPin className="h-4 w-4" />} value={item.location} />
-            {item.confirmationCode ? (
-              <Detail icon={<ReceiptText className="h-4 w-4" />} value={`Confirmation ${item.confirmationCode}`} />
-            ) : null}
-            {item.durationLabel ? <Detail icon={<CalendarDays className="h-4 w-4" />} value={item.durationLabel} /> : null}
-            {item.provider ? <Detail icon={<Sparkles className="h-4 w-4" />} value={item.provider.replace(/_/g, " ")} /> : null}
-          </div>
-
           <StateCopy item={item} />
 
           <ItineraryCardActions item={item} tripId={tripId} />
         </div>
+        )}
       </div>
     </article>
   );
 }
 
-function Detail({ icon, value }: { icon: ReactNode; value: string }) {
+function RestaurantReservationCard({
+  item,
+  status,
+  tripId
+}: {
+  item: TimelineItemView;
+  status: { className: string; label: string };
+  tripId: string;
+}) {
   return (
-    <div className="flex min-w-0 items-start gap-2">
-      <span className="mt-0.5 shrink-0 text-slate-400">{icon}</span>
-      <span className="min-w-0 break-words">{value}</span>
+    <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm transition hover:border-slate-300 hover:shadow-md sm:p-4">
+      <div className="flex items-start justify-between gap-3">
+        <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">
+          Restaurant
+        </p>
+        <span className={status.className}>{status.label}</span>
+      </div>
+
+      <div className="mt-4">
+        <h4 className="break-words text-xl font-black leading-tight text-slate-950 sm:text-2xl">
+          {item.title}
+        </h4>
+        <p className="mt-2 break-words text-sm leading-6 text-slate-600">
+          {item.location}
+        </p>
+      </div>
+
+      <div className="mt-4 grid gap-1.5 text-sm font-semibold text-slate-600">
+        <p>{restaurantMealLabel(item)} · {formatPrimaryTime(item)}</p>
+        <p>
+          Reservation:{" "}
+          <span className="font-black text-slate-800">
+            {item.confirmationCode || item.confirmation ? item.confirmationCode || item.confirmation : "optional"}
+          </span>
+        </p>
+      </div>
+
+      {item.imageUrl ? (
+        <PlacePhoto
+          alt={item.imageAlt || `Photo of ${item.title}`}
+          attribution={item.imageAttribution}
+          className="mt-4 h-40 w-full rounded-2xl"
+          fallbackLabel="Restaurant"
+          src={item.imageUrl}
+        />
+      ) : null}
+
+      <ItineraryCardActions item={item} tripId={tripId} />
     </div>
   );
+}
+
+function HotelPassCard({
+  item,
+  status,
+  tripId
+}: {
+  item: TimelineItemView;
+  status: { className: string; label: string };
+  tripId: string;
+}) {
+  const hotelStatus = getHotelStatus(item, status);
+
+  return (
+    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:border-slate-300 hover:shadow-md">
+      <div className="p-3 sm:p-4">
+        <div className="flex items-start justify-between gap-3">
+          <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">
+            Hotel
+          </p>
+          <span className={hotelStatus.className}>{hotelStatus.label}</span>
+        </div>
+
+        <div className="mt-5 grid gap-3 sm:grid-cols-[minmax(0,1fr)_128px] sm:items-start">
+          <div className="min-w-0">
+            <h4 className="break-words text-xl font-black leading-tight text-slate-950 sm:text-2xl">
+              {item.title}
+            </h4>
+            <p className="mt-2 break-words text-sm leading-6 text-slate-600">
+              {item.location}
+            </p>
+          </div>
+          {item.imageUrl ? (
+            <PlacePhoto
+              alt={item.imageAlt || `Photo of ${item.title}`}
+              attribution={item.imageAttribution}
+              className="h-36 w-full rounded-2xl sm:h-28 sm:w-32"
+              fallbackLabel="Hotel"
+              src={item.imageUrl}
+            />
+          ) : null}
+        </div>
+
+        <div className="mt-5 grid grid-cols-2 gap-3 rounded-2xl bg-slate-50 p-3">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-400">
+              Check-in
+            </p>
+            <p className="mt-1 text-sm font-black text-slate-950">
+              {formatHotelDateTime(item.startAt, item.hasStartTime)}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-400">
+              Check-out
+            </p>
+            <p className="mt-1 text-sm font-black text-slate-950">
+              {formatHotelDateTime(item.endAt, item.hasEndTime)}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="relative border-t border-dashed border-slate-200 px-3 py-3 sm:px-4">
+        <span className="absolute -left-3 -top-3 h-6 w-6 rounded-full bg-[#f4f7fb]" aria-hidden="true" />
+        <span className="absolute -right-3 -top-3 h-6 w-6 rounded-full bg-[#f4f7fb]" aria-hidden="true" />
+        {item.confirmationCode || item.confirmation ? (
+          <p className="text-xs font-semibold text-slate-500">
+            Confirmation: <span className="font-black text-slate-800">{item.confirmationCode || item.confirmation}</span>
+          </p>
+        ) : null}
+        <ItineraryCardActions item={item} tripId={tripId} />
+      </div>
+    </div>
+  );
+}
+
+function FlightBoardingPassCard({
+  item,
+  status,
+  tripId
+}: {
+  item: TimelineItemView;
+  status: { className: string; label: string };
+  tripId: string;
+}) {
+  const flight = getFlightDisplay(item);
+  const flightStatus = getFlightStatus(item, status);
+
+  return (
+    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:border-slate-300 hover:shadow-md">
+      <div className="p-3 sm:p-4">
+        <div className="flex items-start justify-between gap-3">
+          <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">
+            Flight
+          </p>
+          <span className={flightStatus.className}>
+            {flightStatus.label}
+          </span>
+        </div>
+
+        <div className="mt-5 grid grid-cols-[1fr_auto_1fr] items-end gap-3">
+          <div className="min-w-0">
+            <p className="text-4xl font-black leading-none tracking-tight text-slate-950 sm:text-5xl">
+              {flight.originCode}
+            </p>
+            <p className="mt-1 truncate text-sm font-semibold text-slate-500">
+              {flight.originCity}
+            </p>
+          </div>
+          <div className="mb-4 flex min-w-14 items-center justify-center text-slate-400">
+            <span className="h-px w-8 bg-slate-300" aria-hidden="true" />
+            <ArrowRight className="mx-1 h-4 w-4" aria-hidden="true" />
+            <span className="h-px w-8 bg-slate-300" aria-hidden="true" />
+          </div>
+          <div className="min-w-0 text-right">
+            <p className="text-4xl font-black leading-none tracking-tight text-slate-950 sm:text-5xl">
+              {flight.destinationCode}
+            </p>
+            <p className="mt-1 truncate text-sm font-semibold text-slate-500">
+              {flight.destinationCity}
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-5 grid grid-cols-[1fr_auto_1fr] items-start gap-3">
+          <div>
+            <p className="text-lg font-black text-slate-950">{flight.departureTime}</p>
+            <p className="mt-1 text-xs font-semibold text-slate-500">{flight.departureDate}</p>
+          </div>
+          <div className="pt-1 text-slate-300">
+            <Plane className="h-5 w-5 rotate-90" aria-hidden="true" />
+          </div>
+          <div className="text-right">
+            <p className="text-lg font-black text-slate-950">{flight.arrivalTime}</p>
+            <p className="mt-1 text-xs font-semibold text-slate-500">{flight.arrivalDate}</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="relative border-t border-dashed border-slate-200 px-3 py-3 sm:px-4">
+        <span className="absolute -left-3 -top-3 h-6 w-6 rounded-full bg-[#f4f7fb]" aria-hidden="true" />
+        <span className="absolute -right-3 -top-3 h-6 w-6 rounded-full bg-[#f4f7fb]" aria-hidden="true" />
+        <p className="text-sm font-black text-slate-950">{flight.airlineLabel}</p>
+        <div className="mt-3 grid grid-cols-3 gap-2 text-xs text-slate-600">
+          <BoardingPassMeta label="Terminal" value={flight.terminal} />
+          <BoardingPassMeta label="Gate" value={flight.gate} />
+          <BoardingPassMeta label="Seat" value={flight.seat} />
+        </div>
+        {flight.confirmation ? (
+          <p className="mt-3 text-xs font-semibold text-slate-500">
+            Confirmation: <span className="font-black text-slate-800">{flight.confirmation}</span>
+          </p>
+        ) : null}
+        <ItineraryCardActions item={item} tripId={tripId} />
+      </div>
+    </div>
+  );
+}
+
+function BoardingPassMeta({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="font-black uppercase tracking-[0.12em] text-slate-400">{label}</p>
+      <p className="mt-1 font-black text-slate-800">{value}</p>
+    </div>
+  );
+}
+
+function getFlightStatus(
+  item: TimelineItemView,
+  fallback: { className: string; label: string }
+) {
+  const base = "inline-flex min-h-7 items-center rounded-full px-2.5 text-xs font-black";
+  if (item.locationStatus === "provider_failed") {
+    return { className: `${base} bg-amber-50 text-amber-700`, label: "Check status" };
+  }
+  if (item.startAt || item.confirmation || item.confirmationCode) {
+    return { className: `${base} bg-emerald-50 text-emerald-700`, label: "Confirmed" };
+  }
+  return fallback;
 }
 
 function StateCopy({ item }: { item: TimelineItemView }) {
@@ -235,6 +466,117 @@ function StateCopy({ item }: { item: TimelineItemView }) {
 function shouldShowPlacePhoto(item: TimelineItemView) {
   if (!item.imageUrl) return false;
   return !["flight", "hotel"].includes(item.kind);
+}
+
+function restaurantMealLabel(item: TimelineItemView) {
+  const source = `${item.meta} ${item.typeLabel} ${item.title}`.toLowerCase();
+  if (source.includes("breakfast")) return "Breakfast";
+  if (source.includes("brunch")) return "Brunch";
+  if (source.includes("lunch")) return "Lunch";
+  if (source.includes("bar") || source.includes("drinks")) return "Drinks";
+  return "Dinner";
+}
+
+function getHotelStatus(
+  item: TimelineItemView,
+  fallback: { className: string; label: string }
+) {
+  const base = "inline-flex min-h-7 items-center rounded-full px-2.5 text-xs font-black";
+  if (item.locationStatus === "provider_failed") {
+    return { className: `${base} bg-amber-50 text-amber-700`, label: "Check status" };
+  }
+  if (item.startAt || item.confirmation || item.confirmationCode) {
+    return { className: `${base} bg-emerald-50 text-emerald-700`, label: "Confirmed" };
+  }
+  return fallback;
+}
+
+function formatHotelDateTime(value: string | null, hasExplicitTime: boolean) {
+  if (!value) return "Not set";
+  const date = new Intl.DateTimeFormat("en", {
+    day: "numeric",
+    month: "short",
+    timeZone: "UTC"
+  }).format(new Date(value));
+  if (!hasExplicitTime) return date;
+  return `${date}, ${formatFlightTime(value)}`;
+}
+
+function getFlightDisplay(item: TimelineItemView) {
+  const route = parseFlightRoute(item);
+  const detail = parseFlightDetails(item.details);
+
+  return {
+    airlineLabel: item.meta || item.title,
+    arrivalDate: formatFlightDate(item.endAt || item.startAt),
+    arrivalTime: item.endAt && item.hasEndTime ? formatFlightTime(item.endAt) : "--",
+    confirmation: item.confirmationCode || item.confirmation || "",
+    departureDate: formatFlightDate(item.startAt),
+    departureTime: item.startAt && item.hasStartTime ? formatFlightTime(item.startAt) : "--",
+    destinationCity: route.destinationCity,
+    destinationCode: route.destinationCode,
+    gate: detail.gate,
+    originCity: route.originCity,
+    originCode: route.originCode,
+    seat: detail.seat,
+    terminal: detail.terminal
+  };
+}
+
+function parseFlightRoute(item: TimelineItemView) {
+  const titleCodes = item.title.match(/\b([A-Z]{3})\b/g) || [];
+  const [originCode = "—", destinationCode = "—"] = titleCodes;
+  const locationParts = item.location
+    .split(/\s+to\s+|→|-/i)
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  return {
+    destinationCity: simplifyAirportCity(locationParts[1] || destinationCode),
+    destinationCode,
+    originCity: simplifyAirportCity(locationParts[0] || originCode),
+    originCode
+  };
+}
+
+function simplifyAirportCity(value: string) {
+  return value
+    .replace(/\bInternational\b/gi, "")
+    .replace(/\bAirport\b/gi, "")
+    .replace(/\s{2,}/g, " ")
+    .trim() || "Airport";
+}
+
+function parseFlightDetails(details: string[]) {
+  return {
+    gate: readDetail(details, "Gate") || "—",
+    seat: readDetail(details, "Seat") || "—",
+    terminal: readDetail(details, "Terminal") || "—"
+  };
+}
+
+function readDetail(details: string[], label: string) {
+  const match = details.find((detail) => detail.toLowerCase().startsWith(label.toLowerCase()));
+  if (!match) return "";
+  return match.replace(new RegExp(`^${label}\\s*:?\\s*`, "i"), "").trim();
+}
+
+function formatFlightTime(value: string) {
+  return new Intl.DateTimeFormat("en", {
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: "UTC"
+  }).format(new Date(value));
+}
+
+function formatFlightDate(value: string | null) {
+  if (!value) return "Date not set";
+  return new Intl.DateTimeFormat("en", {
+    day: "numeric",
+    month: "short",
+    timeZone: "UTC",
+    weekday: "short"
+  }).format(new Date(value));
 }
 
 function ItineraryActions({
@@ -347,4 +689,11 @@ function formatPrimaryTime(item: TimelineItemView) {
     minute: "2-digit",
     timeZone: "UTC"
   }).format(new Date(item.startAt));
+}
+
+function formatSecondaryTimeLabel(item: TimelineItemView) {
+  if (!item.startAt || !item.hasStartTime) {
+    return item.locationStatus === "needs_activity_provider" ? "Unscheduled" : "";
+  }
+  return item.timeZoneLabel || "Local";
 }

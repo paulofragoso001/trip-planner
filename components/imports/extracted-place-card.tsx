@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, GitMerge, MapPin, Pencil, X } from "lucide-react";
+import { Check, GitMerge, ImageIcon, MapPin, Pencil, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { AiReviewItemView } from "@/app/dashboard/imports/loader";
@@ -253,63 +253,61 @@ export function ExtractedPlaceCard({ mergeTargets = [], place, trips }: Extracte
         </form>
       ) : (
         <>
-          <div className="grid gap-3 sm:grid-cols-[88px_minmax(0,1fr)_auto] sm:items-start">
-            <PlacePhoto
-              alt={place.imageAlt || `Photo of ${place.name}`}
-              attribution={place.imageAttribution}
-              className={
-                place.imageUrl
-                  ? "aspect-[4/3] w-full rounded-2xl sm:h-[5.5rem] sm:w-[5.5rem]"
-                  : "h-14 w-full rounded-2xl sm:h-[5.5rem] sm:w-[5.5rem]"
-              }
-              fallbackLabel={place.category.replace("_", " ")}
-              src={place.imageUrl}
-            />
+          <div className="grid gap-3">
+            {place.imageUrl ? (
+              <PlacePhoto
+                alt={place.imageAlt || `Photo of ${place.name}`}
+                attribution={place.imageAttribution}
+                className="aspect-[16/9] w-full rounded-2xl sm:aspect-[5/2]"
+                fallbackLabel={place.category.replace("_", " ")}
+                src={place.imageUrl}
+              />
+            ) : (
+              <div className="grid gap-2">
+                <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">
+                  {place.category.replace("_", " ")}
+                </p>
+                <div className="flex min-h-16 items-center gap-3 rounded-2xl bg-slate-50 px-3 py-3 ring-1 ring-slate-100">
+                  <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-white text-slate-500 ring-1 ring-slate-200">
+                    <ImageIcon className="h-5 w-5" />
+                  </span>
+                  <span className="text-sm font-bold text-slate-600">
+                    Photo preview unavailable
+                  </span>
+                </div>
+              </div>
+            )}
+
             <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <p className="min-w-0 break-words text-lg font-black leading-tight text-slate-950 sm:text-xl">{place.name}</p>
-                {place.reviewReason === "low_confidence" ? (
-                  <StatusBadge tone="amber">Low confidence</StatusBadge>
-                ) : null}
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <h3 className="break-words text-xl font-black leading-tight text-slate-950">
+                    {place.name}
+                  </h3>
+                  <p className="mt-1 text-sm font-semibold text-slate-600">
+                    {[
+                      titleCase(place.category.replace("_", " ")),
+                      candidateDestination || null,
+                      `${Math.round(place.confidence * 100)}%`
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </p>
+                </div>
                 {place.reviewReason === "needs_location" ? (
                   <StatusBadge tone={isActivityIdea ? "blue" : "red"}>
                     {isActivityIdea ? "Activity idea" : "Needs location"}
                   </StatusBadge>
-                ) : null}
-                {place.reviewReason !== "low_confidence" && place.reviewReason !== "needs_location" ? (
+                ) : place.reviewReason === "low_confidence" ? (
+                  <StatusBadge tone="amber">Low confidence</StatusBadge>
+                ) : (
                   <StatusBadge tone="green">Ready</StatusBadge>
-                ) : null}
-              </div>
-              <div className="mt-2 flex flex-wrap gap-2">
-                <StatusBadge>{place.category.replace("_", " ")}</StatusBadge>
-                <StatusBadge tone={place.confidence >= 0.75 ? "green" : "amber"}>
-                  {Math.round(place.confidence * 100)}% confidence
-                </StatusBadge>
-                {candidateDestination ? (
-                  <StatusBadge tone="blue">{candidateDestination}</StatusBadge>
-                ) : null}
+                )}
               </div>
               {place.duplicateOf ? (
                 <StatusBadge className="mt-2" tone="purple">Possible duplicate</StatusBadge>
               ) : null}
-              <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-slate-100">
-                <div
-                  className={[
-                    "h-full rounded-full",
-                    place.reviewReason === "low_confidence" ? "bg-amber-500" : "bg-emerald-500"
-                  ].join(" ")}
-                  style={{ width: `${Math.max(8, Math.round(place.confidence * 100))}%` }}
-                />
-              </div>
             </div>
-            <button
-              aria-label={`Edit ${place.name}`}
-              className="grid h-11 w-11 place-items-center rounded-xl bg-white text-slate-600 transition hover:text-slate-950 focus:outline-none focus:ring-4 focus:ring-blue-100"
-              onClick={() => setEditing(true)}
-              type="button"
-            >
-              <Pencil className="h-4 w-4" />
-            </button>
           </div>
           {place.address || place.previewAddress ? (
             <p className="flex items-start gap-2 text-sm font-semibold text-slate-700">
@@ -317,10 +315,13 @@ export function ExtractedPlaceCard({ mergeTargets = [], place, trips }: Extracte
               {place.address || place.previewAddress}
             </p>
           ) : null}
-          {place.travelNote ? (
-            <p className="rounded-2xl bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-700">
-              {place.travelNote}
-            </p>
+          {place.evidence.length || place.travelNote ? (
+            <div className="rounded-2xl bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-700">
+              <p className="font-black text-slate-950">Found in your note:</p>
+              <p className="mt-1 text-slate-600">
+                &ldquo;{shortEvidence(place.evidence[0] || place.travelNote || "")}&rdquo;
+              </p>
+            </div>
           ) : null}
           {place.evidence.length ? (
             <details className="rounded-2xl bg-slate-50 px-4 py-3">
@@ -412,7 +413,7 @@ export function ExtractedPlaceCard({ mergeTargets = [], place, trips }: Extracte
               </button>
             </InlineAlert>
           ) : null}
-          <div className="grid gap-3 rounded-3xl border border-slate-200 bg-slate-50 p-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+          <div className="grid gap-3 rounded-3xl border border-slate-200 bg-slate-50 p-3">
             <label className="grid gap-2 text-sm font-black text-slate-800">
               Add to trip draft
               <select
@@ -435,7 +436,7 @@ export function ExtractedPlaceCard({ mergeTargets = [], place, trips }: Extracte
               </select>
             </label>
             <button
-              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 text-sm font-black text-white transition disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500 disabled:ring-1 disabled:ring-slate-300"
+              className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 text-sm font-black text-white transition disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500 disabled:ring-1 disabled:ring-slate-300"
               disabled={approveDisabled}
               onClick={() => {
                 const select = document.getElementById(`trip-${place.id}`) as HTMLSelectElement | null;
@@ -451,9 +452,9 @@ export function ExtractedPlaceCard({ mergeTargets = [], place, trips }: Extracte
               Approve to draft
             </button>
           </div>
-          <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
+          <div className="grid gap-2">
             {mergeTargets.length ? (
-              <div className="grid gap-2 sm:min-w-56 sm:grid-cols-[minmax(0,1fr)_auto]">
+              <div className="grid gap-2">
                 <select
                   aria-label={`Merge ${place.name} into duplicate`}
                   className="min-h-12 rounded-xl border border-slate-200 bg-white px-3 text-sm font-bold text-slate-700"
@@ -466,19 +467,29 @@ export function ExtractedPlaceCard({ mergeTargets = [], place, trips }: Extracte
                     </option>
                   ))}
                 </select>
-                <button
-                  className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-slate-100 px-4 text-sm font-black text-slate-700 disabled:opacity-60"
-                  disabled={pending || !mergeTargetId}
-                  onClick={mergeIntoTarget}
-                  type="button"
-                >
-                  <GitMerge className="h-4 w-4" />
-                  Merge
-                </button>
               </div>
             ) : null}
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-slate-100 px-3 text-sm font-black text-slate-700 disabled:opacity-60"
+                disabled={pending}
+                onClick={() => setEditing(true)}
+                type="button"
+              >
+                <Pencil className="h-4 w-4" />
+                Edit
+              </button>
+              <button
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-slate-100 px-3 text-sm font-black text-slate-700 disabled:opacity-60"
+                disabled={pending || !mergeTargetId || !mergeTargets.length}
+                onClick={mergeIntoTarget}
+                type="button"
+              >
+                <GitMerge className="h-4 w-4" />
+                Merge
+              </button>
             <button
-              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-slate-100 px-4 text-sm font-black text-slate-700 disabled:opacity-60"
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-slate-100 px-3 text-sm font-black text-slate-700 disabled:opacity-60"
               disabled={pending}
               onClick={() => patch({ status: "dismissed" })}
               type="button"
@@ -486,6 +497,7 @@ export function ExtractedPlaceCard({ mergeTargets = [], place, trips }: Extracte
               <X className="h-4 w-4" />
               Dismiss
             </button>
+            </div>
           </div>
         </>
       )}
@@ -549,6 +561,16 @@ function normalizeDestination(value: string) {
 function isTourOrActivityIdea(place: AiReviewItemView) {
   const text = `${place.category} ${place.name} ${place.travelNote || ""}`.toLowerCase();
   return /\b(tour|activity|experience|excursion|boat tour|guided tour|cruise)\b/.test(text);
+}
+
+function shortEvidence(value: string) {
+  const cleaned = value.replace(/\s+/g, " ").trim();
+  if (cleaned.length <= 120) return cleaned;
+  return `${cleaned.slice(0, 117).trim()}...`;
+}
+
+function titleCase(value: string) {
+  return value.replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 function readError(payload: unknown, status: number) {
