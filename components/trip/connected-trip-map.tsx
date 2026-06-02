@@ -162,6 +162,21 @@ export function ConnectedTripMap({
           >
             {selectedItem ? (
             <>
+              <div className="flex gap-2 overflow-x-auto pb-1" aria-label="Map categories">
+                {["Places", "Food", "Activities", "Shops", "Parks"].map((label, index) => (
+                  <span
+                    className={[
+                      "inline-flex min-h-9 shrink-0 items-center rounded-full px-3 text-xs font-black ring-1",
+                      index === 0
+                        ? "bg-slate-950 text-white ring-slate-950"
+                        : "bg-slate-50 text-slate-700 ring-slate-200"
+                    ].join(" ")}
+                    key={label}
+                  >
+                    {label}
+                  </span>
+                ))}
+              </div>
               {!hasDayFilter && items.length > visibleItems.length ? (
                 <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-blue-50 px-3 py-2 text-xs font-bold text-blue-900">
                   <span>Showing first {visibleItems.length} of {items.length} places</span>
@@ -189,7 +204,7 @@ export function ConnectedTripMap({
                   </button>
                 </div>
               ) : null}
-              <div className="rounded-[1.5rem] bg-slate-50 p-3 ring-1 ring-slate-100">
+              <div className="rounded-[1.5rem] bg-slate-950 p-3 text-white shadow-lg ring-1 ring-slate-900">
                 <p className="text-xs font-black uppercase tracking-[0.16em] text-blue-600">
                   {selectedPosition} of {visibleItems.length}
                 </p>
@@ -207,21 +222,21 @@ export function ConnectedTripMap({
                   </span>
                   </div>
                   <div className="min-w-0">
-                  <h3 className="break-words text-lg font-black leading-tight text-slate-950">
+                  <h3 className="break-words text-lg font-black leading-tight text-white">
                     {selectedItem.title}
                   </h3>
-                  <p className="mt-1 text-xs font-semibold text-slate-500">
+                  <p className="mt-1 text-xs font-semibold text-white/60">
                     {[selectedItem.dayLabel, selectedItem.timeLabel, selectedItem.category]
                       .filter(Boolean)
                       .join(" · ")}
                   </p>
                   {selectedItem.address ? (
-                    <p className="mt-1 line-clamp-2 text-xs text-slate-500">{selectedItem.address}</p>
+                    <p className="mt-1 line-clamp-2 text-xs text-white/62">{selectedItem.address}</p>
                   ) : null}
                   <div className="mt-3 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
                     {selectedPlaceUrl ? (
                       <a
-                        className="inline-flex min-h-10 items-center justify-center rounded-xl bg-slate-950 px-3 text-xs font-black text-white"
+                        className="inline-flex min-h-10 items-center justify-center rounded-xl bg-white px-3 text-xs font-black text-slate-950"
                         href={selectedPlaceUrl}
                         rel="noreferrer"
                         target="_blank"
@@ -230,7 +245,7 @@ export function ConnectedTripMap({
                       </a>
                     ) : null}
                     <Link
-                      className="inline-flex min-h-10 items-center justify-center rounded-xl bg-white px-3 text-xs font-black text-slate-800 ring-1 ring-slate-200"
+                      className="inline-flex min-h-10 items-center justify-center rounded-xl bg-white/10 px-3 text-xs font-black text-white ring-1 ring-white/12"
                       href={`/dashboard/trips/${encodeURIComponent(tripId)}/timeline#${selectedItem.id}`}
                     >
                       Itinerary
@@ -269,6 +284,13 @@ export function ConnectedTripMap({
                       type="button"
                     >
                       <span className="flex items-center gap-3">
+                        <PlacePhoto
+                          alt={item.imageAlt || `Photo of ${item.title}`}
+                          attribution={item.imageAttribution}
+                          className="h-11 w-11 shrink-0 rounded-xl"
+                          fallbackLabel={item.category || "Place"}
+                          src={item.imageUrl}
+                        />
                         <span className="grid h-8 min-w-8 shrink-0 place-items-center rounded-full bg-blue-600 px-2 text-xs font-black text-white">
                           {routeNumber}
                         </span>

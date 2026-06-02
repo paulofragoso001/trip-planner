@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { ArrowLeft, MoreHorizontal, Route, Share2 } from "lucide-react";
+import { ArrowLeft, CalendarDays, Lightbulb, Map, MoreHorizontal, Route, Share2 } from "lucide-react";
+import type { ReactNode } from "react";
 import type { TripWorkspaceData } from "@/app/dashboard/trips/[tripId]/loader";
 
 type TripPassHeroProps = {
@@ -13,16 +14,17 @@ export function TripPassHero({ trip, tripId }: TripPassHeroProps) {
 
   return (
     <section
-      className="relative isolate overflow-hidden rounded-[1.5rem] bg-slate-950 text-white shadow-xl"
+      className="relative isolate overflow-hidden rounded-[2rem] bg-slate-950 text-white shadow-2xl ring-1 ring-black/10"
       data-testid="trip-pass-hero"
     >
       <div className={heroBackgroundForDestination(trip.destination)} aria-hidden="true" />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_0%,rgba(255,255,255,0.2),transparent_32%),radial-gradient(circle_at_88%_20%,rgba(255,255,255,0.12),transparent_26%),linear-gradient(120deg,rgba(2,6,23,0.36),rgba(2,6,23,0.86))]" aria-hidden="true" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_0%,rgba(255,255,255,0.22),transparent_32%),radial-gradient(circle_at_88%_20%,rgba(255,255,255,0.14),transparent_26%),linear-gradient(120deg,rgba(2,6,23,0.22),rgba(2,6,23,0.88))]" aria-hidden="true" />
+      <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black/45 to-transparent" aria-hidden="true" />
       <div className="absolute -left-5 top-1/2 hidden h-10 w-10 -translate-y-1/2 rounded-full bg-[#f4f7fb] lg:block" aria-hidden="true" />
       <div className="absolute -right-5 top-1/2 hidden h-10 w-10 -translate-y-1/2 rounded-full bg-[#f4f7fb] lg:block" aria-hidden="true" />
 
-      <div className="relative grid gap-6 p-4 sm:p-5 lg:grid-cols-[minmax(0,1fr)_300px] lg:p-6">
-        <div className="grid min-w-0 content-between gap-7">
+      <div className="relative grid gap-5 p-4 sm:p-5 lg:grid-cols-[minmax(0,1fr)_300px] lg:p-6">
+        <div className="grid min-w-0 content-between gap-6">
           <div className="flex items-center justify-between gap-3 text-sm font-black">
             <Link
               aria-label="Back to trips"
@@ -51,11 +53,11 @@ export function TripPassHero({ trip, tripId }: TripPassHeroProps) {
             </div>
           </div>
 
-          <div className="min-w-0">
+          <div className="min-w-0 py-1">
             <p className="text-xs font-black uppercase tracking-[0.24em] text-white/66">
               Trip pass
             </p>
-            <h2 className="mt-3 max-w-3xl break-words text-3xl font-black uppercase leading-[0.98] tracking-tight sm:text-5xl">
+            <h2 className="mt-3 max-w-3xl break-words text-3xl font-black uppercase leading-[0.96] tracking-tight sm:text-5xl">
               {trip.name}
             </h2>
             <p className="mt-3 text-base font-bold text-white/86">{trip.destination}</p>
@@ -80,6 +82,13 @@ export function TripPassHero({ trip, tripId }: TripPassHeroProps) {
             >
               <Route className="h-4 w-4" aria-hidden="true" />
               {routeReady ? "Route ready" : `${trip.needsLocationStops} need location`}
+            </div>
+
+            <div className="mt-5 flex gap-3 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible">
+              <HeroQuickAction href={`/dashboard/trips/${encodeURIComponent(tripId)}/timeline`} icon={<CalendarDays className="h-5 w-5" />} label="Plan" />
+              <HeroQuickAction href={`/dashboard/trips/${encodeURIComponent(tripId)}/map`} icon={<Map className="h-5 w-5" />} label="Map" />
+              <HeroQuickAction href={`/dashboard/trips/${encodeURIComponent(tripId)}/map#smart-suggestions`} icon={<Lightbulb className="h-5 w-5" />} label="Ideas" />
+              <HeroQuickAction href={`/dashboard/trips/${encodeURIComponent(tripId)}/sharing`} icon={<Share2 className="h-5 w-5" />} label="Share" />
             </div>
           </div>
 
@@ -109,9 +118,28 @@ export function TripPassHero({ trip, tripId }: TripPassHeroProps) {
   );
 }
 
+function HeroQuickAction({
+  href,
+  icon,
+  label
+}: {
+  href: string;
+  icon: ReactNode;
+  label: string;
+}) {
+  return (
+    <Link className="grid min-w-[4.4rem] justify-items-center gap-2 text-center text-[0.72rem] font-bold text-white/76" href={href}>
+      <span className="grid h-12 w-12 place-items-center rounded-full bg-white/14 text-white shadow-lg ring-1 ring-white/12 backdrop-blur transition hover:bg-white/22">
+        {icon}
+      </span>
+      {label}
+    </Link>
+  );
+}
+
 function PassMetric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="min-w-[6.5rem] rounded-2xl bg-white/12 px-3 py-3 ring-1 ring-white/10 backdrop-blur">
+    <div className="min-w-[6.2rem] rounded-2xl bg-white/12 px-3 py-3 ring-1 ring-white/10 backdrop-blur">
       <p className="text-lg font-black leading-none">{value}</p>
       <p className="mt-1 text-[0.65rem] font-black uppercase tracking-[0.14em] text-white/58">{label}</p>
     </div>

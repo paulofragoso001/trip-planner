@@ -161,7 +161,7 @@ function ItineraryRow({
         ) : item.kind === "dinner" ? (
           <RestaurantReservationCard item={item} status={status} tripId={tripId} />
         ) : (
-        <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm transition hover:border-slate-300 hover:shadow-md sm:p-4">
+        <div className="rounded-[1.35rem] border border-slate-200 bg-white p-3 shadow-sm ring-1 ring-white transition hover:border-slate-300 hover:shadow-md sm:p-4">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">
@@ -171,7 +171,7 @@ function ItineraryRow({
             <span className={status.className}>{status.label}</span>
           </div>
 
-          <div className="mt-3 grid gap-3 sm:grid-cols-[minmax(0,1fr)_128px] sm:items-start">
+          <div className="mt-3 grid gap-3 sm:grid-cols-[minmax(0,1fr)_112px] sm:items-start">
             <div className="min-w-0">
               <h4 className="break-words text-lg font-black leading-tight text-slate-950 sm:text-xl">
                 {item.title}
@@ -193,7 +193,7 @@ function ItineraryRow({
               <PlacePhoto
                 alt={item.imageAlt || `Photo of ${item.title}`}
                 attribution={item.imageAttribution}
-                className="h-36 w-full rounded-2xl sm:h-28 sm:w-32"
+                className="h-24 w-full rounded-2xl sm:h-24 sm:w-28"
                 fallbackLabel={item.typeLabel || "Place"}
                 src={item.imageUrl}
               />
@@ -220,7 +220,7 @@ function RestaurantReservationCard({
   tripId: string;
 }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm transition hover:border-slate-300 hover:shadow-md sm:p-4">
+    <div className="rounded-[1.35rem] border border-slate-200 bg-white p-3 shadow-sm ring-1 ring-white transition hover:border-slate-300 hover:shadow-md sm:p-4">
       <div className="flex items-start justify-between gap-3">
         <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">
           Restaurant
@@ -251,7 +251,7 @@ function RestaurantReservationCard({
         <PlacePhoto
           alt={item.imageAlt || `Photo of ${item.title}`}
           attribution={item.imageAttribution}
-          className="mt-4 h-40 w-full rounded-2xl"
+          className="mt-4 h-32 w-full rounded-2xl sm:h-36"
           fallbackLabel="Restaurant"
           src={item.imageUrl}
         />
@@ -274,7 +274,7 @@ function HotelPassCard({
   const hotelStatus = getHotelStatus(item, status);
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:border-slate-300 hover:shadow-md">
+    <div className="overflow-hidden rounded-[1.35rem] border border-slate-200 bg-white shadow-sm ring-1 ring-white transition hover:border-slate-300 hover:shadow-md">
       <div className="p-3 sm:p-4">
         <div className="flex items-start justify-between gap-3">
           <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">
@@ -350,7 +350,7 @@ function FlightBoardingPassCard({
   const flightStatus = getFlightStatus(item, status);
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:border-slate-300 hover:shadow-md">
+    <div className="overflow-hidden rounded-[1.35rem] border border-slate-200 bg-white shadow-sm ring-1 ring-white transition hover:border-slate-300 hover:shadow-md">
       <div className="p-3 sm:p-4">
         <div className="flex items-start justify-between gap-3">
           <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">
@@ -446,7 +446,7 @@ function getFlightStatus(
 function StateCopy({ item }: { item: TimelineItemView }) {
   if (item.locationStatus === "needs_activity_provider") {
     return (
-      <p className="mt-3 rounded-xl bg-blue-50 px-3 py-2 text-sm font-semibold text-blue-800">
+      <p className="mt-3 rounded-xl bg-blue-50 px-3 py-2 text-xs font-bold text-blue-800 sm:text-sm">
         Add a meeting point or provider before this appears on the map.
       </p>
     );
@@ -454,7 +454,7 @@ function StateCopy({ item }: { item: TimelineItemView }) {
 
   if (item.locationStatus !== "resolved") {
     return (
-      <p className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-800">
+      <p className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-xs font-bold text-amber-800 sm:text-sm">
         Add or retry a location before this appears on the map.
       </p>
     );

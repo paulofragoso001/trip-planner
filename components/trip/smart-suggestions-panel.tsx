@@ -56,7 +56,7 @@ export function SmartSuggestionsPanel({
 
   return (
     <section
-      className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5"
+      className="rounded-[1.75rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5"
       id="smart-suggestions"
     >
       <div className="grid gap-3 sm:flex sm:items-start sm:justify-between">
@@ -92,25 +92,25 @@ export function SmartSuggestionsPanel({
               {group.label}
             </p>
             {group.items.map((item) => (
-              <article className="overflow-hidden rounded-2xl bg-slate-50" key={item.id}>
+              <article className="overflow-hidden rounded-[1.35rem] bg-slate-50 shadow-sm ring-1 ring-slate-100" key={item.id}>
                 <PlacePhoto
                   alt={item.imageAlt || `Photo of ${item.title}`}
                   attribution={item.imageAttribution}
-                  className="h-36 w-full rounded-none"
+                  className="h-44 w-full rounded-none sm:h-52"
                   fallbackLabel={item.category || item.type}
                   src={item.imageUrl}
                 />
                 <div className="p-3 sm:p-4">
                 <div className="grid gap-2 sm:flex sm:items-start sm:justify-between sm:gap-3">
                   <div>
-                    <p className="text-sm font-black text-slate-950">{item.title}</p>
+                    <p className="text-base font-black leading-tight text-slate-950">{item.title}</p>
                     <p className="mt-1 text-xs font-bold uppercase tracking-[0.14em] text-slate-500">
-                      {item.provider.replace("_", " ")} · {item.type}
+                      {item.type}
                     </p>
                   </div>
                   {item.ratingLabel ? (
-                    <span className="w-fit rounded-full bg-white px-2 py-1 text-xs font-black text-slate-700">
-                      {item.ratingLabel}
+                    <span className="w-fit rounded-full bg-white px-2.5 py-1 text-xs font-black text-slate-700 ring-1 ring-slate-200">
+                      {item.ratingLabel} ★
                     </span>
                   ) : null}
                 </div>
@@ -118,14 +118,17 @@ export function SmartSuggestionsPanel({
                   <p className="mt-2 text-sm leading-6 text-slate-600">{item.reason}</p>
                 ) : null}
                 <div className="mt-3 flex flex-wrap gap-2">
+                  <span className="inline-flex min-h-9 items-center rounded-full bg-white px-3 text-xs font-black text-slate-700 ring-1 ring-slate-200">
+                    {item.provider.replace("_", " ")}
+                  </span>
                   {item.priceLabel ? (
-                    <span className="inline-flex min-h-9 items-center rounded-full bg-white px-3 text-xs font-black text-slate-700">
+                    <span className="inline-flex min-h-9 items-center rounded-full bg-white px-3 text-xs font-black text-slate-700 ring-1 ring-slate-200">
                       From {item.priceLabel}
                     </span>
                   ) : null}
                   {item.bookingUrl ? (
                     <a
-                      className="inline-flex min-h-11 items-center gap-1 rounded-full bg-white px-4 text-xs font-black text-blue-700"
+                    className="inline-flex min-h-11 items-center gap-1 rounded-full bg-white px-4 text-xs font-black text-blue-700 ring-1 ring-blue-100"
                       href={item.bookingUrl}
                       rel="noreferrer"
                       target="_blank"
@@ -137,7 +140,7 @@ export function SmartSuggestionsPanel({
                 </div>
                 <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_auto]">
                   <button
-                    className="inline-flex min-h-11 items-center justify-center rounded-xl bg-blue-600 px-3 text-sm font-black text-white disabled:opacity-60"
+                    className="inline-flex min-h-11 items-center justify-center rounded-full bg-blue-600 px-4 text-sm font-black text-white disabled:opacity-60"
                     disabled={Boolean(pendingAction)}
                     onClick={() => run(`/api/trip-recommendations/${item.id}/save`, "Saving suggestion")}
                     type="button"
@@ -145,7 +148,7 @@ export function SmartSuggestionsPanel({
                     Save to Trip
                   </button>
                   <button
-                    className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-white px-3 text-sm font-black text-slate-700 disabled:opacity-60"
+                    className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-white px-4 text-sm font-black text-slate-700 ring-1 ring-slate-200 disabled:opacity-60"
                     disabled={Boolean(pendingAction)}
                     onClick={() => run(`/api/trip-recommendations/${item.id}/dismiss`, "Dismissing suggestion")}
                     type="button"
