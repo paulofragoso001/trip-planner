@@ -215,7 +215,7 @@ test.describe("mobile soft-launch UX", () => {
       await expect(page.getByTestId("map-show-all-places")).toBeEnabled();
       await page.getByTestId("map-show-all-places").click();
       await expect(page.getByText("Showing all 8 places")).toBeVisible({ timeout: 15_000 });
-      await expect(page.getByRole("button", { name: /Route place 6/ })).toBeVisible();
+      await expect(page.getByTestId("map-route-list").getByRole("button", { name: /Route place 6/ })).toBeVisible();
     } finally {
       await request.delete(`${baseUrl}/api/trips/${tripId}`, {
         headers: { "x-cypress-dashboard": "true" }
