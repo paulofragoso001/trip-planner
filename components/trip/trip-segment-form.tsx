@@ -22,6 +22,7 @@ type TripSegmentFormProps = {
   defaultStartTime?: string | null;
   defaultTitle?: string;
   includeCoordinates?: boolean;
+  onSaved?: () => void;
   segmentId?: string;
   tripId: string;
 };
@@ -39,6 +40,7 @@ export function TripSegmentForm({
   defaultStartTime = null,
   defaultTitle = "",
   includeCoordinates = false,
+  onSaved,
   segmentId,
   tripId
 }: TripSegmentFormProps) {
@@ -142,6 +144,7 @@ export function TripSegmentForm({
         setTitle("");
       }
       router.refresh();
+      onSaved?.();
     }
   }
 

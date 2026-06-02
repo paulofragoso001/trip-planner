@@ -155,6 +155,7 @@ test.describe("mobile soft-launch UX", () => {
       const card = content.locator("article").filter({
         has: page.getByRole("heading", { name: "South Pointe Park" })
       });
+      await expect(card.getByRole("button", { name: /Edit South Pointe Park/ })).toBeEnabled();
       await card.getByRole("button", { name: /Edit South Pointe Park/ }).click();
       await expect(card.getByLabel("Stop location")).toBeVisible();
       await expect(card.getByLabel("Date", { exact: true })).toBeVisible();

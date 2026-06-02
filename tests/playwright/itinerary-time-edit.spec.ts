@@ -120,6 +120,17 @@ test("itinerary edit saves wall-clock times and keeps untimed places out of midn
     expect(headingOrder.indexOf("Lunch stop")).toBeLessThan(
       headingOrder.indexOf("Komodo time edit")
     );
+
+    const morningCard = content.locator("article").filter({
+      has: page.getByRole("heading", { name: "Morning museum" })
+    });
+    await expect(morningCard.getByRole("button", { name: /Edit Morning museum/ })).toBeEnabled();
+    await morningCard.getByRole("button", { name: /Edit Morning museum/ }).click();
+    await expect(morningCard.getByLabel("Start time")).toBeVisible();
+    await morningCard.getByLabel("Start time").fill("15:45");
+    await morningCard.getByRole("button", { name: "Save edits" }).click();
+    await expect(morningCard.getByText("3:45 PM").first()).toBeVisible({ timeout: 20_000 });
+    await expect(morningCard.getByLabel("Start time")).toHaveCount(0);
   } finally {
     await Promise.all(
       createdTripIds.map((id) =>
