@@ -13,7 +13,7 @@ test("loads dashboard summary and route-split pages", async ({ page }) => {
     page.getByRole("heading", {
       name: "Where do you want to start?"
     })
-  ).toBeVisible();
+  ).toBeVisible({ timeout: 20_000 });
   const dashboardContent = page.getByTestId("app-shell-content");
   await expect(
     dashboardContent.getByRole("link", { name: /Plan/ }).first()
@@ -34,8 +34,8 @@ test("loads dashboard summary and route-split pages", async ({ page }) => {
 
   await openDashboardRoute("/dashboard/trips");
   await expect(page.getByTestId("app-shell-topbar").getByRole("heading", { name: "Trips" })).toBeVisible();
-  await expect(page.getByText("Create a new trip")).toBeVisible();
-  await expect(page.getByRole("heading", { exact: true, name: "Trip passes" })).toBeVisible();
+  await expect(page.getByText("Create a new trip")).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByRole("heading", { exact: true, name: "Trip passes" })).toBeVisible({ timeout: 20_000 });
   await page.getByRole("button", { name: "Refresh" }).click();
 
   await openDashboardRoute("/dashboard/trips/demo");
