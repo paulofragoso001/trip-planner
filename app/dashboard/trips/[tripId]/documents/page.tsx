@@ -10,7 +10,7 @@ const sampleTypes = [
   { icon: <LinkIcon className="h-5 w-5" aria-hidden="true" />, label: "Links" },
   { icon: <FileText className="h-5 w-5" aria-hidden="true" />, label: "Notes" },
   { icon: <FileImage className="h-5 w-5" aria-hidden="true" />, label: "Screenshots" },
-  { icon: <Mail className="h-5 w-5" aria-hidden="true" />, label: "Emails later" }
+  { icon: <Mail className="h-5 w-5" aria-hidden="true" />, label: "Email import coming soon" }
 ];
 
 export default async function DocumentsPage({ params }: PageProps) {
@@ -26,7 +26,7 @@ export default async function DocumentsPage({ params }: PageProps) {
             </p>
             <h2 className="mt-1 text-2xl font-black text-slate-950">Documents</h2>
             <p className="mt-1 max-w-2xl text-sm font-semibold text-slate-600">
-              Keep confirmations, screenshots, notes, and links for this trip in one place.
+              Keep reservations, confirmations, screenshots, notes, files, and useful links for this trip in one place.
             </p>
           </div>
           <button
@@ -74,7 +74,7 @@ export default async function DocumentsPage({ params }: PageProps) {
           </div>
           <h3 className="mt-4 text-xl font-black text-slate-950">No documents yet</h3>
           <p className="mx-auto mt-2 max-w-md text-sm font-semibold leading-6 text-slate-600">
-            Add confirmations, screenshots, reservation notes, tickets, and useful links when document storage is ready.
+            Add reservations, notes, links, and screenshots to keep your trip details organized. Uploads and email import are coming soon.
           </p>
         </div>
       </section>

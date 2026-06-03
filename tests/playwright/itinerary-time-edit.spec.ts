@@ -7,7 +7,7 @@ test("itinerary edit saves wall-clock times and keeps untimed places out of midn
   page,
   request
 }) => {
-  test.setTimeout(90_000);
+  test.setTimeout(180_000);
   const runId = Date.now();
   const createdTripIds: string[] = [];
 
@@ -128,9 +128,41 @@ test("itinerary edit saves wall-clock times and keeps untimed places out of midn
     await morningCard.getByRole("button", { name: /Edit Morning museum/ }).click();
     await expect(morningCard.getByLabel("Start time")).toBeVisible();
     await morningCard.getByLabel("Start time").fill("15:45");
-    await morningCard.getByRole("button", { name: "Save edits" }).click();
+    await morningCard.getByRole("button", { name: "Save changes" }).click();
     await expect(morningCard.getByText("3:45 PM").first()).toBeVisible({ timeout: 20_000 });
     await expect(morningCard.getByLabel("Start time")).toHaveCount(0);
+
+    const noDateTripResponse = await request.post(`${baseUrl}/api/trips`, {
+      data: {
+        destination: "Miami, FL",
+        name: `No date itinerary ${runId}`,
+        status: "Planning",
+        travel_style: "balanced"
+      },
+      headers: dashboardHeaders
+    });
+    expect(noDateTripResponse.status()).toBe(201);
+    const noDateTripPayload = await noDateTripResponse.json();
+    const noDateTripId = noDateTripPayload?.trip?.id;
+    expect(typeof noDateTripId).toBe("string");
+    createdTripIds.push(noDateTripId);
+
+    const noDateSegmentResponse = await request.post(`${baseUrl}/api/trip-segments`, {
+      data: {
+        kind: "activity",
+        location: "Miami, FL",
+        title: "Unscheduled idea",
+        tripId: noDateTripId
+      },
+      headers: dashboardHeaders
+    });
+    expect(noDateSegmentResponse.status()).toBe(201);
+
+    await page.goto(`${baseUrl}/dashboard/trips/${noDateTripId}/timeline`, {
+      waitUntil: "commit"
+    });
+    await expect(page.getByRole("heading", { name: "Unscheduled idea" })).toBeVisible();
+    await expect(page.getByTestId("itinerary-date-strip")).toHaveCount(0);
   } finally {
     await Promise.all(
       createdTripIds.map((id) =>

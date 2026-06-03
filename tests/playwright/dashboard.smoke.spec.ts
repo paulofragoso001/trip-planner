@@ -18,6 +18,8 @@ test("loads dashboard summary and route-split pages", async ({ page }) => {
   await expect(page.getByText(/real-time flight alerts/i)).toHaveCount(0);
   await expect(page.getByText(/700 providers/i)).toHaveCount(0);
   await expect(page.getByText(/calendar sync/i)).toHaveCount(0);
+  await expect(page.getByText(/forward reservation emails/i)).toHaveCount(0);
+  await expect(page.getByText(/instantly turn your reservation emails/i)).toHaveCount(0);
 
   await openDashboardRoute("/dashboard");
   await expect(page.getByTestId("app-shell-root")).toBeVisible();
@@ -84,6 +86,11 @@ test("loads dashboard summary and route-split pages", async ({ page }) => {
     page.getByTestId("app-shell-content").getByText("Itinerary", { exact: true }).first()
   ).toBeVisible();
   await expect(page.getByText("Add to itinerary")).toBeVisible();
+  await expect(page.getByTestId("itinerary-date-strip")).toBeVisible();
+  await expect(page.getByTestId("itinerary-date-strip").getByRole("link", { name: "Jump to THURSDAY, JUNE 11, 2026" })).toBeVisible();
+  await page.getByTestId("itinerary-date-strip").getByRole("link", { name: "Jump to THURSDAY, JUNE 11, 2026" }).click();
+  expect(await page.evaluate(() => window.location.hash)).toBe("#day-2026-06-11");
+  expect(await page.getByTestId("itinerary-category-icon").count()).toBeGreaterThan(0);
   await expect(page.getByText("THURSDAY, JUNE 11, 2026")).toBeVisible();
   const timelineTabs = page.getByRole("navigation", { name: "Trip tabs" });
   await expect(timelineTabs.getByRole("link", { exact: true, name: "Itinerary" })).toBeVisible();
@@ -119,6 +126,8 @@ test("loads dashboard summary and route-split pages", async ({ page }) => {
   await openDashboardRoute("/dashboard/trips/demo/documents");
   await expect(page.getByRole("heading", { exact: true, name: "Documents" })).toBeVisible();
   await expect(page.getByText("No documents yet")).toBeVisible();
+  await expect(page.getByText("Keep reservations, confirmations, screenshots, notes, files, and useful links for this trip in one place.")).toBeVisible();
+  await expect(page.getByText("Email import coming soon")).toBeVisible();
 
   await openDashboardRoute("/dashboard/trips/demo/sharing");
   await expect(

@@ -4,10 +4,13 @@ import {
   ArrowRight,
   Bed,
   Car,
+  CloudSun,
   Flag,
+  FileText,
   Landmark,
   Plane,
   Plus,
+  StickyNote,
   Train,
   Utensils
 } from "lucide-react";
@@ -48,6 +51,8 @@ export default function TripTimelinePage({
 
         {days.length ? (
           <div className="grid gap-5">
+            <ItineraryDateStrip days={days} />
+
             {days.map((day) => (
               <section className="scroll-mt-24" id={day.id} key={day.id}>
                 <div className="sticky top-14 z-10 -mx-3 border-y border-slate-200 bg-slate-100/95 px-3 py-2.5 backdrop-blur sm:static sm:mx-0 sm:rounded-2xl sm:border sm:bg-white/78 sm:px-4 sm:shadow-sm sm:ring-1 sm:ring-white/70">
@@ -92,11 +97,11 @@ export default function TripTimelinePage({
                     className="inline-flex min-h-11 items-center justify-center rounded-2xl bg-white px-4 text-sm font-black text-slate-800 ring-1 ring-slate-200"
                     href="#new-plan"
                   >
-                    Add place
+                    Add trip detail
                   </Link>
                 </div>
               }
-              description="Add inspiration or create a place to start building your trip."
+              description="Keep reservations, notes, screenshots, and travel details together."
               title="No itinerary yet."
             />
           </div>
@@ -117,6 +122,53 @@ export default function TripTimelinePage({
         <Plus className="h-6 w-6" aria-hidden="true" />
       </Link>
     </div>
+  );
+}
+
+function ItineraryDateStrip({ days }: { days: TripTimelineData["days"] }) {
+  const datedDays = days.filter((day) => day.dateIso);
+
+  if (!datedDays.length) {
+    return null;
+  }
+
+  return (
+    <nav
+      aria-label="Itinerary dates"
+      className="overflow-x-auto pb-1"
+      data-testid="itinerary-date-strip"
+    >
+      <div className="flex min-w-0 gap-2">
+        {datedDays.map((day, index) => (
+          <Link
+            aria-label={`Jump to ${day.date}`}
+            className={[
+              "inline-flex min-h-14 shrink-0 items-center gap-3 rounded-2xl px-3 text-left ring-1 transition focus:outline-none focus:ring-4 focus:ring-blue-100",
+              index === 0
+                ? "bg-slate-950 text-white ring-slate-950"
+                : "bg-white text-slate-700 ring-slate-200 hover:bg-slate-50"
+            ].join(" ")}
+            href={`#${day.id}`}
+            key={day.id}
+          >
+            <span className="grid gap-0.5">
+              <span className={index === 0 ? "text-xs font-black uppercase tracking-[0.16em] text-white/62" : "text-xs font-black uppercase tracking-[0.16em] text-slate-400"}>
+                {day.label}
+              </span>
+              <span className="text-lg font-black leading-none">{day.dayNumber}</span>
+            </span>
+            <span className="flex max-w-16 flex-wrap gap-1" aria-hidden="true">
+              {categoryDotsForDay(day.items).map((className, dotIndex) => (
+                <span className={`h-1.5 w-1.5 rounded-full ${className}`} key={`${day.id}-${dotIndex}`} />
+              ))}
+            </span>
+            <span className={index === 0 ? "rounded-full bg-white/12 px-2 py-1 text-[0.65rem] font-black text-white/78" : "rounded-full bg-slate-100 px-2 py-1 text-[0.65rem] font-black text-slate-600"}>
+              {day.items.length}
+            </span>
+          </Link>
+        ))}
+      </div>
+    </nav>
   );
 }
 
@@ -148,7 +200,11 @@ function ItineraryRow({
 
       <div className="relative flex justify-center">
         {!isLast ? <span className={`absolute bottom-0 top-0 w-0.5 ${display.lineClass}`} /> : null}
-        <span className={`relative mt-5 grid h-9 w-9 place-items-center rounded-full border-4 border-white shadow-sm ${display.iconClass}`}>
+        <span
+          aria-label={`${display.label} icon`}
+          className={`relative mt-5 grid h-9 w-9 place-items-center rounded-full border-4 border-white shadow-sm ${display.iconClass}`}
+          data-testid="itinerary-category-icon"
+        >
           {display.icon}
         </span>
       </div>
@@ -179,6 +235,7 @@ function ItineraryRow({
               <p className="mt-2 break-words text-sm leading-6 text-slate-600">
                 {item.location}
               </p>
+              <ItemSource item={item} />
               {item.confirmationCode || item.durationLabel ? (
                 <div className="mt-2 flex flex-wrap gap-2 text-xs font-semibold text-slate-500">
                   {item.confirmationCode ? (
@@ -207,6 +264,17 @@ function ItineraryRow({
         )}
       </div>
     </article>
+  );
+}
+
+function ItemSource({ item }: { item: TimelineItemView }) {
+  const source = item.provider || item.meta;
+  if (!source) return null;
+
+  return (
+    <p className="mt-1 truncate text-xs font-black uppercase tracking-[0.12em] text-slate-400">
+      {source}
+    </p>
   );
 }
 
@@ -658,11 +726,44 @@ function getSegmentDisplay(item: TimelineItemView) {
   if (category.includes("flight")) return display("Flight", <Plane className="h-4 w-4" />, "bg-emerald-600 text-white", "bg-emerald-200");
   if (category.includes("hotel")) return display("Hotel", <Bed className="h-4 w-4" />, "bg-violet-600 text-white", "bg-violet-200");
   if (category.includes("restaurant") || category.includes("dinner")) return display("Restaurant", <Utensils className="h-4 w-4" />, "bg-rose-600 text-white", "bg-rose-200");
+  if (category.includes("document") || category.includes("file")) return display("Document", <FileText className="h-4 w-4" />, "bg-indigo-600 text-white", "bg-indigo-200");
+  if (category.includes("note")) return display("Note", <StickyNote className="h-4 w-4" />, "bg-slate-600 text-white", "bg-slate-200");
+  if (category.includes("weather") || category.includes("timezone")) return display("Trip detail", <CloudSun className="h-4 w-4" />, "bg-sky-600 text-white", "bg-sky-200");
   if (category.includes("transport")) return display("Transportation", <Car className="h-4 w-4" />, "bg-emerald-600 text-white", "bg-emerald-200");
   if (category.includes("train")) return display("Transportation", <Train className="h-4 w-4" />, "bg-emerald-600 text-white", "bg-emerald-200");
   if (activityIdea) return display("Activity idea", <Flag className="h-4 w-4" />, "bg-slate-500 text-white", "bg-slate-200");
   if (needsLocation) return display("Needs location", <AlertTriangle className="h-4 w-4" />, "bg-amber-500 text-white", "bg-amber-200");
   return display("Place", <Landmark className="h-4 w-4" />, "bg-blue-600 text-white", "bg-blue-200");
+}
+
+function categoryDotsForDay(items: TimelineItemView[]) {
+  const classes: string[] = [];
+
+  for (const item of items) {
+    const label = getSegmentDisplay(item).label;
+    const dotClass =
+      label === "Flight" || label === "Transportation"
+        ? "bg-emerald-400"
+        : label === "Hotel"
+          ? "bg-violet-400"
+          : label === "Restaurant"
+            ? "bg-rose-400"
+            : label === "Activity idea" || label === "Note"
+              ? "bg-slate-400"
+              : label === "Needs location"
+                ? "bg-amber-400"
+                : "bg-blue-400";
+
+    if (!classes.includes(dotClass)) {
+      classes.push(dotClass);
+    }
+
+    if (classes.length >= 5) {
+      break;
+    }
+  }
+
+  return classes.length ? classes : ["bg-slate-300"];
 }
 
 function display(label: string, icon: ReactNode, iconClass: string, lineClass: string) {
