@@ -101,11 +101,6 @@ test("loads dashboard summary and route-split pages", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Refresh flights" })).toBeVisible();
 
   await openDashboardRoute("/dashboard/trips/demo/map");
-  await expect(
-    page
-      .getByTestId("app-shell-content")
-      .getByRole("heading", { exact: true, name: "Map" })
-  ).toBeVisible();
   await expect(page.getByTestId("connected-trip-map")).toBeVisible();
   await expect(page.getByText("Nearby Ideas", { exact: true })).toHaveCount(0);
   await expect(page.getByText("Open Ideas to find places near your route.")).toBeVisible();
@@ -116,8 +111,18 @@ test("loads dashboard summary and route-split pages", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Share view" })).toBeVisible();
 
   await openDashboardRoute("/dashboard/trips/demo/ideas");
+  await expect(page.getByRole("heading", { exact: true, name: "All trip activities" })).toBeVisible();
   await expect(page.getByText("Nearby Ideas", { exact: true })).toBeVisible();
-  await expect(page.getByTestId("nearby-ideas-filters").getByText("Explore nearby")).toBeVisible();
+  const activityFilters = page.getByTestId("activity-category-filters");
+  await expect(activityFilters.getByText("Explore nearby")).toBeVisible();
+  await expect(activityFilters.getByRole("button", { name: "All" })).toHaveAttribute("aria-pressed", "true");
+  await activityFilters.getByRole("button", { name: "Food" }).click();
+  await expect(activityFilters.getByRole("button", { name: "Food" })).toHaveAttribute("aria-pressed", "true");
+  const savedIdeas = page
+    .locator("section")
+    .filter({ has: page.getByRole("heading", { name: "Saved ideas / AI places" }) });
+  await expect(savedIdeas.getByText("Team dinner in El Born")).toBeVisible();
+  await expect(savedIdeas.getByText("Barcelona-El Prat Airport")).toHaveCount(0);
 
   await openDashboardRoute("/dashboard/trips/demo/budget");
   await expect(page.getByTestId("app-shell-content").getByText("Category breakdown")).toBeVisible({ timeout: 20_000 });

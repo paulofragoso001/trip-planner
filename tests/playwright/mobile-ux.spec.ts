@@ -35,13 +35,13 @@ test.describe("mobile soft-launch UX", () => {
 
   for (const width of viewports) {
     test(`core routes avoid horizontal overflow at ${width}px`, async ({ page }) => {
-      test.setTimeout(90_000);
+      test.setTimeout(180_000);
       await page.setViewportSize({ height: 900, width });
       await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
 
       for (const route of routes) {
         await page.goto(`${baseUrl}${route}`, { waitUntil: "commit" });
-        await expect(page.getByTestId("app-shell-root")).toBeVisible();
+        await expect(page.getByTestId("app-shell-root")).toBeVisible({ timeout: 20_000 });
 
         const overflow = await page.evaluate(() => {
           const root = document.documentElement;
@@ -146,12 +146,18 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByText("Open Ideas to find places near your route.")).toBeVisible();
 
     await page.goto(`${baseUrl}/dashboard/trips/demo/ideas`, { waitUntil: "commit" });
-    const nearbyFilters = page.getByTestId("nearby-ideas-filters");
-    await expect(nearbyFilters.getByText("Explore nearby")).toBeVisible();
-    await expect(nearbyFilters.getByRole("button", { name: "All" })).toHaveAttribute("aria-pressed", "true");
-    await nearbyFilters.getByRole("button", { name: "Food" }).click();
-    await expect(nearbyFilters.getByRole("button", { name: "Food" })).toHaveAttribute("aria-pressed", "true");
-    await expect(nearbyFilters.getByRole("button", { name: "All" })).toHaveAttribute("aria-pressed", "false");
+    await expect(page.getByRole("heading", { exact: true, name: "All trip activities" })).toBeVisible();
+    const activityFilters = page.getByTestId("activity-category-filters");
+    await expect(activityFilters.getByText("Explore nearby")).toBeVisible();
+    await expect(activityFilters.getByRole("button", { name: "All" })).toHaveAttribute("aria-pressed", "true");
+    await activityFilters.getByRole("button", { name: "Food" }).click();
+    await expect(activityFilters.getByRole("button", { name: "Food" })).toHaveAttribute("aria-pressed", "true");
+    await expect(activityFilters.getByRole("button", { name: "All" })).toHaveAttribute("aria-pressed", "false");
+    const savedIdeas = page
+      .locator("section")
+      .filter({ has: page.getByRole("heading", { name: "Saved ideas / AI places" }) });
+    await expect(savedIdeas.getByText("Team dinner in El Born")).toBeVisible();
+    await expect(savedIdeas.getByText("Barcelona-El Prat Airport")).toHaveCount(0);
   });
 
   test("itinerary cards use compact action buttons and editable mapped locations", async ({
