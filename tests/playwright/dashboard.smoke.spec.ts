@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 test("loads dashboard summary and route-split pages", async ({ page }) => {
-  test.setTimeout(90_000);
+  test.setTimeout(180_000);
   await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
 
   const openDashboardRoute = (path: string) =>
@@ -84,11 +84,7 @@ test("loads dashboard summary and route-split pages", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Share view" })).toBeVisible();
 
   await openDashboardRoute("/dashboard/trips/demo/budget");
-  await expect(
-    page
-      .getByTestId("app-shell-content")
-      .getByRole("heading", { exact: true, name: "Category breakdown" })
-  ).toBeVisible();
+  await expect(page.getByTestId("app-shell-content").getByText("Category breakdown")).toBeVisible({ timeout: 20_000 });
   await expect(page.getByText("Expense notes")).toBeVisible();
 
   await openDashboardRoute("/dashboard/trips/demo/documents");

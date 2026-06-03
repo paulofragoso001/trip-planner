@@ -162,21 +162,6 @@ export function ConnectedTripMap({
           >
             {selectedItem ? (
             <>
-              <div className="flex gap-2 overflow-x-auto pb-1" aria-label="Map categories">
-                {["All", "Food", "Places", "Activities", "Shopping", "Nightlife"].map((label, index) => (
-                  <span
-                    className={[
-                      "inline-flex min-h-9 shrink-0 items-center rounded-full px-3 text-xs font-black ring-1",
-                      index === 0
-                        ? "bg-slate-950 text-white ring-slate-950"
-                        : "bg-slate-50 text-slate-700 ring-slate-200"
-                    ].join(" ")}
-                    key={label}
-                  >
-                    {label}
-                  </span>
-                ))}
-              </div>
               {!hasDayFilter && items.length > visibleItems.length ? (
                 <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-blue-50 px-3 py-2 text-xs font-bold text-blue-900">
                   <span>Showing first {visibleItems.length} of {items.length} places</span>

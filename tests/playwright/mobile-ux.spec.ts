@@ -71,6 +71,7 @@ test.describe("mobile soft-launch UX", () => {
     await page.goto(`${baseUrl}/dashboard/imports`, { waitUntil: "commit" });
     await expect(page.getByTestId("app-shell-main")).toBeVisible();
     await expect(page.getByTestId("app-shell-mobile-bottom-nav")).toBeVisible();
+    await expect(page.getByTestId("imports-route")).toBeVisible({ timeout: 15_000 });
 
     const spacing = await page.evaluate(() => {
       const main = document.querySelector('[data-testid="app-shell-main"]');
@@ -118,6 +119,14 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByText("1 of 4")).toBeVisible({ timeout: 15_000 });
     await expect(page.getByRole("button", { name: /1 Barcelona-El Prat Airport/ })).toBeVisible();
     await expect(page.getByRole("button", { name: /4 Fira Barcelona meeting/ })).toBeVisible();
+    await expect(page.getByLabel("Map categories")).toHaveCount(0);
+
+    const nearbyFilters = page.getByTestId("nearby-ideas-filters");
+    await expect(nearbyFilters.getByText("Explore nearby")).toBeVisible();
+    await expect(nearbyFilters.getByRole("button", { name: "All" })).toHaveAttribute("aria-pressed", "true");
+    await nearbyFilters.getByRole("button", { name: "Food" }).click();
+    await expect(nearbyFilters.getByRole("button", { name: "Food" })).toHaveAttribute("aria-pressed", "true");
+    await expect(nearbyFilters.getByRole("button", { name: "All" })).toHaveAttribute("aria-pressed", "false");
   });
 
   test("itinerary cards use compact action buttons and editable mapped locations", async ({
@@ -218,6 +227,7 @@ test.describe("mobile soft-launch UX", () => {
       await expect(page.getByText("Showing first 5 of 8 places")).toBeVisible();
       await expect(page.getByRole("button", { name: /Route place 6/ })).toHaveCount(0);
       await expect(page.getByText("1 of 5")).toBeVisible();
+      await expect(page.getByTestId("map-show-all-places")).toHaveText("Show all places", { timeout: 20_000 });
       await expect(page.getByTestId("map-show-all-places")).toBeEnabled();
       await page.getByTestId("map-show-all-places").click();
       await expect(page.getByText("Showing all 8 places")).toBeVisible({ timeout: 15_000 });

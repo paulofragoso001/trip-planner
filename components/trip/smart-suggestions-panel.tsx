@@ -2,7 +2,7 @@
 
 import { ExternalLink, Loader2, Sparkles, X } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { TripRecommendationView } from "@/app/dashboard/trips/[tripId]/map/loader";
 import { PlacePhoto } from "@/components/place-photo";
 import { waylineCopy } from "@/lib/copy/wayline-copy";
@@ -13,14 +13,31 @@ type SmartSuggestionsPanelProps = {
   tripId: string;
 };
 
+type SuggestionFilterId = "all" | "food" | "places" | "activities" | "shopping" | "nightlife";
+
+const suggestionFilters: { id: SuggestionFilterId; label: string }[] = [
+  { id: "all", label: "All" },
+  { id: "food", label: "Food" },
+  { id: "places", label: "Places" },
+  { id: "activities", label: "Activities" },
+  { id: "shopping", label: "Shopping" },
+  { id: "nightlife", label: "Nightlife" }
+];
+
 export function SmartSuggestionsPanel({
   mappedStopCount,
   recommendations,
   tripId
 }: SmartSuggestionsPanelProps) {
   const router = useRouter();
+  const [hydrated, setHydrated] = useState(false);
   const [message, setMessage] = useState("");
   const [pendingAction, setPendingAction] = useState<string | null>(null);
+  const [activeFilter, setActiveFilter] = useState<SuggestionFilterId>("all");
+
+  useEffect(() => {
+    setHydrated(true);
+  }, []);
 
   async function run(endpoint: string, label: string) {
     setPendingAction(endpoint);
@@ -52,7 +69,13 @@ export function SmartSuggestionsPanel({
     }
   }
 
-  const groups = groupRecommendations(recommendations);
+  const filteredRecommendations =
+    activeFilter === "all"
+      ? recommendations
+      : recommendations.filter((item) => normalizeSuggestionCategory(item) === activeFilter);
+  const groups = groupRecommendations(filteredRecommendations);
+  const activeFilterLabel =
+    suggestionFilters.find((filter) => filter.id === activeFilter)?.label ?? "selected";
 
   return (
     <section
@@ -83,6 +106,34 @@ export function SmartSuggestionsPanel({
           )}
           Find ideas
         </button>
+      </div>
+
+      <div className="mt-4" data-testid="nearby-ideas-filters">
+        <p className="mb-2 text-xs font-black uppercase tracking-[0.16em] text-slate-500">
+          Explore nearby
+        </p>
+        <div className="flex gap-2 overflow-x-auto pb-1" aria-label="Nearby Ideas categories">
+          {suggestionFilters.map((filter) => {
+            const active = activeFilter === filter.id;
+            return (
+              <button
+                aria-pressed={active}
+                className={[
+                  "inline-flex min-h-11 shrink-0 items-center justify-center rounded-full px-4 text-xs font-black ring-1 transition disabled:cursor-not-allowed disabled:opacity-60",
+                  active
+                    ? "bg-slate-950 text-white ring-slate-950"
+                    : "bg-slate-50 text-slate-700 ring-slate-200 hover:bg-slate-100"
+                ].join(" ")}
+                disabled={!hydrated}
+                key={filter.id}
+                onClick={() => setActiveFilter(filter.id)}
+                type="button"
+              >
+                {filter.label}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       <div className="mt-4 grid gap-3">
@@ -173,6 +224,26 @@ export function SmartSuggestionsPanel({
             </p>
           </div>
         ) : null}
+
+        {recommendations.length > 0 && filteredRecommendations.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-600">
+            <p className="font-black text-slate-950">No {activeFilterLabel.toLowerCase()} ideas yet.</p>
+            <p className="mt-1 leading-6">Try another category or find new ideas near your route.</p>
+            <button
+              className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-slate-950 px-3 text-xs font-black text-white disabled:opacity-60 sm:w-auto"
+              disabled={Boolean(pendingAction) || mappedStopCount === 0}
+              onClick={() => run(`/api/trips/${tripId}/generate-suggestions`, "Generating suggestions")}
+              type="button"
+            >
+              {pendingAction?.includes("generate-suggestions") ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Sparkles className="h-4 w-4" />
+              )}
+              Find ideas
+            </button>
+          </div>
+        ) : null}
       </div>
 
       {message ? (
@@ -182,6 +253,20 @@ export function SmartSuggestionsPanel({
       ) : null}
     </section>
   );
+}
+
+function normalizeSuggestionCategory(item: TripRecommendationView): SuggestionFilterId {
+  const text = `${item.type || ""} ${item.category || ""} ${item.title || ""} ${item.reason || ""}`
+    .toLowerCase()
+    .replace(/[_-]+/g, " ");
+
+  if (/\b(nightlife|club|lounge|cocktail|evening|late night|bar)\b/.test(text)) return "nightlife";
+  if (/\b(shopping|shop|mall|store|market|boutique|retail)\b/.test(text)) return "shopping";
+  if (/\b(restaurant|food|meal|cafe|coffee|bakery|brunch|dinner|lunch|breakfast|sushi|tapas)\b/.test(text)) {
+    return "food";
+  }
+  if (/\b(activity|tour|experience|entertainment|excursion|boat|guided|class)\b/.test(text)) return "activities";
+  return "places";
 }
 
 function groupRecommendations(items: TripRecommendationView[]) {
