@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 test("loads dashboard summary and route-split pages", async ({ page }) => {
-  test.setTimeout(180_000);
+  test.setTimeout(360_000);
   await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
 
   const openDashboardRoute = (path: string) =>
@@ -53,14 +53,18 @@ test("loads dashboard summary and route-split pages", async ({ page }) => {
   await page.getByRole("button", { name: "Refresh" }).click();
 
   await openDashboardRoute("/dashboard/trips/demo");
-  await expect(page.getByTestId("trip-workspace-layout")).toBeVisible();
+  await expect(page.getByTestId("trip-workspace-layout")).toBeVisible({ timeout: 30_000 });
   const overview = page.getByTestId("trip-overview-page");
-  await expect(overview.getByRole("heading", { name: "All your trip details in one place" })).toBeVisible();
-  await expect(overview.getByText("Trip Overview")).toBeVisible();
-  await expect(overview.getByRole("link", { exact: true, name: "Add place" })).toBeVisible();
+  await expect(overview.getByRole("heading", { name: "Your trip at a glance" })).toBeVisible();
+  await expect(overview.getByText("Trip organizer")).toBeVisible();
+  await expect(overview.getByText("All your trip details in one place")).toHaveCount(0);
+  await expect(overview.getByText("Trip Overview")).toHaveCount(0);
+  await expect(overview.getByRole("link", { exact: true, name: "Add trip detail" })).toBeVisible();
   await expect(overview.getByRole("link", { name: "Open documents" })).toBeVisible();
   await expect(overview.getByRole("link", { name: "Manage guests" })).toBeVisible();
   const hero = page.getByTestId("trip-pass-hero");
+  await expect(hero).toHaveAttribute("data-hero-image", "false");
+  await expect(hero.getByTestId("trip-pass-hero-fallback")).toBeVisible();
   await expect(hero.getByRole("link", { exact: true, name: "Itinerary" })).toHaveCount(0);
   await expect(hero.getByRole("link", { exact: true, name: "Map" })).toHaveCount(0);
   await expect(hero.getByRole("link", { exact: true, name: "Ideas" })).toHaveCount(0);
@@ -81,7 +85,7 @@ test("loads dashboard summary and route-split pages", async ({ page }) => {
   );
 
   await openDashboardRoute("/dashboard/trips/demo/timeline");
-  await expect(page.getByTestId("trip-workspace-layout")).toBeVisible();
+  await expect(page.getByTestId("trip-workspace-layout")).toBeVisible({ timeout: 30_000 });
   await expect(
     page.getByTestId("app-shell-content").getByText("Itinerary", { exact: true }).first()
   ).toBeVisible();

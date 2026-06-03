@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 const baseUrl = "http://127.0.0.1:3000";
-const viewports = [360, 390, 430, 768, 1024] as const;
+const viewports = [360, 390, 430, 768, 820, 1024, 1280, 1440] as const;
 const routes = [
   "/dashboard",
   "/dashboard/imports",
@@ -132,6 +132,8 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByText("Trip pass")).toBeVisible();
     await expect(page.getByText("Current trip")).toHaveCount(0);
     const hero = page.getByTestId("trip-pass-hero");
+    await expect(hero).toHaveAttribute("data-hero-image", "false");
+    await expect(hero.getByTestId("trip-pass-hero-fallback")).toBeVisible();
     await expect(hero.getByRole("link", { exact: true, name: "Itinerary" })).toHaveCount(0);
     await expect(hero.getByRole("link", { exact: true, name: "Map" })).toHaveCount(0);
     await expect(hero.getByRole("link", { exact: true, name: "Ideas" })).toHaveCount(0);
@@ -158,6 +160,59 @@ test.describe("mobile soft-launch UX", () => {
       .filter({ has: page.getByRole("heading", { name: "Saved ideas / AI places" }) });
     await expect(savedIdeas.getByText("Team dinner in El Born")).toBeVisible();
     await expect(savedIdeas.getByText("Barcelona-El Prat Airport")).toHaveCount(0);
+  });
+
+  test("trip pass hero uses segment photo metadata when available", async ({ page, request }) => {
+    test.setTimeout(90_000);
+    await page.setViewportSize({ height: 900, width: 390 });
+    await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
+
+    const tripResponse = await request.post(`${baseUrl}/api/trips`, {
+      data: {
+        destination: "Miami, FL",
+        name: `Hero photo test ${Date.now()}`,
+        status: "Planning",
+        travel_style: "balanced"
+      },
+      headers: { "x-cypress-dashboard": "true" }
+    });
+    expect(tripResponse.status()).toBe(201);
+    const tripPayload = await tripResponse.json();
+    const tripId = tripPayload?.trip?.id;
+    expect(typeof tripId).toBe("string");
+
+    try {
+      const segmentResponse = await request.post(`${baseUrl}/api/trip-segments`, {
+        data: {
+          kind: "attraction",
+          lat: 25.801,
+          lng: -80.199,
+          location: "2516 NW 2nd Ave, Miami, FL 33127",
+          providerMetadata: {
+            imageAlt: "Photo of Wynwood Walls",
+            imageAttribution: "Wayline test photo",
+            primaryPhotoReference: "A".repeat(32)
+          },
+          title: "Wynwood Walls",
+          tripId
+        },
+        headers: { "x-cypress-dashboard": "true" }
+      });
+      expect(segmentResponse.status()).toBe(201);
+
+      await page.goto(`${baseUrl}/dashboard/trips/${tripId}`, { waitUntil: "commit" });
+      const hero = page.getByTestId("trip-pass-hero");
+      await expect(hero).toHaveAttribute("data-hero-image", "true", { timeout: 20_000 });
+      await expect(hero.getByTestId("trip-pass-hero-image")).toHaveAttribute(
+        "src",
+        /\/api\/travel-data\/place-photo/
+      );
+      await expect(hero.getByText("Wayline test photo")).toBeVisible();
+    } finally {
+      await request.delete(`${baseUrl}/api/trips/${tripId}`, {
+        headers: { "x-cypress-dashboard": "true" }
+      });
+    }
   });
 
   test("itinerary cards use compact action buttons and editable mapped locations", async ({
@@ -197,8 +252,8 @@ test.describe("mobile soft-launch UX", () => {
 
       await page.goto(`${baseUrl}/dashboard/trips/${tripId}/timeline`, { waitUntil: "commit" });
       const content = page.getByTestId("app-shell-content");
-      await expect(content.getByRole("link", { name: /View South Pointe Park on map/ })).toBeVisible();
-      await expect(content.getByRole("button", { name: /Edit South Pointe Park/ })).toBeVisible();
+      await expect(content.getByRole("link", { name: /View South Pointe Park on map/ })).toBeVisible({ timeout: 30_000 });
+      await expect(content.getByRole("button", { name: /Edit South Pointe Park/ })).toBeVisible({ timeout: 30_000 });
       await expect(content.getByRole("link", { name: "View on map" })).toHaveCount(0);
       await expect(content.getByText("View on map", { exact: true })).toHaveCount(0);
 

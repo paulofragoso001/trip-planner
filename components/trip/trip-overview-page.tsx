@@ -35,7 +35,6 @@ export default function TripOverviewPage({
 }: TripOverviewPageProps) {
   const base = `/dashboard/trips/${encodeURIComponent(tripId)}`;
   const routeReady = mappedCount > 0 && mappedCount === segmentCount;
-  const needsLocationCount = Math.max(segmentCount - mappedCount, 0);
 
   return (
     <div className="grid gap-5" data-testid="trip-overview-page">
@@ -45,17 +44,17 @@ export default function TripOverviewPage({
         </p>
       ) : null}
 
-      <section className="rounded-[2rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+      <section className="rounded-[2rem] border border-slate-200 bg-white/92 p-4 shadow-sm sm:p-5">
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
           <div className="min-w-0">
             <p className="text-xs font-black uppercase tracking-[0.18em] text-blue-600">
-              Trip Overview
+              Trip organizer
             </p>
-            <h2 className="mt-2 text-3xl font-black leading-tight tracking-tight text-slate-950 sm:text-4xl">
-              All your trip details in one place
+            <h2 className="mt-2 text-2xl font-black leading-tight tracking-tight text-slate-950 sm:text-3xl">
+              Your trip at a glance
             </h2>
             <p className="mt-2 max-w-2xl text-sm font-semibold leading-6 text-slate-600">
-              {title} brings your itinerary, route, expenses, documents, and shared trip details into one travel pass.
+              Next up, itinerary, route, expenses, documents, and guests for {title}.
             </p>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row">
@@ -64,7 +63,7 @@ export default function TripOverviewPage({
               href={`${base}/timeline#new-plan`}
             >
               <Plus className="mr-2 h-4 w-4" aria-hidden="true" />
-              Add place
+              Add trip detail
             </Link>
             <Link
               className="inline-flex min-h-11 items-center justify-center rounded-full border border-slate-200 bg-white px-5 text-sm font-black text-slate-950 transition hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-blue-100"
@@ -75,16 +74,9 @@ export default function TripOverviewPage({
             </Link>
           </div>
         </div>
-
-        <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
-          <SummaryTile label="Places" value={String(segmentCount)} />
-          <SummaryTile label="Mapped" value={String(mappedCount)} />
-          <SummaryTile label="Nearby Ideas" value={String(suggestionsCount)} />
-          <SummaryTile label={routeReady ? "Route ready" : "Needs location"} value={routeReady ? "Ready" : String(needsLocationCount)} />
-        </div>
       </section>
 
-      <section aria-label="Trip quick actions" className="grid grid-cols-4 gap-2 sm:grid-cols-7">
+      <section aria-label="Organizer actions" className="grid grid-cols-4 gap-2 rounded-[2rem] border border-slate-200 bg-white p-3 shadow-sm sm:grid-cols-7">
         <QuickAction href={`${base}/timeline#new-plan`} icon={<Plus className="h-5 w-5" />} label="Add Place" />
         <QuickAction disabled icon={<Plane className="h-5 w-5" />} label="Flights" />
         <QuickAction href={`${base}/timeline#new-plan`} icon={<BedDouble className="h-5 w-5" />} label="Lodging" />
@@ -246,17 +238,6 @@ export default function TripOverviewPage({
           </div>
         </aside>
       </section>
-    </div>
-  );
-}
-
-function SummaryTile({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-3xl bg-slate-50 px-4 py-3 ring-1 ring-slate-200">
-      <p className="text-2xl font-black text-slate-950">{value}</p>
-      <p className="mt-1 text-[0.68rem] font-black uppercase tracking-[0.14em] text-slate-500">
-        {label}
-      </p>
     </div>
   );
 }
