@@ -1,16 +1,10 @@
 import Link from "next/link";
 import {
   ArrowLeft,
-  CalendarDays,
-  CircleDollarSign,
-  FileText,
-  Lightbulb,
-  Map,
   MoreHorizontal,
   Route,
   Share2
 } from "lucide-react";
-import type { ReactNode } from "react";
 import type { TripWorkspaceData } from "@/app/dashboard/trips/[tripId]/loader";
 
 type TripPassHeroProps = {
@@ -80,6 +74,9 @@ export function TripPassHero({ trip, tripId }: TripPassHeroProps) {
               <PassMetric label="Places" value={String(trip.stopCount)} />
               <PassMetric label="Mapped" value={String(trip.mappedStops)} />
               <PassMetric label="Ideas" value={String(trip.suggestionsCount)} />
+              {trip.needsLocationStops > 0 ? (
+                <PassMetric label="Need location" value={String(trip.needsLocationStops)} />
+              ) : null}
             </div>
 
             <div
@@ -92,15 +89,6 @@ export function TripPassHero({ trip, tripId }: TripPassHeroProps) {
             >
               <Route className="h-4 w-4" aria-hidden="true" />
               {routeReady ? "Route ready" : `${trip.needsLocationStops} need location`}
-            </div>
-
-            <div className="mt-5 flex gap-3 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible">
-              <HeroQuickAction href={`/dashboard/trips/${encodeURIComponent(tripId)}/timeline`} icon={<CalendarDays className="h-5 w-5" />} label="Itinerary" />
-              <HeroQuickAction href={`/dashboard/trips/${encodeURIComponent(tripId)}/map`} icon={<Map className="h-5 w-5" />} label="Map" />
-              <HeroQuickAction href={`/dashboard/trips/${encodeURIComponent(tripId)}/map#smart-suggestions`} icon={<Lightbulb className="h-5 w-5" />} label="Ideas" />
-              <HeroQuickAction href={`/dashboard/trips/${encodeURIComponent(tripId)}/budget`} icon={<CircleDollarSign className="h-5 w-5" />} label="Expenses" />
-              <HeroQuickAction href={`/dashboard/trips/${encodeURIComponent(tripId)}/documents`} icon={<FileText className="h-5 w-5" />} label="Docs" />
-              <HeroQuickAction href={`/dashboard/trips/${encodeURIComponent(tripId)}/sharing`} icon={<Share2 className="h-5 w-5" />} label="Share" />
             </div>
           </div>
 
@@ -127,25 +115,6 @@ export function TripPassHero({ trip, tripId }: TripPassHeroProps) {
         </div>
       </div>
     </section>
-  );
-}
-
-function HeroQuickAction({
-  href,
-  icon,
-  label
-}: {
-  href: string;
-  icon: ReactNode;
-  label: string;
-}) {
-  return (
-    <Link className="grid min-w-[4.4rem] justify-items-center gap-2 text-center text-[0.72rem] font-bold text-white/76" href={href}>
-      <span className="grid h-12 w-12 place-items-center rounded-full bg-white/14 text-white shadow-lg ring-1 ring-white/12 backdrop-blur transition hover:bg-white/22">
-        {icon}
-      </span>
-      {label}
-    </Link>
   );
 }
 

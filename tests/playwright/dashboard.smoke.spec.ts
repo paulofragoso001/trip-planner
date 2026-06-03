@@ -42,10 +42,21 @@ test("loads dashboard summary and route-split pages", async ({ page }) => {
   await expect(page.getByTestId("trip-workspace-layout")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Everything for this trip" })).toBeVisible();
   await expect(page.getByText("Trip organizer")).toBeVisible();
+  const hero = page.getByTestId("trip-pass-hero");
+  await expect(hero.getByRole("link", { exact: true, name: "Itinerary" })).toHaveCount(0);
+  await expect(hero.getByRole("link", { exact: true, name: "Map" })).toHaveCount(0);
+  await expect(hero.getByRole("link", { exact: true, name: "Ideas" })).toHaveCount(0);
+  await expect(hero.getByRole("link", { exact: true, name: "Expenses" })).toHaveCount(0);
+  await expect(hero.getByRole("link", { exact: true, name: "Docs" })).toHaveCount(0);
+  await expect(hero.getByRole("link", { exact: true, name: "Documents" })).toHaveCount(0);
   const tripTabs = page.getByRole("navigation", { name: "Trip tabs" });
+  await expect(tripTabs.getByRole("link", { exact: true, name: "Itinerary" })).toBeVisible();
+  await expect(tripTabs.getByRole("link", { exact: true, name: "Map" })).toBeVisible();
+  await expect(tripTabs.getByRole("link", { exact: true, name: "Ideas" })).toBeVisible();
   await expect(tripTabs.getByRole("link", { exact: true, name: "Overview" })).toBeVisible();
   await expect(tripTabs.getByRole("link", { exact: true, name: "Documents" })).toBeVisible();
   await expect(tripTabs.getByRole("link", { exact: true, name: "Expenses" })).toBeVisible();
+  await expect(tripTabs.getByRole("link", { exact: true, name: "Share" })).toBeVisible();
 
   await openDashboardRoute("/dashboard/trips/demo/timeline");
   await expect(page.getByTestId("trip-workspace-layout")).toBeVisible();

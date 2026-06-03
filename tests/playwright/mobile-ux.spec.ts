@@ -108,6 +108,12 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByTestId("trip-pass-hero")).toBeVisible();
     await expect(page.getByText("Trip pass")).toBeVisible();
     await expect(page.getByText("Current trip")).toHaveCount(0);
+    const hero = page.getByTestId("trip-pass-hero");
+    await expect(hero.getByRole("link", { exact: true, name: "Itinerary" })).toHaveCount(0);
+    await expect(hero.getByRole("link", { exact: true, name: "Map" })).toHaveCount(0);
+    await expect(hero.getByRole("link", { exact: true, name: "Ideas" })).toHaveCount(0);
+    await expect(hero.getByRole("link", { exact: true, name: "Expenses" })).toHaveCount(0);
+    await expect(hero.getByRole("link", { exact: true, name: "Docs" })).toHaveCount(0);
     await expect(page.getByTestId("connected-trip-map")).toBeVisible();
     await expect(page.getByText("1 of 4")).toBeVisible({ timeout: 15_000 });
     await expect(page.getByRole("button", { name: /1 Barcelona-El Prat Airport/ })).toBeVisible();
