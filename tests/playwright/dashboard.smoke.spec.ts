@@ -7,6 +7,18 @@ test("loads dashboard summary and route-split pages", async ({ page }) => {
   const openDashboardRoute = (path: string) =>
     page.goto(`http://127.0.0.1:3000${path}`, { waitUntil: "commit" });
 
+  await page.goto("http://127.0.0.1:3000/", { waitUntil: "commit" });
+  await expect(
+    page.getByRole("heading", {
+      name: "All your trip details. Finally, in one place."
+    })
+  ).toBeVisible();
+  await expect(page.getByRole("link", { name: "Start planning" })).toHaveAttribute("href", "/signup");
+  await expect(page.getByRole("link", { name: "Log in" })).toHaveAttribute("href", "/login");
+  await expect(page.getByText(/real-time flight alerts/i)).toHaveCount(0);
+  await expect(page.getByText(/700 providers/i)).toHaveCount(0);
+  await expect(page.getByText(/calendar sync/i)).toHaveCount(0);
+
   await openDashboardRoute("/dashboard");
   await expect(page.getByTestId("app-shell-root")).toBeVisible();
   await expect(
@@ -40,8 +52,12 @@ test("loads dashboard summary and route-split pages", async ({ page }) => {
 
   await openDashboardRoute("/dashboard/trips/demo");
   await expect(page.getByTestId("trip-workspace-layout")).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Everything for this trip" })).toBeVisible();
-  await expect(page.getByText("Trip organizer")).toBeVisible();
+  const overview = page.getByTestId("trip-overview-page");
+  await expect(overview.getByRole("heading", { name: "All your trip details in one place" })).toBeVisible();
+  await expect(overview.getByText("Trip Overview")).toBeVisible();
+  await expect(overview.getByRole("link", { exact: true, name: "Add place" })).toBeVisible();
+  await expect(overview.getByRole("link", { name: "Open documents" })).toBeVisible();
+  await expect(overview.getByRole("link", { name: "Manage guests" })).toBeVisible();
   const hero = page.getByTestId("trip-pass-hero");
   await expect(hero.getByRole("link", { exact: true, name: "Itinerary" })).toHaveCount(0);
   await expect(hero.getByRole("link", { exact: true, name: "Map" })).toHaveCount(0);

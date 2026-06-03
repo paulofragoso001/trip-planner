@@ -12,6 +12,27 @@ const routes = [
 ] as const;
 
 test.describe("mobile soft-launch UX", () => {
+  for (const width of [360, 390, 430] as const) {
+    test(`public homepage avoids horizontal overflow at ${width}px`, async ({ page }) => {
+      await page.setViewportSize({ height: 900, width });
+      await page.goto(`${baseUrl}/`, { waitUntil: "commit" });
+
+      await expect(
+        page.getByRole("heading", {
+          name: "All your trip details. Finally, in one place."
+        })
+      ).toBeVisible();
+      await expect(page.getByRole("link", { name: "Start planning" })).toBeVisible();
+
+      const overflow = await page.evaluate(() => {
+        const root = document.documentElement;
+        return root.scrollWidth - window.innerWidth;
+      });
+
+      expect(overflow, `public homepage overflow at ${width}px`).toBeLessThanOrEqual(1);
+    });
+  }
+
   for (const width of viewports) {
     test(`core routes avoid horizontal overflow at ${width}px`, async ({ page }) => {
       test.setTimeout(90_000);

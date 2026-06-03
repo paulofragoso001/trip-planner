@@ -5,9 +5,9 @@ import "./globals.css";
 validateEnv();
 
 export const metadata: Metadata = {
-  title: "Wayline — AI Travel Planner",
+  title: "Wayline — AI Travel Companion",
   description:
-    "Turn saved travel ideas into mapped trip plans with smart nearby suggestions."
+    "Plan with AI, organize your itinerary, map your route, save documents, track expenses, and share your trip from one travel pass."
 };
 
 export default function RootLayout({

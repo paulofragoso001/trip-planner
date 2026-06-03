@@ -8,7 +8,6 @@ import {
   MapPin,
   Plane,
   Plus,
-  Search,
   Sparkles,
   Utensils,
   Users
@@ -36,224 +35,228 @@ export default function TripOverviewPage({
 }: TripOverviewPageProps) {
   const base = `/dashboard/trips/${encodeURIComponent(tripId)}`;
   const routeReady = mappedCount > 0 && mappedCount === segmentCount;
+  const needsLocationCount = Math.max(segmentCount - mappedCount, 0);
 
   return (
-    <div className="grid gap-5">
+    <div className="grid gap-5" data-testid="trip-overview-page">
       {error ? (
         <p className="rounded-3xl bg-amber-50 px-4 py-3 text-sm font-bold text-amber-800">
-          {error}
+          Some trip details are unavailable, but you can still open your itinerary, map, and ideas.
         </p>
       ) : null}
 
-      <section className="overflow-hidden rounded-[2rem] bg-slate-950 text-white shadow-xl ring-1 ring-black/10">
-        <div className="bg-[radial-gradient(circle_at_16%_0%,rgba(249,115,22,0.28),transparent_30%),radial-gradient(circle_at_88%_10%,rgba(59,130,246,0.24),transparent_32%),linear-gradient(145deg,#020617,#111827_56%,#1f2937)] p-4 sm:p-6">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <p className="text-xs font-black uppercase tracking-[0.18em] text-orange-300">
-                Trip organizer
-              </p>
-              <h2 className="mt-2 text-2xl font-black leading-tight sm:text-3xl">Everything for this trip</h2>
-              <p className="mt-1 truncate text-sm font-semibold text-white/62">{destination}</p>
-            </div>
-            <div className="flex shrink-0 gap-2">
-              <Link
-                aria-label="Search trip"
-                className="grid h-11 w-11 place-items-center rounded-full bg-white/10 text-white ring-1 ring-white/10 backdrop-blur"
-                href={`${base}/documents`}
-              >
-                <Search className="h-5 w-5" aria-hidden="true" />
-              </Link>
-              <Link
-                aria-label="Add to itinerary"
-                className="grid h-11 w-11 place-items-center rounded-full bg-white text-slate-950"
-                href={`${base}/timeline#new-plan`}
-              >
-                <Plus className="h-5 w-5" aria-hidden="true" />
-              </Link>
-            </div>
+      <section className="rounded-[2rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+          <div className="min-w-0">
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-blue-600">
+              Trip Overview
+            </p>
+            <h2 className="mt-2 text-3xl font-black leading-tight tracking-tight text-slate-950 sm:text-4xl">
+              All your trip details in one place
+            </h2>
+            <p className="mt-2 max-w-2xl text-sm font-semibold leading-6 text-slate-600">
+              {title} brings your itinerary, route, expenses, documents, and shared trip details into one travel pass.
+            </p>
           </div>
-
-          <div className="mt-5 grid grid-cols-4 gap-2 sm:grid-cols-7">
-            <QuickAction href={`${base}/timeline#new-plan`} icon={<Plus className="h-5 w-5" />} label="New activity" />
-            <QuickAction disabled icon={<Plane className="h-5 w-5" />} label="Flights" />
-            <QuickAction href={`${base}/timeline#new-plan`} icon={<BedDouble className="h-5 w-5" />} label="Lodging" />
-            <QuickAction href={`${base}/map`} icon={<MapPin className="h-5 w-5" />} label="Places" />
-            <QuickAction href={`${base}/documents`} icon={<FileText className="h-5 w-5" />} label="Documents" />
-            <QuickAction href={`${base}/budget`} icon={<CircleDollarSign className="h-5 w-5" />} label="Expenses" />
-            <QuickAction href={`${base}/sharing`} icon={<Users className="h-5 w-5" />} label="Guests" />
-          </div>
-
-          <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1.05fr)_minmax(320px,0.95fr)]">
-            <section className="grid gap-4">
-              <article className="rounded-[1.75rem] bg-black/36 p-4 ring-1 ring-white/10 backdrop-blur">
-                <div className="flex items-center justify-between gap-3">
-                  <p className="text-xs font-black uppercase tracking-[0.16em] text-orange-300">Next up</p>
-                  <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-black text-white/72">
-                    {status}
-                  </span>
-                </div>
-                {nextUp ? (
-                  <div className="mt-4 grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
-                    <div className="min-w-0">
-                      <p className="text-sm font-black text-white/55">{nextUp.typeLabel}</p>
-                      <h3 className="mt-1 break-words text-2xl font-black">{nextUp.title}</h3>
-                      <p className="mt-2 text-sm font-semibold text-white/62">
-                        {nextUp.timeLabel} · {nextUp.location}
-                      </p>
-                    </div>
-                    <Link
-                      className="inline-flex min-h-11 items-center justify-center rounded-full bg-white px-4 text-sm font-black text-slate-950"
-                      href={`${base}/timeline#${nextUp.id}`}
-                    >
-                      Open itinerary
-                    </Link>
-                  </div>
-                ) : (
-                  <div className="mt-4">
-                    <h3 className="text-2xl font-black">No places yet</h3>
-                    <p className="mt-2 text-sm font-semibold text-white/62">
-                      Add inspiration or a place to start building {title}.
-                    </p>
-                    <Link
-                      className="mt-4 inline-flex min-h-11 items-center justify-center rounded-full bg-white px-4 text-sm font-black text-slate-950"
-                      href="/dashboard/imports"
-                    >
-                      Plan with AI
-                    </Link>
-                  </div>
-                )}
-              </article>
-
-              <article className="rounded-[1.75rem] bg-black/34 p-4 ring-1 ring-white/10 backdrop-blur">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <span className="grid h-10 w-10 place-items-center rounded-full bg-orange-500/18 text-orange-300">
-                      <CalendarDays className="h-5 w-5" aria-hidden="true" />
-                    </span>
-                    <div>
-                      <h3 className="text-lg font-black">Itinerary preview</h3>
-                      <p className="text-sm font-semibold text-white/52">
-                        {segmentCount} place{segmentCount === 1 ? "" : "s"}
-                      </p>
-                    </div>
-                  </div>
-                  <Link className="text-sm font-black text-orange-300" href={`${base}/timeline`}>
-                    View all days
-                  </Link>
-                </div>
-                <div className="mt-4 grid gap-1">
-                  {itineraryPreview.length ? (
-                    itineraryPreview.slice(0, 5).map((item, index) => (
-                      <Link
-                        className="grid grid-cols-[auto_1fr_auto] items-center gap-3 rounded-2xl px-2.5 py-2.5 transition hover:bg-white/8"
-                        href={`${base}/timeline#${item.id}`}
-                        key={item.id}
-                      >
-                        <span className="relative grid h-9 w-9 place-items-center rounded-full bg-white/10 text-white">
-                          {iconForPreview(item.typeLabel)}
-                          {index < Math.min(itineraryPreview.length, 5) - 1 ? (
-                            <span className="absolute left-1/2 top-full h-4 w-px -translate-x-1/2 bg-white/14" aria-hidden="true" />
-                          ) : null}
-                        </span>
-                        <span className="min-w-0">
-                          <span className="block truncate text-sm font-black text-white">{item.title}</span>
-                          <span className="block truncate text-xs font-semibold text-white/46">
-                            {item.location}
-                          </span>
-                        </span>
-                        <span className="text-xs font-black text-white/58">{item.timeLabel}</span>
-                      </Link>
-                    ))
-                  ) : (
-                    <EmptyCard
-                      body="Add inspiration or create a place to start building the itinerary."
-                      cta="Plan with AI"
-                      href="/dashboard/imports"
-                      title="No itinerary yet"
-                      tone="dark"
-                    />
-                  )}
-                </div>
-              </article>
-            </section>
-
-            <aside className="grid gap-4">
-              <article className="rounded-[1.75rem] bg-white p-4 text-slate-950 shadow-2xl shadow-black/20">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <h3 className="text-lg font-black">Map preview</h3>
-                    <p className="text-sm font-semibold text-slate-500">
-                      {mappedCount}/{segmentCount} mapped
-                    </p>
-                  </div>
-                  <Map className="h-5 w-5 text-blue-600" aria-hidden="true" />
-                </div>
-                <div className="mt-4 rounded-[1.5rem] bg-[radial-gradient(circle_at_24%_26%,rgba(59,130,246,0.24),transparent_30%),linear-gradient(135deg,#dbeafe,#f8fafc)] p-4">
-                  <p className="text-3xl font-black">{segmentCount}</p>
-                  <p className="text-sm font-bold text-slate-600">places in this trip</p>
-                  <p className="mt-3 text-sm font-semibold text-slate-700">
-                    {suggestionsCount} nearby idea{suggestionsCount === 1 ? "" : "s"} ready
-                  </p>
-                  <p className={routeReady ? "mt-3 text-sm font-black text-emerald-700" : "mt-3 text-sm font-black text-amber-700"}>
-                    {routeReady ? "Route ready" : "Needs location"}
-                  </p>
-                  <Link
-                    className="mt-4 inline-flex min-h-11 w-full items-center justify-center rounded-full bg-slate-950 px-4 text-sm font-black text-white"
-                    href={`${base}/map`}
-                  >
-                    Open map
-                  </Link>
-                </div>
-              </article>
-
-              <article className="rounded-[1.75rem] bg-white p-4 text-slate-950 shadow-2xl shadow-black/20">
-                <h3 className="text-lg font-black">Expenses</h3>
-                <div className="mt-3 rounded-[1.5rem] bg-slate-950 p-4 text-white">
-                  <p className="text-xs font-black uppercase tracking-[0.16em] text-white/55">Total in USD</p>
-                  <p className="mt-1 text-3xl font-black">{actualLabel}</p>
-                  <p className="mt-1 text-xs font-semibold text-white/60">
-                    Planned {plannedLabel} · Remaining {remainingLabel}
-                  </p>
-                </div>
-                <div className="mt-3 grid gap-2">
-                  {expenseCategories.length ? (
-                    expenseCategories.map((category) => (
-                      <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-3 py-2 text-sm" key={category.id}>
-                        <span className="font-bold text-slate-700">{category.label}</span>
-                        <strong>{category.amountLabel}</strong>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="rounded-2xl bg-slate-50 px-3 py-3 text-sm font-semibold text-slate-600">
-                      Track flights, lodging, food, and activities for this trip.
-                    </p>
-                  )}
-                </div>
-                <Link className="mt-3 inline-flex min-h-11 w-full items-center justify-center rounded-full bg-blue-600 px-4 text-sm font-black text-white" href={`${base}/budget`}>
-                  Open expenses
-                </Link>
-              </article>
-
-              <article className="rounded-[1.75rem] bg-white p-4 text-slate-950 shadow-2xl shadow-black/20">
-                <div className="flex items-start gap-3">
-                  <span className="grid h-11 w-11 place-items-center rounded-full bg-orange-100 text-orange-700">
-                    <FileText className="h-5 w-5" aria-hidden="true" />
-                  </span>
-                  <div>
-                    <h3 className="text-lg font-black">Documents</h3>
-                    <p className="mt-1 text-sm font-semibold text-slate-600">
-                      Keep confirmations, screenshots, notes, and links for this trip in one place.
-                    </p>
-                  </div>
-                </div>
-                <Link className="mt-4 inline-flex min-h-11 w-full items-center justify-center rounded-full bg-slate-100 px-4 text-sm font-black text-slate-800" href={`${base}/documents`}>
-                  Open documents
-                </Link>
-              </article>
-            </aside>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Link
+              className="inline-flex min-h-11 items-center justify-center rounded-full bg-slate-950 px-5 text-sm font-black text-white transition hover:bg-slate-800 focus:outline-none focus:ring-4 focus:ring-blue-100"
+              href={`${base}/timeline#new-plan`}
+            >
+              <Plus className="mr-2 h-4 w-4" aria-hidden="true" />
+              Add place
+            </Link>
+            <Link
+              className="inline-flex min-h-11 items-center justify-center rounded-full border border-slate-200 bg-white px-5 text-sm font-black text-slate-950 transition hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-blue-100"
+              href={`${base}/sharing`}
+            >
+              <Users className="mr-2 h-4 w-4" aria-hidden="true" />
+              Share
+            </Link>
           </div>
         </div>
+
+        <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <SummaryTile label="Places" value={String(segmentCount)} />
+          <SummaryTile label="Mapped" value={String(mappedCount)} />
+          <SummaryTile label="Nearby Ideas" value={String(suggestionsCount)} />
+          <SummaryTile label={routeReady ? "Route ready" : "Needs location"} value={routeReady ? "Ready" : String(needsLocationCount)} />
+        </div>
       </section>
+
+      <section aria-label="Trip quick actions" className="grid grid-cols-4 gap-2 sm:grid-cols-7">
+        <QuickAction href={`${base}/timeline#new-plan`} icon={<Plus className="h-5 w-5" />} label="Add Place" />
+        <QuickAction disabled icon={<Plane className="h-5 w-5" />} label="Flights" />
+        <QuickAction href={`${base}/timeline#new-plan`} icon={<BedDouble className="h-5 w-5" />} label="Lodging" />
+        <QuickAction href={`${base}/map`} icon={<MapPin className="h-5 w-5" />} label="Places" />
+        <QuickAction href={`${base}/documents`} icon={<FileText className="h-5 w-5" />} label="Documents" />
+        <QuickAction href={`${base}/budget`} icon={<CircleDollarSign className="h-5 w-5" />} label="Expenses" />
+        <QuickAction href={`${base}/sharing`} icon={<Users className="h-5 w-5" />} label="Guests" />
+      </section>
+
+      <section className="grid gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)]">
+        <div className="grid gap-4">
+          <WalletCard
+            actionHref={nextUp ? `${base}/timeline#${nextUp.id}` : "/dashboard/imports"}
+            actionLabel={nextUp ? "Open itinerary" : "Plan with AI"}
+            eyebrow="Next Up"
+            icon={<Sparkles className="h-5 w-5" aria-hidden="true" />}
+            title={nextUp ? nextUp.title : "No places yet"}
+          >
+            {nextUp ? (
+              <div className="grid gap-2">
+                <p className="text-sm font-black uppercase tracking-[0.14em] text-slate-400">
+                  {nextUp.typeLabel}
+                </p>
+                <p className="text-sm font-semibold text-slate-600">
+                  {nextUp.timeLabel} · {nextUp.location}
+                </p>
+                <span className="inline-flex w-fit rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-700">
+                  {status}
+                </span>
+              </div>
+            ) : (
+              <p className="text-sm font-semibold leading-6 text-slate-600">
+                Add inspiration or create a place to start building {title}.
+              </p>
+            )}
+          </WalletCard>
+
+          <WalletCard
+            actionHref={`${base}/timeline`}
+            actionLabel="View all days"
+            eyebrow="Itinerary"
+            icon={<CalendarDays className="h-5 w-5" aria-hidden="true" />}
+            title={`${segmentCount} place${segmentCount === 1 ? "" : "s"}`}
+          >
+            <div className="grid gap-1">
+              {itineraryPreview.length ? (
+                itineraryPreview.slice(0, 5).map((item, index) => (
+                  <Link
+                    className="grid min-h-14 grid-cols-[auto_1fr_auto] items-center gap-3 rounded-2xl px-2 py-2 transition hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-blue-100"
+                    href={`${base}/timeline#${item.id}`}
+                    key={item.id}
+                  >
+                    <span className="grid h-10 w-10 place-items-center rounded-full bg-blue-50 text-blue-700">
+                      {iconForPreview(item.typeLabel)}
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block truncate text-sm font-black text-slate-950">
+                        {index + 1}. {item.title}
+                      </span>
+                      <span className="block truncate text-xs font-semibold text-slate-500">
+                        {item.location}
+                      </span>
+                    </span>
+                    <span className="text-xs font-black text-slate-500">{item.timeLabel}</span>
+                  </Link>
+                ))
+              ) : (
+                <EmptyInline
+                  body="Add inspiration or a place to start building the itinerary."
+                  cta="Plan with AI"
+                  href="/dashboard/imports"
+                />
+              )}
+            </div>
+          </WalletCard>
+        </div>
+
+        <aside className="grid gap-4">
+          <WalletCard
+            actionHref={`${base}/map`}
+            actionLabel="Open map"
+            eyebrow="Map"
+            icon={<Map className="h-5 w-5" aria-hidden="true" />}
+            title={routeReady ? "Route ready" : "Route needs locations"}
+          >
+            <div className="rounded-[1.5rem] bg-[radial-gradient(circle_at_24%_24%,rgba(37,99,235,0.24),transparent_30%),linear-gradient(135deg,#eff6ff,#f8fafc)] p-4">
+              <div className="flex items-end justify-between gap-4">
+                <div>
+                  <p className="text-4xl font-black text-slate-950">{mappedCount}</p>
+                  <p className="text-sm font-bold text-slate-600">mapped places</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-2xl font-black text-slate-950">{suggestionsCount}</p>
+                  <p className="text-sm font-bold text-slate-600">Nearby Ideas</p>
+                </div>
+              </div>
+              <p className={routeReady ? "mt-4 text-sm font-black text-emerald-700" : "mt-4 text-sm font-black text-amber-700"}>
+                {routeReady ? "Your route is ready." : "Confirm locations to complete the route."}
+              </p>
+            </div>
+          </WalletCard>
+
+          <WalletCard
+            actionHref={`${base}/budget`}
+            actionLabel="Open expenses"
+            eyebrow="Expenses"
+            icon={<CircleDollarSign className="h-5 w-5" aria-hidden="true" />}
+            title={actualLabel}
+          >
+            <div className="rounded-[1.5rem] bg-slate-950 p-4 text-white">
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-white/55">Total in USD</p>
+              <p className="mt-1 text-3xl font-black">{actualLabel}</p>
+              <p className="mt-1 text-xs font-semibold text-white/60">
+                Planned {plannedLabel} · Remaining {remainingLabel}
+              </p>
+            </div>
+            <div className="mt-3 grid gap-2">
+              {expenseCategories.length ? (
+                expenseCategories.map((category) => (
+                  <div className="flex min-h-11 items-center justify-between rounded-2xl bg-slate-50 px-3 py-2 text-sm" key={category.id}>
+                    <span className="font-bold text-slate-700">{category.label}</span>
+                    <strong>{category.amountLabel}</strong>
+                  </div>
+                ))
+              ) : (
+                <p className="rounded-2xl bg-slate-50 px-3 py-3 text-sm font-semibold text-slate-600">
+                  Track flights, lodging, food, and activities for this trip.
+                </p>
+              )}
+            </div>
+          </WalletCard>
+
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
+            <WalletCard
+              actionHref={`${base}/documents`}
+              actionLabel="Open documents"
+              eyebrow="Documents"
+              icon={<FileText className="h-5 w-5" aria-hidden="true" />}
+              title="Keep details together"
+            >
+              <div className="grid gap-2">
+                <DocumentRow label="Confirmations" />
+                <DocumentRow label="Screenshots" />
+                <DocumentRow label="Notes and links" />
+              </div>
+            </WalletCard>
+
+            <WalletCard
+              actionHref={`${base}/sharing`}
+              actionLabel="Manage guests"
+              eyebrow="Share"
+              icon={<Users className="h-5 w-5" aria-hidden="true" />}
+              title="Trip guests"
+            >
+              <p className="text-sm font-semibold leading-6 text-slate-600">
+                Invite travel partners and keep everyone aligned on the same trip pass.
+              </p>
+            </WalletCard>
+          </div>
+        </aside>
+      </section>
+    </div>
+  );
+}
+
+function SummaryTile({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-3xl bg-slate-50 px-4 py-3 ring-1 ring-slate-200">
+      <p className="text-2xl font-black text-slate-950">{value}</p>
+      <p className="mt-1 text-[0.68rem] font-black uppercase tracking-[0.14em] text-slate-500">
+        {label}
+      </p>
     </div>
   );
 }
@@ -271,17 +274,19 @@ function QuickAction({
 }) {
   const content = (
     <>
-      <span className="grid h-12 w-12 place-items-center rounded-full bg-white/10 text-white ring-1 ring-white/10 transition group-hover:bg-white/16">
+      <span className="grid h-11 w-11 place-items-center rounded-full bg-white text-slate-950 shadow-sm ring-1 ring-slate-200 transition group-hover:bg-blue-50 group-hover:text-blue-700">
         {icon}
       </span>
-      <span className="max-w-[4.8rem] text-center text-[0.68rem] font-black leading-tight text-white/64">{label}</span>
+      <span className="max-w-[4.8rem] text-center text-[0.68rem] font-black leading-tight text-slate-600">
+        {label}
+      </span>
     </>
   );
 
   if (disabled || !href) {
     return (
       <button
-        className="group grid min-h-[5.7rem] justify-items-center gap-2 rounded-2xl bg-white/[0.045] px-2 py-3 opacity-60 ring-1 ring-white/6"
+        className="group grid min-h-[5.6rem] justify-items-center gap-2 rounded-[1.35rem] bg-slate-50 px-2 py-3 opacity-60 ring-1 ring-slate-200"
         disabled
         title="Coming soon"
         type="button"
@@ -292,9 +297,68 @@ function QuickAction({
   }
 
   return (
-    <Link className="group grid min-h-[5.7rem] justify-items-center gap-2 rounded-2xl bg-white/[0.045] px-2 py-3 ring-1 ring-white/6 transition hover:bg-white/[0.075]" href={href}>
+    <Link
+      className="group grid min-h-[5.6rem] justify-items-center gap-2 rounded-[1.35rem] bg-slate-50 px-2 py-3 ring-1 ring-slate-200 transition hover:bg-white focus:outline-none focus:ring-4 focus:ring-blue-100"
+      href={href}
+    >
       {content}
     </Link>
+  );
+}
+
+function WalletCard({
+  actionHref,
+  actionLabel,
+  children,
+  eyebrow,
+  icon,
+  title
+}: {
+  actionHref: string;
+  actionLabel: string;
+  children: ReactNode;
+  eyebrow: string;
+  icon: ReactNode;
+  title: string;
+}) {
+  return (
+    <article className="rounded-[2rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-start gap-3">
+          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-blue-50 text-blue-700">
+            {icon}
+          </span>
+          <div className="min-w-0">
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-400">{eyebrow}</p>
+            <h3 className="mt-1 break-words text-xl font-black leading-tight text-slate-950">{title}</h3>
+          </div>
+        </div>
+        <Link
+          className="hidden min-h-10 shrink-0 items-center rounded-full bg-slate-100 px-4 text-xs font-black text-slate-800 transition hover:bg-slate-200 focus:outline-none focus:ring-4 focus:ring-blue-100 sm:inline-flex"
+          href={actionHref}
+        >
+          {actionLabel}
+        </Link>
+      </div>
+      <div className="mt-4">{children}</div>
+      <Link
+        className="mt-4 inline-flex min-h-11 w-full items-center justify-center rounded-full bg-slate-950 px-4 text-sm font-black text-white transition hover:bg-slate-800 focus:outline-none focus:ring-4 focus:ring-blue-100 sm:hidden"
+        href={actionHref}
+      >
+        {actionLabel}
+      </Link>
+    </article>
+  );
+}
+
+function DocumentRow({ label }: { label: string }) {
+  return (
+    <div className="flex min-h-11 items-center gap-3 rounded-2xl bg-slate-50 px-3 py-2">
+      <span className="grid h-8 w-8 place-items-center rounded-full bg-white text-slate-500 ring-1 ring-slate-200">
+        <FileText className="h-4 w-4" aria-hidden="true" />
+      </span>
+      <span className="text-sm font-bold text-slate-700">{label}</span>
+    </div>
   );
 }
 
@@ -306,44 +370,24 @@ function iconForPreview(typeLabel: string) {
   return <MapPin className="h-4 w-4" aria-hidden="true" />;
 }
 
-function EmptyCard({
+function EmptyInline({
   body,
   cta,
-  href,
-  title,
-  tone = "light"
+  href
 }: {
   body: string;
   cta: string;
   href: string;
-  title: string;
-  tone?: "dark" | "light";
 }) {
-  const dark = tone === "dark";
-
   return (
-    <div
-      className={[
-        "rounded-2xl border border-dashed px-4 py-6 text-sm",
-        dark ? "border-white/14 text-white/62" : "border-slate-300 text-slate-600"
-      ].join(" ")}
-    >
-      <div className="flex items-start gap-3">
-        <Sparkles className={dark ? "mt-0.5 h-5 w-5 text-orange-300" : "mt-0.5 h-5 w-5 text-blue-600"} aria-hidden="true" />
-        <div>
-          <p className={dark ? "font-black text-white" : "font-black text-slate-950"}>{title}</p>
-          <p className="mt-1 font-semibold">{body}</p>
-          <Link
-            className={[
-              "mt-3 inline-flex min-h-10 items-center rounded-full px-4 text-xs font-black",
-              dark ? "bg-white text-slate-950" : "bg-blue-600 text-white"
-            ].join(" ")}
-            href={href}
-          >
-            {cta}
-          </Link>
-        </div>
-      </div>
+    <div className="rounded-2xl border border-dashed border-slate-300 px-4 py-5 text-sm text-slate-600">
+      <p className="font-semibold">{body}</p>
+      <Link
+        className="mt-3 inline-flex min-h-10 items-center rounded-full bg-blue-600 px-4 text-xs font-black text-white"
+        href={href}
+      >
+        {cta}
+      </Link>
     </div>
   );
 }
