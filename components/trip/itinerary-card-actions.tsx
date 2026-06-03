@@ -104,7 +104,7 @@ export function ItineraryCardActions({ item, tripId }: ItineraryCardActionsProps
           {item.locationStatus === "needs_activity_provider" ? (
             <Link
               className="inline-flex min-h-11 items-center justify-center rounded-2xl bg-blue-50 px-4 text-sm font-bold text-blue-700 transition hover:bg-blue-100"
-              href={`/dashboard/trips/${tripId}/map#smart-suggestions`}
+              href={`/dashboard/trips/${tripId}/ideas`}
             >
               Find suggestions
             </Link>

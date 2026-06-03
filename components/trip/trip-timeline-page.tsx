@@ -171,7 +171,7 @@ function ItineraryRow({
             <span className={status.className}>{status.label}</span>
           </div>
 
-          <div className="mt-3 grid gap-3 sm:grid-cols-[minmax(0,1fr)_112px] sm:items-start">
+          <div className="mt-3 grid grid-cols-[minmax(0,1fr)_80px] items-start gap-3 sm:grid-cols-[minmax(0,1fr)_128px]">
             <div className="min-w-0">
               <h4 className="break-words text-lg font-black leading-tight text-slate-950 sm:text-xl">
                 {item.title}
@@ -193,7 +193,7 @@ function ItineraryRow({
               <PlacePhoto
                 alt={item.imageAlt || `Photo of ${item.title}`}
                 attribution={item.imageAttribution}
-                className="h-24 w-full rounded-2xl sm:h-24 sm:w-28"
+                className="h-20 w-20 rounded-2xl sm:h-32 sm:w-32"
                 fallbackLabel={item.typeLabel || "Place"}
                 src={item.imageUrl}
               />
@@ -228,34 +228,34 @@ function RestaurantReservationCard({
         <span className={status.className}>{status.label}</span>
       </div>
 
-      <div className="mt-4">
-        <h4 className="break-words text-xl font-black leading-tight text-slate-950 sm:text-2xl">
-          {item.title}
-        </h4>
-        <p className="mt-2 break-words text-sm leading-6 text-slate-600">
-          {item.location}
-        </p>
-      </div>
+      <div className="mt-4 grid grid-cols-[minmax(0,1fr)_80px] items-start gap-3 sm:grid-cols-[minmax(0,1fr)_132px]">
+        <div className="min-w-0">
+          <h4 className="break-words text-xl font-black leading-tight text-slate-950 sm:text-2xl">
+            {item.title}
+          </h4>
+          <p className="mt-2 break-words text-sm leading-6 text-slate-600">
+            {item.location}
+          </p>
 
-      <div className="mt-4 grid gap-1.5 text-sm font-semibold text-slate-600">
-        <p>{restaurantMealLabel(item)} · {formatPrimaryTime(item)}</p>
-        <p>
-          Reservation:{" "}
-          <span className="font-black text-slate-800">
-            {item.confirmationCode || item.confirmation ? item.confirmationCode || item.confirmation : "optional"}
-          </span>
-        </p>
-      </div>
+          <div className="mt-4 grid gap-1.5 text-sm font-semibold text-slate-600">
+            <p>{restaurantMealLabel(item)} · {formatPrimaryTime(item)}</p>
+            <p>
+              Reservation:{" "}
+              <span className="font-black text-slate-800">
+                {item.confirmationCode || item.confirmation ? item.confirmationCode || item.confirmation : "optional"}
+              </span>
+            </p>
+          </div>
+        </div>
 
-      {item.imageUrl ? (
         <PlacePhoto
           alt={item.imageAlt || `Photo of ${item.title}`}
           attribution={item.imageAttribution}
-          className="mt-4 h-32 w-full rounded-2xl sm:h-36"
+          className="h-20 w-20 rounded-2xl sm:h-32 sm:w-32"
           fallbackLabel="Restaurant"
           src={item.imageUrl}
         />
-      ) : null}
+      </div>
 
       <ItineraryCardActions item={item} tripId={tripId} />
     </div>
@@ -283,7 +283,7 @@ function HotelPassCard({
           <span className={hotelStatus.className}>{hotelStatus.label}</span>
         </div>
 
-        <div className="mt-5 grid gap-3 sm:grid-cols-[minmax(0,1fr)_128px] sm:items-start">
+        <div className="mt-5 grid grid-cols-[minmax(0,1fr)_80px] items-start gap-3 sm:grid-cols-[minmax(0,1fr)_132px]">
           <div className="min-w-0">
             <h4 className="break-words text-xl font-black leading-tight text-slate-950 sm:text-2xl">
               {item.title}
@@ -292,15 +292,13 @@ function HotelPassCard({
               {item.location}
             </p>
           </div>
-          {item.imageUrl ? (
-            <PlacePhoto
-              alt={item.imageAlt || `Photo of ${item.title}`}
-              attribution={item.imageAttribution}
-              className="h-36 w-full rounded-2xl sm:h-28 sm:w-32"
-              fallbackLabel="Hotel"
-              src={item.imageUrl}
-            />
-          ) : null}
+          <PlacePhoto
+            alt={item.imageAlt || `Photo of ${item.title}`}
+            attribution={item.imageAttribution}
+            className="h-20 w-20 rounded-2xl sm:h-32 sm:w-32"
+            fallbackLabel="Hotel"
+            src={item.imageUrl}
+          />
         </div>
 
         <div className="mt-5 grid grid-cols-2 gap-3 rounded-2xl bg-slate-50 p-3">

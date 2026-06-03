@@ -57,6 +57,10 @@ test("loads dashboard summary and route-split pages", async ({ page }) => {
   await expect(tripTabs.getByRole("link", { exact: true, name: "Documents" })).toBeVisible();
   await expect(tripTabs.getByRole("link", { exact: true, name: "Expenses" })).toBeVisible();
   await expect(tripTabs.getByRole("link", { exact: true, name: "Share" })).toBeVisible();
+  await expect(tripTabs.getByRole("link", { exact: true, name: "Ideas" })).toHaveAttribute(
+    "href",
+    "/dashboard/trips/demo/ideas"
+  );
 
   await openDashboardRoute("/dashboard/trips/demo/timeline");
   await expect(page.getByTestId("trip-workspace-layout")).toBeVisible();
@@ -80,8 +84,17 @@ test("loads dashboard summary and route-split pages", async ({ page }) => {
       .getByRole("heading", { exact: true, name: "Map" })
   ).toBeVisible();
   await expect(page.getByTestId("connected-trip-map")).toBeVisible();
-  await expect(page.getByText("Nearby Ideas", { exact: true })).toBeVisible();
+  await expect(page.getByText("Nearby Ideas", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("Open Ideas to find places near your route.")).toBeVisible();
+  await expect(page.getByRole("link", { name: "Open Ideas" })).toHaveAttribute(
+    "href",
+    "/dashboard/trips/demo/ideas"
+  );
   await expect(page.getByRole("button", { name: "Share view" })).toBeVisible();
+
+  await openDashboardRoute("/dashboard/trips/demo/ideas");
+  await expect(page.getByText("Nearby Ideas", { exact: true })).toBeVisible();
+  await expect(page.getByTestId("nearby-ideas-filters").getByText("Explore nearby")).toBeVisible();
 
   await openDashboardRoute("/dashboard/trips/demo/budget");
   await expect(page.getByTestId("app-shell-content").getByText("Category breakdown")).toBeVisible({ timeout: 20_000 });

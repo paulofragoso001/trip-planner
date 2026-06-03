@@ -111,8 +111,10 @@ export const navSections: NavSection[] = [
         href: "/dashboard/trips",
         icon: Sparkles,
         label: "Ideas",
-        getHref: (pathname, tripId) => currentTripHref(pathname, "/map#smart-suggestions", tripId),
-        match: () => false
+        getHref: (pathname, tripId) => currentTripHref(pathname, "/ideas", tripId),
+        match: (pathname, view) =>
+          pathname.includes("/ideas") ||
+          (pathname === "/dashboard" && view === "ideas")
       },
       {
         href: "/dashboard/trips",

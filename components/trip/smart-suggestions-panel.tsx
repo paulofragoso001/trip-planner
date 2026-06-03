@@ -90,7 +90,9 @@ export function SmartSuggestionsPanel({
           <h3 className="mt-1 text-base font-black text-slate-950">
             Ideas near this route
           </h3>
-          <p className="mt-1 text-sm leading-6 text-slate-600">{waylineCopy.suggestions.intro}</p>
+          <p className="mt-1 text-sm leading-6 text-slate-600">
+            Find restaurants, activities, and places near your route.
+          </p>
         </div>
         <button
           className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-slate-950 px-3 text-xs font-black text-white disabled:opacity-60 sm:w-auto"

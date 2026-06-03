@@ -1,7 +1,7 @@
 import { ConnectedTripMap } from "@/components/trip/connected-trip-map";
 import { MapTools } from "@/components/trip/map-tools";
-import { SmartSuggestionsPanel } from "@/components/trip/smart-suggestions-panel";
 import type { TripMapData } from "@/app/dashboard/trips/[tripId]/map/loader";
+import Link from "next/link";
 
 type TripMapPageProps = TripMapData;
 
@@ -10,7 +10,6 @@ export default function TripMapPage({
   error,
   activitySegments,
   items,
-  recommendations,
   searchUrl,
   tripId,
   unmappedCount,
@@ -46,11 +45,23 @@ export default function TripMapPage({
           </div>
           <MapTools hasMappedStops={items.length > 0} hasUnmappedStops={unmappedCount > 0} tripId={tripId} />
         </div>
-        <SmartSuggestionsPanel
-          mappedStopCount={items.length}
-          recommendations={recommendations}
-          tripId={tripId}
-        />
+        <div className="rounded-[1.35rem] bg-slate-50 p-4 ring-1 ring-slate-100">
+          <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-500">
+            Route places
+          </p>
+          <h3 className="mt-1 text-base font-black text-slate-950">
+            Your route places appear here.
+          </h3>
+          <p className="mt-2 text-sm leading-6 text-slate-600">
+            Open Ideas to find places near your route.
+          </p>
+          <Link
+            className="mt-4 inline-flex min-h-11 w-full items-center justify-center rounded-full bg-slate-950 px-4 text-sm font-black text-white sm:w-auto"
+            href={`/dashboard/trips/${tripId}/ideas`}
+          >
+            Open Ideas
+          </Link>
+        </div>
       </aside>
     </div>
   );

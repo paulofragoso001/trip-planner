@@ -393,7 +393,7 @@ export function ConnectedTripMap({
               <div className="mt-3 grid gap-2 sm:flex sm:flex-wrap">
                 <Link
                   className="inline-flex min-h-11 items-center justify-center rounded-xl bg-blue-600 px-3 text-xs font-black text-white"
-                  href="#smart-suggestions"
+                  href={`/dashboard/trips/${encodeURIComponent(tripId)}/ideas`}
                 >
                   Find suggestions
                 </Link>

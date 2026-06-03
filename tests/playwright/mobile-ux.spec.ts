@@ -7,7 +7,8 @@ const routes = [
   "/dashboard/imports",
   "/dashboard/trips",
   "/dashboard/trips/demo/timeline",
-  "/dashboard/trips/demo/map"
+  "/dashboard/trips/demo/map",
+  "/dashboard/trips/demo/ideas"
 ] as const;
 
 test.describe("mobile soft-launch UX", () => {
@@ -120,7 +121,10 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByRole("button", { name: /1 Barcelona-El Prat Airport/ })).toBeVisible();
     await expect(page.getByRole("button", { name: /4 Fira Barcelona meeting/ })).toBeVisible();
     await expect(page.getByLabel("Map categories")).toHaveCount(0);
+    await expect(page.getByText("Nearby Ideas", { exact: true })).toHaveCount(0);
+    await expect(page.getByText("Open Ideas to find places near your route.")).toBeVisible();
 
+    await page.goto(`${baseUrl}/dashboard/trips/demo/ideas`, { waitUntil: "commit" });
     const nearbyFilters = page.getByTestId("nearby-ideas-filters");
     await expect(nearbyFilters.getByText("Explore nearby")).toBeVisible();
     await expect(nearbyFilters.getByRole("button", { name: "All" })).toHaveAttribute("aria-pressed", "true");
@@ -184,6 +188,28 @@ test.describe("mobile soft-launch UX", () => {
       await request.delete(`${baseUrl}/api/trips/${tripId}`, {
         headers: { "x-cypress-dashboard": "true" }
       });
+    }
+  });
+
+  test("demo itinerary uses compact square place photos on mobile", async ({ page }) => {
+    await page.setViewportSize({ height: 900, width: 390 });
+    await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
+    await page.goto(`${baseUrl}/dashboard/trips/demo/timeline`, { waitUntil: "commit" });
+
+    const photos = page
+      .getByTestId("app-shell-content")
+      .locator("article")
+      .getByTestId("place-photo");
+    await expect(photos.first()).toBeVisible({ timeout: 15_000 });
+
+    const count = Math.min(await photos.count(), 6);
+    expect(count).toBeGreaterThan(0);
+
+    for (let index = 0; index < count; index += 1) {
+      const box = await photos.nth(index).boundingBox();
+      expect(box, `photo ${index + 1} should be measurable`).not.toBeNull();
+      expect(box!.width, `photo ${index + 1} should stay compact`).toBeLessThanOrEqual(96);
+      expect(Math.abs(box!.width - box!.height), `photo ${index + 1} should be square`).toBeLessThanOrEqual(2);
     }
   });
 

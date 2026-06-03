@@ -2,13 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
 
 const tabs = [
   { label: "Overview", href: "" },
   { label: "Itinerary", href: "/timeline" },
   { label: "Map", href: "/map" },
-  { label: "Ideas", href: "/map#smart-suggestions" },
+  { label: "Ideas", href: "/ideas" },
   { label: "Expenses", href: "/budget" },
   { label: "Documents", href: "/documents" },
   { label: "Share", href: "/sharing" }
@@ -17,15 +16,6 @@ const tabs = [
 export function TripTabs({ tripId }: { tripId: string }) {
   const pathname = usePathname();
   const base = `/dashboard/trips/${tripId}`;
-  const [hash, setHash] = useState("");
-
-  useEffect(() => {
-    const syncHash = () => setHash(window.location.hash);
-
-    syncHash();
-    window.addEventListener("hashchange", syncHash);
-    return () => window.removeEventListener("hashchange", syncHash);
-  }, [pathname]);
 
   return (
     <nav
@@ -37,11 +27,7 @@ export function TripTabs({ tripId }: { tripId: string }) {
         const active =
           tab.href === ""
             ? pathname === base
-            : tab.href === "/map"
-            ? pathname === href && hash !== "#smart-suggestions"
-            : tab.href === "/map#smart-suggestions"
-              ? pathname === `${base}/map` && hash === "#smart-suggestions"
-              : pathname === href;
+            : pathname === href;
 
         return (
           <Link
