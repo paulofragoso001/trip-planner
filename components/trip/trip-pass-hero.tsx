@@ -1,5 +1,15 @@
 import Link from "next/link";
-import { ArrowLeft, CalendarDays, Lightbulb, Map, MoreHorizontal, Route, Share2 } from "lucide-react";
+import {
+  ArrowLeft,
+  CalendarDays,
+  CircleDollarSign,
+  FileText,
+  Lightbulb,
+  Map,
+  MoreHorizontal,
+  Route,
+  Share2
+} from "lucide-react";
 import type { ReactNode } from "react";
 import type { TripWorkspaceData } from "@/app/dashboard/trips/[tripId]/loader";
 
@@ -85,9 +95,11 @@ export function TripPassHero({ trip, tripId }: TripPassHeroProps) {
             </div>
 
             <div className="mt-5 flex gap-3 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible">
-              <HeroQuickAction href={`/dashboard/trips/${encodeURIComponent(tripId)}/timeline`} icon={<CalendarDays className="h-5 w-5" />} label="Plan" />
+              <HeroQuickAction href={`/dashboard/trips/${encodeURIComponent(tripId)}/timeline`} icon={<CalendarDays className="h-5 w-5" />} label="Itinerary" />
               <HeroQuickAction href={`/dashboard/trips/${encodeURIComponent(tripId)}/map`} icon={<Map className="h-5 w-5" />} label="Map" />
               <HeroQuickAction href={`/dashboard/trips/${encodeURIComponent(tripId)}/map#smart-suggestions`} icon={<Lightbulb className="h-5 w-5" />} label="Ideas" />
+              <HeroQuickAction href={`/dashboard/trips/${encodeURIComponent(tripId)}/budget`} icon={<CircleDollarSign className="h-5 w-5" />} label="Expenses" />
+              <HeroQuickAction href={`/dashboard/trips/${encodeURIComponent(tripId)}/documents`} icon={<FileText className="h-5 w-5" />} label="Docs" />
               <HeroQuickAction href={`/dashboard/trips/${encodeURIComponent(tripId)}/sharing`} icon={<Share2 className="h-5 w-5" />} label="Share" />
             </div>
           </div>

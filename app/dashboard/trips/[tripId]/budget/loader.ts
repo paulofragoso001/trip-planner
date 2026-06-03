@@ -5,6 +5,7 @@ import type { BudgetAlertView, BudgetCategoryView, TripBudgetData } from "./type
 type BudgetRecordRow = {
   amount: number | string | null;
   category: string | null;
+  created_at?: string | null;
   currency: string | null;
   id: string;
   label: string | null;
@@ -35,7 +36,7 @@ export async function loadTripBudgetData(tripId: string): Promise<TripBudgetData
   const auth = await authorizeDashboardApi();
 
   if (!auth) {
-    return emptyBudgetData(tripId, "Sign in to load trip budget data.");
+    return emptyBudgetData(tripId, "Sign in to load trip expenses.");
   }
 
   const [{ data: trip }, { data: records, error }] = await Promise.all([
@@ -54,7 +55,7 @@ export async function loadTripBudgetData(tripId: string): Promise<TripBudgetData
   ]);
 
   if (error) {
-    return emptyBudgetData(tripId, "Could not load trip budget records.");
+    return emptyBudgetData(tripId, "Could not load trip expenses.");
   }
 
   return mapRowsToBudgetData(
@@ -80,6 +81,13 @@ function mapRowsToBudgetData(
     alerts: buildAlerts(plannedBudget, remaining, actualTotal, categories),
     categories,
     error: null,
+    latestRecords: actualRows.slice(-5).reverse().map((row) => ({
+      amountLabel: formatMoney(readAmount(row), row.currency || currency),
+      category: row.category || "misc",
+      id: row.id,
+      label: row.label || labelForCategory(row.category || "misc", null),
+      recordType: row.record_type || "actual"
+    })),
     plannedLabel: formatMoney(plannedBudget, currency),
     remainingLabel: formatMoney(remaining, currency),
     tripId
@@ -98,6 +106,7 @@ function emptyBudgetData(tripId: string, error: string): TripBudgetData {
     ],
     categories: [],
     error,
+    latestRecords: [],
     plannedLabel: "$0",
     remainingLabel: "$0",
     tripId
@@ -134,7 +143,7 @@ function buildAlerts(
     return [
       {
         id: "no-budget",
-        message: "Add a trip budget to track remaining spend.",
+        message: "Add a trip spending limit to track remaining spend.",
         tone: "neutral"
       }
     ];
@@ -183,6 +192,29 @@ function demoBudgetData(tripId: string): TripBudgetData {
     ],
     categories: demoCategories,
     error: null,
+    latestRecords: [
+      {
+        amountLabel: "$1,120",
+        category: "flights",
+        id: "demo-record-flight",
+        label: "MIA to BCN",
+        recordType: "actual"
+      },
+      {
+        amountLabel: "$420",
+        category: "food",
+        id: "demo-record-dinner",
+        label: "Team dinner",
+        recordType: "actual"
+      },
+      {
+        amountLabel: "$1,860",
+        category: "lodging",
+        id: "demo-record-hotel",
+        label: "Hotel Arts",
+        recordType: "actual"
+      }
+    ],
     plannedLabel: "$4,200",
     remainingLabel: "$330",
     tripId

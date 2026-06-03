@@ -1,5 +1,5 @@
 type TripRoutePlaceholderProps = {
-  section: "Overview" | "Itinerary" | "Map" | "Budget" | "Sharing";
+  section: "Overview" | "Itinerary" | "Map" | "Expenses" | "Documents" | "Share";
 };
 
 export function TripRoutePlaceholder({ section }: TripRoutePlaceholderProps) {

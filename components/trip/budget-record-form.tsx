@@ -36,28 +36,36 @@ export function BudgetRecordForm({ tripId }: { tripId: string }) {
     }
   }
 
-  const message = state.status === "success" ? "Budget record saved." : state.message;
+  const message = state.status === "success" ? "Expense saved." : state.message;
 
   return (
     <form className="mt-4 grid gap-3 rounded-2xl bg-slate-50 p-3" onSubmit={submit}>
+      <label className="grid gap-1 text-xs font-black uppercase tracking-[0.14em] text-slate-500">
+        Title
       <input
-        className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
+        className="min-h-11 rounded-xl border border-slate-200 px-3 py-2 text-sm normal-case tracking-normal text-slate-800"
         onChange={(event) => setLabel(event.target.value)}
         placeholder="Expense label"
         required
         value={label}
       />
+      </label>
       <div className="grid gap-2 sm:grid-cols-2">
+        <label className="grid gap-1 text-xs font-black uppercase tracking-[0.14em] text-slate-500">
+          Amount
         <input
-          className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
+          className="min-h-11 rounded-xl border border-slate-200 px-3 py-2 text-sm normal-case tracking-normal text-slate-800"
           inputMode="decimal"
           onChange={(event) => setAmount(event.target.value)}
           placeholder="Amount"
           required
           value={amount}
         />
+        </label>
+        <label className="grid gap-1 text-xs font-black uppercase tracking-[0.14em] text-slate-500">
+          Category
         <select
-          className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
+          className="min-h-11 rounded-xl border border-slate-200 px-3 py-2 text-sm normal-case tracking-normal text-slate-800"
           onChange={(event) => setCategory(event.target.value)}
           value={category}
         >
@@ -68,17 +76,21 @@ export function BudgetRecordForm({ tripId }: { tripId: string }) {
           <option value="meetings">Meetings</option>
           <option value="misc">Misc</option>
         </select>
+        </label>
       </div>
+      <label className="grid gap-1 text-xs font-black uppercase tracking-[0.14em] text-slate-500">
+        Type
       <select
-        className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
+        className="min-h-11 rounded-xl border border-slate-200 px-3 py-2 text-sm normal-case tracking-normal text-slate-800"
         onChange={(event) => setRecordType(event.target.value)}
         value={recordType}
       >
         <option value="actual">Actual</option>
         <option value="planned">Planned</option>
       </select>
+      </label>
       <button
-        className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white disabled:opacity-60"
+        className="min-h-11 rounded-full bg-blue-600 px-4 py-2 text-sm font-black text-white disabled:opacity-60"
         disabled={isPending}
         type="submit"
       >

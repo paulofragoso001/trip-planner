@@ -163,7 +163,7 @@ export function ConnectedTripMap({
             {selectedItem ? (
             <>
               <div className="flex gap-2 overflow-x-auto pb-1" aria-label="Map categories">
-                {["Places", "Food", "Activities", "Shops", "Parks"].map((label, index) => (
+                {["All", "Food", "Places", "Activities", "Shopping", "Nightlife"].map((label, index) => (
                   <span
                     className={[
                       "inline-flex min-h-9 shrink-0 items-center rounded-full px-3 text-xs font-black ring-1",

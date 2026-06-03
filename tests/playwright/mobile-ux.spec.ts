@@ -109,7 +109,7 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByText("Trip pass")).toBeVisible();
     await expect(page.getByText("Current trip")).toHaveCount(0);
     await expect(page.getByTestId("connected-trip-map")).toBeVisible();
-    await expect(page.getByText("Place 1 of 4")).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText("1 of 4")).toBeVisible({ timeout: 15_000 });
     await expect(page.getByRole("button", { name: /1 Barcelona-El Prat Airport/ })).toBeVisible();
     await expect(page.getByRole("button", { name: /4 Fira Barcelona meeting/ })).toBeVisible();
   });
@@ -164,7 +164,7 @@ test.describe("mobile soft-launch UX", () => {
       await expect(card.getByLabel("Stop location")).toBeVisible();
       await expect(card.getByLabel("Date", { exact: true })).toBeVisible();
       await expect(card.getByLabel("Start time")).toBeVisible();
-      await expect(card.getByRole("button", { name: "Save edits" })).toBeEnabled();
+      await expect(content.getByRole("button", { name: "Save changes" })).toBeEnabled();
     } finally {
       await request.delete(`${baseUrl}/api/trips/${tripId}`, {
         headers: { "x-cypress-dashboard": "true" }
@@ -211,7 +211,7 @@ test.describe("mobile soft-launch UX", () => {
       await expect(page.getByTestId("connected-trip-map")).toBeVisible({ timeout: 30_000 });
       await expect(page.getByText("Showing first 5 of 8 places")).toBeVisible();
       await expect(page.getByRole("button", { name: /Route place 6/ })).toHaveCount(0);
-      await expect(page.getByText("Place 1 of 5")).toBeVisible();
+      await expect(page.getByText("1 of 5")).toBeVisible();
       await expect(page.getByTestId("map-show-all-places")).toBeEnabled();
       await page.getByTestId("map-show-all-places").click();
       await expect(page.getByText("Showing all 8 places")).toBeVisible({ timeout: 15_000 });

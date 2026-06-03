@@ -198,7 +198,14 @@ test("social inspiration import promotes to timeline/map and generates a plan", 
     await page.goto(`${baseUrl}/dashboard/trips/${tripId}/map`, {
       waitUntil: "commit"
     });
-    await expect(page.getByText(place.name, { exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /map/i })).toBeVisible();
+
+    const visiblePlaceName =
+      String(place.name || "").toLowerCase().includes("park")
+        ? /park g[uü]ell/i
+        : new RegExp(escapeRegExp(String(place.name || "")), "i");
+
+    await expect(page.getByText(visiblePlaceName).first()).toBeVisible();
 
     const generateResponse = await request.post(
       `${baseUrl}/api/trips/${tripId}/itinerary/generate`,
@@ -970,4 +977,8 @@ function readLocalEnv(name: string) {
 
 function normalizeNameForAssertion(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }

@@ -15,6 +15,13 @@ export type TripBudgetData = {
   alerts: BudgetAlertView[];
   categories: BudgetCategoryView[];
   error: string | null;
+  latestRecords: Array<{
+    amountLabel: string;
+    category: string;
+    id: string;
+    label: string;
+    recordType: string;
+  }>;
   plannedLabel: string;
   actualLabel: string;
   remainingLabel: string;

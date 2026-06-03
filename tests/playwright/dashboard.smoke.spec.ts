@@ -35,13 +35,17 @@ test("loads dashboard summary and route-split pages", async ({ page }) => {
   await openDashboardRoute("/dashboard/trips");
   await expect(page.getByTestId("app-shell-topbar").getByRole("heading", { name: "Trips" })).toBeVisible();
   await expect(page.getByText("Create a new trip")).toBeVisible();
-  await expect(page.getByRole("heading", { exact: true, name: "Confirmed plans" })).toBeVisible();
+  await expect(page.getByRole("heading", { exact: true, name: "Trip passes" })).toBeVisible();
   await page.getByRole("button", { name: "Refresh" }).click();
 
   await openDashboardRoute("/dashboard/trips/demo");
   await expect(page.getByTestId("trip-workspace-layout")).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible();
-  await expect(page.getByText("Budget snapshot")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Everything for this trip" })).toBeVisible();
+  await expect(page.getByText("Trip organizer")).toBeVisible();
+  const tripTabs = page.getByRole("navigation", { name: "Trip tabs" });
+  await expect(tripTabs.getByRole("link", { exact: true, name: "Overview" })).toBeVisible();
+  await expect(tripTabs.getByRole("link", { exact: true, name: "Documents" })).toBeVisible();
+  await expect(tripTabs.getByRole("link", { exact: true, name: "Expenses" })).toBeVisible();
 
   await openDashboardRoute("/dashboard/trips/demo/timeline");
   await expect(page.getByTestId("trip-workspace-layout")).toBeVisible();
@@ -50,8 +54,9 @@ test("loads dashboard summary and route-split pages", async ({ page }) => {
   ).toBeVisible();
   await expect(page.getByText("Add to itinerary")).toBeVisible();
   await expect(page.getByText("THURSDAY, JUNE 11, 2026")).toBeVisible();
-  await expect(page.getByTestId("app-shell-content").getByRole("link", { name: "Itinerary" })).toBeVisible();
-  await expect(page.getByTestId("app-shell-content").getByRole("link", { name: "Ideas" })).toBeVisible();
+  const timelineTabs = page.getByRole("navigation", { name: "Trip tabs" });
+  await expect(timelineTabs.getByRole("link", { exact: true, name: "Itinerary" })).toBeVisible();
+  await expect(timelineTabs.getByRole("link", { exact: true, name: "Ideas" })).toBeVisible();
   await expect(page.getByRole("heading", { exact: true, name: "Calendar sync" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Connect Google" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Connect Outlook" })).toBeVisible();
@@ -71,17 +76,21 @@ test("loads dashboard summary and route-split pages", async ({ page }) => {
   await expect(
     page
       .getByTestId("app-shell-content")
-      .getByRole("heading", { exact: true, name: "Budget" })
+      .getByRole("heading", { exact: true, name: "Category breakdown" })
   ).toBeVisible();
-  await expect(page.getByText("Budget alerts")).toBeVisible();
+  await expect(page.getByText("Expense notes")).toBeVisible();
+
+  await openDashboardRoute("/dashboard/trips/demo/documents");
+  await expect(page.getByRole("heading", { exact: true, name: "Documents" })).toBeVisible();
+  await expect(page.getByText("No documents yet")).toBeVisible();
 
   await openDashboardRoute("/dashboard/trips/demo/sharing");
   await expect(
     page
       .getByTestId("app-shell-content")
-      .getByRole("heading", { exact: true, name: "Sharing" })
+      .getByRole("heading", { exact: true, name: "Share this trip" })
   ).toBeVisible();
-  await expect(page.getByRole("heading", { exact: true, name: "Invite" })).toBeVisible();
+  await expect(page.getByRole("heading", { exact: true, name: "Invite guest" })).toBeVisible();
 
   await openDashboardRoute("/dashboard/imports");
   const importsRoute = page.getByTestId("imports-route");

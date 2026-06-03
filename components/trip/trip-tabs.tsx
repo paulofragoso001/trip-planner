@@ -5,10 +5,12 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
 const tabs = [
+  { label: "Overview", href: "" },
   { label: "Itinerary", href: "/timeline" },
   { label: "Map", href: "/map" },
   { label: "Ideas", href: "/map#smart-suggestions" },
-  { label: "Budget", href: "/budget" },
+  { label: "Expenses", href: "/budget" },
+  { label: "Documents", href: "/documents" },
   { label: "Share", href: "/sharing" }
 ] as const;
 
@@ -28,12 +30,14 @@ export function TripTabs({ tripId }: { tripId: string }) {
   return (
     <nav
       aria-label="Trip tabs"
-      className="grid grid-cols-5 gap-1 rounded-full bg-white/86 p-1.5 shadow-sm ring-1 ring-slate-200 backdrop-blur sm:flex sm:flex-wrap sm:gap-2 sm:overflow-visible"
+      className="flex gap-1 overflow-x-auto rounded-full bg-white/86 p-1.5 shadow-sm ring-1 ring-slate-200 backdrop-blur sm:flex-wrap sm:overflow-visible"
     >
       {tabs.map((tab) => {
         const href = `${base}${tab.href}`;
         const active =
-          tab.href === "/map"
+          tab.href === ""
+            ? pathname === base
+            : tab.href === "/map"
             ? pathname === href && hash !== "#smart-suggestions"
             : tab.href === "/map#smart-suggestions"
               ? pathname === `${base}/map` && hash === "#smart-suggestions"
@@ -43,7 +47,7 @@ export function TripTabs({ tripId }: { tripId: string }) {
           <Link
             aria-current={active ? "page" : undefined}
             className={[
-              "inline-flex min-h-10 min-w-0 items-center justify-center rounded-full px-1.5 text-xs font-black transition sm:min-h-11 sm:shrink-0 sm:px-4 sm:text-sm",
+              "inline-flex min-h-10 shrink-0 items-center justify-center rounded-full px-3 text-xs font-black transition sm:min-h-11 sm:px-4 sm:text-sm",
               active
                 ? "bg-slate-950 text-white shadow-lg"
                 : "text-slate-600 hover:bg-slate-100 hover:text-slate-950"
