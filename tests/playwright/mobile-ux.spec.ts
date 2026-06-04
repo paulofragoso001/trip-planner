@@ -231,11 +231,10 @@ test.describe("mobile soft-launch UX", () => {
     await activityFilters.getByRole("button", { name: "Food" }).click();
     await expect(activityFilters.getByRole("button", { name: "Food" })).toHaveAttribute("aria-pressed", "true");
     await expect(activityFilters.getByRole("button", { name: "All" })).toHaveAttribute("aria-pressed", "false");
-    const savedIdeas = page
+    const routePlaces = page
       .locator("section")
-      .filter({ has: page.getByRole("heading", { name: "Saved ideas / AI places" }) });
-    await expect(savedIdeas.getByText("Team dinner in El Born")).toBeVisible();
-    await expect(savedIdeas.getByText("Barcelona-El Prat Airport")).toHaveCount(0);
+      .filter({ has: page.getByRole("heading", { name: "Route places" }) });
+    await expect(routePlaces.getByText("Team dinner in El Born")).toBeVisible();
   });
 
   test("trip pass hero uses segment photo metadata when available", async ({ page, request }) => {

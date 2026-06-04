@@ -54,7 +54,7 @@ export default function TripTimelinePage({
             <ItineraryDateStrip days={days} />
 
             {days.map((day) => (
-              <section className="scroll-mt-24" id={day.id} key={day.id}>
+              <section className="scroll-mt-24" id={dayAnchorId(day)} key={day.id}>
                 <div className="sticky top-14 z-10 -mx-3 border-y border-slate-200 bg-slate-100/95 px-3 py-2.5 backdrop-blur sm:static sm:mx-0 sm:rounded-2xl sm:border sm:bg-white/78 sm:px-4 sm:shadow-sm sm:ring-1 sm:ring-white/70">
                   <div className="flex items-center justify-between gap-3">
                     <h3 className="min-w-0 truncate text-xs font-black uppercase tracking-[0.2em] text-slate-700 sm:text-sm">
@@ -140,7 +140,7 @@ function ItineraryDateStrip({ days }: { days: TripTimelineData["days"] }) {
     >
       <div className="flex min-w-0 gap-2">
         {datedDays.map((day, index) => (
-          <Link
+          <a
             aria-label={`Jump to ${day.date}`}
             className={[
               "inline-flex min-h-14 shrink-0 items-center gap-3 rounded-2xl px-3 text-left ring-1 transition focus:outline-none focus:ring-4 focus:ring-blue-100",
@@ -148,7 +148,7 @@ function ItineraryDateStrip({ days }: { days: TripTimelineData["days"] }) {
                 ? "bg-slate-950 text-white ring-slate-950"
                 : "bg-white text-slate-700 ring-slate-200 hover:bg-slate-50"
             ].join(" ")}
-            href={`#${day.id}`}
+            href={`#${dayAnchorId(day)}`}
             key={day.id}
           >
             <span className="grid gap-0.5">
@@ -165,11 +165,15 @@ function ItineraryDateStrip({ days }: { days: TripTimelineData["days"] }) {
             <span className={index === 0 ? "rounded-full bg-white/12 px-2 py-1 text-[0.65rem] font-black text-white/78" : "rounded-full bg-slate-100 px-2 py-1 text-[0.65rem] font-black text-slate-600"}>
               {day.items.length}
             </span>
-          </Link>
+          </a>
         ))}
       </div>
     </nav>
   );
+}
+
+function dayAnchorId(day: TripTimelineData["days"][number]) {
+  return day.dateIso ? `day-${day.dateIso}` : day.id;
 }
 
 function ItineraryRow({
@@ -570,7 +574,7 @@ function formatHotelDateTime(value: string | null, hasExplicitTime: boolean) {
 
 function getFlightDisplay(item: TimelineItemView) {
   const route = parseFlightRoute(item);
-  const detail = parseFlightDetails(item.details);
+  const detail = parseFlightDetails(item.details || []);
 
   return {
     airlineLabel: item.meta || item.title,
@@ -590,9 +594,9 @@ function getFlightDisplay(item: TimelineItemView) {
 }
 
 function parseFlightRoute(item: TimelineItemView) {
-  const titleCodes = item.title.match(/\b([A-Z]{3})\b/g) || [];
+  const titleCodes = (item.title || "").match(/\b([A-Z]{3})\b/g) || [];
   const [originCode = "—", destinationCode = "—"] = titleCodes;
-  const locationParts = item.location
+  const locationParts = (item.location || "")
     .split(/\s+to\s+|→|-/i)
     .map((part) => part.trim())
     .filter(Boolean);
@@ -613,16 +617,19 @@ function simplifyAirportCity(value: string) {
     .trim() || "Airport";
 }
 
-function parseFlightDetails(details: string[]) {
+function parseFlightDetails(details: string[] = []) {
+  const safeDetails = Array.isArray(details) ? details : [];
   return {
-    gate: readDetail(details, "Gate") || "—",
-    seat: readDetail(details, "Seat") || "—",
-    terminal: readDetail(details, "Terminal") || "—"
+    gate: readDetail(safeDetails, "Gate") || "—",
+    seat: readDetail(safeDetails, "Seat") || "—",
+    terminal: readDetail(safeDetails, "Terminal") || "—"
   };
 }
 
-function readDetail(details: string[], label: string) {
-  const match = details.find((detail) => detail.toLowerCase().startsWith(label.toLowerCase()));
+function readDetail(details: string[] = [], label: string) {
+  const match = details.find((detail) =>
+    String(detail || "").toLowerCase().startsWith(label.toLowerCase())
+  );
   if (!match) return "";
   return match.replace(new RegExp(`^${label}\\s*:?\\s*`, "i"), "").trim();
 }

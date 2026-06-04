@@ -15,7 +15,7 @@ export function TripPassHero({ trip, tripId }: TripPassHeroProps) {
 
   return (
     <section
-      className="relative isolate min-h-[22rem] overflow-hidden rounded-[2rem] bg-slate-950 text-white shadow-[0_24px_70px_rgba(15,23,42,0.22)] ring-1 ring-black/10 sm:min-h-[24rem] sm:rounded-[2.35rem]"
+      className="relative isolate min-h-[19rem] overflow-hidden rounded-[2rem] bg-slate-950 text-white shadow-[0_24px_70px_rgba(15,23,42,0.22)] ring-1 ring-black/10 sm:min-h-[24rem] sm:rounded-[2.35rem]"
       data-hero-image={hasPhoto ? "true" : "false"}
       data-testid="trip-pass-hero"
     >
@@ -45,7 +45,7 @@ export function TripPassHero({ trip, tripId }: TripPassHeroProps) {
       <div className="absolute -left-5 top-1/2 hidden h-10 w-10 -translate-y-1/2 rounded-full bg-[#f4f7fb] lg:block" aria-hidden="true" />
       <div className="absolute -right-5 top-1/2 hidden h-10 w-10 -translate-y-1/2 rounded-full bg-[#f4f7fb] lg:block" aria-hidden="true" />
 
-      <div className="relative grid min-h-[22rem] content-between gap-8 p-4 sm:min-h-[24rem] sm:p-5 lg:p-6">
+      <div className="relative grid min-h-[19rem] content-between gap-5 p-4 sm:min-h-[24rem] sm:gap-8 sm:p-5 lg:p-6">
         <div className="flex items-center justify-between gap-3 text-sm font-black">
           <Link
             aria-label="Back to trips"
@@ -89,13 +89,13 @@ export function TripPassHero({ trip, tripId }: TripPassHeroProps) {
                 Trip pass
               </p>
             </div>
-            <h2 className="mt-3 max-w-4xl break-words text-4xl font-black uppercase leading-[0.92] tracking-tight sm:text-6xl">
+            <h2 className="mt-3 max-w-4xl break-words text-3xl font-black uppercase leading-[0.92] tracking-tight sm:text-6xl">
               {trip.name}
             </h2>
             <p className="mt-3 max-w-2xl text-base font-bold text-white/88 sm:text-lg">
               {trip.destination}
             </p>
-            <div className="mt-4 flex flex-wrap gap-x-4 gap-y-1 text-sm font-semibold text-white/82">
+            <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm font-semibold text-white/82 sm:mt-4">
               <span>{trip.dateRange}</span>
               <span>{trip.travelStyle} trip</span>
             </div>

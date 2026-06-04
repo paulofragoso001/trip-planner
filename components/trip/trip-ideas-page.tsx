@@ -114,12 +114,13 @@ export function TripIdeasPage({
       ? [...baseFilters, { id: "lodging" as const, icon: <Bed className="h-4 w-4" aria-hidden="true" />, label: "Lodging" }]
       : baseFilters;
   }, [rows]);
-  const filteredRows =
-    activeFilter === "all" ? rows : rows.filter((row) => row.category === activeFilter);
-  const recommendationsForFilter = filteredRows.filter((row) => row.type === "recommendation");
-  const savedPlacesForFilter = filteredRows.filter((row) => row.type === "place");
-  const activityIdeasForFilter = filteredRows.filter((row) => row.type === "activity");
-  const needsLocationForFilter = filteredRows.filter((row) => row.type === "needs-location");
+  const discoveryRows = rows.filter((row) => row.type !== "place");
+  const filteredDiscoveryRows =
+    activeFilter === "all" ? discoveryRows : discoveryRows.filter((row) => row.category === activeFilter);
+  const recommendationsForFilter = filteredDiscoveryRows.filter((row) => row.type === "recommendation");
+  const savedPlacesForFilter = rows.filter((row) => row.type === "place");
+  const activityIdeasForFilter = filteredDiscoveryRows.filter((row) => row.type === "activity");
+  const needsLocationForFilter = filteredDiscoveryRows.filter((row) => row.type === "needs-location");
   const activeLabel = filters.find((filter) => filter.id === activeFilter)?.label || "selected";
 
   useEffect(() => {
@@ -221,7 +222,7 @@ export function TripIdeasPage({
         </div>
       </section>
 
-      {filteredRows.length === 0 ? (
+      {filteredDiscoveryRows.length === 0 && activeFilter !== "all" ? (
         <section className="rounded-[1.75rem] border border-dashed border-slate-300 bg-slate-50 p-5 text-sm text-slate-600">
           <p className="font-black text-slate-950">No {activeLabel} ideas yet.</p>
           <p className="mt-1 leading-6">Find ideas near your mapped places or try another category.</p>
@@ -274,7 +275,7 @@ export function TripIdeasPage({
       ) : null}
 
       {savedPlacesForFilter.length ? (
-        <ActivitySection title="Saved ideas / AI places">
+        <ActivitySection title="Route places">
           {savedPlacesForFilter.map((row) =>
             row.type === "place" ? <SavedPlaceRow key={row.title} row={row} /> : null
           )}

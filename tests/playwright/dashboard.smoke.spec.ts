@@ -122,11 +122,10 @@ test("loads dashboard summary and route-split pages", async ({ page }) => {
   await expect(activityFilters.getByRole("button", { name: "All" })).toHaveAttribute("aria-pressed", "true");
   await activityFilters.getByRole("button", { name: "Food" }).click();
   await expect(activityFilters.getByRole("button", { name: "Food" })).toHaveAttribute("aria-pressed", "true");
-  const savedIdeas = page
+  const routePlaces = page
     .locator("section")
-    .filter({ has: page.getByRole("heading", { name: "Saved ideas / AI places" }) });
-  await expect(savedIdeas.getByText("Team dinner in El Born")).toBeVisible();
-  await expect(savedIdeas.getByText("Barcelona-El Prat Airport")).toHaveCount(0);
+    .filter({ has: page.getByRole("heading", { name: "Route places" }) });
+  await expect(routePlaces.getByText("Team dinner in El Born")).toBeVisible();
 
   await openDashboardRoute("/dashboard/trips/demo/budget");
   await expect(page.getByTestId("app-shell-content").getByText("Category breakdown")).toBeVisible({ timeout: 20_000 });
