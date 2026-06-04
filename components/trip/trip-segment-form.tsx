@@ -124,7 +124,7 @@ export function TripSegmentForm({
     const result = await run({
       body,
       method: segmentId ? "PATCH" : "POST",
-      timeoutMs: 7000,
+      timeoutMs: 30000,
       url: segmentId
         ? `/api/trip-segments/${encodeURIComponent(segmentId)}`
         : "/api/trip-segments"

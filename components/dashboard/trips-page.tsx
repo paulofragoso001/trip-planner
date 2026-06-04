@@ -12,13 +12,18 @@ type TripsPageProps = TripsData;
 export default function TripsPage({ error, trips }: TripsPageProps) {
   return (
     <div className="grid gap-6">
+      <div className="lg:hidden">
+        <MobileTripsExperience error={error} trips={trips} />
+      </div>
+
       <PageHeader
+        className="hidden lg:block"
         eyebrow="Trip wallet"
         subtitle="Create a trip pass or continue an itinerary."
         title="Trips"
       />
 
-      <div className="grid gap-6 lg:grid-cols-[380px_minmax(0,1fr)]">
+      <div className="hidden gap-6 lg:grid lg:grid-cols-[380px_minmax(0,1fr)]">
         <SectionCard
           className="lg:sticky lg:top-24 lg:self-start"
           description="Destination helps match places."
@@ -110,6 +115,105 @@ export default function TripsPage({ error, trips }: TripsPageProps) {
           </div>
         </SectionCard>
       </div>
+    </div>
+  );
+}
+
+function MobileTripsExperience({ error, trips }: TripsPageProps) {
+  if (!error && trips.length === 0) {
+    return (
+      <div className="grid gap-4" data-testid="mobile-first-trip-state">
+        <section className="relative isolate overflow-hidden rounded-[2rem] bg-slate-950 p-4 text-white shadow-2xl">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_0%,rgba(255,255,255,0.24),transparent_34%),linear-gradient(135deg,#172554,#0f766e_48%,#020617)]" />
+          <div className="relative min-h-[13rem]">
+            <p className="text-xs font-black uppercase tracking-[0.24em] text-white/58">
+              Wayline Trip Pass
+            </p>
+            <h1 className="mt-6 max-w-xs text-4xl font-black leading-[0.94]">
+              Create your first trip
+            </h1>
+            <p className="mt-3 max-w-xs text-sm font-semibold leading-6 text-white/72">
+              Choose a destination and Wayline will turn it into a visual trip wallet.
+            </p>
+          </div>
+        </section>
+
+        <section className="rounded-[2rem] border border-slate-200 bg-white p-3 shadow-sm">
+          <TripCreateForm mode="mobile-pass" redirectOnSuccess />
+        </section>
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid gap-4" data-testid="mobile-trips-wallet">
+      <section className="rounded-[2rem] border border-slate-200 bg-white p-4 shadow-sm">
+        <p className="text-xs font-black uppercase tracking-[0.18em] text-blue-600">
+          Trip wallet
+        </p>
+        <h1 className="mt-2 text-3xl font-black leading-tight text-slate-950">Trips</h1>
+        <p className="mt-2 text-sm font-semibold leading-6 text-slate-600">
+          Open a trip pass or create a new one.
+        </p>
+      </section>
+
+      {error ? (
+        <p className="rounded-2xl bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
+          {error}
+        </p>
+      ) : null}
+
+      <div className="grid gap-3">
+        {trips.map((trip) => (
+          <article
+            className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white p-3 shadow-sm"
+            key={trip.id}
+          >
+            <TripCardVisual trip={trip} />
+            <div className="px-1 pb-1">
+              <h2 className="break-words text-2xl font-black leading-tight text-slate-950">
+                {trip.name}
+              </h2>
+              <p className="mt-1 break-words text-sm font-semibold text-slate-600">
+                {trip.destination} · {trip.dateRange}
+              </p>
+              <p className="mt-3 text-sm font-black text-slate-700">
+                {formatCount(trip.stopCount, "place")} · {trip.mappedStops} mapped · {nearbyIdeasLabel(trip)}
+              </p>
+              <div className="mt-4 grid gap-2">
+                <Link
+                  className="inline-flex min-h-12 items-center justify-center rounded-full bg-slate-950 px-5 text-sm font-black text-white"
+                  href={trip.href}
+                >
+                  Open trip pass
+                </Link>
+                <TripRowActions
+                  compact
+                  destination={trip.destination}
+                  endDate={trip.endDate}
+                  id={trip.id}
+                  name={trip.name}
+                  startDate={trip.startDate}
+                  travelStyle={trip.travelStyle}
+                />
+              </div>
+            </div>
+          </article>
+        ))}
+      </div>
+
+      <details
+        className="rounded-[2rem] border border-slate-200 bg-white p-3 shadow-sm"
+        data-testid="mobile-create-another-trip"
+        open
+      >
+        <summary className="min-h-12 cursor-pointer rounded-[1.5rem] px-2 py-3 text-sm font-black text-slate-950">
+          Create another trip pass
+        </summary>
+        <div className="pt-3">
+          <TripCreateForm mode="mobile-pass" redirectOnSuccess />
+        </div>
+      </details>
     </div>
   );
 }

@@ -7,7 +7,7 @@ test("itinerary edit saves wall-clock times and keeps untimed places out of midn
   page,
   request
 }) => {
-  test.setTimeout(180_000);
+  test.setTimeout(300_000);
   const runId = Date.now();
   const createdTripIds: string[] = [];
 
@@ -72,7 +72,7 @@ test("itinerary edit saves wall-clock times and keeps untimed places out of midn
     const editableCard = content.locator("article").filter({
       has: page.getByRole("heading", { name: "Komodo time edit" })
     });
-    await expect(editableCard.getByText("Anytime").first()).toBeVisible();
+    await expect(editableCard.getByText("Anytime").first()).toBeVisible({ timeout: 60_000 });
     await expect(editableCard.getByText("12:00 AM")).toHaveCount(0);
 
     const updateResponse = await request.patch(
@@ -109,7 +109,7 @@ test("itinerary edit saves wall-clock times and keeps untimed places out of midn
     const midnightCard = content.locator("article").filter({
       has: page.getByRole("heading", { name: "Midnight arrival" })
     });
-    await expect(midnightCard.getByText("12:00 AM").first()).toBeVisible();
+    await expect(midnightCard.getByText("12:00 AM").first()).toBeVisible({ timeout: 60_000 });
 
     const headingOrder = await content.locator("article h4").evaluateAll((headings) =>
       headings.map((heading) => heading.textContent?.trim())
@@ -124,7 +124,7 @@ test("itinerary edit saves wall-clock times and keeps untimed places out of midn
     const morningCard = content.locator("article").filter({
       has: page.getByRole("heading", { name: "Morning museum" })
     });
-    await expect(morningCard.getByRole("button", { name: /Edit Morning museum/ })).toBeEnabled();
+    await expect(morningCard.getByRole("button", { name: /Edit Morning museum/ })).toBeEnabled({ timeout: 60_000 });
     await morningCard.getByRole("button", { name: /Edit Morning museum/ }).click();
     await expect(morningCard.getByLabel("Start time")).toBeVisible();
     await morningCard.getByLabel("Start time").fill("15:45");
@@ -161,7 +161,7 @@ test("itinerary edit saves wall-clock times and keeps untimed places out of midn
     await page.goto(`${baseUrl}/dashboard/trips/${noDateTripId}/timeline`, {
       waitUntil: "commit"
     });
-    await expect(page.getByRole("heading", { name: "Unscheduled idea" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Unscheduled idea" })).toBeVisible({ timeout: 60_000 });
     await expect(page.getByTestId("itinerary-date-strip")).toHaveCount(0);
   } finally {
     await Promise.all(

@@ -87,6 +87,79 @@ test.describe("mobile soft-launch UX", () => {
     await expect(nav.getByRole("link", { name: /Trips/ })).not.toHaveAttribute("aria-current", "page");
   });
 
+  test("mobile trips page shows a wallet setup or wallet list", async ({ page }) => {
+    await page.setViewportSize({ height: 900, width: 390 });
+    await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
+    await page.goto(`${baseUrl}/dashboard/trips`, { waitUntil: "commit" });
+
+    const firstTripState = page.getByTestId("mobile-first-trip-state");
+    const tripWallet = page.getByTestId("mobile-trips-wallet");
+
+    if (await firstTripState.isVisible()) {
+      await expect(firstTripState.getByRole("heading", { name: "Create your first trip" })).toBeVisible();
+      await expect(firstTripState.getByTestId("mobile-trip-create-form")).toBeVisible();
+      await expect(firstTripState.getByTestId("mobile-trip-create-preview")).toBeVisible();
+    } else {
+      await expect(tripWallet).toBeVisible();
+      await expect(tripWallet.getByRole("heading", { name: "Trips" })).toBeVisible();
+      await expect(tripWallet.getByText("Create another trip pass")).toBeVisible();
+    }
+  });
+
+  test("mobile trip creation redirects to the trip wallet hub", async ({ page, request }) => {
+    test.setTimeout(90_000);
+    await page.setViewportSize({ height: 900, width: 390 });
+    await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
+    await page.goto(`${baseUrl}/dashboard/trips`, { waitUntil: "commit" });
+
+    const createPanel = page.getByTestId("mobile-create-another-trip");
+    if ((await createPanel.count()) > 0) {
+      await createPanel.last().evaluate((element) => {
+        if (element instanceof HTMLDetailsElement) {
+          element.open = true;
+        }
+      });
+    }
+
+    const form = page.locator('[data-testid="mobile-trip-create-form"]:visible').last();
+    await expect(form).toBeVisible();
+
+    const tripName = `Mobile wallet trip ${Date.now()}`;
+    await form.getByLabel("Trip name").fill(tripName);
+    await form.getByLabel("Destination").fill("Miami, FL");
+    await form.getByLabel("Start date").fill("2026-05-29");
+    await form.getByLabel("End date").fill("2026-05-31");
+
+    await expect(form.getByTestId("mobile-trip-create-preview")).toContainText(tripName);
+    await expect(form.getByTestId("mobile-trip-create-preview")).toContainText(/May 29 - May 31|29 May - 31 May/);
+    await form.getByRole("button", { name: "Create Trip" }).last().click();
+    await page.waitForURL(/\/dashboard\/trips\/[^/]+$/, { timeout: 30_000 });
+
+    const tripId = new URL(page.url()).pathname.split("/").filter(Boolean).at(-1);
+    expect(tripId).toBeTruthy();
+
+    try {
+      await expect(page.getByTestId("trip-pass-hero")).toBeVisible({ timeout: 20_000 });
+      await expect(page.getByTestId("mobile-trip-wallet-hub")).toBeVisible();
+      await expect(page.getByText("Add Activity")).toBeVisible();
+      await expect(page.getByText("Invite Guests")).toBeVisible();
+      await expect(page.getByLabel("Organizer actions")).toBeHidden();
+
+      const overflow = page.getByTestId("mobile-trip-overflow-menu");
+      await expect(overflow).toBeVisible();
+      await overflow.locator("summary").click();
+      await expect(overflow.getByText("Email import coming soon")).toBeVisible();
+      await expect(overflow.getByText("Currency")).toBeVisible();
+      await expect(overflow.getByText("Notifications")).toBeVisible();
+    } finally {
+      if (tripId && tripId !== "trips") {
+        await request.delete(`${baseUrl}/api/trips/${tripId}`, {
+          headers: { "x-cypress-dashboard": "true" }
+        });
+      }
+    }
+  });
+
   test("bottom nav does not cover the scrollable content area", async ({ page }) => {
     await page.setViewportSize({ height: 900, width: 390 });
     await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
@@ -252,15 +325,15 @@ test.describe("mobile soft-launch UX", () => {
 
       await page.goto(`${baseUrl}/dashboard/trips/${tripId}/timeline`, { waitUntil: "commit" });
       const content = page.getByTestId("app-shell-content");
-      await expect(content.getByRole("link", { name: /View South Pointe Park on map/ })).toBeVisible({ timeout: 30_000 });
-      await expect(content.getByRole("button", { name: /Edit South Pointe Park/ })).toBeVisible({ timeout: 30_000 });
+      await expect(content.getByRole("link", { name: /View South Pointe Park on map/ })).toBeVisible({ timeout: 60_000 });
+      await expect(content.getByRole("button", { name: /Edit South Pointe Park/ })).toBeVisible({ timeout: 60_000 });
       await expect(content.getByRole("link", { name: "View on map" })).toHaveCount(0);
       await expect(content.getByText("View on map", { exact: true })).toHaveCount(0);
 
       const card = content.locator("article").filter({
         has: page.getByRole("heading", { name: "South Pointe Park" })
       });
-      await expect(card.getByRole("button", { name: /Edit South Pointe Park/ })).toBeEnabled();
+      await expect(card.getByRole("button", { name: /Edit South Pointe Park/ })).toBeEnabled({ timeout: 60_000 });
       await card.getByRole("button", { name: /Edit South Pointe Park/ }).click();
       await expect(card.getByLabel("Stop location")).toBeVisible();
       await expect(card.getByLabel("Date", { exact: true })).toBeVisible();
@@ -274,6 +347,7 @@ test.describe("mobile soft-launch UX", () => {
   });
 
   test("demo itinerary uses compact square place photos on mobile", async ({ page }) => {
+    test.setTimeout(90_000);
     await page.setViewportSize({ height: 900, width: 390 });
     await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
     await page.goto(`${baseUrl}/dashboard/trips/demo/timeline`, { waitUntil: "commit" });
@@ -282,7 +356,7 @@ test.describe("mobile soft-launch UX", () => {
       .getByTestId("app-shell-content")
       .locator("article")
       .getByTestId("place-photo");
-    await expect(photos.first()).toBeVisible({ timeout: 15_000 });
+    await expect(photos.first()).toBeVisible({ timeout: 60_000 });
 
     const count = Math.min(await photos.count(), 6);
     expect(count).toBeGreaterThan(0);

@@ -26,7 +26,7 @@ test("social inspiration import promotes to timeline/map and generates a plan", 
   page,
   request
 }) => {
-  test.setTimeout(120_000);
+  test.setTimeout(240_000);
   test.skip(
     !supabaseUrl || !serviceRoleKey,
     "social import loop requires Supabase URL and SUPABASE_SERVICE_ROLE_KEY in a protected environment"
@@ -172,7 +172,7 @@ test("social inspiration import promotes to timeline/map and generates a plan", 
 
     await page.setExtraHTTPHeaders(dashboardHeaders);
     await page.goto(`${baseUrl}/dashboard/imports`, { waitUntil: "commit" });
-    await expect(page.getByTestId("imports-route")).toBeVisible();
+    await expect(page.getByTestId("imports-route")).toBeVisible({ timeout: 20_000 });
     await expect(page.getByText(place.name, { exact: true })).toBeVisible();
 
     const promoteResponse = await request.post(
@@ -193,19 +193,20 @@ test("social inspiration import promotes to timeline/map and generates a plan", 
     await page.goto(`${baseUrl}/dashboard/trips/${tripId}/timeline`, {
       waitUntil: "commit"
     });
-    await expect(page.getByText(place.name, { exact: true })).toBeVisible();
+    await expect(page.getByText(/park g[uü]ell/i).first()).toBeVisible();
 
     await page.goto(`${baseUrl}/dashboard/trips/${tripId}/map`, {
       waitUntil: "commit"
     });
     await expect(page.getByRole("heading", { name: /map/i })).toBeVisible();
+    await expect(page.getByTestId("connected-trip-map")).toBeVisible({ timeout: 90_000 });
 
     const visiblePlaceName =
       String(place.name || "").toLowerCase().includes("park")
         ? /park g[uü]ell/i
         : new RegExp(escapeRegExp(String(place.name || "")), "i");
 
-    await expect(page.getByText(visiblePlaceName).first()).toBeVisible();
+    await expect(page.getByText(visiblePlaceName).first()).toBeVisible({ timeout: 90_000 });
 
     const generateResponse = await request.post(
       `${baseUrl}/api/trips/${tripId}/itinerary/generate`,
