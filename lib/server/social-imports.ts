@@ -8,6 +8,11 @@ import type {
   MergeExtractedPlaceInput,
   UpdateExtractedPlaceInput
 } from "@/lib/validators/social-imports";
+import {
+  normalizeRouteMode,
+  routeLocationLabel,
+  type TripSegmentRouteMetadata
+} from "@/lib/trip-segment-route";
 
 type SupabaseLike = {
   from: (table: string) => any;
@@ -554,6 +559,11 @@ export async function promoteExtractedPlace(
   tripId: string
 ) {
   const place = await resolveExtractedPlaceForPromotion(supabase, userId, id, tripId);
+  const routeIntent = buildRouteIntentFromPlace(place);
+
+  if (routeIntent) {
+    return promoteRouteIntentPlace(supabase, userId, place, tripId, routeIntent);
+  }
 
   if (place.status === "promoted" && place.promoted_trip_segment_id) {
     return { place, segment: null };
@@ -779,6 +789,100 @@ async function promoteUnmappedActivityPlace(
   };
 }
 
+async function promoteRouteIntentPlace(
+  supabase: SupabaseLike,
+  userId: string,
+  place: Record<string, any>,
+  tripId: string,
+  route: TripSegmentRouteMetadata
+) {
+  const { data: latestSegment } = await supabase
+    .from("trip_segments")
+    .select("position")
+    .eq("trip_id", tripId)
+    .eq("user_id", userId)
+    .order("position", { ascending: false, nullsFirst: false })
+    .limit(1)
+    .maybeSingle();
+  const nextPosition =
+    typeof latestSegment?.position === "number" ? latestSegment.position + 1 : 0;
+  const startTime = await defaultStartTimeForTrip(supabase, userId, tripId, nextPosition);
+  const routeLabel = routeLocationLabel(route);
+
+  const routeSegmentPayload = {
+    kind: route.mode === "other" ? "transportation" : route.mode,
+    lat: null,
+    lng: null,
+    location_status: "manual_location_required",
+    location: routeLabel || place.city || place.address || null,
+    notes: buildPromotedNotes(place),
+    position: nextPosition,
+    provider: "wayline_route",
+    provider_metadata: {
+      evidence: readStringArray(place.evidence),
+      extractedPlaceId: place.id,
+      route,
+      routeCandidate: true,
+      sourceImportId: place.imported_post_id
+    },
+    provider_place_id: null,
+    source_import_id: place.imported_post_id || null,
+    start_time: route.departAt || startTime,
+    title: routeLabel || place.name,
+    trip_id: tripId,
+    user_id: userId
+  };
+
+  const { data: segment, error: segmentError } = await supabase
+    .from("trip_segments")
+    .insert(routeSegmentPayload)
+    .select("id,trip_id,user_id,kind,title,start_time,end_time,location,lat,lng,location_status,notes,inserted_at")
+    .single();
+
+  if (segmentError) {
+    logSocialImportEvent("trip_draft_promotion_failed", {
+      error: segmentError.message,
+      extractedPlaceId: place.id,
+      routeCandidate: true,
+      tripId,
+      userId
+    });
+
+    throw new ApiError("internal_error", "Could not promote route segment.", 500, {
+      supabaseMessage: segmentError.message
+    });
+  }
+
+  const { data: finalPlace } = await supabase
+    .from("extracted_places")
+    .update({
+      ai_payload: {
+        ...(isRecord(place.ai_payload) ? place.ai_payload : {}),
+        routeCandidate: true
+      },
+      promoted_trip_segment_id: segment.id,
+      status: "promoted",
+      trip_id: tripId
+    })
+    .eq("id", place.id)
+    .eq("user_id", userId)
+    .select(extractedPlaceSelect)
+    .single();
+
+  logSocialImportEvent("trip_draft_promoted", {
+    extractedPlaceId: place.id,
+    routeCandidate: true,
+    segmentId: segment.id,
+    tripId,
+    userId
+  });
+
+  return {
+    place: finalPlace || place,
+    segment
+  };
+}
+
 async function resolveExtractedPlaceForPromotion(
   supabase: SupabaseLike,
   userId: string,
@@ -786,6 +890,10 @@ async function resolveExtractedPlaceForPromotion(
   tripId: string
 ) {
   const place = await getExtractedPlace(supabase, userId, id);
+  if (buildRouteIntentFromPlace(place)) {
+    return place;
+  }
+
   await assertTripDestinationMatch(supabase, userId, id, tripId, {
     allowMismatch: false,
     place
@@ -1359,6 +1467,7 @@ async function extractWithOpenAi(input: {
       text:
         "Extract only real travel places or bookable travel experiences from the user-submitted saved inspiration below. Return an empty places array if no real place or experience is present.\n\n" +
         "Allowed candidates: named restaurants, cafes, attractions, landmarks, neighborhoods, tours, activities, hotels, events, parks, shopping places, nightlife venues, and relevant transportation hubs.\n" +
+        "If the user describes travel between two places, such as \"fly from Barcelona to Miami\" or \"Barcelona to Miami\", return one transportation candidate with that exact route name. Do not downgrade it into one endpoint place.\n" +
         "Vague requests such as cute sushi spot in Brickell, rooftop drinks, or waterfront brunch are not named venues. Return them only as restaurant_intent or activity_idea with needs_provider_search=true, low confidence, and no address.\n" +
         "Reject candidates that are UI labels, app names, product names, generic itinerary ideas, sentence fragments, instructions, marketing copy, or system/planner text. Never return OpenAI, Wayline, AI trip planner, Saved Inspiration, Review candidates, or text about promoting items.\n" +
         "Trip metadata belongs in trip_context, not in place_candidates. Do not return metadata such as Destination: Miami, Travel style: balanced, budget, dates, number of travelers, pace, planning notes, or itinerary labels as place candidates.\n" +
@@ -2059,6 +2168,107 @@ function segmentKindForCategory(category: string) {
     default:
       return "activity";
   }
+}
+
+function buildRouteIntentFromPlace(place: Record<string, any>): TripSegmentRouteMetadata | null {
+  const payload = isRecord(place.ai_payload) ? place.ai_payload : {};
+  const candidateType = readString(payload.candidate_type ?? payload.candidateType);
+  const category = normalizeCategory(readString(place.category) || "");
+  const candidateLooksTransport =
+    category === "transportation" ||
+    candidateType === "transportation" ||
+    /\b(flight|fly|train|drive|bus|ferry|transfer|transport)\b/i.test(place.name || "");
+
+  if (!candidateLooksTransport) {
+    return null;
+  }
+
+  const evidence = readStringArray(place.evidence).join(" ");
+  const match =
+    matchRouteText(readString(place.name) || "", true) ||
+    matchRouteText(readString(place.travel_note) || "", false) ||
+    matchRouteText(evidence, false);
+
+  if (!match) {
+    return null;
+  }
+
+  const mode = inferRouteMode(`${place.name || ""} ${place.category || ""} ${evidence}`);
+
+  return {
+    arriveAt: null,
+    carrier: null,
+    confirmation: null,
+    departAt: null,
+    destination: {
+      address: null,
+      code: airportCodeFromRouteText(match.destination),
+      label: match.destination,
+      lat: null,
+      lng: null,
+      placeId: null
+    },
+    flightNumber: null,
+    mode,
+    origin: {
+      address: null,
+      code: airportCodeFromRouteText(match.origin),
+      label: match.origin,
+      lat: null,
+      lng: null,
+      placeId: null
+    }
+  };
+}
+
+function matchRouteText(value: string, strictTitle: boolean) {
+  const normalized = value.replace(/→|—|–/g, "->").replace(/\s+/g, " ").trim();
+  if (!normalized) return null;
+
+  const routeVerbMatch = normalized.match(
+    /\b(?:fly|flying|flight|train|drive|driving|bus|ferry|transfer|transport)\s+(?:from\s+)?(.{2,70}?)\s+(?:to|->)\s+(.{2,70}?)(?:[.;,]|$)/i
+  );
+  if (routeVerbMatch) {
+    return cleanRouteEndpoints(routeVerbMatch[1], routeVerbMatch[2]);
+  }
+
+  if (!strictTitle) {
+    return null;
+  }
+
+  const titleMatch = normalized.match(/^(.{2,70}?)\s+(?:to|->)\s+(.{2,70})$/i);
+  return titleMatch ? cleanRouteEndpoints(titleMatch[1], titleMatch[2]) : null;
+}
+
+function cleanRouteEndpoints(origin: string, destination: string) {
+  const cleanOrigin = cleanRouteEndpoint(origin);
+  const cleanDestination = cleanRouteEndpoint(destination);
+  if (!cleanOrigin || !cleanDestination || cleanOrigin === cleanDestination) return null;
+  return { destination: cleanDestination, origin: cleanOrigin };
+}
+
+function cleanRouteEndpoint(value: string) {
+  return value
+    .replace(/^(from|in|at)\s+/i, "")
+    .replace(/\s+(by|on|for|with)\s+.*$/i, "")
+    .replace(/["'`]/g, "")
+    .trim();
+}
+
+function inferRouteMode(text: string) {
+  const lower = text.toLowerCase();
+  if (/\b(flight|fly|flying|airport)\b/.test(lower)) return normalizeRouteMode("flight");
+  if (/\b(train|rail)\b/.test(lower)) return normalizeRouteMode("train");
+  if (/\b(bus|coach)\b/.test(lower)) return normalizeRouteMode("bus");
+  if (/\b(ferry|boat transfer)\b/.test(lower)) return normalizeRouteMode("ferry");
+  if (/\b(drive|driving|car|road trip)\b/.test(lower)) return normalizeRouteMode("drive");
+  if (/\b(transfer|transport)\b/.test(lower)) return normalizeRouteMode("transfer");
+  return normalizeRouteMode("transportation");
+}
+
+function airportCodeFromRouteText(value: string) {
+  const match = value.match(/\b[A-Z]{3}\b/);
+  return match ? match[0] : null;
 }
 
 function inferCategory(text: string) {

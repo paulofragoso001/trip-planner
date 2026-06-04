@@ -118,7 +118,9 @@ export async function updateTripSegment(
     typeof input.lat === "number" &&
     typeof input.lng === "number"
   ) {
-    updates.location_status = "resolved";
+    if (!("locationStatus" in input)) {
+      updates.location_status = "resolved";
+    }
     updates.provider_metadata = withScheduleMetadata(
       {
         ...currentMetadata,
@@ -127,7 +129,9 @@ export async function updateTripSegment(
       input
     );
   } else if ("lat" in input || "lng" in input) {
-    updates.location_status = "manual_location_required";
+    if (!("locationStatus" in input)) {
+      updates.location_status = "manual_location_required";
+    }
   }
   if ("notes" in input) updates.notes = input.notes;
   if ("provider" in input) updates.provider = input.provider;

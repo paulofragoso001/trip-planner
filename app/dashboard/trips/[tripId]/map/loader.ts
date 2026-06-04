@@ -7,6 +7,13 @@ import { resolveUnmappedPhysicalTripSegments } from "@/lib/server/trip-segment-l
 import { listTripRecommendations } from "@/lib/server/travel-recommendations";
 import { isDemoTripId, isUuid } from "@/lib/server/trip-id";
 import { buildPlacePhotoUrl, readProviderPhoto } from "@/lib/travel-data/photo-url";
+import {
+  hasResolvedRoute,
+  isRouteKind,
+  readTripSegmentRoute,
+  routeLocationLabel,
+  routeTitleLabel
+} from "@/lib/trip-segment-route";
 
 export type TripMapData = {
   destination: string | null;
@@ -155,12 +162,8 @@ export async function loadTripMapData(tripId: string): Promise<TripMapData> {
   }
 
   const rows = (itemResult.data || []) as TripSegmentMapRow[];
-  const mappedRows = sortRouteRows(rows.filter(
-    (row) => typeof row.lat === "number" && typeof row.lng === "number"
-  ));
-  const unresolvedRows = rows.filter(
-    (row) => typeof row.lat !== "number" || typeof row.lng !== "number"
-  );
+  const mappedRows = sortRouteRows(rows.filter(isMappedRow));
+  const unresolvedRows = rows.filter((row) => !isMappedRow(row));
   const activitySegments = unresolvedRows
     .filter((row) => isActivityIdea(row))
     .map(mapUnmappedSegment);
@@ -199,19 +202,23 @@ function mapUnmappedSegment(row: TripSegmentMapRow): UnmappedMapSegment {
   const diagnostics = isRecord(row.provider_metadata?.locationDiagnostics)
     ? row.provider_metadata.locationDiagnostics
     : null;
+  const route = readTripSegmentRoute(row.provider_metadata);
   return {
     id: row.id,
-    location: row.location,
+    location: route ? routeLocationLabel(route) || row.location : row.location,
     locationStatus: row.location_status || null,
     safeRejectedAddress:
       typeof diagnostics?.selectedFormattedAddress === "string"
         ? diagnostics.selectedFormattedAddress
         : null,
-    title: row.title || "Trip stop"
+    title: route ? routeTitleLabel(route, row.title || "Trip route") : row.title || "Trip stop"
   };
 }
 
 function isActivityIdea(row: TripSegmentMapRow) {
+  if (isRouteKind(row.kind) || readTripSegmentRoute(row.provider_metadata)) {
+    return false;
+  }
   const metadata = isRecord(row.provider_metadata) ? row.provider_metadata : {};
   const text = `${row.title || ""} ${row.location || ""} ${row.location_status || ""}`.toLowerCase();
   return (
@@ -221,26 +228,41 @@ function isActivityIdea(row: TripSegmentMapRow) {
   );
 }
 
+function isMappedRow(row: TripSegmentMapRow) {
+  const route = readTripSegmentRoute(row.provider_metadata);
+  if (route || isRouteKind(row.kind)) {
+    return hasResolvedRoute(route);
+  }
+  return typeof row.lat === "number" && typeof row.lng === "number";
+}
+
 function isRecord(value: unknown): value is Record<string, any> {
   return Boolean(value && typeof value === "object" && !Array.isArray(value));
 }
 
 function mapItem(row: TripSegmentMapRow, index: number): TripMapItem {
   const photo = readProviderPhoto(row.provider_metadata);
+  const route = readTripSegmentRoute(row.provider_metadata);
+  const routeReady = hasResolvedRoute(route);
+  const lat = routeReady ? route?.destination?.lat : row.lat;
+  const lng = routeReady ? route?.destination?.lng : row.lng;
   return {
-    address: row.location,
-    category: row.kind,
+    address: route ? routeLocationLabel(route) || row.location : row.location,
+    category: route?.mode || row.kind,
     dayLabel: formatMapDayLabel(row.start_time),
     id: row.id,
     imageAlt: photo?.imageAlt || null,
     imageAttribution: photo?.attribution || null,
     imageUrl: buildPlacePhotoUrl(row.provider_metadata, 400),
-    lat: Number(row.lat),
-    lng: Number(row.lng),
+    lat: Number(lat),
+    lng: Number(lng),
+    route,
     routeOrder: index + 1,
     status: row.location_status || "resolved",
     timeLabel: formatMapTimeLabel(row.start_time),
-    title: row.title || row.location || "Trip stop"
+    title: route
+      ? routeTitleLabel(route, row.title || "Trip route")
+      : row.title || row.location || "Trip stop"
   };
 }
 

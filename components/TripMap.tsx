@@ -5,7 +5,13 @@ import {
   OverlayView,
   Polyline
 } from "@react-google-maps/api";
-import { useEffect, useMemo, useRef } from "react";
+import { Fragment, useEffect, useMemo, useRef } from "react";
+import {
+  hasResolvedRoute,
+  routeEndpointLabel,
+  type TripRouteEndpoint,
+  type TripSegmentRouteMetadata
+} from "@/lib/trip-segment-route";
 
 export type TripMapItem = {
   address?: string | null;
@@ -18,6 +24,7 @@ export type TripMapItem = {
   title: string;
   lat: number;
   lng: number;
+  route?: TripSegmentRouteMetadata | null;
   routeOrder?: number | null;
   status?: string | null;
   timeLabel?: string | null;
@@ -55,15 +62,24 @@ export default function TripMap({
 }: TripMapProps) {
   const mapRef = useRef<google.maps.Map | null>(null);
 
-  const center = useMemo(
-    () => (items[0] ? { lat: items[0].lat, lng: items[0].lng } : fallbackCenter),
+  const mapPoints = useMemo(() => getMapPoints(items), [items]);
+  const placeItems = useMemo(
+    () => items.filter((item) => !hasResolvedRoute(item.route)),
     [items]
+  );
+  const routeItems = useMemo(
+    () => items.filter((item) => hasResolvedRoute(item.route)),
+    [items]
+  );
+  const center = useMemo(
+    () => mapPoints[0] || fallbackCenter,
+    [mapPoints]
   );
   const routePath = useMemo(
-    () => items.map((item) => ({ lat: item.lat, lng: item.lng })),
-    [items]
+    () => placeItems.map((item) => ({ lat: item.lat, lng: item.lng })),
+    [placeItems]
   );
-  const markerPositions = useMemo(() => getMarkerPositions(items), [items]);
+  const markerPositions = useMemo(() => getMarkerPositions(placeItems), [placeItems]);
   const routeInfo = useMemo(() => getRouteInfo(items), [items]);
   const legsInfo = useMemo(() => getLegsInfo(items), [items]);
   const containerStyle = useMemo(
@@ -85,11 +101,11 @@ export default function TripMap({
     }
 
     const bounds = new window.google.maps.LatLngBounds();
-    items.forEach((item) => {
-      bounds.extend({ lat: item.lat, lng: item.lng });
+    mapPoints.forEach((point) => {
+      bounds.extend(point);
     });
     mapRef.current.fitBounds(bounds);
-  }, [items]);
+  }, [mapPoints]);
 
   useEffect(() => {
     if (!mapRef.current || !selectedId) {
@@ -99,7 +115,7 @@ export default function TripMap({
     const item = items.find((currentItem) => currentItem.id === selectedId);
 
     if (item) {
-      mapRef.current.panTo({ lat: item.lat, lng: item.lng });
+      mapRef.current.panTo(getItemCenter(item));
       mapRef.current.setZoom(14);
     }
   }, [selectedId, items]);
@@ -155,9 +171,53 @@ export default function TripMap({
           />
         ) : null}
 
-        {items.map((item, index) => {
+        {routeItems.map((item) => {
+          const route = item.route;
+          const origin = route?.origin;
+          const destination = route?.destination;
+          const originPosition = endpointPosition(origin);
+          const destinationPosition = endpointPosition(destination);
+          const order = item.routeOrder || items.findIndex((current) => current.id === item.id) + 1;
           const active = selectedId === item.id;
-          const order = item.routeOrder || index + 1;
+
+          if (!originPosition || !destinationPosition) return null;
+
+          return (
+            <Fragment key={`${item.id}-route`}>
+              <Polyline
+                path={[originPosition, destinationPosition]}
+                options={{
+                  geodesic: true,
+                  strokeColor: active ? "#059669" : "#0f172a",
+                  strokeOpacity: active ? 0.88 : 0.62,
+                  strokeWeight: active ? 5 : 4
+                }}
+              />
+              <EndpointMarker
+                active={active}
+                item={item}
+                label="From"
+                onSelect={onSelect}
+                order={`${order}A`}
+                position={originPosition}
+                title={routeEndpointLabel(origin) || "Origin"}
+              />
+              <EndpointMarker
+                active={active}
+                item={item}
+                label="To"
+                onSelect={onSelect}
+                order={`${order}B`}
+                position={destinationPosition}
+                title={routeEndpointLabel(destination) || "Destination"}
+              />
+            </Fragment>
+          );
+        })}
+
+        {placeItems.map((item, index) => {
+          const active = selectedId === item.id;
+          const order = item.routeOrder || items.findIndex((current) => current.id === item.id) + 1;
 
           return (
           <OverlayView
@@ -217,8 +277,51 @@ export default function TripMap({
   );
 }
 
+function EndpointMarker({
+  active,
+  item,
+  label,
+  onSelect,
+  order,
+  position,
+  title
+}: {
+  active: boolean;
+  item: TripMapItem;
+  label: string;
+  onSelect?: (id: string) => void;
+  order: string;
+  position: google.maps.LatLngLiteral;
+  title: string;
+}) {
+  return (
+    <OverlayView
+      position={position}
+      mapPaneName={OverlayView.OVERLAY_MOUSE_TARGET}
+    >
+      <button
+        aria-label={`Select ${label.toLowerCase()} for route ${item.title}: ${title}`}
+        className={[
+          "grid place-items-center rounded-full border-2 border-white text-[11px] font-black text-white shadow-lg transition",
+          active ? "h-11 min-w-11 px-2 ring-4 ring-emerald-200" : "h-9 min-w-9 px-2 hover:scale-105"
+        ].join(" ")}
+        onClick={() => onSelect?.(item.id)}
+        style={{
+          backgroundColor: active ? "#059669" : "#0f172a",
+          transform: "translate(-50%, -50%)"
+        }}
+        title={`${label}: ${title}`}
+        type="button"
+      >
+        {order}
+      </button>
+    </OverlayView>
+  );
+}
+
 function colorForMarker(item: TripMapItem) {
   const text = `${item.category || ""} ${item.status || ""}`.toLowerCase();
+  if (hasResolvedRoute(item.route)) return "#0f172a";
   if (text.includes("restaurant") || text.includes("dinner") || text.includes("food")) return "#7c3aed";
   if (text.includes("park") || text.includes("garden")) return "#059669";
   if (text.includes("shopping")) return "#db2777";
@@ -248,19 +351,29 @@ function getRouteInfo(items: TripMapItem[]) {
 }
 
 function getLegsInfo(items: TripMapItem[]) {
-  return items.slice(0, -1).map((item, index) => ({
-    id: `${items[index]?.id || "origin"}-${items[index + 1]?.id || "destination"}`,
+  const places = items.filter((item) => !hasResolvedRoute(item.route));
+  return places.slice(0, -1).map((item, index) => ({
+    id: `${places[index]?.id || "origin"}-${places[index + 1]?.id || "destination"}`,
     from: item.title || `Place ${index + 1}`,
-    to: items[index + 1]?.title || `Place ${index + 2}`,
-    distance: formatDistance(getDistanceMeters(item, items[index + 1])),
+    to: places[index + 1]?.title || `Place ${index + 2}`,
+    distance: formatDistance(getDistanceMeters(item, places[index + 1])),
     duration: "Route leg"
   }));
 }
 
 function getTotalDistanceMeters(items: TripMapItem[]) {
-  return items
+  const places = items.filter((item) => !hasResolvedRoute(item.route));
+  const placeDistance = places
     .slice(0, -1)
-    .reduce((total, item, index) => total + getDistanceMeters(item, items[index + 1]), 0);
+    .reduce((total, item, index) => total + getDistanceMeters(item, places[index + 1]), 0);
+  const routeDistance = items.reduce((total, item) => {
+    const origin = endpointPosition(item.route?.origin);
+    const destination = endpointPosition(item.route?.destination);
+    if (!origin || !destination) return total;
+    return total + getDistanceMeters(origin, destination);
+  }, 0);
+
+  return placeDistance + routeDistance;
 }
 
 function getMarkerPositions(items: TripMapItem[]) {
@@ -279,7 +392,10 @@ function getMarkerPositions(items: TripMapItem[]) {
   });
 }
 
-function getDistanceMeters(a: TripMapItem, b: TripMapItem) {
+function getDistanceMeters(
+  a: Pick<TripMapItem, "lat" | "lng">,
+  b: Pick<TripMapItem, "lat" | "lng">
+) {
   const earthRadiusMeters = 6371000;
   const dLat = toRadians(b.lat - a.lat);
   const dLng = toRadians(b.lng - a.lng);
@@ -290,6 +406,34 @@ function getDistanceMeters(a: TripMapItem, b: TripMapItem) {
     Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
 
   return 2 * earthRadiusMeters * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
+}
+
+function getMapPoints(items: TripMapItem[]) {
+  return items.flatMap((item) => {
+    const origin = endpointPosition(item.route?.origin);
+    const destination = endpointPosition(item.route?.destination);
+    if (origin && destination) return [origin, destination];
+    return [{ lat: item.lat, lng: item.lng }];
+  });
+}
+
+function getItemCenter(item: TripMapItem) {
+  const origin = endpointPosition(item.route?.origin);
+  const destination = endpointPosition(item.route?.destination);
+  if (origin && destination) {
+    return {
+      lat: (origin.lat + destination.lat) / 2,
+      lng: (origin.lng + destination.lng) / 2
+    };
+  }
+  return { lat: item.lat, lng: item.lng };
+}
+
+function endpointPosition(endpoint: TripRouteEndpoint | null | undefined) {
+  if (typeof endpoint?.lat !== "number" || typeof endpoint.lng !== "number") {
+    return null;
+  }
+  return { lat: endpoint.lat, lng: endpoint.lng };
 }
 
 function toRadians(value: number) {

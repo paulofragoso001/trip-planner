@@ -9,6 +9,7 @@ import { PlacePhoto } from "@/components/place-photo";
 import TripMap, { type TripMapItem } from "@/components/TripMap";
 import type { UnmappedMapSegment } from "@/app/dashboard/trips/[tripId]/map/loader";
 import { waylineCopy } from "@/lib/copy/wayline-copy";
+import { hasResolvedRoute, routeEndpointLabel } from "@/lib/trip-segment-route";
 
 type ConnectedTripMapProps = {
   destination: string | null;
@@ -61,13 +62,9 @@ export function ConnectedTripMap({
     ? Math.max(visibleItems.findIndex((item) => item.id === selectedItem.id), 0)
     : 0;
   const selectedPosition = selectedIndex + 1;
-  const selectedPlaceUrl = selectedItem
-    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-        selectedItem.address || selectedItem.title
-      )}`
-    : null;
+  const selectedPlaceUrl = selectedItem ? googleMapsUrlForItem(selectedItem) : null;
   const hiddenPlaceCount = Math.max(dayFilteredItems.length - visibleItems.length, 0);
-  const routeSummary = `${visibleItems.length} place${visibleItems.length === 1 ? "" : "s"} · Route preview`;
+  const routeSummary = buildRouteSummary(visibleItems);
 
   useEffect(() => {
     setHydrated(true);
@@ -217,6 +214,12 @@ export function ConnectedTripMap({
                   </p>
                   {selectedItem.address ? (
                     <p className="mt-1 line-clamp-2 text-xs text-white/62">{selectedItem.address}</p>
+                  ) : null}
+                  {selectedItem.route ? (
+                    <div className="mt-2 grid gap-1 text-xs font-semibold text-white/65">
+                      <p className="truncate">From: {routeEndpointLabel(selectedItem.route.origin) || "Origin needed"}</p>
+                      <p className="truncate">To: {routeEndpointLabel(selectedItem.route.destination) || "Destination needed"}</p>
+                    </div>
                   ) : null}
                   <div className="mt-3 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
                     {selectedPlaceUrl ? (
@@ -416,6 +419,36 @@ export function ConnectedTripMap({
       ) : null}
     </div>
   );
+}
+
+function googleMapsUrlForItem(item: TripMapItem) {
+  if (hasResolvedRoute(item.route)) {
+    const origin = item.route?.origin;
+    const destination = item.route?.destination;
+    const originValue = typeof origin?.lat === "number" && typeof origin.lng === "number"
+      ? `${origin.lat},${origin.lng}`
+      : routeEndpointLabel(origin);
+    const destinationValue = typeof destination?.lat === "number" && typeof destination.lng === "number"
+      ? `${destination.lat},${destination.lng}`
+      : routeEndpointLabel(destination);
+
+    if (originValue && destinationValue) {
+      return `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(originValue)}&destination=${encodeURIComponent(destinationValue)}`;
+    }
+  }
+
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+    item.address || item.title
+  )}`;
+}
+
+function buildRouteSummary(items: TripMapItem[]) {
+  const routeCount = items.filter((item) => hasResolvedRoute(item.route)).length;
+  const placeCount = items.length - routeCount;
+  const parts: string[] = [];
+  if (placeCount) parts.push(`${placeCount} place${placeCount === 1 ? "" : "s"}`);
+  if (routeCount) parts.push(`${routeCount} route${routeCount === 1 ? "" : "s"}`);
+  return `${parts.join(" · ") || "Route"} · Route preview`;
 }
 
 function RetryAllButton({ tripId }: { tripId: string }) {

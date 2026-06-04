@@ -4,6 +4,11 @@ import { authorizeDashboardApi } from "@/lib/server/dashboard-test-auth";
 import { summarizeEstimatedRoutes } from "@/lib/server/itinerary-generator";
 import { isDemoTripId, isUuid } from "@/lib/server/trip-id";
 import { buildPlacePhotoUrl, readProviderPhoto } from "@/lib/travel-data/photo-url";
+import {
+  readTripSegmentRoute,
+  routeLocationLabel,
+  routeTitleLabel
+} from "@/lib/trip-segment-route";
 import { dayIdFromDate, segmentTypeLabel } from "@/lib/ui/timeline";
 import type { TimelineDayView, TripTimelineData } from "./types";
 
@@ -281,6 +286,8 @@ function groupSegmentsByDay(segments: TripSegment[]): TimelineDayView[] {
         meta: segment.meta,
         notes: segment.notes ?? null,
         provider: readExtra(segment, "provider"),
+        providerMetadata: readRecordExtra(segment, "providerMetadata"),
+        route: segment.route || null,
         startAt: segment.startAt,
         status: segment.status === "pending" ? "watch" : segment.status,
         timeRange: formatTimeRange(
@@ -290,7 +297,7 @@ function groupSegmentsByDay(segments: TripSegment[]): TimelineDayView[] {
           Boolean(segment.hasEndTime)
         ),
         timeZoneLabel: "Local time",
-        title: segment.title,
+        title: segment.route ? routeTitleLabel(segment.route, segment.title) : segment.title,
         typeLabel: segmentTypeLabel(segment.type)
       }));
     const routeSummary = summarizeEstimatedRoutes(
@@ -334,13 +341,14 @@ function mapSegmentRow(
   const cost = budgetBySegment.get(row.id);
   const photo = readProviderPhoto(row.provider_metadata);
   const schedule = readScheduleMetadata(row.provider_metadata, row.start_time, row.end_time);
+  const route = readTripSegmentRoute(row.provider_metadata);
 
   return {
     actionLabel: actionLabelForKind(kind),
     confirmation: row.confirmation_code || "Not set",
     costLabel: cost ? formatMoney(cost.amount, cost.currency) : "$0",
-    details: buildDetails(row, schedule),
-    endAt: row.end_time,
+    details: buildDetails(row, schedule, route),
+    endAt: route?.arriveAt || row.end_time,
     id: row.id,
     imageAlt: photo?.imageAlt || null,
     imageAttribution: photo?.attribution || null,
@@ -350,24 +358,27 @@ function mapSegmentRow(
     insertedAt: row.inserted_at,
     lat: row.lat,
     lng: row.lng,
-    location: row.location || "Location not set",
-    meta: segmentTypeLabel(kind),
+    location: route ? routeLocationLabel(route) || row.location || "Route details not set" : row.location || "Location not set",
+    meta: route?.carrier || route?.flightNumber || segmentTypeLabel(kind),
     notes: row.notes,
     position: row.position,
-    startAt: row.start_time,
+    route,
+    startAt: route?.departAt || row.start_time,
     status: statusForRow(row),
-    title: row.title,
+    title: route ? routeTitleLabel(route, row.title) : row.title,
     tripId: row.trip_id,
     type: kind,
     bookingUrl: row.booking_url,
     confirmationCode: row.confirmation_code,
     locationStatus: row.location_status || inferRowLocationStatus(row),
-    provider: row.provider
+    provider: row.provider,
+    providerMetadata: row.provider_metadata
   } as TripSegment & {
     bookingUrl: string | null;
     confirmationCode: string | null;
     locationStatus: string;
     provider: string | null;
+    providerMetadata: Record<string, unknown> | null;
   };
 }
 
@@ -459,10 +470,15 @@ function actionLabelForKind(kind: TripSegmentType) {
 
 function buildDetails(
   row: TripSegmentRow,
-  schedule: { hasEndTime: boolean; hasStartTime: boolean }
+  schedule: { hasEndTime: boolean; hasStartTime: boolean },
+  route: ReturnType<typeof readTripSegmentRoute>
 ) {
   return [
     row.kind ? `Type: ${row.kind}` : null,
+    route?.origin ? `From: ${route.origin.label || route.origin.address || "Origin"}` : null,
+    route?.destination ? `To: ${route.destination.label || route.destination.address || "Destination"}` : null,
+    route?.flightNumber ? `Flight: ${route.flightNumber}` : null,
+    route?.carrier ? `Carrier: ${route.carrier}` : null,
     row.location ? `Location: ${row.location}` : null,
     row.provider ? `Source: ${row.provider}` : null,
     row.end_time && schedule.hasEndTime ? `Ends ${formatTime(row.end_time)}` : null
@@ -568,6 +584,13 @@ function readExtra(
 ) {
   const value = (segment as TripSegment & Record<typeof key, unknown>)[key];
   return typeof value === "string" && value ? value : null;
+}
+
+function readRecordExtra(segment: TripSegment, key: "providerMetadata") {
+  const value = (segment as TripSegment & Record<typeof key, unknown>)[key];
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
 }
 
 function statusForRow(row: TripSegmentRow) {

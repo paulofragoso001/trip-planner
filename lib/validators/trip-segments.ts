@@ -1,3 +1,11 @@
+import {
+  hasResolvedRoute,
+  normalizeRouteMode,
+  routeLocationLabel,
+  type TripRouteEndpoint,
+  type TripSegmentRouteMetadata
+} from "@/lib/trip-segment-route";
+
 export type TripSegmentsQuery = {
   tripId: string;
 };
@@ -15,6 +23,8 @@ export type TripSegmentWriteInput = {
   provider: string | null;
   providerMetadata?: Record<string, unknown> | null;
   providerPlaceId?: string | null;
+  route?: TripSegmentRouteMetadata | null;
+  routeMode?: string | null;
   endDate?: string | null;
   endClockTime?: string | null;
   startDate?: string | null;
@@ -66,9 +76,18 @@ export function validateTripSegmentWrite(
   const tripId = readString(value.tripId, 120) || readString(searchParams?.get("tripId"), 120);
   const title = readString(value.title, 200);
   const kind = readString(value.kind, 40) || readString(value.segmentType, 40) || "activity";
-  const lat = readNullableNumber(value.lat, "lat", details, -90, 90);
-  const lng = readNullableNumber(value.lng, "lng", details, -180, 180);
   const schedule = readSchedule(value, details);
+  const route = readRouteInput(value, schedule);
+  const lat = readNullableNumber(value.lat, "lat", details, -90, 90) ?? route?.destination?.lat ?? null;
+  const lng = readNullableNumber(value.lng, "lng", details, -180, 180) ?? route?.destination?.lng ?? null;
+  const providerMetadata = mergeRouteMetadata(
+    readNullableRecord(value.providerMetadata ?? value.provider_metadata),
+    route
+  );
+  const location = readNullableString(value.location, 500) || routeLocationLabel(route) || null;
+  const locationStatus =
+    readNullableString(value.locationStatus ?? value.location_status, 80) ||
+    (route ? (hasResolvedRoute(route) ? "resolved" : "manual_location_required") : null);
 
   if (!tripId) details.tripId = "tripId is required.";
   if (!title) details.title = "title is required.";
@@ -93,12 +112,14 @@ export function validateTripSegmentWrite(
       kind,
       lat,
       lng,
-      location: readNullableString(value.location, 500),
-      locationStatus: readNullableString(value.locationStatus ?? value.location_status, 80),
+      location,
+      locationStatus,
       notes: readNullableString(value.notes, 5000),
       provider: readNullableString(value.provider, 200),
-      providerMetadata: readNullableRecord(value.providerMetadata ?? value.provider_metadata),
+      providerMetadata,
       providerPlaceId: readNullableString(value.providerPlaceId ?? value.provider_place_id, 240),
+      route,
+      routeMode: route?.mode ?? null,
       startClockTime: schedule.startClockTime,
       startDate: schedule.startDate,
       startTime: schedule.hasScheduleFields
@@ -159,6 +180,22 @@ export function validateTripSegmentPatch(
   if ("providerMetadata" in value || "provider_metadata" in value) {
     update.providerMetadata = readNullableRecord(value.providerMetadata ?? value.provider_metadata);
   }
+  const route = readRouteInput(value, hasScheduleFields(value) ? readSchedule(value, details) : null);
+  if (route) {
+    update.route = route;
+    update.routeMode = route.mode;
+    update.providerMetadata = mergeRouteMetadata(update.providerMetadata || null, route);
+    if (!("location" in update)) update.location = routeLocationLabel(route) || null;
+    if (!("locationStatus" in update)) {
+      update.locationStatus = hasResolvedRoute(route) ? "resolved" : "manual_location_required";
+    }
+    if (!("lat" in update) && typeof route.destination?.lat === "number") {
+      update.lat = route.destination.lat;
+    }
+    if (!("lng" in update) && typeof route.destination?.lng === "number") {
+      update.lng = route.destination.lng;
+    }
+  }
   if ("providerPlaceId" in value || "provider_place_id" in value) {
     update.providerPlaceId = readNullableString(value.providerPlaceId ?? value.provider_place_id, 240);
   }
@@ -212,6 +249,100 @@ function readNullableNumber(
 function readNullableRecord(value: unknown) {
   if (value == null) return null;
   return isRecord(value) ? value : null;
+}
+
+function mergeRouteMetadata(
+  metadata: Record<string, unknown> | null,
+  route: TripSegmentRouteMetadata | null
+) {
+  if (!route) return metadata;
+  return {
+    ...(metadata || {}),
+    route: routeToRecord(route)
+  };
+}
+
+function readRouteInput(
+  value: Record<string, unknown>,
+  schedule: ReturnType<typeof readSchedule> | null
+): TripSegmentRouteMetadata | null {
+  const origin = readEndpoint(value.origin ?? value.from ?? value.routeOrigin ?? value.route_origin);
+  const destination = readEndpoint(
+    value.destination ?? value.to ?? value.routeDestination ?? value.route_destination
+  );
+  const mode = readNullableString(
+    value.routeMode ?? value.route_mode ?? value.transportType ?? value.transport_type,
+    40
+  );
+  const hasRouteInput = Boolean(origin || destination || mode);
+  if (!hasRouteInput) return null;
+
+  const departAt =
+    schedule?.startTime ||
+    combineOptionalDateTime(value.departDate ?? value.depart_date, value.departTime ?? value.depart_time);
+  const arriveAt =
+    schedule?.endTime ||
+    combineOptionalDateTime(value.arriveDate ?? value.arrive_date, value.arriveTime ?? value.arrive_time);
+
+  return {
+    arriveAt,
+    carrier: readNullableString(value.carrier, 120),
+    confirmation: readNullableString(value.confirmation ?? value.confirmationCode, 120),
+    departAt,
+    destination,
+    flightNumber: readNullableString(value.flightNumber ?? value.flight_number, 80),
+    mode: normalizeRouteMode(mode),
+    origin
+  };
+}
+
+function readEndpoint(value: unknown): TripRouteEndpoint | null {
+  if (typeof value === "string") {
+    const label = readNullableString(value, 240);
+    return label
+      ? { address: label, code: null, label, lat: null, lng: null, placeId: null }
+      : null;
+  }
+  if (!isRecord(value)) return null;
+  const label = readNullableString(value.label ?? value.name, 240);
+  const address = readNullableString(value.address ?? value.formattedAddress, 500);
+  const placeId = readNullableString(value.placeId ?? value.place_id, 240);
+  const lat = typeof value.lat === "number" && Number.isFinite(value.lat) ? value.lat : null;
+  const lng = typeof value.lng === "number" && Number.isFinite(value.lng) ? value.lng : null;
+  const providerMetadata = readNullableRecord(value.providerMetadata ?? value.provider_metadata);
+
+  if (!label && !address && !placeId && lat == null && lng == null) return null;
+
+  return {
+    address,
+    code: readNullableString(value.code, 16),
+    label: label || address,
+    lat,
+    lng,
+    placeId,
+    providerMetadata
+  };
+}
+
+function routeToRecord(route: TripSegmentRouteMetadata) {
+  return {
+    arriveAt: route.arriveAt,
+    carrier: route.carrier,
+    confirmation: route.confirmation,
+    departAt: route.departAt,
+    destination: route.destination,
+    flightNumber: route.flightNumber,
+    mode: route.mode,
+    origin: route.origin
+  };
+}
+
+function combineOptionalDateTime(dateValue: unknown, clockValue: unknown) {
+  if (typeof dateValue !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(dateValue)) return null;
+  const clock = typeof clockValue === "string" && /^([01]\d|2[0-3]):[0-5]\d$/.test(clockValue)
+    ? clockValue
+    : "00:00";
+  return combineDateAndClockTime(dateValue, clock);
 }
 
 function hasScheduleFields(value: Record<string, unknown>) {

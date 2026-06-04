@@ -27,6 +27,7 @@ import { ItineraryCardActions } from "@/components/trip/itinerary-card-actions";
 import { TripSegmentForm } from "@/components/trip/trip-segment-form";
 import { EmptyState } from "@/components/trip-ui";
 import { waylineCopy } from "@/lib/copy/wayline-copy";
+import { hasResolvedRoute, routeEndpointLabel } from "@/lib/trip-segment-route";
 
 type TripTimelinePageProps = TripTimelineData;
 
@@ -214,7 +215,9 @@ function ItineraryRow({
       </div>
 
       <div className="min-w-0 pb-4 pt-3">
-        {item.kind === "flight" ? (
+        {item.route ? (
+          <RouteTravelPassCard item={item} status={status} tripId={tripId} />
+        ) : item.kind === "flight" ? (
           <FlightBoardingPassCard item={item} status={status} tripId={tripId} />
         ) : item.kind === "hotel" ? (
           <HotelPassCard item={item} status={status} tripId={tripId} />
@@ -330,6 +333,111 @@ function RestaurantReservationCard({
       </div>
 
       <ItineraryCardActions item={item} tripId={tripId} />
+    </div>
+  );
+}
+
+function RouteTravelPassCard({
+  item,
+  status,
+  tripId
+}: {
+  item: TimelineItemView;
+  status: { className: string; label: string };
+  tripId: string;
+}) {
+  const route = item.route;
+  const origin = route?.origin;
+  const destination = route?.destination;
+  const routeReady = hasResolvedRoute(route);
+  const modeLabel = route?.mode === "transportation" ? "Transport" : route?.mode || "Route";
+  const originCode = origin?.code || airportCodeFromEndpoint(origin) || "FROM";
+  const destinationCode = destination?.code || airportCodeFromEndpoint(destination) || "TO";
+
+  return (
+    <div className="overflow-hidden rounded-[1.35rem] border border-slate-200 bg-white shadow-sm ring-1 ring-white transition hover:border-slate-300 hover:shadow-md">
+      <div className="p-3 sm:p-4">
+        <div className="flex items-start justify-between gap-3">
+          <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">
+            {modeLabel}
+          </p>
+          <span className={routeReady ? "inline-flex min-h-7 items-center rounded-full bg-emerald-50 px-2.5 text-xs font-black text-emerald-700" : status.className}>
+            {routeReady ? "Route ready" : "Needs route details"}
+          </span>
+        </div>
+
+        <h4 className="mt-4 break-words text-xl font-black leading-tight text-slate-950 sm:text-2xl">
+          {item.title}
+        </h4>
+
+        <div className="mt-5 grid grid-cols-[1fr_auto_1fr] items-end gap-3">
+          <div className="min-w-0">
+            <p className="text-3xl font-black leading-none tracking-tight text-slate-950 sm:text-5xl">
+              {originCode}
+            </p>
+            <p className="mt-1 truncate text-sm font-semibold text-slate-500">
+              {routeEndpointLabel(origin) || "Origin needed"}
+            </p>
+          </div>
+          <div className="mb-4 flex min-w-12 items-center justify-center text-slate-400">
+            <span className="h-px w-6 bg-slate-300" aria-hidden="true" />
+            <ArrowRight className="mx-1 h-4 w-4" aria-hidden="true" />
+            <span className="h-px w-6 bg-slate-300" aria-hidden="true" />
+          </div>
+          <div className="min-w-0 text-right">
+            <p className="text-3xl font-black leading-none tracking-tight text-slate-950 sm:text-5xl">
+              {destinationCode}
+            </p>
+            <p className="mt-1 truncate text-sm font-semibold text-slate-500">
+              {routeEndpointLabel(destination) || "Destination needed"}
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-5 grid grid-cols-[1fr_auto_1fr] items-start gap-3">
+          <div>
+            <p className="text-base font-black text-slate-950">
+              {item.startAt && item.hasStartTime ? formatFlightTime(item.startAt) : "--"}
+            </p>
+            <p className="mt-1 text-xs font-semibold text-slate-500">{formatFlightDate(item.startAt)}</p>
+          </div>
+          <div className="pt-1 text-slate-300">
+            {route?.mode === "train" ? (
+              <Train className="h-5 w-5" aria-hidden="true" />
+            ) : route?.mode === "drive" || route?.mode === "transfer" || route?.mode === "bus" ? (
+              <Car className="h-5 w-5" aria-hidden="true" />
+            ) : (
+              <Plane className="h-5 w-5 rotate-90" aria-hidden="true" />
+            )}
+          </div>
+          <div className="text-right">
+            <p className="text-base font-black text-slate-950">
+              {item.endAt && item.hasEndTime ? formatFlightTime(item.endAt) : "--"}
+            </p>
+            <p className="mt-1 text-xs font-semibold text-slate-500">{formatFlightDate(item.endAt)}</p>
+          </div>
+        </div>
+
+        {!routeReady ? (
+          <p className="mt-4 rounded-xl bg-amber-50 px-3 py-2 text-xs font-bold text-amber-800 sm:text-sm">
+            Add origin and destination to draw this route.
+          </p>
+        ) : null}
+      </div>
+
+      <div className="relative border-t border-dashed border-slate-200 px-3 py-3 sm:px-4">
+        <span className="absolute -left-3 -top-3 h-6 w-6 rounded-full bg-[#f4f7fb]" aria-hidden="true" />
+        <span className="absolute -right-3 -top-3 h-6 w-6 rounded-full bg-[#f4f7fb]" aria-hidden="true" />
+        <p className="text-sm font-black text-slate-950">
+          {[route?.carrier, route?.flightNumber].filter(Boolean).join(" · ") || "Route details"}
+        </p>
+        {route?.confirmation || item.confirmationCode ? (
+          <p className="mt-2 text-xs font-semibold text-slate-500">
+            Confirmation: <span className="font-black text-slate-800">{route?.confirmation || item.confirmationCode}</span>
+          </p>
+        ) : null}
+        <ItineraryCardActions item={item} tripId={tripId} />
+      </div>
     </div>
   );
 }
@@ -726,6 +834,10 @@ function SummaryRow({ label, value }: { label: string; value: string }) {
 }
 
 function getSegmentDisplay(item: TimelineItemView) {
+  if (item.route?.mode === "flight") return display("Flight", <Plane className="h-4 w-4" />, "bg-emerald-600 text-white", "bg-emerald-200");
+  if (item.route?.mode === "train") return display("Transportation", <Train className="h-4 w-4" />, "bg-emerald-600 text-white", "bg-emerald-200");
+  if (item.route) return display("Transportation", <Car className="h-4 w-4" />, "bg-emerald-600 text-white", "bg-emerald-200");
+
   const category = `${item.kind} ${item.typeLabel} ${item.meta}`.toLowerCase();
   const needsLocation = item.locationStatus !== "resolved";
   const activityIdea = item.locationStatus === "needs_activity_provider";
@@ -775,6 +887,22 @@ function categoryDotsForDay(items: TimelineItemView[]) {
 
 function display(label: string, icon: ReactNode, iconClass: string, lineClass: string) {
   return { icon, iconClass, label, lineClass };
+}
+
+function airportCodeFromEndpoint(
+  endpoint: { address?: string | null; code?: string | null; label?: string | null } | null | undefined
+) {
+  const text = `${endpoint?.code || ""} ${endpoint?.label || ""} ${endpoint?.address || ""}`;
+  const explicit = text.match(/\b[A-Z]{3}\b/);
+  if (explicit) return explicit[0];
+  const words = (endpoint?.label || endpoint?.address || "")
+    .replace(/[^a-zA-Z\s]/g, " ")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  if (!words.length) return "";
+  if (words.length === 1) return words[0].slice(0, 3).toUpperCase();
+  return words.slice(0, 3).map((word) => word[0]).join("").toUpperCase();
 }
 
 function getItemStatus(item: TimelineItemView) {

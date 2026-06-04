@@ -1,3 +1,5 @@
+import type { TripSegmentRouteMetadata } from "@/lib/trip-segment-route";
+
 export type TripSegmentType = "dinner" | "expense" | "flight" | "hotel" | "meeting";
 
 export type TripSegmentStatus = "confirmed" | "pending" | "synced" | "watch";
@@ -21,6 +23,7 @@ export type TripSegment = {
   meta: string;
   notes?: string | null;
   position?: number | null;
+  route?: TripSegmentRouteMetadata | null;
   startAt: string | null;
   status: TripSegmentStatus;
   title: string;

@@ -65,7 +65,7 @@ export function TripCreateForm({
     const result = await run({
       body: payload,
       method: "POST",
-      timeoutMs: 5000,
+      timeoutMs: 30000,
       url: "/api/trips"
     });
 

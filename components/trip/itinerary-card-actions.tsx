@@ -124,6 +124,7 @@ export function ItineraryCardActions({ item, tripId }: ItineraryCardActionsProps
             defaultLng={item.lng}
             defaultLocation={item.location === "Location not set" ? null : item.location}
             defaultNotes={item.notes}
+            defaultProviderMetadata={item.providerMetadata}
             defaultStartTime={item.startAt}
             defaultTitle={item.title}
             includeCoordinates

@@ -8,6 +8,14 @@ import LocationAutocomplete, {
   type LocationSelection
 } from "@/components/LocationAutocomplete";
 import { useWaylineAction } from "@/hooks/use-wayline-action";
+import {
+  isRouteKind,
+  normalizeRouteMode,
+  readTripSegmentRoute,
+  routeEndpointLabel,
+  routeLocationLabel,
+  type TripRouteEndpoint
+} from "@/lib/trip-segment-route";
 
 type TripSegmentFormProps = {
   buttonLabel?: string;
@@ -17,6 +25,7 @@ type TripSegmentFormProps = {
   defaultLng?: number | null;
   defaultLocation?: string | null;
   defaultNotes?: string | null;
+  defaultProviderMetadata?: Record<string, unknown> | null;
   defaultHasEndTime?: boolean;
   defaultHasStartTime?: boolean;
   defaultStartTime?: string | null;
@@ -36,6 +45,7 @@ export function TripSegmentForm({
   defaultLng = null,
   defaultLocation = null,
   defaultNotes = null,
+  defaultProviderMetadata = null,
   defaultHasEndTime,
   defaultHasStartTime,
   defaultStartTime = null,
@@ -49,6 +59,8 @@ export function TripSegmentForm({
   const router = useRouter();
   const defaultStart = toScheduleParts(defaultStartTime, defaultHasStartTime);
   const defaultEnd = toScheduleParts(defaultEndTime, defaultHasEndTime);
+  const defaultRoute = readTripSegmentRoute(defaultProviderMetadata);
+  const fallbackRouteEndpoints = splitRouteLabel(defaultLocation || defaultTitle);
   const [endClockTime, setEndClockTime] = useState(defaultEnd.clockTime);
   const [endDate, setEndDate] = useState(defaultEnd.date || defaultStart.date);
   const [kind, setKind] = useState(defaultKind);
@@ -61,12 +73,29 @@ export function TripSegmentForm({
   const [notes, setNotes] = useState(defaultNotes || "");
   const [providerMetadata, setProviderMetadata] = useState<Record<string, unknown> | null>(null);
   const [providerPlaceId, setProviderPlaceId] = useState<string | null>(null);
+  const [routeMode, setRouteMode] = useState(defaultRoute?.mode || normalizeRouteMode(defaultKind));
+  const [routeOrigin, setRouteOrigin] = useState<TripRouteEndpoint | null>(
+    defaultRoute?.origin || endpointFromLabel(fallbackRouteEndpoints.origin)
+  );
+  const [routeOriginInput, setRouteOriginInput] = useState(
+    routeEndpointLabel(defaultRoute?.origin) || fallbackRouteEndpoints.origin
+  );
+  const [routeDestination, setRouteDestination] = useState<TripRouteEndpoint | null>(
+    defaultRoute?.destination || endpointFromLabel(fallbackRouteEndpoints.destination)
+  );
+  const [routeDestinationInput, setRouteDestinationInput] = useState(
+    routeEndpointLabel(defaultRoute?.destination) || fallbackRouteEndpoints.destination
+  );
+  const [routeCarrier, setRouteCarrier] = useState(defaultRoute?.carrier || "");
+  const [routeConfirmation, setRouteConfirmation] = useState(defaultRoute?.confirmation || "");
+  const [routeFlightNumber, setRouteFlightNumber] = useState(defaultRoute?.flightNumber || "");
   const [startClockTime, setStartClockTime] = useState(defaultStart.clockTime);
   const [startDate, setStartDate] = useState(defaultStart.date);
   const [timeZone] = useState(() => Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC");
   const [title, setTitle] = useState(defaultTitle);
   const [hydrated, setHydrated] = useState(false);
   const { isPending, run, state } = useWaylineAction();
+  const isRouteSegment = isRouteKind(kind);
 
   useEffect(() => {
     setHydrated(true);
@@ -92,17 +121,70 @@ export function TripSegmentForm({
     setLocationSelected(true);
   }
 
+  function handleRouteEndpointInputChange(endpoint: "origin" | "destination", value: string) {
+    const nextEndpoint = endpointFromLabel(value);
+    if (endpoint === "origin") {
+      setRouteOriginInput(value);
+      setRouteOrigin(nextEndpoint);
+    } else {
+      setRouteDestinationInput(value);
+      setRouteDestination(nextEndpoint);
+    }
+  }
+
+  function handleRouteEndpointSelect(endpoint: "origin" | "destination", selection: LocationSelection) {
+    const nextEndpoint = endpointFromSelection(selection);
+    if (endpoint === "origin") {
+      setRouteOriginInput(nextEndpoint.address || nextEndpoint.label || "");
+      setRouteOrigin(nextEndpoint);
+    } else {
+      setRouteDestinationInput(nextEndpoint.address || nextEndpoint.label || "");
+      setRouteDestination(nextEndpoint);
+    }
+  }
+
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const route = isRouteSegment
+      ? {
+          arriveAt: endDate && endClockTime ? combineDateAndClockTime(endDate, endClockTime) : null,
+          carrier: routeCarrier.trim() || null,
+          confirmation: routeConfirmation.trim() || null,
+          departAt: startDate && startClockTime ? combineDateAndClockTime(startDate, startClockTime) : null,
+          destination: normalizeEndpointForSubmit(routeDestination, routeDestinationInput),
+          flightNumber: routeFlightNumber.trim() || null,
+          mode: normalizeRouteMode(routeMode || kind),
+          origin: normalizeEndpointForSubmit(routeOrigin, routeOriginInput)
+        }
+      : null;
+    const routeReady = Boolean(
+      route?.origin?.lat != null &&
+        route.origin.lng != null &&
+        route.destination?.lat != null &&
+        route.destination.lng != null
+    );
+    const routeLabel = routeLocationLabel(route);
     const body: Record<string, unknown> = {
       endClockTime,
       endDate: endDate || startDate,
       kind,
-      lat: lat.trim() ? Number(lat) : null,
-      lng: lng.trim() ? Number(lng) : null,
-      location,
+      lat: isRouteSegment
+        ? route?.destination?.lat ?? null
+        : lat.trim()
+          ? Number(lat)
+          : null,
+      lng: isRouteSegment
+        ? route?.destination?.lng ?? null
+        : lng.trim()
+          ? Number(lng)
+          : null,
+      location: isRouteSegment ? routeLabel || location : location,
       locationStatus:
-        lat.trim() && lng.trim()
+        isRouteSegment
+          ? routeReady
+            ? "resolved"
+            : "manual_location_required"
+          : lat.trim() && lng.trim()
           ? "resolved"
           : location.trim()
             ? "manual_location_required"
@@ -115,9 +197,29 @@ export function TripSegmentForm({
       tripId
     };
 
+    if (route) {
+      body.routeMode = route.mode;
+      body.origin = route.origin;
+      body.destination = route.destination;
+      body.carrier = route.carrier;
+      body.flightNumber = route.flightNumber;
+      body.confirmation = route.confirmation;
+      body.providerMetadata = {
+        ...(providerMetadata || {}),
+        route
+      };
+      body.provider = "google_places";
+      body.providerPlaceId = route.destination?.placeId || route.origin?.placeId || providerPlaceId;
+    }
+
     if (providerPlaceId || providerMetadata) {
       body.provider = "google_places";
-      body.providerMetadata = providerMetadata;
+      body.providerMetadata = route
+        ? {
+            ...(providerMetadata || {}),
+            route
+          }
+        : providerMetadata;
       body.providerPlaceId = providerPlaceId;
     }
 
@@ -141,6 +243,13 @@ export function TripSegmentForm({
         setNotes("");
         setProviderMetadata(null);
         setProviderPlaceId(null);
+        setRouteCarrier("");
+        setRouteConfirmation("");
+        setRouteDestination(null);
+        setRouteDestinationInput("");
+        setRouteFlightNumber("");
+        setRouteOrigin(null);
+        setRouteOriginInput("");
         setStartClockTime("");
         setStartDate("");
         setTitle("");
@@ -195,10 +304,20 @@ export function TripSegmentForm({
           Type
           <select
             className={fieldClass}
-            onChange={(event) => setKind(event.target.value)}
+            onChange={(event) => {
+              setKind(event.target.value);
+              if (isRouteKind(event.target.value)) {
+                setRouteMode(normalizeRouteMode(event.target.value));
+              }
+            }}
             value={kind}
           >
             <option value="flight">Flight</option>
+            <option value="drive">Drive</option>
+            <option value="train">Train</option>
+            <option value="bus">Bus</option>
+            <option value="transfer">Transfer</option>
+            <option value="ferry">Ferry</option>
             <option value="hotel">Hotel</option>
             <option value="meeting">Meeting</option>
             <option value="restaurant">Restaurant</option>
@@ -209,28 +328,121 @@ export function TripSegmentForm({
         </label>
       ) : null}
 
-      <label className={labelClass}>
-        Location
-        <GoogleMapsProvider>
-          <LocationAutocomplete
-            ariaLabel="Stop location"
-            inputClassName={fieldClass}
-            loadingMessage="Places autocomplete is loading. You can still type a location."
-            manualWarning="Select a suggested place to map this stop."
-            onInputChange={handleLocationInputChange}
-            onSelect={handleLocationSelect}
-            placeholder="Search Google Places..."
-            resolveErrorMessage="Wayline could not map that Google result. Try another location."
-            unresolvedMessage="Select a suggested place with a mapped location."
-            value={location}
-          />
-        </GoogleMapsProvider>
-        {location.trim() && !locationSelected ? (
-          <p className="mt-2 text-xs font-semibold text-amber-700">
-            Select a suggested place to map this.
-          </p>
-        ) : null}
-      </label>
+      {isRouteSegment ? (
+        <div className="grid gap-3 rounded-2xl bg-slate-50 p-3">
+          <label className={labelClass}>
+            Transport type
+            <select
+              className={fieldClass}
+              onChange={(event) => setRouteMode(normalizeRouteMode(event.target.value))}
+              value={routeMode}
+            >
+              <option value="flight">Flight</option>
+              <option value="drive">Drive</option>
+              <option value="train">Train</option>
+              <option value="bus">Bus</option>
+              <option value="transfer">Transfer</option>
+              <option value="ferry">Ferry</option>
+              <option value="other">Other</option>
+            </select>
+          </label>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className={labelClass}>
+              From
+              <GoogleMapsProvider>
+                <LocationAutocomplete
+                  ariaLabel="Route origin"
+                  inputClassName={fieldClass}
+                  loadingMessage="Places autocomplete is loading. You can still type an origin."
+                  manualWarning="Select a suggested place to map this route."
+                  onInputChange={(value) => handleRouteEndpointInputChange("origin", value)}
+                  onSelect={(selection) => handleRouteEndpointSelect("origin", selection)}
+                  placeholder="Barcelona, Spain or BCN"
+                  resolveErrorMessage="Wayline could not map that origin. Try another location."
+                  unresolvedMessage="Select a mapped origin."
+                  value={routeOriginInput}
+                />
+              </GoogleMapsProvider>
+            </label>
+            <label className={labelClass}>
+              To
+              <GoogleMapsProvider>
+                <LocationAutocomplete
+                  ariaLabel="Route destination"
+                  inputClassName={fieldClass}
+                  loadingMessage="Places autocomplete is loading. You can still type a destination."
+                  manualWarning="Select a suggested place to map this route."
+                  onInputChange={(value) => handleRouteEndpointInputChange("destination", value)}
+                  onSelect={(selection) => handleRouteEndpointSelect("destination", selection)}
+                  placeholder="Miami, FL or MIA"
+                  resolveErrorMessage="Wayline could not map that destination. Try another location."
+                  unresolvedMessage="Select a mapped destination."
+                  value={routeDestinationInput}
+                />
+              </GoogleMapsProvider>
+            </label>
+          </div>
+          {routeOriginInput || routeDestinationInput ? (
+            <p className="text-xs font-semibold text-slate-500">
+              {routeOrigin?.lat != null && routeDestination?.lat != null
+                ? "Route ready."
+                : "Add origin and destination to draw this route."}
+            </p>
+          ) : null}
+          <div className="grid gap-3 sm:grid-cols-3">
+            <label className={labelClass}>
+              Carrier
+              <input
+                className={fieldClass}
+                onChange={(event) => setRouteCarrier(event.target.value)}
+                placeholder="American Airlines"
+                value={routeCarrier}
+              />
+            </label>
+            <label className={labelClass}>
+              Flight / route no.
+              <input
+                className={fieldClass}
+                onChange={(event) => setRouteFlightNumber(event.target.value)}
+                placeholder="AA112"
+                value={routeFlightNumber}
+              />
+            </label>
+            <label className={labelClass}>
+              Confirmation
+              <input
+                className={fieldClass}
+                onChange={(event) => setRouteConfirmation(event.target.value)}
+                placeholder="ABC123"
+                value={routeConfirmation}
+              />
+            </label>
+          </div>
+        </div>
+      ) : (
+        <label className={labelClass}>
+          Location
+          <GoogleMapsProvider>
+            <LocationAutocomplete
+              ariaLabel="Stop location"
+              inputClassName={fieldClass}
+              loadingMessage="Places autocomplete is loading. You can still type a location."
+              manualWarning="Select a suggested place to map this stop."
+              onInputChange={handleLocationInputChange}
+              onSelect={handleLocationSelect}
+              placeholder="Search Google Places..."
+              resolveErrorMessage="Wayline could not map that Google result. Try another location."
+              unresolvedMessage="Select a suggested place with a mapped location."
+              value={location}
+            />
+          </GoogleMapsProvider>
+          {location.trim() && !locationSelected ? (
+            <p className="mt-2 text-xs font-semibold text-amber-700">
+              Select a suggested place to map this.
+            </p>
+          ) : null}
+        </label>
+      )}
 
       <div className="grid gap-2 sm:grid-cols-2">
         <label className={labelClass}>
@@ -246,7 +458,7 @@ export function TripSegmentForm({
           />
         </label>
         <label className={labelClass}>
-          Start time
+          {isRouteSegment ? "Departure time" : "Start time"}
           <input
             className={fieldClass}
             onChange={(event) => setStartClockTime(event.target.value)}
@@ -276,10 +488,20 @@ export function TripSegmentForm({
               Type
               <select
                 className={fieldClass}
-                onChange={(event) => setKind(event.target.value)}
+                onChange={(event) => {
+                  setKind(event.target.value);
+                  if (isRouteKind(event.target.value)) {
+                    setRouteMode(normalizeRouteMode(event.target.value));
+                  }
+                }}
                 value={kind}
               >
                 <option value="flight">Flight</option>
+                <option value="drive">Drive</option>
+                <option value="train">Train</option>
+                <option value="bus">Bus</option>
+                <option value="transfer">Transfer</option>
+                <option value="ferry">Ferry</option>
                 <option value="hotel">Hotel</option>
                 <option value="meeting">Meeting</option>
                 <option value="restaurant">Restaurant</option>
@@ -290,7 +512,7 @@ export function TripSegmentForm({
             </label>
             <div className="grid gap-2 sm:grid-cols-2">
               <label className={labelClass}>
-                End date
+                {isRouteSegment ? "Arrival date" : "End date"}
                 <input
                   className={fieldClass}
                   onChange={(event) => setEndDate(event.target.value)}
@@ -299,7 +521,7 @@ export function TripSegmentForm({
                 />
               </label>
               <label className={labelClass}>
-                End time
+                {isRouteSegment ? "Arrival time" : "End time"}
                 <input
                   className={fieldClass}
                   onChange={(event) => setEndClockTime(event.target.value)}
@@ -338,7 +560,7 @@ export function TripSegmentForm({
         <>
           <div className="grid gap-2 sm:grid-cols-2">
             <label className={labelClass}>
-              End date
+              {isRouteSegment ? "Arrival date" : "End date"}
               <input
                 className={fieldClass}
                 onChange={(event) => setEndDate(event.target.value)}
@@ -347,7 +569,7 @@ export function TripSegmentForm({
               />
             </label>
             <label className={labelClass}>
-              End time
+              {isRouteSegment ? "Arrival time" : "End time"}
               <input
                 className={fieldClass}
                 onChange={(event) => setEndClockTime(event.target.value)}
@@ -413,4 +635,60 @@ function toScheduleParts(value: string | null, hasExplicitTime?: boolean) {
 
 function isMidnight(value: string) {
   return value.slice(11, 16) === "00:00";
+}
+
+function combineDateAndClockTime(date: string, clockTime: string) {
+  return `${date}T${clockTime}:00.000Z`;
+}
+
+function endpointFromSelection(selection: LocationSelection): TripRouteEndpoint {
+  return {
+    address: selection.formattedAddress || selection.address,
+    code: airportCodeFromText(selection.name || selection.address),
+    label: selection.name || selection.formattedAddress || selection.address,
+    lat: selection.lat,
+    lng: selection.lng,
+    placeId: selection.placeId || null,
+    providerMetadata: selection.providerMetadata || null
+  };
+}
+
+function endpointFromLabel(value: string): TripRouteEndpoint | null {
+  const label = value.trim();
+  if (!label) return null;
+  return {
+    address: label,
+    code: airportCodeFromText(label),
+    label,
+    lat: null,
+    lng: null,
+    placeId: null
+  };
+}
+
+function normalizeEndpointForSubmit(
+  endpoint: TripRouteEndpoint | null,
+  inputValue: string
+): TripRouteEndpoint | null {
+  const fallback = endpointFromLabel(inputValue);
+  if (!endpoint) return fallback;
+  return {
+    ...endpoint,
+    address: endpoint.address || fallback?.address || null,
+    code: endpoint.code || fallback?.code || null,
+    label: endpoint.label || fallback?.label || null
+  };
+}
+
+function splitRouteLabel(value: string) {
+  const [origin = "", destination = ""] = value
+    .split(/\s+to\s+|→|-/i)
+    .map((part) => part.trim())
+    .filter(Boolean);
+  return { destination, origin };
+}
+
+function airportCodeFromText(value: string | null | undefined) {
+  const match = String(value || "").match(/\b[A-Z]{3}\b/);
+  return match?.[0] || null;
 }

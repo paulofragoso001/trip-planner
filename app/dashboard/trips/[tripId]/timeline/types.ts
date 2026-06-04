@@ -1,4 +1,5 @@
 import type { TripSegmentType } from "@/lib/domain/trip";
+import type { TripSegmentRouteMetadata } from "@/lib/trip-segment-route";
 import type { TimelineStatus } from "@/lib/ui/timeline";
 
 export type TimelineItemView = {
@@ -24,6 +25,8 @@ export type TimelineItemView = {
   meta: string;
   notes: string | null;
   provider: string | null;
+  providerMetadata: Record<string, unknown> | null;
+  route: TripSegmentRouteMetadata | null;
   status: TimelineStatus;
   startAt: string | null;
   endAt: string | null;
