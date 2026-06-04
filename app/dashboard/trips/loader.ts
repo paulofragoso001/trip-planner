@@ -6,6 +6,7 @@ import {
   normalizeTravelStyle,
   type TripTravelStyle
 } from "@/lib/trips";
+import { buildPlacePhotoUrl, readProviderPhoto } from "@/lib/travel-data/photo-url";
 
 export type TripListItemView = {
   dateRange: string;
@@ -34,6 +35,7 @@ export type TripsData = {
 
 type TripRow = {
   destination: string | null;
+  destination_provider_metadata?: Record<string, unknown> | null;
   end_date: string | null;
   id: string;
   name: string;
@@ -52,6 +54,20 @@ type TripSegmentSummary = {
 };
 
 type TripRecommendationSummary = {
+  trip_id: string;
+};
+
+type TripPassImage = {
+  imageAlt: string;
+  imageAttribution: string | null;
+  imageUrl: string | null;
+};
+
+type TripVisualSegment = {
+  kind: string | null;
+  position: number | null;
+  provider_metadata: Record<string, unknown> | null;
+  title: string;
   trip_id: string;
 };
 
@@ -90,14 +106,47 @@ export async function loadTripsData(): Promise<TripsData> {
   const recommendationCounts = tripRows.length
     ? await loadTripRecommendationSummaries(auth.supabase, tripRows.map((trip) => trip.id), auth.userId)
     : new Map<string, number>();
+  const passImages = tripRows.length
+    ? await loadTripPassImages(auth.supabase, tripRows, auth.userId)
+    : new Map<string, TripPassImage>();
 
   return {
     error: null,
-    trips: tripRows.map((row) => mapTrip(row, summaries.get(row.id), recommendationCounts.get(row.id) || 0))
+    trips: tripRows.map((row) =>
+      mapTrip(
+        row,
+        summaries.get(row.id),
+        recommendationCounts.get(row.id) || 0,
+        passImages.get(row.id)
+      )
+    )
   };
 }
 
 async function loadTripRows(supabase: any, userId: string) {
+  const withDestinationMetadata = await supabase
+    .from("trips")
+    .select("id,name,destination,start_date,end_date,status,travel_style,destination_provider_metadata")
+    .eq("user_id", userId)
+    .order("start_date", { ascending: true, nullsFirst: false })
+    .order("created_at", { ascending: false });
+
+  if (
+    !withDestinationMetadata.error ||
+    !isMissingDestinationMetadataColumn(withDestinationMetadata.error.message)
+  ) {
+    return withDestinationMetadata;
+  }
+
+  console.warn(
+    JSON.stringify({
+      area: "trips",
+      event: "trips_load_destination_metadata_fallback",
+      message: withDestinationMetadata.error.message,
+      userId
+    })
+  );
+
   const withTravelStyle = await supabase
     .from("trips")
     .select("id,name,destination,start_date,end_date,status,travel_style")
@@ -128,6 +177,10 @@ async function loadTripRows(supabase: any, userId: string) {
 
 function isMissingTravelStyleColumn(message: string) {
   return /travel_style/i.test(message) && /column|schema cache|could not find/i.test(message);
+}
+
+function isMissingDestinationMetadataColumn(message: string) {
+  return /destination_provider_metadata/i.test(message) && /column|schema cache|could not find/i.test(message);
 }
 
 type SegmentCounts = {
@@ -218,15 +271,128 @@ async function loadTripRecommendationSummaries(
   return counts;
 }
 
-function mapTrip(row: TripRow, counts?: SegmentCounts, nearbyIdeasCount = 0): TripListItemView {
+async function loadTripPassImages(
+  supabase: any,
+  trips: TripRow[],
+  userId: string
+): Promise<Map<string, TripPassImage>> {
+  const images = new Map<string, TripPassImage>();
+  const visualTrips = trips.slice(0, 12);
+  const tripIds = visualTrips.map((trip) => trip.id);
+
+  for (const trip of visualTrips) {
+    const image = imageFromProviderMetadata(
+      trip.destination_provider_metadata,
+      trip.destination ? `Photo of ${trip.destination}` : `Trip image for ${trip.name}`
+    );
+    if (image) {
+      images.set(trip.id, image);
+    }
+  }
+
+  if (!tripIds.length || tripIds.every((tripId) => images.has(tripId))) {
+    return images;
+  }
+
+  const segmentResult = await supabase
+    .from("trip_segments")
+    .select("trip_id,title,kind,position,provider_metadata")
+    .in("trip_id", tripIds)
+    .eq("user_id", userId)
+    .not("provider_metadata", "is", null)
+    .order("position", { ascending: true, nullsFirst: false })
+    .limit(Math.max(24, tripIds.length * 4));
+
+  if (!segmentResult.error) {
+    const segmentsByTrip = new Map<string, TripVisualSegment[]>();
+    for (const row of (segmentResult.data || []) as TripVisualSegment[]) {
+      if (images.has(row.trip_id)) continue;
+      const current = segmentsByTrip.get(row.trip_id) || [];
+      current.push(row);
+      segmentsByTrip.set(row.trip_id, current);
+    }
+
+    for (const [tripId, segments] of segmentsByTrip) {
+      const visualSegment = segments
+        .filter((segment) => readProviderPhoto(segment.provider_metadata))
+        .sort(compareVisualSegments)[0];
+      const image = imageFromProviderMetadata(
+        visualSegment?.provider_metadata,
+        visualSegment?.title ? `Photo of ${visualSegment.title}` : "Trip place photo"
+      );
+      if (image) {
+        images.set(tripId, image);
+      }
+    }
+  } else {
+    console.warn(
+      JSON.stringify({
+        area: "trips",
+        event: "trip_pass_segment_image_load_failed",
+        message: segmentResult.error.message,
+        userId
+      })
+    );
+  }
+
+  return images;
+}
+
+function imageFromProviderMetadata(
+  metadata: Record<string, unknown> | null | undefined,
+  fallbackAlt: string
+): TripPassImage | null {
+  const photo = readProviderPhoto(metadata);
+  const imageUrl = buildPlacePhotoUrl(metadata, 900);
+  if (!photo || !imageUrl) return null;
+
+  return {
+    imageAlt: photo.imageAlt || fallbackAlt,
+    imageAttribution: photo.attribution || null,
+    imageUrl
+  };
+}
+
+function compareVisualSegments(a: TripVisualSegment, b: TripVisualSegment) {
+  const priority = segmentVisualPriority(a) - segmentVisualPriority(b);
+  if (priority !== 0) return priority;
+
+  const positionA = typeof a.position === "number" ? a.position : Number.MAX_SAFE_INTEGER;
+  const positionB = typeof b.position === "number" ? b.position : Number.MAX_SAFE_INTEGER;
+  return positionA - positionB;
+}
+
+function segmentVisualPriority(segment: TripVisualSegment) {
+  const value = `${segment.kind || ""} ${segment.title || ""}`.toLowerCase();
+  if (/landmark|attraction|museum|wall|park|garden|beach|neighborhood|district|centre|center|sagrada|wynwood/.test(value)) {
+    return 1;
+  }
+  if (/restaurant|food|dinner|lunch|cafe|coffee|bar/.test(value)) {
+    return 2;
+  }
+  if (/hotel|lodging|stay/.test(value)) {
+    return 3;
+  }
+  if (/flight|airport|transport|station|terminal/.test(value)) {
+    return 4;
+  }
+  return 5;
+}
+
+function mapTrip(
+  row: TripRow,
+  counts?: SegmentCounts,
+  nearbyIdeasCount = 0,
+  passImage?: TripPassImage
+): TripListItemView {
   const travelStyle = normalizeTravelStyle(row.travel_style);
 
   return {
     dateRange: formatDateRange(row.start_date, row.end_date),
     destination: row.destination || "No destination set",
-    imageAlt: row.destination ? `Photo of ${row.destination}` : `Trip image for ${row.name}`,
-    imageAttribution: null,
-    imageUrl: null,
+    imageAlt: passImage?.imageAlt || (row.destination ? `Photo of ${row.destination}` : `Trip image for ${row.name}`),
+    imageAttribution: passImage?.imageAttribution || null,
+    imageUrl: passImage?.imageUrl || null,
     href: `/dashboard/trips/${row.id}`,
     id: row.id,
     mappedStops: counts?.mappedStops || 0,

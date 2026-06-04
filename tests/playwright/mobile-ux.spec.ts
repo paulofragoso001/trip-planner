@@ -94,6 +94,9 @@ test.describe("mobile soft-launch UX", () => {
 
     const firstTripState = page.getByTestId("mobile-first-trip-state");
     const tripWallet = page.getByTestId("mobile-trips-wallet");
+    await expect(
+      page.locator('[data-testid="mobile-first-trip-state"], [data-testid="mobile-trips-wallet"]').first()
+    ).toBeVisible({ timeout: 20_000 });
 
     if (await firstTripState.isVisible()) {
       await expect(firstTripState.getByRole("heading", { name: "Create your first trip" })).toBeVisible();
@@ -111,18 +114,18 @@ test.describe("mobile soft-launch UX", () => {
     await page.setViewportSize({ height: 900, width: 390 });
     await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
     await page.goto(`${baseUrl}/dashboard/trips`, { waitUntil: "commit" });
+    await expect(
+      page.locator('[data-testid="mobile-first-trip-state"], [data-testid="mobile-trips-wallet"]').first()
+    ).toBeVisible({ timeout: 20_000 });
 
     const createPanel = page.getByTestId("mobile-create-another-trip");
     if ((await createPanel.count()) > 0) {
-      await createPanel.last().evaluate((element) => {
-        if (element instanceof HTMLDetailsElement) {
-          element.open = true;
-        }
-      });
+      await createPanel.last().locator("summary").click();
     }
 
     const form = page.locator('[data-testid="mobile-trip-create-form"]:visible').last();
     await expect(form).toBeVisible();
+    await expect(form).toHaveAttribute("data-hydrated", "true");
 
     const tripName = `Mobile wallet trip ${Date.now()}`;
     await form.getByLabel("Trip name").fill(tripName);

@@ -203,12 +203,17 @@ function MobileTripsExperience({ error, trips }: TripsPageProps) {
       </div>
 
       <details
-        className="rounded-[2rem] border border-slate-200 bg-white p-3 shadow-sm"
+        className="group rounded-[2rem] border border-slate-200 bg-white p-3 shadow-sm"
         data-testid="mobile-create-another-trip"
-        open
       >
-        <summary className="min-h-12 cursor-pointer rounded-[1.5rem] px-2 py-3 text-sm font-black text-slate-950">
-          Create another trip pass
+        <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 rounded-[1.5rem] px-2 py-3 text-sm font-black text-slate-950 focus:outline-none focus:ring-4 focus:ring-blue-100">
+          <span>Create another trip pass</span>
+          <span className="rounded-full bg-slate-950 px-3 py-1 text-xs font-black text-white group-open:hidden">
+            Open
+          </span>
+          <span className="hidden rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-700 group-open:inline">
+            Close
+          </span>
         </summary>
         <div className="pt-3">
           <TripCreateForm mode="mobile-pass" redirectOnSuccess />

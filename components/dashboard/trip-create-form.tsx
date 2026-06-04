@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import type { FormEvent } from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import GoogleMapsProvider from "@/components/GoogleMapsProvider";
 import LocationAutocomplete, {
   type LocationSelection
@@ -30,6 +30,7 @@ export function TripCreateForm({
   const [destinationSelection, setDestinationSelection] =
     useState<LocationSelection | null>(null);
   const [endDate, setEndDate] = useState("");
+  const [hydrated, setHydrated] = useState(false);
   const [name, setName] = useState("");
   const [startDate, setStartDate] = useState("");
   const [travelStyle, setTravelStyle] = useState<TripTravelStyle>("balanced");
@@ -39,6 +40,10 @@ export function TripCreateForm({
   const previewDestination = destination.trim() || "Choose destination";
   const previewName = name.trim() || destinationNameFromLabel(previewDestination);
   const previewDates = formatPreviewDates(startDate, endDate);
+
+  useEffect(() => {
+    setHydrated(true);
+  }, []);
 
   async function createTrip(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -86,6 +91,7 @@ export function TripCreateForm({
   return (
     <form
       className={mobilePassMode ? "grid gap-4" : "mt-5 grid gap-4"}
+      data-hydrated={hydrated ? "true" : "false"}
       data-testid={mobilePassMode ? "mobile-trip-create-form" : undefined}
       id="new-trip"
       onSubmit={createTrip}
