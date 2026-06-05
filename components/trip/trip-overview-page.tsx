@@ -4,15 +4,10 @@ import {
   CalendarDays,
   CircleDollarSign,
   FileText,
-  HelpCircle,
-  Languages,
   Map,
   MapPin,
-  MoreHorizontal,
-  Palette,
   Plane,
   Plus,
-  Settings,
   Sparkles,
   Utensils,
   Users
@@ -50,37 +45,24 @@ export default function TripOverviewPage({
       ) : null}
 
       <section className="grid gap-3 lg:hidden" data-testid="mobile-trip-wallet-hub">
-        <div className="grid grid-cols-2 gap-3">
-          <Link
-            className="flex min-h-24 flex-col justify-between rounded-[1.75rem] bg-slate-950 p-4 text-white shadow-sm focus:outline-none focus:ring-4 focus:ring-blue-100"
-            href={`${base}/timeline#new-plan`}
-          >
-            <span className="grid h-10 w-10 place-items-center rounded-full bg-white/12">
-              <Plus className="h-5 w-5" aria-hidden="true" />
+        <Link
+          className="flex min-h-20 items-center justify-between gap-4 rounded-[1.75rem] bg-slate-950 p-4 text-white shadow-sm focus:outline-none focus:ring-4 focus:ring-blue-100"
+          href={`${base}/timeline#new-plan`}
+          data-testid="mobile-primary-trip-cta"
+        >
+          <span className="min-w-0">
+            <span className="block text-lg font-black">Add to trip</span>
+            <span className="mt-1 block text-xs font-semibold text-white/65">
+              Add a place or activity.
             </span>
-            <span>
-              <span className="block text-base font-black">Add Activity</span>
-              <span className="mt-1 block text-xs font-semibold text-white/65">Place, stay, note, or plan item</span>
-            </span>
-          </Link>
-          <Link
-            className="flex min-h-24 flex-col justify-between rounded-[1.75rem] border border-slate-200 bg-white p-4 text-slate-950 shadow-sm focus:outline-none focus:ring-4 focus:ring-blue-100"
-            href={`${base}/sharing`}
-          >
-            <span className="grid h-10 w-10 place-items-center rounded-full bg-blue-50 text-blue-700">
-              <Users className="h-5 w-5" aria-hidden="true" />
-            </span>
-            <span>
-              <span className="block text-base font-black">Invite Guests</span>
-              <span className="mt-1 block text-xs font-semibold text-slate-500">Share this trip pass</span>
-            </span>
-          </Link>
-        </div>
-
-        <MobileOverflowMenu />
+          </span>
+          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-white/12">
+            <Plus className="h-5 w-5" aria-hidden="true" />
+          </span>
+        </Link>
       </section>
 
-      <section className="hidden rounded-[2rem] border border-slate-200 bg-white/92 p-4 shadow-sm sm:p-5 lg:block">
+      <section className="hidden rounded-[2rem] border border-slate-200 bg-white/95 p-4 shadow-sm sm:p-5 lg:block">
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
           <div className="min-w-0">
             <p className="text-xs font-black uppercase tracking-[0.18em] text-blue-600">
@@ -215,7 +197,8 @@ export default function TripOverviewPage({
             </div>
           </WalletCard>
 
-          <WalletCard
+          <div className="hidden gap-4 lg:grid">
+            <WalletCard
             actionHref={`${base}/budget`}
             actionLabel="Open expenses"
             eyebrow="Expenses"
@@ -243,9 +226,9 @@ export default function TripOverviewPage({
                 </p>
               )}
             </div>
-          </WalletCard>
+            </WalletCard>
 
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
             <WalletCard
               actionHref={`${base}/documents`}
               actionLabel="Open documents"
@@ -271,59 +254,11 @@ export default function TripOverviewPage({
                 Invite travel partners and keep everyone aligned on the same trip pass.
               </p>
             </WalletCard>
+            </div>
           </div>
         </aside>
       </section>
     </div>
-  );
-}
-
-function MobileOverflowMenu() {
-  const items = [
-    { label: "Settings", icon: <Settings className="h-4 w-4" aria-hidden="true" /> },
-    { label: "Custom categories", icon: <Palette className="h-4 w-4" aria-hidden="true" /> },
-    { label: "Email import coming soon", icon: <FileText className="h-4 w-4" aria-hidden="true" /> },
-    { label: "Calendar feed", icon: <CalendarDays className="h-4 w-4" aria-hidden="true" /> },
-    { label: "Currency", icon: <CircleDollarSign className="h-4 w-4" aria-hidden="true" /> },
-    { label: "Distance unit", icon: <MapPin className="h-4 w-4" aria-hidden="true" /> },
-    { label: "Language", icon: <Languages className="h-4 w-4" aria-hidden="true" /> },
-    { label: "Notifications", icon: <Sparkles className="h-4 w-4" aria-hidden="true" /> },
-    { label: "Help", icon: <HelpCircle className="h-4 w-4" aria-hidden="true" /> }
-  ];
-
-  return (
-    <details
-      className="group rounded-[1.75rem] border border-slate-200 bg-white p-2 shadow-sm"
-      data-testid="mobile-trip-overflow-menu"
-    >
-      <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 rounded-[1.35rem] px-3 text-sm font-black text-slate-950 focus:outline-none focus:ring-4 focus:ring-blue-100">
-        <span className="inline-flex items-center gap-2">
-          <span className="grid h-9 w-9 place-items-center rounded-full bg-slate-100 text-slate-700">
-            <MoreHorizontal className="h-5 w-5" aria-hidden="true" />
-          </span>
-          More trip tools
-        </span>
-        <span className="text-xs font-black uppercase tracking-[0.14em] text-slate-400 group-open:hidden">
-          Open
-        </span>
-        <span className="hidden text-xs font-black uppercase tracking-[0.14em] text-slate-400 group-open:inline">
-          Close
-        </span>
-      </summary>
-      <div className="grid gap-2 px-2 pb-2 pt-3 sm:grid-cols-2">
-        {items.map((item) => (
-          <div
-            className="flex min-h-11 items-center gap-3 rounded-2xl bg-slate-50 px-3 py-2 text-sm font-bold text-slate-700"
-            key={item.label}
-          >
-            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-white text-slate-500 ring-1 ring-slate-200">
-              {item.icon}
-            </span>
-            <span className="min-w-0 break-words">{item.label}</span>
-          </div>
-        ))}
-      </div>
-    </details>
   );
 }
 

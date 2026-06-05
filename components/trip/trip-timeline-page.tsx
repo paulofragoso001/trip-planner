@@ -112,7 +112,9 @@ export default function TripTimelinePage({
       <aside className="grid content-start gap-4 xl:sticky xl:top-24 xl:self-start">
         <ItineraryActions firstFlight={firstFlight} timelineItemIds={timelineItemIds} tripId={tripId} />
         <ItinerarySummary stats={stats} />
-        <CalendarSyncPanel tripId={tripId} />
+        <div className="hidden xl:block">
+          <CalendarSyncPanel tripId={tripId} />
+        </div>
       </aside>
 
       <Link
@@ -789,25 +791,27 @@ function ItineraryActions({
           Reorder places
         </AsyncActionButton>
         {firstFlight ? (
-          <AsyncActionButton
-            body={{
-              airline: null,
-              arrivalAirport: null,
-              departureAirport: null,
-              estimatedDeparture: null,
-              flightNumber: firstFlight.title,
-              gate: null,
-              itemId: firstFlight.id,
-              scheduledDeparture: firstFlight.startAt,
-              status: "scheduled",
-              terminal: null,
-              tripId
-            }}
-            endpoint="/api/itinerary/flight-status"
-            successMessage="Flight status refreshed."
-          >
-            Refresh flights
-          </AsyncActionButton>
+          <div className="hidden xl:block">
+            <AsyncActionButton
+              body={{
+                airline: null,
+                arrivalAirport: null,
+                departureAirport: null,
+                estimatedDeparture: null,
+                flightNumber: firstFlight.title,
+                gate: null,
+                itemId: firstFlight.id,
+                scheduledDeparture: firstFlight.startAt,
+                status: "scheduled",
+                terminal: null,
+                tripId
+              }}
+              endpoint="/api/itinerary/flight-status"
+              successMessage="Flight status refreshed."
+            >
+              Refresh flights
+            </AsyncActionButton>
+          </div>
         ) : null}
         <div id="new-plan">
           <TripSegmentForm buttonLabel="Add trip item" tripId={tripId} />

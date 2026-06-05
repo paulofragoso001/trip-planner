@@ -1,8 +1,16 @@
 import Link from "next/link";
-import { ArrowRight, Compass, Plane, Radar } from "lucide-react";
+import type { ReactNode } from "react";
+import {
+  ArrowRight,
+  Compass,
+  Map as MapIcon,
+  Plane,
+  Radar,
+  Sparkles
+} from "lucide-react";
 import type { DashboardData } from "@/app/dashboard/loader";
 import { FirstRunOnboarding } from "@/components/dashboard/first-run-onboarding";
-import { PageHeader, SectionCard } from "@/components/trip-ui";
+import { PageHeader, SectionCard, tripUi } from "@/components/trip-ui";
 
 type DashboardPageProps = DashboardData & {
   view?: string;
@@ -23,137 +31,188 @@ export default function DashboardPage({
     metrics.find((metric) => metric.label === "Ideas waiting")?.value ??
     metrics.find((metric) => metric.label === "Imports waiting")?.value ??
     "0";
+  const latestTrip = recentTrips[0] || null;
+  const remainingTrips = recentTrips.slice(1, 4);
 
   return (
     <div className="grid gap-6">
       {error ? (
         <p className="rounded-2xl bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
-          {error}
+          Some details are unavailable, but you can still plan or open your trips.
         </p>
       ) : null}
 
       <PageHeader
         actions={
           <>
-            <Link
-              className="inline-flex min-h-11 items-center justify-center rounded-2xl bg-blue-600 px-4 text-sm font-black text-white transition hover:bg-blue-700"
-              href="/dashboard/imports"
-            >
-              Start planning
+            <Link className={tripUi.button.primaryCompact} href="/dashboard/imports">
+              Add travel idea
             </Link>
-            <Link
-              className="inline-flex min-h-11 items-center justify-center rounded-2xl bg-slate-100 px-4 text-sm font-black text-slate-800 transition hover:bg-slate-200"
-              href="/dashboard/trips"
-            >
-              View trips
+            <Link className={tripUi.button.secondary} href="/dashboard/trips">
+              Trip passes
             </Link>
           </>
         }
-        subtitle="Pick up an existing trip or start from a saved idea."
-        title="Where do you want to start?"
+        eyebrow="Wayline"
+        subtitle="Plan a trip, continue a pass, or review saved ideas."
+        title="Your travel wallet"
       />
 
       <FirstRunOnboarding firstRun={firstRun} />
 
-      <section className="grid gap-4">
-        <div className="grid gap-4 lg:grid-cols-2">
+      <section className="grid gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
+        {latestTrip ? (
           <Link
-            className="group grid min-h-32 content-between rounded-[1.5rem] bg-slate-950 p-4 text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-panel sm:min-h-40 sm:p-5"
-            href="/dashboard/imports"
+            className="group relative isolate grid min-h-[18rem] content-between overflow-hidden rounded-[2rem] bg-slate-950 p-5 text-white shadow-2xl transition hover:-translate-y-0.5 sm:min-h-[22rem] sm:p-6"
+            href={latestTrip.href}
           >
-            <span className="grid h-12 w-12 place-items-center rounded-2xl bg-blue-600">
-              <Compass className="h-5 w-5" aria-hidden="true" />
-            </span>
-            <span>
-              <h2 className="text-xl font-black sm:text-2xl">Plan a trip</h2>
-              <span className="mt-2 block max-w-md text-sm leading-6 text-slate-300">
-                Add inspiration and let Wayline find places.
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_10%,rgba(255,255,255,0.24),transparent_30%),linear-gradient(135deg,#020617,#1d4ed8_54%,#0f766e)]" />
+            <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(2,6,23,0.04),rgba(2,6,23,0.78))]" />
+            <div className="relative flex items-start justify-between gap-3">
+              <p className="text-xs font-black uppercase tracking-[0.22em] text-white/62">
+                Continue trip pass
+              </p>
+              <span className={tripUi.card.walletGlass}>{latestTrip.status}</span>
+            </div>
+            <div className="relative">
+              <h2 className="max-w-xl text-4xl font-black leading-none tracking-tight sm:text-5xl">
+                {latestTrip.name}
+              </h2>
+              <p className="mt-3 text-sm font-bold text-white/72">{latestTrip.dateRange}</p>
+              <span className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-full bg-white px-5 text-sm font-black text-slate-950">
+                Open Trip Pass
+                <ArrowRight
+                  aria-hidden="true"
+                  className="h-4 w-4 transition group-hover:translate-x-1"
+                />
               </span>
-            </span>
-            <span className="mt-5 inline-flex items-center gap-2 text-sm font-black">
-              Start planning
-              <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" aria-hidden="true" />
-            </span>
+            </div>
           </Link>
+        ) : (
+          <Link
+            className="group relative isolate grid min-h-[18rem] content-between overflow-hidden rounded-[2rem] bg-slate-950 p-5 text-white shadow-2xl transition hover:-translate-y-0.5 sm:min-h-[22rem] sm:p-6"
+            href="/dashboard/trips#new-trip"
+          >
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_0%,rgba(255,255,255,0.22),transparent_34%),linear-gradient(135deg,#020617,#172554_52%,#0f766e)]" />
+            <div className="relative">
+              <p className="text-xs font-black uppercase tracking-[0.22em] text-white/62">
+                New Trip Pass
+              </p>
+            </div>
+            <div className="relative">
+              <h2 className="max-w-xl text-4xl font-black leading-none tracking-tight sm:text-5xl">
+                Start your next trip
+              </h2>
+              <p className="mt-3 max-w-sm text-sm font-bold leading-6 text-white/72">
+                Create a pass, add ideas, then build the itinerary and map.
+              </p>
+              <span className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-full bg-white px-5 text-sm font-black text-slate-950">
+                Create Trip Pass
+                <ArrowRight
+                  aria-hidden="true"
+                  className="h-4 w-4 transition group-hover:translate-x-1"
+                />
+              </span>
+            </div>
+          </Link>
+        )}
 
-          <Link
-            className="group grid min-h-32 content-between rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4 text-slate-950 transition hover:-translate-y-0.5 hover:bg-white hover:shadow-panel sm:min-h-40 sm:p-5"
-            href="/dashboard/trips"
-          >
-            <span className="grid h-12 w-12 place-items-center rounded-2xl bg-white text-blue-700 shadow-sm">
-              <Plane className="h-5 w-5" aria-hidden="true" />
-            </span>
-            <span>
-              <h2 className="text-xl font-black sm:text-2xl">Open my trips</h2>
-              <span className="mt-2 block max-w-md text-sm leading-6 text-slate-600">
-                Continue an itinerary or view your map.
-              </span>
-            </span>
-            <span className="mt-5 inline-flex items-center gap-2 text-sm font-black text-blue-700">
-              View trips
-              <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" aria-hidden="true" />
-            </span>
-          </Link>
+        <div className="grid gap-3">
+          <WalletAction
+            href="/dashboard/trips#new-trip"
+            icon={<Plane aria-hidden="true" className="h-5 w-5" />}
+            label="Start new trip pass"
+            meta="Choose a destination and dates."
+          />
+          <WalletAction
+            href="/dashboard/imports"
+            icon={<Compass aria-hidden="true" className="h-5 w-5" />}
+            label="Add travel idea"
+            meta="Paste a note, link, or screenshot."
+          />
+          <WalletAction
+            href={importsWaiting !== "0" ? "/dashboard/imports#ai-review" : "/dashboard/trips"}
+            icon={
+              importsWaiting !== "0" ? (
+                <Sparkles aria-hidden="true" className="h-5 w-5" />
+              ) : (
+                <MapIcon aria-hidden="true" className="h-5 w-5" />
+              )
+            }
+            label={importsWaiting !== "0" ? "Review ideas" : "Open trip passes"}
+            meta={
+              importsWaiting !== "0"
+                ? `${importsWaiting} waiting to review.`
+                : "Continue itinerary or map."
+            }
+          />
         </div>
       </section>
 
-      {recentTrips.length || importsWaiting !== "0" ? (
-      <section className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
-        {recentTrips.length ? (
+      {remainingTrips.length ? (
         <SectionCard
           actions={
             <Link className="text-sm font-black text-blue-700" href="/dashboard/trips">
               View all
             </Link>
           }
-          eyebrow="My Trips"
-          title="Continue planning"
+          eyebrow="Trip passes"
+          title="Recent passes"
         >
-          <div className="mt-4 grid gap-3">
-            {recentTrips.map((trip) => (
-                <Link
-                className="grid gap-2 rounded-2xl bg-slate-50 px-4 py-3 transition hover:bg-slate-100 sm:flex sm:items-center sm:justify-between sm:gap-4"
-                  href={trip.href}
-                  key={trip.id}
-                >
-                  <div>
-                    <p className="font-semibold">{trip.name}</p>
-                    <p className="text-sm text-slate-500">{trip.dateRange}</p>
-                  </div>
-                  <span className="w-fit shrink-0 rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-700">
-                    {trip.status}
-                  </span>
-                </Link>
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {remainingTrips.map((trip) => (
+              <Link
+                className="group rounded-[1.75rem] border border-slate-200 bg-white p-4 shadow-sm transition hover:border-blue-200 hover:shadow-md"
+                href={trip.href}
+                key={trip.id}
+              >
+                <p className={tripUi.text.micro}>Trip Pass</p>
+                <h3 className="mt-2 truncate text-lg font-black text-slate-950">{trip.name}</h3>
+                <p className="mt-1 text-sm font-semibold text-slate-500">{trip.dateRange}</p>
+                <span className="mt-4 inline-flex items-center gap-2 text-sm font-black text-blue-700">
+                  Open pass
+                  <ArrowRight
+                    aria-hidden="true"
+                    className="h-4 w-4 transition group-hover:translate-x-1"
+                  />
+                </span>
+              </Link>
             ))}
           </div>
         </SectionCard>
-        ) : null}
-
-        {importsWaiting !== "0" ? (
-        <SectionCard eyebrow="Ideas" title="Ready for review">
-          <div className="mt-4 rounded-2xl bg-slate-50 p-4">
-            <div className="flex items-start gap-3">
-              <div>
-                <p className="font-black text-slate-950">
-                  {importsWaiting} item{importsWaiting === "1" ? "" : "s"} waiting
-                </p>
-                <p className="mt-1 text-sm leading-6 text-slate-600">
-                  Review waiting places when you are ready.
-                </p>
-              </div>
-            </div>
-          </div>
-          <Link
-            className="mt-4 inline-flex min-h-11 items-center justify-center rounded-2xl bg-blue-600 px-4 text-sm font-black text-white"
-            href="/dashboard/imports#ai-review"
-          >
-            Review places
-          </Link>
-        </SectionCard>
-        ) : null}
-      </section>
       ) : null}
     </div>
+  );
+}
+
+function WalletAction({
+  href,
+  icon,
+  label,
+  meta
+}: {
+  href: string;
+  icon: ReactNode;
+  label: string;
+  meta: string;
+}) {
+  return (
+    <Link
+      className="group grid min-h-24 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-[1.75rem] border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-md"
+      href={href}
+    >
+      <span className="grid h-12 w-12 place-items-center rounded-2xl bg-blue-50 text-blue-700">
+        {icon}
+      </span>
+      <span className="min-w-0">
+        <span className="block text-base font-black text-slate-950">{label}</span>
+        <span className="mt-1 block text-sm font-semibold text-slate-500">{meta}</span>
+      </span>
+      <ArrowRight
+        aria-hidden="true"
+        className="h-4 w-4 text-slate-400 transition group-hover:translate-x-1 group-hover:text-blue-700"
+      />
+    </Link>
   );
 }
 
@@ -175,51 +234,46 @@ function FlightStatusDashboard({
       <section className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="text-xs font-black uppercase tracking-[0.22em] text-blue-600">
-              Flight Status
-            </p>
+            <p className={tripUi.text.eyebrow}>Flight Status</p>
             <h1 className="mt-2 max-w-3xl text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
               Flight monitoring for confirmed trip places.
             </h1>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600 sm:text-base">
-              Flight updates appear here after flight segments are added to a trip and refreshed. Non-flight trip ideas stay in the itinerary and map workspace.
+              Flight updates appear here after flight segments are added to a trip and refreshed.
+              Non-flight trip ideas stay in the itinerary and map workspace.
             </p>
           </div>
           <span className="grid h-14 w-14 place-items-center rounded-2xl bg-blue-50 text-blue-700">
-            <Radar className="h-6 w-6" aria-hidden="true" />
+            <Radar aria-hidden="true" className="h-6 w-6" />
           </span>
         </div>
       </section>
 
       <section className="grid gap-4 md:grid-cols-3">
-        <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-            Trips watched
-          </p>
-          <p className="mt-2 text-3xl font-black">{recentTrips.length}</p>
-        </article>
-        <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-            Places
-          </p>
-          <p className="mt-2 text-3xl font-black">{segments}</p>
-        </article>
-        <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-            Alerts
-          </p>
-          <p className="mt-2 text-3xl font-black">
-            {metrics.find((metric) => metric.label === "Alerts")?.value ?? "0"}
-          </p>
-        </article>
+        <FlightMetric label="Trips watched" value={recentTrips.length} />
+        <FlightMetric label="Places" value={segments} />
+        <FlightMetric
+          label="Alerts"
+          value={metrics.find((metric) => metric.label === "Alerts")?.value ?? "0"}
+        />
       </section>
 
       <section className="rounded-[2rem] border border-dashed border-slate-300 bg-white p-5 shadow-sm sm:p-6">
         <p className="font-black text-slate-950">No live flight updates to review.</p>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-          Add flight places to a confirmed trip, then refresh flight status from the itinerary. Gate, terminal, delay, and cancellation updates will appear here.
+          Add flight places to a confirmed trip, then refresh flight status from the itinerary.
+          Gate, terminal, delay, and cancellation updates will appear here.
         </p>
       </section>
     </div>
+  );
+}
+
+function FlightMetric({ label, value }: { label: string; value: ReactNode }) {
+  return (
+    <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">{label}</p>
+      <p className="mt-2 text-3xl font-black">{value}</p>
+    </article>
   );
 }

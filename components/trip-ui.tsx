@@ -7,28 +7,35 @@ export function cn(...classes: Array<string | false | null | undefined>) {
 }
 
 export const tripUi = {
-  page: "bg-[#f7f6f2] text-[#221d17]",
+  page: "bg-[radial-gradient(circle_at_14%_0%,rgba(37,99,235,0.08),transparent_28%),linear-gradient(180deg,#f8fafc,#f1f5f9)] text-slate-950",
   card: {
-    surface: "rounded-3xl border border-black/10 bg-white shadow-panel",
-    surfaceSoft: "rounded-3xl border border-black/10 bg-white shadow-sm",
-    inset: "rounded-2xl border border-black/10 bg-[#f7f6f2]",
-    nested: "rounded-2xl bg-white ring-1 ring-black/10"
+    surface: "rounded-[2rem] border border-slate-200/80 bg-white shadow-sm",
+    surfaceSoft: "rounded-[1.75rem] border border-slate-200/80 bg-white shadow-sm",
+    inset: "rounded-[1.5rem] border border-slate-200/80 bg-slate-50",
+    nested: "rounded-[1.35rem] bg-white ring-1 ring-slate-200/80",
+    walletDark:
+      "rounded-[2rem] bg-[radial-gradient(circle_at_20%_0%,rgba(255,255,255,0.22),transparent_34%),linear-gradient(135deg,#020617,#172554_52%,#0f766e)] text-white shadow-2xl",
+    walletGlass:
+      "rounded-full bg-white/16 px-3 py-1 text-xs font-black text-white ring-1 ring-white/18 backdrop-blur",
+    preview:
+      "rounded-[1.75rem] border border-slate-200/80 bg-white p-4 shadow-sm transition hover:border-blue-200 hover:shadow-md"
   },
   text: {
-    eyebrow: "text-xs font-bold uppercase tracking-[0.12em] text-[#8a8175]",
-    bodyMuted: "text-[#6f675c]",
-    bodySoft: "text-[#5f574d]",
-    heading: "font-black text-[#221d17]"
+    eyebrow: "text-xs font-black uppercase tracking-[0.18em] text-blue-600",
+    micro: "text-xs font-black uppercase tracking-[0.18em] text-slate-400",
+    bodyMuted: "text-slate-600",
+    bodySoft: "text-slate-500",
+    heading: "font-black text-slate-950"
   },
   button: {
     primary:
-      "min-h-11 rounded-full bg-brand px-5 py-3 text-sm font-black text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60",
+      "min-h-11 rounded-full bg-slate-950 px-5 py-3 text-sm font-black text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60",
     primaryCompact:
-      "min-h-11 rounded-full bg-brand px-4 py-2 text-sm font-bold text-white transition hover:bg-blue-700",
+      "min-h-11 rounded-full bg-slate-950 px-4 py-2 text-sm font-bold text-white transition hover:bg-slate-800",
     secondary:
-      "min-h-11 rounded-full border border-black/10 bg-white px-4 py-2 text-sm font-bold text-ink transition hover:bg-[#faf8f5]",
+      "min-h-11 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-950 transition hover:bg-slate-50",
     subtle:
-      "min-h-11 rounded-full border border-black/10 bg-[#faf8f5] px-4 py-2 text-sm font-bold text-[#5f574d] transition hover:bg-[#f1ede7]",
+      "min-h-11 rounded-full border border-slate-200 bg-slate-100 px-4 py-2 text-sm font-bold text-slate-700 transition hover:bg-slate-200",
     danger:
       "min-h-11 rounded-full border border-red-200 bg-white px-4 py-2 text-sm font-bold text-red-700 transition hover:bg-red-50"
   }
@@ -52,14 +59,14 @@ export function PageHeader({
   return (
     <header
       className={cn(
-        "grid gap-4 rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:rounded-[2rem] sm:p-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end",
+        "grid gap-4 rounded-[2rem] border border-slate-200/80 bg-white/95 p-4 shadow-sm backdrop-blur sm:p-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end",
         className
       )}
       {...props}
     >
       <div className="min-w-0">
         {eyebrow ? (
-          <p className="text-xs font-black uppercase tracking-[0.2em] text-blue-600">
+          <p className={tripUi.text.eyebrow}>
             {eyebrow}
           </p>
         ) : null}
@@ -97,7 +104,7 @@ export function SectionCard({
   return (
     <section
       className={cn(
-        "rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:rounded-[2rem] sm:p-5",
+        "rounded-[2rem] border border-slate-200/80 bg-white/95 p-4 shadow-sm backdrop-blur sm:p-5",
         className
       )}
       {...props}
@@ -106,7 +113,7 @@ export function SectionCard({
         <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
             {eyebrow ? (
-              <p className="text-xs font-black uppercase tracking-[0.2em] text-blue-600">
+              <p className={tripUi.text.eyebrow}>
                 {eyebrow}
               </p>
             ) : null}
@@ -137,7 +144,7 @@ export function ActionCard({
   return (
     <div
       className={cn(
-        "group rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-md",
+        "group rounded-[1.75rem] border border-slate-200/80 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-md",
         className
       )}
       {...props}

@@ -115,8 +115,11 @@ export function TripIdeasPage({
       : baseFilters;
   }, [rows]);
   const discoveryRows = rows.filter((row) => row.type !== "place");
+  const showFilters = discoveryRows.length >= 5;
   const filteredDiscoveryRows =
-    activeFilter === "all" ? discoveryRows : discoveryRows.filter((row) => row.category === activeFilter);
+    !showFilters || activeFilter === "all"
+      ? discoveryRows
+      : discoveryRows.filter((row) => row.category === activeFilter);
   const recommendationsForFilter = filteredDiscoveryRows.filter((row) => row.type === "recommendation");
   const savedPlacesForFilter = rows.filter((row) => row.type === "place");
   const activityIdeasForFilter = filteredDiscoveryRows.filter((row) => row.type === "activity");
@@ -126,6 +129,12 @@ export function TripIdeasPage({
   useEffect(() => {
     setHydrated(true);
   }, []);
+
+  useEffect(() => {
+    if (!showFilters && activeFilter !== "all") {
+      setActiveFilter("all");
+    }
+  }, [activeFilter, showFilters]);
 
   async function run(endpoint: string, label: string) {
     setPendingAction(endpoint);
@@ -185,41 +194,43 @@ export function TripIdeasPage({
           </div>
         </div>
 
-        <div className="mt-5" data-testid="activity-category-filters">
-          <p className="mb-2 text-xs font-black uppercase tracking-[0.16em] text-slate-500">
-            Explore nearby
-          </p>
-          <div className="flex gap-2 overflow-x-auto pb-1" aria-label="Activity categories">
-            {filters.map((filter) => {
-              const active = activeFilter === filter.id;
-              return (
-                <button
-                  aria-pressed={active}
-                  className={[
-                    "inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full px-3 pr-4 text-xs font-black ring-1 transition",
-                    active
-                      ? "bg-slate-950 text-white ring-slate-950"
-                      : "bg-white text-slate-700 ring-slate-200 hover:bg-slate-50"
-                  ].join(" ")}
-                  disabled={!hydrated}
-                  key={filter.id}
-                  onClick={() => setActiveFilter(filter.id)}
-                  type="button"
-                >
-                  <span
+        {showFilters ? (
+          <div className="mt-5" data-testid="activity-category-filters">
+            <p className="mb-2 text-xs font-black uppercase tracking-[0.16em] text-slate-500">
+              Explore nearby
+            </p>
+            <div className="flex gap-2 overflow-x-auto pb-1" aria-label="Activity categories">
+              {filters.map((filter) => {
+                const active = activeFilter === filter.id;
+                return (
+                  <button
+                    aria-pressed={active}
                     className={[
-                      "grid h-8 w-8 place-items-center rounded-full",
-                      active ? "bg-white/12 text-white" : "bg-blue-50 text-blue-700"
+                      "inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full px-3 pr-4 text-xs font-black ring-1 transition",
+                      active
+                        ? "bg-slate-950 text-white ring-slate-950"
+                        : "bg-white text-slate-700 ring-slate-200 hover:bg-slate-50"
                     ].join(" ")}
+                    disabled={!hydrated}
+                    key={filter.id}
+                    onClick={() => setActiveFilter(filter.id)}
+                    type="button"
                   >
-                    {filter.icon}
-                  </span>
-                  {filter.label}
-                </button>
-              );
-            })}
+                    <span
+                      className={[
+                        "grid h-8 w-8 place-items-center rounded-full",
+                        active ? "bg-white/12 text-white" : "bg-blue-50 text-blue-700"
+                      ].join(" ")}
+                    >
+                      {filter.icon}
+                    </span>
+                    {filter.label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
-        </div>
+        ) : null}
       </section>
 
       {filteredDiscoveryRows.length === 0 && activeFilter !== "all" ? (

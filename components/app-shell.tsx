@@ -93,7 +93,7 @@ export function AppShell({
 
   return (
     <div
-      className="h-dvh overflow-hidden bg-[#f4f7fb] text-ink dark:bg-[#0d1117] dark:text-slate-100"
+      className="h-dvh overflow-hidden bg-[radial-gradient(circle_at_12%_0%,rgba(37,99,235,0.08),transparent_28%),linear-gradient(180deg,#f8fafc,#eef2f7)] text-ink dark:bg-[#0d1117] dark:text-slate-100"
       data-density={density}
       data-testid="app-shell-root"
     >
@@ -159,7 +159,7 @@ export function AppShell({
 
         <div className="flex min-w-0 flex-1 flex-col">
           <header
-            className="sticky top-0 z-30 border-b border-black/10 bg-white/95 backdrop-blur dark:border-white/10 dark:bg-[#0d1117]/90"
+            className="sticky top-0 z-30 border-b border-black/10 bg-white/90 backdrop-blur-xl dark:border-white/10 dark:bg-[#0d1117]/90"
             data-testid="app-shell-topbar"
           >
             <div

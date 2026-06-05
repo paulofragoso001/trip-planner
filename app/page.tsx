@@ -139,7 +139,7 @@ export default async function HomePage() {
             return (
               <div
                 className={[
-                  "absolute hidden w-44 rounded-[1.5rem] border border-slate-200 bg-white/92 p-4 shadow-[0_22px_60px_rgba(15,23,42,0.12)] backdrop-blur md:block",
+                  "absolute hidden w-44 rounded-[1.5rem] border border-slate-200 bg-white/95 p-4 shadow-[0_22px_60px_rgba(15,23,42,0.12)] backdrop-blur md:block",
                   card.className
                 ].join(" ")}
                 key={card.label}

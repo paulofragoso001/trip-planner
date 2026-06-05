@@ -20,8 +20,8 @@ export default function TripsPage({ error, trips }: TripsPageProps) {
       <PageHeader
         className="hidden lg:block"
         eyebrow="Trip wallet"
-        subtitle="Create a trip pass or continue an itinerary."
-        title="Trips"
+        subtitle="Create or continue a travel pass."
+        title="My trip passes"
       />
 
       <div className="hidden gap-6 lg:grid lg:grid-cols-[380px_minmax(0,1fr)]">
@@ -29,7 +29,7 @@ export default function TripsPage({ error, trips }: TripsPageProps) {
           className="lg:sticky lg:top-24 lg:self-start"
           description="Destination helps match places."
           id="new-trip"
-          title="Create a new trip"
+          title="Create trip pass"
         >
           <TripCreateForm />
         </SectionCard>
@@ -152,7 +152,9 @@ function MobileTripsExperience({ error, trips }: TripsPageProps) {
         <p className="text-xs font-black uppercase tracking-[0.18em] text-blue-600">
           Trip wallet
         </p>
-        <h1 className="mt-2 text-3xl font-black leading-tight text-slate-950">Trips</h1>
+        <h1 className="mt-2 text-3xl font-black leading-tight text-slate-950">
+          My trip passes
+        </h1>
         <p className="mt-2 text-sm font-semibold leading-6 text-slate-600">
           Open a trip pass or create a new one.
         </p>

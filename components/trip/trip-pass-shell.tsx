@@ -34,7 +34,7 @@ export function TripPassShell({ children, trip, tripId }: TripPassShellProps) {
 
       <div className="relative z-10 mx-auto w-full max-w-[1180px] px-3 py-3 pb-[calc(7.5rem+env(safe-area-inset-bottom))] sm:px-6 sm:py-6 sm:pb-[calc(8rem+env(safe-area-inset-bottom))] lg:px-8 lg:py-8 lg:pb-8">
         <div
-          className="overflow-hidden rounded-[2.35rem] bg-white/94 shadow-[0_26px_80px_rgba(2,6,23,0.28)] ring-1 ring-white/70 backdrop-blur-2xl"
+          className="overflow-hidden rounded-[2.35rem] bg-white/95 shadow-[0_26px_80px_rgba(2,6,23,0.28)] ring-1 ring-white/70 backdrop-blur-2xl"
           data-testid="trip-workspace-layout"
         >
           <div className="grid gap-4 p-3 sm:p-4 lg:p-5">

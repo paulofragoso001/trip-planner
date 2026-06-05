@@ -5,7 +5,7 @@ import { ExtractedPlaceCard } from "@/components/imports/extracted-place-card";
 import { SocialImportForm } from "@/components/imports/social-import-form";
 import { TripDraftQueue } from "@/components/imports/trip-draft-queue";
 import { UnfiledItemForm } from "@/components/imports/unfiled-item-form";
-import { EmptyState, PageHeader, SectionCard, Stepper, StatusBadge } from "@/components/trip-ui";
+import { EmptyState, PageHeader, SectionCard, StatusBadge, tripUi } from "@/components/trip-ui";
 import type { WaylineSampleKey } from "@/lib/wayline-onboarding";
 import { waylineCopy } from "@/lib/copy/wayline-copy";
 
@@ -37,21 +37,20 @@ export default function ImportsPage({
         <PageHeader
           actions={
             <a
-              className="inline-flex min-h-11 items-center justify-center rounded-2xl bg-blue-600 px-4 text-sm font-black text-white transition hover:bg-blue-700"
+              className={tripUi.button.primaryCompact}
               href="#saved-inspiration"
             >
               Add idea
             </a>
           }
-          eyebrow="Plan"
+          eyebrow="Travel wallet"
           subtitle="Add a note, link, or screenshot. Wayline will find places for you to review."
-          title="Plan"
+          title="Add travel ideas"
         />
 
-        <Stepper steps={[...waylineCopy.onboardingSteps]} />
-
         <SectionCard
-          description="Paste a link, note, or screenshot."
+          className="rounded-[2rem]"
+          description="Paste a travel note, link, or screenshot."
           eyebrow="Ideas"
           id="saved-inspiration"
           title="Add an idea"
@@ -89,7 +88,7 @@ export default function ImportsPage({
               <EmptyState
                 action={
                   <a
-                    className="inline-flex min-h-11 items-center justify-center rounded-2xl bg-blue-600 px-4 text-sm font-black text-white"
+                    className={tripUi.button.primaryCompact}
                     href="/dashboard/imports?sample=miami#saved-inspiration"
                   >
                     Try sample inspiration
@@ -104,7 +103,7 @@ export default function ImportsPage({
 
         <TripDraftQueue drafts={tripDrafts} />
 
-        <details className="rounded-[2rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+        <details className="rounded-[2rem] border border-slate-200/80 bg-white/95 p-4 shadow-sm backdrop-blur sm:p-5">
           <summary className="cursor-pointer text-lg font-black text-slate-950">
             Optional trip context
           </summary>
@@ -116,44 +115,46 @@ export default function ImportsPage({
           </div>
         </details>
 
-        <details className="rounded-[2rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-        <summary className="cursor-pointer text-lg font-black text-slate-950">Advanced sources</summary>
-        <p className="mt-2 text-sm text-slate-600">
-          Optional inbox, calendar, and source connections that can feed Wayline later.
-        </p>
-        {error ? (
-          <p className="mt-4 rounded-2xl bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
-            {error}
+        <details className="rounded-[2rem] border border-slate-200/80 bg-white/95 p-4 shadow-sm backdrop-blur sm:p-5">
+          <summary className="cursor-pointer text-lg font-black text-slate-950">
+            Advanced sources
+          </summary>
+          <p className="mt-2 text-sm text-slate-600">
+            Optional inbox, calendar, and source connections that can feed Wayline later.
           </p>
-        ) : null}
-        <div className="mt-4 grid gap-3">
-          {sources.map(({ connected, label, sourceType, statusLabel }) => (
-            <div
-              className="grid gap-3 rounded-2xl bg-slate-50 px-4 py-3 sm:grid-cols-[1fr_auto] sm:items-center"
-              key={sourceType}
-            >
-              <div>
-                <p className="font-medium">{label}</p>
-                <span className="mt-1 inline-flex rounded-full bg-white px-3 py-1 text-xs font-semibold">
-                  {statusLabel}
-                </span>
-              </div>
-              <AsyncActionButton
-                body={{
-                  connected: !connected,
-                  lastError: null,
-                  sourceLabel: label,
-                  sourceType
-                }}
-                endpoint="/api/import-sources"
-                method="PATCH"
-                successMessage={`${label} updated.`}
+          {error ? (
+            <p className="mt-4 rounded-2xl bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
+              {error}
+            </p>
+          ) : null}
+          <div className="mt-4 grid gap-3">
+            {sources.map(({ connected, label, sourceType, statusLabel }) => (
+              <div
+                className="grid gap-3 rounded-2xl bg-slate-50 px-4 py-3 sm:grid-cols-[1fr_auto] sm:items-center"
+                key={sourceType}
               >
-                {connected ? "Disconnect" : "Connect"}
-              </AsyncActionButton>
-            </div>
-          ))}
-        </div>
+                <div>
+                  <p className="font-medium">{label}</p>
+                  <span className="mt-1 inline-flex rounded-full bg-white px-3 py-1 text-xs font-semibold">
+                    {statusLabel}
+                  </span>
+                </div>
+                <AsyncActionButton
+                  body={{
+                    connected: !connected,
+                    lastError: null,
+                    sourceLabel: label,
+                    sourceType
+                  }}
+                  endpoint="/api/import-sources"
+                  method="PATCH"
+                  successMessage={`${label} updated.`}
+                >
+                  {connected ? "Disconnect" : "Connect"}
+                </AsyncActionButton>
+              </div>
+            ))}
+          </div>
         </details>
       </section>
 
@@ -191,7 +192,7 @@ export default function ImportsPage({
               <EmptyState
                 action={
                   <a
-                    className="inline-flex min-h-11 items-center justify-center rounded-2xl bg-blue-600 px-4 text-sm font-black text-white"
+                    className={tripUi.button.primaryCompact}
                     href="/dashboard/imports?sample=miami#saved-inspiration"
                   >
                     Try sample inspiration
@@ -206,45 +207,49 @@ export default function ImportsPage({
         </section>
 
         <details className="rounded-[2rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-        <summary className="cursor-pointer text-base font-black text-slate-950">Legacy review queue</summary>
-        <div className="mt-4 grid gap-3 text-sm text-slate-700">
-          <UnfiledItemForm defaultTitle={defaultReviewTitle} />
-          {unfiledItems.map((item) => (
-            <div className="grid gap-2 rounded-2xl bg-slate-50 px-4 py-3" key={item.id}>
-              <div>
-                <p className="font-semibold text-slate-900">{item.title}</p>
-                <p className="text-xs font-medium text-slate-500">
-                  {item.sourceType} · {item.parseStatus}
+          <summary className="cursor-pointer text-base font-black text-slate-950">
+            Legacy review queue
+          </summary>
+          <div className="mt-4 grid gap-3 text-sm text-slate-700">
+            <UnfiledItemForm defaultTitle={defaultReviewTitle} />
+            {unfiledItems.map((item) => (
+              <div className="grid gap-2 rounded-2xl bg-slate-50 px-4 py-3" key={item.id}>
+                <div>
+                  <p className="font-semibold text-slate-900">{item.title}</p>
+                  <p className="text-xs font-medium text-slate-500">
+                    {item.sourceType} · {item.parseStatus}
+                  </p>
+                </div>
+                {item.parseStatus === "promoted" ? (
+                  <p className="rounded-xl bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700">
+                    Added to itinerary
+                  </p>
+                ) : trips.length ? (
+                  <AsyncActionButton
+                    body={{
+                      tripId: item.tripId || trips[0].id
+                    }}
+                    endpoint={`/api/unfiled-items/${item.id}/promote`}
+                    successMessage={`${item.title} added to itinerary.`}
+                  >
+                    Promote to {trips[0].name}
+                  </AsyncActionButton>
+                ) : (
+                  <p className="rounded-xl bg-white px-3 py-2 text-xs font-semibold text-slate-600">
+                    Create a trip before promotion.
+                  </p>
+                )}
+              </div>
+            ))}
+            {unfiledItems.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-slate-300 px-4 py-6 text-sm text-slate-600">
+                <p className="font-bold text-slate-950">No review queue items yet.</p>
+                <p className="mt-1">
+                  Add an unfiled item or connect an import source to start review.
                 </p>
               </div>
-              {item.parseStatus === "promoted" ? (
-                <p className="rounded-xl bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700">
-                  Added to itinerary
-                </p>
-              ) : trips.length ? (
-                <AsyncActionButton
-                  body={{
-                    tripId: item.tripId || trips[0].id
-                  }}
-                  endpoint={`/api/unfiled-items/${item.id}/promote`}
-                  successMessage={`${item.title} added to itinerary.`}
-                >
-                  Promote to {trips[0].name}
-                </AsyncActionButton>
-              ) : (
-                <p className="rounded-xl bg-white px-3 py-2 text-xs font-semibold text-slate-600">
-                  Create a trip before promotion.
-                </p>
-              )}
-            </div>
-          ))}
-          {unfiledItems.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-slate-300 px-4 py-6 text-sm text-slate-600">
-              <p className="font-bold text-slate-950">No review queue items yet.</p>
-              <p className="mt-1">Add an unfiled item or connect an import source to start review.</p>
-            </div>
-          ) : null}
-        </div>
+            ) : null}
+          </div>
         </details>
       </aside>
     </div>

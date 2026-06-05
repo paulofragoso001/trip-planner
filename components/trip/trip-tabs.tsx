@@ -15,6 +15,9 @@ const tabs = [
   { label: "Share", href: "/sharing" }
 ] as const;
 
+const mobileTabs = tabs.slice(0, 4);
+const secondaryTabs = tabs.slice(4);
+
 export function TripTabs({ tripId }: { tripId: string }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
@@ -45,7 +48,7 @@ export function TripTabs({ tripId }: { tripId: string }) {
             aria-label="Trip sections"
             className="absolute inset-x-0 top-[calc(100%+0.5rem)] z-30 grid gap-1 rounded-3xl border border-slate-200 bg-white p-2 shadow-2xl"
           >
-            {tabs.map((tab) => {
+            {mobileTabs.map((tab) => {
               const href = `${base}${tab.href}`;
               const active =
                 tab.href === ""
@@ -69,13 +72,49 @@ export function TripTabs({ tripId }: { tripId: string }) {
                 </Link>
               );
             })}
+            <details className="group rounded-2xl bg-slate-50">
+              <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between rounded-2xl px-3 text-sm font-black text-slate-700">
+                More
+                <ChevronDown className="h-4 w-4 transition group-open:rotate-180" aria-hidden="true" />
+              </summary>
+              <div className="grid gap-1 p-1 pt-0">
+                {secondaryTabs.map((tab) => {
+                  const href = `${base}${tab.href}`;
+                  const active = pathname === href;
+
+                  return (
+                    <Link
+                      aria-current={active ? "page" : undefined}
+                      className={[
+                        "inline-flex min-h-11 items-center rounded-xl px-3 text-sm font-black transition",
+                        active
+                          ? "bg-slate-950 text-white"
+                          : "text-slate-600 hover:bg-white hover:text-slate-950"
+                      ].join(" ")}
+                      href={href}
+                      key={tab.label}
+                      onClick={() => setOpen(false)}
+                    >
+                      {tab.label}
+                    </Link>
+                  );
+                })}
+                <Link
+                  className="inline-flex min-h-11 items-center rounded-xl px-3 text-sm font-black text-slate-600 hover:bg-white hover:text-slate-950"
+                  href="/dashboard/account"
+                  onClick={() => setOpen(false)}
+                >
+                  Settings
+                </Link>
+              </div>
+            </details>
           </nav>
         ) : null}
       </div>
 
       <nav
         aria-label="Trip tabs"
-        className="hidden gap-1 overflow-x-auto rounded-full bg-white/70 p-1 shadow-sm ring-1 ring-slate-200/80 backdrop-blur sm:flex-wrap sm:overflow-visible lg:flex lg:bg-white/86 lg:p-1.5"
+        className="hidden gap-1 overflow-x-auto rounded-full bg-white/70 p-1 shadow-sm ring-1 ring-slate-200/80 backdrop-blur sm:flex-wrap sm:overflow-visible lg:flex lg:bg-white/90 lg:p-1.5"
       >
         {tabs.map((tab) => {
           const href = `${base}${tab.href}`;

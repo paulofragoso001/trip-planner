@@ -124,7 +124,7 @@ test.describe("mobile soft-launch UX", () => {
       await expect(firstTripState.getByTestId("mobile-trip-create-preview")).toBeVisible();
     } else {
       await expect(tripWallet).toBeVisible();
-      await expect(tripWallet.getByRole("heading", { name: "Trips" })).toBeVisible();
+      await expect(tripWallet.getByRole("heading", { name: "My trip passes" })).toBeVisible();
       await expect(tripWallet.getByText("Create another trip pass")).toBeVisible();
     }
   });
@@ -163,17 +163,16 @@ test.describe("mobile soft-launch UX", () => {
 
     try {
       await expect(page.getByTestId("trip-pass-hero")).toBeVisible({ timeout: 20_000 });
-      await expect(page.getByTestId("mobile-trip-wallet-hub")).toBeVisible();
-      await expect(page.getByText("Add Activity")).toBeVisible();
-      await expect(page.getByText("Invite Guests")).toBeVisible();
+      const mobileHub = page.getByTestId("mobile-trip-wallet-hub");
+      await expect(mobileHub).toBeVisible();
+      await expect(page.getByTestId("mobile-primary-trip-cta")).toBeVisible();
+      await expect(page.getByText("Add to trip")).toBeVisible();
+      await expect(mobileHub.getByText("Invite Guests")).toHaveCount(0);
       await expect(page.getByLabel("Organizer actions")).toBeHidden();
-
-      const overflow = page.getByTestId("mobile-trip-overflow-menu");
-      await expect(overflow).toBeVisible();
-      await overflow.locator("summary").click();
-      await expect(overflow.getByText("Email import coming soon")).toBeVisible();
-      await expect(overflow.getByText("Currency")).toBeVisible();
-      await expect(overflow.getByText("Notifications")).toBeVisible();
+      await expect(page.getByTestId("mobile-trip-overflow-menu")).toHaveCount(0);
+      await expect(mobileHub.getByText("Email import coming soon")).toHaveCount(0);
+      await expect(mobileHub.getByText("Currency")).toHaveCount(0);
+      await expect(mobileHub.getByText("Notifications")).toHaveCount(0);
     } finally {
       await deleteTripForTest(request, tripId);
     }
@@ -203,15 +202,16 @@ test.describe("mobile soft-launch UX", () => {
     await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
 
     await page.goto(`${baseUrl}/dashboard`, { waitUntil: "commit" });
-    await expect(page.getByRole("heading", { name: "Where do you want to start?" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Your travel wallet" })).toBeVisible();
     await expect(page.getByText("Turn saved travel ideas into mapped trip plans.")).toHaveCount(0);
     await expect(page.getByText("First Plan Guide")).toHaveCount(0);
     await expect(page.getByText("Add, review, create.")).toHaveCount(0);
 
     await page.goto(`${baseUrl}/dashboard/imports`, { waitUntil: "commit" });
     await expect(page.getByTestId("imports-route")).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole("heading", { name: "Add travel ideas" })).toBeVisible();
     await expect(page.getByText("Create a trip from saved ideas.")).toHaveCount(0);
-    await expect(page.locator("ol").filter({ hasText: "Add" })).toHaveCount(1);
+    await expect(page.locator("ol").filter({ hasText: "Add" })).toHaveCount(0);
   });
 
   test("demo map exposes ordered route cards on mobile", async ({ page }) => {
@@ -248,11 +248,13 @@ test.describe("mobile soft-launch UX", () => {
     await page.getByRole("navigation", { name: "Trip sections" }).getByRole("link", { name: "Ideas" }).click();
     await expect(page.getByRole("heading", { exact: true, name: "All trip activities" })).toBeVisible();
     const activityFilters = page.getByTestId("activity-category-filters");
-    await expect(activityFilters.getByText("Explore nearby")).toBeVisible();
-    await expect(activityFilters.getByRole("button", { name: "All" })).toHaveAttribute("aria-pressed", "true");
-    await activityFilters.getByRole("button", { name: "Food" }).click();
-    await expect(activityFilters.getByRole("button", { name: "Food" })).toHaveAttribute("aria-pressed", "true");
-    await expect(activityFilters.getByRole("button", { name: "All" })).toHaveAttribute("aria-pressed", "false");
+    if ((await activityFilters.count()) > 0) {
+      await expect(activityFilters.getByText("Explore nearby")).toBeVisible();
+      await expect(activityFilters.getByRole("button", { name: "All" })).toHaveAttribute("aria-pressed", "true");
+      await activityFilters.getByRole("button", { name: "Food" }).click();
+      await expect(activityFilters.getByRole("button", { name: "Food" })).toHaveAttribute("aria-pressed", "true");
+      await expect(activityFilters.getByRole("button", { name: "All" })).toHaveAttribute("aria-pressed", "false");
+    }
     const routePlaces = page
       .locator("section")
       .filter({ has: page.getByRole("heading", { name: "Route places" }) });
