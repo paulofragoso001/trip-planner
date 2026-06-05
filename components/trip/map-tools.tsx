@@ -64,12 +64,11 @@ export function MapTools({
         className="rounded-2xl bg-slate-100 px-4 py-3 text-left font-semibold transition hover:bg-slate-200"
         href={`/dashboard/trips/${encodeURIComponent(tripId)}/timeline#new-plan`}
       >
-        Add place
+        Add trip item
       </Link>
       <TripSegmentForm
-        buttonLabel="Save place"
-        defaultKind="activity"
-        includeCoordinates
+        buttonLabel="Save trip item"
+        defaultKind="place"
         tripId={tripId}
       />
       {!hasMappedStops ? (

@@ -1,6 +1,14 @@
 import type { TripSegmentRouteMetadata } from "@/lib/trip-segment-route";
 
-export type TripSegmentType = "dinner" | "expense" | "flight" | "hotel" | "meeting";
+export type TripSegmentType =
+  | "activity"
+  | "expense"
+  | "flight"
+  | "hotel"
+  | "meeting"
+  | "place"
+  | "restaurant"
+  | "transport";
 
 export type TripSegmentStatus = "confirmed" | "pending" | "synced" | "watch";
 

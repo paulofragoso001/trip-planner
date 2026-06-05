@@ -116,6 +116,7 @@ export function ItineraryCardActions({ item, tripId }: ItineraryCardActionsProps
         <div className="mt-3">
           <TripSegmentForm
             buttonLabel="Save changes"
+            defaultConfirmationCode={item.confirmationCode}
             defaultEndTime={item.endAt}
             defaultHasEndTime={item.hasEndTime}
             defaultHasStartTime={item.hasStartTime}

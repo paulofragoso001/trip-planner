@@ -11,8 +11,8 @@ export function dayIdFromDate(value: string) {
 
 export function segmentTypeLabel(type: TripSegmentType) {
   switch (type) {
-    case "dinner":
-      return "Dinner";
+    case "activity":
+      return "Activity";
     case "expense":
       return "Expense";
     case "flight":
@@ -21,6 +21,12 @@ export function segmentTypeLabel(type: TripSegmentType) {
       return "Hotel";
     case "meeting":
       return "Meeting";
+    case "place":
+      return "Place";
+    case "restaurant":
+      return "Restaurant";
+    case "transport":
+      return "Transport";
     default:
       return exhaustive(type);
   }

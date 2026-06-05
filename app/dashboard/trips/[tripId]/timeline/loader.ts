@@ -86,7 +86,7 @@ const demoSegments: Omit<TripSegment, "tripId">[] = [
     startAt: "2026-06-11T19:30:00.000Z",
     status: "synced",
     title: "Team dinner",
-    type: "dinner"
+    type: "restaurant"
   },
   {
     actionLabel: "Add notes",
@@ -431,6 +431,7 @@ function buildBudgetBySegment(rows: BudgetRecordRow[]) {
 
 function mapSegmentKind(value: string | null): TripSegmentType {
   switch ((value || "").toLowerCase()) {
+    case "air":
     case "flight":
       return "flight";
     case "hotel":
@@ -438,23 +439,40 @@ function mapSegmentKind(value: string | null): TripSegmentType {
       return "hotel";
     case "dinner":
     case "restaurant":
-      return "dinner";
+      return "restaurant";
     case "expense":
       return "expense";
+    case "drive":
+    case "train":
+    case "bus":
+    case "transfer":
+    case "ferry":
+    case "transport":
+    case "transportation":
+      return "transport";
+    case "activity":
+    case "tour":
+      return "activity";
+    case "place":
+    case "park":
+    case "landmark":
+    case "attraction":
+    case "neighborhood":
+      return "place";
     case "meeting":
     case "event":
-    case "activity":
+      return "meeting";
     case "ground":
     case "note":
     default:
-      return "meeting";
+      return "place";
   }
 }
 
 function actionLabelForKind(kind: TripSegmentType) {
   switch (kind) {
-    case "dinner":
-      return "Open reservation";
+    case "activity":
+      return "Open activity";
     case "expense":
       return "Open expense";
     case "flight":
@@ -463,6 +481,12 @@ function actionLabelForKind(kind: TripSegmentType) {
       return "Open stay";
     case "meeting":
       return "Open details";
+    case "place":
+      return "Open place";
+    case "restaurant":
+      return "Open reservation";
+    case "transport":
+      return "Open route";
     default:
       return "Open details";
   }

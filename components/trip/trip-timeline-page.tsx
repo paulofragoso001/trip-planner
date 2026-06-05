@@ -221,7 +221,7 @@ function ItineraryRow({
           <FlightBoardingPassCard item={item} status={status} tripId={tripId} />
         ) : item.kind === "hotel" ? (
           <HotelPassCard item={item} status={status} tripId={tripId} />
-        ) : item.kind === "dinner" ? (
+        ) : item.kind === "restaurant" ? (
           <RestaurantReservationCard item={item} status={status} tripId={tripId} />
         ) : (
         <div className="rounded-[1.35rem] border border-slate-200 bg-white p-3 shadow-sm ring-1 ring-white transition hover:border-slate-300 hover:shadow-md sm:p-4">
@@ -771,8 +771,8 @@ function ItineraryActions({
 }) {
   return (
     <div className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:rounded-3xl sm:p-5">
-      <h3 className="text-base font-black">Add to itinerary</h3>
-      <p className="mt-2 text-sm text-slate-600">Add a place, reservation, or activity idea.</p>
+      <h3 className="text-base font-black">Add trip item</h3>
+      <p className="mt-2 text-sm text-slate-600">Add a place, reservation, route, stay, or activity.</p>
       <div className="mt-4 grid gap-3">
         <GeneratePlanButton context="timeline" tripId={tripId} />
         <AsyncActionButton
@@ -804,7 +804,7 @@ function ItineraryActions({
           </AsyncActionButton>
         ) : null}
         <div id="new-plan">
-          <TripSegmentForm buttonLabel="Add place" tripId={tripId} />
+          <TripSegmentForm buttonLabel="Add trip item" tripId={tripId} />
         </div>
       </div>
     </div>

@@ -19,6 +19,7 @@ import {
 
 type TripSegmentFormProps = {
   buttonLabel?: string;
+  defaultConfirmationCode?: string | null;
   defaultEndTime?: string | null;
   defaultKind?: string;
   defaultLat?: number | null;
@@ -38,9 +39,10 @@ type TripSegmentFormProps = {
 };
 
 export function TripSegmentForm({
-  buttonLabel = "Save segment",
+  buttonLabel = "Save trip item",
+  defaultConfirmationCode = null,
   defaultEndTime = null,
-  defaultKind = "activity",
+  defaultKind = "place",
   defaultLat = null,
   defaultLng = null,
   defaultLocation = null,
@@ -87,7 +89,9 @@ export function TripSegmentForm({
     routeEndpointLabel(defaultRoute?.destination) || fallbackRouteEndpoints.destination
   );
   const [routeCarrier, setRouteCarrier] = useState(defaultRoute?.carrier || "");
-  const [routeConfirmation, setRouteConfirmation] = useState(defaultRoute?.confirmation || "");
+  const [routeConfirmation, setRouteConfirmation] = useState(
+    defaultRoute?.confirmation || defaultConfirmationCode || ""
+  );
   const [routeFlightNumber, setRouteFlightNumber] = useState(defaultRoute?.flightNumber || "");
   const [startClockTime, setStartClockTime] = useState(defaultStart.clockTime);
   const [startDate, setStartDate] = useState(defaultStart.date);
@@ -95,7 +99,14 @@ export function TripSegmentForm({
   const [title, setTitle] = useState(defaultTitle);
   const [hydrated, setHydrated] = useState(false);
   const { isPending, run, state } = useWaylineAction();
-  const isRouteSegment = isRouteKind(kind);
+  const formType = formTypeForKind(kind);
+  const copy = formCopyForType(formType);
+  const isRouteSegment = formType === "flight" || formType === "transport";
+  const isFlightSegment = formType === "flight";
+  const isHotelSegment = formType === "hotel";
+  const showsEndTime =
+    isRouteSegment || formType === "activity" || formType === "hotel" || formType === "meeting";
+  const usesSeparateEndDate = isRouteSegment || formType === "hotel";
 
   useEffect(() => {
     setHydrated(true);
@@ -106,10 +117,8 @@ export function TripSegmentForm({
     setProviderMetadata(null);
     setProviderPlaceId(null);
     setLocationSelected(false);
-    if (!includeCoordinates) {
-      setLat("");
-      setLng("");
-    }
+    setLat("");
+    setLng("");
   }
 
   function handleLocationSelect(selection: LocationSelection) {
@@ -143,8 +152,23 @@ export function TripSegmentForm({
     }
   }
 
+  function handleTypeChange(nextType: TripItemFormType) {
+    setKind(nextType);
+    if (nextType === "flight") {
+      setRouteMode("flight");
+    } else if (nextType === "transport") {
+      setRouteMode("transfer");
+    }
+  }
+
+  function handleStartDateChange(nextDate: string) {
+    setStartDate(nextDate);
+    if (!endDate || !usesSeparateEndDate) setEndDate(nextDate);
+  }
+
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const submitKind = formType;
     const route = isRouteSegment
       ? {
           arriveAt: endDate && endClockTime ? combineDateAndClockTime(endDate, endClockTime) : null,
@@ -153,7 +177,7 @@ export function TripSegmentForm({
           departAt: startDate && startClockTime ? combineDateAndClockTime(startDate, startClockTime) : null,
           destination: normalizeEndpointForSubmit(routeDestination, routeDestinationInput),
           flightNumber: routeFlightNumber.trim() || null,
-          mode: normalizeRouteMode(routeMode || kind),
+          mode: isFlightSegment ? normalizeRouteMode("flight") : normalizeRouteMode(routeMode || "transfer"),
           origin: normalizeEndpointForSubmit(routeOrigin, routeOriginInput)
         }
       : null;
@@ -165,9 +189,10 @@ export function TripSegmentForm({
     );
     const routeLabel = routeLocationLabel(route);
     const body: Record<string, unknown> = {
+      confirmationCode: !isRouteSegment && routeConfirmation.trim() ? routeConfirmation.trim() : null,
       endClockTime,
       endDate: endDate || startDate,
-      kind,
+      kind: submitKind,
       lat: isRouteSegment
         ? route?.destination?.lat ?? null
         : lat.trim()
@@ -236,6 +261,7 @@ export function TripSegmentForm({
       if (!segmentId) {
         setEndClockTime("");
         setEndDate("");
+        setKind("place");
         setLat("");
         setLng("");
         setLocation("");
@@ -260,7 +286,7 @@ export function TripSegmentForm({
   }
 
   const message =
-    state.status === "success" ? "Segment saved." : state.message;
+    state.status === "success" ? "Trip item saved." : state.message;
   const tone =
     state.status === "success"
       ? "bg-emerald-50 text-emerald-700"
@@ -269,83 +295,75 @@ export function TripSegmentForm({
         : "bg-slate-50 text-slate-700";
   const isEditing = Boolean(segmentId);
   const fieldClass = "min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:ring-4 focus:ring-blue-100";
+  const textareaClass = "min-h-24 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:ring-4 focus:ring-blue-100";
   const labelClass = "grid gap-1.5 text-xs font-bold uppercase tracking-[0.12em] text-slate-500";
 
   return (
     <form className="grid gap-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm" onSubmit={submit}>
-      {isEditing ? (
-        <div className="flex items-center justify-between gap-3">
-          <h5 className="text-base font-black text-slate-950">Edit place</h5>
-          {onCancel ? (
-            <button
-              className="inline-flex min-h-10 items-center justify-center rounded-full px-3 text-xs font-black text-slate-600 transition hover:bg-slate-100 hover:text-slate-950"
-              onClick={onCancel}
-              type="button"
-            >
-              Cancel
-            </button>
-          ) : null}
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h5 className="text-base font-black text-slate-950">
+            {isEditing ? "Edit trip item" : "Add trip item"}
+          </h5>
+          <p className="mt-1 text-xs font-semibold text-slate-500">{copy.helper}</p>
         </div>
-      ) : null}
+        {onCancel ? (
+          <button
+            className="inline-flex min-h-10 shrink-0 items-center justify-center rounded-full px-3 text-xs font-black text-slate-600 transition hover:bg-slate-100 hover:text-slate-950"
+            onClick={onCancel}
+            type="button"
+          >
+            Cancel
+          </button>
+        ) : null}
+      </div>
 
       <label className={labelClass}>
-        Title
+        Type
+        <select
+          className={fieldClass}
+          onChange={(event) => handleTypeChange(event.target.value as TripItemFormType)}
+          value={formType}
+        >
+          {tripItemTypeOptions.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      <label className={labelClass}>
+        {copy.titleLabel}
         <input
           className={fieldClass}
           onChange={(event) => setTitle(event.target.value)}
-          placeholder="Wynwood Walls"
+          placeholder={copy.titlePlaceholder}
           required
           value={title}
         />
       </label>
 
-      {!isEditing ? (
-        <label className={labelClass}>
-          Type
-          <select
-            className={fieldClass}
-            onChange={(event) => {
-              setKind(event.target.value);
-              if (isRouteKind(event.target.value)) {
-                setRouteMode(normalizeRouteMode(event.target.value));
-              }
-            }}
-            value={kind}
-          >
-            <option value="flight">Flight</option>
-            <option value="drive">Drive</option>
-            <option value="train">Train</option>
-            <option value="bus">Bus</option>
-            <option value="transfer">Transfer</option>
-            <option value="ferry">Ferry</option>
-            <option value="hotel">Hotel</option>
-            <option value="meeting">Meeting</option>
-            <option value="restaurant">Restaurant</option>
-            <option value="activity">Activity</option>
-            <option value="transport">Transport</option>
-            <option value="note">Note</option>
-          </select>
-        </label>
-      ) : null}
-
       {isRouteSegment ? (
         <div className="grid gap-3 rounded-2xl bg-slate-50 p-3">
-          <label className={labelClass}>
-            Transport type
-            <select
-              className={fieldClass}
-              onChange={(event) => setRouteMode(normalizeRouteMode(event.target.value))}
-              value={routeMode}
-            >
-              <option value="flight">Flight</option>
-              <option value="drive">Drive</option>
-              <option value="train">Train</option>
-              <option value="bus">Bus</option>
-              <option value="transfer">Transfer</option>
-              <option value="ferry">Ferry</option>
-              <option value="other">Other</option>
-            </select>
-          </label>
+          {!isFlightSegment ? (
+            <label className={labelClass}>
+              Transport type
+              <select
+                className={fieldClass}
+                onChange={(event) => setRouteMode(normalizeRouteMode(event.target.value))}
+                value={routeMode === "flight" ? "transfer" : routeMode}
+              >
+                <option value="drive">Car</option>
+                <option value="train">Train</option>
+                <option value="bus">Bus</option>
+                <option value="ferry">Ferry</option>
+                <option value="transfer">Transfer</option>
+                <option value="transfer">Rideshare</option>
+                <option value="transportation">Other transport</option>
+              </select>
+            </label>
+          ) : null}
           <div className="grid gap-3 sm:grid-cols-2">
             <label className={labelClass}>
               From
@@ -386,51 +404,22 @@ export function TripSegmentForm({
             <p className="text-xs font-semibold text-slate-500">
               {routeOrigin?.lat != null && routeDestination?.lat != null
                 ? "Route ready."
-                : "Add origin and destination to draw this route."}
+                : "Select origin and destination places to draw this route."}
             </p>
           ) : null}
-          <div className="grid gap-3 sm:grid-cols-3">
-            <label className={labelClass}>
-              Carrier
-              <input
-                className={fieldClass}
-                onChange={(event) => setRouteCarrier(event.target.value)}
-                placeholder="American Airlines"
-                value={routeCarrier}
-              />
-            </label>
-            <label className={labelClass}>
-              Flight / route no.
-              <input
-                className={fieldClass}
-                onChange={(event) => setRouteFlightNumber(event.target.value)}
-                placeholder="AA112"
-                value={routeFlightNumber}
-              />
-            </label>
-            <label className={labelClass}>
-              Confirmation
-              <input
-                className={fieldClass}
-                onChange={(event) => setRouteConfirmation(event.target.value)}
-                placeholder="ABC123"
-                value={routeConfirmation}
-              />
-            </label>
-          </div>
         </div>
       ) : (
         <label className={labelClass}>
-          Location
+          {copy.locationLabel}
           <GoogleMapsProvider>
             <LocationAutocomplete
               ariaLabel="Stop location"
               inputClassName={fieldClass}
               loadingMessage="Places autocomplete is loading. You can still type a location."
-              manualWarning="Select a suggested place to map this stop."
+              manualWarning="Select a suggested place to map this item."
               onInputChange={handleLocationInputChange}
               onSelect={handleLocationSelect}
-              placeholder="Search Google Places..."
+              placeholder={copy.locationPlaceholder}
               resolveErrorMessage="Wayline could not map that Google result. Try another location."
               unresolvedMessage="Select a suggested place with a mapped location."
               value={location}
@@ -446,19 +435,16 @@ export function TripSegmentForm({
 
       <div className="grid gap-2 sm:grid-cols-2">
         <label className={labelClass}>
-          Date
+          {copy.startDateLabel}
           <input
             className={fieldClass}
-            onChange={(event) => {
-              setStartDate(event.target.value);
-              if (!endDate) setEndDate(event.target.value);
-            }}
+            onChange={(event) => handleStartDateChange(event.target.value)}
             type="date"
             value={startDate}
           />
         </label>
         <label className={labelClass}>
-          {isRouteSegment ? "Departure time" : "Start time"}
+          {copy.startTimeLabel}
           <input
             className={fieldClass}
             onChange={(event) => setStartClockTime(event.target.value)}
@@ -468,99 +454,11 @@ export function TripSegmentForm({
         </label>
       </div>
 
-      <label className={labelClass}>
-        Notes
-        <textarea
-          className="min-h-24 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
-          onChange={(event) => setNotes(event.target.value)}
-          placeholder="Add notes..."
-          value={notes}
-        />
-      </label>
-
-      {isEditing ? (
-        <details className="rounded-xl bg-slate-50 px-3 py-2">
-          <summary className="cursor-pointer text-xs font-black uppercase tracking-[0.12em] text-slate-500">
-            More details
-          </summary>
-          <div className="mt-3 grid gap-3">
+      {showsEndTime ? (
+        <div className={`grid gap-2 ${usesSeparateEndDate ? "sm:grid-cols-2" : ""}`}>
+          {usesSeparateEndDate ? (
             <label className={labelClass}>
-              Type
-              <select
-                className={fieldClass}
-                onChange={(event) => {
-                  setKind(event.target.value);
-                  if (isRouteKind(event.target.value)) {
-                    setRouteMode(normalizeRouteMode(event.target.value));
-                  }
-                }}
-                value={kind}
-              >
-                <option value="flight">Flight</option>
-                <option value="drive">Drive</option>
-                <option value="train">Train</option>
-                <option value="bus">Bus</option>
-                <option value="transfer">Transfer</option>
-                <option value="ferry">Ferry</option>
-                <option value="hotel">Hotel</option>
-                <option value="meeting">Meeting</option>
-                <option value="restaurant">Restaurant</option>
-                <option value="activity">Activity</option>
-                <option value="transport">Transport</option>
-                <option value="note">Note</option>
-              </select>
-            </label>
-            <div className="grid gap-2 sm:grid-cols-2">
-              <label className={labelClass}>
-                {isRouteSegment ? "Arrival date" : "End date"}
-                <input
-                  className={fieldClass}
-                  onChange={(event) => setEndDate(event.target.value)}
-                  type="date"
-                  value={endDate}
-                />
-              </label>
-              <label className={labelClass}>
-                {isRouteSegment ? "Arrival time" : "End time"}
-                <input
-                  className={fieldClass}
-                  onChange={(event) => setEndClockTime(event.target.value)}
-                  type="time"
-                  value={endClockTime}
-                />
-              </label>
-            </div>
-            {includeCoordinates ? (
-              <div className="grid gap-2 sm:grid-cols-2">
-                <label className={labelClass}>
-                  Latitude
-                  <input
-                    className={fieldClass}
-                    inputMode="decimal"
-                    onChange={(event) => setLat(event.target.value)}
-                    placeholder="Latitude"
-                    value={lat}
-                  />
-                </label>
-                <label className={labelClass}>
-                  Longitude
-                  <input
-                    className={fieldClass}
-                    inputMode="decimal"
-                    onChange={(event) => setLng(event.target.value)}
-                    placeholder="Longitude"
-                    value={lng}
-                  />
-                </label>
-              </div>
-            ) : null}
-          </div>
-        </details>
-      ) : (
-        <>
-          <div className="grid gap-2 sm:grid-cols-2">
-            <label className={labelClass}>
-              {isRouteSegment ? "Arrival date" : "End date"}
+              {copy.endDateLabel}
               <input
                 className={fieldClass}
                 onChange={(event) => setEndDate(event.target.value)}
@@ -568,18 +466,85 @@ export function TripSegmentForm({
                 value={endDate}
               />
             </label>
+          ) : null}
+          <label className={labelClass}>
+            {copy.endTimeLabel}
+            <input
+              className={fieldClass}
+              onChange={(event) => setEndClockTime(event.target.value)}
+              type="time"
+              value={endClockTime}
+            />
+          </label>
+        </div>
+      ) : null}
+
+      <details className="rounded-xl bg-slate-50 px-3 py-2">
+        <summary className="cursor-pointer text-xs font-black uppercase tracking-[0.12em] text-slate-500">
+          Notes and details
+        </summary>
+        <div className="mt-3 grid gap-3">
+          {isRouteSegment ? (
+            <div className="grid gap-3 sm:grid-cols-3">
+              <label className={labelClass}>
+                {isFlightSegment ? "Airline" : "Carrier"}
+                <input
+                  className={fieldClass}
+                  onChange={(event) => setRouteCarrier(event.target.value)}
+                  placeholder={isFlightSegment ? "American Airlines" : "Brightline"}
+                  value={routeCarrier}
+                />
+              </label>
+              <label className={labelClass}>
+                {isFlightSegment ? "Flight number" : "Route number"}
+                <input
+                  className={fieldClass}
+                  onChange={(event) => setRouteFlightNumber(event.target.value)}
+                  placeholder={isFlightSegment ? "AA112" : "Train 101"}
+                  value={routeFlightNumber}
+                />
+              </label>
+              <label className={labelClass}>
+                Confirmation
+                <input
+                  className={fieldClass}
+                  onChange={(event) => setRouteConfirmation(event.target.value)}
+                  placeholder="ABC123"
+                  value={routeConfirmation}
+                />
+              </label>
+            </div>
+          ) : formType === "restaurant" || isHotelSegment ? (
             <label className={labelClass}>
-              {isRouteSegment ? "Arrival time" : "End time"}
+              Confirmation
               <input
                 className={fieldClass}
-                onChange={(event) => setEndClockTime(event.target.value)}
-                type="time"
-                value={endClockTime}
+                onChange={(event) => setRouteConfirmation(event.target.value)}
+                placeholder="Optional confirmation"
+                value={routeConfirmation}
               />
             </label>
-          </div>
-          {includeCoordinates ? (
-            <div className="grid gap-2 sm:grid-cols-2">
+          ) : null}
+          <label className={labelClass}>
+            Notes
+            <textarea
+              className={textareaClass}
+              onChange={(event) => setNotes(event.target.value)}
+              placeholder="Add notes..."
+              value={notes}
+            />
+          </label>
+        </div>
+      </details>
+
+      {includeCoordinates ? (
+        <details className="rounded-xl bg-slate-50 px-3 py-2">
+          <summary className="cursor-pointer text-xs font-black uppercase tracking-[0.12em] text-slate-500">
+            Advanced location details
+          </summary>
+          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+            <label className={labelClass}>
+              Latitude
               <input
                 className={fieldClass}
                 inputMode="decimal"
@@ -587,6 +552,9 @@ export function TripSegmentForm({
                 placeholder="Latitude"
                 value={lat}
               />
+            </label>
+            <label className={labelClass}>
+              Longitude
               <input
                 className={fieldClass}
                 inputMode="decimal"
@@ -594,10 +562,10 @@ export function TripSegmentForm({
                 placeholder="Longitude"
                 value={lng}
               />
-            </div>
-          ) : null}
-        </>
-      )}
+            </label>
+          </div>
+        </details>
+      ) : null}
 
       <div className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-center">
         <button
@@ -639,6 +607,133 @@ function isMidnight(value: string) {
 
 function combineDateAndClockTime(date: string, clockTime: string) {
   return `${date}T${clockTime}:00.000Z`;
+}
+
+type TripItemFormType =
+  | "activity"
+  | "flight"
+  | "hotel"
+  | "meeting"
+  | "place"
+  | "restaurant"
+  | "transport";
+
+const tripItemTypeOptions: Array<{ label: string; value: TripItemFormType }> = [
+  { label: "Place", value: "place" },
+  { label: "Restaurant", value: "restaurant" },
+  { label: "Activity", value: "activity" },
+  { label: "Hotel", value: "hotel" },
+  { label: "Flight", value: "flight" },
+  { label: "Transport", value: "transport" },
+  { label: "Meeting", value: "meeting" }
+];
+
+function formTypeForKind(kind: string): TripItemFormType {
+  const normalized = kind.toLowerCase();
+  if (normalized === "flight") return "flight";
+  if (isRouteKind(normalized)) return "transport";
+  if (normalized === "hotel" || normalized === "lodging") return "hotel";
+  if (normalized === "restaurant" || normalized === "dinner") return "restaurant";
+  if (normalized === "activity" || normalized === "tour") return "activity";
+  if (normalized === "meeting" || normalized === "event") return "meeting";
+  return "place";
+}
+
+function formCopyForType(type: TripItemFormType) {
+  switch (type) {
+    case "activity":
+      return {
+        endDateLabel: "End date",
+        endTimeLabel: "End time",
+        helper: "Add an activity, tour, or experience.",
+        locationAriaLabel: "Activity meeting point",
+        locationLabel: "Location or meeting point",
+        locationPlaceholder: "Search for a meeting point...",
+        startDateLabel: "Date",
+        startTimeLabel: "Start time",
+        titleLabel: "Activity name",
+        titlePlaceholder: "Biscayne Bay boat tour"
+      };
+    case "flight":
+      return {
+        endDateLabel: "Arrival date",
+        endTimeLabel: "Arrival time",
+        helper: "Add a flight route with departure and arrival details.",
+        locationAriaLabel: "Flight destination",
+        locationLabel: "To",
+        locationPlaceholder: "Miami International Airport",
+        startDateLabel: "Departure date",
+        startTimeLabel: "Departure time",
+        titleLabel: "Flight title",
+        titlePlaceholder: "American Airlines AA112"
+      };
+    case "hotel":
+      return {
+        endDateLabel: "Check-out date",
+        endTimeLabel: "Check-out time",
+        helper: "Add lodging and check-in details.",
+        locationAriaLabel: "Hotel location",
+        locationLabel: "Hotel location",
+        locationPlaceholder: "Search for hotel...",
+        startDateLabel: "Check-in date",
+        startTimeLabel: "Check-in time",
+        titleLabel: "Hotel name",
+        titlePlaceholder: "citizenM Miami Brickell"
+      };
+    case "meeting":
+      return {
+        endDateLabel: "End date",
+        endTimeLabel: "End time",
+        helper: "Add a meetup, reservation, or appointment.",
+        locationAriaLabel: "Meeting location",
+        locationLabel: "Location",
+        locationPlaceholder: "Search for meeting location...",
+        startDateLabel: "Date",
+        startTimeLabel: "Start time",
+        titleLabel: "Meeting title",
+        titlePlaceholder: "Dinner with Alex"
+      };
+    case "restaurant":
+      return {
+        endDateLabel: "End date",
+        endTimeLabel: "End time",
+        helper: "Add a restaurant or reservation.",
+        locationAriaLabel: "Restaurant location",
+        locationLabel: "Location",
+        locationPlaceholder: "Search for restaurant...",
+        startDateLabel: "Reservation date",
+        startTimeLabel: "Reservation time",
+        titleLabel: "Restaurant name",
+        titlePlaceholder: "Komodo"
+      };
+    case "transport":
+      return {
+        endDateLabel: "Arrival date",
+        endTimeLabel: "Arrival time",
+        helper: "Add a transfer, train, bus, ferry, or rideshare.",
+        locationAriaLabel: "Transport destination",
+        locationLabel: "To",
+        locationPlaceholder: "Miami Beach",
+        startDateLabel: "Departure date",
+        startTimeLabel: "Departure time",
+        titleLabel: "Transport name",
+        titlePlaceholder: "Transfer to hotel"
+      };
+    case "place":
+    default:
+      return {
+        endDateLabel: "End date",
+        endTimeLabel: "End time",
+        helper: "Add a mapped place to your trip.",
+        locationAriaLabel: "Stop location",
+        locationLabel: "Location",
+        locationPlaceholder: "Search Google Places...",
+        startDateLabel: "Date",
+        startTimeLabel: "Start time",
+        titleLabel: "Name",
+        titlePlaceholder: "Wynwood Walls"
+      };
+  }
 }
 
 function endpointFromSelection(selection: LocationSelection): TripRouteEndpoint {
