@@ -42,8 +42,9 @@ export function AppShell({
     () => ({ title: resolveNavTitle(pathname, view) }),
     [pathname, view]
   );
+  const tripWorkspaceContent = /^\/dashboard\/trips\/[^/]+/.test(pathname);
   const fullBleedContent =
-    pathname.includes("/map") || pathname.startsWith("/dashboard/layout-simulator");
+    tripWorkspaceContent || pathname.includes("/map") || pathname.startsWith("/dashboard/layout-simulator");
 
   useEffect(() => {
     const stored = window.localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY);

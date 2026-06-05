@@ -53,6 +53,8 @@ test("loads dashboard summary and route-split pages", async ({ page }) => {
   await page.getByRole("button", { name: "Refresh" }).click();
 
   await openDashboardRoute("/dashboard/trips/demo");
+  await expect(page.getByTestId("trip-pass-shell")).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByTestId("trip-pass-shell")).toHaveAttribute("data-has-background-image", "false");
   await expect(page.getByTestId("trip-workspace-layout")).toBeVisible({ timeout: 30_000 });
   const overview = page.getByTestId("trip-overview-page");
   await expect(overview.getByRole("heading", { name: "Your trip at a glance" })).toBeVisible();
@@ -87,7 +89,7 @@ test("loads dashboard summary and route-split pages", async ({ page }) => {
   await openDashboardRoute("/dashboard/trips/demo/timeline");
   await expect(page.getByTestId("trip-workspace-layout")).toBeVisible({ timeout: 30_000 });
   await expect(
-    page.getByTestId("app-shell-content").getByText("Itinerary", { exact: true }).first()
+    page.getByRole("navigation", { name: "Trip tabs" }).getByRole("link", { exact: true, name: "Itinerary" })
   ).toBeVisible();
   await expect(page.getByRole("heading", { name: "Add trip item" }).first()).toBeVisible();
   await expect(page.getByTestId("itinerary-date-strip")).toBeVisible();

@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
-import { TripPassHero } from "@/components/trip/trip-pass-hero";
-import { TripTabs } from "@/components/trip/trip-tabs";
+import { TripPassShell } from "@/components/trip/trip-pass-shell";
 import { loadTripWorkspaceData } from "./loader";
 
 type TripLayoutProps = {
@@ -13,14 +12,8 @@ export default async function TripLayout({ children, params }: TripLayoutProps) 
   const trip = await loadTripWorkspaceData(tripId);
 
   return (
-    <div className="grid gap-4">
-      <div data-testid="trip-workspace-layout">
-        <TripPassHero trip={trip} tripId={tripId} />
-      </div>
-
-      <TripTabs tripId={tripId} />
-
-      <div>{children}</div>
-    </div>
+    <TripPassShell trip={trip} tripId={tripId}>
+      {children}
+    </TripPassShell>
   );
 }

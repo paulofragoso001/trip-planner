@@ -52,7 +52,7 @@ export default function TripTimelinePage({
 
         {days.length ? (
           <div className="grid gap-5">
-            <ItineraryDateStrip days={days} />
+            <ItineraryDateStrip days={days} tripId={tripId} />
 
             {days.map((day) => (
               <section className="scroll-mt-24" id={dayAnchorId(day)} key={day.id}>
@@ -126,7 +126,13 @@ export default function TripTimelinePage({
   );
 }
 
-function ItineraryDateStrip({ days }: { days: TripTimelineData["days"] }) {
+function ItineraryDateStrip({
+  days,
+  tripId
+}: {
+  days: TripTimelineData["days"];
+  tripId: string;
+}) {
   const datedDays = days.filter((day) => day.dateIso);
 
   if (!datedDays.length) {
@@ -149,7 +155,7 @@ function ItineraryDateStrip({ days }: { days: TripTimelineData["days"] }) {
                 ? "bg-slate-950 text-white ring-slate-950"
                 : "bg-white text-slate-700 ring-slate-200 hover:bg-slate-50"
             ].join(" ")}
-            href={`#${dayAnchorId(day)}`}
+            href={`/dashboard/trips/${encodeURIComponent(tripId)}/timeline#${dayAnchorId(day)}`}
             key={day.id}
           >
             <span className="grid gap-0.5">

@@ -19,7 +19,7 @@ export default function TripMapPage({
   const hasLocationAttention = unmappedCount > 0 || activitySegments.length > 0;
 
   return (
-    <div className="grid min-h-[calc(100dvh-220px)] gap-4">
+    <div className="grid gap-4">
       <section className="relative min-w-0">
         <h2 className="sr-only">Map</h2>
         {error ? (

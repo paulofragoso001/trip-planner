@@ -204,6 +204,9 @@ test.describe("mobile soft-launch UX", () => {
     await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
     await page.goto(`${baseUrl}/dashboard/trips/demo/map`, { waitUntil: "commit" });
 
+    await expect(page.getByTestId("trip-pass-shell")).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByTestId("trip-section-menu")).toBeVisible();
+    await expect(page.getByRole("navigation", { name: "Trip tabs" })).toBeHidden();
     await expect(page.getByTestId("trip-pass-hero")).toBeVisible();
     await expect(page.getByText("Trip pass")).toBeVisible();
     await expect(page.getByText("Current trip")).toHaveCount(0);
@@ -225,7 +228,8 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByTestId("compact-route-empty-state")).toHaveCount(0);
     await expect(page.getByTestId("map-route-list")).toBeVisible();
 
-    await page.goto(`${baseUrl}/dashboard/trips/demo/ideas`, { waitUntil: "commit" });
+    await page.getByTestId("trip-section-menu").getByRole("button").click();
+    await page.getByRole("navigation", { name: "Trip sections" }).getByRole("link", { name: "Ideas" }).click();
     await expect(page.getByRole("heading", { exact: true, name: "All trip activities" })).toBeVisible();
     const activityFilters = page.getByTestId("activity-category-filters");
     await expect(activityFilters.getByText("Explore nearby")).toBeVisible();
