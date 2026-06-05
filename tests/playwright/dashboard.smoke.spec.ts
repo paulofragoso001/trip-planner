@@ -89,7 +89,7 @@ test("loads dashboard summary and route-split pages", async ({ page }) => {
   await expect(
     page.getByTestId("app-shell-content").getByText("Itinerary", { exact: true }).first()
   ).toBeVisible();
-  await expect(page.getByText("Add to itinerary")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Add trip item" }).first()).toBeVisible();
   await expect(page.getByTestId("itinerary-date-strip")).toBeVisible();
   await expect(page.getByTestId("itinerary-date-strip").getByRole("link", { name: "Jump to THURSDAY, JUNE 11, 2026" })).toBeVisible();
   await page.getByTestId("itinerary-date-strip").getByRole("link", { name: "Jump to THURSDAY, JUNE 11, 2026" }).click();
@@ -107,11 +107,10 @@ test("loads dashboard summary and route-split pages", async ({ page }) => {
   await openDashboardRoute("/dashboard/trips/demo/map");
   await expect(page.getByTestId("connected-trip-map")).toBeVisible();
   await expect(page.getByText("Nearby Ideas", { exact: true })).toHaveCount(0);
-  await expect(page.getByText("Open Ideas to find places near your route.")).toBeVisible();
-  await expect(page.getByRole("link", { name: "Open Ideas" })).toHaveAttribute(
-    "href",
-    "/dashboard/trips/demo/ideas"
-  );
+  await expect(page.getByText("Your route places appear here.")).toHaveCount(0);
+  await expect(page.getByTestId("compact-route-empty-state")).toHaveCount(0);
+  await expect(page.getByTestId("map-route-list")).toBeVisible();
+  await expect(page.getByTestId("map-route-list").getByText("Team dinner in El Born")).toBeVisible();
   await expect(page.getByRole("button", { name: "Share view" })).toBeVisible();
 
   await openDashboardRoute("/dashboard/trips/demo/ideas");

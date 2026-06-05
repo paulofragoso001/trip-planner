@@ -221,7 +221,9 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByRole("button", { name: /4 Fira Barcelona meeting/ })).toBeVisible();
     await expect(page.getByLabel("Map categories")).toHaveCount(0);
     await expect(page.getByText("Nearby Ideas", { exact: true })).toHaveCount(0);
-    await expect(page.getByText("Open Ideas to find places near your route.")).toBeVisible();
+    await expect(page.getByText("Your route places appear here.")).toHaveCount(0);
+    await expect(page.getByTestId("compact-route-empty-state")).toHaveCount(0);
+    await expect(page.getByTestId("map-route-list")).toBeVisible();
 
     await page.goto(`${baseUrl}/dashboard/trips/demo/ideas`, { waitUntil: "commit" });
     await expect(page.getByRole("heading", { exact: true, name: "All trip activities" })).toBeVisible();

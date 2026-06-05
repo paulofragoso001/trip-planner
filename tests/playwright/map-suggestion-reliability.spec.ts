@@ -10,7 +10,7 @@ const supabaseUrl =
 const serviceRoleKey =
   process.env.SUPABASE_SERVICE_ROLE_KEY || readLocalEnv("SUPABASE_SERVICE_ROLE_KEY");
 
-test("map and suggestions degrade safely for unresolved and activity stops", async ({ request }) => {
+test("map and suggestions degrade safely for unresolved and activity stops", async ({ page, request }) => {
   test.setTimeout(120_000);
   test.skip(
     !supabaseUrl || !serviceRoleKey,
@@ -87,6 +87,23 @@ test("map and suggestions degrade safely for unresolved and activity stops", asy
     expect(suggestionsResponse.status()).toBe(200);
     const suggestionsPayload = await suggestionsResponse.json();
     expect(suggestionsPayload?.data?.skippedReason).toBe("no_mapped_segments");
+
+    await page.setViewportSize({ height: 900, width: 390 });
+    await page.setExtraHTTPHeaders(dashboardHeaders);
+    await page.goto(`${baseUrl}/dashboard/trips/${tripId}/map`, { waitUntil: "commit" });
+    const emptyState = page.getByTestId("compact-route-empty-state");
+    await expect(emptyState).toBeVisible({ timeout: 30_000 });
+    await expect(emptyState.getByRole("heading", { name: "No route places yet" })).toBeVisible();
+    await expect(emptyState.getByText("Some ideas need location before they can join the route.")).toBeVisible();
+    await expect(emptyState.getByRole("link", { name: "Open Ideas" })).toHaveAttribute(
+      "href",
+      `/dashboard/trips/${tripId}/ideas`
+    );
+    await expect(emptyState.getByRole("link", { name: "Add trip item" })).toBeVisible();
+    await expect(page.getByText("Your route places appear here.")).toHaveCount(0);
+    await expect(page.getByText("Nearby Ideas", { exact: true })).toHaveCount(0);
+    const emptyStateBox = await emptyState.boundingBox();
+    expect(emptyStateBox?.height || 0).toBeLessThan(260);
 
     const activityRetry = await request.post(
       `${baseUrl}/api/trip-segments/${activitySegmentId}/retry-location`,
