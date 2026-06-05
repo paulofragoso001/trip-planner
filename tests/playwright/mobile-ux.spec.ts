@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type APIRequestContext } from "@playwright/test";
 
 const baseUrl = "http://127.0.0.1:3000";
 const viewports = [360, 390, 430, 768, 820, 1024, 1280, 1440] as const;
@@ -10,6 +10,26 @@ const routes = [
   "/dashboard/trips/demo/map",
   "/dashboard/trips/demo/ideas"
 ] as const;
+
+async function deleteTripForTest(request: APIRequestContext, tripId: string | null | undefined) {
+  if (!tripId || tripId === "trips") return;
+
+  let lastError: unknown;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      const response = await request.delete(`${baseUrl}/api/trips/${encodeURIComponent(tripId)}`, {
+        headers: { "x-cypress-dashboard": "true" }
+      });
+      if (response.ok() || response.status() === 404) return;
+      lastError = new Error(`Delete trip failed with ${response.status()}`);
+    } catch (error) {
+      lastError = error;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 250 * (attempt + 1)));
+  }
+
+  throw lastError instanceof Error ? lastError : new Error("Delete trip failed");
+}
 
 test.describe("mobile soft-launch UX", () => {
   for (const width of [360, 390, 430] as const) {
@@ -155,11 +175,7 @@ test.describe("mobile soft-launch UX", () => {
       await expect(overflow.getByText("Currency")).toBeVisible();
       await expect(overflow.getByText("Notifications")).toBeVisible();
     } finally {
-      if (tripId && tripId !== "trips") {
-        await request.delete(`${baseUrl}/api/trips/${tripId}`, {
-          headers: { "x-cypress-dashboard": "true" }
-        });
-      }
+      await deleteTripForTest(request, tripId);
     }
   });
 
@@ -290,9 +306,7 @@ test.describe("mobile soft-launch UX", () => {
       );
       await expect(hero.getByText("Wayline test photo")).toBeVisible();
     } finally {
-      await request.delete(`${baseUrl}/api/trips/${tripId}`, {
-        headers: { "x-cypress-dashboard": "true" }
-      });
+      await deleteTripForTest(request, tripId);
     }
   });
 
@@ -348,9 +362,7 @@ test.describe("mobile soft-launch UX", () => {
       await expect(card.getByLabel("Start time")).toBeVisible();
       await expect(content.getByRole("button", { name: "Save changes" })).toBeEnabled();
     } finally {
-      await request.delete(`${baseUrl}/api/trips/${tripId}`, {
-        headers: { "x-cypress-dashboard": "true" }
-      });
+      await deleteTripForTest(request, tripId);
     }
   });
 
@@ -423,9 +435,7 @@ test.describe("mobile soft-launch UX", () => {
       await expect(page.getByText("Showing all 8 places")).toBeVisible({ timeout: 15_000 });
       await expect(page.getByTestId("map-route-list").getByRole("button", { name: /Route place 6/ })).toBeVisible();
     } finally {
-      await request.delete(`${baseUrl}/api/trips/${tripId}`, {
-        headers: { "x-cypress-dashboard": "true" }
-      });
+      await deleteTripForTest(request, tripId);
     }
   });
 });
