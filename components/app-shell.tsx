@@ -93,8 +93,9 @@ export function AppShell({
 
   return (
     <div
-      className="h-dvh overflow-hidden bg-[radial-gradient(circle_at_12%_0%,rgba(37,99,235,0.08),transparent_28%),linear-gradient(180deg,#f8fafc,#eef2f7)] text-ink dark:bg-[#0d1117] dark:text-slate-100"
+      className="h-dvh overflow-hidden bg-[radial-gradient(circle_at_12%_0%,rgba(59,130,246,0.24),transparent_28%),radial-gradient(circle_at_92%_8%,rgba(20,184,166,0.14),transparent_34%),linear-gradient(180deg,#020617,#08111f_48%,#0f172a)] text-slate-100"
       data-density={density}
+      data-wallet-shell="true"
       data-testid="app-shell-root"
     >
       <a
@@ -107,9 +108,10 @@ export function AppShell({
       <div className="flex h-dvh">
         <aside
           className={cn(
-            "sticky top-0 hidden h-dvh shrink-0 border-r border-slate-200 bg-white transition-[width] duration-300 ease-out dark:border-white/10 dark:bg-[#111827] lg:flex",
+            "sticky top-0 hidden h-dvh shrink-0 border-r border-white/10 bg-slate-950/82 shadow-[18px_0_70px_rgba(2,6,23,0.28)] backdrop-blur-2xl transition-[width] duration-300 ease-out lg:flex",
             collapsed ? "w-[88px]" : "w-[280px]"
           )}
+          data-wallet-sidebar="true"
           data-testid="app-shell-sidebar"
           aria-label="Primary navigation"
         >
@@ -129,7 +131,7 @@ export function AppShell({
               type="button"
             />
             <aside
-              className="fixed inset-y-0 left-0 z-50 flex w-[min(320px,calc(100vw-56px))] border-r border-slate-200 bg-white shadow-2xl dark:border-white/10 dark:bg-[#111827]"
+              className="fixed inset-y-0 left-0 z-50 flex w-[min(320px,calc(100vw-56px))] border-r border-white/10 bg-slate-950/94 shadow-2xl backdrop-blur-2xl"
               data-testid="app-shell-mobile-drawer"
             >
               <SidebarContent
@@ -145,7 +147,7 @@ export function AppShell({
         {mobileOpen ? (
           <aside
             aria-label="Primary navigation"
-            className="sticky top-0 hidden h-dvh min-h-dvh w-[min(320px,38vw)] shrink-0 self-stretch border-r border-slate-200 bg-white shadow-xl transition-[width] duration-300 ease-out dark:border-white/10 dark:bg-[#111827] sm:flex lg:hidden"
+            className="sticky top-0 hidden h-dvh min-h-dvh w-[min(320px,38vw)] shrink-0 self-stretch border-r border-white/10 bg-slate-950/92 shadow-xl backdrop-blur-2xl transition-[width] duration-300 ease-out sm:flex lg:hidden"
             data-testid="app-shell-responsive-sidebar"
           >
             <SidebarContent
@@ -159,7 +161,8 @@ export function AppShell({
 
         <div className="flex min-w-0 flex-1 flex-col">
           <header
-            className="sticky top-0 z-30 border-b border-black/10 bg-white/90 backdrop-blur-xl dark:border-white/10 dark:bg-[#0d1117]/90"
+            className="sticky top-0 z-30 border-b border-white/10 bg-slate-950/72 text-slate-100 shadow-[0_10px_45px_rgba(2,6,23,0.18)] backdrop-blur-2xl"
+            data-wallet-topbar="true"
             data-testid="app-shell-topbar"
           >
             <div
@@ -171,7 +174,7 @@ export function AppShell({
               <button
                 aria-label="Open navigation"
                 className={cn(
-                  "grid h-11 w-11 place-items-center rounded-xl border border-black/10 bg-white text-lg font-black shadow-sm transition hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-brand/20 dark:border-white/10 dark:bg-[#111827] dark:hover:bg-[#172033] lg:hidden",
+                  "grid h-11 w-11 place-items-center rounded-xl border border-white/10 bg-white/10 text-lg font-black text-white shadow-sm backdrop-blur transition hover:bg-white/15 focus:outline-none focus:ring-4 focus:ring-blue-400/20 lg:hidden",
                   mobileOpen && "sm:hidden"
                 )}
                 onClick={() => setMobileOpen(true)}
@@ -196,7 +199,7 @@ export function AppShell({
 
               <div className="hidden min-w-0 flex-1 lg:block">
                 <nav className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400" aria-label="Breadcrumbs">
-                  <Link className="rounded-md outline-none focus:ring-4 focus:ring-brand/20" href="/dashboard">
+                  <Link className="rounded-md text-slate-400 outline-none transition hover:text-white focus:ring-4 focus:ring-blue-400/20" href="/dashboard">
                     Home
                   </Link>
                   {page.title !== "Home" ? (
@@ -206,13 +209,13 @@ export function AppShell({
                     </>
                   ) : null}
                 </nav>
-                <h1 className="mt-1 truncate text-2xl font-black tracking-tight">{page.title}</h1>
+                <h1 className="mt-1 truncate text-2xl font-black tracking-tight text-white">{page.title}</h1>
               </div>
 
               <label className="hidden min-w-[240px] max-w-sm flex-1 lg:block">
                 <span className="sr-only">Global search</span>
                 <input
-                  className="h-11 rounded-xl border-black/10 bg-[#f7f9fc] pl-4 dark:border-white/10 dark:bg-[#111827] dark:text-slate-100"
+                  className="h-11 rounded-xl border border-white/10 bg-white/10 pl-4 text-sm font-semibold text-white placeholder:text-slate-400 shadow-inner shadow-black/10 backdrop-blur focus:border-blue-300 focus:outline-none focus:ring-4 focus:ring-blue-400/15"
                   placeholder="Search trips and saved ideas..."
                   type="search"
                 />
@@ -222,7 +225,7 @@ export function AppShell({
 
               <button
                 aria-label={darkMode ? "Switch to light mode" : "Switch to dark mode"}
-                className="grid h-11 w-11 place-items-center rounded-xl border border-black/10 bg-white text-sm font-black shadow-sm transition hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-brand/20 dark:border-white/10 dark:bg-[#111827] dark:hover:bg-[#172033]"
+                className="grid h-11 w-11 place-items-center rounded-xl border border-white/10 bg-white/10 text-sm font-black text-white shadow-sm backdrop-blur transition hover:bg-white/15 focus:outline-none focus:ring-4 focus:ring-blue-400/20"
                 onClick={() => setDarkMode((current) => !current)}
                 type="button"
               >
@@ -237,18 +240,18 @@ export function AppShell({
                 <button
                   aria-expanded={userMenuOpen}
                   aria-haspopup="menu"
-                  className="flex h-11 min-w-11 items-center gap-2 rounded-xl border border-black/10 bg-white px-3 text-sm font-bold shadow-sm transition hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-brand/20 dark:border-white/10 dark:bg-[#111827] dark:hover:bg-[#172033]"
+                  className="flex h-11 min-w-11 items-center gap-2 rounded-xl border border-white/10 bg-white/10 px-3 text-sm font-bold text-white shadow-sm backdrop-blur transition hover:bg-white/15 focus:outline-none focus:ring-4 focus:ring-blue-400/20"
                   onClick={() => setUserMenuOpen((current) => !current)}
                   type="button"
                 >
-                  <span className="grid h-7 w-7 place-items-center rounded-full bg-brand text-xs font-black text-white">
+                  <span className="grid h-7 w-7 place-items-center rounded-full bg-blue-500 text-xs font-black text-white">
                     {initials(userEmail)}
                   </span>
                   <span className="hidden max-w-32 truncate xl:inline">{userEmail}</span>
                 </button>
                 {userMenuOpen ? (
                   <div
-                    className="absolute right-0 z-50 mt-3 w-80 overflow-hidden rounded-2xl border border-black/10 bg-white p-3 shadow-panel dark:border-white/10 dark:bg-[#111827]"
+                    className="absolute right-0 z-50 mt-3 w-80 overflow-hidden rounded-2xl border border-white/10 bg-slate-950/96 p-3 text-slate-100 shadow-[0_24px_80px_rgba(2,6,23,0.42)] backdrop-blur-2xl"
                     role="menu"
                   >
                     {userMenu}
@@ -260,7 +263,7 @@ export function AppShell({
 
           <main
             className={cn(
-              "min-h-0 flex-1 overflow-y-auto px-3 pb-32 pt-4 sm:px-6 sm:pb-36 sm:pt-6 lg:pb-6",
+              "min-h-0 flex-1 overflow-y-auto bg-[radial-gradient(circle_at_72%_8%,rgba(59,130,246,0.1),transparent_26%),linear-gradient(180deg,rgba(15,23,42,0.46),rgba(15,23,42,0.08)_42%,rgba(2,6,23,0.38))] px-3 pb-32 pt-4 text-slate-950 sm:px-6 sm:pb-36 sm:pt-6 lg:pb-6",
               fullBleedContent ? "lg:px-6" : "lg:px-8",
               density === "compact" ? "lg:py-4" : "lg:py-6"
             )}
@@ -306,17 +309,19 @@ function SidebarContent({
     <div className={cn("flex min-h-0 w-full flex-col py-5", mobile ? "px-3" : "px-4")}>
       <div className="flex min-h-14 items-center gap-3 px-2">
         <Link
-          className="flex min-w-0 flex-1 items-center gap-3 rounded-xl outline-none focus:ring-4 focus:ring-brand/20"
+          className="flex min-w-0 flex-1 items-center gap-3 rounded-xl outline-none focus:ring-4 focus:ring-blue-400/20"
           href="/dashboard"
         >
-          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-brand text-sm font-black text-white">
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-white text-sm font-black text-slate-950 shadow-[0_10px_30px_rgba(255,255,255,0.12)]">
             W
           </span>
           {!collapsed ? (
             <span className="min-w-0">
-              <span className="block truncate text-sm font-black">{workspaceName}</span>
-              <span className="block truncate text-xs font-semibold text-slate-500 dark:text-slate-400">
-                Travel planner
+              <span className="block truncate text-sm font-black uppercase tracking-[0.2em] text-white">
+                {workspaceName}
+              </span>
+              <span className="block truncate text-xs font-semibold text-slate-400">
+                Travel wallet
               </span>
             </span>
           ) : null}
@@ -324,7 +329,7 @@ function SidebarContent({
         {mobile ? (
           <button
             aria-label="Close sidebar"
-            className="grid h-11 w-11 place-items-center rounded-xl border border-black/10 font-black focus:outline-none focus:ring-4 focus:ring-brand/20 dark:border-white/10"
+            className="grid h-11 w-11 place-items-center rounded-xl border border-white/10 bg-white/10 font-black text-white backdrop-blur focus:outline-none focus:ring-4 focus:ring-blue-400/20"
             onClick={onClose}
             type="button"
           >
@@ -341,10 +346,10 @@ function SidebarContent({
         />
       </div>
 
-      <div className="border-t border-slate-200 pt-3 dark:border-white/10">
+      <div className="border-t border-white/10 pt-3">
         <a
           className={cn(
-            "group flex min-h-11 items-center gap-3 rounded-2xl px-3 py-3.5 text-sm font-semibold text-slate-700 outline-none transition hover:bg-slate-100 hover:text-slate-950 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:text-slate-200 dark:hover:bg-white/10 dark:hover:text-white dark:focus-visible:ring-offset-[#111827]",
+            "group flex min-h-11 items-center gap-3 rounded-2xl px-3 py-3.5 text-sm font-semibold text-slate-300 outline-none transition hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-blue-300 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950",
             collapsed && "justify-center px-0"
           )}
           data-testid="app-shell-workspace-switcher"
@@ -353,13 +358,13 @@ function SidebarContent({
           aria-label={collapsed ? "Send feedback" : undefined}
           title={collapsed ? "Send feedback" : undefined}
         >
-          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-slate-100 text-sm font-bold text-slate-700 transition group-hover:bg-slate-200 dark:bg-white/10 dark:text-slate-200 dark:group-hover:bg-white/15">
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white/10 text-sm font-bold text-slate-200 transition group-hover:bg-white/15 group-hover:text-white">
             <MessageSquare className="h-4 w-4" aria-hidden="true" />
           </span>
           {!collapsed ? (
             <span className="min-w-0">
               <span className="block truncate">Send feedback</span>
-              <span className="block truncate text-xs text-slate-500 dark:text-slate-400">
+              <span className="block truncate text-xs text-slate-500">
                 Report an issue
               </span>
             </span>
@@ -369,13 +374,13 @@ function SidebarContent({
           <button
             aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
             className={cn(
-              "mt-2 flex min-h-11 w-full items-center gap-3 rounded-2xl px-3 py-3.5 text-sm font-semibold text-slate-700 outline-none transition hover:bg-slate-100 hover:text-slate-950 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:text-slate-200 dark:hover:bg-white/10 dark:hover:text-white dark:focus-visible:ring-offset-[#111827]",
+              "mt-2 flex min-h-11 w-full items-center gap-3 rounded-2xl px-3 py-3.5 text-sm font-semibold text-slate-300 outline-none transition hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-blue-300 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950",
               collapsed && "justify-center px-0"
             )}
             onClick={onCollapse}
             type="button"
           >
-            <span className="grid h-10 w-10 place-items-center rounded-xl bg-slate-100 text-sm font-bold dark:bg-white/10">
+            <span className="grid h-10 w-10 place-items-center rounded-xl bg-white/10 text-sm font-bold text-slate-200">
               {collapsed ? ">" : "<"}
             </span>
             <span className={cn(collapsed && "sr-only")}>Collapse sidebar</span>
@@ -409,7 +414,7 @@ function MobileBottomNav({
   return (
     <nav
       aria-label="Primary mobile navigation"
-      className="fixed bottom-[calc(0.5rem+env(safe-area-inset-bottom))] left-1/2 z-40 w-[calc(100vw-1rem)] max-w-[520px] -translate-x-1/2 rounded-[1.25rem] border border-slate-200 bg-white/95 p-1.5 shadow-2xl backdrop-blur dark:border-white/10 dark:bg-[#111827]/95 sm:bottom-[calc(0.75rem+env(safe-area-inset-bottom))] sm:w-[calc(100vw-1.5rem)] sm:rounded-[1.4rem] sm:p-2 lg:hidden"
+      className="fixed bottom-[calc(0.5rem+env(safe-area-inset-bottom))] left-1/2 z-40 w-[calc(100vw-1rem)] max-w-[520px] -translate-x-1/2 rounded-[1.25rem] border border-white/12 bg-slate-950/88 p-1.5 text-white shadow-[0_24px_80px_rgba(2,6,23,0.42)] backdrop-blur-2xl sm:bottom-[calc(0.75rem+env(safe-area-inset-bottom))] sm:w-[calc(100vw-1.5rem)] sm:rounded-[1.4rem] sm:p-2 lg:hidden"
       data-testid="app-shell-mobile-bottom-nav"
     >
       <div className="grid grid-cols-5 gap-1">
@@ -422,10 +427,10 @@ function MobileBottomNav({
             <Link
               aria-current={active ? "page" : undefined}
               className={cn(
-                "grid min-h-14 place-items-center rounded-2xl px-1 py-2 text-[0.68rem] font-black text-slate-500 transition focus:outline-none focus:ring-4 focus:ring-brand/20 dark:text-slate-300",
+                "grid min-h-14 place-items-center rounded-2xl px-1 py-2 text-[0.68rem] font-black text-slate-400 transition focus:outline-none focus:ring-4 focus:ring-blue-400/20",
                 active
-                  ? "bg-blue-600 text-white shadow-sm dark:text-white"
-                  : "hover:bg-slate-100 hover:text-slate-950 dark:hover:bg-white/10 dark:hover:text-white"
+                  ? "bg-white text-slate-950 shadow-sm"
+                  : "hover:bg-white/10 hover:text-white"
               )}
               href={href}
               key={item.label}

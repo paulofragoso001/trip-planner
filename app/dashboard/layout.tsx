@@ -69,13 +69,13 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
             userId={user.id}
           />
           <Link
-            className="min-h-11 rounded-xl border border-line bg-white px-4 py-2 text-center text-sm font-bold text-ink transition hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-brand/20"
+            className="min-h-11 rounded-xl border border-white/10 bg-white/10 px-4 py-2 text-center text-sm font-bold text-white transition hover:bg-white/15 focus:outline-none focus:ring-4 focus:ring-blue-400/20"
             href="/dashboard/account"
           >
             Account settings
           </Link>
           <form action={signOut}>
-            <button className="min-h-11 w-full rounded-xl border border-line bg-white px-4 py-2 text-sm font-bold text-ink transition hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-brand/20">
+            <button className="min-h-11 w-full rounded-xl border border-white/10 bg-white/10 px-4 py-2 text-sm font-bold text-white transition hover:bg-white/15 focus:outline-none focus:ring-4 focus:ring-blue-400/20">
               Sign out
             </button>
           </form>
@@ -99,11 +99,11 @@ function withTimeout<T>(promise: PromiseLike<T>, timeoutMs: number, message: str
 
 function TestUserMenu() {
   return (
-    <div className="grid gap-3 rounded-xl border border-line bg-white p-3 text-sm">
-      <p className="font-black text-ink">Cypress workspace</p>
-      <p className="mt-1 text-slate-500">Authenticated test shell</p>
+    <div className="grid gap-3 rounded-xl border border-white/10 bg-white/[0.08] p-3 text-sm text-slate-100">
+      <p className="font-black text-white">Cypress workspace</p>
+      <p className="mt-1 text-slate-400">Authenticated test shell</p>
       <Link
-        className="rounded-xl border border-line px-3 py-2 text-center font-bold text-ink"
+        className="rounded-xl border border-white/10 bg-white/10 px-3 py-2 text-center font-bold text-white transition hover:bg-white/15"
         href="/dashboard/account"
       >
         Account settings

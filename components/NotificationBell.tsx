@@ -98,7 +98,7 @@ export function NotificationBell({ userId }: NotificationBellProps) {
     <div className="relative" ref={panelRef}>
       <button
         aria-label="Notifications"
-        className="relative flex h-11 w-11 items-center justify-center rounded-full border border-line bg-white text-lg shadow-sm transition hover:bg-slate-50"
+        className="relative flex h-11 w-11 items-center justify-center rounded-xl border border-white/10 bg-white/10 text-lg text-white shadow-sm backdrop-blur transition hover:bg-white/15 focus:outline-none focus:ring-4 focus:ring-blue-400/20"
         onClick={() => {
           setOpen((current) => !current);
           void markAllRead();
@@ -114,10 +114,10 @@ export function NotificationBell({ userId }: NotificationBellProps) {
       </button>
 
       {open && (
-        <div className="absolute right-0 z-20 mt-3 w-80 overflow-hidden rounded-xl border border-line bg-white shadow-xl">
-          <div className="border-b border-line px-4 py-3">
-            <div className="text-sm font-bold text-ink">Notifications</div>
-            <div className="text-xs text-slate-500">
+        <div className="absolute right-0 z-20 mt-3 w-80 overflow-hidden rounded-2xl border border-white/10 bg-slate-950/96 text-slate-100 shadow-[0_24px_80px_rgba(2,6,23,0.42)] backdrop-blur-2xl">
+          <div className="border-b border-white/10 px-4 py-3">
+            <div className="text-sm font-bold text-white">Notifications</div>
+            <div className="text-xs text-slate-400">
               Recent trip updates and comments
             </div>
           </div>
@@ -126,14 +126,14 @@ export function NotificationBell({ userId }: NotificationBellProps) {
             {notifications.length ? (
               notifications.map((notification) => (
                 <div
-                  className="border-b border-line p-2 text-sm last:border-b-0"
+                  className="border-b border-white/10 p-2 text-sm last:border-b-0"
                   key={notification.id}
                 >
-                  <div className="font-semibold text-ink">
+                  <div className="font-semibold text-white">
                     {notification.title || "New trip notification"}
                   </div>
                   {notification.body && (
-                    <div className="mt-1 text-slate-600">{notification.body}</div>
+                    <div className="mt-1 text-slate-300">{notification.body}</div>
                   )}
                   <div className="mt-1 text-xs text-slate-500">
                     {formatNotificationDate(notification.created_at)}
@@ -141,7 +141,7 @@ export function NotificationBell({ userId }: NotificationBellProps) {
                 </div>
               ))
             ) : (
-              <div className="px-4 py-6 text-sm text-slate-500">
+              <div className="px-4 py-6 text-sm text-slate-400">
                 No notifications yet.
               </div>
             )}

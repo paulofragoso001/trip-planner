@@ -23,6 +23,9 @@ test("loads dashboard summary and route-split pages", async ({ page }) => {
 
   await openDashboardRoute("/dashboard");
   await expect(page.getByTestId("app-shell-root")).toBeVisible();
+  await expect(page.getByTestId("app-shell-root")).toHaveAttribute("data-wallet-shell", "true");
+  await expect(page.getByTestId("app-shell-nav")).toHaveAttribute("data-wallet-sidebar-nav", "true");
+  await expect(page.getByTestId("app-shell-topbar")).toHaveAttribute("data-wallet-topbar", "true");
   await expect(
     page.getByRole("heading", {
       name: "Your travel companion"

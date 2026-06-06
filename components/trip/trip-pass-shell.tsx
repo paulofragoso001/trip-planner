@@ -29,15 +29,16 @@ export function TripPassShell({ children, trip, tripId }: TripPassShellProps) {
         ) : (
           <div className={`h-full w-full ${trip.heroImage.fallbackGradient}`} />
         )}
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_22%_0%,rgba(255,255,255,0.2),transparent_34%),linear-gradient(180deg,rgba(2,6,23,0.38),rgba(2,6,23,0.86)_46%,rgba(244,247,251,0.96)_88%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_22%_0%,rgba(255,255,255,0.2),transparent_34%),linear-gradient(180deg,rgba(2,6,23,0.44),rgba(2,6,23,0.88)_46%,rgba(2,6,23,0.96)_88%)]" />
       </div>
 
       <div className="relative z-10 mx-auto w-full max-w-[1180px] px-3 py-3 pb-[calc(7.5rem+env(safe-area-inset-bottom))] sm:px-6 sm:py-6 sm:pb-[calc(8rem+env(safe-area-inset-bottom))] lg:px-8 lg:py-8 lg:pb-8">
         <div
-          className="overflow-hidden rounded-[2.35rem] bg-white/95 shadow-[0_26px_80px_rgba(2,6,23,0.28)] ring-1 ring-white/70 backdrop-blur-2xl"
+          className="overflow-visible rounded-[2.35rem]"
+          data-wallet-trip-surface="true"
           data-testid="trip-workspace-layout"
         >
-          <div className="grid gap-4 p-3 sm:p-4 lg:p-5">
+          <div className="grid gap-4">
             <TripPassHero trip={trip} tripId={tripId} />
             <TripTabs tripId={tripId} />
             <div className="min-w-0" data-testid="trip-pass-active-content">

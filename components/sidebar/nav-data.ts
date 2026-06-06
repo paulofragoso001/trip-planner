@@ -119,7 +119,7 @@ export const navSections: NavSection[] = [
       {
         href: "/dashboard/trips",
         icon: CircleDollarSign,
-        label: "Budget",
+        label: "Expenses",
         getHref: (pathname, tripId) => currentTripHref(pathname, "/budget", tripId),
         match: (pathname, view) =>
           pathname.includes("/budget") ||

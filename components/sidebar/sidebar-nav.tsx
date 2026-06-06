@@ -71,12 +71,18 @@ export function SidebarNav({
   }, [pathname]);
 
   return (
-    <nav aria-label="Primary" className="space-y-6" data-testid="app-shell-nav">
+    <nav
+      aria-label="Primary"
+      className="space-y-6"
+      data-testid="app-shell-nav"
+      data-wallet-sidebar-nav="true"
+    >
       {sections.map((section) => (
         <section className="space-y-3" key={section.title}>
           <h2
             className={cn(
               "px-2 text-xs font-extrabold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400",
+              "text-slate-500",
               collapsed && "sr-only"
             )}
           >
@@ -98,11 +104,11 @@ export function SidebarNav({
                     aria-current={active ? "page" : undefined}
                     aria-label={collapsed ? item.label : undefined}
                     className={cn(
-                      "group flex min-h-11 items-center gap-3 rounded-2xl px-3 py-3.5 text-sm font-semibold outline-none transition focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#111827]",
+                      "group flex min-h-11 items-center gap-3 rounded-2xl px-3 py-3.5 text-sm font-semibold outline-none transition focus-visible:ring-2 focus-visible:ring-blue-300 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950",
                       collapsed && "justify-center px-0",
                       active
-                        ? "bg-blue-600 text-white shadow-sm hover:bg-blue-600"
-                        : "text-slate-700 hover:bg-slate-100 hover:text-slate-950 dark:text-slate-200 dark:hover:bg-white/10 dark:hover:text-white"
+                        ? "bg-white/14 text-white shadow-[0_16px_42px_rgba(37,99,235,0.18)] ring-1 ring-white/12 hover:bg-white/18"
+                        : "text-slate-300 hover:bg-white/10 hover:text-white"
                     )}
                     href={href}
                     onClick={() => {
@@ -117,8 +123,8 @@ export function SidebarNav({
                       className={cn(
                         "grid h-10 w-10 shrink-0 place-items-center rounded-xl text-sm font-bold transition",
                         active
-                          ? "bg-blue-500/90 text-white"
-                          : "bg-slate-100 text-slate-700 group-hover:bg-slate-200 dark:bg-white/10 dark:text-slate-200 dark:group-hover:bg-white/15"
+                          ? "bg-blue-500 text-white shadow-[0_10px_28px_rgba(37,99,235,0.28)]"
+                          : "bg-white/10 text-slate-300 group-hover:bg-white/15 group-hover:text-white"
                       )}
                     >
                       <Icon className="h-4 w-4" strokeWidth={2.4} />

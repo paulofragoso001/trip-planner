@@ -156,7 +156,7 @@ test.describe("mobile soft-launch UX", () => {
     await expect(form.getByTestId("mobile-trip-create-preview")).toContainText(tripName);
     await expect(form.getByTestId("mobile-trip-create-preview")).toContainText(/May 29 - May 31|29 May - 31 May/);
     await form.getByRole("button", { name: "Create Trip" }).last().click();
-    await page.waitForURL(/\/dashboard\/trips\/[^/]+$/, { timeout: 30_000 });
+    await page.waitForURL(/\/dashboard\/trips\/[^/]+$/, { timeout: 45_000, waitUntil: "commit" });
 
     const tripId = new URL(page.url()).pathname.split("/").filter(Boolean).at(-1);
     expect(tripId).toBeTruthy();

@@ -25,7 +25,7 @@ export function TripTabs({ tripId }: { tripId: string }) {
     <div className="grid gap-2">
       <nav
         aria-label="Trip sections"
-        className="flex min-w-0 gap-1 overflow-visible rounded-full bg-white/86 p-1 shadow-sm ring-1 ring-slate-200/80 backdrop-blur lg:hidden"
+        className="flex min-w-0 gap-1 overflow-visible rounded-full border border-white/10 bg-white/10 p-1 shadow-[0_18px_50px_rgba(2,6,23,0.22)] backdrop-blur-2xl lg:hidden"
         data-testid="trip-section-menu"
       >
         {mobileTabs.map((tab) => {
@@ -41,8 +41,8 @@ export function TripTabs({ tripId }: { tripId: string }) {
               className={[
                 "inline-flex min-h-11 flex-1 items-center justify-center rounded-full px-2 text-xs font-black transition",
                 active
-                  ? "bg-slate-950 text-white shadow-md"
-                  : "text-slate-600 hover:bg-slate-100 hover:text-slate-950"
+                  ? "bg-white text-slate-950 shadow-md"
+                  : "text-slate-300 hover:bg-white/10 hover:text-white"
               ].join(" ")}
               href={href}
               key={tab.label}
@@ -52,11 +52,11 @@ export function TripTabs({ tripId }: { tripId: string }) {
           );
         })}
         <details className="group relative flex-1">
-          <summary className="inline-flex min-h-11 w-full cursor-pointer list-none items-center justify-center gap-1 rounded-full px-2 text-xs font-black text-slate-600 transition hover:bg-slate-100 hover:text-slate-950">
+          <summary className="inline-flex min-h-11 w-full cursor-pointer list-none items-center justify-center gap-1 rounded-full px-2 text-xs font-black text-slate-300 transition hover:bg-white/10 hover:text-white">
             More
             <ChevronDown className="h-3.5 w-3.5 transition group-open:rotate-180" aria-hidden="true" />
           </summary>
-          <div className="absolute right-0 top-[calc(100%+0.5rem)] z-30 grid min-w-44 gap-1 rounded-3xl border border-slate-200 bg-white p-2 shadow-2xl">
+          <div className="absolute right-0 top-[calc(100%+0.5rem)] z-30 grid min-w-44 gap-1 rounded-3xl border border-white/10 bg-slate-950/96 p-2 text-slate-100 shadow-2xl backdrop-blur-2xl">
             {secondaryTabs.map((tab) => {
               const href = `${base}${tab.href}`;
               const active = pathname === href;
@@ -67,8 +67,8 @@ export function TripTabs({ tripId }: { tripId: string }) {
                   className={[
                     "inline-flex min-h-11 items-center rounded-2xl px-3 text-sm font-black transition",
                     active
-                      ? "bg-slate-950 text-white"
-                      : "text-slate-600 hover:bg-slate-100 hover:text-slate-950"
+                      ? "bg-white text-slate-950"
+                      : "text-slate-300 hover:bg-white/10 hover:text-white"
                   ].join(" ")}
                   href={href}
                   key={tab.label}
@@ -78,7 +78,7 @@ export function TripTabs({ tripId }: { tripId: string }) {
               );
             })}
             <Link
-              className="inline-flex min-h-11 items-center rounded-2xl px-3 text-sm font-black text-slate-600 hover:bg-slate-100 hover:text-slate-950"
+              className="inline-flex min-h-11 items-center rounded-2xl px-3 text-sm font-black text-slate-300 hover:bg-white/10 hover:text-white"
               href="/dashboard/account"
             >
               Settings
@@ -89,7 +89,7 @@ export function TripTabs({ tripId }: { tripId: string }) {
 
       <nav
         aria-label="Trip tabs"
-        className="hidden gap-1 overflow-x-auto rounded-full bg-white/70 p-1 shadow-sm ring-1 ring-slate-200/80 backdrop-blur sm:flex-wrap sm:overflow-visible lg:flex lg:bg-white/90 lg:p-1.5"
+        className="hidden gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/10 p-1 shadow-[0_18px_50px_rgba(2,6,23,0.18)] backdrop-blur-2xl sm:flex-wrap sm:overflow-visible lg:flex lg:p-1.5"
       >
         {tabs.map((tab) => {
           const href = `${base}${tab.href}`;
@@ -104,8 +104,8 @@ export function TripTabs({ tripId }: { tripId: string }) {
               className={[
                 "inline-flex min-h-11 shrink-0 items-center justify-center rounded-full px-3 text-xs font-black transition sm:px-4 sm:text-sm",
                 active
-                  ? "bg-slate-950 text-white shadow-md"
-                  : "text-slate-600 hover:bg-slate-100 hover:text-slate-950"
+                  ? "bg-white text-slate-950 shadow-md"
+                  : "text-slate-300 hover:bg-white/10 hover:text-white"
               ].join(" ")}
               href={href}
               key={tab.label}

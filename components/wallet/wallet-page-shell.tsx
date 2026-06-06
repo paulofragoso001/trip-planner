@@ -58,7 +58,14 @@ export function WalletPageShell({
         ) : (
           <div className={`h-full w-full ${fallbackGradient}`} />
         )}
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_22%_0%,rgba(255,255,255,0.2),transparent_34%),linear-gradient(180deg,rgba(2,6,23,0.24),rgba(2,6,23,0.82)_48%,rgba(244,247,251,0.98)_86%)]" />
+        <div
+          className={cn(
+            "absolute inset-0",
+            variant === "public"
+              ? "bg-[radial-gradient(circle_at_22%_0%,rgba(255,255,255,0.2),transparent_34%),linear-gradient(180deg,rgba(2,6,23,0.18),rgba(2,6,23,0.66)_46%,rgba(255,255,255,0.98)_86%)]"
+              : "bg-[radial-gradient(circle_at_22%_0%,rgba(255,255,255,0.2),transparent_34%),linear-gradient(180deg,rgba(2,6,23,0.32),rgba(2,6,23,0.86)_48%,rgba(2,6,23,0.96)_88%)]"
+          )}
+        />
       </div>
 
       <div className="relative z-10 mx-auto grid w-full max-w-[1180px] gap-3 px-3 py-3 pb-[calc(7.5rem+env(safe-area-inset-bottom))] sm:px-6 sm:py-6 lg:px-8 lg:py-8 lg:pb-8">
@@ -113,7 +120,13 @@ export function WalletPageShell({
           </div>
         </section>
 
-        <main className="rounded-[2.35rem] bg-white/96 p-3 shadow-[0_20px_70px_rgba(15,23,42,0.16)] ring-1 ring-white/70 backdrop-blur-2xl sm:p-5">
+        <main
+          className={cn(
+            variant === "public"
+              ? "rounded-[2.35rem] bg-white/96 p-3 shadow-[0_20px_70px_rgba(15,23,42,0.16)] ring-1 ring-white/70 backdrop-blur-2xl sm:p-5"
+              : "p-0"
+          )}
+        >
           {children}
         </main>
       </div>
