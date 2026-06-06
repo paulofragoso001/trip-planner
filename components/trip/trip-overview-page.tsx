@@ -95,7 +95,7 @@ export default function TripOverviewPage({
       </section>
 
       <section aria-label="Organizer actions" className="hidden grid-cols-4 gap-2 rounded-[2rem] border border-slate-200 bg-white p-3 shadow-sm sm:grid-cols-7 lg:grid">
-        <QuickAction href={`${base}/timeline#new-plan`} icon={<Plus className="h-5 w-5" />} label="Add Place" />
+        <QuickAction href={`${base}/timeline#new-plan`} icon={<Plus className="h-5 w-5" />} label="Add trip item" />
         <QuickAction disabled icon={<Plane className="h-5 w-5" />} label="Flights" />
         <QuickAction href={`${base}/timeline#new-plan`} icon={<BedDouble className="h-5 w-5" />} label="Lodging" />
         <QuickAction href={`${base}/map`} icon={<MapPin className="h-5 w-5" />} label="Places" />

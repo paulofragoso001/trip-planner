@@ -13,6 +13,11 @@ import { listSocialImportWorkspace } from "@/lib/server/social-imports";
 import { resolvePlace as resolveTravelPlace } from "@/lib/travel-data";
 import { buildPlacePhotoUrl, readProviderPhoto } from "@/lib/travel-data/photo-url";
 import {
+  getFallbackHeroImage,
+  getTripHeroImage,
+  type WalletHeroImage
+} from "@/lib/wallet/hero-image";
+import {
   TRIP_TRAVEL_STYLE_LABELS,
   normalizeTravelStyle,
   type TripTravelStyle
@@ -96,6 +101,7 @@ export type TripPickerView = {
 export type ImportsData = {
   error: string | null;
   aiReviewItems: AiReviewItemView[];
+  heroImage: WalletHeroImage;
   importedContent: ImportedContentView[];
   reviewQueuePrefix?: string;
   sources: Array<{
@@ -134,6 +140,7 @@ type ImportsClient = ImportSourcesClient & UnfiledItemsClient & {
 
 type TripSelectRow = {
   destination?: string | null;
+  destination_provider_metadata?: Record<string, unknown> | null;
   end_date?: string | null;
   id: string;
   name?: string;
@@ -226,6 +233,9 @@ export async function loadImportsData(
   return {
     aiReviewItems,
     error: null,
+    heroImage: trips.length
+      ? getTripHeroImage((tripsResult.data || [])[0] as TripSelectRow, [], [])
+      : getFallbackHeroImage("Travel ideas", "Travel ideas background"),
     importedContent,
     reviewQueuePrefix,
     sources: sources.map((source: any) => ({
@@ -256,7 +266,7 @@ export async function loadImportsData(
 async function listImportTrips(supabase: ImportsClient, userId: string) {
   const withTravelStyle = await supabase
     .from("trips")
-    .select("id,name,title,destination,start_date,end_date,travel_style")
+    .select("id,name,title,destination,destination_provider_metadata,start_date,end_date,travel_style")
     .eq("user_id", userId)
     .order("start_date", { ascending: true, nullsFirst: false });
 
@@ -275,6 +285,7 @@ function emptyImportsData(error: string, reviewQueuePrefix?: string): ImportsDat
   return {
     aiReviewItems: [],
     error,
+    heroImage: getFallbackHeroImage("Travel ideas", "Travel ideas background"),
     importedContent: [],
     reviewQueuePrefix,
     sources: [],

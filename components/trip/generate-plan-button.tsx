@@ -99,5 +99,5 @@ function buildFeedback(
   const surface = context === "map" ? "Map" : "Itinerary";
   const warningText = warningCount ? ` ${warningCount} route warning${warningCount === 1 ? "" : "s"} found.` : "";
 
-  return `${surface} order updated: ${assigned} stop${assigned === 1 ? "" : "s"} across ${days} day${days === 1 ? "" : "s"}.${warningText}`;
+  return `${surface} order updated: ${assigned} place${assigned === 1 ? "" : "s"} across ${days} day${days === 1 ? "" : "s"}.${warningText}`;
 }

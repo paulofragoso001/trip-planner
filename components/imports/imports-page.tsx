@@ -5,7 +5,9 @@ import { ExtractedPlaceCard } from "@/components/imports/extracted-place-card";
 import { SocialImportForm } from "@/components/imports/social-import-form";
 import { TripDraftQueue } from "@/components/imports/trip-draft-queue";
 import { UnfiledItemForm } from "@/components/imports/unfiled-item-form";
-import { EmptyState, PageHeader, SectionCard, StatusBadge, tripUi } from "@/components/trip-ui";
+import { EmptyState, StatusBadge, tripUi } from "@/components/trip-ui";
+import { WalletActionLink, WalletCard } from "@/components/wallet/wallet-card";
+import { WalletPageShell } from "@/components/wallet/wallet-page-shell";
 import type { WaylineSampleKey } from "@/lib/wayline-onboarding";
 import { waylineCopy } from "@/lib/copy/wayline-copy";
 
@@ -19,6 +21,7 @@ type ImportsPageProps = ImportsData & {
 export default function ImportsPage({
   aiReviewItems,
   error,
+  heroImage,
   importedContent,
   reviewQueuePrefix,
   sampleInspiration,
@@ -32,76 +35,78 @@ export default function ImportsPage({
     : "";
 
   return (
-    <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]" data-testid="imports-route">
-      <section className="grid gap-6">
-        <PageHeader
-          actions={
-            <a
-              className={tripUi.button.primaryCompact}
-              href="#saved-inspiration"
-            >
-              Add idea
-            </a>
-          }
-          eyebrow="Travel wallet"
-          subtitle="Add a note, link, or screenshot. Wayline will find places for you to review."
-          title="Add travel ideas"
-        />
+    <WalletPageShell
+      actions={<WalletActionLink href="#saved-inspiration">Add idea</WalletActionLink>}
+      compactHero
+      eyebrow="PLAN"
+      fallbackGradient={heroImage.fallbackGradient}
+      heroImage={heroImage}
+      subtitle="Add a note, link, or screenshot. Wayline finds places for you to review."
+      title="Capture travel ideas"
+    >
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_340px]" data-testid="imports-route">
+        <section className="grid gap-5">
+          <WorkflowStepRow />
 
-        <SectionCard
-          className="rounded-[2rem]"
-          description="Paste a travel note, link, or screenshot."
-          eyebrow="Ideas"
-          id="saved-inspiration"
-          title="Add an idea"
-        >
-          <div className="mt-5">
-            <SocialImportForm
-              defaultRawText={sampleInspiration?.text}
-              sampleKey={sampleInspiration?.key}
-              trips={trips}
-            />
-          </div>
-        </SectionCard>
-
-        <SectionCard
-          actions={
-            <StatusBadge tone={aiReviewItems.length ? "blue" : "slate"}>
-              {aiReviewItems.length} to review
-            </StatusBadge>
-          }
-          description="Approve, edit, merge, or dismiss each place."
-          eyebrow="AI Review"
-          id="ai-review"
-          title="Review places"
-        >
-          <div className="mt-4 grid gap-4">
-            {aiReviewItems.map((place) => (
-              <ExtractedPlaceCard
-                key={place.id}
-                mergeTargets={aiReviewItems.filter((target) => target.id !== place.id)}
-                place={place}
+          <WalletCard
+            eyebrow="Ideas"
+            id="saved-inspiration"
+            title="Add an idea"
+            variant="primary"
+          >
+            <p className="text-sm font-semibold leading-6 text-slate-600">
+              Paste a travel note, link, or screenshot.
+            </p>
+            <div className="mt-5">
+              <SocialImportForm
+                defaultRawText={sampleInspiration?.text}
+                sampleKey={sampleInspiration?.key}
                 trips={trips}
               />
-            ))}
-            {aiReviewItems.length === 0 ? (
-              <EmptyState
-                action={
-                  <a
-                    className={tripUi.button.primaryCompact}
-                    href="/dashboard/imports?sample=miami#saved-inspiration"
-                  >
-                    Try sample inspiration
-                  </a>
-                }
-                description={waylineCopy.emptyStates.aiReview}
-                title="No places to review yet."
-              />
-            ) : null}
-          </div>
-        </SectionCard>
+            </div>
+          </WalletCard>
 
-        <TripDraftQueue drafts={tripDrafts} />
+          <WalletCard
+            action={
+              <StatusBadge tone={aiReviewItems.length ? "blue" : "slate"}>
+                {aiReviewItems.length} to review
+              </StatusBadge>
+            }
+            eyebrow="AI Review"
+            id="ai-review"
+            title="Review places"
+            variant="primary"
+          >
+            <p className="text-sm font-semibold leading-6 text-slate-600">
+              Approve, edit, merge, or dismiss each place.
+            </p>
+            <div className="mt-4 grid gap-4">
+              {aiReviewItems.map((place) => (
+                <ExtractedPlaceCard
+                  key={place.id}
+                  mergeTargets={aiReviewItems.filter((target) => target.id !== place.id)}
+                  place={place}
+                  trips={trips}
+                />
+              ))}
+              {aiReviewItems.length === 0 ? (
+                <EmptyState
+                  action={
+                    <a
+                      className={tripUi.button.primaryCompact}
+                      href="/dashboard/imports?sample=miami#saved-inspiration"
+                    >
+                      Try sample inspiration
+                    </a>
+                  }
+                  description={waylineCopy.emptyStates.aiReview}
+                  title="No places to review yet."
+                />
+              ) : null}
+            </div>
+          </WalletCard>
+
+          <TripDraftQueue drafts={tripDrafts} />
 
         <details className="rounded-[2rem] border border-slate-200/80 bg-white/95 p-4 shadow-sm backdrop-blur sm:p-5">
           <summary className="cursor-pointer text-lg font-black text-slate-950">
@@ -158,10 +163,8 @@ export default function ImportsPage({
         </details>
       </section>
 
-      <aside className="grid content-start gap-5 xl:sticky xl:top-24">
-        <section className="rounded-[2rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-          <p className="text-xs font-black uppercase tracking-[0.2em] text-blue-600">Ideas</p>
-          <h3 className="mt-1 text-base font-black">Recent ideas</h3>
+        <aside className="grid content-start gap-5 xl:sticky xl:top-24">
+          <WalletCard eyebrow="Ideas" title="Recent ideas" variant="utility">
           <div className="mt-4 grid gap-3">
             {importedContent.slice(0, 6).map((post) => (
               <div className="grid grid-cols-[56px_minmax(0,1fr)] gap-3 rounded-2xl bg-slate-50 px-3 py-3" key={post.id}>
@@ -204,7 +207,7 @@ export default function ImportsPage({
               />
             ) : null}
           </div>
-        </section>
+          </WalletCard>
 
         <details className="rounded-[2rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
           <summary className="cursor-pointer text-base font-black text-slate-950">
@@ -251,7 +254,31 @@ export default function ImportsPage({
             ) : null}
           </div>
         </details>
-      </aside>
-    </div>
+        </aside>
+      </div>
+    </WalletPageShell>
+  );
+}
+
+function WorkflowStepRow() {
+  return (
+    <nav
+      aria-label="Plan workflow"
+      className="grid grid-cols-3 gap-2 rounded-[1.75rem] border border-slate-200 bg-white p-2 shadow-sm"
+      data-testid="plan-workflow-stepper"
+    >
+      {["Add", "Review", "Create"].map((label, index) => (
+        <div
+          className={[
+            "flex min-h-11 items-center justify-center gap-2 rounded-full px-3 text-xs font-black",
+            index === 0 ? "bg-slate-950 text-white" : "bg-slate-50 text-slate-700"
+          ].join(" ")}
+          key={label}
+        >
+          <span>{index + 1}</span>
+          <span>{label}</span>
+        </div>
+      ))}
+    </nav>
   );
 }

@@ -106,7 +106,7 @@ const demoSegments: Omit<TripSegment, "tripId">[] = [
     actionLabel: "Attach receipt",
     confirmation: "EXP-FOOD",
     costLabel: "$86",
-    details: ["Budget category: Food", "Receipt missing", "Paid by Paulo"],
+    details: ["Expense category: Food", "Receipt missing", "Paid by Paulo"],
     endAt: null,
     id: "lunch-expense",
     location: "Eixample, Barcelona",

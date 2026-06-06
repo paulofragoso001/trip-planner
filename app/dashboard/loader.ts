@@ -2,6 +2,11 @@ import "server-only";
 
 import { authorizeDashboardApi } from "@/lib/server/dashboard-test-auth";
 import type { FirstRunState, FirstRunStep } from "@/lib/wayline-onboarding";
+import {
+  getFallbackHeroImage,
+  getTripHeroImage,
+  type WalletHeroImage
+} from "@/lib/wallet/hero-image";
 
 export type DashboardMetricView = {
   label: string;
@@ -19,6 +24,7 @@ export type DashboardRecentTripView = {
 export type DashboardData = {
   error: string | null;
   firstRun: FirstRunState;
+  heroImage: WalletHeroImage;
   metrics: DashboardMetricView[];
   recentTrips: DashboardRecentTripView[];
 };
@@ -36,6 +42,8 @@ type DashboardClient = {
 };
 
 type TripRow = {
+  destination?: string | null;
+  destination_provider_metadata?: Record<string, unknown> | null;
   end_date: string | null;
   id: string;
   name: string | null;
@@ -65,7 +73,7 @@ export async function loadDashboardData(): Promise<DashboardData> {
     await Promise.all([
       auth.supabase
         .from("trips")
-        .select("id,name,title,start_date,end_date,status")
+        .select("id,name,title,destination,destination_provider_metadata,start_date,end_date,status")
         .eq("user_id", auth.userId)
         .order("updated_at", { ascending: false })
         .limit(5),
@@ -137,6 +145,9 @@ export async function loadDashboardData(): Promise<DashboardData> {
       segmentCount,
       tripCount
     }),
+    heroImage: recentTrips.length
+      ? getTripHeroImage(tripsResult.error ? {} : ((tripsResult.data || [])[0] as TripRow), [], [])
+      : getFallbackHeroImage("Wayline travel wallet", "Wayline travel wallet background"),
     metrics: [
       { label: "Trips saved", value: String(tripCount) },
       { label: "Active plans", value: String(safeCount(activeTripsResult)) },
@@ -152,6 +163,7 @@ function emptyDashboardData(error: string): DashboardData {
   return {
     error,
     firstRun: emptyFirstRunState(),
+    heroImage: getFallbackHeroImage("Wayline travel wallet", "Wayline travel wallet background"),
     metrics: [
       { label: "Trips saved", value: "0" },
       { label: "Active plans", value: "0" },

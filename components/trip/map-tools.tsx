@@ -1,7 +1,6 @@
 "use client";
 
-import Link from "next/link";
-import { Loader2 } from "lucide-react";
+import { ChevronDown, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { GeneratePlanButton } from "@/components/trip/generate-plan-button";
 import { TripSegmentForm } from "@/components/trip/trip-segment-form";
@@ -60,17 +59,19 @@ export function MapTools({
           Retry all locations
         </button>
       ) : null}
-      <Link
-        className="rounded-2xl bg-slate-100 px-4 py-3 text-left font-semibold transition hover:bg-slate-200"
-        href={`/dashboard/trips/${encodeURIComponent(tripId)}/timeline#new-plan`}
-      >
-        Add trip item
-      </Link>
-      <TripSegmentForm
-        buttonLabel="Save trip item"
-        defaultKind="place"
-        tripId={tripId}
-      />
+      <details className="group rounded-2xl bg-slate-100 text-left transition open:bg-white open:ring-1 open:ring-slate-200">
+        <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 font-semibold marker:hidden">
+          Add trip item
+          <ChevronDown className="h-4 w-4 text-slate-500 transition group-open:rotate-180" aria-hidden="true" />
+        </summary>
+        <div className="border-t border-slate-200 p-3">
+          <TripSegmentForm
+            buttonLabel="Save trip item"
+            defaultKind="place"
+            tripId={tripId}
+          />
+        </div>
+      </details>
       {!hasMappedStops ? (
         <p className="rounded-2xl bg-blue-50 px-4 py-3 text-sm font-semibold text-blue-900">
           {waylineCopy.suggestions.noMappedStops}

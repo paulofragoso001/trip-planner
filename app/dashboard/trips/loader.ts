@@ -6,7 +6,13 @@ import {
   normalizeTravelStyle,
   type TripTravelStyle
 } from "@/lib/trips";
-import { buildPlacePhotoUrl, readProviderPhoto } from "@/lib/travel-data/photo-url";
+import {
+  compareHeroSegments,
+  fallbackGradientForDestination,
+  getFallbackHeroImage,
+  imageFromProviderMetadata,
+  type WalletHeroImage
+} from "@/lib/wallet/hero-image";
 
 export type TripListItemView = {
   dateRange: string;
@@ -30,6 +36,7 @@ export type TripListItemView = {
 
 export type TripsData = {
   error: string | null;
+  heroImage: WalletHeroImage;
   trips: TripListItemView[];
 };
 
@@ -77,6 +84,7 @@ export async function loadTripsData(): Promise<TripsData> {
   if (!auth) {
     return {
       error: "Sign in to load your trips.",
+      heroImage: getFallbackHeroImage("Wayline trips", "Wayline trips background"),
       trips: []
     };
   }
@@ -95,6 +103,7 @@ export async function loadTripsData(): Promise<TripsData> {
 
     return {
       error: "Could not load trips right now.",
+      heroImage: getFallbackHeroImage("Wayline trips", "Wayline trips background"),
       trips: []
     };
   }
@@ -112,6 +121,7 @@ export async function loadTripsData(): Promise<TripsData> {
 
   return {
     error: null,
+    heroImage: buildTripsHeroImage(tripRows[0], passImages.get(tripRows[0]?.id || "")),
     trips: tripRows.map((row) =>
       mapTrip(
         row,
@@ -313,15 +323,16 @@ async function loadTripPassImages(
     }
 
     for (const [tripId, segments] of segmentsByTrip) {
-      const visualSegment = segments
-        .filter((segment) => readProviderPhoto(segment.provider_metadata))
-        .sort(compareVisualSegments)[0];
-      const image = imageFromProviderMetadata(
-        visualSegment?.provider_metadata,
-        visualSegment?.title ? `Photo of ${visualSegment.title}` : "Trip place photo"
-      );
-      if (image) {
-        images.set(tripId, image);
+      for (const segment of [...segments].sort(compareHeroSegments)) {
+        const image = imageFromProviderMetadata(
+          segment.provider_metadata,
+          segment.title ? `Photo of ${segment.title}` : "Trip place photo",
+          segment.title || "Trip place"
+        );
+        if (image) {
+          images.set(tripId, image);
+          break;
+        }
       }
     }
   } else {
@@ -338,45 +349,20 @@ async function loadTripPassImages(
   return images;
 }
 
-function imageFromProviderMetadata(
-  metadata: Record<string, unknown> | null | undefined,
-  fallbackAlt: string
-): TripPassImage | null {
-  const photo = readProviderPhoto(metadata);
-  const imageUrl = buildPlacePhotoUrl(metadata, 900);
-  if (!photo || !imageUrl) return null;
+function buildTripsHeroImage(
+  trip: TripRow | undefined,
+  passImage: TripPassImage | undefined
+): WalletHeroImage {
+  if (!trip) return getFallbackHeroImage("Wayline trips", "Wayline trips background");
 
+  const destination = trip.destination || trip.name || "Wayline trip";
   return {
-    imageAlt: photo.imageAlt || fallbackAlt,
-    imageAttribution: photo.attribution || null,
-    imageUrl
+    fallbackGradient: fallbackGradientForDestination(destination),
+    imageAlt: passImage?.imageAlt || `${destination} trip pass background`,
+    imageAttribution: passImage?.imageAttribution || null,
+    imageSourceLabel: trip.destination || trip.name,
+    imageUrl: passImage?.imageUrl || null
   };
-}
-
-function compareVisualSegments(a: TripVisualSegment, b: TripVisualSegment) {
-  const priority = segmentVisualPriority(a) - segmentVisualPriority(b);
-  if (priority !== 0) return priority;
-
-  const positionA = typeof a.position === "number" ? a.position : Number.MAX_SAFE_INTEGER;
-  const positionB = typeof b.position === "number" ? b.position : Number.MAX_SAFE_INTEGER;
-  return positionA - positionB;
-}
-
-function segmentVisualPriority(segment: TripVisualSegment) {
-  const value = `${segment.kind || ""} ${segment.title || ""}`.toLowerCase();
-  if (/landmark|attraction|museum|wall|park|garden|beach|neighborhood|district|centre|center|sagrada|wynwood/.test(value)) {
-    return 1;
-  }
-  if (/restaurant|food|dinner|lunch|cafe|coffee|bar/.test(value)) {
-    return 2;
-  }
-  if (/hotel|lodging|stay/.test(value)) {
-    return 3;
-  }
-  if (/flight|airport|transport|station|terminal/.test(value)) {
-    return 4;
-  }
-  return 5;
 }
 
 function mapTrip(

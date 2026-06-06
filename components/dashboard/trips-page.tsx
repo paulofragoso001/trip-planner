@@ -5,38 +5,54 @@ import { TripCreateForm } from "@/components/dashboard/trip-create-form";
 import { TripRowActions } from "@/components/dashboard/trip-row-actions";
 import type { TripsData } from "@/app/dashboard/trips/loader";
 import { PlacePhoto } from "@/components/place-photo";
-import { EmptyState, PageHeader, SectionCard } from "@/components/trip-ui";
+import { EmptyState } from "@/components/trip-ui";
+import { WalletActionLink, WalletCard } from "@/components/wallet/wallet-card";
+import { WalletPageShell } from "@/components/wallet/wallet-page-shell";
 import { waylineCopy } from "@/lib/copy/wayline-copy";
 
 type TripsPageProps = TripsData;
 
-export default function TripsPage({ error, trips }: TripsPageProps) {
+export default function TripsPage({ error, heroImage, trips }: TripsPageProps) {
   return (
-    <div className="grid gap-6">
-      <div className="lg:hidden">
-        <MobileTripsExperience error={error} trips={trips} />
-      </div>
+    <WalletPageShell
+      actions={
+        <>
+          <WalletActionLink href="#new-trip">Create trip</WalletActionLink>
+          <WalletActionLink className="bg-white text-slate-950 hover:bg-slate-100" href="/dashboard/imports">
+            Start planning
+          </WalletActionLink>
+        </>
+      }
+      compactHero
+      eyebrow="TRIPS"
+      fallbackGradient={heroImage.fallbackGradient}
+      heroImage={heroImage}
+      subtitle="Open a trip or create a new destination pass."
+      title="Your trip passes"
+    >
+      <div className="grid gap-6">
+        <div className="lg:hidden">
+          <MobileTripsExperience error={error} heroImage={heroImage} trips={trips} />
+        </div>
 
-      <PageHeader
-        className="hidden lg:block"
-        eyebrow="Trip wallet"
-        subtitle="Create or continue a travel pass."
-        title="My trip passes"
-      />
-
-      <div className="hidden gap-6 lg:grid lg:grid-cols-[380px_minmax(0,1fr)]">
-        <SectionCard
+        <div className="hidden gap-6 lg:grid lg:grid-cols-[380px_minmax(0,1fr)]">
+          <WalletCard
           className="lg:sticky lg:top-24 lg:self-start"
-          description="Destination helps match places."
+          eyebrow="Create"
           id="new-trip"
           title="Create trip pass"
+          variant="utility"
         >
+          <p className="text-sm font-semibold leading-6 text-slate-600">
+            Destination helps match places.
+          </p>
           <TripCreateForm />
-        </SectionCard>
+          </WalletCard>
 
-        <SectionCard
-          actions={<RouterRefreshButton>Refresh</RouterRefreshButton>}
+          <WalletCard
+          action={<RouterRefreshButton>Refresh</RouterRefreshButton>}
           title="Trip passes"
+          variant="utility"
         >
           <div className="mt-4 grid gap-3">
             {error ? (
@@ -114,9 +130,10 @@ export default function TripsPage({ error, trips }: TripsPageProps) {
               </article>
             ))}
           </div>
-        </SectionCard>
+          </WalletCard>
+        </div>
       </div>
-    </div>
+    </WalletPageShell>
   );
 }
 
@@ -124,42 +141,20 @@ function MobileTripsExperience({ error, trips }: TripsPageProps) {
   if (!error && trips.length === 0) {
     return (
       <div className="grid gap-4" data-testid="mobile-first-trip-state">
-        <section className="relative isolate overflow-hidden rounded-[2rem] bg-slate-950 p-4 text-white shadow-2xl">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_0%,rgba(255,255,255,0.24),transparent_34%),linear-gradient(135deg,#172554,#0f766e_48%,#020617)]" />
-          <div className="relative min-h-[13rem]">
-            <p className="text-xs font-black uppercase tracking-[0.24em] text-white/58">
-              Wayline Trip Pass
-            </p>
-            <h1 className="mt-6 max-w-xs text-4xl font-black leading-[0.94]">
-              Create your first trip
-            </h1>
-            <p className="mt-3 max-w-xs text-sm font-semibold leading-6 text-white/72">
-              Choose a destination and Wayline will turn it into a visual trip wallet.
-            </p>
-          </div>
-        </section>
-
-        <section className="rounded-[2rem] border border-slate-200 bg-white p-3 shadow-sm">
+        <WalletCard eyebrow="Wayline Trip Pass" title="Create your first trip" variant="utility">
+          <p className="text-sm font-semibold leading-6 text-slate-600">
+            Choose a destination and Wayline will turn it into a visual trip wallet.
+          </p>
+          <div className="mt-4">
           <TripCreateForm mode="mobile-pass" redirectOnSuccess />
-        </section>
+          </div>
+        </WalletCard>
       </div>
     );
   }
 
   return (
     <div className="grid gap-4" data-testid="mobile-trips-wallet">
-      <section className="rounded-[2rem] border border-slate-200 bg-white p-4 shadow-sm">
-        <p className="text-xs font-black uppercase tracking-[0.18em] text-blue-600">
-          Trip wallet
-        </p>
-        <h1 className="mt-2 text-3xl font-black leading-tight text-slate-950">
-          My trip passes
-        </h1>
-        <p className="mt-2 text-sm font-semibold leading-6 text-slate-600">
-          Open a trip pass or create a new one.
-        </p>
-      </section>
-
       {error ? (
         <p className="rounded-2xl bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
           {error}

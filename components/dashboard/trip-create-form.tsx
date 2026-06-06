@@ -211,7 +211,7 @@ export function TripCreateForm({
         </label>
       </div>
       <label className="grid gap-2 text-sm font-black text-slate-800">
-        Budget
+        Expense budget
         <input
           className="min-h-12 rounded-2xl border border-slate-200 px-4 py-3 font-semibold outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
           inputMode="decimal"

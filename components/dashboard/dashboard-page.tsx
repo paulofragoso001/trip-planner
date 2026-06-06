@@ -10,7 +10,9 @@ import {
 } from "lucide-react";
 import type { DashboardData } from "@/app/dashboard/loader";
 import { FirstRunOnboarding } from "@/components/dashboard/first-run-onboarding";
-import { PageHeader, SectionCard, tripUi } from "@/components/trip-ui";
+import { tripUi } from "@/components/trip-ui";
+import { WalletActionLink, WalletCard } from "@/components/wallet/wallet-card";
+import { WalletPageShell } from "@/components/wallet/wallet-page-shell";
 
 type DashboardPageProps = DashboardData & {
   view?: string;
@@ -19,6 +21,7 @@ type DashboardPageProps = DashboardData & {
 export default function DashboardPage({
   error,
   firstRun,
+  heroImage,
   metrics,
   recentTrips,
   view
@@ -35,32 +38,32 @@ export default function DashboardPage({
   const remainingTrips = recentTrips.slice(1, 4);
 
   return (
-    <div className="grid gap-6">
-      {error ? (
-        <p className="rounded-2xl bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
-          Some details are unavailable, but you can still plan or open your trips.
-        </p>
-      ) : null}
+    <WalletPageShell
+      actions={
+        <>
+          <WalletActionLink href="/dashboard/imports">Start planning</WalletActionLink>
+          <WalletActionLink className="bg-white text-slate-950 hover:bg-slate-100" href="/dashboard/trips">
+            View trips
+          </WalletActionLink>
+        </>
+      }
+      compactHero
+      eyebrow="WAYLINE"
+      fallbackGradient={heroImage.fallbackGradient}
+      heroImage={heroImage}
+      subtitle="Pick up a trip or start from a saved idea."
+      title="Your travel companion"
+    >
+      <div className="grid gap-5">
+        {error ? (
+          <p className="rounded-2xl bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
+            Some details are unavailable, but you can still plan or open your trips.
+          </p>
+        ) : null}
 
-      <PageHeader
-        actions={
-          <>
-            <Link className={tripUi.button.primaryCompact} href="/dashboard/imports">
-              Add travel idea
-            </Link>
-            <Link className={tripUi.button.secondary} href="/dashboard/trips">
-              Trip passes
-            </Link>
-          </>
-        }
-        eyebrow="Wayline"
-        subtitle="Plan a trip, continue a pass, or review saved ideas."
-        title="Your travel wallet"
-      />
+        <FirstRunOnboarding firstRun={firstRun} />
 
-      <FirstRunOnboarding firstRun={firstRun} />
-
-      <section className="grid gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
+        <section className="grid gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
         {latestTrip ? (
           <Link
             className="group relative isolate grid min-h-[18rem] content-between overflow-hidden rounded-[2rem] bg-slate-950 p-5 text-white shadow-2xl transition hover:-translate-y-0.5 sm:min-h-[22rem] sm:p-6"
@@ -80,7 +83,7 @@ export default function DashboardPage({
               </h2>
               <p className="mt-3 text-sm font-bold text-white/72">{latestTrip.dateRange}</p>
               <span className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-full bg-white px-5 text-sm font-black text-slate-950">
-                Open Trip Pass
+                Continue trip
                 <ArrowRight
                   aria-hidden="true"
                   className="h-4 w-4 transition group-hover:translate-x-1"
@@ -107,7 +110,7 @@ export default function DashboardPage({
                 Create a pass, add ideas, then build the itinerary and map.
               </p>
               <span className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-full bg-white px-5 text-sm font-black text-slate-950">
-                Create Trip Pass
+                Create your first trip
                 <ArrowRight
                   aria-hidden="true"
                   className="h-4 w-4 transition group-hover:translate-x-1"
@@ -121,13 +124,13 @@ export default function DashboardPage({
           <WalletAction
             href="/dashboard/trips#new-trip"
             icon={<Plane aria-hidden="true" className="h-5 w-5" />}
-            label="Start new trip pass"
+            label="Create trip"
             meta="Choose a destination and dates."
           />
           <WalletAction
             href="/dashboard/imports"
             icon={<Compass aria-hidden="true" className="h-5 w-5" />}
-            label="Add travel idea"
+            label="Start planning"
             meta="Paste a note, link, or screenshot."
           />
           <WalletAction
@@ -139,7 +142,7 @@ export default function DashboardPage({
                 <MapIcon aria-hidden="true" className="h-5 w-5" />
               )
             }
-            label={importsWaiting !== "0" ? "Review ideas" : "Open trip passes"}
+            label={importsWaiting !== "0" ? "Review ideas" : "Open trips"}
             meta={
               importsWaiting !== "0"
                 ? `${importsWaiting} waiting to review.`
@@ -150,14 +153,15 @@ export default function DashboardPage({
       </section>
 
       {remainingTrips.length ? (
-        <SectionCard
-          actions={
+        <WalletCard
+          action={
             <Link className="text-sm font-black text-blue-700" href="/dashboard/trips">
               View all
             </Link>
           }
           eyebrow="Trip passes"
           title="Recent passes"
+          variant="utility"
         >
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {remainingTrips.map((trip) => (
@@ -179,9 +183,10 @@ export default function DashboardPage({
               </Link>
             ))}
           </div>
-        </SectionCard>
+        </WalletCard>
       ) : null}
-    </div>
+      </div>
+    </WalletPageShell>
   );
 }
 
