@@ -163,10 +163,10 @@ test.describe("mobile soft-launch UX", () => {
 
     try {
       await expect(page.getByTestId("trip-pass-hero")).toBeVisible({ timeout: 20_000 });
-      const mobileHub = page.getByTestId("mobile-trip-wallet-hub");
+      const mobileHub = page.getByTestId("trip-overview-page");
       await expect(mobileHub).toBeVisible();
       await expect(page.getByTestId("mobile-primary-trip-cta")).toBeVisible();
-      await expect(page.getByText("Add to trip")).toBeVisible();
+      await expect(page.getByText("Add trip item")).toBeVisible();
       await expect(mobileHub.getByText("Invite Guests")).toHaveCount(0);
       await expect(page.getByLabel("Organizer actions")).toBeHidden();
       await expect(page.getByTestId("mobile-trip-overflow-menu")).toHaveCount(0);
@@ -262,7 +262,7 @@ test.describe("mobile soft-launch UX", () => {
     }
     const routePlaces = page
       .locator("section")
-      .filter({ has: page.getByRole("heading", { name: "Route places" }) });
+      .filter({ has: page.getByRole("heading", { name: "Saved ideas" }) });
     await expect(routePlaces.getByText("Team dinner in El Born")).toBeVisible();
   });
 

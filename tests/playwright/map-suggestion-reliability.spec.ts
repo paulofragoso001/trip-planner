@@ -94,7 +94,7 @@ test("map and suggestions degrade safely for unresolved and activity stops", asy
     const emptyState = page.getByTestId("compact-route-empty-state");
     await expect(emptyState).toBeVisible({ timeout: 30_000 });
     await expect(emptyState.getByRole("heading", { name: "No route places yet" })).toBeVisible();
-    await expect(emptyState.getByText("Some ideas need location before they can join the route.")).toBeVisible();
+    await expect(emptyState.getByText(/need confirmed locations|unscheduled activities/i).first()).toBeVisible();
     await expect(emptyState.getByRole("link", { name: "Open Ideas" })).toHaveAttribute(
       "href",
       `/dashboard/trips/${tripId}/ideas`

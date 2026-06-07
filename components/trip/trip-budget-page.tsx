@@ -16,7 +16,7 @@ export default function TripBudgetPage({
   tripId
 }: TripBudgetPageProps) {
   return (
-    <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
+    <div className="grid gap-5">
       <section className="grid gap-5">
         <article className="overflow-hidden rounded-[1.75rem] bg-slate-950 text-white shadow-sm">
           <div className="bg-[radial-gradient(circle_at_20%_0%,rgba(249,115,22,0.34),transparent_30%),linear-gradient(135deg,#020617,#172554)] p-5">
@@ -96,7 +96,7 @@ export default function TripBudgetPage({
         </article>
       </section>
 
-      <aside className="grid gap-5">
+      <section className="grid gap-5">
         <section className="rounded-[1.75rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
           <div className="flex items-center gap-3">
             <span className="grid h-11 w-11 place-items-center rounded-full bg-blue-600 text-white">
@@ -125,7 +125,7 @@ export default function TripBudgetPage({
             ))}
           </div>
         </section>
-      </aside>
+      </section>
     </div>
   );
 }

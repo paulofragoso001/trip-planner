@@ -21,7 +21,6 @@ import type {
 } from "@/app/dashboard/trips/[tripId]/timeline/types";
 import { AsyncActionButton } from "@/components/dashboard/async-action-button";
 import { PlacePhoto } from "@/components/place-photo";
-import { CalendarSyncPanel } from "@/components/trip/calendar-sync-panel";
 import { GeneratePlanButton } from "@/components/trip/generate-plan-button";
 import { ItineraryCardActions } from "@/components/trip/itinerary-card-actions";
 import { TripSegmentForm } from "@/components/trip/trip-segment-form";
@@ -35,14 +34,13 @@ export default function TripTimelinePage({
   days,
   error,
   firstFlight,
-  stats,
   tripId
 }: TripTimelinePageProps) {
   const items = days.flatMap((day) => day.items);
   const timelineItemIds = items.map((item) => item.id);
 
   return (
-    <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
+    <div className="grid gap-5">
       <section className="min-w-0">
         {error ? (
           <p className="rounded-2xl bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
@@ -109,13 +107,7 @@ export default function TripTimelinePage({
         )}
       </section>
 
-      <aside className="grid content-start gap-4 xl:sticky xl:top-24 xl:self-start">
-        <ItineraryActions firstFlight={firstFlight} timelineItemIds={timelineItemIds} tripId={tripId} />
-        <ItinerarySummary stats={stats} />
-        <div className="hidden xl:block">
-          <CalendarSyncPanel tripId={tripId} />
-        </div>
-      </aside>
+      <ItineraryActions firstFlight={firstFlight} timelineItemIds={timelineItemIds} tripId={tripId} />
 
       <Link
         aria-label="Add itinerary item"
@@ -778,8 +770,13 @@ function ItineraryActions({
   tripId: string;
 }) {
   return (
-    <div className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:rounded-3xl sm:p-5">
-      <h3 className="text-base font-black">Add trip item</h3>
+    <details
+      className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:rounded-3xl sm:p-5"
+      id="new-plan"
+    >
+      <summary className="cursor-pointer text-base font-black text-slate-950">
+        Add trip item
+      </summary>
       <p className="mt-2 text-sm text-slate-600">Add a place, reservation, route, stay, or activity.</p>
       <div className="mt-4 grid gap-3">
         <GeneratePlanButton context="timeline" tripId={tripId} />
@@ -813,33 +810,11 @@ function ItineraryActions({
             </AsyncActionButton>
           </div>
         ) : null}
-        <div id="new-plan">
+        <div>
           <TripSegmentForm buttonLabel="Add trip item" tripId={tripId} />
         </div>
       </div>
-    </div>
-  );
-}
-
-function ItinerarySummary({ stats }: { stats: TripTimelineData["stats"] }) {
-  return (
-    <div className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:rounded-3xl sm:p-5">
-      <h3 className="text-base font-black">Trip summary</h3>
-      <div className="mt-4 grid gap-3">
-        <SummaryRow label="Places" value={String(stats.totalItems)} />
-        <SummaryRow label="Mapped" value={`${stats.mappedStops} pins`} />
-        <SummaryRow label="Needs location" value={String(stats.alerts)} />
-      </div>
-    </div>
-  );
-}
-
-function SummaryRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-center justify-between gap-3 rounded-2xl bg-slate-50 px-4 py-3 text-sm">
-      <span className="font-semibold text-slate-700">{label}</span>
-      <strong className="text-slate-950">{value}</strong>
-    </div>
+    </details>
   );
 }
 

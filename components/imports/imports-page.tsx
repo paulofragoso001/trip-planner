@@ -44,7 +44,7 @@ export default function ImportsPage({
       subtitle="Add a note, link, or screenshot. Wayline finds places for you to review."
       title="Capture travel ideas"
     >
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_340px]" data-testid="imports-route">
+      <div className="grid gap-5" data-testid="imports-route">
         <section className="grid gap-5">
           <WorkflowStepRow />
 
@@ -66,45 +66,29 @@ export default function ImportsPage({
             </div>
           </WalletCard>
 
-          <WalletCard
-            action={
-              <StatusBadge tone={aiReviewItems.length ? "blue" : "slate"}>
-                {aiReviewItems.length} to review
-              </StatusBadge>
-            }
-            eyebrow="AI Review"
-            id="ai-review"
-            title="Review places"
-            variant="primary"
-          >
-            <p className="text-sm font-semibold leading-6 text-slate-600">
-              Approve, edit, merge, or dismiss each place.
-            </p>
-            <div className="mt-4 grid gap-4">
-              {aiReviewItems.map((place) => (
-                <ExtractedPlaceCard
-                  key={place.id}
-                  mergeTargets={aiReviewItems.filter((target) => target.id !== place.id)}
-                  place={place}
-                  trips={trips}
-                />
-              ))}
-              {aiReviewItems.length === 0 ? (
-                <EmptyState
-                  action={
-                    <a
-                      className={tripUi.button.primaryCompact}
-                      href="/dashboard/imports?sample=miami#saved-inspiration"
-                    >
-                      Try sample inspiration
-                    </a>
-                  }
-                  description={waylineCopy.emptyStates.aiReview}
-                  title="No places to review yet."
-                />
-              ) : null}
-            </div>
-          </WalletCard>
+          <div id="ai-review" />
+          {aiReviewItems.length ? (
+            <WalletCard
+              action={<StatusBadge tone="blue">{aiReviewItems.length} to review</StatusBadge>}
+              eyebrow="AI Review"
+              title="Review places"
+              variant="primary"
+            >
+              <p className="text-sm font-semibold leading-6 text-slate-600">
+                Approve, edit, merge, or dismiss each place.
+              </p>
+              <div className="mt-4 grid gap-4">
+                {aiReviewItems.map((place) => (
+                  <ExtractedPlaceCard
+                    key={place.id}
+                    mergeTargets={aiReviewItems.filter((target) => target.id !== place.id)}
+                    place={place}
+                    trips={trips}
+                  />
+                ))}
+              </div>
+            </WalletCard>
+          ) : null}
 
           <TripDraftQueue drafts={tripDrafts} />
 
@@ -163,8 +147,10 @@ export default function ImportsPage({
         </details>
       </section>
 
-        <aside className="grid content-start gap-5 xl:sticky xl:top-24">
-          <WalletCard eyebrow="Ideas" title="Recent ideas" variant="utility">
+        <details className="rounded-[2rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+          <summary className="cursor-pointer text-base font-black text-slate-950">
+            Recent ideas
+          </summary>
           <div className="mt-4 grid gap-3">
             {importedContent.slice(0, 6).map((post) => (
               <div className="grid grid-cols-[56px_minmax(0,1fr)] gap-3 rounded-2xl bg-slate-50 px-3 py-3" key={post.id}>
@@ -207,7 +193,7 @@ export default function ImportsPage({
               />
             ) : null}
           </div>
-          </WalletCard>
+        </details>
 
         <details className="rounded-[2rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
           <summary className="cursor-pointer text-base font-black text-slate-950">
@@ -254,7 +240,6 @@ export default function ImportsPage({
             ) : null}
           </div>
         </details>
-        </aside>
       </div>
     </WalletPageShell>
   );

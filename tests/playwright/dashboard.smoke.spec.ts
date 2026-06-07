@@ -46,29 +46,28 @@ test("loads dashboard summary and route-split pages", async ({ page }) => {
   await expect(page.getByText("Turn saved travel ideas into mapped trip plans.")).toHaveCount(0);
   await expect(page.getByText("First Plan Guide")).toHaveCount(0);
   await expect(page.getByText("Add, review, create.")).toHaveCount(0);
-  await expect(page.getByText("Create trip")).toBeVisible();
   await expect(
     dashboardContent.getByRole("link", { exact: true, name: "Start planning" }).first()
   ).toBeVisible();
 
   await openDashboardRoute("/dashboard/trips");
   await expect(page.getByTestId("app-shell-topbar").getByRole("heading", { name: "Trips" })).toBeVisible();
-  await expect(page.getByText("Create trip pass")).toBeVisible({ timeout: 20_000 });
-  await expect(page.getByRole("heading", { exact: true, name: "Trip passes" })).toBeVisible({ timeout: 20_000 });
-  await page.getByRole("button", { name: "Refresh" }).click();
+  await expect(page.getByRole("heading", { exact: true, name: "Your trip passes" })).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByTestId("mobile-trips-wallet").or(page.getByTestId("mobile-first-trip-state"))).toBeVisible({ timeout: 20_000 });
 
   await openDashboardRoute("/dashboard/trips/demo");
   await expect(page.getByTestId("trip-pass-shell")).toBeVisible({ timeout: 30_000 });
   await expect(page.getByTestId("trip-pass-shell")).toHaveAttribute("data-has-background-image", "false");
   await expect(page.getByTestId("trip-workspace-layout")).toBeVisible({ timeout: 30_000 });
   const overview = page.getByTestId("trip-overview-page");
-  await expect(overview.getByRole("heading", { name: "Your trip at a glance" })).toBeVisible();
-  await expect(overview.getByText("Trip organizer")).toBeVisible();
+  await expect(overview.getByTestId("mobile-primary-trip-cta")).toBeVisible();
+  await expect(overview.getByText("More")).toBeVisible();
+  await expect(overview.getByText("Trip organizer")).toHaveCount(0);
   await expect(overview.getByText("All your trip details in one place")).toHaveCount(0);
   await expect(overview.getByText("Trip Overview")).toHaveCount(0);
-  await expect(overview.getByRole("link", { exact: true, name: "Add trip detail" })).toBeVisible();
-  await expect(overview.getByRole("link", { name: "Open documents" })).toBeVisible();
-  await expect(overview.getByRole("link", { name: "Manage guests" })).toBeVisible();
+  await expect(overview.getByRole("link", { name: /Add trip item/ })).toBeVisible();
+  await expect(overview.getByRole("link", { name: "Open documents" })).toHaveCount(0);
+  await expect(overview.getByRole("link", { name: "Manage guests" })).toHaveCount(0);
   const hero = page.getByTestId("trip-pass-hero");
   await expect(hero).toHaveAttribute("data-hero-image", "false");
   await expect(hero.getByTestId("trip-pass-hero-fallback")).toBeVisible();
@@ -96,7 +95,7 @@ test("loads dashboard summary and route-split pages", async ({ page }) => {
   await expect(
     page.getByRole("navigation", { name: "Trip tabs" }).getByRole("link", { exact: true, name: "Itinerary" })
   ).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Add trip item" }).first()).toBeVisible();
+  await expect(page.getByText("Add trip item").first()).toBeVisible();
   await expect(page.getByTestId("itinerary-date-strip")).toBeVisible();
   await expect(page.getByTestId("itinerary-date-strip").getByRole("link", { name: "Jump to THURSDAY, JUNE 11, 2026" })).toBeVisible();
   await page.getByTestId("itinerary-date-strip").getByRole("link", { name: "Jump to THURSDAY, JUNE 11, 2026" }).click();
@@ -106,10 +105,7 @@ test("loads dashboard summary and route-split pages", async ({ page }) => {
   const timelineTabs = page.getByRole("navigation", { name: "Trip tabs" });
   await expect(timelineTabs.getByRole("link", { exact: true, name: "Itinerary" })).toBeVisible();
   await expect(timelineTabs.getByRole("link", { exact: true, name: "Ideas" })).toBeVisible();
-  await expect(page.getByRole("heading", { exact: true, name: "Calendar sync" })).toBeVisible();
-  const calendarSync = page.locator("section").filter({ has: page.getByRole("heading", { exact: true, name: "Calendar sync" }) });
-  expect(await calendarSync.getByRole("button").count()).toBeGreaterThanOrEqual(2);
-  await expect(page.getByRole("button", { name: "Refresh flights" })).toBeVisible();
+  await expect(page.getByRole("heading", { exact: true, name: "Calendar sync" })).toHaveCount(0);
 
   await openDashboardRoute("/dashboard/trips/demo/map");
   await expect(page.getByTestId("connected-trip-map")).toBeVisible();
@@ -118,11 +114,14 @@ test("loads dashboard summary and route-split pages", async ({ page }) => {
   await expect(page.getByTestId("compact-route-empty-state")).toHaveCount(0);
   await expect(page.getByTestId("map-route-list")).toBeVisible();
   await expect(page.getByTestId("map-route-list").getByText("Team dinner in El Born")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Share view" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Open Ideas" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Share view" })).toHaveCount(0);
 
   await openDashboardRoute("/dashboard/trips/demo/ideas");
   await expect(page.getByRole("heading", { exact: true, name: "All trip activities" })).toBeVisible();
-  await expect(page.getByText("Nearby Ideas", { exact: true })).toBeVisible();
+  if ((await page.getByText("Nearby Ideas", { exact: true }).count()) > 0) {
+    await expect(page.getByText("Nearby Ideas", { exact: true })).toBeVisible();
+  }
   const activityFilters = page.getByTestId("activity-category-filters");
   if ((await activityFilters.count()) > 0) {
     await expect(activityFilters.getByText("Explore nearby")).toBeVisible();
@@ -132,7 +131,7 @@ test("loads dashboard summary and route-split pages", async ({ page }) => {
   }
   const routePlaces = page
     .locator("section")
-    .filter({ has: page.getByRole("heading", { name: "Route places" }) });
+    .filter({ has: page.getByRole("heading", { name: "Saved ideas" }) });
   await expect(routePlaces.getByText("Team dinner in El Born")).toBeVisible();
 
   await openDashboardRoute("/dashboard/trips/demo/budget");
@@ -158,7 +157,10 @@ test("loads dashboard summary and route-split pages", async ({ page }) => {
   await expect(importsRoute).toBeVisible();
   await expect(page.getByRole("heading", { exact: true, name: "Capture travel ideas" })).toBeVisible();
   await expect(importsRoute.getByRole("heading", { exact: true, name: "Add an idea" })).toBeVisible();
-  await expect(importsRoute.getByRole("heading", { exact: true, name: "Review places" })).toBeVisible();
+  const aiReviewCardCount = await importsRoute.locator('[data-testid^="ai-review-card-"]').count();
+  await expect(importsRoute.getByRole("heading", { exact: true, name: "Review places" })).toHaveCount(
+    aiReviewCardCount ? 1 : 0
+  );
   await expect(importsRoute.getByRole("heading", { exact: true, name: "Create trip plan" })).toBeVisible();
   await expect(importsRoute.getByText("Optional trip context")).toBeVisible();
   await expect(importsRoute.getByText("Create a trip from saved ideas.")).toHaveCount(0);

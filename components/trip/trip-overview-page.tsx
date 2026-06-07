@@ -19,7 +19,6 @@ type TripOverviewPageProps = TripOverviewData;
 
 export default function TripOverviewPage({
   actualLabel,
-  destination,
   error,
   expenseCategories,
   itineraryPreview,
@@ -30,7 +29,6 @@ export default function TripOverviewPage({
   segmentCount,
   status,
   suggestionsCount,
-  title,
   tripId
 }: TripOverviewPageProps) {
   const base = `/dashboard/trips/${encodeURIComponent(tripId)}`;
@@ -44,265 +42,180 @@ export default function TripOverviewPage({
         </p>
       ) : null}
 
-      <section className="grid gap-3 lg:hidden" data-testid="mobile-trip-wallet-hub">
-        <Link
-          className="flex min-h-20 items-center justify-between gap-4 rounded-[1.75rem] bg-slate-950 p-4 text-white shadow-sm focus:outline-none focus:ring-4 focus:ring-blue-100"
-          href={`${base}/timeline#new-plan`}
-          data-testid="mobile-primary-trip-cta"
+      <Link
+        className="flex min-h-20 items-center justify-between gap-4 rounded-[1.75rem] bg-slate-950 p-4 text-white shadow-sm focus:outline-none focus:ring-4 focus:ring-blue-100"
+        data-testid="mobile-primary-trip-cta"
+        href={`${base}/timeline#new-plan`}
+      >
+        <span className="min-w-0">
+          <span className="block text-lg font-black">Add trip item</span>
+          <span className="mt-1 block text-xs font-semibold text-white/65">
+            Add a place, activity, reservation, or note.
+          </span>
+        </span>
+        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-white/12">
+          <Plus className="h-5 w-5" aria-hidden="true" />
+        </span>
+      </Link>
+
+      {nextUp ? (
+        <WalletCard
+          actionHref={`${base}/timeline#${nextUp.id}`}
+          actionLabel="Open itinerary"
+          eyebrow="Next Up"
+          icon={<Sparkles className="h-5 w-5" aria-hidden="true" />}
+          title={nextUp.title}
         >
-          <span className="min-w-0">
-            <span className="block text-lg font-black">Add to trip</span>
-            <span className="mt-1 block text-xs font-semibold text-white/65">
-              Add a place or activity.
+          <div className="grid gap-2">
+            <p className="text-sm font-black uppercase tracking-[0.14em] text-slate-400">
+              {nextUp.typeLabel}
+            </p>
+            <p className="text-sm font-semibold text-slate-600">
+              {nextUp.timeLabel} · {nextUp.location}
+            </p>
+            <span className="inline-flex w-fit rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-700">
+              {status}
             </span>
-          </span>
-          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-white/12">
-            <Plus className="h-5 w-5" aria-hidden="true" />
-          </span>
-        </Link>
-      </section>
-
-      <section className="hidden rounded-[2rem] border border-slate-200 bg-white/95 p-4 shadow-sm sm:p-5 lg:block">
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
-          <div className="min-w-0">
-            <p className="text-xs font-black uppercase tracking-[0.18em] text-blue-600">
-              Trip organizer
-            </p>
-            <h2 className="mt-2 text-2xl font-black leading-tight tracking-tight text-slate-950 sm:text-3xl">
-              Your trip at a glance
-            </h2>
-            <p className="mt-2 max-w-2xl text-sm font-semibold leading-6 text-slate-600">
-              Next up, itinerary, route, expenses, documents, and guests for {title}.
-            </p>
           </div>
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <Link
-              className="inline-flex min-h-11 items-center justify-center rounded-full bg-slate-950 px-5 text-sm font-black text-white transition hover:bg-slate-800 focus:outline-none focus:ring-4 focus:ring-blue-100"
-              href={`${base}/timeline#new-plan`}
-            >
-              <Plus className="mr-2 h-4 w-4" aria-hidden="true" />
-              Add trip detail
-            </Link>
-            <Link
-              className="inline-flex min-h-11 items-center justify-center rounded-full border border-slate-200 bg-white px-5 text-sm font-black text-slate-950 transition hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-blue-100"
-              href={`${base}/sharing`}
-            >
-              <Users className="mr-2 h-4 w-4" aria-hidden="true" />
-              Share
-            </Link>
-          </div>
-        </div>
-      </section>
+        </WalletCard>
+      ) : null}
 
-      <section aria-label="Organizer actions" className="hidden grid-cols-4 gap-2 rounded-[2rem] border border-slate-200 bg-white p-3 shadow-sm sm:grid-cols-7 lg:grid">
-        <QuickAction href={`${base}/timeline#new-plan`} icon={<Plus className="h-5 w-5" />} label="Add trip item" />
-        <QuickAction disabled icon={<Plane className="h-5 w-5" />} label="Flights" />
-        <QuickAction href={`${base}/timeline#new-plan`} icon={<BedDouble className="h-5 w-5" />} label="Lodging" />
-        <QuickAction href={`${base}/map`} icon={<MapPin className="h-5 w-5" />} label="Places" />
-        <QuickAction href={`${base}/documents`} icon={<FileText className="h-5 w-5" />} label="Documents" />
-        <QuickAction href={`${base}/budget`} icon={<CircleDollarSign className="h-5 w-5" />} label="Expenses" />
-        <QuickAction href={`${base}/sharing`} icon={<Users className="h-5 w-5" />} label="Guests" />
-      </section>
-
-      <section className="grid gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)]">
-        <div className="grid gap-4">
-          <WalletCard
-            actionHref={nextUp ? `${base}/timeline#${nextUp.id}` : "/dashboard/imports"}
-            actionLabel={nextUp ? "Open itinerary" : "Plan with AI"}
-            eyebrow="Next Up"
-            icon={<Sparkles className="h-5 w-5" aria-hidden="true" />}
-            title={nextUp ? nextUp.title : "No places yet"}
-          >
-            {nextUp ? (
-              <div className="grid gap-2">
-                <p className="text-sm font-black uppercase tracking-[0.14em] text-slate-400">
-                  {nextUp.typeLabel}
-                </p>
-                <p className="text-sm font-semibold text-slate-600">
-                  {nextUp.timeLabel} · {nextUp.location}
-                </p>
-                <span className="inline-flex w-fit rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-700">
-                  {status}
+      <WalletCard
+        actionHref={`${base}/timeline`}
+        actionLabel="View itinerary"
+        eyebrow="Itinerary"
+        icon={<CalendarDays className="h-5 w-5" aria-hidden="true" />}
+        title={`${segmentCount} place${segmentCount === 1 ? "" : "s"}`}
+      >
+        <div className="grid gap-1">
+          {itineraryPreview.length ? (
+            itineraryPreview.slice(0, 5).map((item, index) => (
+              <Link
+                className="grid min-h-14 grid-cols-[auto_1fr_auto] items-center gap-3 rounded-2xl px-2 py-2 transition hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-blue-100"
+                href={`${base}/timeline#${item.id}`}
+                key={item.id}
+              >
+                <span className="grid h-10 w-10 place-items-center rounded-full bg-blue-50 text-blue-700">
+                  {iconForPreview(item.typeLabel)}
                 </span>
-              </div>
-            ) : (
-              <p className="text-sm font-semibold leading-6 text-slate-600">
-                Add inspiration or create a place to start building {title}.
-              </p>
-            )}
-          </WalletCard>
-
-          <WalletCard
-            actionHref={`${base}/timeline`}
-            actionLabel="View all days"
-            eyebrow="Itinerary"
-            icon={<CalendarDays className="h-5 w-5" aria-hidden="true" />}
-            title={`${segmentCount} place${segmentCount === 1 ? "" : "s"}`}
-          >
-            <div className="grid gap-1">
-              {itineraryPreview.length ? (
-                itineraryPreview.slice(0, 5).map((item, index) => (
-                  <Link
-                    className="grid min-h-14 grid-cols-[auto_1fr_auto] items-center gap-3 rounded-2xl px-2 py-2 transition hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-blue-100"
-                    href={`${base}/timeline#${item.id}`}
-                    key={item.id}
-                  >
-                    <span className="grid h-10 w-10 place-items-center rounded-full bg-blue-50 text-blue-700">
-                      {iconForPreview(item.typeLabel)}
-                    </span>
-                    <span className="min-w-0">
-                      <span className="block truncate text-sm font-black text-slate-950">
-                        {index + 1}. {item.title}
-                      </span>
-                      <span className="block truncate text-xs font-semibold text-slate-500">
-                        {item.location}
-                      </span>
-                    </span>
-                    <span className="text-xs font-black text-slate-500">{item.timeLabel}</span>
-                  </Link>
-                ))
-              ) : (
-                <EmptyInline
-                  body="Add inspiration or a place to start building the itinerary."
-                  cta="Plan with AI"
-                  href="/dashboard/imports"
-                />
-              )}
-            </div>
-          </WalletCard>
+                <span className="min-w-0">
+                  <span className="block truncate text-sm font-black text-slate-950">
+                    {index + 1}. {item.title}
+                  </span>
+                  <span className="block truncate text-xs font-semibold text-slate-500">
+                    {item.location}
+                  </span>
+                </span>
+                <span className="text-xs font-black text-slate-500">{item.timeLabel}</span>
+              </Link>
+            ))
+          ) : (
+            <EmptyInline
+              body="Add inspiration or a trip item to start building the itinerary."
+              cta="Plan with AI"
+              href="/dashboard/imports"
+            />
+          )}
         </div>
+      </WalletCard>
 
-        <aside className="grid gap-4">
-          <WalletCard
-            actionHref={`${base}/map`}
-            actionLabel="Open map"
-            eyebrow="Map"
-            icon={<Map className="h-5 w-5" aria-hidden="true" />}
-            title={routeReady ? "Route ready" : "Route needs locations"}
-          >
-            <div className="rounded-[1.5rem] bg-[radial-gradient(circle_at_24%_24%,rgba(37,99,235,0.24),transparent_30%),linear-gradient(135deg,#eff6ff,#f8fafc)] p-4">
-              <div className="flex items-end justify-between gap-4">
-                <div>
-                  <p className="text-4xl font-black text-slate-950">{mappedCount}</p>
-                  <p className="text-sm font-bold text-slate-600">mapped places</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-2xl font-black text-slate-950">{suggestionsCount}</p>
-                  <p className="text-sm font-bold text-slate-600">Nearby Ideas</p>
-                </div>
-              </div>
-              <p className={routeReady ? "mt-4 text-sm font-black text-emerald-700" : "mt-4 text-sm font-black text-amber-700"}>
-                {routeReady ? "Your route is ready." : "Confirm locations to complete the route."}
-              </p>
+      <WalletCard
+        actionHref={`${base}/map`}
+        actionLabel="Open map"
+        eyebrow="Map"
+        icon={<Map className="h-5 w-5" aria-hidden="true" />}
+        title={routeReady ? "Route ready" : "Route needs locations"}
+      >
+        <div className="rounded-[1.5rem] bg-[radial-gradient(circle_at_24%_24%,rgba(37,99,235,0.24),transparent_30%),linear-gradient(135deg,#eff6ff,#f8fafc)] p-4">
+          <div className="flex items-end justify-between gap-4">
+            <div>
+              <p className="text-4xl font-black text-slate-950">{mappedCount}</p>
+              <p className="text-sm font-bold text-slate-600">mapped places</p>
             </div>
-          </WalletCard>
-
-          <div className="hidden gap-4 lg:grid">
-            <WalletCard
-            actionHref={`${base}/budget`}
-            actionLabel="Open expenses"
-            eyebrow="Expenses"
-            icon={<CircleDollarSign className="h-5 w-5" aria-hidden="true" />}
-            title={actualLabel}
-          >
-            <div className="rounded-[1.5rem] bg-slate-950 p-4 text-white">
-              <p className="text-xs font-black uppercase tracking-[0.16em] text-white/55">Total in USD</p>
-              <p className="mt-1 text-3xl font-black">{actualLabel}</p>
-              <p className="mt-1 text-xs font-semibold text-white/60">
-                Planned {plannedLabel} · Remaining {remainingLabel}
-              </p>
-            </div>
-            <div className="mt-3 grid gap-2">
-              {expenseCategories.length ? (
-                expenseCategories.map((category) => (
-                  <div className="flex min-h-11 items-center justify-between rounded-2xl bg-slate-50 px-3 py-2 text-sm" key={category.id}>
-                    <span className="font-bold text-slate-700">{category.label}</span>
-                    <strong>{category.amountLabel}</strong>
-                  </div>
-                ))
-              ) : (
-                <p className="rounded-2xl bg-slate-50 px-3 py-3 text-sm font-semibold text-slate-600">
-                  Track flights, lodging, food, and activities for this trip.
-                </p>
-              )}
-            </div>
-            </WalletCard>
-
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
-            <WalletCard
-              actionHref={`${base}/documents`}
-              actionLabel="Open documents"
-              eyebrow="Documents"
-              icon={<FileText className="h-5 w-5" aria-hidden="true" />}
-              title="Keep details together"
-            >
-              <div className="grid gap-2">
-                <DocumentRow label="Confirmations" />
-                <DocumentRow label="Screenshots" />
-                <DocumentRow label="Notes and links" />
-              </div>
-            </WalletCard>
-
-            <WalletCard
-              actionHref={`${base}/sharing`}
-              actionLabel="Manage guests"
-              eyebrow="Share"
-              icon={<Users className="h-5 w-5" aria-hidden="true" />}
-              title="Trip guests"
-            >
-              <p className="text-sm font-semibold leading-6 text-slate-600">
-                Invite travel partners and keep everyone aligned on the same trip pass.
-              </p>
-            </WalletCard>
+            <div className="text-right">
+              <p className="text-2xl font-black text-slate-950">{segmentCount - mappedCount}</p>
+              <p className="text-sm font-bold text-slate-600">need location</p>
             </div>
           </div>
-        </aside>
-      </section>
+          <p className={routeReady ? "mt-4 text-sm font-black text-emerald-700" : "mt-4 text-sm font-black text-amber-700"}>
+            {routeReady ? "Your route is ready." : "Confirm locations to complete the route."}
+          </p>
+        </div>
+      </WalletCard>
+
+      {suggestionsCount > 0 ? (
+        <WalletCard
+          actionHref={`${base}/ideas`}
+          actionLabel="Open Ideas"
+          eyebrow="Ideas"
+          icon={<Sparkles className="h-5 w-5" aria-hidden="true" />}
+          title={`${suggestionsCount} nearby idea${suggestionsCount === 1 ? "" : "s"}`}
+        >
+          <p className="text-sm font-semibold leading-6 text-slate-600">
+            Review places and activities near your route.
+          </p>
+        </WalletCard>
+      ) : null}
+
+      <details className="rounded-[2rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+        <summary className="cursor-pointer text-base font-black text-slate-950">
+          More
+        </summary>
+        <div className="mt-4 grid gap-2">
+          <MoreLink
+            href={`${base}/budget`}
+            icon={<CircleDollarSign className="h-4 w-4" aria-hidden="true" />}
+            label="Expenses"
+            meta={`${actualLabel} total · planned ${plannedLabel} · remaining ${remainingLabel}`}
+          />
+          {expenseCategories.slice(0, 3).map((category) => (
+            <div className="flex min-h-10 items-center justify-between rounded-2xl bg-slate-50 px-3 py-2 text-sm" key={category.id}>
+              <span className="font-bold text-slate-700">{category.label}</span>
+              <strong>{category.amountLabel}</strong>
+            </div>
+          ))}
+          <MoreLink
+            href={`${base}/documents`}
+            icon={<FileText className="h-4 w-4" aria-hidden="true" />}
+            label="Documents"
+            meta="Confirmations, screenshots, notes, and links."
+          />
+          <MoreLink
+            href={`${base}/sharing`}
+            icon={<Users className="h-4 w-4" aria-hidden="true" />}
+            label="Share"
+            meta="Invite trip guests."
+          />
+        </div>
+      </details>
     </div>
   );
 }
 
-function QuickAction({
-  disabled,
+function MoreLink({
   href,
   icon,
-  label
+  label,
+  meta
 }: {
-  disabled?: boolean;
-  href?: string;
+  href: string;
   icon: ReactNode;
   label: string;
+  meta: string;
 }) {
-  const content = (
-    <>
-      <span className="grid h-11 w-11 place-items-center rounded-full bg-white text-slate-950 shadow-sm ring-1 ring-slate-200 transition group-hover:bg-blue-50 group-hover:text-blue-700">
-        {icon}
-      </span>
-      <span className="max-w-[4.8rem] text-center text-[0.68rem] font-black leading-tight text-slate-600">
-        {label}
-      </span>
-    </>
-  );
-
-  if (disabled || !href) {
-    return (
-      <button
-        className="group grid min-h-[5.6rem] justify-items-center gap-2 rounded-[1.35rem] bg-slate-50 px-2 py-3 opacity-60 ring-1 ring-slate-200"
-        disabled
-        title="Coming soon"
-        type="button"
-      >
-        {content}
-      </button>
-    );
-  }
-
   return (
     <Link
-      className="group grid min-h-[5.6rem] justify-items-center gap-2 rounded-[1.35rem] bg-slate-50 px-2 py-3 ring-1 ring-slate-200 transition hover:bg-white focus:outline-none focus:ring-4 focus:ring-blue-100"
+      className="grid min-h-14 grid-cols-[auto_1fr_auto] items-center gap-3 rounded-2xl bg-slate-50 px-3 py-2 transition hover:bg-slate-100 focus:outline-none focus:ring-4 focus:ring-blue-100"
       href={href}
     >
-      {content}
+      <span className="grid h-9 w-9 place-items-center rounded-full bg-white text-blue-700 ring-1 ring-slate-200">
+        {icon}
+      </span>
+      <span className="min-w-0">
+        <span className="block text-sm font-black text-slate-950">{label}</span>
+        <span className="block truncate text-xs font-semibold text-slate-500">{meta}</span>
+      </span>
+      <span className="text-xs font-black text-blue-700">Open</span>
     </Link>
   );
 }
@@ -349,17 +262,6 @@ function WalletCard({
         {actionLabel}
       </Link>
     </article>
-  );
-}
-
-function DocumentRow({ label }: { label: string }) {
-  return (
-    <div className="flex min-h-11 items-center gap-3 rounded-2xl bg-slate-50 px-3 py-2">
-      <span className="grid h-8 w-8 place-items-center rounded-full bg-white text-slate-500 ring-1 ring-slate-200">
-        <FileText className="h-4 w-4" aria-hidden="true" />
-      </span>
-      <span className="text-sm font-bold text-slate-700">{label}</span>
-    </div>
   );
 }
 

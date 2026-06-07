@@ -6,7 +6,7 @@ type TripSharingPageProps = TripSharingData;
 
 export default function TripSharingPage({ collaborators, error, tripId }: TripSharingPageProps) {
   return (
-    <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
+    <div className="grid gap-5">
       <section className="rounded-[1.75rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
@@ -72,7 +72,7 @@ export default function TripSharingPage({ collaborators, error, tripId }: TripSh
         </div>
       </section>
 
-      <aside className="grid gap-5">
+      <section className="grid gap-5">
         <section className="rounded-[1.75rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
           <div className="flex items-center gap-3">
             <span className="grid h-11 w-11 place-items-center rounded-full bg-blue-600 text-white">
@@ -104,7 +104,7 @@ export default function TripSharingPage({ collaborators, error, tripId }: TripSh
             Link sharing coming soon
           </button>
         </section>
-      </aside>
+      </section>
     </div>
   );
 }

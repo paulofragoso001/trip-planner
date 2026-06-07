@@ -98,7 +98,6 @@ export function TripIdeasPage({
   const [hydrated, setHydrated] = useState(false);
   const [pendingAction, setPendingAction] = useState<string | null>(null);
   const [message, setMessage] = useState("");
-  const basePlace = items[0] || null;
   const rows = useMemo(
     () => [
       ...recommendations.map(mapRecommendationRow),
@@ -165,8 +164,8 @@ export function TripIdeasPage({
       ) : null}
 
       <section className="rounded-[1.75rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-        <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_280px] lg:items-end">
-          <div>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div className="min-w-0">
             <p className="text-xs font-black uppercase tracking-[0.18em] text-blue-600">
               Ideas
             </p>
@@ -175,23 +174,15 @@ export function TripIdeasPage({
               Review saved ideas, nearby suggestions, and places you may want to add to your itinerary.
             </p>
           </div>
-          <div className="rounded-2xl bg-slate-50 p-3 ring-1 ring-slate-100">
-            <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-500">
-              Ideas near your route
-            </p>
-            <p className="mt-1 text-sm font-bold text-slate-950">
-              {items.length} mapped place{items.length === 1 ? "" : "s"}
-            </p>
-            <p className="mt-1 truncate text-xs font-semibold text-slate-500">
-              {basePlace ? `Show distance from ${basePlace.title}` : "Add a mapped place to unlock route context."}
-            </p>
-            <Link
-              className="mt-3 inline-flex min-h-10 w-full items-center justify-center rounded-full bg-white px-3 text-xs font-black text-slate-800 ring-1 ring-slate-200"
-              href={`/dashboard/trips/${tripId}/map`}
-            >
-              Open map
-            </Link>
-          </div>
+          <button
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-slate-950 px-4 text-sm font-black text-white disabled:opacity-60 sm:w-auto"
+            disabled={Boolean(pendingAction) || items.length === 0}
+            onClick={() => run(`/api/trips/${tripId}/generate-suggestions`, "Finding ideas")}
+            type="button"
+          >
+            {pendingAction?.includes("generate-suggestions") ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+            Find ideas
+          </button>
         </div>
 
         {showFilters ? (
@@ -249,22 +240,11 @@ export function TripIdeasPage({
         </section>
       ) : null}
 
-      {recommendationsForFilter.length || activeFilter === "all" ? (
+      {recommendationsForFilter.length ? (
         <ActivitySection
-          action={
-            <button
-              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full bg-slate-950 px-3 text-xs font-black text-white disabled:opacity-60"
-              disabled={Boolean(pendingAction) || items.length === 0}
-              onClick={() => run(`/api/trips/${tripId}/generate-suggestions`, "Finding ideas")}
-              type="button"
-            >
-              {pendingAction?.includes("generate-suggestions") ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-              Find ideas
-            </button>
-          }
           title="Nearby Ideas"
         >
-          {recommendationsForFilter.length ? recommendationsForFilter.map((row) =>
+          {recommendationsForFilter.map((row) =>
             row.type === "recommendation" ? (
               <RecommendationRow
                 disabled={Boolean(pendingAction)}
@@ -274,19 +254,12 @@ export function TripIdeasPage({
                 row={row}
               />
             ) : null
-          ) : (
-            <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-600">
-              <p className="font-black text-slate-950">No nearby ideas yet.</p>
-              <p className="mt-1 leading-6">
-                Find restaurants, places, and activities near your mapped route.
-              </p>
-            </div>
           )}
         </ActivitySection>
       ) : null}
 
       {savedPlacesForFilter.length ? (
-        <ActivitySection title="Route places">
+        <ActivitySection title="Saved ideas">
           {savedPlacesForFilter.map((row) =>
             row.type === "place" ? <SavedPlaceRow key={row.title} row={row} /> : null
           )}

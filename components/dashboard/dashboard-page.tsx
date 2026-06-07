@@ -63,7 +63,6 @@ export default function DashboardPage({
 
         <FirstRunOnboarding firstRun={firstRun} />
 
-        <section className="grid gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
         {latestTrip ? (
           <Link
             className="group relative isolate grid min-h-[18rem] content-between overflow-hidden rounded-[2rem] bg-slate-950 p-5 text-white shadow-2xl transition hover:-translate-y-0.5 sm:min-h-[22rem] sm:p-6"
@@ -83,7 +82,7 @@ export default function DashboardPage({
               </h2>
               <p className="mt-3 text-sm font-bold text-white/72">{latestTrip.dateRange}</p>
               <span className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-full bg-white px-5 text-sm font-black text-slate-950">
-                Continue trip
+                Continue trip pass
                 <ArrowRight
                   aria-hidden="true"
                   className="h-4 w-4 transition group-hover:translate-x-1"
@@ -120,37 +119,21 @@ export default function DashboardPage({
           </Link>
         )}
 
-        <div className="grid gap-3">
-          <WalletAction
-            href="/dashboard/trips#new-trip"
-            icon={<Plane aria-hidden="true" className="h-5 w-5" />}
-            label="Create trip"
-            meta="Choose a destination and dates."
-          />
-          <WalletAction
-            href="/dashboard/imports"
-            icon={<Compass aria-hidden="true" className="h-5 w-5" />}
-            label="Start planning"
-            meta="Paste a note, link, or screenshot."
-          />
+        <WalletAction
+          href="/dashboard/imports"
+          icon={<Compass aria-hidden="true" className="h-5 w-5" />}
+          label="Start planning"
+          meta="Paste a note, link, or screenshot."
+        />
+
+        {importsWaiting !== "0" ? (
           <WalletAction
             href={importsWaiting !== "0" ? "/dashboard/imports#ai-review" : "/dashboard/trips"}
-            icon={
-              importsWaiting !== "0" ? (
-                <Sparkles aria-hidden="true" className="h-5 w-5" />
-              ) : (
-                <MapIcon aria-hidden="true" className="h-5 w-5" />
-              )
-            }
-            label={importsWaiting !== "0" ? "Review ideas" : "Open trips"}
-            meta={
-              importsWaiting !== "0"
-                ? `${importsWaiting} waiting to review.`
-                : "Continue itinerary or map."
-            }
+            icon={<Sparkles aria-hidden="true" className="h-5 w-5" />}
+            label="Review ideas"
+            meta={`${importsWaiting} waiting to review.`}
           />
-        </div>
-      </section>
+        ) : null}
 
       {remainingTrips.length ? (
         <WalletCard
@@ -163,22 +146,24 @@ export default function DashboardPage({
           title="Recent passes"
           variant="utility"
         >
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-3">
             {remainingTrips.map((trip) => (
               <Link
-                className="group rounded-[1.75rem] border border-slate-200 bg-white p-4 shadow-sm transition hover:border-blue-200 hover:shadow-md"
+                className="group grid min-h-20 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-[1.75rem] border border-slate-200 bg-white p-4 shadow-sm transition hover:border-blue-200 hover:shadow-md"
                 href={trip.href}
                 key={trip.id}
               >
-                <p className={tripUi.text.micro}>Trip Pass</p>
-                <h3 className="mt-2 truncate text-lg font-black text-slate-950">{trip.name}</h3>
-                <p className="mt-1 text-sm font-semibold text-slate-500">{trip.dateRange}</p>
-                <span className="mt-4 inline-flex items-center gap-2 text-sm font-black text-blue-700">
-                  Open pass
-                  <ArrowRight
-                    aria-hidden="true"
-                    className="h-4 w-4 transition group-hover:translate-x-1"
-                  />
+                <span className="min-w-0">
+                  <span className={tripUi.text.micro}>Trip Pass</span>
+                  <span className="mt-1 block truncate text-lg font-black text-slate-950">
+                    {trip.name}
+                  </span>
+                  <span className="mt-1 block text-sm font-semibold text-slate-500">
+                    {trip.dateRange}
+                  </span>
+                </span>
+                <span className="grid h-11 w-11 place-items-center rounded-full bg-blue-50 text-blue-700 transition group-hover:bg-blue-600 group-hover:text-white">
+                  <ArrowRight aria-hidden="true" className="h-4 w-4" />
                 </span>
               </Link>
             ))}

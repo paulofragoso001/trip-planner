@@ -17,7 +17,7 @@ export default async function DocumentsPage({ params }: PageProps) {
   await params;
 
   return (
-    <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
+    <div className="grid gap-5">
       <section className="rounded-[1.75rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
@@ -79,7 +79,7 @@ export default async function DocumentsPage({ params }: PageProps) {
         </div>
       </section>
 
-      <aside className="rounded-[1.75rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+      <section className="rounded-[1.75rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
         <h3 className="text-lg font-black text-slate-950">What belongs here</h3>
         <div className="mt-4 grid gap-3">
           {sampleTypes.map((item) => (
@@ -91,7 +91,7 @@ export default async function DocumentsPage({ params }: PageProps) {
             </div>
           ))}
         </div>
-      </aside>
+      </section>
     </div>
   );
 }
