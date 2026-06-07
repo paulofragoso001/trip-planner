@@ -68,7 +68,7 @@ export default function TripTimelinePage({
                   </p>
                 </div>
 
-                <div className="mt-4 grid gap-0">
+                <div className="-mx-3 grid gap-0 bg-white px-3 py-2 shadow-sm ring-1 ring-slate-200/70 sm:mx-0 sm:mt-3 sm:rounded-[1.75rem] sm:px-4">
                   {day.items.map((item, index) => (
                     <ItineraryRow
                       isLast={index === day.items.length - 1}
@@ -191,86 +191,226 @@ function ItineraryRow({
 
   return (
     <article
-      className="grid grid-cols-[68px_34px_minmax(0,1fr)] gap-2 sm:grid-cols-[92px_44px_minmax(0,1fr)] sm:gap-3"
+      className="grid grid-cols-[70px_38px_minmax(0,1fr)] gap-2 sm:grid-cols-[96px_44px_minmax(0,1fr)] sm:gap-4"
       id={item.id}
     >
-      <div className="pt-5 text-right">
-        <p className="text-sm font-black text-slate-950">{formatPrimaryTime(item)}</p>
+      <div className="pt-4 text-right sm:pt-5">
+        <p className="text-base font-black leading-tight text-slate-950 sm:text-lg">
+          {formatPrimaryTime(item)}
+        </p>
         {formatSecondaryTimeLabel(item) ? (
-          <p className="mt-1 text-[0.65rem] font-bold uppercase tracking-[0.12em] text-slate-500">
+          <p className="mt-0.5 text-[0.68rem] font-bold uppercase leading-tight tracking-[0.12em] text-slate-500">
             {formatSecondaryTimeLabel(item)}
           </p>
         ) : null}
       </div>
 
       <div className="relative flex justify-center">
-        {!isLast ? <span className={`absolute bottom-0 top-0 w-0.5 ${display.lineClass}`} /> : null}
+        <span
+          className={`absolute top-0 w-1 rounded-full ${display.lineClass} ${
+            isLast ? "bottom-5" : "bottom-0"
+          }`}
+          aria-hidden="true"
+        />
         <span
           aria-label={`${display.label} icon`}
-          className={`relative mt-5 grid h-9 w-9 place-items-center rounded-full border-4 border-white shadow-sm ${display.iconClass}`}
+          className={`relative mt-3 grid h-10 w-10 place-items-center rounded-full border-4 border-[#f4f7fb] shadow-sm sm:mt-4 ${display.iconClass}`}
           data-testid="itinerary-category-icon"
         >
           {display.icon}
         </span>
       </div>
 
-      <div className="min-w-0 pb-4 pt-3">
-        {item.route ? (
-          <RouteTravelPassCard item={item} status={status} tripId={tripId} />
-        ) : item.kind === "flight" ? (
-          <FlightBoardingPassCard item={item} status={status} tripId={tripId} />
-        ) : item.kind === "hotel" ? (
-          <HotelPassCard item={item} status={status} tripId={tripId} />
-        ) : item.kind === "restaurant" ? (
-          <RestaurantReservationCard item={item} status={status} tripId={tripId} />
-        ) : (
-        <div className="rounded-[1.35rem] border border-slate-200 bg-white p-3 shadow-sm ring-1 ring-white transition hover:border-slate-300 hover:shadow-md sm:p-4">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">
-                {display.label}
-              </p>
-            </div>
-            <span className={status.className}>{status.label}</span>
-          </div>
-
-          <div className="mt-3 grid grid-cols-[minmax(0,1fr)_80px] items-start gap-3 sm:grid-cols-[minmax(0,1fr)_128px]">
-            <div className="min-w-0">
-              <h4 className="break-words text-lg font-black leading-tight text-slate-950 sm:text-xl">
-                {item.title}
-              </h4>
-              <p className="mt-2 break-words text-sm leading-6 text-slate-600">
-                {item.location}
-              </p>
-              <ItemSource item={item} />
-              {item.confirmationCode || item.durationLabel ? (
-                <div className="mt-2 flex flex-wrap gap-2 text-xs font-semibold text-slate-500">
-                  {item.confirmationCode ? (
-                    <span>Confirmation {item.confirmationCode}</span>
-                  ) : null}
-                  {item.durationLabel ? <span>{item.durationLabel}</span> : null}
-                </div>
-              ) : null}
-            </div>
-
-            {shouldShowPlacePhoto(item) ? (
-              <PlacePhoto
-                alt={item.imageAlt || `Photo of ${item.title}`}
-                attribution={item.imageAttribution}
-                className="h-20 w-20 rounded-2xl sm:h-32 sm:w-32"
-                fallbackLabel={item.typeLabel || "Place"}
-                src={item.imageUrl}
-              />
-            ) : null}
-          </div>
-
-          <StateCopy item={item} />
-
-          <ItineraryCardActions item={item} tripId={tripId} />
-        </div>
-        )}
+      <div className="min-w-0 pb-3 pt-2 sm:pb-4 sm:pt-3">
+        <TimelineCompactItem displayLabel={display.label} item={item} status={status} tripId={tripId} />
       </div>
     </article>
+  );
+}
+
+function TimelineCompactItem({
+  displayLabel,
+  item,
+  status,
+  tripId
+}: {
+  displayLabel: string;
+  item: TimelineItemView;
+  status: { className: string; label: string };
+  tripId: string;
+}) {
+  return (
+    <div className="min-w-0 border-b border-slate-200/80 pb-3 sm:pb-4">
+      <div className="flex min-w-0 items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-[0.68rem] font-black uppercase tracking-[0.16em] text-slate-500">
+            {displayLabel}
+          </p>
+          <h4 className="mt-1 break-words text-lg font-black leading-tight text-slate-950 sm:text-xl">
+            {item.title}
+          </h4>
+        </div>
+        <span className={`${status.className} shrink-0`}>{status.label}</span>
+      </div>
+
+      <div className="mt-2 grid grid-cols-[minmax(0,1fr)_64px] items-start gap-3 sm:grid-cols-[minmax(0,1fr)_80px]">
+        <div className="min-w-0">
+          <TimelinePrimaryDetails item={item} />
+          <ItemSource item={item} />
+          <StateCopy item={item} />
+        </div>
+
+        {shouldShowTimelineThumbnail(item) ? (
+          <PlacePhoto
+            alt={item.imageAlt || `Photo of ${item.title}`}
+            attribution={item.imageAttribution}
+            className="h-16 w-16 rounded-2xl sm:h-20 sm:w-20"
+            fallbackLabel={item.typeLabel || displayLabel}
+            src={item.imageUrl}
+          />
+        ) : null}
+      </div>
+
+      <ItineraryCardActions item={item} tripId={tripId} />
+    </div>
+  );
+}
+
+function shouldShowTimelineThumbnail(item: TimelineItemView) {
+  return !item.route && item.kind !== "flight";
+}
+
+function TimelinePrimaryDetails({ item }: { item: TimelineItemView }) {
+  if (item.route) {
+    return <RouteInlineDetails item={item} />;
+  }
+
+  if (item.kind === "flight") {
+    return <FlightInlineDetails item={item} />;
+  }
+
+  if (item.kind === "hotel") {
+    return <HotelInlineDetails item={item} />;
+  }
+
+  if (item.kind === "restaurant") {
+    return <RestaurantInlineDetails item={item} />;
+  }
+
+  return <GeneralInlineDetails item={item} />;
+}
+
+function GeneralInlineDetails({ item }: { item: TimelineItemView }) {
+  return (
+    <div className="grid gap-1 text-sm font-semibold leading-5 text-slate-600">
+      <p className="break-words">{item.location}</p>
+      <InlineDetailList item={item} />
+    </div>
+  );
+}
+
+function RestaurantInlineDetails({ item }: { item: TimelineItemView }) {
+  return (
+    <div className="grid gap-1 text-sm font-semibold leading-5 text-slate-600">
+      <p className="break-words">{item.location}</p>
+      <p>
+        {restaurantMealLabel(item)} · {formatPrimaryTime(item)}
+      </p>
+      <p>
+        Reservation:{" "}
+        <span className="font-black text-slate-800">
+          {item.confirmationCode || item.confirmation || "optional"}
+        </span>
+      </p>
+      <InlineDetailList item={item} />
+    </div>
+  );
+}
+
+function HotelInlineDetails({ item }: { item: TimelineItemView }) {
+  return (
+    <div className="grid gap-1 text-sm font-semibold leading-5 text-slate-600">
+      <p className="break-words">{item.location}</p>
+      <p>
+        Check in:{" "}
+        <span className="font-black text-slate-800">
+          {formatHotelDateTime(item.startAt, item.hasStartTime)}
+        </span>
+      </p>
+      <p>
+        Check out:{" "}
+        <span className="font-black text-slate-800">
+          {formatHotelDateTime(item.endAt, item.hasEndTime)}
+        </span>
+      </p>
+      <InlineDetailList item={item} />
+    </div>
+  );
+}
+
+function FlightInlineDetails({ item }: { item: TimelineItemView }) {
+  const flight = getFlightDisplay(item);
+
+  return (
+    <div className="grid gap-2 text-sm font-semibold leading-5 text-slate-600">
+      <div className="flex min-w-0 items-center gap-2">
+        <span className="font-black text-slate-950">{flight.originCode}</span>
+        <ArrowRight className="h-4 w-4 shrink-0 text-slate-400" aria-hidden="true" />
+        <span className="font-black text-slate-950">{flight.destinationCode}</span>
+      </div>
+      <p className="break-words">{flight.airlineLabel}</p>
+      <p>
+        Arrive:{" "}
+        <span className="font-black text-slate-800">
+          {flight.arrivalTime} {item.timeZoneLabel || ""}
+        </span>
+      </p>
+      <InlineDetailList item={item} />
+    </div>
+  );
+}
+
+function RouteInlineDetails({ item }: { item: TimelineItemView }) {
+  const route = item.route;
+  const origin = route?.origin;
+  const destination = route?.destination;
+  const routeReady = hasResolvedRoute(route);
+
+  return (
+    <div className="grid gap-1 text-sm font-semibold leading-5 text-slate-600">
+      <div className="flex min-w-0 items-center gap-2">
+        <span className="min-w-0 truncate font-black text-slate-950">
+          {routeEndpointLabel(origin) || "Origin needed"}
+        </span>
+        <ArrowRight className="h-4 w-4 shrink-0 text-slate-400" aria-hidden="true" />
+        <span className="min-w-0 truncate font-black text-slate-950">
+          {routeEndpointLabel(destination) || "Destination needed"}
+        </span>
+      </div>
+      <p>{routeReady ? "Route ready" : "Add origin and destination to draw this route."}</p>
+      {route?.carrier || route?.flightNumber || route?.confirmation ? (
+        <p className="break-words">
+          {[route.carrier, route.flightNumber, route.confirmation].filter(Boolean).join(" · ")}
+        </p>
+      ) : null}
+      <InlineDetailList item={item} />
+    </div>
+  );
+}
+
+function InlineDetailList({ item }: { item: TimelineItemView }) {
+  const details = [
+    item.confirmationCode ? `Confirmation ${item.confirmationCode}` : null,
+    item.durationLabel,
+    item.costLabel
+  ].filter(Boolean);
+
+  if (!details.length) return null;
+
+  return (
+    <p className="break-words text-xs font-bold uppercase tracking-[0.1em] text-slate-400">
+      {details.join(" · ")}
+    </p>
   );
 }
 
@@ -283,342 +423,6 @@ function ItemSource({ item }: { item: TimelineItemView }) {
       {source}
     </p>
   );
-}
-
-function RestaurantReservationCard({
-  item,
-  status,
-  tripId
-}: {
-  item: TimelineItemView;
-  status: { className: string; label: string };
-  tripId: string;
-}) {
-  return (
-    <div className="rounded-[1.35rem] border border-slate-200 bg-white p-3 shadow-sm ring-1 ring-white transition hover:border-slate-300 hover:shadow-md sm:p-4">
-      <div className="flex items-start justify-between gap-3">
-        <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">
-          Restaurant
-        </p>
-        <span className={status.className}>{status.label}</span>
-      </div>
-
-      <div className="mt-4 grid grid-cols-[minmax(0,1fr)_80px] items-start gap-3 sm:grid-cols-[minmax(0,1fr)_132px]">
-        <div className="min-w-0">
-          <h4 className="break-words text-xl font-black leading-tight text-slate-950 sm:text-2xl">
-            {item.title}
-          </h4>
-          <p className="mt-2 break-words text-sm leading-6 text-slate-600">
-            {item.location}
-          </p>
-
-          <div className="mt-4 grid gap-1.5 text-sm font-semibold text-slate-600">
-            <p>{restaurantMealLabel(item)} · {formatPrimaryTime(item)}</p>
-            <p>
-              Reservation:{" "}
-              <span className="font-black text-slate-800">
-                {item.confirmationCode || item.confirmation ? item.confirmationCode || item.confirmation : "optional"}
-              </span>
-            </p>
-          </div>
-        </div>
-
-        <PlacePhoto
-          alt={item.imageAlt || `Photo of ${item.title}`}
-          attribution={item.imageAttribution}
-          className="h-20 w-20 rounded-2xl sm:h-32 sm:w-32"
-          fallbackLabel="Restaurant"
-          src={item.imageUrl}
-        />
-      </div>
-
-      <ItineraryCardActions item={item} tripId={tripId} />
-    </div>
-  );
-}
-
-function RouteTravelPassCard({
-  item,
-  status,
-  tripId
-}: {
-  item: TimelineItemView;
-  status: { className: string; label: string };
-  tripId: string;
-}) {
-  const route = item.route;
-  const origin = route?.origin;
-  const destination = route?.destination;
-  const routeReady = hasResolvedRoute(route);
-  const modeLabel = route?.mode === "transportation" ? "Transport" : route?.mode || "Route";
-  const originCode = origin?.code || airportCodeFromEndpoint(origin) || "FROM";
-  const destinationCode = destination?.code || airportCodeFromEndpoint(destination) || "TO";
-
-  return (
-    <div className="overflow-hidden rounded-[1.35rem] border border-slate-200 bg-white shadow-sm ring-1 ring-white transition hover:border-slate-300 hover:shadow-md">
-      <div className="p-3 sm:p-4">
-        <div className="flex items-start justify-between gap-3">
-          <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">
-            {modeLabel}
-          </p>
-          <span className={routeReady ? "inline-flex min-h-7 items-center rounded-full bg-emerald-50 px-2.5 text-xs font-black text-emerald-700" : status.className}>
-            {routeReady ? "Route ready" : "Needs route details"}
-          </span>
-        </div>
-
-        <h4 className="mt-4 break-words text-xl font-black leading-tight text-slate-950 sm:text-2xl">
-          {item.title}
-        </h4>
-
-        <div className="mt-5 grid grid-cols-[1fr_auto_1fr] items-end gap-3">
-          <div className="min-w-0">
-            <p className="text-3xl font-black leading-none tracking-tight text-slate-950 sm:text-5xl">
-              {originCode}
-            </p>
-            <p className="mt-1 truncate text-sm font-semibold text-slate-500">
-              {routeEndpointLabel(origin) || "Origin needed"}
-            </p>
-          </div>
-          <div className="mb-4 flex min-w-12 items-center justify-center text-slate-400">
-            <span className="h-px w-6 bg-slate-300" aria-hidden="true" />
-            <ArrowRight className="mx-1 h-4 w-4" aria-hidden="true" />
-            <span className="h-px w-6 bg-slate-300" aria-hidden="true" />
-          </div>
-          <div className="min-w-0 text-right">
-            <p className="text-3xl font-black leading-none tracking-tight text-slate-950 sm:text-5xl">
-              {destinationCode}
-            </p>
-            <p className="mt-1 truncate text-sm font-semibold text-slate-500">
-              {routeEndpointLabel(destination) || "Destination needed"}
-            </p>
-          </div>
-        </div>
-
-        <div className="mt-5 grid grid-cols-[1fr_auto_1fr] items-start gap-3">
-          <div>
-            <p className="text-base font-black text-slate-950">
-              {item.startAt && item.hasStartTime ? formatFlightTime(item.startAt) : "--"}
-            </p>
-            <p className="mt-1 text-xs font-semibold text-slate-500">{formatFlightDate(item.startAt)}</p>
-          </div>
-          <div className="pt-1 text-slate-300">
-            {route?.mode === "train" ? (
-              <Train className="h-5 w-5" aria-hidden="true" />
-            ) : route?.mode === "drive" || route?.mode === "transfer" || route?.mode === "bus" ? (
-              <Car className="h-5 w-5" aria-hidden="true" />
-            ) : (
-              <Plane className="h-5 w-5 rotate-90" aria-hidden="true" />
-            )}
-          </div>
-          <div className="text-right">
-            <p className="text-base font-black text-slate-950">
-              {item.endAt && item.hasEndTime ? formatFlightTime(item.endAt) : "--"}
-            </p>
-            <p className="mt-1 text-xs font-semibold text-slate-500">{formatFlightDate(item.endAt)}</p>
-          </div>
-        </div>
-
-        {!routeReady ? (
-          <p className="mt-4 rounded-xl bg-amber-50 px-3 py-2 text-xs font-bold text-amber-800 sm:text-sm">
-            Add origin and destination to draw this route.
-          </p>
-        ) : null}
-      </div>
-
-      <div className="relative border-t border-dashed border-slate-200 px-3 py-3 sm:px-4">
-        <span className="absolute -left-3 -top-3 h-6 w-6 rounded-full bg-[#f4f7fb]" aria-hidden="true" />
-        <span className="absolute -right-3 -top-3 h-6 w-6 rounded-full bg-[#f4f7fb]" aria-hidden="true" />
-        <p className="text-sm font-black text-slate-950">
-          {[route?.carrier, route?.flightNumber].filter(Boolean).join(" · ") || "Route details"}
-        </p>
-        {route?.confirmation || item.confirmationCode ? (
-          <p className="mt-2 text-xs font-semibold text-slate-500">
-            Confirmation: <span className="font-black text-slate-800">{route?.confirmation || item.confirmationCode}</span>
-          </p>
-        ) : null}
-        <ItineraryCardActions item={item} tripId={tripId} />
-      </div>
-    </div>
-  );
-}
-
-function HotelPassCard({
-  item,
-  status,
-  tripId
-}: {
-  item: TimelineItemView;
-  status: { className: string; label: string };
-  tripId: string;
-}) {
-  const hotelStatus = getHotelStatus(item, status);
-
-  return (
-    <div className="overflow-hidden rounded-[1.35rem] border border-slate-200 bg-white shadow-sm ring-1 ring-white transition hover:border-slate-300 hover:shadow-md">
-      <div className="p-3 sm:p-4">
-        <div className="flex items-start justify-between gap-3">
-          <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">
-            Hotel
-          </p>
-          <span className={hotelStatus.className}>{hotelStatus.label}</span>
-        </div>
-
-        <div className="mt-5 grid grid-cols-[minmax(0,1fr)_80px] items-start gap-3 sm:grid-cols-[minmax(0,1fr)_132px]">
-          <div className="min-w-0">
-            <h4 className="break-words text-xl font-black leading-tight text-slate-950 sm:text-2xl">
-              {item.title}
-            </h4>
-            <p className="mt-2 break-words text-sm leading-6 text-slate-600">
-              {item.location}
-            </p>
-          </div>
-          <PlacePhoto
-            alt={item.imageAlt || `Photo of ${item.title}`}
-            attribution={item.imageAttribution}
-            className="h-20 w-20 rounded-2xl sm:h-32 sm:w-32"
-            fallbackLabel="Hotel"
-            src={item.imageUrl}
-          />
-        </div>
-
-        <div className="mt-5 grid grid-cols-2 gap-3 rounded-2xl bg-slate-50 p-3">
-          <div>
-            <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-400">
-              Check-in
-            </p>
-            <p className="mt-1 text-sm font-black text-slate-950">
-              {formatHotelDateTime(item.startAt, item.hasStartTime)}
-            </p>
-          </div>
-          <div>
-            <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-400">
-              Check-out
-            </p>
-            <p className="mt-1 text-sm font-black text-slate-950">
-              {formatHotelDateTime(item.endAt, item.hasEndTime)}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      <div className="relative border-t border-dashed border-slate-200 px-3 py-3 sm:px-4">
-        <span className="absolute -left-3 -top-3 h-6 w-6 rounded-full bg-[#f4f7fb]" aria-hidden="true" />
-        <span className="absolute -right-3 -top-3 h-6 w-6 rounded-full bg-[#f4f7fb]" aria-hidden="true" />
-        {item.confirmationCode || item.confirmation ? (
-          <p className="text-xs font-semibold text-slate-500">
-            Confirmation: <span className="font-black text-slate-800">{item.confirmationCode || item.confirmation}</span>
-          </p>
-        ) : null}
-        <ItineraryCardActions item={item} tripId={tripId} />
-      </div>
-    </div>
-  );
-}
-
-function FlightBoardingPassCard({
-  item,
-  status,
-  tripId
-}: {
-  item: TimelineItemView;
-  status: { className: string; label: string };
-  tripId: string;
-}) {
-  const flight = getFlightDisplay(item);
-  const flightStatus = getFlightStatus(item, status);
-
-  return (
-    <div className="overflow-hidden rounded-[1.35rem] border border-slate-200 bg-white shadow-sm ring-1 ring-white transition hover:border-slate-300 hover:shadow-md">
-      <div className="p-3 sm:p-4">
-        <div className="flex items-start justify-between gap-3">
-          <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">
-            Flight
-          </p>
-          <span className={flightStatus.className}>
-            {flightStatus.label}
-          </span>
-        </div>
-
-        <div className="mt-5 grid grid-cols-[1fr_auto_1fr] items-end gap-3">
-          <div className="min-w-0">
-            <p className="text-4xl font-black leading-none tracking-tight text-slate-950 sm:text-5xl">
-              {flight.originCode}
-            </p>
-            <p className="mt-1 truncate text-sm font-semibold text-slate-500">
-              {flight.originCity}
-            </p>
-          </div>
-          <div className="mb-4 flex min-w-14 items-center justify-center text-slate-400">
-            <span className="h-px w-8 bg-slate-300" aria-hidden="true" />
-            <ArrowRight className="mx-1 h-4 w-4" aria-hidden="true" />
-            <span className="h-px w-8 bg-slate-300" aria-hidden="true" />
-          </div>
-          <div className="min-w-0 text-right">
-            <p className="text-4xl font-black leading-none tracking-tight text-slate-950 sm:text-5xl">
-              {flight.destinationCode}
-            </p>
-            <p className="mt-1 truncate text-sm font-semibold text-slate-500">
-              {flight.destinationCity}
-            </p>
-          </div>
-        </div>
-
-        <div className="mt-5 grid grid-cols-[1fr_auto_1fr] items-start gap-3">
-          <div>
-            <p className="text-lg font-black text-slate-950">{flight.departureTime}</p>
-            <p className="mt-1 text-xs font-semibold text-slate-500">{flight.departureDate}</p>
-          </div>
-          <div className="pt-1 text-slate-300">
-            <Plane className="h-5 w-5 rotate-90" aria-hidden="true" />
-          </div>
-          <div className="text-right">
-            <p className="text-lg font-black text-slate-950">{flight.arrivalTime}</p>
-            <p className="mt-1 text-xs font-semibold text-slate-500">{flight.arrivalDate}</p>
-          </div>
-        </div>
-      </div>
-
-      <div className="relative border-t border-dashed border-slate-200 px-3 py-3 sm:px-4">
-        <span className="absolute -left-3 -top-3 h-6 w-6 rounded-full bg-[#f4f7fb]" aria-hidden="true" />
-        <span className="absolute -right-3 -top-3 h-6 w-6 rounded-full bg-[#f4f7fb]" aria-hidden="true" />
-        <p className="text-sm font-black text-slate-950">{flight.airlineLabel}</p>
-        <div className="mt-3 grid grid-cols-3 gap-2 text-xs text-slate-600">
-          <BoardingPassMeta label="Terminal" value={flight.terminal} />
-          <BoardingPassMeta label="Gate" value={flight.gate} />
-          <BoardingPassMeta label="Seat" value={flight.seat} />
-        </div>
-        {flight.confirmation ? (
-          <p className="mt-3 text-xs font-semibold text-slate-500">
-            Confirmation: <span className="font-black text-slate-800">{flight.confirmation}</span>
-          </p>
-        ) : null}
-        <ItineraryCardActions item={item} tripId={tripId} />
-      </div>
-    </div>
-  );
-}
-
-function BoardingPassMeta({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <p className="font-black uppercase tracking-[0.12em] text-slate-400">{label}</p>
-      <p className="mt-1 font-black text-slate-800">{value}</p>
-    </div>
-  );
-}
-
-function getFlightStatus(
-  item: TimelineItemView,
-  fallback: { className: string; label: string }
-) {
-  const base = "inline-flex min-h-7 items-center rounded-full px-2.5 text-xs font-black";
-  if (item.locationStatus === "provider_failed") {
-    return { className: `${base} bg-amber-50 text-amber-700`, label: "Check status" };
-  }
-  if (item.startAt || item.confirmation || item.confirmationCode) {
-    return { className: `${base} bg-emerald-50 text-emerald-700`, label: "Confirmed" };
-  }
-  return fallback;
 }
 
 function StateCopy({ item }: { item: TimelineItemView }) {
@@ -641,11 +445,6 @@ function StateCopy({ item }: { item: TimelineItemView }) {
   return null;
 }
 
-function shouldShowPlacePhoto(item: TimelineItemView) {
-  if (!item.imageUrl) return false;
-  return !["flight", "hotel"].includes(item.kind);
-}
-
 function restaurantMealLabel(item: TimelineItemView) {
   const source = `${item.meta} ${item.typeLabel} ${item.title}`.toLowerCase();
   if (source.includes("breakfast")) return "Breakfast";
@@ -653,20 +452,6 @@ function restaurantMealLabel(item: TimelineItemView) {
   if (source.includes("lunch")) return "Lunch";
   if (source.includes("bar") || source.includes("drinks")) return "Drinks";
   return "Dinner";
-}
-
-function getHotelStatus(
-  item: TimelineItemView,
-  fallback: { className: string; label: string }
-) {
-  const base = "inline-flex min-h-7 items-center rounded-full px-2.5 text-xs font-black";
-  if (item.locationStatus === "provider_failed") {
-    return { className: `${base} bg-amber-50 text-amber-700`, label: "Check status" };
-  }
-  if (item.startAt || item.confirmation || item.confirmationCode) {
-    return { className: `${base} bg-emerald-50 text-emerald-700`, label: "Confirmed" };
-  }
-  return fallback;
 }
 
 function formatHotelDateTime(value: string | null, hasExplicitTime: boolean) {
