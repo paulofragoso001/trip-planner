@@ -206,6 +206,10 @@ test.describe("mobile soft-launch UX", () => {
     await expect(
       page.getByText("Pick up a trip, start planning, or review ideas waiting for you.")
     ).toBeVisible();
+    await expect(page.getByTestId("home-launch-page")).toBeVisible();
+    await expect(page.getByTestId("home-smart-start")).toBeVisible();
+    await expect(page.getByLabel("Where are you headed?")).toBeVisible();
+    await expect(page.getByTestId("home-smart-create-trip")).toBeVisible();
     await expect(page.getByTestId("home-primary-cta")).toHaveCount(1);
     await expect(page.getByText("Start with an idea")).toBeVisible();
     await expect(page.getByText("Turn saved travel ideas into mapped trip plans.")).toHaveCount(0);

@@ -3,13 +3,12 @@ import type { ReactNode } from "react";
 import {
   ArrowRight,
   Bell,
-  Compass,
-  Map as MapIcon,
-  Plane,
+  MapPin,
   Radar,
   Sparkles
 } from "lucide-react";
 import type { DashboardData } from "@/app/dashboard/loader";
+import { HomeSmartStart } from "@/components/dashboard/home-smart-start";
 import { tripUi } from "@/components/trip-ui";
 import { WalletActionLink, WalletCard } from "@/components/wallet/wallet-card";
 import { WalletPageShell } from "@/components/wallet/wallet-page-shell";
@@ -42,161 +41,215 @@ export default function DashboardPage({
   const remainingTrips = recentTrips.slice(1, 4);
   const primaryHeroHref = latestTrip ? latestTrip.href : "/dashboard/trips#new-trip";
   const primaryHeroLabel = latestTrip ? "Continue trip" : "Create your first trip";
+  const heroImageUrl = heroImage.imageUrl || null;
+  const heroImageAlt = heroImage.imageAlt || "Wayline travel pass background";
 
   return (
-    <WalletPageShell
-      actions={
-        <>
-          <WalletActionLink data-testid="home-primary-cta" href={primaryHeroHref}>
-            {primaryHeroLabel}
-          </WalletActionLink>
-          <WalletActionLink
-            className="bg-white text-slate-950 hover:bg-slate-100"
-            href="/dashboard/imports"
-          >
-            Start planning
-          </WalletActionLink>
-        </>
-      }
-      compactHero
-      eyebrow="WAYLINE"
-      fallbackGradient={heroImage.fallbackGradient}
-      heroImage={heroImage}
-      subtitle="Pick up a trip, start planning, or review ideas waiting for you."
-      title="Your travel companion"
+    <div
+      className="mx-auto grid w-full max-w-5xl gap-4 pb-[calc(6rem+env(safe-area-inset-bottom))] sm:gap-5 lg:pb-4"
+      data-testid="home-launch-page"
     >
-      <div className="mx-auto grid w-full max-w-4xl gap-4 sm:gap-5">
+      <section
+        className="relative isolate overflow-visible rounded-[2rem] border border-white/10 bg-slate-950 p-4 text-white shadow-[0_28px_90px_rgba(2,6,23,0.28)] sm:rounded-[2.25rem] sm:p-6 lg:p-7"
+        data-testid="home-hero"
+      >
+        {heroImageUrl ? (
+          <img
+            alt={heroImageAlt}
+            className="absolute inset-0 -z-10 h-full w-full rounded-[inherit] object-cover"
+            loading="lazy"
+            src={heroImageUrl}
+          />
+        ) : (
+          <div className={`absolute inset-0 -z-10 rounded-[inherit] ${heroImage.fallbackGradient}`} />
+        )}
+        <div className="absolute inset-0 -z-10 rounded-[inherit] bg-[radial-gradient(circle_at_16%_4%,rgba(255,255,255,0.22),transparent_28%),linear-gradient(135deg,rgba(2,6,23,0.38),rgba(2,6,23,0.91)_62%,rgba(2,6,23,0.96))]" />
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="text-xs font-black uppercase tracking-[0.26em] text-white/64">Wayline</p>
+          <div className="flex flex-wrap gap-2">
+            <Link
+              className="inline-flex min-h-11 items-center justify-center rounded-full bg-white px-4 text-sm font-black text-slate-950 transition hover:bg-slate-100 focus:outline-none focus:ring-4 focus:ring-white/30"
+              data-testid="home-primary-cta"
+              href={primaryHeroHref}
+            >
+              {primaryHeroLabel}
+            </Link>
+            <Link
+              className="inline-flex min-h-11 items-center justify-center rounded-full border border-white/18 bg-white/10 px-4 text-sm font-black text-white backdrop-blur transition hover:bg-white/16 focus:outline-none focus:ring-4 focus:ring-white/20"
+              href="/dashboard/imports"
+            >
+              Start planning
+            </Link>
+          </div>
+        </div>
+
+        <div className="mt-14 max-w-3xl sm:mt-16">
+          <h1 className="break-words text-4xl font-black leading-[0.94] tracking-tight sm:text-6xl lg:text-7xl">
+            Your travel companion
+          </h1>
+          <p className="mt-4 max-w-2xl text-base font-bold leading-7 text-white/78 sm:text-lg">
+            Pick up a trip, start planning, or review ideas waiting for you.
+          </p>
+        </div>
+
+        <HomeSmartStart />
+      </section>
+
+      <div className="grid gap-3" data-testid="home-card-stack">
         {latestTrip ? (
           <Link
-            className="group relative isolate grid min-h-[12rem] content-between overflow-hidden rounded-[2rem] bg-slate-950 p-5 text-white shadow-2xl transition hover:-translate-y-0.5 sm:min-h-[14rem] sm:p-6"
+            className="group grid min-h-28 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-[1.75rem] border border-white/70 bg-white/94 p-4 text-slate-950 shadow-[0_18px_50px_rgba(15,23,42,0.08)] ring-1 ring-slate-950/5 transition hover:-translate-y-0.5 hover:shadow-[0_22px_60px_rgba(15,23,42,0.12)] sm:p-5"
+            data-testid="latest-trip-pass"
             href={latestTrip.href}
           >
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_10%,rgba(255,255,255,0.24),transparent_30%),linear-gradient(135deg,#020617,#1d4ed8_54%,#0f766e)]" />
-            <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(2,6,23,0.04),rgba(2,6,23,0.78))]" />
-            <div className="relative flex items-start justify-between gap-3">
-              <p className="text-xs font-black uppercase tracking-[0.22em] text-white/62">
-                Latest trip
-              </p>
-              <span className={tripUi.card.walletGlass}>{latestTrip.status}</span>
-            </div>
-            <div className="relative">
-              <h2 className="max-w-2xl break-words text-2xl font-black leading-[0.98] tracking-tight sm:text-4xl">
-                {latestTrip.name}
-              </h2>
-              <p className="mt-3 text-sm font-bold text-white/72">{latestTrip.dateRange}</p>
-              <span className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-full bg-white px-5 text-sm font-black text-slate-950">
-                Continue
-                <ArrowRight
-                  aria-hidden="true"
-                  className="h-4 w-4 transition group-hover:translate-x-1"
-                />
+            <span className="min-w-0">
+              <span className="flex flex-wrap items-center gap-2">
+                <span className="text-xs font-black uppercase tracking-[0.18em] text-blue-600">
+                  Latest trip
+                </span>
+                <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-black text-blue-700">
+                  {latestTrip.status}
+                </span>
               </span>
-            </div>
+              <span className="mt-2 block break-words text-xl font-black leading-tight sm:text-2xl">
+                {latestTrip.name}
+              </span>
+              <span className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-sm font-bold text-slate-500">
+                <span>{latestTrip.destination}</span>
+                <span>{latestTrip.dateRange}</span>
+              </span>
+            </span>
+            <span className="grid h-12 w-12 place-items-center rounded-full bg-slate-950 text-white transition group-hover:bg-blue-600">
+              <ArrowRight aria-hidden="true" className="h-4 w-4" />
+            </span>
           </Link>
         ) : (
-          <WalletCard
-            action={
-              <WalletActionLink href="/dashboard/trips#new-trip">Create trip</WalletActionLink>
-            }
-            eyebrow="Travel pass"
-            title="Create your first trip"
-            variant="utility"
-          >
-            <p className="text-sm font-semibold leading-6 text-slate-600">
-              Choose a destination and start building your travel pass.
-            </p>
-          </WalletCard>
+          <HomeRow
+            cta="Create trip"
+            href="/dashboard/trips#new-trip"
+            icon={<MapPin aria-hidden="true" className="h-5 w-5" />}
+            label="Create your first trip"
+            meta="Choose a destination and start building your travel pass."
+            tone="dark"
+          />
         )}
 
-        <WalletAction
+        <HomeRow
+          cta="Add idea"
           href="/dashboard/imports"
-          icon={<Compass aria-hidden="true" className="h-5 w-5" />}
+          icon={<Sparkles aria-hidden="true" className="h-5 w-5" />}
           label="Start with an idea"
           meta="Paste a note, link, or screenshot. Wayline will find places for you to review."
-          cta="Add idea"
         />
 
         {ideasWaitingCount > 0 ? (
-          <WalletAction
+          <HomeRow
+            cta="Review places"
             href="/dashboard/imports#ai-review"
             icon={<Sparkles aria-hidden="true" className="h-5 w-5" />}
             label="Ready for review"
-            meta="Review places Wayline found before adding them to a trip."
-            cta="Review places"
+            meta={`${ideasWaitingCount} idea${ideasWaitingCount === 1 ? "" : "s"} waiting to become places.`}
           />
         ) : null}
 
-      {remainingTrips.length ? (
-        <WalletCard
-          action={
-            <Link className="text-sm font-black text-blue-700" href="/dashboard/trips">
-              View all trips
-            </Link>
-          }
-          eyebrow="Travel wallet"
-          title="Recent trips"
-          variant="utility"
-        >
-          <div className="grid gap-3">
-            {remainingTrips.map((trip) => (
-              <Link
-                className="group grid min-h-20 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-[1.75rem] border border-slate-200 bg-white p-4 shadow-sm transition hover:border-blue-200 hover:shadow-md"
-                href={trip.href}
-                key={trip.id}
-              >
-                <span className="min-w-0">
-                  <span className={tripUi.text.micro}>{trip.status}</span>
-                  <span className="mt-1 block truncate text-lg font-black text-slate-950">
-                    {trip.name}
-                  </span>
-                  <span className="mt-1 block text-sm font-semibold text-slate-500">
-                    {trip.dateRange}
-                  </span>
-                </span>
-                <span className="grid h-11 w-11 place-items-center rounded-full bg-blue-50 text-blue-700 transition group-hover:bg-blue-600 group-hover:text-white">
-                  <ArrowRight aria-hidden="true" className="h-4 w-4" />
-                </span>
+        {remainingTrips.length ? (
+          <section className="rounded-[1.75rem] border border-white/70 bg-white/94 p-4 shadow-[0_18px_50px_rgba(15,23,42,0.08)] ring-1 ring-slate-950/5 sm:p-5">
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-base font-black text-slate-950">Recent trips</h2>
+              <Link className="text-sm font-black text-blue-700" href="/dashboard/trips">
+                View all trips
               </Link>
-            ))}
-          </div>
-        </WalletCard>
-      ) : null}
+            </div>
+            <div className="mt-3 grid gap-2">
+              {remainingTrips.map((trip) => (
+                <Link
+                  className="group grid min-h-16 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-2xl bg-slate-50 px-4 py-3 transition hover:bg-blue-50"
+                  href={trip.href}
+                  key={trip.id}
+                >
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm font-black text-slate-950">
+                      {trip.name}
+                    </span>
+                    <span className="mt-0.5 block truncate text-xs font-bold text-slate-500">
+                      {trip.destination} · {trip.dateRange}
+                    </span>
+                  </span>
+                  <ArrowRight
+                    aria-hidden="true"
+                    className="h-4 w-4 text-slate-400 transition group-hover:translate-x-1 group-hover:text-blue-700"
+                  />
+                </Link>
+              ))}
+            </div>
+          </section>
+        ) : null}
       </div>
-    </WalletPageShell>
+    </div>
   );
 }
 
-function WalletAction({
+function HomeRow({
+  cta,
   href,
   icon,
-  cta,
   label,
-  meta
+  meta,
+  tone = "light"
 }: {
+  cta: string;
   href: string;
   icon: ReactNode;
-  cta: string;
   label: string;
   meta: string;
+  tone?: "dark" | "light";
 }) {
   return (
     <Link
-      className="group grid min-h-24 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-[1.75rem] border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-md"
+      className={
+        tone === "dark"
+          ? "group grid min-h-24 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-[1.75rem] bg-slate-950 p-4 text-white shadow-[0_18px_50px_rgba(15,23,42,0.16)] transition hover:-translate-y-0.5 sm:p-5"
+          : "group grid min-h-24 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-[1.75rem] border border-white/70 bg-white/94 p-4 text-slate-950 shadow-[0_18px_50px_rgba(15,23,42,0.08)] ring-1 ring-slate-950/5 transition hover:-translate-y-0.5 hover:shadow-[0_22px_60px_rgba(15,23,42,0.12)] sm:p-5"
+      }
       href={href}
     >
-      <span className="grid h-12 w-12 place-items-center rounded-2xl bg-blue-50 text-blue-700">
+      <span
+        className={
+          tone === "dark"
+            ? "grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-white/12 text-white"
+            : "grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-blue-50 text-blue-700"
+        }
+      >
         {icon}
       </span>
       <span className="min-w-0">
-        <span className="block text-base font-black text-slate-950">{label}</span>
-        <span className="mt-1 block text-sm font-semibold text-slate-500">{meta}</span>
-        <span className="mt-3 inline-flex min-h-11 items-center rounded-full bg-slate-950 px-4 text-sm font-black text-white sm:hidden">
+        <span className="block text-base font-black">{label}</span>
+        <span
+          className={
+            tone === "dark"
+              ? "mt-1 block text-sm font-semibold leading-5 text-white/66"
+              : "mt-1 block text-sm font-semibold leading-5 text-slate-500"
+          }
+        >
+          {meta}
+        </span>
+        <span
+          className={
+            tone === "dark"
+              ? "mt-3 inline-flex min-h-10 items-center rounded-full bg-white px-4 text-sm font-black text-slate-950 sm:hidden"
+              : "mt-3 inline-flex min-h-10 items-center rounded-full bg-slate-950 px-4 text-sm font-black text-white sm:hidden"
+          }
+        >
           {cta}
         </span>
       </span>
       <ArrowRight
         aria-hidden="true"
-        className="h-4 w-4 text-slate-400 transition group-hover:translate-x-1 group-hover:text-blue-700"
+        className={
+          tone === "dark"
+            ? "h-4 w-4 text-white/54 transition group-hover:translate-x-1 group-hover:text-white"
+            : "h-4 w-4 text-slate-400 transition group-hover:translate-x-1 group-hover:text-blue-700"
+        }
       />
     </Link>
   );

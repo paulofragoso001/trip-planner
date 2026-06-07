@@ -15,6 +15,7 @@ export type DashboardMetricView = {
 
 export type DashboardRecentTripView = {
   dateRange: string;
+  destination: string;
   href: string;
   id: string;
   name: string;
@@ -257,6 +258,7 @@ function emptyFirstRunState(): FirstRunState {
 function mapRecentTrip(row: TripRow): DashboardRecentTripView {
   return {
     dateRange: formatDateRange(row.start_date, row.end_date),
+    destination: row.destination || "Destination not set",
     href: `/dashboard/trips/${row.id}`,
     id: row.id,
     name: row.name || row.title || "Untitled trip",

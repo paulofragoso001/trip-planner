@@ -32,6 +32,8 @@ test("loads dashboard summary and route-split pages", async ({ page }) => {
     })
   ).toBeVisible({ timeout: 20_000 });
   const dashboardContent = page.getByTestId("app-shell-content");
+  await expect(dashboardContent.getByTestId("home-launch-page")).toBeVisible();
+  await expect(dashboardContent.getByTestId("home-hero")).toBeVisible();
   await expect(
     dashboardContent.getByText("Pick up a trip, start planning, or review ideas waiting for you.")
   ).toBeVisible();
@@ -39,6 +41,9 @@ test("loads dashboard summary and route-split pages", async ({ page }) => {
   await expect(dashboardContent.getByTestId("home-primary-cta")).toHaveText(
     /Continue trip|Create your first trip/
   );
+  await expect(dashboardContent.getByTestId("home-smart-start")).toBeVisible();
+  await expect(dashboardContent.getByLabel("Where are you headed?")).toBeVisible();
+  await expect(dashboardContent.getByTestId("home-smart-create-trip")).toBeVisible();
   await expect(
     dashboardContent.getByRole("link", { exact: true, name: "Start planning" }).first()
   ).toBeVisible();
