@@ -203,9 +203,16 @@ test.describe("mobile soft-launch UX", () => {
 
     await page.goto(`${baseUrl}/dashboard`, { waitUntil: "commit" });
     await expect(page.getByRole("heading", { name: "Your travel companion" })).toBeVisible();
+    await expect(
+      page.getByText("Pick up a trip, start planning, or review ideas waiting for you.")
+    ).toBeVisible();
+    await expect(page.getByTestId("home-primary-cta")).toHaveCount(1);
+    await expect(page.getByText("Start with an idea")).toBeVisible();
     await expect(page.getByText("Turn saved travel ideas into mapped trip plans.")).toHaveCount(0);
     await expect(page.getByText("First Plan Guide")).toHaveCount(0);
     await expect(page.getByText("Add, review, create.")).toHaveCount(0);
+    await expect(page.getByText("Recent passes")).toHaveCount(0);
+    await expect(page.getByText(/0 waiting to review/i)).toHaveCount(0);
 
     await page.goto(`${baseUrl}/dashboard/imports`, { waitUntil: "commit" });
     await expect(page.getByTestId("imports-route")).toBeVisible({ timeout: 15_000 });

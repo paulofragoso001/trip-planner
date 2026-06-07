@@ -33,22 +33,35 @@ test("loads dashboard summary and route-split pages", async ({ page }) => {
   ).toBeVisible({ timeout: 20_000 });
   const dashboardContent = page.getByTestId("app-shell-content");
   await expect(
-    dashboardContent.getByRole("link", { name: /Start planning/ }).first()
+    dashboardContent.getByText("Pick up a trip, start planning, or review ideas waiting for you.")
+  ).toBeVisible();
+  await expect(dashboardContent.getByTestId("home-primary-cta")).toHaveCount(1);
+  await expect(dashboardContent.getByTestId("home-primary-cta")).toHaveText(
+    /Continue trip|Create your first trip/
+  );
+  await expect(
+    dashboardContent.getByRole("link", { exact: true, name: "Start planning" }).first()
   ).toBeVisible();
   await expect(
-    dashboardContent.getByRole("link", { name: /View trips|Continue trip|Create your first trip/ }).first()
-  ).toBeVisible();
+    dashboardContent.getByRole("link", { exact: true, name: "Start planning" }).first()
+  ).toHaveAttribute("href", "/dashboard/imports");
+  await expect(dashboardContent.getByText("Start with an idea")).toBeVisible();
   await expect(page.getByTestId("app-shell-nav").getByRole("link", { name: "Saved Inspiration" })).toHaveCount(0);
   await expect(page.getByTestId("app-shell-nav").getByRole("link", { name: "Flight Status" })).toHaveCount(0);
   await expect(page.getByTestId("app-shell-nav").getByRole("link", { name: "Reports" })).toHaveCount(0);
   await expect(page.getByTestId("app-shell-nav").getByRole("link", { name: "Layout Simulator" })).toHaveCount(0);
   await expect(page.getByTestId("app-shell-nav").getByRole("link", { name: "Admin" })).toHaveCount(0);
+  await expect(dashboardContent.getByText("Dashboard")).toHaveCount(0);
+  await expect(dashboardContent.getByText("Imports")).toHaveCount(0);
+  await expect(dashboardContent.getByText("Extracted places")).toHaveCount(0);
+  await expect(dashboardContent.getByText("Segments")).toHaveCount(0);
+  await expect(dashboardContent.getByText("Provider")).toHaveCount(0);
+  await expect(dashboardContent.getByText("Database")).toHaveCount(0);
   await expect(page.getByText("Turn saved travel ideas into mapped trip plans.")).toHaveCount(0);
   await expect(page.getByText("First Plan Guide")).toHaveCount(0);
   await expect(page.getByText("Add, review, create.")).toHaveCount(0);
-  await expect(
-    dashboardContent.getByRole("link", { exact: true, name: "Start planning" }).first()
-  ).toBeVisible();
+  await expect(dashboardContent.getByText(/0 waiting to review/i)).toHaveCount(0);
+  await expect(dashboardContent.getByText("Recent passes")).toHaveCount(0);
 
   await openDashboardRoute("/dashboard/trips");
   await expect(page.getByTestId("app-shell-topbar").getByRole("heading", { name: "Trips" })).toBeVisible();

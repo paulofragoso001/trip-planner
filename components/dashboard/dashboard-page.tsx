@@ -10,7 +10,6 @@ import {
   Sparkles
 } from "lucide-react";
 import type { DashboardData } from "@/app/dashboard/loader";
-import { FirstRunOnboarding } from "@/components/dashboard/first-run-onboarding";
 import { tripUi } from "@/components/trip-ui";
 import { WalletActionLink, WalletCard } from "@/components/wallet/wallet-card";
 import { WalletPageShell } from "@/components/wallet/wallet-page-shell";
@@ -21,7 +20,6 @@ type DashboardPageProps = DashboardData & {
 
 export default function DashboardPage({
   error,
-  firstRun,
   heroImage,
   metrics,
   recentTrips,
@@ -39,16 +37,24 @@ export default function DashboardPage({
     metrics.find((metric) => metric.label === "Ideas waiting")?.value ??
     metrics.find((metric) => metric.label === "Imports waiting")?.value ??
     "0";
+  const ideasWaitingCount = Number.parseInt(importsWaiting.replace(/[^\d]/g, ""), 10) || 0;
   const latestTrip = recentTrips[0] || null;
   const remainingTrips = recentTrips.slice(1, 4);
+  const primaryHeroHref = latestTrip ? latestTrip.href : "/dashboard/trips#new-trip";
+  const primaryHeroLabel = latestTrip ? "Continue trip" : "Create your first trip";
 
   return (
     <WalletPageShell
       actions={
         <>
-          <WalletActionLink href="/dashboard/imports">Start planning</WalletActionLink>
-          <WalletActionLink className="bg-white text-slate-950 hover:bg-slate-100" href="/dashboard/trips">
-            View trips
+          <WalletActionLink data-testid="home-primary-cta" href={primaryHeroHref}>
+            {primaryHeroLabel}
+          </WalletActionLink>
+          <WalletActionLink
+            className="bg-white text-slate-950 hover:bg-slate-100"
+            href="/dashboard/imports"
+          >
+            Start planning
           </WalletActionLink>
         </>
       }
@@ -56,38 +62,30 @@ export default function DashboardPage({
       eyebrow="WAYLINE"
       fallbackGradient={heroImage.fallbackGradient}
       heroImage={heroImage}
-      subtitle="Pick up a trip or start from a saved idea."
+      subtitle="Pick up a trip, start planning, or review ideas waiting for you."
       title="Your travel companion"
     >
-      <div className="grid gap-5">
-        {error ? (
-          <p className="rounded-2xl bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
-            Some details are unavailable, but you can still plan or open your trips.
-          </p>
-        ) : null}
-
-        <FirstRunOnboarding firstRun={firstRun} />
-
+      <div className="mx-auto grid w-full max-w-4xl gap-4 sm:gap-5">
         {latestTrip ? (
           <Link
-            className="group relative isolate grid min-h-[14rem] content-between overflow-hidden rounded-[2rem] bg-slate-950 p-5 text-white shadow-2xl transition hover:-translate-y-0.5 sm:min-h-[16rem] sm:p-6"
+            className="group relative isolate grid min-h-[12rem] content-between overflow-hidden rounded-[2rem] bg-slate-950 p-5 text-white shadow-2xl transition hover:-translate-y-0.5 sm:min-h-[14rem] sm:p-6"
             href={latestTrip.href}
           >
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_10%,rgba(255,255,255,0.24),transparent_30%),linear-gradient(135deg,#020617,#1d4ed8_54%,#0f766e)]" />
             <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(2,6,23,0.04),rgba(2,6,23,0.78))]" />
             <div className="relative flex items-start justify-between gap-3">
               <p className="text-xs font-black uppercase tracking-[0.22em] text-white/62">
-                Continue trip pass
+                Latest trip
               </p>
               <span className={tripUi.card.walletGlass}>{latestTrip.status}</span>
             </div>
             <div className="relative">
-              <h2 className="max-w-2xl break-words text-3xl font-black leading-[0.96] tracking-tight sm:text-4xl">
+              <h2 className="max-w-2xl break-words text-2xl font-black leading-[0.98] tracking-tight sm:text-4xl">
                 {latestTrip.name}
               </h2>
               <p className="mt-3 text-sm font-bold text-white/72">{latestTrip.dateRange}</p>
               <span className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-full bg-white px-5 text-sm font-black text-slate-950">
-                Continue trip pass
+                Continue
                 <ArrowRight
                   aria-hidden="true"
                   className="h-4 w-4 transition group-hover:translate-x-1"
@@ -96,47 +94,35 @@ export default function DashboardPage({
             </div>
           </Link>
         ) : (
-          <Link
-            className="group relative isolate grid min-h-[14rem] content-between overflow-hidden rounded-[2rem] bg-slate-950 p-5 text-white shadow-2xl transition hover:-translate-y-0.5 sm:min-h-[16rem] sm:p-6"
-            href="/dashboard/trips#new-trip"
+          <WalletCard
+            action={
+              <WalletActionLink href="/dashboard/trips#new-trip">Create trip</WalletActionLink>
+            }
+            eyebrow="Travel pass"
+            title="Create your first trip"
+            variant="utility"
           >
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_0%,rgba(255,255,255,0.22),transparent_34%),linear-gradient(135deg,#020617,#172554_52%,#0f766e)]" />
-            <div className="relative">
-              <p className="text-xs font-black uppercase tracking-[0.22em] text-white/62">
-                New Trip Pass
-              </p>
-            </div>
-            <div className="relative">
-              <h2 className="max-w-2xl break-words text-3xl font-black leading-[0.96] tracking-tight sm:text-4xl">
-                Start your next trip
-              </h2>
-              <p className="mt-3 max-w-sm text-sm font-bold leading-6 text-white/72">
-                Create a pass, add ideas, then build the itinerary and map.
-              </p>
-              <span className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-full bg-white px-5 text-sm font-black text-slate-950">
-                Create your first trip
-                <ArrowRight
-                  aria-hidden="true"
-                  className="h-4 w-4 transition group-hover:translate-x-1"
-                />
-              </span>
-            </div>
-          </Link>
+            <p className="text-sm font-semibold leading-6 text-slate-600">
+              Choose a destination and start building your travel pass.
+            </p>
+          </WalletCard>
         )}
 
         <WalletAction
           href="/dashboard/imports"
           icon={<Compass aria-hidden="true" className="h-5 w-5" />}
-          label="Start planning"
-          meta="Paste a note, link, or screenshot."
+          label="Start with an idea"
+          meta="Paste a note, link, or screenshot. Wayline will find places for you to review."
+          cta="Add idea"
         />
 
-        {importsWaiting !== "0" ? (
+        {ideasWaitingCount > 0 ? (
           <WalletAction
-            href={importsWaiting !== "0" ? "/dashboard/imports#ai-review" : "/dashboard/trips"}
+            href="/dashboard/imports#ai-review"
             icon={<Sparkles aria-hidden="true" className="h-5 w-5" />}
-            label="Review ideas"
-            meta={`${importsWaiting} waiting to review.`}
+            label="Ready for review"
+            meta="Review places Wayline found before adding them to a trip."
+            cta="Review places"
           />
         ) : null}
 
@@ -144,11 +130,11 @@ export default function DashboardPage({
         <WalletCard
           action={
             <Link className="text-sm font-black text-blue-700" href="/dashboard/trips">
-              View all
+              View all trips
             </Link>
           }
-          eyebrow="Trip passes"
-          title="Recent passes"
+          eyebrow="Travel wallet"
+          title="Recent trips"
           variant="utility"
         >
           <div className="grid gap-3">
@@ -159,7 +145,7 @@ export default function DashboardPage({
                 key={trip.id}
               >
                 <span className="min-w-0">
-                  <span className={tripUi.text.micro}>Trip Pass</span>
+                  <span className={tripUi.text.micro}>{trip.status}</span>
                   <span className="mt-1 block truncate text-lg font-black text-slate-950">
                     {trip.name}
                   </span>
@@ -183,11 +169,13 @@ export default function DashboardPage({
 function WalletAction({
   href,
   icon,
+  cta,
   label,
   meta
 }: {
   href: string;
   icon: ReactNode;
+  cta: string;
   label: string;
   meta: string;
 }) {
@@ -202,6 +190,9 @@ function WalletAction({
       <span className="min-w-0">
         <span className="block text-base font-black text-slate-950">{label}</span>
         <span className="mt-1 block text-sm font-semibold text-slate-500">{meta}</span>
+        <span className="mt-3 inline-flex min-h-11 items-center rounded-full bg-slate-950 px-4 text-sm font-black text-white sm:hidden">
+          {cta}
+        </span>
       </span>
       <ArrowRight
         aria-hidden="true"
