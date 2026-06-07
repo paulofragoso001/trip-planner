@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import {
   ArrowRight,
+  Bell,
   Compass,
   Map as MapIcon,
   Plane,
@@ -26,6 +27,10 @@ export default function DashboardPage({
   recentTrips,
   view
 }: DashboardPageProps) {
+  if (view === "alerts") {
+    return <NotificationsDashboard error={error} heroImage={heroImage} />;
+  }
+
   if (view === "flight-status") {
     return <FlightStatusDashboard error={error} metrics={metrics} recentTrips={recentTrips} />;
   }
@@ -65,7 +70,7 @@ export default function DashboardPage({
 
         {latestTrip ? (
           <Link
-            className="group relative isolate grid min-h-[18rem] content-between overflow-hidden rounded-[2rem] bg-slate-950 p-5 text-white shadow-2xl transition hover:-translate-y-0.5 sm:min-h-[22rem] sm:p-6"
+            className="group relative isolate grid min-h-[14rem] content-between overflow-hidden rounded-[2rem] bg-slate-950 p-5 text-white shadow-2xl transition hover:-translate-y-0.5 sm:min-h-[16rem] sm:p-6"
             href={latestTrip.href}
           >
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_10%,rgba(255,255,255,0.24),transparent_30%),linear-gradient(135deg,#020617,#1d4ed8_54%,#0f766e)]" />
@@ -77,7 +82,7 @@ export default function DashboardPage({
               <span className={tripUi.card.walletGlass}>{latestTrip.status}</span>
             </div>
             <div className="relative">
-              <h2 className="max-w-xl text-4xl font-black leading-none tracking-tight sm:text-5xl">
+              <h2 className="max-w-2xl break-words text-3xl font-black leading-[0.96] tracking-tight sm:text-4xl">
                 {latestTrip.name}
               </h2>
               <p className="mt-3 text-sm font-bold text-white/72">{latestTrip.dateRange}</p>
@@ -92,7 +97,7 @@ export default function DashboardPage({
           </Link>
         ) : (
           <Link
-            className="group relative isolate grid min-h-[18rem] content-between overflow-hidden rounded-[2rem] bg-slate-950 p-5 text-white shadow-2xl transition hover:-translate-y-0.5 sm:min-h-[22rem] sm:p-6"
+            className="group relative isolate grid min-h-[14rem] content-between overflow-hidden rounded-[2rem] bg-slate-950 p-5 text-white shadow-2xl transition hover:-translate-y-0.5 sm:min-h-[16rem] sm:p-6"
             href="/dashboard/trips#new-trip"
           >
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_0%,rgba(255,255,255,0.22),transparent_34%),linear-gradient(135deg,#020617,#172554_52%,#0f766e)]" />
@@ -102,7 +107,7 @@ export default function DashboardPage({
               </p>
             </div>
             <div className="relative">
-              <h2 className="max-w-xl text-4xl font-black leading-none tracking-tight sm:text-5xl">
+              <h2 className="max-w-2xl break-words text-3xl font-black leading-[0.96] tracking-tight sm:text-4xl">
                 Start your next trip
               </h2>
               <p className="mt-3 max-w-sm text-sm font-bold leading-6 text-white/72">
@@ -256,6 +261,41 @@ function FlightStatusDashboard({
         </p>
       </section>
     </div>
+  );
+}
+
+function NotificationsDashboard({
+  error,
+  heroImage
+}: Pick<DashboardData, "error" | "heroImage">) {
+  return (
+    <WalletPageShell
+      actions={<WalletActionLink href="/dashboard">Back home</WalletActionLink>}
+      compactHero
+      eyebrow="UPDATES"
+      fallbackGradient={heroImage.fallbackGradient}
+      heroImage={heroImage}
+      subtitle="Trip updates and shared activity will appear here."
+      title="Notifications"
+    >
+      <div className="grid gap-4">
+        {error ? (
+          <p className="rounded-2xl bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
+            Some details are unavailable, but you can still plan or open your trips.
+          </p>
+        ) : null}
+        <WalletCard
+          eyebrow="Wayline"
+          icon={<Bell aria-hidden="true" className="h-5 w-5" />}
+          title="No notifications yet"
+          variant="utility"
+        >
+          <p className="text-sm font-semibold leading-6 text-slate-600">
+            Important trip updates and guest activity will show up here when there is something to review.
+          </p>
+        </WalletCard>
+      </div>
+    </WalletPageShell>
   );
 }
 

@@ -70,7 +70,7 @@ export function TripCreateForm({
     });
 
     if (result.status === "success") {
-      const tripId = result.data?.trip?.id;
+      const tripId = readCreatedTripId(result.data);
       setBudget("");
       setDestination("");
       setDestinationSelection(null);
@@ -79,7 +79,7 @@ export function TripCreateForm({
       setStartDate("");
       setTravelStyle("balanced");
       if (redirectOnSuccess && tripId) {
-        router.push(`/dashboard/trips/${encodeURIComponent(tripId)}`);
+        window.location.assign(`/dashboard/trips/${encodeURIComponent(tripId)}`);
         return;
       }
       router.refresh();
@@ -248,6 +248,25 @@ export function TripCreateForm({
       ) : null}
     </form>
   );
+}
+
+function readCreatedTripId(payload: unknown) {
+  if (!payload || typeof payload !== "object") return null;
+
+  const record = payload as Record<string, unknown>;
+  if (typeof record.id === "string") return record.id;
+
+  const trip = record.trip;
+  if (trip && typeof trip === "object" && typeof (trip as Record<string, unknown>).id === "string") {
+    return (trip as Record<string, string>).id;
+  }
+
+  const data = record.data;
+  if (data && typeof data === "object") {
+    return readCreatedTripId(data);
+  }
+
+  return null;
 }
 
 function destinationNameFromLabel(value: string) {

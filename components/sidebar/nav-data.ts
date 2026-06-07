@@ -1,5 +1,4 @@
 import {
-  Bell,
   CircleDollarSign,
   CalendarDays,
   Compass,
@@ -63,18 +62,18 @@ export const navSections: NavSection[] = [
         icon: Plane,
         label: "Trips",
         match: (pathname, view) =>
-          pathname === "/dashboard/trips" ||
-          /^\/dashboard\/trips\/[^/]+(?:\/timeline)?$/.test(pathname) ||
-          (pathname === "/dashboard" && view === "trips")
+          pathname === "/dashboard/trips" || (pathname === "/dashboard" && view === "trips")
       },
       {
-        href: "/dashboard/trips",
+        href: "/dashboard/map",
         icon: Map,
         label: "Map",
-        getHref: (pathname, tripId) => currentTripHref(pathname, "/map", tripId),
+        getHref: (pathname, tripId) => {
+          const currentTrip = pathname.match(/^\/dashboard\/trips\/([^/]+)/)?.[1] || tripId;
+          return currentTrip ? `/dashboard/trips/${currentTrip}/map` : "/dashboard/map";
+        },
         match: (pathname, view) =>
-          pathname.includes("/map") ||
-          (pathname === "/dashboard" && view === "map")
+          pathname === "/dashboard/map" || (pathname === "/dashboard" && view === "map")
       },
       {
         href: "/dashboard/account",
@@ -135,17 +134,6 @@ export const navSections: NavSection[] = [
           (pathname === "/dashboard" && view === "sharing")
       }
     ]
-  },
-  {
-    title: "Signals",
-    items: [
-      {
-        href: "/dashboard?view=alerts",
-        icon: Bell,
-        label: "Notifications",
-        match: (pathname, view) => pathname === "/dashboard" && view === "alerts"
-      }
-    ]
   }
 ];
 
@@ -158,6 +146,10 @@ export const mobileNavItems: NavItem[] = [
 ];
 
 export function resolveNavTitle(pathname: string, view: string | null) {
+  if (pathname === "/dashboard" && view === "alerts") {
+    return "Notifications";
+  }
+
   const match = navSections
     .flatMap((section) => section.items)
     .find((item) => item.match?.(pathname, view));

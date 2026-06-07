@@ -70,6 +70,10 @@ export function SidebarNav({
     };
   }, [pathname]);
 
+  const visibleSections = sections.filter(
+    (section) => section.title !== "Trip Workspace" || Boolean(readTripId(pathname))
+  );
+
   return (
     <nav
       aria-label="Primary"
@@ -77,7 +81,7 @@ export function SidebarNav({
       data-testid="app-shell-nav"
       data-wallet-sidebar-nav="true"
     >
-      {sections.map((section) => (
+      {visibleSections.map((section) => (
         <section className="space-y-3" key={section.title}>
           <h2
             className={cn(
