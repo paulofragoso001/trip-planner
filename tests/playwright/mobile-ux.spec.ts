@@ -262,9 +262,13 @@ test.describe("mobile soft-launch UX", () => {
       await expect(page.getByTestId("mobile-primary-trip-cta")).toBeVisible();
       await expect(page.getByTestId("mobile-primary-trip-cta")).toContainText("Add trip item");
       await expect(mobileHub.getByText("Invite Guests")).toHaveCount(0);
+      await expect(mobileHub.getByText("Trip guests")).toBeVisible();
+      await expect(mobileHub.getByRole("link", { name: "Open map" }).first()).toBeVisible();
+      await expect(mobileHub.getByRole("link", { name: "Open Activities" })).toBeVisible();
+      await expect(mobileHub.getByTestId("overview-more-tools")).toBeVisible();
       await expect(page.getByLabel("Organizer actions")).toBeHidden();
       await expect(page.getByTestId("mobile-trip-overflow-menu")).toHaveCount(0);
-      await expect(mobileHub.getByText("Email import coming soon")).toHaveCount(0);
+      await expect(mobileHub.getByText("Email import coming soon")).toBeHidden();
       await expect(mobileHub.getByText("Currency")).toHaveCount(0);
       await expect(mobileHub.getByText("Notifications")).toHaveCount(0);
     } finally {

@@ -2,11 +2,15 @@ import Link from "next/link";
 import {
   BedDouble,
   CalendarDays,
+  ChevronRight,
   CircleDollarSign,
+  FileText,
   MapPin,
   Plane,
   Plus,
   Route,
+  Share2,
+  Sparkles,
   Utensils
 } from "lucide-react";
 import type { ReactNode } from "react";
@@ -21,10 +25,12 @@ export default function TripOverviewPage({
   expenseCategories,
   hasExpenses,
   itineraryPreview,
+  mappedCount,
   nextUp,
   routePreview,
   segmentCount,
   status,
+  suggestionsCount,
   tripId
 }: TripOverviewPageProps) {
   const base = `/dashboard/trips/${encodeURIComponent(tripId)}`;
@@ -163,6 +169,35 @@ export default function TripOverviewPage({
         )}
       </OverviewCard>
 
+      <OverviewCard
+        actionHref={`${base}/map`}
+        actionLabel="Open map"
+        eyebrow="Map"
+        icon={<MapPin className="h-5 w-5" aria-hidden="true" />}
+        title={mappedCount > 0 ? "Route ready" : "Build your route"}
+      >
+        <div className="grid gap-3">
+          <div className="grid grid-cols-2 gap-2">
+            <MetricPill label="Mapped" value={`${mappedCount}`} />
+            <MetricPill label="Places" value={`${segmentCount}`} />
+          </div>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <Link
+              className="inline-flex min-h-11 items-center justify-center rounded-full bg-white px-4 text-sm font-black text-slate-950 focus:outline-none focus:ring-4 focus:ring-white/25"
+              href={`${base}/map`}
+            >
+              Open map
+            </Link>
+            <Link
+              className="inline-flex min-h-11 items-center justify-center rounded-full bg-white/10 px-4 text-sm font-black text-white/76 transition hover:bg-white/16 hover:text-white focus:outline-none focus:ring-4 focus:ring-orange-300/20"
+              href={`${base}/ideas`}
+            >
+              Open Activities
+            </Link>
+          </div>
+        </div>
+      </OverviewCard>
+
       {hasExpenses ? (
         <OverviewCard
           actionHref={`${base}/budget`}
@@ -188,6 +223,50 @@ export default function TripOverviewPage({
         </OverviewCard>
       ) : null}
 
+      <OverviewCard
+        actionHref={`${base}/sharing`}
+        actionLabel="Invite"
+        eyebrow="Share"
+        icon={<Share2 className="h-5 w-5" aria-hidden="true" />}
+        title="Trip guests"
+      >
+        <p className="text-sm font-semibold leading-6 text-white/62">
+          Invite someone when you are ready to share the itinerary or plan together.
+        </p>
+      </OverviewCard>
+
+      <details
+        className="group rounded-[2rem] border border-white/10 bg-[#1c1c1f]/72 p-4 text-white shadow-[0_18px_55px_rgba(0,0,0,0.18)] backdrop-blur-2xl"
+        data-testid="overview-more-tools"
+      >
+        <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 rounded-[1.35rem] px-1 text-left font-black text-white">
+          <span>More trip tools</span>
+          <ChevronRight className="h-5 w-5 text-white/48 transition group-open:rotate-90" aria-hidden="true" />
+        </summary>
+        <div className="mt-3 grid gap-2">
+          {!hasExpenses ? (
+            <ToolRow
+              href={`${base}/budget`}
+              icon={<CircleDollarSign className="h-4 w-4" aria-hidden="true" />}
+              meta="Track costs when you need them."
+              title="Expenses"
+            />
+          ) : null}
+          <ToolRow
+            href={`${base}/documents`}
+            icon={<FileText className="h-4 w-4" aria-hidden="true" />}
+            meta="Keep confirmations, screenshots, notes, and links together. Email import coming soon."
+            title="Documents"
+          />
+          <ToolRow
+            href={`${base}/ideas`}
+            icon={<Sparkles className="h-4 w-4" aria-hidden="true" />}
+            meta={suggestionsCount > 0 ? `${suggestionsCount} nearby idea${suggestionsCount === 1 ? "" : "s"} ready.` : "Find activities near your mapped places."}
+            title="Activities"
+          />
+        </div>
+      </details>
+
       {itineraryPreview.length === 0 && !routePreview ? (
         <Link
           className="inline-flex min-h-12 items-center justify-center rounded-full bg-white px-5 text-sm font-black text-slate-950 shadow-sm focus:outline-none focus:ring-4 focus:ring-white/25"
@@ -198,6 +277,15 @@ export default function TripOverviewPage({
       ) : null}
 
       <p className="sr-only">Trip status: {status}</p>
+    </div>
+  );
+}
+
+function MetricPill({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-[1.15rem] bg-black/26 px-3 py-3">
+      <p className="text-xs font-black uppercase tracking-[0.14em] text-white/42">{label}</p>
+      <p className="mt-1 text-2xl font-black text-white">{value}</p>
     </div>
   );
 }
@@ -238,6 +326,34 @@ function OverviewCard({
       </div>
       <div className="mt-4">{children}</div>
     </article>
+  );
+}
+
+function ToolRow({
+  href,
+  icon,
+  meta,
+  title
+}: {
+  href: string;
+  icon: ReactNode;
+  meta: string;
+  title: string;
+}) {
+  return (
+    <Link
+      className="grid min-h-16 grid-cols-[auto_1fr_auto] items-center gap-3 rounded-[1.35rem] bg-black/24 px-3 py-3 text-white/78 transition hover:bg-white/[0.08] hover:text-white focus:outline-none focus:ring-4 focus:ring-orange-300/20"
+      href={href}
+    >
+      <span className="grid h-10 w-10 place-items-center rounded-full bg-white/10 text-orange-300">
+        {icon}
+      </span>
+      <span className="min-w-0">
+        <span className="block text-sm font-black text-white">{title}</span>
+        <span className="mt-0.5 block text-xs font-semibold leading-5 text-white/52">{meta}</span>
+      </span>
+      <ChevronRight className="h-4 w-4 text-white/42" aria-hidden="true" />
+    </Link>
   );
 }
 
