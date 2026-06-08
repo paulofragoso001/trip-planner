@@ -417,7 +417,7 @@ function MobileBottomNav({
       className="fixed bottom-[calc(0.5rem+env(safe-area-inset-bottom))] left-1/2 z-40 w-[calc(100vw-1rem)] max-w-[520px] -translate-x-1/2 rounded-[1.25rem] border border-white/12 bg-slate-950/88 p-1.5 text-white shadow-[0_24px_80px_rgba(2,6,23,0.42)] backdrop-blur-2xl sm:bottom-[calc(0.75rem+env(safe-area-inset-bottom))] sm:w-[calc(100vw-1.5rem)] sm:rounded-[1.4rem] sm:p-2 lg:hidden"
       data-testid="app-shell-mobile-bottom-nav"
     >
-      <div className="grid grid-cols-5 gap-1">
+      <div className="grid grid-cols-4 gap-1">
         {mobileNavItems.map((item) => {
           const href = item.getHref?.(pathname) || item.href;
           const active = isMobileNavActive(item.label, pathname, view, hash);

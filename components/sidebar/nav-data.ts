@@ -138,9 +138,8 @@ export const navSections: NavSection[] = [
 ];
 
 export const mobileNavItems: NavItem[] = [
-  navSections[0].items[0],
-  navSections[0].items[1],
   navSections[0].items[2],
+  navSections[0].items[1],
   navSections[0].items[3],
   navSections[0].items[4]
 ];

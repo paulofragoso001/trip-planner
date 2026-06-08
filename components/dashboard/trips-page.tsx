@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { MobileTripsWallet } from "@/components/dashboard/mobile-trips-wallet";
 import { TripCreateForm } from "@/components/dashboard/trip-create-form";
 import { TripRowActions } from "@/components/dashboard/trip-row-actions";
 import type { TripsData } from "@/app/dashboard/trips/loader";
@@ -11,39 +12,44 @@ type TripsPageProps = TripsData;
 
 export default function TripsPage({ error, heroImage, trips }: TripsPageProps) {
   return (
-    <WalletPageShell
-      actions={
-        <>
-          <WalletActionLink href="#new-trip">Create trip</WalletActionLink>
-          <WalletActionLink className="bg-white text-slate-950 hover:bg-slate-100" href="/dashboard/imports">
-            Start planning
-          </WalletActionLink>
-        </>
-      }
-      compactHero
-      eyebrow="TRIPS"
-      fallbackGradient={heroImage.fallbackGradient}
-      heroImage={heroImage}
-      subtitle="Open a trip or create a new destination pass."
-      title="Your trip passes"
-    >
-      <div className="grid gap-6">
-        <TripsWalletExperience error={error} trips={trips} />
+    <>
+      <MobileTripsWallet error={error} trips={trips} />
+      <div className="hidden lg:block">
+        <WalletPageShell
+          actions={
+            <>
+              <WalletActionLink href="#new-trip">Create trip</WalletActionLink>
+              <WalletActionLink className="bg-white text-slate-950 hover:bg-slate-100" href="/dashboard/imports">
+                Start planning
+              </WalletActionLink>
+            </>
+          }
+          compactHero
+          eyebrow="TRIPS"
+          fallbackGradient={heroImage.fallbackGradient}
+          heroImage={heroImage}
+          subtitle="Open a trip or create a new destination pass."
+          title="Your trip passes"
+        >
+          <div className="grid gap-6">
+            <TripsWalletExperience error={error} trips={trips} />
+          </div>
+        </WalletPageShell>
       </div>
-    </WalletPageShell>
+    </>
   );
 }
 
 function TripsWalletExperience({ error, trips }: Pick<TripsPageProps, "error" | "trips">) {
   if (!error && trips.length === 0) {
     return (
-      <div className="grid gap-4" data-testid="mobile-first-trip-state">
+      <div className="grid gap-4" data-testid="desktop-first-trip-state">
         <WalletCard eyebrow="Wayline Trip Pass" title="Create your first trip" variant="utility">
           <p className="text-sm font-semibold leading-6 text-slate-600">
             Choose a destination and Wayline will turn it into a visual trip wallet.
           </p>
           <div className="mt-4">
-          <TripCreateForm mode="mobile-pass" redirectOnSuccess />
+            <TripCreateForm mode="mobile-pass" redirectOnSuccess />
           </div>
         </WalletCard>
       </div>
@@ -51,7 +57,7 @@ function TripsWalletExperience({ error, trips }: Pick<TripsPageProps, "error" | 
   }
 
   return (
-    <div className="grid gap-4" data-testid="mobile-trips-wallet">
+    <div className="grid gap-4" data-testid="desktop-trips-wallet">
       {error ? (
         <p className="rounded-2xl bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
           {error}
@@ -90,7 +96,7 @@ function TripsWalletExperience({ error, trips }: Pick<TripsPageProps, "error" | 
 
       <details
         className="group rounded-[2rem] border border-slate-200 bg-white p-3 shadow-sm"
-        data-testid="mobile-create-another-trip"
+        data-testid="desktop-create-another-trip"
       >
         <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 rounded-[1.5rem] px-2 py-3 text-sm font-black text-slate-950 focus:outline-none focus:ring-4 focus:ring-blue-100">
           <span>Create another trip pass</span>

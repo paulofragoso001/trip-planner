@@ -80,12 +80,16 @@ test.describe("mobile soft-launch UX", () => {
 
     const nav = page.getByRole("navigation", { name: "Primary mobile navigation" });
     await expect(nav).toBeVisible();
-    await expect(nav.getByRole("link", { name: /Home/ })).toBeVisible();
-    await expect(nav.getByRole("link", { name: /Plan/ })).toBeVisible();
     await expect(nav.getByRole("link", { name: /Trips/ })).toBeVisible();
+    await expect(nav.getByRole("link", { name: /Plan/ })).toBeVisible();
     await expect(nav.getByRole("link", { name: /Map/ })).toBeVisible();
     await expect(nav.getByRole("link", { name: /Profile/ })).toBeVisible();
-    await expect(nav.getByRole("link")).toHaveCount(5);
+    await expect(nav.getByRole("link")).toHaveCount(4);
+    await expect(nav.getByRole("link").nth(0)).toHaveText(/Trips/);
+    await expect(nav.getByRole("link").nth(1)).toHaveText(/Plan/);
+    await expect(nav.getByRole("link").nth(2)).toHaveText(/Map/);
+    await expect(nav.getByRole("link").nth(3)).toHaveText(/Profile/);
+    await expect(nav.getByRole("link", { name: /Home/ })).toHaveCount(0);
     await expect(nav.getByRole("link", { name: /Saved/ })).toHaveCount(0);
     await expect(nav.getByRole("link", { name: /Plan with AI/ })).toHaveCount(0);
     await expect(nav.getByRole("link", { name: /My Trips/ })).toHaveCount(0);
@@ -114,18 +118,20 @@ test.describe("mobile soft-launch UX", () => {
 
     const firstTripState = page.getByTestId("mobile-first-trip-state");
     const tripWallet = page.getByTestId("mobile-trips-wallet");
+    await expect(page.getByRole("heading", { name: "My Trips" })).toBeVisible();
+    await expect(page.getByPlaceholder("Search for trips")).toBeVisible();
     await expect(
       page.locator('[data-testid="mobile-first-trip-state"], [data-testid="mobile-trips-wallet"]').first()
     ).toBeVisible({ timeout: 20_000 });
 
     if (await firstTripState.isVisible()) {
       await expect(firstTripState.getByRole("heading", { name: "Create your first trip" })).toBeVisible();
-      await expect(firstTripState.getByTestId("mobile-trip-create-form")).toBeVisible();
-      await expect(firstTripState.getByTestId("mobile-trip-create-preview")).toBeVisible();
+      await expect(page.getByTestId("mobile-trip-create-form")).toBeVisible();
+      await expect(page.getByTestId("mobile-trip-create-preview")).toBeVisible();
     } else {
       await expect(tripWallet).toBeVisible();
-      await expect(page.getByRole("heading", { name: "Your trip passes" })).toBeVisible();
-      await expect(tripWallet.getByText("Create another trip pass")).toBeVisible();
+      await expect(tripWallet.getByTestId("mobile-trip-pass-card").first()).toBeVisible();
+      await expect(page.getByTestId("mobile-create-another-trip").getByText("Create trip")).toBeVisible();
     }
   });
 
@@ -137,10 +143,18 @@ test.describe("mobile soft-launch UX", () => {
     await expect(
       page.locator('[data-testid="mobile-first-trip-state"], [data-testid="mobile-trips-wallet"]').first()
     ).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByTestId("mobile-trips-wallet-screen")).toHaveAttribute(
+      "data-hydrated",
+      "true",
+      { timeout: 20_000 }
+    );
 
-    const createPanel = page.getByTestId("mobile-create-another-trip");
+    const createPanel = page.getByTestId("mobile-create-another-trip").last();
     if ((await createPanel.count()) > 0) {
-      await createPanel.last().locator("summary").click();
+      const formCount = await createPanel.locator('[data-testid="mobile-trip-create-form"]:visible').count();
+      if (!formCount) {
+        await createPanel.getByRole("button", { name: /Create trip/ }).click();
+      }
     }
 
     const form = page.locator('[data-testid="mobile-trip-create-form"]:visible').last();

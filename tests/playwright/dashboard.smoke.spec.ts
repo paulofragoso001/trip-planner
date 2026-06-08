@@ -71,7 +71,7 @@ test("loads dashboard summary and route-split pages", async ({ page }) => {
   await openDashboardRoute("/dashboard/trips");
   await expect(page.getByTestId("app-shell-topbar").getByRole("heading", { name: "Trips" })).toBeVisible();
   await expect(page.getByRole("heading", { exact: true, name: "Your trip passes" })).toBeVisible({ timeout: 20_000 });
-  await expect(page.getByTestId("mobile-trips-wallet").or(page.getByTestId("mobile-first-trip-state"))).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByTestId("desktop-trips-wallet").or(page.getByTestId("desktop-first-trip-state"))).toBeVisible({ timeout: 20_000 });
 
   await openDashboardRoute("/dashboard/trips/demo");
   await expect(page.getByTestId("trip-pass-shell")).toBeVisible({ timeout: 30_000 });
