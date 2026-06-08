@@ -3,14 +3,11 @@ import {
   BedDouble,
   CalendarDays,
   CircleDollarSign,
-  FileText,
-  Map,
   MapPin,
   Plane,
   Plus,
-  Sparkles,
-  Utensils,
-  Users
+  Route,
+  Utensils
 } from "lucide-react";
 import type { ReactNode } from "react";
 import type { TripOverviewData } from "@/app/dashboard/trips/[tripId]/overview-loader";
@@ -18,209 +15,194 @@ import type { TripOverviewData } from "@/app/dashboard/trips/[tripId]/overview-l
 type TripOverviewPageProps = TripOverviewData;
 
 export default function TripOverviewPage({
+  actionSummary,
   actualLabel,
   error,
   expenseCategories,
+  hasExpenses,
   itineraryPreview,
-  mappedCount,
   nextUp,
-  plannedLabel,
-  remainingLabel,
+  routePreview,
   segmentCount,
   status,
-  suggestionsCount,
   tripId
 }: TripOverviewPageProps) {
   const base = `/dashboard/trips/${encodeURIComponent(tripId)}`;
-  const routeReady = mappedCount > 0 && mappedCount === segmentCount;
+  const actionItems = [
+    {
+      href: `${base}/timeline#new-plan`,
+      icon: <Plus className="h-5 w-5" aria-hidden="true" />,
+      label: "Add trip item",
+      primary: true,
+      show: true,
+      testId: "mobile-primary-trip-cta"
+    },
+    {
+      href: `${base}/timeline`,
+      icon: <Plane className="h-5 w-5" aria-hidden="true" />,
+      label: "Flights",
+      primary: false,
+      show: actionSummary.hasFlight
+    },
+    {
+      href: `${base}/timeline`,
+      icon: <BedDouble className="h-5 w-5" aria-hidden="true" />,
+      label: "Lodging",
+      primary: false,
+      show: actionSummary.hasLodging
+    },
+    {
+      href: `${base}/timeline`,
+      icon: <Utensils className="h-5 w-5" aria-hidden="true" />,
+      label: "Places",
+      primary: false,
+      show: true
+    }
+  ].filter((item) => item.show);
 
   return (
-    <div className="grid gap-5" data-testid="trip-overview-page">
+    <div className="grid gap-4 text-white" data-testid="trip-overview-page">
       {error ? (
-        <p className="rounded-3xl bg-amber-50 px-4 py-3 text-sm font-bold text-amber-800">
-          Some trip details are unavailable, but you can still open your itinerary, map, and ideas.
+        <p className="rounded-[1.5rem] border border-amber-200/20 bg-amber-300/12 px-4 py-3 text-sm font-bold text-amber-50">
+          Some trip details are unavailable, but you can still add an item or open the itinerary.
         </p>
       ) : null}
 
-      <Link
-        className="flex min-h-20 items-center justify-between gap-4 rounded-[1.75rem] bg-slate-950 p-4 text-white shadow-sm focus:outline-none focus:ring-4 focus:ring-blue-100"
-        data-testid="mobile-primary-trip-cta"
-        href={`${base}/timeline#new-plan`}
+      <section
+        aria-label="Quick trip actions"
+        className="rounded-[2rem] border border-white/10 bg-white/[0.08] p-4 shadow-[0_18px_50px_rgba(2,6,23,0.22)] backdrop-blur-2xl"
       >
-        <span className="min-w-0">
-          <span className="block text-lg font-black">Add trip item</span>
-          <span className="mt-1 block text-xs font-semibold text-white/65">
-            Add a place, activity, reservation, or note.
-          </span>
-        </span>
-        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-white/12">
-          <Plus className="h-5 w-5" aria-hidden="true" />
-        </span>
-      </Link>
+        <div className="grid grid-cols-4 gap-2">
+          {actionItems.map((item) => (
+            <Link
+              className={[
+                "grid min-h-[5.8rem] place-items-center gap-2 rounded-[1.35rem] px-2 py-3 text-center text-xs font-bold transition focus:outline-none focus:ring-4 focus:ring-orange-300/20",
+                item.primary
+                  ? "bg-orange-500 text-white shadow-[0_14px_30px_rgba(249,115,22,0.24)]"
+                  : "bg-black/28 text-white/78 hover:bg-white/12 hover:text-white"
+              ].join(" ")}
+              data-testid={item.testId}
+              href={item.href}
+              key={item.label}
+            >
+              <span
+                className={[
+                  "grid h-12 w-12 place-items-center rounded-full",
+                  item.primary ? "bg-white/18" : "bg-white/10"
+                ].join(" ")}
+              >
+                {item.icon}
+              </span>
+              <span className="leading-tight">{item.label}</span>
+            </Link>
+          ))}
+        </div>
+      </section>
 
-      {nextUp ? (
-        <WalletCard
-          actionHref={`${base}/timeline#${nextUp.id}`}
-          actionLabel="Open itinerary"
-          eyebrow="Next Up"
-          icon={<Sparkles className="h-5 w-5" aria-hidden="true" />}
-          title={nextUp.title}
+      {routePreview ? (
+        <OverviewCard
+          actionHref={`${base}/timeline#${routePreview.id}`}
+          actionLabel="Open"
+          eyebrow={routePreview.typeLabel}
+          icon={<Route className="h-5 w-5" aria-hidden="true" />}
+          title={routePreview.routeLabel}
         >
-          <div className="grid gap-2">
-            <p className="text-sm font-black uppercase tracking-[0.14em] text-slate-400">
-              {nextUp.typeLabel}
-            </p>
-            <p className="text-sm font-semibold text-slate-600">
-              {nextUp.timeLabel} · {nextUp.location}
-            </p>
-            <span className="inline-flex w-fit rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-700">
-              {status}
-            </span>
+          <div className="rounded-[1.5rem] bg-black/36 p-4">
+            {routePreview.originLabel && routePreview.destinationLabel ? (
+              <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+                <RouteEndpoint align="left" label={routePreview.originLabel} />
+                <span className="h-1 w-14 rounded-full bg-sky-400/70" aria-hidden="true" />
+                <RouteEndpoint align="right" label={routePreview.destinationLabel} />
+              </div>
+            ) : (
+              <p className="text-base font-black text-white">{routePreview.title}</p>
+            )}
+            <div className="mt-3 flex flex-wrap items-center gap-2 text-xs font-bold text-white/62">
+              <span>{routePreview.timeLabel}</span>
+              <span aria-hidden="true">·</span>
+              <span>{routePreview.metaLabel}</span>
+            </div>
           </div>
-        </WalletCard>
+        </OverviewCard>
       ) : null}
 
-      <WalletCard
+      <OverviewCard
         actionHref={`${base}/timeline`}
-        actionLabel="View itinerary"
+        actionLabel="View all"
         eyebrow="Itinerary"
         icon={<CalendarDays className="h-5 w-5" aria-hidden="true" />}
-        title={`${segmentCount} place${segmentCount === 1 ? "" : "s"}`}
+        title={nextUp ? "Next up" : `${segmentCount} place${segmentCount === 1 ? "" : "s"}`}
       >
-        <div className="grid gap-1">
-          {itineraryPreview.length ? (
-            itineraryPreview.slice(0, 5).map((item, index) => (
+        {itineraryPreview.length ? (
+          <div className="grid gap-1">
+            {itineraryPreview.slice(0, 5).map((item) => (
               <Link
-                className="grid min-h-14 grid-cols-[auto_1fr_auto] items-center gap-3 rounded-2xl px-2 py-2 transition hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-blue-100"
+                className="grid min-h-16 grid-cols-[auto_1fr_auto] items-center gap-3 rounded-[1.25rem] px-2 py-2 text-white/88 transition hover:bg-white/[0.08] focus:outline-none focus:ring-4 focus:ring-orange-300/20"
                 href={`${base}/timeline#${item.id}`}
                 key={item.id}
               >
-                <span className="grid h-10 w-10 place-items-center rounded-full bg-blue-50 text-blue-700">
+                <span className="grid h-11 w-11 place-items-center rounded-full bg-white/10 text-orange-300">
                   {iconForPreview(item.typeLabel)}
                 </span>
                 <span className="min-w-0">
-                  <span className="block truncate text-sm font-black text-slate-950">
-                    {index + 1}. {item.title}
-                  </span>
-                  <span className="block truncate text-xs font-semibold text-slate-500">
+                  <span className="block truncate text-sm font-black text-white">{item.title}</span>
+                  <span className="block truncate text-xs font-semibold text-white/52">
                     {item.location}
                   </span>
                 </span>
-                <span className="text-xs font-black text-slate-500">{item.timeLabel}</span>
+                <span className="text-right text-xs font-black text-white/56">{item.timeLabel}</span>
               </Link>
-            ))
-          ) : (
-            <EmptyInline
-              body="Add inspiration or a trip item to start building the itinerary."
-              cta="Plan with AI"
-              href="/dashboard/imports"
-            />
-          )}
-        </div>
-      </WalletCard>
-
-      <WalletCard
-        actionHref={`${base}/map`}
-        actionLabel="Open map"
-        eyebrow="Map"
-        icon={<Map className="h-5 w-5" aria-hidden="true" />}
-        title={routeReady ? "Route ready" : "Route needs locations"}
-      >
-        <div className="rounded-[1.5rem] bg-[radial-gradient(circle_at_24%_24%,rgba(37,99,235,0.24),transparent_30%),linear-gradient(135deg,#eff6ff,#f8fafc)] p-4">
-          <div className="flex items-end justify-between gap-4">
-            <div>
-              <p className="text-4xl font-black text-slate-950">{mappedCount}</p>
-              <p className="text-sm font-bold text-slate-600">mapped places</p>
-            </div>
-            <div className="text-right">
-              <p className="text-2xl font-black text-slate-950">{segmentCount - mappedCount}</p>
-              <p className="text-sm font-bold text-slate-600">need location</p>
-            </div>
+            ))}
           </div>
-          <p className={routeReady ? "mt-4 text-sm font-black text-emerald-700" : "mt-4 text-sm font-black text-amber-700"}>
-            {routeReady ? "Your route is ready." : "Confirm locations to complete the route."}
-          </p>
-        </div>
-      </WalletCard>
+        ) : (
+          <EmptyInline
+            body="Add a place, activity, reservation, or note to start the itinerary."
+            cta="Add trip item"
+            href={`${base}/timeline#new-plan`}
+          />
+        )}
+      </OverviewCard>
 
-      {suggestionsCount > 0 ? (
-        <WalletCard
-          actionHref={`${base}/ideas`}
-          actionLabel="Open Ideas"
-          eyebrow="Ideas"
-          icon={<Sparkles className="h-5 w-5" aria-hidden="true" />}
-          title={`${suggestionsCount} nearby idea${suggestionsCount === 1 ? "" : "s"}`}
+      {hasExpenses ? (
+        <OverviewCard
+          actionHref={`${base}/budget`}
+          actionLabel="Open"
+          eyebrow="Expenses"
+          icon={<CircleDollarSign className="h-5 w-5" aria-hidden="true" />}
+          title={actualLabel}
         >
-          <p className="text-sm font-semibold leading-6 text-slate-600">
-            Review places and activities near your route.
-          </p>
-        </WalletCard>
+          <div className="grid gap-1">
+            {expenseCategories.slice(0, 3).map((category) => (
+              <div
+                className="grid min-h-12 grid-cols-[auto_1fr_auto] items-center gap-3 rounded-[1.15rem] bg-black/26 px-3 py-2 text-sm"
+                key={category.id}
+              >
+                <span className="grid h-8 w-8 place-items-center rounded-full bg-white/10 text-orange-300">
+                  {iconForPreview(category.label)}
+                </span>
+                <span className="font-bold text-white/78">{category.label}</span>
+                <strong className="text-white">{category.amountLabel}</strong>
+              </div>
+            ))}
+          </div>
+        </OverviewCard>
       ) : null}
 
-      <details className="rounded-[2rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-        <summary className="cursor-pointer text-base font-black text-slate-950">
-          More
-        </summary>
-        <div className="mt-4 grid gap-2">
-          <MoreLink
-            href={`${base}/budget`}
-            icon={<CircleDollarSign className="h-4 w-4" aria-hidden="true" />}
-            label="Expenses"
-            meta={`${actualLabel} total · planned ${plannedLabel} · remaining ${remainingLabel}`}
-          />
-          {expenseCategories.slice(0, 3).map((category) => (
-            <div className="flex min-h-10 items-center justify-between rounded-2xl bg-slate-50 px-3 py-2 text-sm" key={category.id}>
-              <span className="font-bold text-slate-700">{category.label}</span>
-              <strong>{category.amountLabel}</strong>
-            </div>
-          ))}
-          <MoreLink
-            href={`${base}/documents`}
-            icon={<FileText className="h-4 w-4" aria-hidden="true" />}
-            label="Documents"
-            meta="Confirmations, screenshots, notes, and links."
-          />
-          <MoreLink
-            href={`${base}/sharing`}
-            icon={<Users className="h-4 w-4" aria-hidden="true" />}
-            label="Share"
-            meta="Invite trip guests."
-          />
-        </div>
-      </details>
+      {itineraryPreview.length === 0 && !routePreview ? (
+        <Link
+          className="inline-flex min-h-12 items-center justify-center rounded-full bg-white px-5 text-sm font-black text-slate-950 shadow-sm focus:outline-none focus:ring-4 focus:ring-white/25"
+          href="/dashboard/imports"
+        >
+          Start with an idea
+        </Link>
+      ) : null}
+
+      <p className="sr-only">Trip status: {status}</p>
     </div>
   );
 }
 
-function MoreLink({
-  href,
-  icon,
-  label,
-  meta
-}: {
-  href: string;
-  icon: ReactNode;
-  label: string;
-  meta: string;
-}) {
-  return (
-    <Link
-      className="grid min-h-14 grid-cols-[auto_1fr_auto] items-center gap-3 rounded-2xl bg-slate-50 px-3 py-2 transition hover:bg-slate-100 focus:outline-none focus:ring-4 focus:ring-blue-100"
-      href={href}
-    >
-      <span className="grid h-9 w-9 place-items-center rounded-full bg-white text-blue-700 ring-1 ring-slate-200">
-        {icon}
-      </span>
-      <span className="min-w-0">
-        <span className="block text-sm font-black text-slate-950">{label}</span>
-        <span className="block truncate text-xs font-semibold text-slate-500">{meta}</span>
-      </span>
-      <span className="text-xs font-black text-blue-700">Open</span>
-    </Link>
-  );
-}
-
-function WalletCard({
+function OverviewCard({
   actionHref,
   actionLabel,
   children,
@@ -236,38 +218,43 @@ function WalletCard({
   title: string;
 }) {
   return (
-    <article className="rounded-[2rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+    <article className="rounded-[2rem] border border-white/10 bg-[#1c1c1f]/88 p-4 text-white shadow-[0_18px_55px_rgba(0,0,0,0.24)] backdrop-blur-2xl">
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-start gap-3">
-          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-blue-50 text-blue-700">
+          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-orange-500/16 text-orange-300">
             {icon}
           </span>
           <div className="min-w-0">
-            <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-400">{eyebrow}</p>
-            <h3 className="mt-1 break-words text-xl font-black leading-tight text-slate-950">{title}</h3>
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-white/42">{eyebrow}</p>
+            <h3 className="mt-1 break-words text-xl font-black leading-tight text-white">{title}</h3>
           </div>
         </div>
         <Link
-          className="hidden min-h-10 shrink-0 items-center rounded-full bg-slate-100 px-4 text-xs font-black text-slate-800 transition hover:bg-slate-200 focus:outline-none focus:ring-4 focus:ring-blue-100 sm:inline-flex"
+          className="inline-flex min-h-10 shrink-0 items-center rounded-full bg-white/10 px-4 text-xs font-black text-white/76 transition hover:bg-white/16 hover:text-white focus:outline-none focus:ring-4 focus:ring-orange-300/20"
           href={actionHref}
         >
           {actionLabel}
         </Link>
       </div>
       <div className="mt-4">{children}</div>
-      <Link
-        className="mt-4 inline-flex min-h-11 w-full items-center justify-center rounded-full bg-slate-950 px-4 text-sm font-black text-white transition hover:bg-slate-800 focus:outline-none focus:ring-4 focus:ring-blue-100 sm:hidden"
-        href={actionHref}
-      >
-        {actionLabel}
-      </Link>
     </article>
+  );
+}
+
+function RouteEndpoint({ align, label }: { align: "left" | "right"; label: string }) {
+  return (
+    <div className={align === "right" ? "min-w-0 text-right" : "min-w-0"}>
+      <p className="truncate text-3xl font-black uppercase leading-none text-white">
+        {shortRouteLabel(label)}
+      </p>
+      <p className="mt-1 truncate text-xs font-bold text-white/54">{label}</p>
+    </div>
   );
 }
 
 function iconForPreview(typeLabel: string) {
   const normalized = typeLabel.toLowerCase();
-  if (/flight|airport|transport/.test(normalized)) return <Plane className="h-4 w-4" aria-hidden="true" />;
+  if (/flight|airport/.test(normalized)) return <Plane className="h-4 w-4" aria-hidden="true" />;
   if (/hotel|lodging|stay/.test(normalized)) return <BedDouble className="h-4 w-4" aria-hidden="true" />;
   if (/restaurant|food|dinner|lunch|cafe/.test(normalized)) return <Utensils className="h-4 w-4" aria-hidden="true" />;
   return <MapPin className="h-4 w-4" aria-hidden="true" />;
@@ -283,14 +270,27 @@ function EmptyInline({
   href: string;
 }) {
   return (
-    <div className="rounded-2xl border border-dashed border-slate-300 px-4 py-5 text-sm text-slate-600">
+    <div className="rounded-[1.35rem] border border-dashed border-white/16 px-4 py-5 text-sm text-white/68">
       <p className="font-semibold">{body}</p>
       <Link
-        className="mt-3 inline-flex min-h-10 items-center rounded-full bg-blue-600 px-4 text-xs font-black text-white"
+        className="mt-3 inline-flex min-h-10 items-center rounded-full bg-orange-500 px-4 text-xs font-black text-white"
         href={href}
       >
         {cta}
       </Link>
     </div>
   );
+}
+
+function shortRouteLabel(label: string) {
+  const codeMatch = label.match(/\b[A-Z]{3}\b/);
+  if (codeMatch) return codeMatch[0];
+
+  return label
+    .split(/[,\s-]+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part.slice(0, 1))
+    .join("")
+    .toUpperCase() || "-";
 }

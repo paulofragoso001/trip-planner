@@ -79,7 +79,7 @@ test("loads dashboard summary and route-split pages", async ({ page }) => {
   await expect(page.getByTestId("trip-workspace-layout")).toBeVisible({ timeout: 30_000 });
   const overview = page.getByTestId("trip-overview-page");
   await expect(overview.getByTestId("mobile-primary-trip-cta")).toBeVisible();
-  await expect(overview.getByText("More")).toBeVisible();
+  await expect(overview.getByText("More")).toHaveCount(0);
   await expect(overview.getByText("Trip organizer")).toHaveCount(0);
   await expect(overview.getByText("All your trip details in one place")).toHaveCount(0);
   await expect(overview.getByText("Trip Overview")).toHaveCount(0);

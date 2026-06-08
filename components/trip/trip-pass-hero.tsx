@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft, MoreHorizontal, Route, Share2 } from "lucide-react";
+import { ArrowLeft, MoreHorizontal, Route, Search, Share2 } from "lucide-react";
 import type { TripWorkspaceData } from "@/app/dashboard/trips/[tripId]/loader";
 
 type TripPassHeroProps = {
@@ -56,6 +56,14 @@ export function TripPassHero({ trip, tripId }: TripPassHeroProps) {
             <span className="hidden lg:inline">Back</span>
           </Link>
           <div className="flex items-center gap-2">
+            <Link
+              aria-label="Search trip"
+              className="inline-flex min-h-11 items-center gap-2 rounded-full bg-white/14 px-3 text-white shadow-sm backdrop-blur-md transition hover:bg-white/22 focus:outline-none focus:ring-4 focus:ring-white/25"
+              href={`/dashboard/trips/${encodeURIComponent(tripId)}/ideas`}
+            >
+              <Search className="h-4 w-4" aria-hidden="true" />
+              <span className="hidden lg:inline">Search</span>
+            </Link>
             <Link
               aria-label="Share trip"
               className="inline-flex min-h-11 items-center gap-2 rounded-full bg-white/14 px-3 text-white shadow-sm backdrop-blur-md transition hover:bg-white/22 focus:outline-none focus:ring-4 focus:ring-white/25"

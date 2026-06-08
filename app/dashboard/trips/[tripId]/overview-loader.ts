@@ -2,9 +2,20 @@ import "server-only";
 
 import { authorizeDashboardApi } from "@/lib/server/dashboard-test-auth";
 import { isDemoTripId, isUuid } from "@/lib/server/trip-id";
+import {
+  isRouteKind,
+  readTripSegmentRoute,
+  routeEndpointLabel,
+  routeTitleLabel
+} from "@/lib/trip-segment-route";
 
 export type TripOverviewData = {
   actualLabel: string;
+  actionSummary: {
+    hasFlight: boolean;
+    hasLodging: boolean;
+    hasRestaurantOrPlace: boolean;
+  };
   destination: string;
   error: string | null;
   expenseCategories: Array<{
@@ -12,6 +23,7 @@ export type TripOverviewData = {
     id: string;
     label: string;
   }>;
+  hasExpenses: boolean;
   itineraryPreview: Array<{
     id: string;
     isMapped: boolean;
@@ -31,6 +43,16 @@ export type TripOverviewData = {
   notes: string | null;
   plannedLabel: string;
   remainingLabel: string;
+  routePreview: {
+    destinationLabel: string | null;
+    id: string;
+    metaLabel: string;
+    originLabel: string | null;
+    routeLabel: string;
+    timeLabel: string;
+    title: string;
+    typeLabel: string;
+  } | null;
   segmentCount: number;
   status: string;
   suggestionsCount: number;
@@ -61,6 +83,7 @@ type SegmentRow = {
   latitude?: number | null;
   longitude?: number | null;
   location: string | null;
+  provider_metadata?: Record<string, unknown> | null;
   start_time: string | null;
   title: string;
 };
@@ -69,6 +92,11 @@ export async function loadTripOverviewData(tripId: string): Promise<TripOverview
   if (isDemoTripId(tripId)) {
     return {
       actualLabel: "$3,870",
+      actionSummary: {
+        hasFlight: true,
+        hasLodging: true,
+        hasRestaurantOrPlace: true
+      },
       destination: "Barcelona, Spain",
       error: null,
       expenseCategories: [
@@ -102,6 +130,7 @@ export async function loadTripOverviewData(tripId: string): Promise<TripOverview
           typeLabel: "Restaurant"
         }
       ],
+      hasExpenses: true,
       mappedCount: 3,
       nextUp: {
         id: "hotel-arts",
@@ -113,6 +142,16 @@ export async function loadTripOverviewData(tripId: string): Promise<TripOverview
       notes: "Demo workspace",
       plannedLabel: "$4,200",
       remainingLabel: "$330",
+      routePreview: {
+        destinationLabel: "BCN",
+        id: "flight-demo",
+        metaLabel: "Flight",
+        originLabel: "MIA",
+        routeLabel: "MIA to BCN",
+        timeLabel: "9:15 AM",
+        title: "MIA to BCN",
+        typeLabel: "Flight"
+      },
       segmentCount: 5,
       status: "On track",
       suggestionsCount: 2,
@@ -140,7 +179,7 @@ export async function loadTripOverviewData(tripId: string): Promise<TripOverview
       .maybeSingle(),
     auth.supabase
       .from("trip_segments")
-      .select("id,title,kind,location,start_time,lat,lng", { count: "exact" })
+      .select("id,title,kind,location,start_time,lat,lng,provider_metadata", { count: "exact" })
       .eq("trip_id", tripId)
       .eq("user_id", auth.userId)
       .order("start_time", { ascending: true, nullsFirst: false })
@@ -161,7 +200,7 @@ export async function loadTripOverviewData(tripId: string): Promise<TripOverview
     segmentResult.error && isMissingLatLngColumns(segmentResult.error.message)
       ? await auth.supabase
           .from("trip_segments")
-          .select("id,title,kind,location,start_time,latitude,longitude", { count: "exact" })
+          .select("id,title,kind,location,start_time,latitude,longitude,provider_metadata", { count: "exact" })
           .eq("trip_id", tripId)
           .eq("user_id", auth.userId)
           .order("start_time", { ascending: true, nullsFirst: false })
@@ -185,18 +224,22 @@ export async function loadTripOverviewData(tripId: string): Promise<TripOverview
   const planned = Number(trip.budget || 0);
   const segments = (segmentResultWithFallback.data || []) as SegmentRow[];
   const itineraryPreview = segments.slice(0, 5).map(mapSegmentPreview);
+  const expenseCategories = groupExpenseCategories(budgetRows, currency).slice(0, 4);
 
   return {
     actualLabel: formatMoney(actual, currency),
+    actionSummary: summarizeSegments(segments),
     destination: trip.destination || "No destination set",
     error: null,
-    expenseCategories: groupExpenseCategories(budgetRows, currency).slice(0, 4),
+    expenseCategories,
+    hasExpenses: actual > 0 || expenseCategories.length > 0,
     itineraryPreview,
     mappedCount: segments.filter(isMappedSegment).length,
     nextUp: itineraryPreview.find((item) => item.timeLabel !== "Anytime") || itineraryPreview[0] || null,
     notes: trip.notes,
     plannedLabel: formatMoney(planned, currency),
     remainingLabel: formatMoney(planned - actual, currency),
+    routePreview: mapRoutePreview(segments.find(isOverviewRouteSegment) || null),
     segmentCount: segmentResultWithFallback.count || segments.length,
     status: trip.status || "Planning",
     suggestionsCount: suggestionsResult.error ? 0 : suggestionsResult.count || 0,
@@ -208,15 +251,22 @@ export async function loadTripOverviewData(tripId: string): Promise<TripOverview
 function emptyOverviewData(tripId: string, error: string): TripOverviewData {
   return {
     actualLabel: "$0",
+    actionSummary: {
+      hasFlight: false,
+      hasLodging: false,
+      hasRestaurantOrPlace: false
+    },
     destination: "Destination unavailable",
     error,
     expenseCategories: [],
+    hasExpenses: false,
     itineraryPreview: [],
     mappedCount: 0,
     nextUp: null,
     notes: null,
     plannedLabel: "$0",
     remainingLabel: "$0",
+    routePreview: null,
     segmentCount: 0,
     status: "Unavailable",
     suggestionsCount: 0,
@@ -234,6 +284,54 @@ function mapSegmentPreview(row: SegmentRow) {
     title: row.title,
     typeLabel: labelForKind(row.kind)
   };
+}
+
+function mapRoutePreview(row: SegmentRow | null) {
+  if (!row) return null;
+
+  const route = readTripSegmentRoute(row.provider_metadata);
+  const originLabel = routeEndpointLabel(route?.origin) || null;
+  const destinationLabel = routeEndpointLabel(route?.destination) || null;
+  const typeLabel = route?.mode === "flight" || row.kind === "flight"
+    ? "Flight"
+    : labelForKind(row.kind);
+  const metaLabel = [route?.carrier, route?.flightNumber].filter(Boolean).join(" · ") || typeLabel;
+
+  return {
+    destinationLabel,
+    id: row.id,
+    metaLabel,
+    originLabel,
+    routeLabel: routeTitleLabel(route, row.location || row.title),
+    timeLabel: formatTime(row.start_time),
+    title: row.title,
+    typeLabel
+  };
+}
+
+function summarizeSegments(rows: SegmentRow[]) {
+  return rows.reduce(
+    (summary, row) => {
+      const kind = String(row.kind || "").toLowerCase();
+      const route = readTripSegmentRoute(row.provider_metadata);
+      const routeMode = route?.mode || "";
+      const label = labelForKind(row.kind).toLowerCase();
+
+      summary.hasFlight ||= kind === "flight" || routeMode === "flight";
+      summary.hasLodging ||= /hotel|lodging|stay/.test(`${kind} ${label}`);
+      summary.hasRestaurantOrPlace ||= /restaurant|dinner|food|place|activity|attraction|park|landmark/.test(`${kind} ${label}`);
+      return summary;
+    },
+    {
+      hasFlight: false,
+      hasLodging: false,
+      hasRestaurantOrPlace: false
+    }
+  );
+}
+
+function isOverviewRouteSegment(row: SegmentRow) {
+  return isRouteKind(row.kind) || Boolean(readTripSegmentRoute(row.provider_metadata));
 }
 
 function isMappedSegment(row: SegmentRow) {

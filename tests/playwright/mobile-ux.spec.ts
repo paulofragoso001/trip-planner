@@ -260,7 +260,7 @@ test.describe("mobile soft-launch UX", () => {
       const mobileHub = page.getByTestId("trip-overview-page");
       await expect(mobileHub).toBeVisible();
       await expect(page.getByTestId("mobile-primary-trip-cta")).toBeVisible();
-      await expect(page.getByText("Add trip item")).toBeVisible();
+      await expect(page.getByTestId("mobile-primary-trip-cta")).toContainText("Add trip item");
       await expect(mobileHub.getByText("Invite Guests")).toHaveCount(0);
       await expect(page.getByLabel("Organizer actions")).toBeHidden();
       await expect(page.getByTestId("mobile-trip-overflow-menu")).toHaveCount(0);
