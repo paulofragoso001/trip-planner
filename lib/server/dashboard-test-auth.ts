@@ -28,26 +28,12 @@ export async function authorizeDashboardApi<TClient = SupabaseClient>(): Promise
       return null;
     }
 
-    const { data: existingUser, error: lookupError } = await admin
-      .from("trips")
-      .select("user_id")
-      .limit(1)
-      .maybeSingle();
-
-    if (!lookupError && existingUser?.user_id) {
-      return { supabase: admin as TClient, userId: existingUser.user_id };
-    }
-
-    const created = await admin.auth.admin.createUser({
-      email: dashboardTestUserEmail,
-      email_confirm: true
-    });
-
-    if (created.error || !created.data.user) {
+    const testUserId = await getDashboardTestUserId(admin);
+    if (!testUserId) {
       return null;
     }
 
-    return { supabase: admin as TClient, userId: created.data.user.id };
+    return { supabase: admin as TClient, userId: testUserId };
   }
 
   const supabase = await createClient();
@@ -74,6 +60,46 @@ export async function authorizeDashboardApi<TClient = SupabaseClient>(): Promise
   }
 
   return null;
+}
+
+async function getDashboardTestUserId(admin: SupabaseClient) {
+  const normalizedEmail = dashboardTestUserEmail.toLowerCase();
+  const existingUserId = await findDashboardTestUserId(admin, normalizedEmail);
+
+  if (existingUserId) {
+    return existingUserId;
+  }
+
+  const created = await admin.auth.admin.createUser({
+    email: dashboardTestUserEmail,
+    email_confirm: true
+  });
+
+  if (!created.error && created.data.user?.id) {
+    return created.data.user.id;
+  }
+
+  return findDashboardTestUserId(admin, normalizedEmail);
+}
+
+async function findDashboardTestUserId(
+  admin: SupabaseClient,
+  normalizedEmail: string
+) {
+  const { data, error } = await admin.auth.admin.listUsers({
+    page: 1,
+    perPage: 1000
+  });
+
+  if (error) {
+    return null;
+  }
+
+  const existingUser = data.users.find(
+    (user) => user.email?.toLowerCase() === normalizedEmail
+  );
+
+  return existingUser?.id ?? null;
 }
 
 function withTimeout<T>(promise: PromiseLike<T>, timeoutMs: number, message: string) {

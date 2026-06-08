@@ -130,8 +130,10 @@ test.describe("mobile soft-launch UX", () => {
 
     if (await firstTripState.isVisible()) {
       await expect(firstTripState.getByRole("heading", { name: "Create your first trip" })).toBeVisible();
-      await expect(page.getByTestId("mobile-trip-create-form")).toBeVisible();
-      await expect(page.getByTestId("mobile-trip-create-preview")).toBeVisible();
+      await expect(firstTripState.getByRole("button", { name: "Create trip" })).toBeVisible();
+      const createPanel = page.getByTestId("mobile-create-another-trip");
+      await expect(createPanel.getByTestId("mobile-trip-create-form")).toBeVisible();
+      await expect(createPanel.getByTestId("mobile-trip-create-preview")).toBeVisible();
     } else {
       await expect(tripWallet).toBeVisible();
       await expect(tripWallet.getByTestId("mobile-trip-pass-card").first()).toBeVisible();
@@ -259,8 +261,9 @@ test.describe("mobile soft-launch UX", () => {
       await expect(page.getByTestId("trip-pass-hero")).toBeVisible({ timeout: 20_000 });
       const mobileHub = page.getByTestId("trip-overview-page");
       await expect(mobileHub).toBeVisible();
-      await expect(page.getByTestId("mobile-primary-trip-cta")).toBeVisible();
-      await expect(page.getByTestId("mobile-primary-trip-cta")).toContainText("Add trip item");
+      await expect(mobileHub.getByTestId("overview-small-pass")).toBeVisible();
+      await expect(mobileHub.getByTestId("overview-small-primary-cta")).toBeVisible();
+      await expect(mobileHub.getByTestId("overview-small-primary-cta")).toContainText("Add trip item");
       await expect(mobileHub.getByText("Invite Guests")).toHaveCount(0);
       await expect(mobileHub.getByText("Trip guests")).toBeVisible();
       await expect(mobileHub.getByRole("link", { name: "Open map" }).first()).toBeVisible();

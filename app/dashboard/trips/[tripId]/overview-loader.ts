@@ -16,6 +16,7 @@ export type TripOverviewData = {
     hasLodging: boolean;
     hasRestaurantOrPlace: boolean;
   };
+  dateRange: string;
   destination: string;
   error: string | null;
   expenseCategories: Array<{
@@ -63,8 +64,10 @@ export type TripOverviewData = {
 type TripRow = {
   budget: number | string | null;
   destination: string | null;
+  end_date: string | null;
   name: string;
   notes: string | null;
+  start_date: string | null;
   status: string | null;
 };
 
@@ -97,6 +100,7 @@ export async function loadTripOverviewData(tripId: string): Promise<TripOverview
         hasLodging: true,
         hasRestaurantOrPlace: true
       },
+      dateRange: "Jun 11 - Jun 17",
       destination: "Barcelona, Spain",
       error: null,
       expenseCategories: [
@@ -173,7 +177,7 @@ export async function loadTripOverviewData(tripId: string): Promise<TripOverview
   const [tripResult, segmentResult, budgetResult, suggestionsResult] = await Promise.all([
     auth.supabase
       .from("trips")
-      .select("name,destination,status,budget,notes")
+      .select("name,destination,status,budget,notes,start_date,end_date")
       .eq("id", tripId)
       .eq("user_id", auth.userId)
       .maybeSingle(),
@@ -229,6 +233,7 @@ export async function loadTripOverviewData(tripId: string): Promise<TripOverview
   return {
     actualLabel: formatMoney(actual, currency),
     actionSummary: summarizeSegments(segments),
+    dateRange: formatDateRange(trip.start_date, trip.end_date),
     destination: trip.destination || "No destination set",
     error: null,
     expenseCategories,
@@ -256,6 +261,7 @@ function emptyOverviewData(tripId: string, error: string): TripOverviewData {
       hasLodging: false,
       hasRestaurantOrPlace: false
     },
+    dateRange: "Dates unavailable",
     destination: "Destination unavailable",
     error,
     expenseCategories: [],
@@ -392,4 +398,19 @@ function formatMoney(value: number, currency = "USD") {
     maximumFractionDigits: 0,
     style: "currency"
   }).format(value);
+}
+
+function formatDateRange(startDate: string | null, endDate: string | null) {
+  if (!startDate && !endDate) return "Dates not set";
+  if (startDate && !endDate) return formatDate(startDate);
+  if (!startDate && endDate) return formatDate(endDate);
+  return `${formatDate(startDate!)} - ${formatDate(endDate!)}`;
+}
+
+function formatDate(value: string) {
+  return new Intl.DateTimeFormat("en", {
+    day: "numeric",
+    month: "short",
+    timeZone: "UTC"
+  }).format(new Date(`${value}T00:00:00Z`));
 }

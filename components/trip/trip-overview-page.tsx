@@ -6,12 +6,15 @@ import {
   CircleDollarSign,
   FileText,
   MapPin,
+  MoreHorizontal,
   Plane,
   Plus,
   Route,
+  Search,
   Share2,
   Sparkles,
-  Utensils
+  Utensils,
+  X
 } from "lucide-react";
 import type { ReactNode } from "react";
 import type { TripOverviewData } from "@/app/dashboard/trips/[tripId]/overview-loader";
@@ -21,6 +24,8 @@ type TripOverviewPageProps = TripOverviewData;
 export default function TripOverviewPage({
   actionSummary,
   actualLabel,
+  dateRange,
+  destination,
   error,
   expenseCategories,
   hasExpenses,
@@ -31,6 +36,7 @@ export default function TripOverviewPage({
   segmentCount,
   status,
   suggestionsCount,
+  title,
   tripId
 }: TripOverviewPageProps) {
   const base = `/dashboard/trips/${encodeURIComponent(tripId)}`;
@@ -68,42 +74,55 @@ export default function TripOverviewPage({
 
   return (
     <div className="grid gap-4 text-white" data-testid="trip-overview-page">
-      {error ? (
-        <p className="rounded-[1.5rem] border border-amber-200/20 bg-amber-300/12 px-4 py-3 text-sm font-bold text-amber-50">
-          Some trip details are unavailable, but you can still add an item or open the itinerary.
-        </p>
-      ) : null}
+      <MobileOverviewSmallPass
+        actionItems={actionItems}
+        base={base}
+        dateRange={dateRange}
+        destination={destination}
+        mappedCount={mappedCount}
+        nextUp={nextUp}
+        routePreview={routePreview}
+        segmentCount={segmentCount}
+        title={title}
+      />
 
-      <section
-        aria-label="Quick trip actions"
-        className="rounded-[2rem] border border-white/10 bg-white/[0.08] p-4 shadow-[0_18px_50px_rgba(2,6,23,0.22)] backdrop-blur-2xl"
-      >
-        <div className="grid grid-cols-4 gap-2">
-          {actionItems.map((item) => (
-            <Link
-              className={[
-                "grid min-h-[5.8rem] place-items-center gap-2 rounded-[1.35rem] px-2 py-3 text-center text-xs font-bold transition focus:outline-none focus:ring-4 focus:ring-orange-300/20",
-                item.primary
-                  ? "bg-orange-500 text-white shadow-[0_14px_30px_rgba(249,115,22,0.24)]"
-                  : "bg-black/28 text-white/78 hover:bg-white/12 hover:text-white"
-              ].join(" ")}
-              data-testid={item.testId}
-              href={item.href}
-              key={item.label}
-            >
-              <span
+      <div className="grid gap-4" id="overview-full">
+        {error ? (
+          <p className="rounded-[1.5rem] border border-amber-200/20 bg-amber-300/12 px-4 py-3 text-sm font-bold text-amber-50">
+            Some trip details are unavailable, but you can still add an item or open the itinerary.
+          </p>
+        ) : null}
+
+        <section
+          aria-label="Quick trip actions"
+          className="hidden rounded-[2rem] border border-white/10 bg-white/[0.08] p-4 shadow-[0_18px_50px_rgba(2,6,23,0.22)] backdrop-blur-2xl lg:block"
+        >
+          <div className="grid grid-cols-4 gap-2">
+            {actionItems.map((item) => (
+              <Link
                 className={[
-                  "grid h-12 w-12 place-items-center rounded-full",
-                  item.primary ? "bg-white/18" : "bg-white/10"
+                  "grid min-h-[5.8rem] place-items-center gap-2 rounded-[1.35rem] px-2 py-3 text-center text-xs font-bold transition focus:outline-none focus:ring-4 focus:ring-orange-300/20",
+                  item.primary
+                    ? "bg-orange-500 text-white shadow-[0_14px_30px_rgba(249,115,22,0.24)]"
+                    : "bg-black/28 text-white/78 hover:bg-white/12 hover:text-white"
                 ].join(" ")}
+                data-testid={item.testId}
+                href={item.href}
+                key={item.label}
               >
-                {item.icon}
-              </span>
-              <span className="leading-tight">{item.label}</span>
-            </Link>
-          ))}
-        </div>
-      </section>
+                <span
+                  className={[
+                    "grid h-12 w-12 place-items-center rounded-full",
+                    item.primary ? "bg-white/18" : "bg-white/10"
+                  ].join(" ")}
+                >
+                  {item.icon}
+                </span>
+                <span className="leading-tight">{item.label}</span>
+              </Link>
+            ))}
+          </div>
+        </section>
 
       {routePreview ? (
         <OverviewCard
@@ -276,8 +295,204 @@ export default function TripOverviewPage({
         </Link>
       ) : null}
 
-      <p className="sr-only">Trip status: {status}</p>
+        <p className="sr-only">Trip status: {status}</p>
+      </div>
     </div>
+  );
+}
+
+function MobileOverviewSmallPass({
+  actionItems,
+  base,
+  dateRange,
+  destination,
+  mappedCount,
+  nextUp,
+  routePreview,
+  segmentCount,
+  title
+}: {
+  actionItems: Array<{
+    href: string;
+    icon: ReactNode;
+    label: string;
+    primary: boolean;
+    show: boolean;
+    testId?: string;
+  }>;
+  base: string;
+  dateRange: string;
+  destination: string;
+  mappedCount: number;
+  nextUp: TripOverviewData["nextUp"];
+  routePreview: TripOverviewData["routePreview"];
+  segmentCount: number;
+  title: string;
+}) {
+  const nextItem = routePreview
+    ? {
+        href: `${base}/timeline#${routePreview.id}`,
+        label: routePreview.routeLabel,
+        meta: [routePreview.timeLabel, routePreview.metaLabel].filter(Boolean).join(" · "),
+        routeDestination: routePreview.destinationLabel,
+        routeOrigin: routePreview.originLabel
+      }
+    : nextUp
+      ? {
+          href: `${base}/timeline#${nextUp.id}`,
+          label: nextUp.title,
+          meta: [nextUp.timeLabel, nextUp.location, nextUp.typeLabel].filter(Boolean).join(" · "),
+          routeDestination: null,
+          routeOrigin: null
+        }
+      : null;
+  const mapLabel = mappedCount > 0
+    ? `${mappedCount} mapped ${mappedCount === 1 ? "place" : "places"}`
+    : "Map preview";
+
+  return (
+    <section
+      aria-label="Compressed trip overview"
+      className="overflow-hidden rounded-[2.25rem] border border-white/10 bg-[#24211e]/88 shadow-[0_26px_80px_rgba(0,0,0,0.34)] backdrop-blur-2xl lg:hidden"
+      data-testid="overview-small-pass"
+    >
+      <Link
+        aria-label="Open map"
+        className="relative block min-h-[18rem] overflow-hidden bg-[#0b1624] focus:outline-none focus:ring-4 focus:ring-orange-300/20"
+        href={`${base}/map`}
+      >
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 bg-[radial-gradient(circle_at_18%_28%,rgba(56,189,248,0.32),transparent_18%),radial-gradient(circle_at_70%_34%,rgba(59,130,246,0.28),transparent_22%),linear-gradient(155deg,#102b38_0%,#0e2340_42%,#071223_100%)]"
+        />
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 opacity-45 [background-image:linear-gradient(rgba(255,255,255,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.08)_1px,transparent_1px)] [background-size:44px_44px]"
+        />
+        <div
+          aria-hidden="true"
+          className="absolute inset-x-[15%] top-[42%] h-3 rotate-[-12deg] rounded-full bg-sky-400 shadow-[0_0_24px_rgba(56,189,248,0.52)]"
+        />
+        <div
+          aria-hidden="true"
+          className="absolute left-[18%] top-[48%] grid h-12 w-12 place-items-center rounded-full border-2 border-black bg-sky-400 text-sm font-black text-white shadow-lg"
+        >
+          {routePreview?.originLabel ? shortRouteLabel(routePreview.originLabel) : "1"}
+        </div>
+        <div
+          aria-hidden="true"
+          className="absolute right-[17%] top-[34%] grid h-12 w-12 place-items-center rounded-full border-2 border-black bg-sky-400 text-sm font-black text-white shadow-lg"
+        >
+          {routePreview?.destinationLabel ? shortRouteLabel(routePreview.destinationLabel) : mappedCount || "2"}
+        </div>
+        <div
+          aria-hidden="true"
+          className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-[#24211e] to-transparent"
+        />
+        <div className="absolute right-4 top-4 grid overflow-hidden rounded-2xl bg-black text-orange-400 shadow-xl ring-1 ring-white/10">
+          <span className="grid h-11 w-11 place-items-center border-b border-white/10">
+            <MapPin className="h-5 w-5" aria-hidden="true" />
+          </span>
+          <span className="grid h-11 w-11 place-items-center">
+            <Route className="h-5 w-5" aria-hidden="true" />
+          </span>
+        </div>
+        <p className="absolute bottom-4 left-4 rounded-full bg-black/40 px-3 py-1 text-xs font-black text-white/82 backdrop-blur">
+          {mapLabel}
+        </p>
+      </Link>
+
+      <div className="relative -mt-10 rounded-t-[2.25rem] bg-[#3b3832]/94 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] text-white ring-1 ring-white/10">
+        <div className="mx-auto mb-3 h-1.5 w-14 rounded-full bg-white/44" aria-hidden="true" />
+        <div className="grid grid-cols-[44px_1fr_auto_auto] items-center gap-2">
+          <button
+            aria-label="More trip options"
+            className="grid h-11 w-11 place-items-center rounded-full bg-black/28 text-white/82"
+            type="button"
+          >
+            <MoreHorizontal className="h-5 w-5" aria-hidden="true" />
+          </button>
+          <div className="min-w-0 text-center">
+            <h2 className="truncate text-xl font-black leading-tight text-white">{title}</h2>
+            <p className="truncate text-sm font-semibold text-white/58">{dateRange}</p>
+          </div>
+          <Link
+            aria-label="Search trip activities"
+            className="grid h-11 w-11 place-items-center rounded-full bg-black/28 text-white/82"
+            href={`${base}/ideas`}
+          >
+            <Search className="h-5 w-5" aria-hidden="true" />
+          </Link>
+          <Link
+            aria-label="Back to trips"
+            className="grid h-11 w-11 place-items-center rounded-full bg-black/28 text-white/82"
+            href="/dashboard/trips"
+          >
+            <X className="h-5 w-5" aria-hidden="true" />
+          </Link>
+        </div>
+
+        <p className="mt-2 truncate text-center text-xs font-bold text-white/48">{destination}</p>
+
+        <div className="mt-5 grid grid-cols-4 gap-2">
+          {actionItems.map((item) => (
+            <Link
+              className="grid min-h-[5.6rem] place-items-center gap-2 rounded-[1.35rem] text-center text-[0.7rem] font-semibold text-white/72 transition hover:bg-white/8 focus:outline-none focus:ring-4 focus:ring-orange-300/20"
+              data-testid={item.primary ? "overview-small-primary-cta" : undefined}
+              href={item.href}
+              key={item.label}
+            >
+              <span
+                className={[
+                  "grid h-14 w-14 place-items-center rounded-full",
+                  item.primary ? "bg-black/36 text-white" : "bg-black/28 text-white/88"
+                ].join(" ")}
+              >
+                {item.icon}
+              </span>
+              <span className="leading-tight">{item.label}</span>
+            </Link>
+          ))}
+        </div>
+
+        {nextItem ? (
+          <Link
+            className="mt-4 block rounded-[1.6rem] bg-[#171719] p-4 text-white shadow-[0_14px_34px_rgba(0,0,0,0.22)] focus:outline-none focus:ring-4 focus:ring-orange-300/20"
+            href={nextItem.href}
+          >
+            {nextItem.routeOrigin && nextItem.routeDestination ? (
+              <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+                <RouteEndpoint align="left" label={nextItem.routeOrigin} />
+                <span className="grid place-items-center text-sky-400">
+                  <Plane className="h-6 w-6" aria-hidden="true" />
+                </span>
+                <RouteEndpoint align="right" label={nextItem.routeDestination} />
+              </div>
+            ) : (
+              <>
+                <p className="text-xs font-black uppercase tracking-[0.16em] text-white/38">Next</p>
+                <p className="mt-1 truncate text-lg font-black text-white">{nextItem.label}</p>
+              </>
+            )}
+            <p className="mt-3 truncate text-sm font-semibold text-white/54">{nextItem.meta}</p>
+          </Link>
+        ) : (
+          <Link
+            className="mt-4 block rounded-[1.6rem] border border-dashed border-white/16 bg-black/22 p-4 text-sm font-semibold text-white/68"
+            href={`${base}/timeline#new-plan`}
+          >
+            Add your first trip item to build the pass.
+          </Link>
+        )}
+
+        <div className="mt-4 flex items-center justify-between gap-3 text-xs font-black uppercase tracking-[0.14em] text-white/42">
+          <span>{segmentCount} {segmentCount === 1 ? "place" : "places"}</span>
+          <Link className="text-orange-300" href="#overview-full">
+            Full overview
+          </Link>
+        </div>
+      </div>
+    </section>
   );
 }
 
