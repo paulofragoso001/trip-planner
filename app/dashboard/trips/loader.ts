@@ -17,6 +17,8 @@ import {
 export type TripListItemView = {
   dateRange: string;
   destination: string;
+  destinationLat: number | null;
+  destinationLng: number | null;
   imageAlt: string;
   imageAttribution: string | null;
   imageUrl: string | null;
@@ -42,6 +44,8 @@ export type TripsData = {
 
 type TripRow = {
   destination: string | null;
+  destination_lat?: number | string | null;
+  destination_lng?: number | string | null;
   destination_provider_metadata?: Record<string, unknown> | null;
   end_date: string | null;
   id: string;
@@ -136,15 +140,39 @@ export async function loadTripsData(): Promise<TripsData> {
 async function loadTripRows(supabase: any, userId: string) {
   const withDestinationMetadata = await supabase
     .from("trips")
-    .select("id,name,destination,start_date,end_date,status,travel_style,destination_provider_metadata")
+    .select("id,name,destination,destination_lat,destination_lng,start_date,end_date,status,travel_style,destination_provider_metadata")
     .eq("user_id", userId)
     .order("start_date", { ascending: true, nullsFirst: false })
     .order("created_at", { ascending: false });
 
-  if (
-    !withDestinationMetadata.error ||
-    !isMissingDestinationMetadataColumn(withDestinationMetadata.error.message)
-  ) {
+  if (!withDestinationMetadata.error) {
+    return withDestinationMetadata;
+  }
+
+  if (isMissingDestinationCoordinateColumn(withDestinationMetadata.error.message)) {
+    console.warn(
+      JSON.stringify({
+        area: "trips",
+        event: "trips_load_destination_coordinates_fallback",
+        message: withDestinationMetadata.error.message,
+        userId
+      })
+    );
+
+    const withoutDestinationCoordinates = await supabase
+      .from("trips")
+      .select("id,name,destination,start_date,end_date,status,travel_style,destination_provider_metadata")
+      .eq("user_id", userId)
+      .order("start_date", { ascending: true, nullsFirst: false })
+      .order("created_at", { ascending: false });
+
+    if (
+      !withoutDestinationCoordinates.error ||
+      !isMissingDestinationMetadataColumn(withoutDestinationCoordinates.error.message)
+    ) {
+      return withoutDestinationCoordinates;
+    }
+  } else if (!isMissingDestinationMetadataColumn(withDestinationMetadata.error.message)) {
     return withDestinationMetadata;
   }
 
@@ -191,6 +219,10 @@ function isMissingTravelStyleColumn(message: string) {
 
 function isMissingDestinationMetadataColumn(message: string) {
   return /destination_provider_metadata/i.test(message) && /column|schema cache|could not find/i.test(message);
+}
+
+function isMissingDestinationCoordinateColumn(message: string) {
+  return /destination_lat|destination_lng/i.test(message) && /column|schema cache|could not find/i.test(message);
 }
 
 type SegmentCounts = {
@@ -376,6 +408,8 @@ function mapTrip(
   return {
     dateRange: formatDateRange(row.start_date, row.end_date),
     destination: row.destination || "No destination set",
+    destinationLat: normalizeNullableNumber(row.destination_lat),
+    destinationLng: normalizeNullableNumber(row.destination_lng),
     imageAlt: passImage?.imageAlt || (row.destination ? `Photo of ${row.destination}` : `Trip image for ${row.name}`),
     imageAttribution: passImage?.imageAttribution || null,
     imageUrl: passImage?.imageUrl || null,
@@ -392,6 +426,12 @@ function mapTrip(
     travelStyle,
     travelStyleLabel: TRIP_TRAVEL_STYLE_LABELS[travelStyle]
   };
+}
+
+function normalizeNullableNumber(value: number | string | null | undefined) {
+  if (value === null || value === undefined || value === "") return null;
+  const numeric = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(numeric) ? numeric : null;
 }
 
 function formatDateRange(startDate: string | null, endDate: string | null) {

@@ -31,6 +31,10 @@ async function deleteTripForTest(request: APIRequestContext, tripId: string | nu
   throw lastError instanceof Error ? lastError : new Error("Delete trip failed");
 }
 
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 test.describe("mobile soft-launch UX", () => {
   for (const width of [360, 390, 430] as const) {
     test(`public homepage avoids horizontal overflow at ${width}px`, async ({ page }) => {
@@ -132,6 +136,82 @@ test.describe("mobile soft-launch UX", () => {
       await expect(tripWallet).toBeVisible();
       await expect(tripWallet.getByTestId("mobile-trip-pass-card").first()).toBeVisible();
       await expect(page.getByTestId("mobile-create-another-trip").getByText("Create trip")).toBeVisible();
+    }
+  });
+
+  test("mobile trips country map uses saved destination coordinates only", async ({ page, request }) => {
+    test.setTimeout(90_000);
+    await page.setViewportSize({ height: 900, width: 390 });
+    await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
+
+    const suffix = Date.now();
+    const mappedTripName = `Mobile country map Miami ${suffix}`;
+    const listOnlyTripName = `Mobile country map Manual ${suffix}`;
+    const createdTripIds: string[] = [];
+
+    try {
+      const mappedResponse = await request.post(`${baseUrl}/api/trips`, {
+        data: {
+          destination: "Miami, FL",
+          destination_lat: 25.7617,
+          destination_lng: -80.1918,
+          name: mappedTripName,
+          start_date: "2026-05-29",
+          status: "Planning",
+          travel_style: "balanced"
+        },
+        headers: { "x-cypress-dashboard": "true" }
+      });
+      expect(mappedResponse.status()).toBe(201);
+      const mappedPayload = await mappedResponse.json();
+      createdTripIds.push(mappedPayload?.trip?.id);
+
+      const listOnlyResponse = await request.post(`${baseUrl}/api/trips`, {
+        data: {
+          destination: "Manual destination",
+          name: listOnlyTripName,
+          start_date: "2026-05-29",
+          status: "Planning",
+          travel_style: "balanced"
+        },
+        headers: { "x-cypress-dashboard": "true" }
+      });
+      expect(listOnlyResponse.status()).toBe(201);
+      const listOnlyPayload = await listOnlyResponse.json();
+      createdTripIds.push(listOnlyPayload?.trip?.id);
+
+      await page.goto(`${baseUrl}/dashboard/trips?view=map`, { waitUntil: "commit" });
+      await expect(page.getByTestId("mobile-trips-country-map-screen")).toBeVisible({ timeout: 20_000 });
+      await expect(page.getByTestId("mobile-country-map-canvas")).toBeVisible();
+      await expect(page.getByRole("heading", { name: "My Trips" })).toBeVisible();
+
+      await page.getByPlaceholder("Search for trips").fill(`Mobile country map ${suffix}`);
+      const countryTripList = page.getByTestId("mobile-country-trip-list");
+      const mappedRow = countryTripList.getByRole("link", {
+        name: new RegExp(escapeRegExp(mappedTripName))
+      });
+      const listOnlyRow = countryTripList.getByRole("link", {
+        name: new RegExp(escapeRegExp(listOnlyTripName))
+      });
+      await expect(mappedRow).toBeVisible();
+      await expect(listOnlyRow).toBeVisible();
+      await expect(mappedRow.getByText("Mapped")).toBeVisible();
+      await expect(listOnlyRow.getByText("List only")).toBeVisible();
+
+      await expect(
+        page.locator(`[data-testid="mobile-country-map-marker"][aria-label="Open ${mappedTripName}"]`)
+      ).toHaveCount(1);
+      await expect(
+        page.locator(`[data-testid="mobile-country-map-marker"][aria-label="Open ${listOnlyTripName}"]`)
+      ).toHaveCount(0);
+      await expect(page.getByRole("link", { name: "Show trip cards" }).first()).toHaveAttribute(
+        "href",
+        /\/dashboard\/trips$/
+      );
+    } finally {
+      for (const tripId of createdTripIds) {
+        await deleteTripForTest(request, tripId);
+      }
     }
   });
 
