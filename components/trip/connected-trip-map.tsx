@@ -234,7 +234,7 @@ export function ConnectedTripMap({
                     ) : null}
                     <Link
                       className="inline-flex min-h-10 items-center justify-center rounded-xl bg-white/10 px-3 text-xs font-black text-white ring-1 ring-white/12"
-                      href={`/dashboard/trips/${encodeURIComponent(tripId)}/timeline#${selectedItem.id}`}
+                      href={`/dashboard/trips/${encodeURIComponent(tripId)}/timeline?mode=map#${selectedItem.id}`}
                     >
                       Itinerary
                     </Link>

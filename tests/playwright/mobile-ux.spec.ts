@@ -378,6 +378,29 @@ test.describe("mobile soft-launch UX", () => {
     await expect(routePlaces.getByText("Team dinner in El Born")).toBeVisible();
   });
 
+  test("map itinerary action opens the map-aware itinerary sheet", async ({ page }) => {
+    test.setTimeout(90_000);
+    await page.setViewportSize({ height: 900, width: 390 });
+    await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
+    await page.goto(`${baseUrl}/dashboard/trips/demo/map`, { waitUntil: "commit" });
+
+    const mapPanel = page.getByTestId("map-route-panel");
+    await expect(mapPanel).toBeVisible({ timeout: 30_000 });
+    const itineraryLink = mapPanel.getByRole("link", { exact: true, name: "Itinerary" }).first();
+    await expect(itineraryLink).toHaveAttribute("href", /\/timeline\?mode=map#/);
+
+    await itineraryLink.click();
+    await expect(page).toHaveURL(/\/dashboard\/trips\/demo\/timeline\?mode=map#/);
+    const mapAwareItinerary = page.getByTestId("itinerary-map-aware-mode");
+    await expect(mapAwareItinerary).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByLabel(/route preview/i)).toBeVisible();
+    await expect(mapAwareItinerary.getByTestId("itinerary-date-strip")).toBeVisible();
+    await expect(page.getByRole("navigation", { name: "Itinerary quick actions" })).toBeVisible();
+
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+    expect(overflow, "map-aware itinerary overflow").toBeLessThanOrEqual(1);
+  });
+
   test("trip pass hero uses segment photo metadata when available", async ({ page, request }) => {
     test.setTimeout(90_000);
     await page.setViewportSize({ height: 900, width: 390 });

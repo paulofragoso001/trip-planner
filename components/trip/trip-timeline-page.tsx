@@ -9,7 +9,9 @@ import {
   Flag,
   FileText,
   Landmark,
+  Map as MapIcon,
   MoreHorizontal,
+  Navigation,
   Plane,
   Plus,
   StickyNote,
@@ -31,98 +33,324 @@ import { EmptyState } from "@/components/trip-ui";
 import { hasResolvedRoute, routeEndpointLabel } from "@/lib/trip-segment-route";
 
 type TripTimelinePageProps = TripTimelineData;
+type TimelinePresentationMode = "full" | "map";
 
 export default function TripTimelinePage({
   days,
   error,
   firstFlight,
+  presentationMode = "full",
   title,
   tripId
-}: TripTimelinePageProps) {
+}: TripTimelinePageProps & { presentationMode?: TimelinePresentationMode }) {
   const items = days.flatMap((day) => day.items);
   const timelineItemIds = items.map((item) => item.id);
   const monthLabel = formatTimelineMonth(days);
   const activeDayLabel = formatActiveDayLabel(days);
+  const mapAware = presentationMode === "map";
 
   return (
-    <div className="grid gap-4 lg:gap-5">
-      <section className="relative min-w-0 overflow-hidden rounded-[2rem] border border-white/10 bg-slate-950/[0.88] text-white shadow-[0_22px_60px_rgba(2,6,23,0.3)] backdrop-blur-2xl lg:overflow-visible lg:rounded-none lg:border-0 lg:bg-transparent lg:text-slate-950 lg:shadow-none lg:backdrop-blur-none">
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_0%,rgba(59,130,246,0.24),transparent_32%),radial-gradient(circle_at_100%_22%,rgba(249,115,22,0.12),transparent_28%),linear-gradient(180deg,rgba(15,23,42,0.74),rgba(15,23,42,0.94))] lg:hidden"
-        />
-        <div className="relative grid gap-4 px-3 py-3 pb-20 lg:gap-5 lg:p-0">
-        <ItineraryMobileHeader monthLabel={monthLabel} title={title} tripId={tripId} />
-
-        {error ? (
-          <p className="rounded-2xl bg-amber-300/15 px-4 py-3 text-sm font-semibold text-amber-50 ring-1 ring-amber-200/20 lg:bg-amber-50 lg:text-amber-800 lg:ring-0">
-            {error}
-          </p>
-        ) : null}
-
-        {days.length ? (
-          <div className="grid gap-5">
-            <ItineraryDateStrip days={days} tripId={tripId} />
-
-            {days.map((day) => (
-              <section className="scroll-mt-24" id={dayAnchorId(day)} key={day.id}>
-                <div className="sticky top-2 z-10 -mx-3 border-y border-white/10 bg-slate-900/95 px-3 py-2.5 backdrop-blur lg:static lg:mx-0 lg:rounded-2xl lg:border lg:border-slate-200 lg:bg-white/[0.78] lg:px-4 lg:shadow-sm lg:ring-1 lg:ring-white/70">
-                  <div className="flex items-center justify-between gap-3">
-                    <h3 className="min-w-0 truncate text-xs font-black uppercase tracking-[0.2em] text-slate-300 lg:text-slate-700 lg:text-sm">
-                      {day.date}
-                    </h3>
-                    <span className="shrink-0 rounded-full bg-white/10 px-3 py-1 text-xs font-black text-slate-200 shadow-sm ring-1 ring-white/10 lg:bg-white lg:text-slate-700 lg:ring-slate-200">
-                      {day.items.length} place{day.items.length === 1 ? "" : "s"}
-                    </span>
-                  </div>
-                  <p className="mt-1 text-xs font-semibold text-slate-500 lg:text-slate-500">
-                    {day.items.length} place{day.items.length === 1 ? "" : "s"} planned
-                  </p>
-                </div>
-
-                <div className="-mx-1 grid gap-0 rounded-[1.75rem] bg-slate-900/62 px-2 py-2 ring-1 ring-white/10 lg:mx-0 lg:mt-3 lg:bg-white lg:px-4 lg:shadow-sm lg:ring-slate-200/70">
-                  {day.items.map((item, index) => (
-                    <ItineraryRow
-                      isLast={index === day.items.length - 1}
-                      item={item}
-                      key={item.id}
-                      tripId={tripId}
-                    />
-                  ))}
-                </div>
-              </section>
-            ))}
-          </div>
-        ) : (
-          <div className="mt-5">
-            <EmptyState
-              action={
-                <div className="grid gap-2 sm:flex sm:flex-wrap">
-                  <Link
-                    className="inline-flex min-h-11 items-center justify-center rounded-2xl bg-blue-600 px-4 text-sm font-black text-white"
-                    href="/dashboard/imports"
-                  >
-                    Plan with AI
-                  </Link>
-                  <Link
-                    className="inline-flex min-h-11 items-center justify-center rounded-2xl bg-white px-4 text-sm font-black text-slate-800 ring-1 ring-slate-200"
-                    href="#new-plan"
-                  >
-                    Add trip detail
-                  </Link>
-                </div>
-              }
-              description="Keep reservations, notes, screenshots, and travel details together."
-              title="No itinerary yet."
+    <div className={mapAware ? "grid gap-4 lg:gap-5" : "grid gap-4 lg:gap-5"}>
+      {mapAware ? (
+        <>
+          <ItineraryMapAwareMobileView
+            activeDayLabel={activeDayLabel}
+            days={days}
+            error={error}
+            items={items}
+            monthLabel={monthLabel}
+            title={title}
+            tripId={tripId}
+          />
+          <div className="hidden lg:block">
+            <ItineraryTimelinePanel
+              days={days}
+              error={error}
+              mapAware={mapAware}
+              monthLabel={monthLabel}
+              title={title}
+              tripId={tripId}
             />
           </div>
-        )}
-        </div>
-      </section>
+        </>
+      ) : (
+        <ItineraryTimelinePanel
+          days={days}
+          error={error}
+          mapAware={false}
+          monthLabel={monthLabel}
+          title={title}
+          tripId={tripId}
+        />
+      )}
 
       <ItineraryActions firstFlight={firstFlight} timelineItemIds={timelineItemIds} tripId={tripId} />
 
-      <MobileTimelineBottomBar activeDayLabel={activeDayLabel} />
+      {!mapAware ? <MobileTimelineBottomBar activeDayLabel={activeDayLabel} /> : null}
+    </div>
+  );
+}
+
+function ItineraryTimelinePanel({
+  days,
+  error,
+  mapAware,
+  monthLabel,
+  title,
+  tripId
+}: {
+  days: TripTimelineData["days"];
+  error: string | null;
+  mapAware: boolean;
+  monthLabel: string;
+  title: string;
+  tripId: string;
+}) {
+  return (
+    <section className="relative min-w-0 overflow-hidden rounded-[2rem] border border-white/10 bg-slate-950/[0.88] text-white shadow-[0_22px_60px_rgba(2,6,23,0.3)] backdrop-blur-2xl lg:overflow-visible lg:rounded-none lg:border-0 lg:bg-transparent lg:text-slate-950 lg:shadow-none lg:backdrop-blur-none">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_0%,rgba(59,130,246,0.24),transparent_32%),radial-gradient(circle_at_100%_22%,rgba(249,115,22,0.12),transparent_28%),linear-gradient(180deg,rgba(15,23,42,0.74),rgba(15,23,42,0.94))] lg:hidden"
+      />
+      <div className="relative grid gap-4 px-3 py-3 pb-20 lg:gap-5 lg:p-0">
+        <ItineraryMobileHeader monthLabel={monthLabel} title={title} tripId={tripId} />
+        <ItineraryTimelineBody days={days} error={error} mapAware={mapAware} tripId={tripId} />
+      </div>
+    </section>
+  );
+}
+
+function ItineraryTimelineBody({
+  days,
+  error,
+  mapAware,
+  tripId
+}: {
+  days: TripTimelineData["days"];
+  error: string | null;
+  mapAware: boolean;
+  tripId: string;
+}) {
+  return (
+    <>
+      {error ? (
+        <p className="rounded-2xl bg-amber-300/15 px-4 py-3 text-sm font-semibold text-amber-50 ring-1 ring-amber-200/20 lg:bg-amber-50 lg:text-amber-800 lg:ring-0">
+          {error}
+        </p>
+      ) : null}
+
+      {days.length ? (
+        <div className="grid gap-5">
+          <ItineraryDateStrip days={days} mapAware={mapAware} tripId={tripId} />
+
+          {days.map((day) => (
+            <section className="scroll-mt-24" id={dayAnchorId(day)} key={day.id}>
+              <div className="sticky top-2 z-10 -mx-3 border-y border-white/10 bg-slate-900/95 px-3 py-2.5 backdrop-blur lg:static lg:mx-0 lg:rounded-2xl lg:border lg:border-slate-200 lg:bg-white/[0.78] lg:px-4 lg:shadow-sm lg:ring-1 lg:ring-white/70">
+                <div className="flex items-center justify-between gap-3">
+                  <h3 className="min-w-0 truncate text-xs font-black uppercase tracking-[0.2em] text-slate-300 lg:text-slate-700 lg:text-sm">
+                    {day.date}
+                  </h3>
+                  <span className="shrink-0 rounded-full bg-white/10 px-3 py-1 text-xs font-black text-slate-200 shadow-sm ring-1 ring-white/10 lg:bg-white lg:text-slate-700 lg:ring-slate-200">
+                    {day.items.length} place{day.items.length === 1 ? "" : "s"}
+                  </span>
+                </div>
+                <p className="mt-1 text-xs font-semibold text-slate-500 lg:text-slate-500">
+                  {day.items.length} place{day.items.length === 1 ? "" : "s"} planned
+                </p>
+              </div>
+
+              <div className="-mx-1 grid gap-0 rounded-[1.75rem] bg-slate-900/62 px-2 py-2 ring-1 ring-white/10 lg:mx-0 lg:mt-3 lg:bg-white lg:px-4 lg:shadow-sm lg:ring-slate-200/70">
+                {day.items.map((item, index) => (
+                  <ItineraryRow
+                    isLast={index === day.items.length - 1}
+                    item={item}
+                    key={item.id}
+                    tripId={tripId}
+                  />
+                ))}
+              </div>
+            </section>
+          ))}
+        </div>
+      ) : (
+        <div className="mt-5">
+          <EmptyState
+            action={
+              <div className="grid gap-2 sm:flex sm:flex-wrap">
+                <Link
+                  className="inline-flex min-h-11 items-center justify-center rounded-2xl bg-blue-600 px-4 text-sm font-black text-white"
+                  href="/dashboard/imports"
+                >
+                  Plan with AI
+                </Link>
+                <Link
+                  className="inline-flex min-h-11 items-center justify-center rounded-2xl bg-white px-4 text-sm font-black text-slate-800 ring-1 ring-slate-200"
+                  href="#new-plan"
+                >
+                  Add trip detail
+                </Link>
+              </div>
+            }
+            description="Keep reservations, notes, screenshots, and travel details together."
+            title="No itinerary yet."
+          />
+        </div>
+      )}
+    </>
+  );
+}
+
+function ItineraryMapAwareMobileView({
+  activeDayLabel,
+  days,
+  error,
+  items,
+  monthLabel,
+  title,
+  tripId
+}: {
+  activeDayLabel: string;
+  days: TripTimelineData["days"];
+  error: string | null;
+  items: TimelineItemView[];
+  monthLabel: string;
+  title: string;
+  tripId: string;
+}) {
+  return (
+    <section
+      className="relative -mx-3 -mt-3 min-h-[calc(100svh-5.75rem)] overflow-hidden rounded-[2rem] bg-slate-950 text-white shadow-[0_24px_70px_rgba(2,6,23,0.45)] sm:-mx-4 lg:hidden"
+      data-testid="itinerary-map-aware-mode"
+    >
+      <MapAwareRoutePreview items={items} title={title} />
+
+      <div className="relative -mt-12 rounded-t-[2rem] border-t border-white/10 bg-[#202022]/95 shadow-[0_-22px_55px_rgba(0,0,0,0.45)] backdrop-blur-2xl">
+        <div className="mx-auto mt-3 h-1.5 w-12 rounded-full bg-white/35" aria-hidden="true" />
+        <div className="max-h-[calc(100svh-9rem)] overflow-y-auto px-3 pb-[calc(6.75rem+env(safe-area-inset-bottom))] pt-4">
+          <MapAwareSheetHeader monthLabel={monthLabel} title={title} tripId={tripId} />
+          <div className="mt-4">
+            <ItineraryTimelineBody days={days} error={error} mapAware={true} tripId={tripId} />
+          </div>
+        </div>
+        <MobileTimelineBottomBar activeDayLabel={activeDayLabel} variant="sheet" />
+      </div>
+    </section>
+  );
+}
+
+function MapAwareSheetHeader({
+  monthLabel,
+  title,
+  tripId
+}: {
+  monthLabel: string;
+  title: string;
+  tripId: string;
+}) {
+  return (
+    <header className="flex items-start justify-between gap-3">
+      <div className="min-w-0">
+        <p className="text-sm font-black text-slate-400">{monthLabel}</p>
+        <h1 className="mt-1 break-words text-3xl font-black leading-tight text-white">{title}</h1>
+      </div>
+      <div className="flex shrink-0 items-center gap-2">
+        <button
+          aria-label="More itinerary options"
+          className="grid h-11 w-11 place-items-center rounded-full bg-white/10 text-slate-200 transition hover:bg-white/[0.15] focus:outline-none focus:ring-4 focus:ring-white/[0.15]"
+          type="button"
+        >
+          <MoreHorizontal className="h-5 w-5" aria-hidden="true" />
+        </button>
+        <Link
+          aria-label="Close itinerary"
+          className="grid h-11 w-11 place-items-center rounded-full bg-white/10 text-slate-200 transition hover:bg-white/[0.15] focus:outline-none focus:ring-4 focus:ring-white/[0.15]"
+          href={`/dashboard/trips/${encodeURIComponent(tripId)}/map`}
+        >
+          <X className="h-5 w-5" aria-hidden="true" />
+        </Link>
+      </div>
+    </header>
+  );
+}
+
+function MapAwareRoutePreview({
+  items,
+  title
+}: {
+  items: TimelineItemView[];
+  title: string;
+}) {
+  const mappedItems = items.filter((item) => typeof item.lat === "number" && typeof item.lng === "number").slice(0, 4);
+  const routeItems = mappedItems.length ? mappedItems : items.slice(0, 3);
+
+  return (
+    <div className="relative h-[48svh] min-h-[320px] overflow-hidden bg-[#07182b]" aria-label={`${title} route preview`}>
+      <div
+        aria-hidden="true"
+        className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(20,184,166,0.28),transparent_28%),radial-gradient(circle_at_78%_22%,rgba(37,99,235,0.34),transparent_34%),linear-gradient(145deg,rgba(8,47,73,0.92),rgba(15,23,42,0.98))]"
+      />
+      <div
+        aria-hidden="true"
+        className="absolute inset-0 opacity-35 [background-image:linear-gradient(rgba(255,255,255,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.08)_1px,transparent_1px)] [background-size:44px_44px]"
+      />
+      <svg
+        aria-hidden="true"
+        className="absolute inset-x-4 top-[28%] h-[42%] w-[calc(100%-2rem)] overflow-visible"
+        preserveAspectRatio="none"
+        viewBox="0 0 100 100"
+      >
+        <path
+          d={routeItems.length > 1 ? "M 12 74 C 28 40, 44 88, 58 48 S 82 26, 90 58" : "M 18 62 C 36 34, 62 34, 82 62"}
+          fill="none"
+          stroke="rgba(56,189,248,0.88)"
+          strokeLinecap="round"
+          strokeWidth="5"
+        />
+        <path
+          d={routeItems.length > 1 ? "M 12 74 C 28 40, 44 88, 58 48 S 82 26, 90 58" : "M 18 62 C 36 34, 62 34, 82 62"}
+          fill="none"
+          stroke="rgba(125,211,252,0.28)"
+          strokeLinecap="round"
+          strokeWidth="12"
+        />
+      </svg>
+      <div className="absolute right-4 top-14 z-10 grid overflow-hidden rounded-2xl bg-black text-orange-400 shadow-2xl ring-1 ring-white/10">
+        <span className="grid h-12 w-12 place-items-center border-b border-white/10">
+          <MapIcon className="h-5 w-5" aria-hidden="true" />
+        </span>
+        <span className="grid h-12 w-12 place-items-center">
+          <Navigation className="h-5 w-5" aria-hidden="true" />
+        </span>
+      </div>
+      {routeItems.length ? (
+        routeItems.map((item, index) => {
+          const display = getSegmentDisplay(item);
+          const position = markerPosition(index, routeItems.length);
+          return (
+            <div
+              className="absolute z-10 grid -translate-x-1/2 -translate-y-1/2 place-items-center"
+              key={item.id}
+              style={{ left: `${position.left}%`, top: `${position.top}%` }}
+            >
+              <span className={`grid h-11 w-11 place-items-center rounded-full border-2 border-black/80 shadow-lg ${display.iconClass}`}>
+                {display.icon}
+              </span>
+              <span className="mt-1 max-w-[88px] truncate text-center text-xs font-black text-white [text-shadow:0_2px_6px_rgba(0,0,0,0.8)]">
+                {routeMarkerLabel(item)}
+              </span>
+            </div>
+          );
+        })
+      ) : (
+        <div className="absolute inset-x-6 top-1/2 -translate-y-1/2 rounded-[1.5rem] bg-black/30 p-4 text-center ring-1 ring-white/10 backdrop-blur">
+          <p className="text-sm font-black text-white">Map-aware itinerary</p>
+          <p className="mt-1 text-xs font-semibold text-white/60">Add mapped places to draw your route.</p>
+        </div>
+      )}
+      <div
+        aria-hidden="true"
+        className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-slate-950 via-slate-950/70 to-transparent"
+      />
     </div>
   );
 }
@@ -169,9 +397,11 @@ function ItineraryMobileHeader({
 
 function ItineraryDateStrip({
   days,
+  mapAware = false,
   tripId
 }: {
   days: TripTimelineData["days"];
+  mapAware?: boolean;
   tripId: string;
 }) {
   const datedDays = days.filter((day) => day.dateIso);
@@ -196,7 +426,7 @@ function ItineraryDateStrip({
                 ? "bg-orange-500/20 text-white ring-orange-400/25 lg:bg-slate-950 lg:ring-slate-950"
                 : "bg-white/[0.06] text-slate-200 ring-white/10 hover:bg-white/10 lg:bg-white lg:text-slate-700 lg:ring-slate-200 lg:hover:bg-slate-50"
             ].join(" ")}
-            href={`/dashboard/trips/${encodeURIComponent(tripId)}/timeline#${dayAnchorId(day)}`}
+            href={`/dashboard/trips/${encodeURIComponent(tripId)}/timeline${mapAware ? "?mode=map" : ""}#${dayAnchorId(day)}`}
             key={day.id}
           >
             <span className="grid gap-0.5">
@@ -704,6 +934,26 @@ function categoryDotsForDay(items: TimelineItemView[]) {
   return classes.length ? classes : ["bg-slate-300"];
 }
 
+function markerPosition(index: number, total: number) {
+  if (total <= 1) return { left: 50, top: 56 };
+  const positions = [
+    { left: 18, top: 62 },
+    { left: 38, top: 48 },
+    { left: 62, top: 38 },
+    { left: 82, top: 52 }
+  ];
+  return positions[index] || { left: 50, top: 56 };
+}
+
+function routeMarkerLabel(item: TimelineItemView) {
+  if (item.route?.mode === "flight") {
+    const flight = getFlightDisplay(item);
+    return [flight.originCode, flight.destinationCode].filter(Boolean).join(" → ") || item.title;
+  }
+
+  return item.title;
+}
+
 function display(label: string, icon: ReactNode, iconClass: string, lineClass: string) {
   return { icon, iconClass, label, lineClass };
 }
@@ -772,11 +1022,21 @@ function formatActiveDayLabel(days: TripTimelineData["days"]) {
   return firstDatedDay.label === "Ideas" ? "Itinerary" : firstDatedDay.label;
 }
 
-function MobileTimelineBottomBar({ activeDayLabel }: { activeDayLabel: string }) {
+function MobileTimelineBottomBar({
+  activeDayLabel,
+  variant = "fixed"
+}: {
+  activeDayLabel: string;
+  variant?: "fixed" | "sheet";
+}) {
+  const className = variant === "sheet"
+    ? "absolute inset-x-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-30 mx-auto flex max-w-md items-center justify-between rounded-[1.6rem] border border-white/10 bg-[#1b1b1d]/95 px-4 py-3 text-orange-400 shadow-2xl backdrop-blur-2xl lg:hidden"
+    : "fixed inset-x-3 bottom-[calc(5.75rem+env(safe-area-inset-bottom))] z-30 mx-auto flex max-w-md items-center justify-between rounded-[1.6rem] border border-white/10 bg-slate-950/[0.88] px-4 py-3 text-orange-400 shadow-2xl backdrop-blur-2xl lg:hidden";
+
   return (
     <nav
       aria-label="Itinerary quick actions"
-      className="fixed inset-x-3 bottom-[calc(5.75rem+env(safe-area-inset-bottom))] z-30 mx-auto flex max-w-md items-center justify-between rounded-[1.6rem] border border-white/10 bg-slate-950/[0.88] px-4 py-3 text-orange-400 shadow-2xl backdrop-blur-2xl lg:hidden"
+      className={className}
     >
       <CalendarDays className="h-5 w-5" aria-hidden="true" />
       <span className="text-base font-black">{activeDayLabel}</span>
