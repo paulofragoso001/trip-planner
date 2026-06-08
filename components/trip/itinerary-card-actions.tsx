@@ -33,13 +33,13 @@ export function ItineraryCardActions({ item, tripId }: ItineraryCardActionsProps
   }
 
   return (
-    <div className="mt-3 border-t border-slate-100 pt-3">
+    <div className="mt-3 border-t border-white/10 pt-3 lg:border-slate-100">
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0 flex-1">
           {item.notes ? (
             <button
               aria-expanded={showNotes}
-              className="inline-flex min-h-10 max-w-full items-center rounded-full bg-transparent px-0 text-xs font-black uppercase tracking-[0.12em] text-slate-500 transition hover:text-slate-950 focus:outline-none focus:ring-4 focus:ring-blue-100 disabled:opacity-60"
+              className="inline-flex min-h-10 max-w-full items-center rounded-full bg-transparent px-0 text-xs font-black uppercase tracking-[0.12em] text-slate-400 transition hover:text-white focus:outline-none focus:ring-4 focus:ring-blue-100 disabled:opacity-60 lg:text-slate-500 lg:hover:text-slate-950"
               disabled={!hydrated}
               onClick={() => setShowNotes((value) => !value)}
               type="button"
@@ -53,7 +53,7 @@ export function ItineraryCardActions({ item, tripId }: ItineraryCardActionsProps
           {hasMappedLocation ? (
             <Link
               aria-label={`View ${item.title} on map`}
-              className="grid h-11 w-11 place-items-center rounded-full bg-slate-950 text-white shadow-sm transition hover:bg-slate-800 focus:outline-none focus:ring-4 focus:ring-slate-200"
+              className="grid h-11 w-11 place-items-center rounded-full bg-white text-slate-950 shadow-sm transition hover:bg-slate-200 focus:outline-none focus:ring-4 focus:ring-slate-200 lg:bg-slate-950 lg:text-white lg:hover:bg-slate-800"
               href={`/dashboard/trips/${tripId}/map#${encodeURIComponent(item.id)}`}
               title="View on map"
             >
@@ -63,7 +63,7 @@ export function ItineraryCardActions({ item, tripId }: ItineraryCardActionsProps
           <button
             aria-expanded={editing}
             aria-label={`Edit ${item.title}`}
-            className="grid h-11 w-11 place-items-center rounded-full bg-slate-100 text-slate-700 shadow-sm transition hover:bg-slate-200 focus:outline-none focus:ring-4 focus:ring-blue-100 disabled:opacity-60"
+            className="grid h-11 w-11 place-items-center rounded-full bg-white/10 text-slate-200 shadow-sm transition hover:bg-white/[0.15] focus:outline-none focus:ring-4 focus:ring-blue-100 disabled:opacity-60 lg:bg-slate-100 lg:text-slate-700 lg:hover:bg-slate-200"
             disabled={!hydrated}
             onClick={() => setEditing((value) => !value)}
             title="Edit"
@@ -73,7 +73,7 @@ export function ItineraryCardActions({ item, tripId }: ItineraryCardActionsProps
           </button>
           <button
             aria-label={`More actions for ${item.title}`}
-            className="grid h-11 w-11 place-items-center rounded-full bg-slate-100 text-slate-700 shadow-sm transition hover:bg-slate-200 focus:outline-none focus:ring-4 focus:ring-blue-100 disabled:opacity-60"
+            className="grid h-11 w-11 place-items-center rounded-full bg-white/10 text-slate-200 shadow-sm transition hover:bg-white/[0.15] focus:outline-none focus:ring-4 focus:ring-blue-100 disabled:opacity-60 lg:bg-slate-100 lg:text-slate-700 lg:hover:bg-slate-200"
             disabled={!hydrated}
             type="button"
           >
@@ -83,8 +83,8 @@ export function ItineraryCardActions({ item, tripId }: ItineraryCardActionsProps
       </div>
 
       {item.notes && showNotes ? (
-        <div className="mt-3 break-words rounded-xl bg-slate-50 p-3 text-sm leading-6 text-slate-600">
-          <span className="mb-1 block text-xs font-bold uppercase tracking-[0.12em] text-slate-400">
+        <div className="mt-3 break-words rounded-xl bg-white/[0.08] p-3 text-sm leading-6 text-slate-300 ring-1 ring-white/10 lg:bg-slate-50 lg:text-slate-600 lg:ring-0">
+          <span className="mb-1 block text-xs font-bold uppercase tracking-[0.12em] text-slate-500 lg:text-slate-400">
             Notes
           </span>
           {item.notes}
@@ -113,7 +113,7 @@ export function ItineraryCardActions({ item, tripId }: ItineraryCardActionsProps
       ) : null}
 
       {editing ? (
-        <div className="mt-3">
+        <div className="mt-3 rounded-3xl bg-white p-3 text-slate-950 shadow-sm lg:bg-transparent lg:p-0 lg:shadow-none">
           <TripSegmentForm
             buttonLabel="Save changes"
             defaultConfirmationCode={item.confirmationCode}

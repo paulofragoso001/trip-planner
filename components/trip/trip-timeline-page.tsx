@@ -4,15 +4,18 @@ import {
   ArrowRight,
   Bed,
   Car,
+  CalendarDays,
   CloudSun,
   Flag,
   FileText,
   Landmark,
+  MoreHorizontal,
   Plane,
   Plus,
   StickyNote,
   Train,
-  Utensils
+  Utensils,
+  X
 } from "lucide-react";
 import type { ReactNode } from "react";
 import type {
@@ -25,7 +28,6 @@ import { GeneratePlanButton } from "@/components/trip/generate-plan-button";
 import { ItineraryCardActions } from "@/components/trip/itinerary-card-actions";
 import { TripSegmentForm } from "@/components/trip/trip-segment-form";
 import { EmptyState } from "@/components/trip-ui";
-import { waylineCopy } from "@/lib/copy/wayline-copy";
 import { hasResolvedRoute, routeEndpointLabel } from "@/lib/trip-segment-route";
 
 type TripTimelinePageProps = TripTimelineData;
@@ -34,16 +36,26 @@ export default function TripTimelinePage({
   days,
   error,
   firstFlight,
+  title,
   tripId
 }: TripTimelinePageProps) {
   const items = days.flatMap((day) => day.items);
   const timelineItemIds = items.map((item) => item.id);
+  const monthLabel = formatTimelineMonth(days);
+  const activeDayLabel = formatActiveDayLabel(days);
 
   return (
-    <div className="grid gap-5">
-      <section className="min-w-0">
+    <div className="grid gap-4 lg:gap-5">
+      <section className="relative min-w-0 overflow-hidden rounded-[2rem] border border-white/10 bg-slate-950/[0.88] text-white shadow-[0_22px_60px_rgba(2,6,23,0.3)] backdrop-blur-2xl lg:overflow-visible lg:rounded-none lg:border-0 lg:bg-transparent lg:text-slate-950 lg:shadow-none lg:backdrop-blur-none">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_0%,rgba(59,130,246,0.24),transparent_32%),radial-gradient(circle_at_100%_22%,rgba(249,115,22,0.12),transparent_28%),linear-gradient(180deg,rgba(15,23,42,0.74),rgba(15,23,42,0.94))] lg:hidden"
+        />
+        <div className="relative grid gap-4 px-3 py-3 pb-20 lg:gap-5 lg:p-0">
+        <ItineraryMobileHeader monthLabel={monthLabel} title={title} tripId={tripId} />
+
         {error ? (
-          <p className="rounded-2xl bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
+          <p className="rounded-2xl bg-amber-300/15 px-4 py-3 text-sm font-semibold text-amber-50 ring-1 ring-amber-200/20 lg:bg-amber-50 lg:text-amber-800 lg:ring-0">
             {error}
           </p>
         ) : null}
@@ -54,21 +66,21 @@ export default function TripTimelinePage({
 
             {days.map((day) => (
               <section className="scroll-mt-24" id={dayAnchorId(day)} key={day.id}>
-                <div className="sticky top-14 z-10 -mx-3 border-y border-slate-200 bg-slate-100/95 px-3 py-2.5 backdrop-blur sm:static sm:mx-0 sm:rounded-2xl sm:border sm:bg-white/78 sm:px-4 sm:shadow-sm sm:ring-1 sm:ring-white/70">
+                <div className="sticky top-2 z-10 -mx-3 border-y border-white/10 bg-slate-900/95 px-3 py-2.5 backdrop-blur lg:static lg:mx-0 lg:rounded-2xl lg:border lg:border-slate-200 lg:bg-white/[0.78] lg:px-4 lg:shadow-sm lg:ring-1 lg:ring-white/70">
                   <div className="flex items-center justify-between gap-3">
-                    <h3 className="min-w-0 truncate text-xs font-black uppercase tracking-[0.2em] text-slate-700 sm:text-sm">
+                    <h3 className="min-w-0 truncate text-xs font-black uppercase tracking-[0.2em] text-slate-300 lg:text-slate-700 lg:text-sm">
                       {day.date}
                     </h3>
-                    <span className="shrink-0 rounded-full bg-white px-3 py-1 text-xs font-black text-slate-700 shadow-sm ring-1 ring-slate-200">
+                    <span className="shrink-0 rounded-full bg-white/10 px-3 py-1 text-xs font-black text-slate-200 shadow-sm ring-1 ring-white/10 lg:bg-white lg:text-slate-700 lg:ring-slate-200">
                       {day.items.length} place{day.items.length === 1 ? "" : "s"}
                     </span>
                   </div>
-                  <p className="mt-1 text-xs font-semibold text-slate-500">
+                  <p className="mt-1 text-xs font-semibold text-slate-500 lg:text-slate-500">
                     {day.items.length} place{day.items.length === 1 ? "" : "s"} planned
                   </p>
                 </div>
 
-                <div className="-mx-3 grid gap-0 bg-white px-3 py-2 shadow-sm ring-1 ring-slate-200/70 sm:mx-0 sm:mt-3 sm:rounded-[1.75rem] sm:px-4">
+                <div className="-mx-1 grid gap-0 rounded-[1.75rem] bg-slate-900/62 px-2 py-2 ring-1 ring-white/10 lg:mx-0 lg:mt-3 lg:bg-white lg:px-4 lg:shadow-sm lg:ring-slate-200/70">
                   {day.items.map((item, index) => (
                     <ItineraryRow
                       isLast={index === day.items.length - 1}
@@ -105,18 +117,53 @@ export default function TripTimelinePage({
             />
           </div>
         )}
+        </div>
       </section>
 
       <ItineraryActions firstFlight={firstFlight} timelineItemIds={timelineItemIds} tripId={tripId} />
 
-      <Link
-        aria-label="Add itinerary item"
-        className="fixed bottom-[calc(6rem+env(safe-area-inset-bottom))] right-4 z-30 grid h-14 w-14 place-items-center rounded-full bg-blue-600 text-white shadow-2xl ring-4 ring-white transition hover:bg-blue-700 focus:outline-none focus:ring-blue-200 md:hidden"
-        href="#new-plan"
-      >
-        <Plus className="h-6 w-6" aria-hidden="true" />
-      </Link>
+      <MobileTimelineBottomBar activeDayLabel={activeDayLabel} />
     </div>
+  );
+}
+
+function ItineraryMobileHeader({
+  monthLabel,
+  title,
+  tripId
+}: {
+  monthLabel: string;
+  title: string;
+  tripId: string;
+}) {
+  return (
+    <header className="lg:hidden">
+      <div className="mx-auto mb-3 h-1.5 w-12 rounded-full bg-white/[0.35]" aria-hidden="true" />
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-sm font-black text-slate-400">{monthLabel}</p>
+          <h1 className="mt-1 break-words text-3xl font-black leading-tight text-white">
+            {title}
+          </h1>
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          <button
+            aria-label="More itinerary options"
+            className="grid h-11 w-11 place-items-center rounded-full bg-white/10 text-slate-200 transition hover:bg-white/[0.15] focus:outline-none focus:ring-4 focus:ring-white/[0.15]"
+            type="button"
+          >
+            <MoreHorizontal className="h-5 w-5" aria-hidden="true" />
+          </button>
+          <Link
+            aria-label="Close itinerary"
+            className="grid h-11 w-11 place-items-center rounded-full bg-white/10 text-slate-200 transition hover:bg-white/[0.15] focus:outline-none focus:ring-4 focus:ring-white/[0.15]"
+            href={`/dashboard/trips/${encodeURIComponent(tripId)}`}
+          >
+            <X className="h-5 w-5" aria-hidden="true" />
+          </Link>
+        </div>
+      </div>
+    </header>
   );
 }
 
@@ -146,14 +193,14 @@ function ItineraryDateStrip({
             className={[
               "inline-flex min-h-14 shrink-0 items-center gap-3 rounded-2xl px-3 text-left ring-1 transition focus:outline-none focus:ring-4 focus:ring-blue-100",
               index === 0
-                ? "bg-slate-950 text-white ring-slate-950"
-                : "bg-white text-slate-700 ring-slate-200 hover:bg-slate-50"
+                ? "bg-orange-500/20 text-white ring-orange-400/25 lg:bg-slate-950 lg:ring-slate-950"
+                : "bg-white/[0.06] text-slate-200 ring-white/10 hover:bg-white/10 lg:bg-white lg:text-slate-700 lg:ring-slate-200 lg:hover:bg-slate-50"
             ].join(" ")}
             href={`/dashboard/trips/${encodeURIComponent(tripId)}/timeline#${dayAnchorId(day)}`}
             key={day.id}
           >
             <span className="grid gap-0.5">
-              <span className={index === 0 ? "text-xs font-black uppercase tracking-[0.16em] text-white/62" : "text-xs font-black uppercase tracking-[0.16em] text-slate-400"}>
+              <span className={index === 0 ? "text-xs font-black uppercase tracking-[0.16em] text-orange-100/80 lg:text-white/62" : "text-xs font-black uppercase tracking-[0.16em] text-slate-500 lg:text-slate-400"}>
                 {day.label}
               </span>
               <span className="text-lg font-black leading-none">{day.dayNumber}</span>
@@ -163,7 +210,7 @@ function ItineraryDateStrip({
                 <span className={`h-1.5 w-1.5 rounded-full ${className}`} key={`${day.id}-${dotIndex}`} />
               ))}
             </span>
-            <span className={index === 0 ? "rounded-full bg-white/12 px-2 py-1 text-[0.65rem] font-black text-white/78" : "rounded-full bg-slate-100 px-2 py-1 text-[0.65rem] font-black text-slate-600"}>
+            <span className={index === 0 ? "hidden rounded-full bg-white/[0.12] px-2 py-1 text-[0.65rem] font-black text-white/[0.78] lg:inline-flex" : "hidden rounded-full bg-white/10 px-2 py-1 text-[0.65rem] font-black text-slate-300 lg:inline-flex lg:bg-slate-100 lg:text-slate-600"}>
               {day.items.length}
             </span>
           </a>
@@ -191,20 +238,9 @@ function ItineraryRow({
 
   return (
     <article
-      className="grid grid-cols-[70px_38px_minmax(0,1fr)] gap-2 sm:grid-cols-[96px_44px_minmax(0,1fr)] sm:gap-4"
+      className="grid grid-cols-[42px_minmax(0,1fr)] gap-3 lg:grid-cols-[48px_minmax(0,1fr)] lg:gap-4"
       id={item.id}
     >
-      <div className="pt-4 text-right sm:pt-5">
-        <p className="text-base font-black leading-tight text-slate-950 sm:text-lg">
-          {formatPrimaryTime(item)}
-        </p>
-        {formatSecondaryTimeLabel(item) ? (
-          <p className="mt-0.5 text-[0.68rem] font-bold uppercase leading-tight tracking-[0.12em] text-slate-500">
-            {formatSecondaryTimeLabel(item)}
-          </p>
-        ) : null}
-      </div>
-
       <div className="relative flex justify-center">
         <span
           className={`absolute top-0 w-1 rounded-full ${display.lineClass} ${
@@ -214,7 +250,7 @@ function ItineraryRow({
         />
         <span
           aria-label={`${display.label} icon`}
-          className={`relative mt-3 grid h-10 w-10 place-items-center rounded-full border-4 border-[#f4f7fb] shadow-sm sm:mt-4 ${display.iconClass}`}
+          className={`relative mt-3 grid h-10 w-10 place-items-center rounded-full border-4 border-slate-900 shadow-sm lg:mt-4 lg:border-[#f4f7fb] ${display.iconClass}`}
           data-testid="itinerary-category-icon"
         >
           {display.icon}
@@ -240,20 +276,33 @@ function TimelineCompactItem({
   tripId: string;
 }) {
   return (
-    <div className="min-w-0 border-b border-slate-200/80 pb-3 sm:pb-4">
+    <div className="min-w-0 border-b border-white/10 pb-3 lg:border-slate-200/80 lg:pb-4">
       <div className="flex min-w-0 items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-[0.68rem] font-black uppercase tracking-[0.16em] text-slate-500">
-            {displayLabel}
-          </p>
-          <h4 className="mt-1 break-words text-lg font-black leading-tight text-slate-950 sm:text-xl">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <p className="text-[0.68rem] font-black uppercase tracking-[0.16em] text-slate-500 lg:text-slate-500">
+              {displayLabel}
+            </p>
+            <span className={`${status.className} lg:hidden`}>{status.label}</span>
+          </div>
+          <h4 className="mt-1 break-words text-lg font-black leading-tight text-white lg:text-xl lg:text-slate-950">
             {item.title}
           </h4>
         </div>
-        <span className={`${status.className} shrink-0`}>{status.label}</span>
+        <div className="shrink-0 text-right">
+          <p className="text-sm font-black leading-tight text-slate-200 lg:text-slate-800">
+            {formatPrimaryTime(item)}
+          </p>
+          {formatSecondaryTimeLabel(item) ? (
+            <p className="mt-0.5 text-[0.62rem] font-black uppercase tracking-[0.1em] text-slate-500 lg:text-slate-400">
+              {formatSecondaryTimeLabel(item)}
+            </p>
+          ) : null}
+          <span className={`${status.className} mt-2 hidden lg:inline-flex`}>{status.label}</span>
+        </div>
       </div>
 
-      <div className="mt-2 grid grid-cols-[minmax(0,1fr)_64px] items-start gap-3 sm:grid-cols-[minmax(0,1fr)_80px]">
+      <div className="mt-2 grid grid-cols-[minmax(0,1fr)_56px] items-start gap-3 lg:grid-cols-[minmax(0,1fr)_80px]">
         <div className="min-w-0">
           <TimelinePrimaryDetails item={item} />
           <ItemSource item={item} />
@@ -264,7 +313,7 @@ function TimelineCompactItem({
           <PlacePhoto
             alt={item.imageAlt || `Photo of ${item.title}`}
             attribution={item.imageAttribution}
-            className="h-16 w-16 rounded-2xl sm:h-20 sm:w-20"
+            className="h-14 w-14 rounded-2xl lg:h-20 lg:w-20"
             fallbackLabel={item.typeLabel || displayLabel}
             src={item.imageUrl}
           />
@@ -302,7 +351,7 @@ function TimelinePrimaryDetails({ item }: { item: TimelineItemView }) {
 
 function GeneralInlineDetails({ item }: { item: TimelineItemView }) {
   return (
-    <div className="grid gap-1 text-sm font-semibold leading-5 text-slate-600">
+    <div className="grid gap-1 text-sm font-semibold leading-5 text-slate-400 lg:text-slate-600">
       <p className="break-words">{item.location}</p>
       <InlineDetailList item={item} />
     </div>
@@ -311,14 +360,14 @@ function GeneralInlineDetails({ item }: { item: TimelineItemView }) {
 
 function RestaurantInlineDetails({ item }: { item: TimelineItemView }) {
   return (
-    <div className="grid gap-1 text-sm font-semibold leading-5 text-slate-600">
+    <div className="grid gap-1 text-sm font-semibold leading-5 text-slate-400 lg:text-slate-600">
       <p className="break-words">{item.location}</p>
       <p>
         {restaurantMealLabel(item)} · {formatPrimaryTime(item)}
       </p>
       <p>
         Reservation:{" "}
-        <span className="font-black text-slate-800">
+        <span className="font-black text-slate-200 lg:text-slate-800">
           {item.confirmationCode || item.confirmation || "optional"}
         </span>
       </p>
@@ -329,17 +378,17 @@ function RestaurantInlineDetails({ item }: { item: TimelineItemView }) {
 
 function HotelInlineDetails({ item }: { item: TimelineItemView }) {
   return (
-    <div className="grid gap-1 text-sm font-semibold leading-5 text-slate-600">
+    <div className="grid gap-1 text-sm font-semibold leading-5 text-slate-400 lg:text-slate-600">
       <p className="break-words">{item.location}</p>
       <p>
         Check in:{" "}
-        <span className="font-black text-slate-800">
+        <span className="font-black text-slate-200 lg:text-slate-800">
           {formatHotelDateTime(item.startAt, item.hasStartTime)}
         </span>
       </p>
       <p>
         Check out:{" "}
-        <span className="font-black text-slate-800">
+        <span className="font-black text-slate-200 lg:text-slate-800">
           {formatHotelDateTime(item.endAt, item.hasEndTime)}
         </span>
       </p>
@@ -352,16 +401,16 @@ function FlightInlineDetails({ item }: { item: TimelineItemView }) {
   const flight = getFlightDisplay(item);
 
   return (
-    <div className="grid gap-2 text-sm font-semibold leading-5 text-slate-600">
+    <div className="grid gap-2 text-sm font-semibold leading-5 text-slate-400 lg:text-slate-600">
       <div className="flex min-w-0 items-center gap-2">
-        <span className="font-black text-slate-950">{flight.originCode}</span>
-        <ArrowRight className="h-4 w-4 shrink-0 text-slate-400" aria-hidden="true" />
-        <span className="font-black text-slate-950">{flight.destinationCode}</span>
+        <span className="font-black text-white lg:text-slate-950">{flight.originCode}</span>
+        <ArrowRight className="h-4 w-4 shrink-0 text-slate-500 lg:text-slate-400" aria-hidden="true" />
+        <span className="font-black text-white lg:text-slate-950">{flight.destinationCode}</span>
       </div>
       <p className="break-words">{flight.airlineLabel}</p>
       <p>
         Arrive:{" "}
-        <span className="font-black text-slate-800">
+        <span className="font-black text-slate-200 lg:text-slate-800">
           {flight.arrivalTime} {item.timeZoneLabel || ""}
         </span>
       </p>
@@ -377,13 +426,13 @@ function RouteInlineDetails({ item }: { item: TimelineItemView }) {
   const routeReady = hasResolvedRoute(route);
 
   return (
-    <div className="grid gap-1 text-sm font-semibold leading-5 text-slate-600">
+    <div className="grid gap-1 text-sm font-semibold leading-5 text-slate-400 lg:text-slate-600">
       <div className="flex min-w-0 items-center gap-2">
-        <span className="min-w-0 truncate font-black text-slate-950">
+        <span className="min-w-0 truncate font-black text-white lg:text-slate-950">
           {routeEndpointLabel(origin) || "Origin needed"}
         </span>
-        <ArrowRight className="h-4 w-4 shrink-0 text-slate-400" aria-hidden="true" />
-        <span className="min-w-0 truncate font-black text-slate-950">
+        <ArrowRight className="h-4 w-4 shrink-0 text-slate-500 lg:text-slate-400" aria-hidden="true" />
+        <span className="min-w-0 truncate font-black text-white lg:text-slate-950">
           {routeEndpointLabel(destination) || "Destination needed"}
         </span>
       </div>
@@ -408,7 +457,7 @@ function InlineDetailList({ item }: { item: TimelineItemView }) {
   if (!details.length) return null;
 
   return (
-    <p className="break-words text-xs font-bold uppercase tracking-[0.1em] text-slate-400">
+    <p className="break-words text-xs font-bold uppercase tracking-[0.1em] text-slate-500 lg:text-slate-400">
       {details.join(" · ")}
     </p>
   );
@@ -419,7 +468,7 @@ function ItemSource({ item }: { item: TimelineItemView }) {
   if (!source) return null;
 
   return (
-    <p className="mt-1 truncate text-xs font-black uppercase tracking-[0.12em] text-slate-400">
+    <p className="mt-1 truncate text-xs font-black uppercase tracking-[0.12em] text-slate-500 lg:text-slate-400">
       {source}
     </p>
   );
@@ -428,7 +477,7 @@ function ItemSource({ item }: { item: TimelineItemView }) {
 function StateCopy({ item }: { item: TimelineItemView }) {
   if (item.locationStatus === "needs_activity_provider") {
     return (
-      <p className="mt-3 rounded-xl bg-blue-50 px-3 py-2 text-xs font-bold text-blue-800 sm:text-sm">
+      <p className="mt-3 rounded-xl bg-blue-400/10 px-3 py-2 text-xs font-bold text-blue-100 ring-1 ring-blue-300/15 lg:bg-blue-50 lg:text-blue-800 lg:ring-0 lg:text-sm">
         Add a meeting point or provider before this appears on the map.
       </p>
     );
@@ -436,7 +485,7 @@ function StateCopy({ item }: { item: TimelineItemView }) {
 
   if (item.locationStatus !== "resolved") {
     return (
-      <p className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-xs font-bold text-amber-800 sm:text-sm">
+      <p className="mt-3 rounded-xl bg-amber-300/10 px-3 py-2 text-xs font-bold text-amber-100 ring-1 ring-amber-200/15 lg:bg-amber-50 lg:text-amber-800 lg:ring-0 lg:text-sm">
         Add or retry a location before this appears on the map.
       </p>
     );
@@ -556,13 +605,13 @@ function ItineraryActions({
 }) {
   return (
     <details
-      className="rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-sm sm:rounded-3xl sm:p-5"
+      className="rounded-[1.5rem] border border-white/10 bg-white/[0.08] p-4 text-white shadow-sm backdrop-blur-xl lg:border-slate-200 lg:bg-white lg:text-slate-950 lg:backdrop-blur-none sm:rounded-3xl sm:p-5"
       id="new-plan"
     >
-      <summary className="cursor-pointer text-base font-black text-slate-950">
+      <summary className="cursor-pointer text-base font-black text-white lg:text-slate-950">
         Add trip item
       </summary>
-      <p className="mt-2 text-sm text-slate-600">Add a place, reservation, route, stay, or activity.</p>
+      <p className="mt-2 text-sm text-slate-400 lg:text-slate-600">Add a place, reservation, route, stay, or activity.</p>
       <div className="mt-4 grid gap-3">
         <GeneratePlanButton context="timeline" tripId={tripId} />
         <AsyncActionButton
@@ -595,7 +644,7 @@ function ItineraryActions({
             </AsyncActionButton>
           </div>
         ) : null}
-        <div>
+        <div className="rounded-3xl bg-white p-3 text-slate-950 lg:bg-transparent lg:p-0">
           <TripSegmentForm buttonLabel="Add trip item" tripId={tripId} />
         </div>
       </div>
@@ -700,4 +749,44 @@ function formatSecondaryTimeLabel(item: TimelineItemView) {
     return item.locationStatus === "needs_activity_provider" ? "Unscheduled" : "";
   }
   return item.timeZoneLabel || "Local";
+}
+
+function formatTimelineMonth(days: TripTimelineData["days"]) {
+  const firstDatedDay = days.find((day) => day.dateIso);
+  if (!firstDatedDay?.dateIso) return "Itinerary";
+
+  return new Intl.DateTimeFormat("en", {
+    month: "long",
+    timeZone: "UTC",
+    year: "numeric"
+  }).format(new Date(`${firstDatedDay.dateIso}T00:00:00.000Z`));
+}
+
+function formatActiveDayLabel(days: TripTimelineData["days"]) {
+  const firstDatedDay = days.find((day) => day.dateIso);
+  if (!firstDatedDay) return "Itinerary";
+
+  const todayIso = new Date().toISOString().slice(0, 10);
+  if (firstDatedDay.dateIso === todayIso) return "Today";
+
+  return firstDatedDay.label === "Ideas" ? "Itinerary" : firstDatedDay.label;
+}
+
+function MobileTimelineBottomBar({ activeDayLabel }: { activeDayLabel: string }) {
+  return (
+    <nav
+      aria-label="Itinerary quick actions"
+      className="fixed inset-x-3 bottom-[calc(5.75rem+env(safe-area-inset-bottom))] z-30 mx-auto flex max-w-md items-center justify-between rounded-[1.6rem] border border-white/10 bg-slate-950/[0.88] px-4 py-3 text-orange-400 shadow-2xl backdrop-blur-2xl lg:hidden"
+    >
+      <CalendarDays className="h-5 w-5" aria-hidden="true" />
+      <span className="text-base font-black">{activeDayLabel}</span>
+      <Link
+        aria-label="Add itinerary item"
+        className="grid h-11 w-11 place-items-center rounded-full text-orange-400 transition hover:bg-white/10 focus:outline-none focus:ring-4 focus:ring-orange-300/20"
+        href="#new-plan"
+      >
+        <Plus className="h-6 w-6" aria-hidden="true" />
+      </Link>
+    </nav>
+  );
 }
