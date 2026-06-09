@@ -45,6 +45,7 @@ export function AppShell({
   const tripWorkspaceContent = /^\/dashboard\/trips\/[^/]+/.test(pathname);
   const fullBleedContent =
     tripWorkspaceContent || pathname.includes("/map") || pathname.startsWith("/dashboard/layout-simulator");
+  const hideMobileTopbar = tripWorkspaceContent;
 
   useEffect(() => {
     const stored = window.localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY);
@@ -161,7 +162,10 @@ export function AppShell({
 
         <div className="flex min-w-0 flex-1 flex-col">
           <header
-            className="sticky top-0 z-30 border-b border-white/10 bg-slate-950/72 text-slate-100 shadow-[0_10px_45px_rgba(2,6,23,0.18)] backdrop-blur-2xl"
+            className={cn(
+              "sticky top-0 z-30 border-b border-white/10 bg-slate-950/72 text-slate-100 shadow-[0_10px_45px_rgba(2,6,23,0.18)] backdrop-blur-2xl",
+              hideMobileTopbar && "hidden lg:block"
+            )}
             data-wallet-topbar="true"
             data-testid="app-shell-topbar"
           >

@@ -115,6 +115,29 @@ test.describe("mobile soft-launch UX", () => {
     await expect(nav.getByRole("link", { name: /Trips/ })).not.toHaveAttribute("aria-current", "page");
   });
 
+  test("trip workspace pages hide the global mobile topbar", async ({ page }) => {
+    test.setTimeout(120_000);
+    await page.setViewportSize({ height: 900, width: 390 });
+    await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
+
+    for (const route of [
+      "/dashboard/trips/demo",
+      "/dashboard/trips/demo/timeline",
+      "/dashboard/trips/demo/map",
+      "/dashboard/trips/demo/ideas",
+      "/dashboard/trips/demo/budget",
+      "/dashboard/trips/demo/documents",
+      "/dashboard/trips/demo/sharing"
+    ] as const) {
+      await page.goto(`${baseUrl}${route}`, { waitUntil: "commit" });
+      await expect(page.getByTestId("app-shell-root")).toBeVisible({ timeout: 30_000 });
+      await expect(page.getByTestId("app-shell-topbar")).toBeHidden();
+    }
+
+    await page.goto(`${baseUrl}/dashboard`, { waitUntil: "commit" });
+    await expect(page.getByTestId("app-shell-topbar")).toBeVisible();
+  });
+
   test("mobile trips page shows a wallet setup or wallet list", async ({ page }) => {
     await page.setViewportSize({ height: 900, width: 390 });
     await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
