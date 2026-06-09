@@ -153,7 +153,8 @@ test("loads dashboard summary and route-split pages", async ({ page }) => {
     await activityFilters.getByRole("button", { name: "Food" }).click();
     await expect(activityFilters.getByRole("button", { name: "Food" })).toHaveAttribute("aria-pressed", "true");
   }
-  const routePlaces = page
+  const desktopIdeas = page.getByTestId("desktop-ideas-view");
+  const routePlaces = desktopIdeas
     .locator("section")
     .filter({ has: page.getByRole("heading", { name: "Saved ideas" }) });
   await expect(routePlaces.getByText("Team dinner in El Born")).toBeVisible();

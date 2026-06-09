@@ -3,11 +3,16 @@
 import Link from "next/link";
 import {
   Bed,
+  ChevronDown,
   ExternalLink,
+  ListFilter,
   Loader2,
-  Map,
+  Map as MapIcon,
   MapPin,
   Moon,
+  MoreHorizontal,
+  Navigation,
+  Plus,
   ShoppingBag,
   Sparkles,
   Ticket,
@@ -22,7 +27,9 @@ import type {
   TripRecommendationView,
   UnmappedMapSegment
 } from "@/app/dashboard/trips/[tripId]/map/loader";
+import GoogleMapsProvider from "@/components/GoogleMapsProvider";
 import { PlacePhoto } from "@/components/place-photo";
+import TripMap from "@/components/TripMap";
 
 type TripIdeasPageProps = TripMapData;
 
@@ -87,6 +94,7 @@ const baseFilters: { id: ActivityFilterId; label: string; icon: ReactNode }[] = 
 
 export function TripIdeasPage({
   activitySegments,
+  destination,
   error,
   items,
   recommendations,
@@ -124,6 +132,11 @@ export function TripIdeasPage({
   const activityIdeasForFilter = filteredDiscoveryRows.filter((row) => row.type === "activity");
   const needsLocationForFilter = filteredDiscoveryRows.filter((row) => row.type === "needs-location");
   const activeLabel = filters.find((filter) => filter.id === activeFilter)?.label || "selected";
+  const mobileRows = useMemo(
+    () => [...filteredDiscoveryRows, ...savedPlacesForFilter],
+    [filteredDiscoveryRows, savedPlacesForFilter]
+  );
+  const mobileActivityCount = mobileRows.length;
 
   useEffect(() => {
     setHydrated(true);
@@ -156,7 +169,26 @@ export function TripIdeasPage({
   }
 
   return (
-    <div className="grid min-w-0 gap-4" data-testid="trip-ideas-page">
+    <div className="min-w-0" data-testid="trip-ideas-page">
+      <MobileActivitiesView
+        activeFilter={activeFilter}
+        destination={destination}
+        disabled={Boolean(pendingAction)}
+        error={error}
+        filters={filters}
+        hydrated={hydrated}
+        items={items}
+        mobileActivityCount={mobileActivityCount}
+        onDismiss={(row) => run(`/api/trip-recommendations/${row.id}/dismiss`, "Dismissing idea")}
+        onFilter={setActiveFilter}
+        onFindIdeas={() => run(`/api/trips/${tripId}/generate-suggestions`, "Finding ideas")}
+        onSave={(row) => run(`/api/trip-recommendations/${row.id}/save`, "Saving idea")}
+        rows={mobileRows}
+        showFilters={showFilters}
+        tripId={tripId}
+      />
+
+      <div className="hidden min-w-0 gap-4 lg:grid" data-testid="desktop-ideas-view">
       {error ? (
         <p className="rounded-2xl bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
           {error}
@@ -287,8 +319,375 @@ export function TripIdeasPage({
           {message}
         </p>
       ) : null}
+      </div>
+
+      {message ? (
+        <p aria-live="polite" className="mt-3 rounded-2xl bg-white/10 px-3 py-2 text-xs font-semibold text-white/80 lg:hidden">
+          {message}
+        </p>
+      ) : null}
     </div>
   );
+}
+
+function MobileActivitiesView({
+  activeFilter,
+  destination,
+  disabled,
+  error,
+  filters,
+  hydrated,
+  items,
+  mobileActivityCount,
+  onDismiss,
+  onFilter,
+  onFindIdeas,
+  onSave,
+  rows,
+  showFilters,
+  tripId
+}: {
+  activeFilter: ActivityFilterId;
+  destination: string | null;
+  disabled: boolean;
+  error: string | null;
+  filters: { id: ActivityFilterId; label: string; icon: ReactNode }[];
+  hydrated: boolean;
+  items: TripMapData["items"];
+  mobileActivityCount: number;
+  onDismiss: (row: Extract<ActivityRow, { type: "recommendation" }>) => void;
+  onFilter: (filter: ActivityFilterId) => void;
+  onFindIdeas: () => void;
+  onSave: (row: Extract<ActivityRow, { type: "recommendation" }>) => void;
+  rows: ActivityRow[];
+  showFilters: boolean;
+  tripId: string;
+}) {
+  const tripTitle = destination?.split(",")[0]?.trim() || "Your trip";
+  const anchorPlace = items[0]?.title || destination || "your route";
+  const selectedMapId = items[0]?.id ?? null;
+
+  return (
+    <section
+      className="relative isolate -mx-1 overflow-hidden rounded-[2.2rem] bg-[#111113] text-white shadow-2xl ring-1 ring-white/10 lg:hidden"
+      data-testid="mobile-activities-view"
+    >
+      <div className="relative h-[42svh] min-h-[300px] overflow-hidden bg-[#07182b]" aria-label={`${tripTitle} nearby activity map`}>
+        {items.length ? (
+          <GoogleMapsProvider>
+            <TripMap
+              height="100%"
+              items={items}
+              selectedId={selectedMapId}
+              showRouteDetails={false}
+              travelMode="WALKING"
+            />
+          </GoogleMapsProvider>
+        ) : (
+          <div className="relative h-full overflow-hidden bg-[radial-gradient(circle_at_30%_25%,rgba(37,99,235,0.45),transparent_28%),radial-gradient(circle_at_70%_50%,rgba(249,115,22,0.25),transparent_24%),linear-gradient(135deg,#052f3b,#07111f_52%,#17110b)]">
+            <div className="absolute inset-0 opacity-35 [background-image:linear-gradient(rgba(255,255,255,.08)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.08)_1px,transparent_1px)] [background-size:44px_44px]" />
+            <div className="absolute inset-x-8 top-1/2 h-px -translate-y-1/2 bg-white/20" />
+            <div className="absolute left-1/2 top-1/2 h-40 w-40 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/16" />
+          </div>
+        )}
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-slate-950/20 via-transparent to-[#111113]" />
+        <div className="absolute right-4 top-4 z-10 grid overflow-hidden rounded-2xl bg-black/84 text-orange-400 shadow-2xl ring-1 ring-white/10 backdrop-blur">
+          <Link
+            aria-label="Open route map"
+            className="grid h-12 w-12 place-items-center border-b border-white/10"
+            href={`/dashboard/trips/${tripId}/map`}
+          >
+            <MapIcon className="h-5 w-5" aria-hidden="true" />
+          </Link>
+          <button
+            aria-label="Find ideas near current route"
+            className="grid h-12 w-12 place-items-center"
+            disabled={disabled}
+            onClick={onFindIdeas}
+            type="button"
+          >
+            {disabled ? <Loader2 className="h-5 w-5 animate-spin" /> : <Navigation className="h-5 w-5" aria-hidden="true" />}
+          </button>
+        </div>
+      </div>
+
+      <div className="relative -mt-8 rounded-t-[2rem] bg-[#1f1f21]/96 pb-[calc(4.5rem+env(safe-area-inset-bottom))] shadow-[0_-20px_60px_rgba(0,0,0,0.45)] ring-1 ring-white/10 backdrop-blur-2xl">
+        <div className="mx-auto pt-3">
+          <div className="mx-auto h-1.5 w-12 rounded-full bg-white/45" />
+        </div>
+
+        <div className="px-4 pb-3 pt-4">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <button
+                className="inline-flex min-h-8 items-center gap-1 text-base font-bold text-white/60"
+                type="button"
+              >
+                Places / Activities
+                <ChevronDown className="h-4 w-4" aria-hidden="true" />
+              </button>
+              <h2 className="mt-0.5 truncate text-3xl font-black tracking-tight text-white">
+                {tripTitle}
+              </h2>
+              <p className="sr-only">All trip activities</p>
+            </div>
+            <div className="flex shrink-0 gap-2">
+              <button
+                aria-label="More activity options"
+                className="grid h-11 w-11 place-items-center rounded-full bg-white/10 text-white/70"
+                type="button"
+              >
+                <MoreHorizontal className="h-5 w-5" aria-hidden="true" />
+              </button>
+              <Link
+                aria-label="Close activities"
+                className="grid h-11 w-11 place-items-center rounded-full bg-white/10 text-white/70"
+                href={`/dashboard/trips/${tripId}`}
+              >
+                <X className="h-5 w-5" aria-hidden="true" />
+              </Link>
+            </div>
+          </div>
+
+          {error ? (
+            <p className="mt-3 rounded-2xl bg-amber-500/15 px-3 py-2 text-xs font-bold text-amber-100">
+              {error}
+            </p>
+          ) : null}
+
+          {showFilters ? (
+            <div className="mt-4" data-testid="activity-category-filters">
+              <div className="flex gap-2">
+                <span className="inline-flex min-h-11 items-center gap-2 rounded-full bg-orange-500/18 px-4 text-sm font-black text-orange-300">
+                  Categories
+                  <ListFilter className="h-4 w-4" aria-hidden="true" />
+                </span>
+                <span className="inline-flex min-h-11 items-center gap-2 rounded-full bg-orange-500/12 px-4 text-sm font-black text-orange-300/80">
+                  Cities
+                  <MapPin className="h-4 w-4" aria-hidden="true" />
+                </span>
+              </div>
+              <div className="mt-2 flex gap-2 overflow-x-auto pb-1" aria-label="Activity categories">
+                {filters.map((filter) => {
+                  const active = activeFilter === filter.id;
+                  return (
+                    <button
+                      aria-pressed={active}
+                      className={[
+                        "inline-flex min-h-10 shrink-0 items-center gap-2 rounded-full px-3 text-xs font-black transition",
+                        active
+                          ? "bg-orange-500 text-white"
+                          : "bg-white/8 text-white/72 hover:bg-white/12"
+                      ].join(" ")}
+                      disabled={!hydrated}
+                      key={filter.id}
+                      onClick={() => onFilter(filter.id)}
+                      type="button"
+                    >
+                      {filter.icon}
+                      {filter.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
+
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-4 text-sm font-bold text-orange-400">
+            <button className="inline-flex min-h-10 items-center gap-1" type="button">
+              Sort by Distance
+              <span aria-hidden="true">↑↓</span>
+            </button>
+            <span className="inline-flex min-h-10 min-w-0 items-center gap-2 text-right">
+              <Navigation className="h-4 w-4 shrink-0" aria-hidden="true" />
+              <span className="truncate">{anchorPlace}</span>
+            </span>
+          </div>
+        </div>
+
+        <div className="max-h-[42svh] overflow-y-auto px-4 pb-3" data-testid="mobile-activity-list">
+          {rows.length ? (
+            <div className="divide-y divide-white/10">
+              {rows.map((row) => (
+                <MobileActivityRow
+                  disabled={disabled}
+                  key={`${row.type}-${"id" in row ? row.id : row.title}`}
+                  onDismiss={onDismiss}
+                  onSave={onSave}
+                  row={row}
+                  tripId={tripId}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-3xl bg-white/8 p-4 text-sm text-white/70">
+              <p className="font-black text-white">No activities yet.</p>
+              <p className="mt-1 leading-5">Find ideas near mapped places or add a trip item.</p>
+              <button
+                className="mt-4 inline-flex min-h-11 w-full items-center justify-center rounded-2xl bg-orange-500 px-4 text-sm font-black text-white disabled:opacity-60"
+                disabled={disabled}
+                onClick={onFindIdeas}
+                type="button"
+              >
+                {disabled ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                Find ideas
+              </button>
+            </div>
+          )}
+        </div>
+
+        <div className="absolute inset-x-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-20 flex items-center justify-between rounded-[1.6rem] bg-[#202022]/96 px-4 py-3 text-orange-400 shadow-2xl ring-1 ring-white/10 backdrop-blur-2xl">
+          <button
+            aria-label="Show activities list"
+            className="grid h-11 w-11 place-items-center rounded-full bg-white/6"
+            type="button"
+          >
+            <ListFilter className="h-5 w-5" aria-hidden="true" />
+          </button>
+          <p className="text-center text-xs font-bold text-white/48">
+            All
+            <span className="block text-base font-black text-orange-400">
+              {mobileActivityCount} {mobileActivityCount === 1 ? "activity" : "activities"}
+            </span>
+          </p>
+          <Link
+            aria-label="Add trip item"
+            className="grid h-11 w-11 place-items-center rounded-full bg-transparent text-orange-400"
+            href={`/dashboard/trips/${tripId}/timeline#new-plan`}
+          >
+            <Plus className="h-6 w-6" aria-hidden="true" />
+          </Link>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function MobileActivityRow({
+  disabled,
+  onDismiss,
+  onSave,
+  row,
+  tripId
+}: {
+  disabled: boolean;
+  onDismiss: (row: Extract<ActivityRow, { type: "recommendation" }>) => void;
+  onSave: (row: Extract<ActivityRow, { type: "recommendation" }>) => void;
+  row: ActivityRow;
+  tripId: string;
+}) {
+  const icon = categoryIcon(row.category);
+  const title = row.title;
+  const detail = mobileRowDetail(row);
+  const sideLabel = mobileRowSideLabel(row);
+
+  return (
+    <article className="py-3.5">
+      <div className="flex min-w-0 gap-3">
+        <span className="relative grid h-12 w-12 shrink-0 place-items-center rounded-full bg-white/8 text-orange-400">
+          {icon}
+          {row.type === "place" ? (
+            <span className="absolute -bottom-0.5 -right-0.5 grid h-5 w-5 place-items-center rounded-full bg-emerald-500 text-[0.6rem] font-black text-white ring-2 ring-[#1f1f21]">
+              ✓
+            </span>
+          ) : null}
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex min-w-0 items-start justify-between gap-3">
+            <div className="min-w-0">
+              <h3 className="truncate text-base font-black leading-tight text-white">{title}</h3>
+              <p className="mt-1 truncate text-sm font-semibold text-white/48">{detail}</p>
+            </div>
+            {sideLabel ? (
+              <p className="shrink-0 whitespace-pre-line text-right text-sm font-bold leading-tight text-white/48">
+                {sideLabel}
+              </p>
+            ) : null}
+          </div>
+          <div className="mt-2 flex flex-wrap gap-2 text-xs font-black">
+            {row.type === "recommendation" ? (
+              <>
+                <button
+                  className="min-h-9 rounded-full bg-orange-500/18 px-3 text-orange-300 disabled:opacity-60"
+                  disabled={disabled}
+                  onClick={() => onSave(row)}
+                  type="button"
+                >
+                  Save
+                </button>
+                {row.bookingUrl ? (
+                  <a
+                    className="inline-flex min-h-9 items-center rounded-full bg-white/8 px-3 text-white/72"
+                    href={row.bookingUrl}
+                    rel="noreferrer"
+                    target="_blank"
+                  >
+                    Open
+                  </a>
+                ) : null}
+                <button
+                  className="min-h-9 rounded-full bg-white/8 px-3 text-white/60 disabled:opacity-60"
+                  disabled={disabled}
+                  onClick={() => onDismiss(row)}
+                  type="button"
+                >
+                  Dismiss
+                </button>
+              </>
+            ) : row.type === "place" ? (
+              <>
+                <Link
+                  className="inline-flex min-h-9 items-center rounded-full bg-white/8 px-3 text-white/72"
+                  href={row.secondaryHref}
+                >
+                  Map
+                </Link>
+                <Link
+                  className="inline-flex min-h-9 items-center rounded-full bg-white/8 px-3 text-white/72"
+                  href={row.ctaHref}
+                >
+                  Itinerary
+                </Link>
+              </>
+            ) : (
+              <Link
+                className="inline-flex min-h-9 items-center rounded-full bg-white/8 px-3 text-white/72"
+                href={`/dashboard/trips/${tripId}/timeline#new-plan`}
+              >
+                {row.type === "activity" ? "Add to itinerary" : "Add location"}
+              </Link>
+            )}
+          </div>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function mobileRowDetail(row: ActivityRow) {
+  if (row.type === "recommendation") {
+    return [row.ratingLabel ? `${row.ratingLabel} ★` : null, row.meta, row.reason]
+      .filter(Boolean)
+      .join(" · ");
+  }
+
+  if (row.type === "place") {
+    return [row.meta, row.address].filter(Boolean).join(" · ");
+  }
+
+  return [row.location, row.status, row.description].filter(Boolean).join(" · ");
+}
+
+function mobileRowSideLabel(row: ActivityRow) {
+  if (row.type !== "place") return null;
+
+  const labels = row.meta
+    .split(" · ")
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .filter((part) => !/^mapped$/i.test(part) && part.toLowerCase() !== row.category);
+
+  return labels.length ? labels.slice(0, 2).join("\n") : null;
 }
 
 function ActivitySection({
@@ -545,7 +944,7 @@ function categoryIcon(category: ActivityFilterId) {
   if (category === "nightlife") return <Moon className="h-4 w-4" aria-hidden="true" />;
   if (category === "lodging") return <Bed className="h-4 w-4" aria-hidden="true" />;
   if (category === "all") return <Sparkles className="h-4 w-4" aria-hidden="true" />;
-  return <Map className="h-4 w-4" aria-hidden="true" />;
+  return <MapIcon className="h-4 w-4" aria-hidden="true" />;
 }
 
 function readError(payload: unknown, status: number) {

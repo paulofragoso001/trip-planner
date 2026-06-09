@@ -363,19 +363,17 @@ test.describe("mobile soft-launch UX", () => {
     await expect(mobileTripSections.getByRole("link", { name: "Ideas" })).toBeVisible();
     await expect(mobileTripSections.getByText("More")).toBeVisible();
     await mobileTripSections.getByRole("link", { name: "Ideas" }).click();
-    await expect(page.getByRole("heading", { exact: true, name: "All trip activities" })).toBeVisible();
+    await expect(page.getByTestId("mobile-activities-view")).toBeVisible();
+    await expect(page.getByText("Places / Activities")).toBeVisible();
+    await expect(page.getByTestId("mobile-activity-list")).toBeVisible();
     const activityFilters = page.getByTestId("activity-category-filters");
     if ((await activityFilters.count()) > 0) {
-      await expect(activityFilters.getByText("Explore nearby")).toBeVisible();
       await expect(activityFilters.getByRole("button", { name: "All" })).toHaveAttribute("aria-pressed", "true");
       await activityFilters.getByRole("button", { name: "Food" }).click();
       await expect(activityFilters.getByRole("button", { name: "Food" })).toHaveAttribute("aria-pressed", "true");
       await expect(activityFilters.getByRole("button", { name: "All" })).toHaveAttribute("aria-pressed", "false");
     }
-    const routePlaces = page
-      .locator("section")
-      .filter({ has: page.getByRole("heading", { name: "Saved ideas" }) });
-    await expect(routePlaces.getByText("Team dinner in El Born")).toBeVisible();
+    await expect(page.getByTestId("mobile-activity-list").getByText("Team dinner in El Born")).toBeVisible();
   });
 
   test("map itinerary action opens the map-aware itinerary sheet", async ({ page }) => {
