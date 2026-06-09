@@ -45,7 +45,8 @@ export function AppShell({
   const tripWorkspaceContent = /^\/dashboard\/trips\/[^/]+/.test(pathname);
   const fullBleedContent =
     tripWorkspaceContent || pathname.includes("/map") || pathname.startsWith("/dashboard/layout-simulator");
-  const hideMobileTopbar = tripWorkspaceContent;
+  const isDashboardHome = pathname === "/dashboard" && !view;
+  const hideMobileTopbar = !isDashboardHome;
 
   useEffect(() => {
     const stored = window.localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY);

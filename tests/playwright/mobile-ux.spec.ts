@@ -115,19 +115,22 @@ test.describe("mobile soft-launch UX", () => {
     await expect(nav.getByRole("link", { name: /Trips/ })).not.toHaveAttribute("aria-current", "page");
   });
 
-  test("trip workspace pages hide the global mobile topbar", async ({ page }) => {
-    test.setTimeout(120_000);
+  test("mobile hides the global topbar outside Home and keeps it on desktop", async ({ page }) => {
+    test.setTimeout(300_000);
     await page.setViewportSize({ height: 900, width: 390 });
     await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
 
     for (const route of [
+      "/dashboard/imports",
+      "/dashboard/trips",
       "/dashboard/trips/demo",
       "/dashboard/trips/demo/timeline",
       "/dashboard/trips/demo/map",
       "/dashboard/trips/demo/ideas",
       "/dashboard/trips/demo/budget",
       "/dashboard/trips/demo/documents",
-      "/dashboard/trips/demo/sharing"
+      "/dashboard/trips/demo/sharing",
+      "/dashboard/account"
     ] as const) {
       await page.goto(`${baseUrl}${route}`, { waitUntil: "commit" });
       await expect(page.getByTestId("app-shell-root")).toBeVisible({ timeout: 30_000 });
@@ -135,6 +138,10 @@ test.describe("mobile soft-launch UX", () => {
     }
 
     await page.goto(`${baseUrl}/dashboard`, { waitUntil: "commit" });
+    await expect(page.getByTestId("app-shell-topbar")).toBeVisible();
+
+    await page.setViewportSize({ height: 900, width: 1024 });
+    await page.goto(`${baseUrl}/dashboard/trips/demo/map`, { waitUntil: "commit" });
     await expect(page.getByTestId("app-shell-topbar")).toBeVisible();
   });
 
