@@ -132,6 +132,8 @@ test("loads dashboard summary and route-split pages", async ({ page }) => {
   await expect(page.getByRole("heading", { exact: true, name: "Calendar sync" })).toHaveCount(0);
 
   await openDashboardRoute("/dashboard/trips/demo/map");
+  await expect(page.getByTestId("trip-pass-hero")).toHaveCount(0);
+  await expect(page.getByTestId("trip-map-compact-header")).toBeVisible();
   await expect(page.getByTestId("connected-trip-map")).toBeVisible();
   await expect(page.getByText("Nearby Ideas", { exact: true })).toHaveCount(0);
   await expect(page.getByText("Your route places appear here.")).toHaveCount(0);
