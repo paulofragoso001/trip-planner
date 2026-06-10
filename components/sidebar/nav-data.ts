@@ -76,10 +76,11 @@ export const navSections: NavSection[] = [
           pathname === "/dashboard/map" || (pathname === "/dashboard" && view === "map")
       },
       {
-        href: "/dashboard/account",
+        href: "/dashboard/profile/stats",
         icon: User,
         label: "Profile",
         match: (pathname, view) =>
+          pathname.startsWith("/dashboard/profile") ||
           pathname === "/dashboard/account" ||
           (pathname === "/dashboard" && view === "account")
       }

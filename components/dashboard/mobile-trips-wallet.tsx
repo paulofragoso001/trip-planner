@@ -80,7 +80,7 @@ export function MobileTripsWallet({ error, trips }: MobileTripsWalletProps) {
             <Link
               aria-label="Trip settings"
               className="grid h-11 w-11 place-items-center rounded-full bg-orange-500/[0.14] text-orange-400 ring-1 ring-orange-400/[0.12] transition hover:bg-orange-500/20 focus:outline-none focus:ring-4 focus:ring-orange-400/20"
-              href="/dashboard/profile"
+              href="/dashboard/profile/stats"
             >
               <Settings className="h-5 w-5" aria-hidden="true" />
             </Link>
@@ -257,7 +257,7 @@ function MobileTripsCountriesMap({
             <Link
               aria-label="Trip settings"
               className="grid h-10 w-10 place-items-center rounded-full bg-orange-500/[0.14] text-orange-400 ring-1 ring-orange-400/[0.12] transition hover:bg-orange-500/20 focus:outline-none focus:ring-4 focus:ring-orange-400/20"
-              href="/dashboard/profile"
+              href="/dashboard/profile/stats"
             >
               <Settings className="h-5 w-5" aria-hidden="true" />
             </Link>

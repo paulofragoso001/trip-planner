@@ -474,7 +474,11 @@ function isMobileNavActive(
     case "Map":
       return pathname.includes("/map") || (pathname === "/dashboard" && view === "map");
     case "Profile":
-      return pathname === "/dashboard/account" || (pathname === "/dashboard" && view === "account");
+      return (
+        pathname.startsWith("/dashboard/profile") ||
+        pathname === "/dashboard/account" ||
+        (pathname === "/dashboard" && view === "account")
+      );
     default:
       return Boolean(mobileNavItems.find((item) => item.label === label)?.match?.(pathname, view, hash));
   }
