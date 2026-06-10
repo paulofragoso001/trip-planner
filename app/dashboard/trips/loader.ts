@@ -1,5 +1,6 @@
 import "server-only";
 
+import { unstable_noStore as noStore } from "next/cache";
 import { authorizeDashboardApi } from "@/lib/server/dashboard-test-auth";
 import {
   TRIP_TRAVEL_STYLE_LABELS,
@@ -83,6 +84,7 @@ type TripVisualSegment = {
 };
 
 export async function loadTripsData(): Promise<TripsData> {
+  noStore();
   const auth = await authorizeDashboardApi();
 
   if (!auth) {

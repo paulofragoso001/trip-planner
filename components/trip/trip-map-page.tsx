@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { ConnectedTripMap } from "@/components/trip/connected-trip-map";
 import { MapTools } from "@/components/trip/map-tools";
 import type { TripMapData } from "@/app/dashboard/trips/[tripId]/map/loader";
@@ -19,7 +18,7 @@ export default function TripMapPage({
   const hasLocationAttention = unmappedCount > 0 || activitySegments.length > 0;
 
   return (
-    <div className="grid gap-4">
+    <div className="grid gap-0 lg:gap-4">
       <section className="relative min-w-0">
         <h2 className="sr-only">Map</h2>
         {error ? (
@@ -39,7 +38,7 @@ export default function TripMapPage({
       </section>
 
       {hasRoutePlaces ? (
-        <details className="rounded-[1.75rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+        <details className="hidden rounded-[1.75rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5 lg:block">
           <summary className="cursor-pointer text-base font-black text-slate-950">
             Add trip item
           </summary>
@@ -52,15 +51,6 @@ export default function TripMapPage({
             <MapTools hasMappedStops={items.length > 0} hasUnmappedStops={unmappedCount > 0} tripId={tripId} />
           </div>
         </details>
-      ) : null}
-
-      {hasRoutePlaces ? (
-        <Link
-          className="inline-flex min-h-11 w-full items-center justify-center rounded-full border border-slate-200 bg-white px-5 text-sm font-black text-slate-950 shadow-sm transition hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-blue-100 sm:w-fit"
-          href={`/dashboard/trips/${tripId}/ideas`}
-        >
-          Open Ideas
-        </Link>
       ) : null}
     </div>
   );

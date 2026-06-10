@@ -29,7 +29,11 @@ import type {
 } from "@/app/dashboard/trips/[tripId]/map/loader";
 import GoogleMapsProvider from "@/components/GoogleMapsProvider";
 import { PlacePhoto } from "@/components/place-photo";
-import TripMap from "@/components/TripMap";
+import TripMap, { type TripMapItem } from "@/components/TripMap";
+import {
+  ActivityDetailSheet,
+  type ActivityDetailRecommendation
+} from "@/components/trip/activity-detail-sheet";
 
 type TripIdeasPageProps = TripMapData;
 
@@ -45,27 +49,44 @@ type ActivityFilterId =
 type ActivityRow =
   | {
       address: string | null;
+      bookingUrl: string | null;
       category: ActivityFilterId;
+      confirmationCode: string | null;
       ctaHref: string;
       ctaLabel: string;
+      endTime: string | null;
+      hasEndTime?: boolean;
+      hasStartTime?: boolean;
+      id: string;
       imageAlt: string | null;
       imageAttribution: string | null;
       imageUrl: string | null;
+      kind: string | null;
+      lat: number;
+      lng: number;
       meta: string;
+      notes: string | null;
+      provider: string | null;
+      providerMetadata: Record<string, unknown> | null;
+      providerPlaceId: string | null;
       secondaryHref: string;
       secondaryLabel: string;
       source: string | null;
+      startTime: string | null;
       status: string;
       title: string;
       type: "place";
     }
   | {
+      address: string | null;
       bookingUrl: string | null;
       category: ActivityFilterId;
       id: string;
       imageAlt: string | null;
       imageAttribution: string | null;
       imageUrl: string | null;
+      lat: number | null;
+      lng: number | null;
       meta: string;
       provider: string;
       ratingLabel: string | null;
@@ -105,6 +126,7 @@ export function TripIdeasPage({
   const [activeFilter, setActiveFilter] = useState<ActivityFilterId>("all");
   const [hydrated, setHydrated] = useState(false);
   const [pendingAction, setPendingAction] = useState<string | null>(null);
+  const [selectedDetail, setSelectedDetail] = useState<ActivityRow | null>(null);
   const [message, setMessage] = useState("");
   const rows = useMemo(
     () => [
@@ -182,6 +204,7 @@ export function TripIdeasPage({
         onDismiss={(row) => run(`/api/trip-recommendations/${row.id}/dismiss`, "Dismissing idea")}
         onFilter={setActiveFilter}
         onFindIdeas={() => run(`/api/trips/${tripId}/generate-suggestions`, "Finding ideas")}
+        onOpenDetail={setSelectedDetail}
         onSave={(row) => run(`/api/trip-recommendations/${row.id}/save`, "Saving idea")}
         rows={mobileRows}
         showFilters={showFilters}
@@ -326,6 +349,17 @@ export function TripIdeasPage({
           {message}
         </p>
       ) : null}
+
+      <ActivityDetailSheet
+        disabled={Boolean(pendingAction)}
+        onClose={() => setSelectedDetail(null)}
+        onSaveRecommendation={(row) => {
+          setSelectedDetail(null);
+          void run(`/api/trip-recommendations/${row.id}/save`, "Saving idea");
+        }}
+        target={toActivityDetailTarget(selectedDetail)}
+        tripId={tripId}
+      />
     </div>
   );
 }
@@ -342,6 +376,7 @@ function MobileActivitiesView({
   onDismiss,
   onFilter,
   onFindIdeas,
+  onOpenDetail,
   onSave,
   rows,
   showFilters,
@@ -358,6 +393,7 @@ function MobileActivitiesView({
   onDismiss: (row: Extract<ActivityRow, { type: "recommendation" }>) => void;
   onFilter: (filter: ActivityFilterId) => void;
   onFindIdeas: () => void;
+  onOpenDetail: (row: ActivityRow) => void;
   onSave: (row: Extract<ActivityRow, { type: "recommendation" }>) => void;
   rows: ActivityRow[];
   showFilters: boolean;
@@ -511,8 +547,9 @@ function MobileActivitiesView({
               {rows.map((row) => (
                 <MobileActivityRow
                   disabled={disabled}
-                  key={`${row.type}-${"id" in row ? row.id : row.title}`}
+                  key={`${row.type}-${row.id}`}
                   onDismiss={onDismiss}
+                  onOpenDetail={onOpenDetail}
                   onSave={onSave}
                   row={row}
                   tripId={tripId}
@@ -566,12 +603,14 @@ function MobileActivitiesView({
 function MobileActivityRow({
   disabled,
   onDismiss,
+  onOpenDetail,
   onSave,
   row,
   tripId
 }: {
   disabled: boolean;
   onDismiss: (row: Extract<ActivityRow, { type: "recommendation" }>) => void;
+  onOpenDetail: (row: ActivityRow) => void;
   onSave: (row: Extract<ActivityRow, { type: "recommendation" }>) => void;
   row: ActivityRow;
   tripId: string;
@@ -608,6 +647,13 @@ function MobileActivityRow({
             {row.type === "recommendation" ? (
               <>
                 <button
+                  className="min-h-9 rounded-full bg-white/8 px-3 text-white/72"
+                  onClick={() => onOpenDetail(row)}
+                  type="button"
+                >
+                  Details
+                </button>
+                <button
                   className="min-h-9 rounded-full bg-orange-500/18 px-3 text-orange-300 disabled:opacity-60"
                   disabled={disabled}
                   onClick={() => onSave(row)}
@@ -636,6 +682,13 @@ function MobileActivityRow({
               </>
             ) : row.type === "place" ? (
               <>
+                <button
+                  className="min-h-9 rounded-full bg-white/8 px-3 text-white/72"
+                  onClick={() => onOpenDetail(row)}
+                  type="button"
+                >
+                  Details
+                </button>
                 <Link
                   className="inline-flex min-h-9 items-center rounded-full bg-white/8 px-3 text-white/72"
                   href={row.secondaryHref}
@@ -860,12 +913,15 @@ function StatusRow({
 
 function mapRecommendationRow(item: TripRecommendationView): ActivityRow {
   return {
+    address: item.address,
     bookingUrl: item.bookingUrl,
     category: normalizeCategory(`${item.type} ${item.category} ${item.title} ${item.reason || ""}`),
     id: item.id,
     imageAlt: item.imageAlt,
     imageAttribution: item.imageAttribution,
     imageUrl: item.imageUrl,
+    lat: item.lat,
+    lng: item.lng,
     meta: [item.type, item.provider.replace("_", " ")].filter(Boolean).join(" · "),
     provider: item.provider,
     ratingLabel: item.ratingLabel,
@@ -885,16 +941,30 @@ function mapPlaceRow(item: TripMapData["items"][number], tripId: string): Activi
 
   return {
     address: item.address || null,
+    bookingUrl: item.bookingUrl || null,
     category: normalizeCategory(`${item.category} ${item.title}`),
+    confirmationCode: item.confirmationCode || null,
     ctaHref: `/dashboard/trips/${tripId}/timeline#${item.id}`,
     ctaLabel: "Open in Itinerary",
+    endTime: item.endTime || null,
+    hasEndTime: item.hasEndTime,
+    hasStartTime: item.hasStartTime,
+    id: item.id,
     imageAlt: item.imageAlt || null,
     imageAttribution: item.imageAttribution || null,
     imageUrl: item.imageUrl || null,
+    kind: item.kind || item.category || null,
+    lat: item.lat,
+    lng: item.lng,
     meta,
+    notes: item.notes || null,
+    provider: item.provider || null,
+    providerMetadata: item.providerMetadata || null,
+    providerPlaceId: item.providerPlaceId || null,
     secondaryHref: `/dashboard/trips/${tripId}/map#${item.id}`,
     secondaryLabel: "View on Map",
     source: null,
+    startTime: item.startTime || null,
     status: item.status || "resolved",
     title: item.title,
     type: "place"
@@ -945,6 +1015,63 @@ function categoryIcon(category: ActivityFilterId) {
   if (category === "lodging") return <Bed className="h-4 w-4" aria-hidden="true" />;
   if (category === "all") return <Sparkles className="h-4 w-4" aria-hidden="true" />;
   return <MapIcon className="h-4 w-4" aria-hidden="true" />;
+}
+
+function toActivityDetailTarget(row: ActivityRow | null) {
+  if (!row) return null;
+
+  if (row.type === "recommendation") {
+    const item: ActivityDetailRecommendation = {
+      address: row.address,
+      bookingUrl: row.bookingUrl,
+      category: row.category,
+      id: row.id,
+      imageAlt: row.imageAlt,
+      imageAttribution: row.imageAttribution,
+      imageUrl: row.imageUrl,
+      lat: row.lat,
+      lng: row.lng,
+      meta: row.meta,
+      provider: row.provider,
+      ratingLabel: row.ratingLabel,
+      reason: row.reason,
+      title: row.title,
+      type: row.category
+    };
+    return { item, type: "recommendation" as const };
+  }
+
+  if (row.type === "place") {
+    const item: TripMapItem = {
+      address: row.address,
+      bookingUrl: row.bookingUrl,
+      category: row.category,
+      confirmationCode: row.confirmationCode,
+      dayLabel: null,
+      endTime: row.endTime,
+      hasEndTime: row.hasEndTime,
+      hasStartTime: row.hasStartTime,
+      id: row.id,
+      imageAlt: row.imageAlt,
+      imageAttribution: row.imageAttribution,
+      imageUrl: row.imageUrl,
+      kind: row.kind,
+      lat: row.lat,
+      lng: row.lng,
+      notes: row.notes,
+      provider: row.provider,
+      providerMetadata: row.providerMetadata,
+      providerPlaceId: row.providerPlaceId,
+      routeOrder: null,
+      startTime: row.startTime,
+      status: row.status,
+      timeLabel: null,
+      title: row.title
+    };
+    return { item, type: "segment" as const };
+  }
+
+  return null;
 }
 
 function readError(payload: unknown, status: number) {

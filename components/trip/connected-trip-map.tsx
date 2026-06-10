@@ -8,6 +8,7 @@ import GoogleMapsProvider from "@/components/GoogleMapsProvider";
 import { PlacePhoto } from "@/components/place-photo";
 import TripMap, { type TripMapItem } from "@/components/TripMap";
 import type { UnmappedMapSegment } from "@/app/dashboard/trips/[tripId]/map/loader";
+import { ActivityDetailSheet } from "@/components/trip/activity-detail-sheet";
 import { waylineCopy } from "@/lib/copy/wayline-copy";
 import { hasResolvedRoute, routeEndpointLabel } from "@/lib/trip-segment-route";
 
@@ -55,6 +56,7 @@ export function ConnectedTripMap({
     [dayFilteredItems, hasDayFilter, showAllPlaces]
   );
   const [selectedId, setSelectedId] = useState<string | null>(visibleItems[0]?.id ?? null);
+  const [detailItem, setDetailItem] = useState<TripMapItem | null>(null);
   const [pendingRetry, setPendingRetry] = useState<string | null>(null);
   const [retryMessage, setRetryMessage] = useState<string | null>(null);
   const selectedItem = visibleItems.find((item) => item.id === selectedId) ?? visibleItems[0];
@@ -107,13 +109,16 @@ export function ConnectedTripMap({
   }
 
   return (
-    <div className="flex min-h-0 flex-col gap-0" data-testid="connected-trip-map">
+    <div
+      className="relative min-h-[calc(100dvh-5rem)] overflow-hidden bg-slate-950 lg:min-h-0 lg:overflow-visible lg:rounded-[2rem] lg:bg-transparent"
+      data-testid="connected-trip-map"
+    >
       {items.length ? (
-        <div className="grid gap-3">
-          <div className="relative overflow-hidden rounded-[1.75rem] border border-slate-200 bg-slate-100 shadow-sm">
+        <div className="relative min-h-[calc(100dvh-5rem)] lg:grid lg:min-h-0 lg:gap-3">
+          <div className="relative overflow-hidden rounded-none border-0 bg-slate-100 shadow-none lg:rounded-[1.75rem] lg:border lg:border-slate-200 lg:shadow-sm">
             <GoogleMapsProvider>
               <TripMap
-                height="clamp(360px, 62dvh, 720px)"
+                height="clamp(520px, calc(100dvh - 5rem), 840px)"
                 items={visibleItems}
                 selectedId={selectedId}
                 onSelect={setSelectedId}
@@ -122,14 +127,14 @@ export function ConnectedTripMap({
               />
             </GoogleMapsProvider>
 
-            <div className="pointer-events-none absolute bottom-3 left-1/2 z-10 -translate-x-1/2">
+            <div className="pointer-events-none absolute left-1/2 top-4 z-10 -translate-x-1/2">
               <div className="whitespace-nowrap rounded-full bg-white/95 px-4 py-2 text-xs font-black text-slate-950 shadow-lg ring-1 ring-slate-200 backdrop-blur sm:text-sm">
                 {routeSummary}
               </div>
             </div>
 
             {hasDayFilter ? (
-              <div className="absolute left-3 right-3 top-3 z-10 flex gap-2 overflow-x-auto rounded-2xl bg-white/90 p-2 text-xs font-black text-slate-700 shadow-lg ring-1 ring-slate-200 backdrop-blur" aria-label="Map day filter">
+              <div className="absolute left-3 right-3 top-16 z-10 flex gap-2 overflow-x-auto rounded-2xl bg-white/90 p-2 text-xs font-black text-slate-700 shadow-lg ring-1 ring-slate-200 backdrop-blur" aria-label="Map day filter">
                 {["all", ...dayLabels].map((day) => {
                   const active = (selectedDayKey || dayLabels[0]) === day;
                   return (
@@ -154,9 +159,11 @@ export function ConnectedTripMap({
           </div>
 
           <div
-            className="relative z-10 grid gap-3 rounded-[2rem] border border-slate-200 bg-white p-3 pb-[calc(1.25rem+env(safe-area-inset-bottom))] shadow-sm sm:p-4"
+            className="absolute inset-x-0 bottom-0 z-20 grid max-h-[60dvh] gap-3 overflow-y-auto rounded-t-[2rem] border border-white/10 bg-slate-950/92 p-3 pb-[calc(6.25rem+env(safe-area-inset-bottom))] text-white shadow-2xl backdrop-blur-2xl sm:p-4 lg:relative lg:inset-auto lg:max-h-none lg:overflow-visible lg:rounded-[2rem] lg:border-slate-200 lg:bg-white lg:pb-4 lg:text-slate-950 lg:shadow-sm lg:backdrop-blur-none"
+            data-map-bottom-sheet="true"
             data-testid="map-route-panel"
           >
+            <div className="mx-auto h-1.5 w-16 rounded-full bg-white/45 lg:hidden" aria-hidden="true" />
             {selectedItem ? (
             <>
               {!hasDayFilter && items.length > visibleItems.length ? (
@@ -222,6 +229,13 @@ export function ConnectedTripMap({
                     </div>
                   ) : null}
                   <div className="mt-3 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+                    <button
+                      className="inline-flex min-h-10 items-center justify-center rounded-xl bg-white/10 px-3 text-xs font-black text-white ring-1 ring-white/12"
+                      onClick={() => setDetailItem(selectedItem)}
+                      type="button"
+                    >
+                      Details
+                    </button>
                     {selectedPlaceUrl ? (
                       <a
                         className="inline-flex min-h-10 items-center justify-center rounded-xl bg-white px-3 text-xs font-black text-slate-950"
@@ -247,9 +261,9 @@ export function ConnectedTripMap({
 
             <div>
               <div className="mb-2 flex items-center justify-between gap-3">
-                <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-500">Route places</p>
+                <p className="text-xs font-black uppercase tracking-[0.16em] text-white/55 lg:text-slate-500">Route places</p>
                 {hiddenPlaceCount ? (
-                  <p className="text-xs font-bold text-slate-500">{hiddenPlaceCount} hidden</p>
+                  <p className="text-xs font-bold text-white/50 lg:text-slate-500">{hiddenPlaceCount} hidden</p>
                 ) : null}
               </div>
               <div className="grid max-h-[38dvh] content-start items-start gap-1.5 overflow-y-auto pr-1 sm:max-h-none sm:gap-2 sm:overflow-visible sm:pr-0" data-testid="map-route-list">
@@ -295,6 +309,21 @@ export function ConnectedTripMap({
               </div>
             </div>
 
+            <div className="grid grid-cols-2 gap-2">
+              <Link
+                className="inline-flex min-h-11 items-center justify-center rounded-2xl bg-white px-3 text-sm font-black text-slate-950 transition hover:bg-slate-100 lg:bg-slate-950 lg:text-white lg:hover:bg-slate-800"
+                href={`/dashboard/trips/${encodeURIComponent(tripId)}/timeline#new-plan`}
+              >
+                Add trip item
+              </Link>
+              <Link
+                className="inline-flex min-h-11 items-center justify-center rounded-2xl bg-white/10 px-3 text-sm font-black text-white ring-1 ring-white/12 transition hover:bg-white/15 lg:bg-white lg:text-slate-950 lg:ring-slate-200 lg:hover:bg-slate-50"
+                href={`/dashboard/trips/${encodeURIComponent(tripId)}/ideas`}
+              >
+                Open Ideas
+              </Link>
+            </div>
+
             {items.length && unmappedCount ? (
               <div className="rounded-2xl bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
                 Some places need confirmed locations.
@@ -303,43 +332,53 @@ export function ConnectedTripMap({
           </div>
         </div>
       ) : (
-        <section
-          className="rounded-[1.5rem] border border-slate-200 bg-white p-3 text-sm text-slate-600 shadow-sm sm:p-4"
-          data-testid="compact-route-empty-state"
-        >
-          <h3 className="mt-1 text-base font-black text-slate-950">No route places yet</h3>
-          <p className="mt-1.5 max-w-xl leading-5">
-            Add places from Ideas or create a trip item to start building your route.
-          </p>
-          {unmappedCount ? (
-            <p className="mt-2 rounded-2xl bg-amber-50 px-3 py-2 font-semibold text-amber-800">
-              {unmappedCount} place{unmappedCount === 1 ? "" : "s"} need confirmed locations.
-            </p>
-          ) : null}
-          {!unmappedCount && activitySegments.length ? (
-            <p className="mt-2 rounded-2xl bg-blue-50 px-3 py-2 font-semibold text-blue-900">
-              You have unscheduled activities, but no mapped places yet.
-            </p>
-          ) : null}
-          <div className="mt-3 grid grid-cols-1 gap-2 sm:flex sm:flex-wrap">
-            <Link
-              className="inline-flex min-h-11 w-full items-center justify-center rounded-2xl bg-slate-950 px-4 text-sm font-bold text-white transition hover:bg-slate-800 sm:w-auto"
-              href={`/dashboard/trips/${encodeURIComponent(tripId)}/ideas`}
-            >
-              Open Ideas
-            </Link>
-            <Link
-              className="inline-flex min-h-11 w-full items-center justify-center rounded-2xl bg-white px-4 text-sm font-bold text-slate-800 ring-1 ring-slate-200 transition hover:bg-slate-100 sm:w-auto"
-              href={`/dashboard/trips/${encodeURIComponent(tripId)}/timeline#new-plan`}
-            >
-              Add trip item
-            </Link>
+        <div className="relative min-h-[calc(100dvh-5rem)] overflow-hidden bg-slate-950 lg:min-h-[520px] lg:rounded-[2rem] lg:border lg:border-slate-200">
+          <div
+            className="absolute inset-0 bg-[linear-gradient(rgba(59,130,246,0.16)_1px,transparent_1px),linear-gradient(90deg,rgba(59,130,246,0.16)_1px,transparent_1px),radial-gradient(circle_at_32%_24%,rgba(56,189,248,0.28),transparent_34%),radial-gradient(circle_at_72%_64%,rgba(37,99,235,0.22),transparent_38%),linear-gradient(135deg,#08111f,#132a46_54%,#07111f)] bg-[size:72px_72px,72px_72px,auto,auto,auto]"
+            aria-hidden="true"
+          />
+          <div className="pointer-events-none absolute left-5 top-5 rounded-full bg-white/10 px-3 py-1.5 text-xs font-black text-white/70 ring-1 ring-white/10">
+            {destination || "Trip map"}
           </div>
-        </section>
+          <section
+            className="absolute inset-x-0 bottom-0 z-10 rounded-t-[2rem] border border-white/10 bg-slate-950/92 p-4 pb-[calc(6.25rem+env(safe-area-inset-bottom))] text-sm text-white shadow-2xl backdrop-blur-2xl lg:inset-x-4 lg:bottom-4 lg:rounded-[1.5rem] lg:pb-4"
+            data-testid="compact-route-empty-state"
+          >
+            <div className="mx-auto mb-3 h-1.5 w-16 rounded-full bg-white/45 lg:hidden" aria-hidden="true" />
+            <h3 className="text-base font-black text-white">No route places yet</h3>
+            <p className="mt-1.5 max-w-xl leading-5 text-white/65">
+              Add a trip item or open Ideas to build your route.
+            </p>
+            {unmappedCount ? (
+              <p className="mt-3 rounded-2xl bg-amber-300/14 px-3 py-2 font-semibold text-amber-100 ring-1 ring-amber-200/15">
+                {unmappedCount} place{unmappedCount === 1 ? "" : "s"} need confirmed locations.
+              </p>
+            ) : null}
+            {!unmappedCount && activitySegments.length ? (
+              <p className="mt-3 rounded-2xl bg-blue-300/14 px-3 py-2 font-semibold text-blue-100 ring-1 ring-blue-200/15">
+                You have unscheduled activities, but no mapped places yet.
+              </p>
+            ) : null}
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <Link
+                className="inline-flex min-h-11 items-center justify-center rounded-2xl bg-white px-4 text-sm font-bold text-slate-950 transition hover:bg-slate-100"
+                href={`/dashboard/trips/${encodeURIComponent(tripId)}/timeline#new-plan`}
+              >
+                Add trip item
+              </Link>
+              <Link
+                className="inline-flex min-h-11 items-center justify-center rounded-2xl bg-white/10 px-4 text-sm font-bold text-white ring-1 ring-white/12 transition hover:bg-white/15"
+                href={`/dashboard/trips/${encodeURIComponent(tripId)}/ideas`}
+              >
+                Open Ideas
+              </Link>
+            </div>
+          </section>
+        </div>
       )}
 
       {unmappedSegments.length ? (
-        <div className="grid gap-2 rounded-2xl border border-slate-200 bg-white p-3 text-sm sm:p-4">
+        <div className="hidden gap-2 rounded-2xl border border-slate-200 bg-white p-3 text-sm sm:p-4 lg:grid">
           <p className="font-black text-slate-950">Needs location</p>
           {unmappedSegments.slice(0, 5).map((segment) => (
             <div className="rounded-xl bg-slate-50 px-3 py-3" key={segment.id}>
@@ -375,7 +414,7 @@ export function ConnectedTripMap({
       ) : null}
 
       {activitySegments.length ? (
-        <div className="grid gap-2 rounded-2xl border border-blue-100 bg-blue-50 p-3 text-sm sm:p-4">
+        <div className="hidden gap-2 rounded-2xl border border-blue-100 bg-blue-50 p-3 text-sm sm:p-4 lg:grid">
           <p className="font-black text-blue-950">Unscheduled activities</p>
           {activitySegments.slice(0, 5).map((segment) => (
             <div className="rounded-xl bg-white/80 px-3 py-3" key={segment.id}>
@@ -407,6 +446,12 @@ export function ConnectedTripMap({
           {retryMessage}
         </p>
       ) : null}
+
+      <ActivityDetailSheet
+        onClose={() => setDetailItem(null)}
+        target={detailItem ? { item: detailItem, type: "segment" } : null}
+        tripId={tripId}
+      />
     </div>
   );
 }

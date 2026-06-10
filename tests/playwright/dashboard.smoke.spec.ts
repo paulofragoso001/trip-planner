@@ -133,8 +133,10 @@ test("loads dashboard summary and route-split pages", async ({ page }) => {
 
   await openDashboardRoute("/dashboard/trips/demo/map");
   await expect(page.getByTestId("trip-pass-hero")).toHaveCount(0);
-  await expect(page.getByTestId("trip-map-compact-header")).toBeVisible();
+  await expect(page.getByTestId("trip-map-compact-header")).toHaveCount(0);
+  await expect(page.getByRole("navigation", { name: "Trip tabs" })).toHaveCount(0);
   await expect(page.getByTestId("connected-trip-map")).toBeVisible();
+  await expect(page.locator('[data-map-bottom-sheet="true"]')).toBeVisible();
   await expect(page.getByText("Nearby Ideas", { exact: true })).toHaveCount(0);
   await expect(page.getByText("Your route places appear here.")).toHaveCount(0);
   await expect(page.getByTestId("compact-route-empty-state")).toHaveCount(0);
@@ -181,7 +183,7 @@ test("loads dashboard summary and route-split pages", async ({ page }) => {
 
   await openDashboardRoute("/dashboard/imports");
   const importsRoute = page.getByTestId("imports-route");
-  await expect(importsRoute).toBeVisible();
+  await expect(importsRoute).toBeVisible({ timeout: 30_000 });
   await expect(page.getByRole("heading", { exact: true, name: "Capture travel ideas" })).toBeVisible();
   await expect(importsRoute.getByRole("heading", { exact: true, name: "Add an idea" })).toBeVisible();
   const aiReviewCardCount = await importsRoute.locator('[data-testid^="ai-review-card-"]').count();

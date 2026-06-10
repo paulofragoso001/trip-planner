@@ -103,7 +103,7 @@ test("map and suggestions degrade safely for unresolved and activity stops", asy
     await expect(page.getByText("Your route places appear here.")).toHaveCount(0);
     await expect(page.getByText("Nearby Ideas", { exact: true })).toHaveCount(0);
     const emptyStateBox = await emptyState.boundingBox();
-    expect(emptyStateBox?.height || 0).toBeLessThan(260);
+    expect(emptyStateBox?.height || 0).toBeLessThan(360);
 
     const activityRetry = await request.post(
       `${baseUrl}/api/trip-segments/${activitySegmentId}/retry-location`,

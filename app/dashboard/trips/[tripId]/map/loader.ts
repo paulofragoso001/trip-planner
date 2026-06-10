@@ -36,12 +36,15 @@ export type UnmappedMapSegment = {
 };
 
 export type TripRecommendationView = {
+  address: string | null;
   bookingUrl: string | null;
   category: string | null;
   id: string;
   imageAlt: string | null;
   imageAttribution: string | null;
   imageUrl: string | null;
+  lat: number | null;
+  lng: number | null;
   priceLabel: string | null;
   provider: string;
   ratingLabel: string | null;
@@ -58,6 +61,9 @@ type TripRow = {
 };
 
 type TripSegmentMapRow = {
+  booking_url: string | null;
+  confirmation_code: string | null;
+  end_time: string | null;
   inserted_at: string | null;
   kind: string | null;
   id: string;
@@ -65,7 +71,9 @@ type TripSegmentMapRow = {
   lng: number | null;
   location: string | null;
   location_status: string | null;
+  notes: string | null;
   position: number | null;
+  provider: string | null;
   provider_metadata: Record<string, unknown> | null;
   provider_place_id: string | null;
   start_time: string | null;
@@ -148,7 +156,7 @@ export async function loadTripMapData(tripId: string): Promise<TripMapData> {
   const [itemResult, recommendationsResult] = await Promise.all([
     auth.supabase
       .from("trip_segments")
-      .select("id,title,kind,location,lat,lng,location_status,provider_metadata,provider_place_id,start_time,position,inserted_at")
+      .select("id,title,kind,location,lat,lng,location_status,provider,provider_metadata,provider_place_id,start_time,end_time,notes,confirmation_code,booking_url,position,inserted_at")
       .eq("trip_id", tripId)
       .eq("user_id", auth.userId)
       .order("start_time", { ascending: true, nullsFirst: false })
@@ -240,6 +248,29 @@ function isRecord(value: unknown): value is Record<string, any> {
   return Boolean(value && typeof value === "object" && !Array.isArray(value));
 }
 
+function readScheduleFlag(metadata: Record<string, unknown> | null, key: "hasStartTime" | "hasEndTime") {
+  const schedule = isRecord(metadata?.schedule) ? metadata.schedule : null;
+  return schedule?.[key] === true;
+}
+
+function sanitizeMapProviderMetadata(metadata: Record<string, unknown> | null) {
+  if (!isRecord(metadata)) return null;
+
+  const safe: Record<string, unknown> = {};
+  const route = readTripSegmentRoute(metadata);
+  if (route) safe.route = route;
+
+  if (isRecord(metadata.schedule)) {
+    safe.schedule = {
+      hasEndTime: metadata.schedule.hasEndTime === true,
+      hasStartTime: metadata.schedule.hasStartTime === true,
+      timeZone: typeof metadata.schedule.timeZone === "string" ? metadata.schedule.timeZone : null
+    };
+  }
+
+  return Object.keys(safe).length ? safe : null;
+}
+
 function mapItem(row: TripSegmentMapRow, index: number): TripMapItem {
   const photo = readProviderPhoto(row.provider_metadata);
   const route = readTripSegmentRoute(row.provider_metadata);
@@ -248,16 +279,27 @@ function mapItem(row: TripSegmentMapRow, index: number): TripMapItem {
   const lng = routeReady ? route?.destination?.lng : row.lng;
   return {
     address: route ? routeLocationLabel(route) || row.location : row.location,
+    bookingUrl: row.booking_url,
     category: route?.mode || row.kind,
+    confirmationCode: row.confirmation_code,
     dayLabel: formatMapDayLabel(row.start_time),
+    endTime: row.end_time,
+    hasEndTime: readScheduleFlag(row.provider_metadata, "hasEndTime"),
+    hasStartTime: readScheduleFlag(row.provider_metadata, "hasStartTime"),
     id: row.id,
     imageAlt: photo?.imageAlt || null,
     imageAttribution: photo?.attribution || null,
     imageUrl: buildPlacePhotoUrl(row.provider_metadata, 400),
+    kind: row.kind,
     lat: Number(lat),
     lng: Number(lng),
+    notes: row.notes,
+    provider: row.provider,
+    providerMetadata: sanitizeMapProviderMetadata(row.provider_metadata),
+    providerPlaceId: row.provider_place_id,
     route,
     routeOrder: index + 1,
+    startTime: row.start_time,
     status: row.location_status || "resolved",
     timeLabel: formatMapTimeLabel(row.start_time),
     title: route
@@ -318,12 +360,15 @@ function mapRecommendations(value: unknown): TripRecommendationView[] {
     const photo = readProviderPhoto(metadata);
 
     return {
+      address: inventory?.address || null,
       bookingUrl: inventory?.booking_url || inventory?.source_url || null,
       category: inventory?.category || null,
       id: row.id,
       imageAlt: inventory?.image_alt || photo?.imageAlt || null,
       imageAttribution: inventory?.image_attribution || photo?.attribution || null,
       imageUrl: inventory?.image_url || buildPlacePhotoUrl(metadata, 800),
+      lat: typeof inventory?.latitude === "number" ? inventory.latitude : null,
+      lng: typeof inventory?.longitude === "number" ? inventory.longitude : null,
       priceLabel:
         typeof inventory?.price_from === "number"
           ? `${inventory.currency || "USD"} ${inventory.price_from}`

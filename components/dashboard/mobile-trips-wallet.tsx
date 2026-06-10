@@ -21,15 +21,9 @@ export function MobileTripsWallet({ error, trips }: MobileTripsWalletProps) {
   const isMapView = searchParams.get("view") === "map";
 
   const filteredTrips = useMemo(() => {
-    const normalizedQuery = query.trim().toLowerCase();
-    if (!normalizedQuery) return trips;
+    if (!query.trim()) return trips;
 
-    return trips.filter((trip) =>
-      [trip.name, trip.destination, trip.dateRange, trip.status]
-        .join(" ")
-        .toLowerCase()
-        .includes(normalizedQuery)
-    );
+    return trips.filter((trip) => matchesTripSearch(trip, query));
   }, [query, trips]);
 
   const groupedTrips = useMemo(() => groupTripsByYear(filteredTrips), [filteredTrips]);
@@ -38,6 +32,8 @@ export function MobileTripsWallet({ error, trips }: MobileTripsWalletProps) {
     ? selectedYear
     : years[0] || String(new Date().getFullYear());
   const activeYearTrips = groupedTrips.find((group) => group.year === activeYear)?.trips || [];
+  const hasSearchQuery = query.trim().length > 0;
+  const countryMapTrips = hasSearchQuery ? filteredTrips : activeYearTrips;
   const backgroundTrip = trips.find((trip) => trip.imageUrl) || trips[0] || null;
 
   useEffect(() => {
@@ -56,7 +52,7 @@ export function MobileTripsWallet({ error, trips }: MobileTripsWalletProps) {
     return (
       <MobileTripsCountriesMap
         activeYear={activeYear}
-        activeYearTrips={activeYearTrips}
+        activeYearTrips={countryMapTrips}
         createOpen={createOpen}
         createRef={createRef}
         error={error}
@@ -223,6 +219,8 @@ function MobileTripsCountriesMap({
   years
 }: MobileTripsCountriesMapProps) {
   const markerTrips = activeYearTrips.filter(hasTripCoordinates);
+  const hasSearchQuery = query.trim().length > 0;
+  const visibleTripRows = hasSearchQuery ? activeYearTrips : activeYearTrips.slice(0, 5);
 
   return (
     <section
@@ -327,7 +325,7 @@ function MobileTripsCountriesMap({
 
           <div className="mt-4 grid gap-3" data-testid="mobile-country-trip-list">
             {activeYearTrips.length ? (
-              activeYearTrips.slice(0, 5).map((trip) => (
+              visibleTripRows.map((trip) => (
                 <MobileCountryTripRow key={trip.id} trip={trip} />
               ))
             ) : (
@@ -337,7 +335,7 @@ function MobileTripsCountriesMap({
             )}
           </div>
 
-          {activeYearTrips.length > 5 ? (
+          {!hasSearchQuery && activeYearTrips.length > 5 ? (
             <Link
               className="mt-3 inline-flex min-h-11 items-center justify-center rounded-full bg-white/10 px-4 text-sm font-black text-white transition hover:bg-white/15 focus:outline-none focus:ring-4 focus:ring-orange-400/20"
               href="/dashboard/trips"
@@ -458,6 +456,33 @@ function MobileCountryTripRow({ trip }: { trip: Trip }) {
       </div>
     </Link>
   );
+}
+
+function normalizeTripSearch(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function matchesTripSearch(trip: Trip, query: string) {
+  const terms = normalizeTripSearch(query).split(/\s+/).filter(Boolean);
+  if (terms.length === 0) return true;
+
+  const haystack = normalizeTripSearch(
+    [
+      trip.name,
+      trip.destination,
+      trip.dateRange,
+      trip.status,
+      trip.startDate,
+      trip.endDate
+    ]
+      .filter(Boolean)
+      .join(" ")
+  );
+
+  return terms.every((term) => haystack.includes(term));
 }
 
 function MobileTripsBackground({ trip }: { trip: Trip | null }) {

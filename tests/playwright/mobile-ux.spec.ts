@@ -363,20 +363,14 @@ test.describe("mobile soft-launch UX", () => {
     await page.goto(`${baseUrl}/dashboard/trips/demo/map`, { waitUntil: "commit" });
 
     await expect(page.getByTestId("trip-pass-shell")).toBeVisible({ timeout: 30_000 });
-    await expect(page.getByTestId("trip-section-menu")).toBeVisible();
-    await expect(page.getByRole("navigation", { name: "Trip tabs" })).toBeHidden();
+    await expect(page.getByTestId("trip-section-menu")).toHaveCount(0);
+    await expect(page.getByRole("navigation", { name: "Trip tabs" })).toHaveCount(0);
     await expect(page.getByTestId("trip-pass-hero")).toHaveCount(0);
-    await expect(page.getByTestId("trip-map-compact-header")).toBeVisible();
-    await expect(page.getByTestId("trip-map-compact-header").getByRole("heading", { name: "Barcelona Work Trip" })).toBeVisible();
+    await expect(page.getByTestId("trip-map-compact-header")).toHaveCount(0);
     await expect(page.getByText("Trip pass")).toHaveCount(0);
     await expect(page.getByText("Current trip")).toHaveCount(0);
-    const compactHeader = page.getByTestId("trip-map-compact-header");
-    await expect(compactHeader.getByRole("link", { exact: true, name: "Itinerary" })).toHaveCount(0);
-    await expect(compactHeader.getByRole("link", { exact: true, name: "Map" })).toHaveCount(0);
-    await expect(compactHeader.getByRole("link", { exact: true, name: "Ideas" })).toHaveCount(0);
-    await expect(compactHeader.getByRole("link", { exact: true, name: "Expenses" })).toHaveCount(0);
-    await expect(compactHeader.getByRole("link", { exact: true, name: "Docs" })).toHaveCount(0);
     await expect(page.getByTestId("connected-trip-map")).toBeVisible();
+    await expect(page.locator('[data-map-bottom-sheet="true"]')).toBeVisible();
     await expect(page.getByText("1 of 4")).toBeVisible({ timeout: 15_000 });
     await expect(page.getByRole("button", { name: /1 Barcelona-El Prat Airport/ })).toBeVisible();
     await expect(page.getByRole("button", { name: /4 Fira Barcelona meeting/ })).toBeVisible();
@@ -386,13 +380,7 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByTestId("compact-route-empty-state")).toHaveCount(0);
     await expect(page.getByTestId("map-route-list")).toBeVisible();
 
-    const mobileTripSections = page.getByRole("navigation", { name: "Trip sections" });
-    await expect(mobileTripSections.getByRole("link", { name: "Overview" })).toBeVisible();
-    await expect(mobileTripSections.getByRole("link", { name: "Itinerary" })).toBeVisible();
-    await expect(mobileTripSections.getByRole("link", { name: "Map" })).toBeVisible();
-    await expect(mobileTripSections.getByRole("link", { name: "Ideas" })).toBeVisible();
-    await expect(mobileTripSections.getByText("More")).toBeVisible();
-    await mobileTripSections.getByRole("link", { name: "Ideas" }).click();
+    await page.getByTestId("map-route-panel").getByRole("link", { name: "Open Ideas" }).click();
     await expect(page.getByTestId("mobile-activities-view")).toBeVisible();
     await expect(page.getByText("Places / Activities")).toBeVisible();
     await expect(page.getByTestId("mobile-activity-list")).toBeVisible();

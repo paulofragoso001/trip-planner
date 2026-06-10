@@ -15,18 +15,29 @@ import {
 
 export type TripMapItem = {
   address?: string | null;
+  bookingUrl?: string | null;
   category?: string | null;
+  confirmationCode?: string | null;
   dayLabel?: string | null;
+  endTime?: string | null;
+  hasEndTime?: boolean;
+  hasStartTime?: boolean;
   id: string;
   imageAlt?: string | null;
   imageAttribution?: string | null;
   imageUrl?: string | null;
+  kind?: string | null;
   title: string;
   lat: number;
   lng: number;
+  notes?: string | null;
+  provider?: string | null;
+  providerMetadata?: Record<string, unknown> | null;
+  providerPlaceId?: string | null;
   route?: TripSegmentRouteMetadata | null;
   routeOrder?: number | null;
   status?: string | null;
+  startTime?: string | null;
   timeLabel?: string | null;
 };
 

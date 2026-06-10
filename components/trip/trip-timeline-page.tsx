@@ -141,7 +141,7 @@ function ItineraryTimelineBody({
 
       {days.length ? (
         <div className="grid gap-5">
-          <ItineraryDateStrip days={days} mapAware={mapAware} tripId={tripId} />
+          <ItineraryDateStrip days={days} />
 
           {days.map((day) => (
             <section className="scroll-mt-24" id={dayAnchorId(day)} key={day.id}>
@@ -396,13 +396,9 @@ function ItineraryMobileHeader({
 }
 
 function ItineraryDateStrip({
-  days,
-  mapAware = false,
-  tripId
+  days
 }: {
   days: TripTimelineData["days"];
-  mapAware?: boolean;
-  tripId: string;
 }) {
   const datedDays = days.filter((day) => day.dateIso);
 
@@ -426,7 +422,7 @@ function ItineraryDateStrip({
                 ? "bg-orange-500/20 text-white ring-orange-400/25 lg:bg-slate-950 lg:ring-slate-950"
                 : "bg-white/[0.06] text-slate-200 ring-white/10 hover:bg-white/10 lg:bg-white lg:text-slate-700 lg:ring-slate-200 lg:hover:bg-slate-50"
             ].join(" ")}
-            href={`/dashboard/trips/${encodeURIComponent(tripId)}/timeline${mapAware ? "?mode=map" : ""}#${dayAnchorId(day)}`}
+            href={`#${dayAnchorId(day)}`}
             key={day.id}
           >
             <span className="grid gap-0.5">
