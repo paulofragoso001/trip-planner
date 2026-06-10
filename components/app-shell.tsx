@@ -1,6 +1,6 @@
 "use client";
 
-import { MessageSquare, Menu, Moon, Sun, X } from "lucide-react";
+import { MessageSquare, Menu, Moon, Search, Sun, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { type ReactNode, useEffect, useMemo, useState } from "react";
@@ -217,14 +217,14 @@ export function AppShell({
                 <h1 className="mt-1 truncate text-2xl font-black tracking-tight text-white">{page.title}</h1>
               </div>
 
-              <label className="hidden min-w-[240px] max-w-sm flex-1 lg:block">
-                <span className="sr-only">Global search</span>
-                <input
-                  className="h-11 rounded-xl border border-white/10 bg-white/10 pl-4 text-sm font-semibold text-white placeholder:text-slate-400 shadow-inner shadow-black/10 backdrop-blur focus:border-blue-300 focus:outline-none focus:ring-4 focus:ring-blue-400/15"
-                  placeholder="Search trips and saved ideas..."
-                  type="search"
-                />
-              </label>
+              <Link
+                aria-label="Open search"
+                className="hidden h-11 min-w-[240px] max-w-sm flex-1 items-center gap-2 rounded-xl border border-white/10 bg-white/10 px-4 text-sm font-semibold text-slate-400 shadow-inner shadow-black/10 backdrop-blur transition hover:bg-white/15 hover:text-white focus:outline-none focus:ring-4 focus:ring-blue-400/15 lg:flex"
+                href="/dashboard/search"
+              >
+                <Search aria-hidden="true" className="h-4 w-4 shrink-0" />
+                <span className="truncate">Search trips and saved ideas...</span>
+              </Link>
 
               {notifications}
 

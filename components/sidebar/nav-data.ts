@@ -149,6 +149,10 @@ export function resolveNavTitle(pathname: string, view: string | null) {
     return "Notifications";
   }
 
+  if (pathname === "/dashboard/search") {
+    return "Search";
+  }
+
   const match = navSections
     .flatMap((section) => section.items)
     .find((item) => item.match?.(pathname, view));

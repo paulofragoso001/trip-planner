@@ -68,6 +68,16 @@ test("loads dashboard summary and route-split pages", async ({ page }) => {
   await expect(dashboardContent.getByText(/0 waiting to review/i)).toHaveCount(0);
   await expect(dashboardContent.getByText("Recent passes")).toHaveCount(0);
 
+  await openDashboardRoute("/dashboard/search");
+  await expect(page.getByTestId("search-page")).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByTestId("search-input")).toBeVisible();
+  await expect(page.getByRole("link", { name: "Cancel" })).toHaveAttribute("href", "/dashboard");
+  await expect(page.getByTestId("search-group-trip-items")).toBeVisible();
+  await expect(page.getByTestId("search-group-documents")).toBeVisible();
+  await expect(page.getByTestId("search-group-saved-ideas")).toBeVisible();
+  await page.getByTestId("search-input").fill("zzzz-no-wayline-results");
+  await expect(page.getByText("No results found")).toBeVisible();
+
   await openDashboardRoute("/dashboard/trips");
   await expect(page.getByTestId("app-shell-topbar").getByRole("heading", { name: "Trips" })).toBeVisible();
   await expect(page.getByRole("heading", { exact: true, name: "Your trip passes" })).toBeVisible({ timeout: 20_000 });

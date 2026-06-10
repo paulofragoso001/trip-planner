@@ -4,6 +4,7 @@ const baseUrl = "http://127.0.0.1:3000";
 const viewports = [360, 390, 430, 768, 820, 1024, 1280, 1440] as const;
 const routes = [
   "/dashboard",
+  "/dashboard/search",
   "/dashboard/imports",
   "/dashboard/trips",
   "/dashboard/trips/demo/timeline",
@@ -122,6 +123,7 @@ test.describe("mobile soft-launch UX", () => {
 
     for (const route of [
       "/dashboard/imports",
+      "/dashboard/search",
       "/dashboard/trips",
       "/dashboard/trips/demo",
       "/dashboard/trips/demo/timeline",
