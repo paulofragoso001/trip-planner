@@ -1,8 +1,9 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { ArrowLeft, Search, Share2 } from "lucide-react";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { TripPassHero } from "@/components/trip/trip-pass-hero";
 import { TripTabs } from "@/components/trip/trip-tabs";
 import type { TripWorkspaceData } from "@/app/dashboard/trips/[tripId]/loader";
 
@@ -65,7 +66,7 @@ export function TripPassShell({ children, trip, tripId }: TripPassShellProps) {
           data-testid="trip-workspace-layout"
         >
           <div className="grid gap-4">
-            <TripPassHero trip={trip} tripId={tripId} />
+            <CompactTripHeader trip={trip} tripId={tripId} />
             <TripTabs tripId={tripId} />
             <div className="min-w-0" data-testid="trip-pass-active-content">
               {children}
@@ -107,5 +108,52 @@ export function TripPassShell({ children, trip, tripId }: TripPassShellProps) {
     >
       {standardTripPass}
     </section>
+  );
+}
+
+function CompactTripHeader({
+  trip,
+  tripId
+}: {
+  trip: TripWorkspaceData;
+  tripId: string;
+}) {
+  const base = `/dashboard/trips/${tripId}`;
+
+  return (
+    <header
+      className="flex min-w-0 items-center gap-3 rounded-[1.75rem] border border-white/10 bg-slate-950/58 p-2.5 text-white shadow-[0_18px_50px_rgba(2,6,23,0.24)] backdrop-blur-2xl sm:p-3"
+      data-testid="trip-compact-header"
+    >
+      <Link
+        aria-label="Back to trips"
+        className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/15"
+        href="/dashboard/trips"
+      >
+        <ArrowLeft className="h-5 w-5" aria-hidden="true" />
+      </Link>
+
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-black sm:text-base">{trip.name}</p>
+        <p className="truncate text-xs font-bold text-slate-300 sm:text-sm">
+          {[trip.destination, trip.dateRange].filter(Boolean).join(" · ")}
+        </p>
+      </div>
+
+      <Link
+        aria-label="Search trip"
+        className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/15"
+        href="/dashboard/search"
+      >
+        <Search className="h-5 w-5" aria-hidden="true" />
+      </Link>
+      <Link
+        aria-label="Share trip"
+        className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/15"
+        href={`${base}/sharing`}
+      >
+        <Share2 className="h-5 w-5" aria-hidden="true" />
+      </Link>
+    </header>
   );
 }

@@ -290,7 +290,18 @@ test.describe("mobile soft-launch UX", () => {
     expect(tripId).toBeTruthy();
 
     try {
-      await expect(page.getByTestId("trip-pass-hero")).toBeVisible({ timeout: 20_000 });
+      await expect(page.getByTestId("trip-pass-hero")).toHaveCount(0);
+      await expect(page.getByTestId("trip-compact-header")).toBeVisible({ timeout: 20_000 });
+      await expect(page.getByTestId("trip-section-menu")).toBeVisible();
+      await page.getByTestId("trip-section-menu").getByRole("button", { name: /More/ }).click();
+      const moreMenu = page.getByTestId("trip-more-menu");
+      await expect(moreMenu).toBeVisible();
+      await expect(moreMenu.getByRole("menuitem", { name: "Expenses" })).toBeVisible();
+      await expect(moreMenu.getByRole("menuitem", { name: "Documents" })).toBeVisible();
+      await expect(moreMenu.getByRole("menuitem", { name: "Share" })).toBeVisible();
+      await expect(moreMenu.getByRole("menuitem", { name: "Settings" })).toBeVisible();
+      await page.keyboard.press("Escape");
+      await expect(page.getByTestId("trip-more-menu")).toHaveCount(0);
       const mobileHub = page.getByTestId("trip-overview-page");
       await expect(mobileHub).toBeVisible();
       await expect(mobileHub.getByTestId("overview-small-pass")).toBeVisible();
@@ -419,7 +430,7 @@ test.describe("mobile soft-launch UX", () => {
     expect(overflow, "map-aware itinerary overflow").toBeLessThanOrEqual(1);
   });
 
-  test("trip pass hero uses segment photo metadata when available", async ({ page, request }) => {
+  test("trip workspace uses compact header instead of shell hero", async ({ page, request }) => {
     test.setTimeout(90_000);
     await page.setViewportSize({ height: 900, width: 390 });
     await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
@@ -458,13 +469,9 @@ test.describe("mobile soft-launch UX", () => {
       expect(segmentResponse.status()).toBe(201);
 
       await page.goto(`${baseUrl}/dashboard/trips/${tripId}`, { waitUntil: "commit" });
-      const hero = page.getByTestId("trip-pass-hero");
-      await expect(hero).toHaveAttribute("data-hero-image", "true", { timeout: 20_000 });
-      await expect(hero.getByTestId("trip-pass-hero-image")).toHaveAttribute(
-        "src",
-        /\/api\/travel-data\/place-photo/
-      );
-      await expect(hero.getByText("Wayline test photo")).toBeVisible();
+      await expect(page.getByTestId("trip-pass-hero")).toHaveCount(0);
+      await expect(page.getByTestId("trip-compact-header")).toBeVisible({ timeout: 20_000 });
+      await expect(page.getByTestId("trip-compact-header")).toContainText(tripPayload.trip.name);
     } finally {
       await deleteTripForTest(request, tripId);
     }

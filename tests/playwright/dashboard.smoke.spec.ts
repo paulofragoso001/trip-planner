@@ -75,7 +75,8 @@ test("loads dashboard summary and route-split pages", async ({ page }) => {
   await expect(page.getByTestId("search-group-trip-items")).toBeVisible();
   await expect(page.getByTestId("search-group-documents")).toBeVisible();
   await expect(page.getByTestId("search-group-saved-ideas")).toBeVisible();
-  await page.getByTestId("search-input").fill("zzzz-no-wayline-results");
+  await openDashboardRoute("/dashboard/search?q=zzzz-no-wayline-results");
+  await expect(page.getByTestId("search-input")).toHaveValue("zzzz-no-wayline-results");
   await expect(page.getByText("No results found")).toBeVisible();
 
   await openDashboardRoute("/dashboard/trips");
@@ -102,15 +103,12 @@ test("loads dashboard summary and route-split pages", async ({ page }) => {
   await expect(overview.getByTestId("overview-more-tools").getByText("Documents")).toBeHidden();
   await overview.getByText("More trip tools").click();
   await expect(overview.getByTestId("overview-more-tools").getByText("Documents")).toBeVisible();
-  const hero = page.getByTestId("trip-pass-hero");
-  await expect(hero).toHaveAttribute("data-hero-image", "false");
-  await expect(hero.getByTestId("trip-pass-hero-fallback")).toBeVisible();
-  await expect(hero.getByRole("link", { exact: true, name: "Itinerary" })).toHaveCount(0);
-  await expect(hero.getByRole("link", { exact: true, name: "Map" })).toHaveCount(0);
-  await expect(hero.getByRole("link", { exact: true, name: "Ideas" })).toHaveCount(0);
-  await expect(hero.getByRole("link", { exact: true, name: "Expenses" })).toHaveCount(0);
-  await expect(hero.getByRole("link", { exact: true, name: "Docs" })).toHaveCount(0);
-  await expect(hero.getByRole("link", { exact: true, name: "Documents" })).toHaveCount(0);
+  await expect(page.getByTestId("trip-pass-hero")).toHaveCount(0);
+  const compactHeader = page.getByTestId("trip-compact-header");
+  await expect(compactHeader).toBeVisible();
+  await expect(compactHeader.getByLabel("Back to trips")).toBeVisible();
+  await expect(compactHeader.getByLabel("Search trip")).toBeVisible();
+  await expect(compactHeader.getByLabel("Share trip")).toBeVisible();
   const tripTabs = page.getByRole("navigation", { name: "Trip tabs" });
   await expect(tripTabs.getByRole("link", { exact: true, name: "Itinerary" })).toBeVisible();
   await expect(tripTabs.getByRole("link", { exact: true, name: "Map" })).toBeVisible();
