@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import type { ReactNode } from "react";
 import type { TripOverviewData } from "@/app/dashboard/trips/[tripId]/overview-loader";
+import { MobileMapPreview } from "@/components/trip/mobile-map-preview";
 
 type TripOverviewPageProps = TripOverviewData;
 
@@ -31,6 +32,7 @@ export default function TripOverviewPage({
   hasExpenses,
   itineraryPreview,
   mappedCount,
+  mapPreviewItems,
   nextUp,
   routePreview,
   segmentCount,
@@ -80,6 +82,7 @@ export default function TripOverviewPage({
         dateRange={dateRange}
         destination={destination}
         mappedCount={mappedCount}
+        mapPreviewItems={mapPreviewItems}
         nextUp={nextUp}
         routePreview={routePreview}
         segmentCount={segmentCount}
@@ -307,6 +310,7 @@ function MobileOverviewSmallPass({
   dateRange,
   destination,
   mappedCount,
+  mapPreviewItems,
   nextUp,
   routePreview,
   segmentCount,
@@ -324,6 +328,7 @@ function MobileOverviewSmallPass({
   dateRange: string;
   destination: string;
   mappedCount: number;
+  mapPreviewItems: TripOverviewData["mapPreviewItems"];
   nextUp: TripOverviewData["nextUp"];
   routePreview: TripOverviewData["routePreview"];
   segmentCount: number;
@@ -356,51 +361,13 @@ function MobileOverviewSmallPass({
       className="overflow-hidden rounded-[2.25rem] border border-white/10 bg-[#24211e]/88 shadow-[0_26px_80px_rgba(0,0,0,0.34)] backdrop-blur-2xl lg:hidden"
       data-testid="overview-small-pass"
     >
-      <Link
-        aria-label="Open map"
-        className="relative block min-h-[18rem] overflow-hidden bg-[#0b1624] focus:outline-none focus:ring-4 focus:ring-orange-300/20"
-        href={`${base}/map`}
-      >
-        <div
-          aria-hidden="true"
-          className="absolute inset-0 bg-[radial-gradient(circle_at_18%_28%,rgba(56,189,248,0.32),transparent_18%),radial-gradient(circle_at_70%_34%,rgba(59,130,246,0.28),transparent_22%),linear-gradient(155deg,#102b38_0%,#0e2340_42%,#071223_100%)]"
-        />
-        <div
-          aria-hidden="true"
-          className="absolute inset-0 opacity-45 [background-image:linear-gradient(rgba(255,255,255,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.08)_1px,transparent_1px)] [background-size:44px_44px]"
-        />
-        <div
-          aria-hidden="true"
-          className="absolute inset-x-[15%] top-[42%] h-3 rotate-[-12deg] rounded-full bg-sky-400 shadow-[0_0_24px_rgba(56,189,248,0.52)]"
-        />
-        <div
-          aria-hidden="true"
-          className="absolute left-[18%] top-[48%] grid h-12 w-12 place-items-center rounded-full border-2 border-black bg-sky-400 text-sm font-black text-white shadow-lg"
-        >
-          {routePreview?.originLabel ? shortRouteLabel(routePreview.originLabel) : "1"}
-        </div>
-        <div
-          aria-hidden="true"
-          className="absolute right-[17%] top-[34%] grid h-12 w-12 place-items-center rounded-full border-2 border-black bg-sky-400 text-sm font-black text-white shadow-lg"
-        >
-          {routePreview?.destinationLabel ? shortRouteLabel(routePreview.destinationLabel) : mappedCount || "2"}
-        </div>
-        <div
-          aria-hidden="true"
-          className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-[#24211e] to-transparent"
-        />
-        <div className="absolute right-4 top-4 grid overflow-hidden rounded-2xl bg-black text-orange-400 shadow-xl ring-1 ring-white/10">
-          <span className="grid h-11 w-11 place-items-center border-b border-white/10">
-            <MapPin className="h-5 w-5" aria-hidden="true" />
-          </span>
-          <span className="grid h-11 w-11 place-items-center">
-            <Route className="h-5 w-5" aria-hidden="true" />
-          </span>
-        </div>
-        <p className="absolute bottom-4 left-4 rounded-full bg-black/40 px-3 py-1 text-xs font-black text-white/82 backdrop-blur">
-          {mapLabel}
-        </p>
-      </Link>
+      <MobileMapPreview
+        ctaHref={`${base}/map`}
+        height="18rem"
+        items={mapPreviewItems}
+        label={mapLabel}
+        title="Open map"
+      />
 
       <div className="relative -mt-10 rounded-t-[2.25rem] bg-[#3b3832]/94 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] text-white ring-1 ring-white/10">
         <div className="mx-auto mb-3 h-1.5 w-14 rounded-full bg-white/44" aria-hidden="true" />

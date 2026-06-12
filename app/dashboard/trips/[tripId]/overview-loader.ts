@@ -8,6 +8,7 @@ import {
   routeEndpointLabel,
   routeTitleLabel
 } from "@/lib/trip-segment-route";
+import type { TripMapItem } from "@/components/TripMap";
 
 export type TripOverviewData = {
   actualLabel: string;
@@ -34,6 +35,7 @@ export type TripOverviewData = {
     typeLabel: string;
   }>;
   mappedCount: number;
+  mapPreviewItems: TripMapItem[];
   nextUp: {
     id: string;
     location: string;
@@ -136,6 +138,35 @@ export async function loadTripOverviewData(tripId: string): Promise<TripOverview
       ],
       hasExpenses: true,
       mappedCount: 3,
+      mapPreviewItems: [
+        {
+          category: "Airport",
+          dayLabel: "Thu",
+          id: "flight-demo-origin",
+          lat: 25.7959,
+          lng: -80.287,
+          routeOrder: 1,
+          title: "Miami International Airport"
+        },
+        {
+          category: "Hotel",
+          dayLabel: "Thu",
+          id: "hotel-arts",
+          lat: 41.3879,
+          lng: 2.1969,
+          routeOrder: 2,
+          title: "Hotel Arts Barcelona"
+        },
+        {
+          category: "Restaurant",
+          dayLabel: "Thu",
+          id: "team-dinner",
+          lat: 41.3851,
+          lng: 2.1734,
+          routeOrder: 3,
+          title: "Team dinner"
+        }
+      ],
       nextUp: {
         id: "hotel-arts",
         location: "Hotel Arts Barcelona, Marina 19-21",
@@ -240,6 +271,7 @@ export async function loadTripOverviewData(tripId: string): Promise<TripOverview
     hasExpenses: actual > 0 || expenseCategories.length > 0,
     itineraryPreview,
     mappedCount: segments.filter(isMappedSegment).length,
+    mapPreviewItems: segments.filter(isMappedSegment).slice(0, 5).map(mapSegmentMapPreview),
     nextUp: itineraryPreview.find((item) => item.timeLabel !== "Anytime") || itineraryPreview[0] || null,
     notes: trip.notes,
     plannedLabel: formatMoney(planned, currency),
@@ -268,6 +300,7 @@ function emptyOverviewData(tripId: string, error: string): TripOverviewData {
     hasExpenses: false,
     itineraryPreview: [],
     mappedCount: 0,
+    mapPreviewItems: [],
     nextUp: null,
     notes: null,
     plannedLabel: "$0",
@@ -289,6 +322,17 @@ function mapSegmentPreview(row: SegmentRow) {
     timeLabel: formatTime(row.start_time),
     title: row.title,
     typeLabel: labelForKind(row.kind)
+  };
+}
+
+function mapSegmentMapPreview(row: SegmentRow): TripMapItem {
+  return {
+    category: labelForKind(row.kind),
+    dayLabel: row.start_time ? formatDate(row.start_time.slice(0, 10)) : null,
+    id: row.id,
+    lat: row.lat ?? row.latitude ?? 0,
+    lng: row.lng ?? row.longitude ?? 0,
+    title: row.title
   };
 }
 

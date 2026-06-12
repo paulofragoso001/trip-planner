@@ -305,6 +305,7 @@ test.describe("mobile soft-launch UX", () => {
       const mobileHub = page.getByTestId("trip-overview-page");
       await expect(mobileHub).toBeVisible();
       await expect(mobileHub.getByTestId("overview-small-pass")).toBeVisible();
+      await expect(mobileHub.getByTestId("mobile-real-map-preview")).toBeVisible();
       await expect(mobileHub.getByTestId("overview-small-primary-cta")).toBeVisible();
       await expect(mobileHub.getByTestId("overview-small-primary-cta")).toContainText("Add trip item");
       await expect(mobileHub.getByText("Invite Guests")).toHaveCount(0);
@@ -423,6 +424,7 @@ test.describe("mobile soft-launch UX", () => {
     const mapAwareItinerary = page.getByTestId("itinerary-map-aware-mode");
     await expect(mapAwareItinerary).toBeVisible({ timeout: 30_000 });
     await expect(page.getByLabel(/route preview/i)).toBeVisible();
+    await expect(mapAwareItinerary.getByTestId("mobile-real-map-preview")).toBeVisible();
     await expect(mapAwareItinerary.getByTestId("itinerary-date-strip")).toBeVisible();
     await expect(page.getByRole("navigation", { name: "Itinerary quick actions" })).toBeVisible();
 
