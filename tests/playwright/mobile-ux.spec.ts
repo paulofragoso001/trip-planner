@@ -416,6 +416,13 @@ test.describe("mobile soft-launch UX", () => {
       await expect(activityFilters.getByRole("button", { name: "All" })).toHaveAttribute("aria-pressed", "false");
     }
     await expect(page.getByTestId("mobile-activity-list").getByText("Team dinner in El Born")).toBeVisible();
+    await page.getByTestId("mobile-activity-list").getByRole("button", { name: "Details" }).first().click();
+    await expect(page.getByTestId("activity-detail-sheet")).toBeVisible();
+    await expect(page.getByTestId("activity-detail-map")).toBeVisible();
+    await expect(page.getByTestId("activity-detail-map").locator(".gm-style")).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByTestId("activity-detail-sheet").getByRole("link", { name: "Directions" })).toBeVisible();
+    await page.getByRole("button", { name: "Close activity detail" }).click();
+    await expect(page.getByTestId("activity-detail-sheet")).toHaveCount(0);
   });
 
   test("mobile map keeps day filters inside the route sheet", async ({ page, request }) => {

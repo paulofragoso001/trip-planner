@@ -88,16 +88,20 @@ export function ActivityDetailSheet({
   return (
     <div
       aria-modal="true"
-      className="fixed inset-0 z-[90] bg-[#080b10] text-white"
+      className="fixed inset-0 z-[140] bg-[#080b10] text-white"
       data-testid="activity-detail-sheet"
       role="dialog"
     >
-      <div className="relative h-[46svh] min-h-[300px] overflow-hidden bg-[#07182b]">
+      <div
+        className="relative h-[46svh] min-h-[300px] overflow-hidden bg-[#07182b]"
+        data-testid="activity-detail-map"
+      >
         {mapItem ? (
           <GoogleMapsProvider>
             <TripMap
-              height="100%"
+              height="46svh"
               items={[mapItem]}
+              mapTheme="dark"
               selectedId={mapItem.id}
               showRouteDetails={false}
               travelMode="WALKING"

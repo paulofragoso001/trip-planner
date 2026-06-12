@@ -410,15 +410,16 @@ function MobileActivitiesView({
       data-testid="mobile-activities-view"
     >
       <div
-        className="relative h-[42svh] min-h-[300px] overflow-hidden bg-[#07182b]"
+        className="relative h-[44svh] min-h-[320px] overflow-hidden bg-[#07182b]"
         aria-label={`${tripTitle} nearby activity map`}
         data-testid="mobile-activity-map"
       >
         {mapItems.length ? (
           <GoogleMapsProvider>
             <TripMap
-              height="42svh"
+              height="44svh"
               items={mapItems}
+              mapTheme="dark"
               selectedId={selectedMapId}
               showRouteDetails={false}
               travelMode="WALKING"

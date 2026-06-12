@@ -57,6 +57,7 @@ type TripMapProps = {
   onSelect?: (id: string) => void;
   travelMode?: TripTravelMode;
   height?: number | string;
+  mapTheme?: "default" | "dark";
   showRouteDetails?: boolean;
 };
 
@@ -69,6 +70,7 @@ export default function TripMap({
   selectedId,
   onSelect,
   height = 420,
+  mapTheme = "default",
   showRouteDetails = false
 }: TripMapProps) {
   const mapRef = useRef<google.maps.Map | null>(null);
@@ -162,11 +164,14 @@ export default function TripMap({
           mapRef.current = map;
         }}
         options={{
+          backgroundColor: mapTheme === "dark" ? "#07182b" : undefined,
           clickableIcons: true,
           fullscreenControl: false,
           gestureHandling: "greedy",
           mapTypeControl: false,
-          streetViewControl: false
+          streetViewControl: false,
+          styles: mapTheme === "dark" ? darkMapStyles : undefined,
+          zoomControl: mapTheme === "dark" ? false : undefined
         }}
         zoom={12}
       >
@@ -458,3 +463,65 @@ function formatDistance(meters: number) {
     maximumFractionDigits: miles >= 10 ? 0 : 1
   }).format(miles) + " mi";
 }
+
+const darkMapStyles: google.maps.MapTypeStyle[] = [
+  { elementType: "geometry", stylers: [{ color: "#172238" }] },
+  { elementType: "labels.icon", stylers: [{ visibility: "off" }] },
+  { elementType: "labels.text.fill", stylers: [{ color: "#cbd5e1" }] },
+  { elementType: "labels.text.stroke", stylers: [{ color: "#07111f" }, { weight: 3 }] },
+  {
+    featureType: "administrative",
+    elementType: "geometry.stroke",
+    stylers: [{ color: "#334155" }]
+  },
+  {
+    featureType: "landscape.natural",
+    elementType: "geometry",
+    stylers: [{ color: "#123138" }]
+  },
+  {
+    featureType: "poi",
+    elementType: "geometry",
+    stylers: [{ color: "#16323a" }]
+  },
+  {
+    featureType: "poi",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#f59e0b" }]
+  },
+  {
+    featureType: "poi.park",
+    elementType: "geometry",
+    stylers: [{ color: "#0f3b35" }]
+  },
+  {
+    featureType: "road",
+    elementType: "geometry",
+    stylers: [{ color: "#2b3a55" }]
+  },
+  {
+    featureType: "road",
+    elementType: "geometry.stroke",
+    stylers: [{ color: "#0f172a" }]
+  },
+  {
+    featureType: "road",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#94a3b8" }]
+  },
+  {
+    featureType: "transit",
+    elementType: "geometry",
+    stylers: [{ color: "#1e293b" }]
+  },
+  {
+    featureType: "water",
+    elementType: "geometry",
+    stylers: [{ color: "#071331" }]
+  },
+  {
+    featureType: "water",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#60a5fa" }]
+  }
+];
