@@ -83,7 +83,13 @@ export default function TripTimelinePage({
         />
       )}
 
-      <ItineraryActions firstFlight={firstFlight} timelineItemIds={timelineItemIds} tripId={tripId} />
+      {mapAware ? (
+        <div className="hidden lg:block">
+          <ItineraryActions firstFlight={firstFlight} timelineItemIds={timelineItemIds} tripId={tripId} />
+        </div>
+      ) : (
+        <ItineraryActions firstFlight={firstFlight} timelineItemIds={timelineItemIds} tripId={tripId} />
+      )}
 
       {!mapAware ? <MobileTimelineBottomBar activeDayLabel={activeDayLabel} /> : null}
     </div>

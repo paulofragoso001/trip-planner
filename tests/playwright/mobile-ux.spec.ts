@@ -432,6 +432,7 @@ test.describe("mobile soft-launch UX", () => {
     await expect(mapAwareItinerary.getByTestId("mobile-real-map-preview")).toBeVisible();
     await expect(mapAwareItinerary.getByTestId("itinerary-date-strip")).toBeVisible();
     await expect(page.getByRole("navigation", { name: "Itinerary quick actions" })).toBeVisible();
+    await expect(page.locator("details#new-plan")).toBeHidden();
     await mapAwareItinerary.getByTestId("map-aware-sheet-scroll").evaluate((node) => {
       node.scrollTop = node.scrollHeight;
     });
