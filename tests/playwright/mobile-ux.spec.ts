@@ -370,6 +370,15 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByRole("heading", { name: "Capture travel ideas" })).toBeVisible();
     await expect(page.getByText("Create a trip from saved ideas.")).toHaveCount(0);
     await expect(page.getByTestId("plan-workflow-stepper")).toHaveCount(1);
+    const planCardStyle = await page.locator("#saved-inspiration").evaluate((element) => {
+      const style = window.getComputedStyle(element);
+      return {
+        backgroundColor: style.backgroundColor,
+        color: style.color
+      };
+    });
+    expect(planCardStyle.backgroundColor).toBe("rgb(5, 5, 5)");
+    expect(planCardStyle.color).toBe("rgb(255, 255, 255)");
   });
 
   test("demo map exposes ordered route cards on mobile", async ({ page }) => {

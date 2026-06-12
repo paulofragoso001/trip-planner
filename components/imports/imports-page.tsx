@@ -49,12 +49,13 @@ export default function ImportsPage({
           <WorkflowStepRow />
 
           <WalletCard
+            className="border-white/10 !bg-[#050505] !text-white shadow-[0_22px_70px_rgba(0,0,0,0.38)] ring-1 ring-white/10 lg:!bg-white lg:!text-slate-950 lg:border-slate-200 lg:shadow-[0_18px_60px_rgba(15,23,42,0.08)] lg:ring-0"
             eyebrow="Ideas"
             id="saved-inspiration"
             title="Add an idea"
             variant="primary"
           >
-            <p className="text-sm font-semibold leading-6 text-slate-600">
+            <p className="text-sm font-semibold leading-6 text-white/64 lg:text-slate-600">
               Paste a travel note, link, or screenshot.
             </p>
             <div className="mt-5">
@@ -249,14 +250,16 @@ function WorkflowStepRow() {
   return (
     <nav
       aria-label="Plan workflow"
-      className="grid grid-cols-3 gap-2 rounded-[1.75rem] border border-slate-200 bg-white p-2 shadow-sm"
+      className="grid grid-cols-3 gap-2 rounded-[1.75rem] border border-white/10 !bg-[#050505] p-2 shadow-[0_18px_50px_rgba(0,0,0,0.28)] ring-1 ring-white/10 lg:!bg-white lg:border-slate-200 lg:shadow-sm lg:ring-0"
       data-testid="plan-workflow-stepper"
     >
       {["Add", "Review", "Create"].map((label, index) => (
         <div
           className={[
             "flex min-h-11 items-center justify-center gap-2 rounded-full px-3 text-xs font-black",
-            index === 0 ? "bg-slate-950 text-white" : "bg-slate-50 text-slate-700"
+            index === 0
+              ? "bg-white text-slate-950 lg:bg-slate-950 lg:text-white"
+              : "bg-white/[0.08] text-white/58 lg:bg-slate-50 lg:text-slate-700"
           ].join(" ")}
           key={label}
         >

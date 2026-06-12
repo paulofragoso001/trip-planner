@@ -91,50 +91,50 @@ export function SocialImportForm({
   return (
     <form action={submit} className="grid gap-4">
       <div className="grid gap-3">
-        <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-500">
+        <p className="text-xs font-black uppercase tracking-[0.18em] text-orange-300/80 lg:text-slate-500">
           Capture travel inspiration
         </p>
 
         {defaultRawText ? (
-          <div className="rounded-2xl bg-blue-50 px-4 py-3 text-sm font-semibold text-blue-900 ring-1 ring-blue-200">
+          <div className="rounded-2xl bg-blue-400/15 px-4 py-3 text-sm font-semibold text-blue-50 ring-1 ring-blue-200/20 lg:bg-blue-50 lg:text-blue-900 lg:ring-blue-200">
             Sample inspiration loaded{sampleKey ? `: ${sampleKey}` : ""}. Edit it if you want, then tap Find places.
           </div>
         ) : null}
 
         <div className="grid gap-3 sm:grid-cols-3">
-          <label className="grid min-h-24 cursor-text content-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm focus-within:border-slate-400">
-            <span className="flex items-center gap-2 text-sm font-black text-slate-950">
-              <Clipboard className="h-4 w-4 text-blue-600" />
+          <label className="grid min-h-24 cursor-text content-center gap-2 rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-3 shadow-[0_12px_34px_rgba(0,0,0,0.18)] focus-within:border-orange-300/40 lg:border-slate-200 lg:bg-white lg:shadow-sm lg:focus-within:border-slate-400">
+            <span className="flex items-center gap-2 text-sm font-black text-white lg:text-slate-950">
+              <Clipboard className="h-4 w-4 text-orange-300 lg:text-blue-600" />
               Paste link
             </span>
-            <span className="text-xs font-semibold text-slate-500">Instagram, TikTok, YouTube, Pinterest</span>
+            <span className="text-xs font-semibold text-white/52 lg:text-slate-500">Instagram, TikTok, YouTube, Pinterest</span>
           </label>
-          <label className="grid min-h-24 cursor-pointer content-center gap-2 rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-3 shadow-sm">
-            <span className="flex items-center gap-2 text-sm font-black text-slate-950">
-              <Upload className="h-4 w-4 text-blue-600" />
+          <label className="grid min-h-24 cursor-pointer content-center gap-2 rounded-2xl border border-dashed border-white/18 bg-white/[0.04] px-4 py-3 shadow-[0_12px_34px_rgba(0,0,0,0.18)] lg:border-slate-300 lg:bg-white lg:shadow-sm">
+            <span className="flex items-center gap-2 text-sm font-black text-white lg:text-slate-950">
+              <Upload className="h-4 w-4 text-orange-300 lg:text-blue-600" />
               Upload screenshot
             </span>
-            <span className="text-xs font-semibold text-slate-500">OCR-ready image import</span>
+            <span className="text-xs font-semibold text-white/52 lg:text-slate-500">OCR-ready image import</span>
             <input accept="image/*" className="sr-only" name="file" type="file" />
           </label>
-          <label className="grid min-h-24 cursor-text content-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm focus-within:border-slate-400">
-            <span className="flex items-center gap-2 text-sm font-black text-slate-950">
-              <FileText className="h-4 w-4 text-blue-600" />
+          <label className="grid min-h-24 cursor-text content-center gap-2 rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-3 shadow-[0_12px_34px_rgba(0,0,0,0.18)] focus-within:border-orange-300/40 lg:border-slate-200 lg:bg-white lg:shadow-sm lg:focus-within:border-slate-400">
+            <span className="flex items-center gap-2 text-sm font-black text-white lg:text-slate-950">
+              <FileText className="h-4 w-4 text-orange-300 lg:text-blue-600" />
               Paste caption
             </span>
-            <span className="text-xs font-semibold text-slate-500">Notes, hashtags, itinerary text</span>
+            <span className="text-xs font-semibold text-white/52 lg:text-slate-500">Notes, hashtags, itinerary text</span>
           </label>
         </div>
 
         <div className="grid gap-3">
           <input
-            className="min-h-12 rounded-2xl border border-slate-200 bg-white px-4 text-base outline-none focus:border-slate-400"
+            className="min-h-12 rounded-2xl border border-white/10 bg-white/[0.06] px-4 text-base text-white outline-none placeholder:text-white/40 focus:border-orange-300/40 lg:border-slate-200 lg:bg-white lg:text-slate-950 lg:placeholder:text-slate-400 lg:focus:border-slate-400"
             name="sourceUrl"
             placeholder="Paste Instagram, TikTok, YouTube, Pinterest, or article URL"
             type="url"
           />
           <textarea
-            className="min-h-32 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-base outline-none focus:border-slate-400"
+            className="min-h-32 rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-3 text-base text-white outline-none placeholder:text-white/40 focus:border-orange-300/40 lg:border-slate-200 lg:bg-white lg:text-slate-950 lg:placeholder:text-slate-400 lg:focus:border-slate-400"
             defaultValue={defaultRawText || ""}
             name="rawText"
             placeholder="Paste caption, notes, or visible text from a post"
@@ -145,12 +145,12 @@ export function SocialImportForm({
 
       <div className="grid gap-3">
         <select
-          className="min-h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-700 outline-none focus:border-slate-400"
+          className="min-h-12 rounded-2xl border border-white/10 bg-white/[0.06] px-4 text-sm font-bold text-white outline-none focus:border-orange-300/40 lg:border-slate-200 lg:bg-white lg:text-slate-700 lg:focus:border-slate-400"
           name="tripId"
         >
-          <option value="">No trip yet</option>
+          <option className="bg-slate-950 text-white lg:bg-white lg:text-slate-950" value="">No trip yet</option>
           {trips.map((trip) => (
-            <option key={trip.id} value={trip.id}>
+            <option className="bg-slate-950 text-white lg:bg-white lg:text-slate-950" key={trip.id} value={trip.id}>
               {trip.name}
             </option>
           ))}
@@ -159,7 +159,7 @@ export function SocialImportForm({
 
       <input name="processNow" type="hidden" value="true" />
       <button
-        className="inline-flex min-h-14 items-center justify-center gap-2 rounded-2xl bg-slate-950 px-5 text-base font-black text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+        className="inline-flex min-h-14 items-center justify-center gap-2 rounded-2xl bg-orange-500 px-5 text-base font-black text-white shadow-[0_14px_34px_rgba(249,115,22,0.22)] transition hover:bg-orange-400 disabled:cursor-not-allowed disabled:opacity-60 lg:bg-slate-950 lg:hover:bg-slate-800"
         disabled={pending}
         type="submit"
       >
@@ -167,12 +167,12 @@ export function SocialImportForm({
         {pending ? "Scanning..." : "Find places"}
       </button>
       {pending ? (
-        <div aria-hidden="true" className="h-2 overflow-hidden rounded-full bg-slate-100">
-          <div className="h-full w-2/3 animate-pulse rounded-full bg-blue-600" />
+        <div aria-hidden="true" className="h-2 overflow-hidden rounded-full bg-white/10 lg:bg-slate-100">
+          <div className="h-full w-2/3 animate-pulse rounded-full bg-orange-400 lg:bg-blue-600" />
         </div>
       ) : null}
       {message ? (
-        <p aria-live="polite" className="rounded-2xl bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700">
+        <p aria-live="polite" className="rounded-2xl bg-white/10 px-4 py-3 text-sm font-semibold text-white/76 lg:bg-slate-50 lg:text-slate-700">
           {message}
         </p>
       ) : null}
