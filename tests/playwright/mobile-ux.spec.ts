@@ -217,6 +217,7 @@ test.describe("mobile soft-launch UX", () => {
       await page.goto(`${baseUrl}/dashboard/trips?view=map`, { waitUntil: "commit" });
       await expect(page.getByTestId("mobile-trips-country-map-screen")).toBeVisible({ timeout: 20_000 });
       await expect(page.getByTestId("mobile-country-map-canvas")).toBeVisible();
+      await expect(page.getByTestId("mobile-country-map-canvas").locator(".gm-style")).toBeVisible({ timeout: 30_000 });
       await expect(page.getByRole("heading", { name: "My Trips" })).toBeVisible();
 
       await page.getByPlaceholder("Search for trips").fill(`Mobile country map ${suffix}`);
@@ -238,6 +239,7 @@ test.describe("mobile soft-launch UX", () => {
       await expect(
         page.locator(`[data-testid="mobile-country-map-marker"][aria-label="Open ${listOnlyTripName}"]`)
       ).toHaveCount(0);
+      await expect(page.getByRole("link", { name: "Show trip cards" })).toHaveCount(1);
       await expect(page.getByRole("link", { name: "Show trip cards" }).first()).toHaveAttribute(
         "href",
         /\/dashboard\/trips$/

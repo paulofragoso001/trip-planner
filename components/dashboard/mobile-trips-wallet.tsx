@@ -4,6 +4,8 @@ import { BarChart3, ChevronDown, List, Plus, Search, Settings } from "lucide-rea
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { type RefObject, useEffect, useMemo, useRef, useState } from "react";
+import GoogleMapsProvider from "@/components/GoogleMapsProvider";
+import TripMap, { type TripMapItem } from "@/components/TripMap";
 import { TripCreateForm } from "@/components/dashboard/trip-create-form";
 import { cn } from "@/components/trip-ui";
 import type { TripsData } from "@/app/dashboard/trips/loader";
@@ -230,25 +232,6 @@ function MobileTripsCountriesMap({
     >
       <MobileCountryMapCanvas trips={markerTrips} />
 
-      <div className="absolute right-4 top-6 z-20 overflow-hidden rounded-full border border-white/10 bg-black/78 text-orange-400 shadow-[0_18px_50px_rgba(0,0,0,0.45)] backdrop-blur-xl">
-        <Link
-          aria-label="Show trip cards"
-          className="grid h-12 w-12 place-items-center border-b border-white/10 transition hover:bg-white/10 focus:outline-none focus:ring-4 focus:ring-orange-400/20"
-          href="/dashboard/trips"
-        >
-          <List className="h-5 w-5" aria-hidden="true" />
-        </Link>
-        <button
-          aria-label="Create trip"
-          className="grid h-12 w-12 place-items-center transition hover:bg-white/10 focus:outline-none focus:ring-4 focus:ring-orange-400/20 disabled:cursor-wait disabled:opacity-60"
-          disabled={!hydrated}
-          onClick={onCreate}
-          type="button"
-        >
-          <Plus className="h-6 w-6" aria-hidden="true" />
-        </button>
-      </div>
-
       <div className="absolute inset-x-0 bottom-0 z-20 px-2 pb-[calc(5.75rem+env(safe-area-inset-bottom))] sm:px-4">
         <div className="mx-auto max-h-[64dvh] w-full max-w-[31rem] overflow-y-auto rounded-t-[2rem] border border-white/10 bg-black/92 p-4 shadow-[0_-26px_80px_rgba(0,0,0,0.52)] backdrop-blur-2xl">
           <div className="mx-auto mb-4 h-1.5 w-14 rounded-full bg-white/45" aria-hidden="true" />
@@ -382,44 +365,58 @@ function MobileTripsCountriesMap({
 }
 
 function MobileCountryMapCanvas({ trips }: { trips: Trip[] }) {
-  return (
-    <div className="absolute inset-0 z-0 overflow-hidden bg-[#06101d]" data-testid="mobile-country-map-canvas">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_19%_18%,rgba(20,184,166,0.32),transparent_27%),radial-gradient(circle_at_62%_28%,rgba(37,99,235,0.38),transparent_32%),linear-gradient(180deg,#0b1d2d,#06101d_58%,#020617)]" />
-      <div className="absolute inset-0 opacity-55 [background-image:linear-gradient(rgba(148,163,184,0.12)_1px,transparent_1px),linear-gradient(90deg,rgba(148,163,184,0.12)_1px,transparent_1px)] [background-size:44px_44px]" />
-      <div className="absolute -left-[9%] top-[12%] h-[42%] w-[58%] rounded-[55%_45%_48%_52%] bg-emerald-700/28 blur-[1px]" />
-      <div className="absolute left-[38%] top-[21%] h-[30%] w-[28%] rounded-[50%_60%_42%_58%] bg-teal-700/24 blur-[1px]" />
-      <div className="absolute left-[52%] top-[44%] h-[44%] w-[24%] rotate-12 rounded-[48%_52%_44%_56%] bg-emerald-700/26 blur-[1px]" />
-      <div className="absolute right-[-10%] top-[16%] h-[44%] w-[42%] rounded-[52%_48%_54%_46%] bg-cyan-800/18 blur-[1px]" />
-      <div className="absolute left-[20%] top-[25%] text-center text-xl font-black uppercase tracking-[0.28em] text-white/[0.16]">
-        North<br />America
-      </div>
-      <div className="absolute left-[56%] top-[58%] text-center text-xl font-black uppercase tracking-[0.28em] text-white/[0.14]">
-        South<br />America
-      </div>
+  const mapItems = useMemo(
+    () => trips.map((trip, index) => tripToMapItem(trip, index)),
+    [trips]
+  );
 
-      {trips.map((trip) => {
-        const point = projectTripPoint(trip);
-        if (!point) return null;
-        return (
-          <Link
-            aria-label={`Open ${trip.name}`}
-            className="group absolute z-10 -translate-x-1/2 -translate-y-1/2 focus:outline-none"
-            data-testid="mobile-country-map-marker"
-            href={trip.href}
-            key={trip.id}
-            style={{ left: `${point.x}%`, top: `${point.y}%` }}
-          >
-            <span className="grid h-12 w-12 place-items-center rounded-full border-2 border-black bg-white text-2xl shadow-[0_12px_32px_rgba(0,0,0,0.42)] transition group-hover:scale-105 group-focus:ring-4 group-focus:ring-orange-400/30">
-              {destinationFlag(trip.destination)}
-            </span>
-            <span className="absolute left-1/2 top-[calc(100%-0.15rem)] max-w-32 -translate-x-1/2 truncate whitespace-nowrap text-center text-sm font-black text-white [text-shadow:0_2px_4px_rgba(0,0,0,0.9)]">
-              {destinationMapLabel(trip)}
-            </span>
-          </Link>
-        );
-      })}
+  return (
+    <div
+      className="absolute inset-0 z-0 overflow-hidden bg-slate-950"
+      data-testid="mobile-country-map-canvas"
+    >
+      {mapItems.length ? (
+        <GoogleMapsProvider>
+          <TripMap
+            height="100dvh"
+            items={mapItems}
+            selectedId={mapItems[0]?.id}
+            showRouteDetails={false}
+          />
+        </GoogleMapsProvider>
+      ) : (
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_19%_18%,rgba(20,184,166,0.32),transparent_27%),radial-gradient(circle_at_62%_28%,rgba(37,99,235,0.38),transparent_32%),linear-gradient(180deg,#0b1d2d,#06101d_58%,#020617)]" />
+      )}
+      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(2,6,23,0.08),rgba(2,6,23,0.18)_42%,rgba(2,6,23,0.78))]" />
+      {trips.map((trip) => (
+        <Link
+          aria-label={`Open ${trip.name}`}
+          className="sr-only"
+          data-testid="mobile-country-map-marker"
+          href={trip.href}
+          key={trip.id}
+        >
+          {destinationMapLabel(trip)}
+        </Link>
+      ))}
     </div>
   );
+}
+
+function tripToMapItem(trip: Trip, index: number): TripMapItem {
+  return {
+    address: trip.destination,
+    category: tripStatusLabel(trip),
+    dayLabel: tripYear(trip),
+    id: trip.id,
+    imageAlt: trip.imageAlt,
+    imageAttribution: trip.imageAttribution,
+    imageUrl: trip.imageUrl,
+    lat: trip.destinationLat!,
+    lng: trip.destinationLng!,
+    routeOrder: index + 1,
+    title: destinationMapLabel(trip)
+  };
 }
 
 function MobileCountryTripRow({ trip }: { trip: Trip }) {
