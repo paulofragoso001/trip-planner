@@ -414,7 +414,7 @@ function ItineraryDateStrip({
     >
       <div className="flex min-w-0 gap-2">
         {datedDays.map((day, index) => (
-          <Link
+          <a
             aria-label={`Jump to ${day.date}`}
             className={[
               "inline-flex min-h-14 shrink-0 items-center gap-3 rounded-2xl px-3 text-left ring-1 transition focus:outline-none focus:ring-4 focus:ring-blue-100",
@@ -424,7 +424,6 @@ function ItineraryDateStrip({
             ].join(" ")}
             href={`#${dayAnchorId(day)}`}
             key={day.id}
-            scroll
           >
             <span className="grid gap-0.5">
               <span className={index === 0 ? "text-xs font-black uppercase tracking-[0.16em] text-orange-100/80 lg:text-white/62" : "text-xs font-black uppercase tracking-[0.16em] text-slate-500 lg:text-slate-400"}>
@@ -440,7 +439,7 @@ function ItineraryDateStrip({
             <span className={index === 0 ? "hidden rounded-full bg-white/[0.12] px-2 py-1 text-[0.65rem] font-black text-white/[0.78] lg:inline-flex" : "hidden rounded-full bg-white/10 px-2 py-1 text-[0.65rem] font-black text-slate-300 lg:inline-flex lg:bg-slate-100 lg:text-slate-600"}>
               {day.items.length}
             </span>
-          </Link>
+          </a>
         ))}
       </div>
     </nav>
