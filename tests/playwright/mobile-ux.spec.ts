@@ -470,6 +470,17 @@ test.describe("mobile soft-launch UX", () => {
       await expect(mobileFilter.getByRole("button", { name: "Jun 10" })).toBeVisible();
       await expect(mobileFilter.getByRole("button", { name: "Jun 11" })).toBeVisible();
       await expect(page.getByTestId("map-route-panel").getByText("1 of 1")).toBeVisible();
+      const mapPanelFitsViewport = await page.getByTestId("map-route-panel").evaluate((node) => {
+        const box = node.getBoundingClientRect();
+        return box.left >= -1 && box.right <= window.innerWidth + 1 && node.scrollWidth <= node.clientWidth + 1;
+      });
+      expect(mapPanelFitsViewport, "mobile map route panel should fit the viewport").toBe(true);
+      const selectedCardFitsPanel = await page.getByTestId("map-selected-route-card").evaluate((node) => {
+        const card = node.getBoundingClientRect();
+        const panel = node.closest('[data-testid="map-route-panel"]')?.getBoundingClientRect();
+        return Boolean(panel && card.left >= panel.left - 1 && card.right <= panel.right + 1);
+      });
+      expect(selectedCardFitsPanel, "selected route card should not overflow the mobile sheet").toBe(true);
     } finally {
       await deleteTripForTest(request, tripId);
     }

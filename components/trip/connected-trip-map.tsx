@@ -163,7 +163,7 @@ export function ConnectedTripMap({
           </div>
 
           <div
-            className="absolute inset-x-0 bottom-0 z-20 grid max-h-[60dvh] gap-3 overflow-y-auto rounded-t-[2rem] border border-white/10 bg-slate-950/92 p-3 pb-[calc(6.25rem+env(safe-area-inset-bottom))] text-white shadow-2xl backdrop-blur-2xl sm:p-4 lg:relative lg:inset-auto lg:max-h-none lg:overflow-visible lg:rounded-[2rem] lg:border-slate-200 lg:bg-white lg:pb-4 lg:text-slate-950 lg:shadow-sm lg:backdrop-blur-none"
+            className="absolute inset-x-0 bottom-0 z-20 grid max-h-[56dvh] gap-3 overflow-y-auto overflow-x-hidden rounded-t-[2rem] border border-white/10 bg-slate-950/92 p-3 pb-[calc(6.25rem+env(safe-area-inset-bottom))] text-white shadow-2xl backdrop-blur-2xl sm:p-4 lg:relative lg:inset-auto lg:max-h-none lg:overflow-visible lg:rounded-[2rem] lg:border-slate-200 lg:bg-white lg:pb-4 lg:text-slate-950 lg:shadow-sm lg:backdrop-blur-none"
             data-map-bottom-sheet="true"
             data-testid="map-route-panel"
           >
@@ -225,25 +225,28 @@ export function ConnectedTripMap({
                   </button>
                 </div>
               ) : null}
-              <div className="rounded-[1.5rem] bg-slate-950 p-3 text-white shadow-lg ring-1 ring-slate-900">
+              <div
+                className="min-w-0 overflow-hidden rounded-[1.5rem] bg-slate-950 p-3 text-white shadow-lg ring-1 ring-slate-900"
+                data-testid="map-selected-route-card"
+              >
                 <p className="text-xs font-black uppercase tracking-[0.16em] text-blue-600">
                   {selectedPosition} of {visibleItems.length}
                 </p>
-                <div className="mt-3 grid grid-cols-[80px_minmax(0,1fr)] gap-3 sm:grid-cols-[104px_minmax(0,1fr)] sm:items-center">
-                  <div className="relative">
+                <div className="mt-3 grid min-w-0 grid-cols-[64px_minmax(0,1fr)] gap-2 sm:grid-cols-[104px_minmax(0,1fr)] sm:gap-3 sm:items-center">
+                  <div className="relative min-w-0">
                   <PlacePhoto
                     alt={selectedItem.imageAlt || `Photo of ${selectedItem.title}`}
                     attribution={selectedItem.imageAttribution}
-                    className="h-20 w-20 rounded-2xl sm:h-24 sm:w-24 xl:h-28 xl:w-28"
+                    className="h-16 w-16 rounded-2xl sm:h-24 sm:w-24 xl:h-28 xl:w-28"
                     fallbackLabel={selectedItem.category || "Place"}
                     src={selectedItem.imageUrl}
                   />
-                  <span className="absolute -right-2 -top-2 grid h-9 min-w-9 place-items-center rounded-full bg-blue-600 px-2 text-sm font-black text-white shadow-lg ring-4 ring-white">
+                  <span className="absolute -right-2 -top-2 grid h-8 min-w-8 place-items-center rounded-full bg-blue-600 px-2 text-sm font-black text-white shadow-lg ring-4 ring-white sm:h-9 sm:min-w-9">
                     {selectedItem.routeOrder || selectedPosition}
                   </span>
                   </div>
                   <div className="min-w-0">
-                  <h3 className="break-words text-lg font-black leading-tight text-white">
+                  <h3 className="line-clamp-2 break-words text-base font-black leading-tight text-white sm:text-lg">
                     {selectedItem.title}
                   </h3>
                   <p className="mt-1 text-xs font-semibold text-white/60">
@@ -252,7 +255,7 @@ export function ConnectedTripMap({
                       .join(" · ")}
                   </p>
                   {selectedItem.address ? (
-                    <p className="mt-1 line-clamp-2 text-xs text-white/62">{selectedItem.address}</p>
+                    <p className="mt-1 line-clamp-1 break-words text-xs text-white/62 sm:line-clamp-2">{selectedItem.address}</p>
                   ) : null}
                   {selectedItem.route ? (
                     <div className="mt-2 grid gap-1 text-xs font-semibold text-white/65">
@@ -260,9 +263,9 @@ export function ConnectedTripMap({
                       <p className="truncate">To: {routeEndpointLabel(selectedItem.route.destination) || "Destination needed"}</p>
                     </div>
                   ) : null}
-                  <div className="mt-3 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+                  <div className="mt-3 grid min-w-0 grid-cols-2 gap-2 sm:flex sm:flex-wrap">
                     <button
-                      className="inline-flex min-h-10 items-center justify-center rounded-xl bg-white/10 px-3 text-xs font-black text-white ring-1 ring-white/12"
+                      className="inline-flex min-h-10 min-w-0 items-center justify-center rounded-xl bg-white/10 px-2 text-xs font-black text-white ring-1 ring-white/12 sm:px-3"
                       onClick={() => setDetailItem(selectedItem)}
                       type="button"
                     >
@@ -270,16 +273,16 @@ export function ConnectedTripMap({
                     </button>
                     {selectedPlaceUrl ? (
                       <a
-                        className="inline-flex min-h-10 items-center justify-center rounded-xl bg-white px-3 text-xs font-black text-slate-950"
+                        className="inline-flex min-h-10 min-w-0 items-center justify-center rounded-xl bg-white px-2 text-xs font-black text-slate-950 sm:px-3"
                         href={selectedPlaceUrl}
                         rel="noreferrer"
                         target="_blank"
                       >
-                        Google Maps
+                        Maps
                       </a>
                     ) : null}
                     <Link
-                      className="inline-flex min-h-10 items-center justify-center rounded-xl bg-white/10 px-3 text-xs font-black text-white ring-1 ring-white/12"
+                      className="col-span-2 inline-flex min-h-10 min-w-0 items-center justify-center rounded-xl bg-white/10 px-2 text-xs font-black text-white ring-1 ring-white/12 sm:col-span-1 sm:px-3"
                       href={`/dashboard/trips/${encodeURIComponent(tripId)}/timeline?mode=map#${selectedItem.id}`}
                     >
                       Itinerary
@@ -298,7 +301,7 @@ export function ConnectedTripMap({
                   <p className="text-xs font-bold text-white/50 lg:text-slate-500">{hiddenPlaceCount} hidden</p>
                 ) : null}
               </div>
-              <div className="grid max-h-[38dvh] content-start items-start gap-1.5 overflow-y-auto pr-1 sm:max-h-none sm:gap-2 sm:overflow-visible sm:pr-0" data-testid="map-route-list">
+              <div className="grid max-h-[28dvh] min-w-0 content-start items-start gap-1.5 overflow-y-auto overflow-x-hidden pr-1 sm:max-h-none sm:gap-2 sm:overflow-visible sm:pr-0" data-testid="map-route-list">
                 {visibleItems.map((item, index) => {
                   const active = item.id === selectedItem?.id;
                   const routeNumber = item.routeOrder || index + 1;
@@ -307,7 +310,7 @@ export function ConnectedTripMap({
                     <button
                       aria-current={active ? "true" : undefined}
                       className={[
-                        "min-h-11 rounded-2xl border px-2.5 py-2 text-left text-sm transition",
+                        "w-full min-w-0 min-h-11 rounded-2xl border px-2.5 py-2 text-left text-sm transition",
                         "h-auto self-start",
                         active
                           ? "border-blue-300 bg-blue-50 text-blue-950"
