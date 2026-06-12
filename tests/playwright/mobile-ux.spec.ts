@@ -413,6 +413,66 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByTestId("mobile-activity-list").getByText("Team dinner in El Born")).toBeVisible();
   });
 
+  test("mobile map keeps day filters inside the route sheet", async ({ page, request }) => {
+    test.setTimeout(90_000);
+    await page.setViewportSize({ height: 900, width: 390 });
+    await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
+
+    const tripResponse = await request.post(`${baseUrl}/api/trips`, {
+      data: {
+        destination: "Miami, FL",
+        name: `Mobile map filter test ${Date.now()}`,
+        status: "Planning",
+        travel_style: "balanced"
+      },
+      headers: { "x-cypress-dashboard": "true" }
+    });
+    expect(tripResponse.status()).toBe(201);
+    const tripPayload = await tripResponse.json();
+    const tripId = tripPayload?.trip?.id;
+    expect(typeof tripId).toBe("string");
+
+    try {
+      for (const segment of [
+        {
+          lat: 25.7959,
+          lng: -80.287,
+          startTime: "2026-06-10T17:14:00.000Z",
+          title: "Airport arrival"
+        },
+        {
+          lat: 25.7617,
+          lng: -80.1918,
+          startTime: "2026-06-11T11:00:00.000Z",
+          title: "Brickell cafe"
+        }
+      ]) {
+        const response = await request.post(`${baseUrl}/api/trip-segments`, {
+          data: {
+            kind: "activity",
+            location: segment.title,
+            tripId,
+            ...segment
+          },
+          headers: { "x-cypress-dashboard": "true" }
+        });
+        expect(response.status()).toBe(201);
+      }
+
+      await page.goto(`${baseUrl}/dashboard/trips/${tripId}/map`, { waitUntil: "commit" });
+      await expect(page.getByTestId("connected-trip-map")).toBeVisible({ timeout: 30_000 });
+      await expect(page.getByTestId("map-day-filter-overlay")).toBeHidden();
+      const mobileFilter = page.getByTestId("map-mobile-day-filter");
+      await expect(mobileFilter).toBeVisible();
+      await expect(mobileFilter.getByRole("button", { name: "All" })).toBeVisible();
+      await expect(mobileFilter.getByRole("button", { name: "Jun 10" })).toBeVisible();
+      await expect(mobileFilter.getByRole("button", { name: "Jun 11" })).toBeVisible();
+      await expect(page.getByTestId("map-route-panel").getByText("1 of 1")).toBeVisible();
+    } finally {
+      await deleteTripForTest(request, tripId);
+    }
+  });
+
   test("map itinerary action opens the map-aware itinerary sheet", async ({ page }) => {
     test.setTimeout(90_000);
     await page.setViewportSize({ height: 900, width: 390 });

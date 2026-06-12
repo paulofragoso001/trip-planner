@@ -127,14 +127,18 @@ export function ConnectedTripMap({
               />
             </GoogleMapsProvider>
 
-            <div className="pointer-events-none absolute left-1/2 top-4 z-10 -translate-x-1/2">
+            <div className="pointer-events-none absolute left-1/2 top-4 z-10 hidden -translate-x-1/2 lg:block">
               <div className="whitespace-nowrap rounded-full bg-white/95 px-4 py-2 text-xs font-black text-slate-950 shadow-lg ring-1 ring-slate-200 backdrop-blur sm:text-sm">
                 {routeSummary}
               </div>
             </div>
 
             {hasDayFilter ? (
-              <div className="absolute left-3 right-3 top-16 z-10 flex gap-2 overflow-x-auto rounded-2xl bg-white/90 p-2 text-xs font-black text-slate-700 shadow-lg ring-1 ring-slate-200 backdrop-blur" aria-label="Map day filter">
+              <div
+                aria-label="Map day filter"
+                className="absolute left-3 right-3 top-16 z-10 hidden gap-2 overflow-x-auto rounded-2xl bg-white/90 p-2 text-xs font-black text-slate-700 shadow-lg ring-1 ring-slate-200 backdrop-blur lg:flex"
+                data-testid="map-day-filter-overlay"
+              >
                 {["all", ...dayLabels].map((day) => {
                   const active = (selectedDayKey || dayLabels[0]) === day;
                   return (
@@ -166,6 +170,34 @@ export function ConnectedTripMap({
             <div className="mx-auto h-1.5 w-16 rounded-full bg-white/45 lg:hidden" aria-hidden="true" />
             {selectedItem ? (
             <>
+              {hasDayFilter ? (
+                <div
+                  aria-label="Map day filter"
+                  className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 text-xs font-black lg:hidden"
+                  data-testid="map-mobile-day-filter"
+                >
+                  {["all", ...dayLabels].map((day) => {
+                    const active = (selectedDayKey || dayLabels[0]) === day;
+                    return (
+                      <button
+                        aria-pressed={active}
+                        className={[
+                          "min-h-10 shrink-0 rounded-xl px-3 transition",
+                          active ? "bg-white text-slate-950" : "bg-white/10 text-white/72 ring-1 ring-white/10"
+                        ].join(" ")}
+                        key={day}
+                        onClick={() => {
+                          setSelectedDay(day);
+                          setShowAllPlaces(false);
+                        }}
+                        type="button"
+                      >
+                        {day === "all" ? "All" : day}
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : null}
               {!hasDayFilter && items.length > visibleItems.length ? (
                 <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-blue-50 px-3 py-2 text-xs font-bold text-blue-900">
                   <span>Showing first {visibleItems.length} of {items.length} places</span>
