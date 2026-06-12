@@ -396,6 +396,11 @@ test.describe("mobile soft-launch UX", () => {
 
     await page.getByTestId("map-route-panel").getByRole("link", { name: "Open Ideas" }).click();
     await expect(page.getByTestId("mobile-activities-view")).toBeVisible();
+    const activityMap = page.getByTestId("mobile-activity-map");
+    await expect(activityMap).toBeVisible();
+    await expect(activityMap.locator(".gm-style")).toBeVisible({ timeout: 30_000 });
+    const activityMapHeight = await activityMap.evaluate((node) => Math.round(node.getBoundingClientRect().height));
+    expect(activityMapHeight, "mobile activity map height").toBeGreaterThanOrEqual(300);
     await expect(page.getByText("Places / Activities")).toBeVisible();
     await expect(page.getByTestId("mobile-activity-list")).toBeVisible();
     const activityFilters = page.getByTestId("activity-category-filters");

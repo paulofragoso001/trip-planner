@@ -401,19 +401,24 @@ function MobileActivitiesView({
 }) {
   const tripTitle = destination?.split(",")[0]?.trim() || "Your trip";
   const anchorPlace = items[0]?.title || destination || "your route";
-  const selectedMapId = items[0]?.id ?? null;
+  const mapItems = useMemo(() => buildMobileActivityMapItems(items, rows), [items, rows]);
+  const selectedMapId = mapItems[0]?.id ?? null;
 
   return (
     <section
       className="relative isolate -mx-1 overflow-hidden rounded-[2.2rem] bg-[#111113] text-white shadow-2xl ring-1 ring-white/10 lg:hidden"
       data-testid="mobile-activities-view"
     >
-      <div className="relative h-[42svh] min-h-[300px] overflow-hidden bg-[#07182b]" aria-label={`${tripTitle} nearby activity map`}>
-        {items.length ? (
+      <div
+        className="relative h-[42svh] min-h-[300px] overflow-hidden bg-[#07182b]"
+        aria-label={`${tripTitle} nearby activity map`}
+        data-testid="mobile-activity-map"
+      >
+        {mapItems.length ? (
           <GoogleMapsProvider>
             <TripMap
-              height="100%"
-              items={items}
+              height="42svh"
+              items={mapItems}
               selectedId={selectedMapId}
               showRouteDetails={false}
               travelMode="WALKING"
@@ -741,6 +746,44 @@ function mobileRowSideLabel(row: ActivityRow) {
     .filter((part) => !/^mapped$/i.test(part) && part.toLowerCase() !== row.category);
 
   return labels.length ? labels.slice(0, 2).join("\n") : null;
+}
+
+function buildMobileActivityMapItems(
+  items: TripMapData["items"],
+  rows: ActivityRow[]
+): TripMapItem[] {
+  const savedPlaces: TripMapItem[] = items.map((item, index) => ({
+    ...item,
+    routeOrder: item.routeOrder || index + 1
+  }));
+  const savedIds = new Set(savedPlaces.map((item) => item.id));
+  const recommendations = rows
+    .filter((row): row is Extract<ActivityRow, { type: "recommendation" }> => row.type === "recommendation")
+    .filter((row) => !savedIds.has(row.id))
+    .slice(0, Math.max(8 - savedPlaces.length, 0))
+    .flatMap((row, index): TripMapItem[] => {
+      if (typeof row.lat !== "number" || typeof row.lng !== "number") return [];
+
+      return [{
+        address: row.address,
+        bookingUrl: row.bookingUrl,
+        category: row.category,
+        dayLabel: "Idea",
+        id: row.id,
+        imageAlt: row.imageAlt,
+        imageAttribution: row.imageAttribution,
+        imageUrl: row.imageUrl,
+        lat: row.lat,
+        lng: row.lng,
+        provider: row.provider,
+        routeOrder: savedPlaces.length + index + 1,
+        status: "suggested",
+        timeLabel: row.ratingLabel ? `${row.ratingLabel} stars` : null,
+        title: row.title
+      }];
+    });
+
+  return [...savedPlaces, ...recommendations];
 }
 
 function ActivitySection({
