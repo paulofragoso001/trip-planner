@@ -220,6 +220,9 @@ test.describe("mobile soft-launch UX", () => {
       await expect(page.getByTestId("mobile-country-map-canvas").locator(".gm-style")).toBeVisible({ timeout: 30_000 });
       await expect(page.getByRole("heading", { name: "My Trips" })).toBeVisible();
       await expect(page.getByTestId("mobile-country-sheet-toggle")).toHaveAttribute("aria-expanded", "false");
+      const collapsedSheet = await page.getByTestId("mobile-country-sheet").boundingBox();
+      expect(collapsedSheet?.height ?? 0, "collapsed country sheet height").toBeLessThanOrEqual(260);
+      expect(collapsedSheet?.y ?? 0, "collapsed country sheet top").toBeGreaterThanOrEqual(575);
 
       await page.getByPlaceholder("Search for trips").fill(`Mobile country map ${suffix}`);
       await expect(

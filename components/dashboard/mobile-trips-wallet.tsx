@@ -252,11 +252,11 @@ function MobileTripsCountriesMap({
         </button>
       </div>
 
-      <div className="absolute inset-x-0 bottom-0 z-20 px-2 pb-[calc(5.75rem+env(safe-area-inset-bottom))] sm:px-4">
+      <div className="absolute inset-x-0 bottom-0 z-20 pb-[calc(3.25rem+env(safe-area-inset-bottom))]">
         <div
           className={cn(
-            "mx-auto w-full max-w-[31rem] overflow-y-auto rounded-t-[2rem] border border-white/10 bg-black/94 p-4 shadow-[0_-26px_80px_rgba(0,0,0,0.52)] backdrop-blur-2xl transition-[max-height] duration-300",
-            expanded ? "max-h-[70dvh]" : "max-h-[18.5rem]"
+            "mx-auto w-full overflow-y-auto rounded-t-[2rem] bg-black p-4 shadow-[0_-26px_80px_rgba(0,0,0,0.58)] ring-1 ring-white/10 transition-[max-height,border-radius] duration-300",
+            expanded ? "max-h-[72dvh] max-w-[31rem] border border-white/10 backdrop-blur-2xl" : "max-h-[14.25rem] max-w-none"
           )}
           data-testid="mobile-country-sheet"
         >
@@ -272,25 +272,25 @@ function MobileTripsCountriesMap({
           <div className="flex min-h-11 items-center justify-between gap-3">
             <Link
               aria-label="Trip settings"
-              className="grid h-10 w-10 place-items-center rounded-full bg-orange-500/[0.14] text-orange-400 ring-1 ring-orange-400/[0.12] transition hover:bg-orange-500/20 focus:outline-none focus:ring-4 focus:ring-orange-400/20"
+              className="grid h-11 w-11 place-items-center rounded-full bg-orange-500/[0.14] text-orange-400 ring-1 ring-orange-400/[0.12] transition hover:bg-orange-500/20 focus:outline-none focus:ring-4 focus:ring-orange-400/20"
               href="/dashboard/profile/stats"
             >
               <Settings className="h-5 w-5" aria-hidden="true" />
             </Link>
-            <h1 className="text-center text-2xl font-black tracking-tight text-white">
+            <h1 className="text-center text-2xl font-black tracking-tight text-white sm:text-3xl">
               My Trips
             </h1>
             <div className="flex items-center gap-2">
               <Link
                 aria-label="Show trip cards"
-                className="grid h-10 w-10 place-items-center rounded-full bg-orange-500/[0.14] text-orange-400 ring-1 ring-orange-400/[0.12] transition hover:bg-orange-500/20 focus:outline-none focus:ring-4 focus:ring-orange-400/20"
+                className="grid h-11 w-11 place-items-center rounded-full bg-orange-500/[0.14] text-orange-400 ring-1 ring-orange-400/[0.12] transition hover:bg-orange-500/20 focus:outline-none focus:ring-4 focus:ring-orange-400/20"
                 href="/dashboard/trips"
               >
                 <List className="h-5 w-5" aria-hidden="true" />
               </Link>
               <button
                 aria-label="Create trip"
-                className="grid h-10 w-10 place-items-center rounded-full bg-orange-500/[0.14] text-orange-400 ring-1 ring-orange-400/[0.12] transition hover:bg-orange-500/20 focus:outline-none focus:ring-4 focus:ring-orange-400/20 disabled:cursor-wait disabled:opacity-60"
+                className="grid h-11 w-11 place-items-center rounded-full bg-orange-500/[0.14] text-orange-400 ring-1 ring-orange-400/[0.12] transition hover:bg-orange-500/20 focus:outline-none focus:ring-4 focus:ring-orange-400/20 disabled:cursor-wait disabled:opacity-60"
                 disabled={!hydrated}
                 onClick={() => {
                   setExpanded(true);
@@ -311,7 +311,7 @@ function MobileTripsCountriesMap({
                 aria-hidden="true"
               />
               <input
-                className="h-12 w-full rounded-full border border-white/[0.08] bg-white/10 pl-12 pr-4 text-base font-semibold text-white shadow-inner shadow-black/30 outline-none placeholder:text-white/[0.42] focus:border-orange-300/50 focus:ring-4 focus:ring-orange-400/15"
+                className="h-11 w-full rounded-full border border-white/[0.08] bg-white/[0.09] pl-12 pr-4 text-base font-semibold text-white shadow-inner shadow-black/30 outline-none placeholder:text-white/[0.42] focus:border-orange-300/50 focus:ring-4 focus:ring-orange-400/15"
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder="Search for trips"
                 type="search"
@@ -322,7 +322,7 @@ function MobileTripsCountriesMap({
             <label className="relative inline-flex w-fit items-center">
               <span className="sr-only">Trip year</span>
               <select
-                className="h-12 appearance-none rounded-full border border-transparent bg-transparent py-0 pl-0 pr-9 text-5xl font-black leading-none tracking-tight text-orange-500 outline-none focus:ring-4 focus:ring-orange-400/20"
+                className="h-11 appearance-none rounded-full border border-transparent bg-transparent py-0 pl-0 pr-9 text-4xl font-black leading-none tracking-tight text-orange-500 outline-none focus:ring-4 focus:ring-orange-400/20"
                 onChange={(event) => setSelectedYear(event.target.value)}
                 value={activeYear}
               >
@@ -332,7 +332,7 @@ function MobileTripsCountriesMap({
                   </option>
                 ))}
               </select>
-              <ChevronDown className="pointer-events-none ml-[-2rem] h-7 w-7 text-orange-500" aria-hidden="true" />
+              <ChevronDown className="pointer-events-none ml-[-2rem] h-6 w-6 text-orange-500" aria-hidden="true" />
             </label>
           </div>
 
