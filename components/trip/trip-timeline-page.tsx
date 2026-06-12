@@ -223,9 +223,15 @@ function ItineraryMapAwareMobileView({
     >
       <MapAwareRoutePreview items={items} title={title} />
 
-      <div className="relative -mt-12 rounded-t-[2rem] border-t border-white/10 bg-[#202022]/95 shadow-[0_-22px_55px_rgba(0,0,0,0.45)] backdrop-blur-2xl">
+      <div
+        className="relative -mt-12 min-h-[calc(52svh+3rem)] rounded-t-[2rem] border-t border-white/10 bg-[#202022] shadow-[0_-22px_55px_rgba(0,0,0,0.45)] backdrop-blur-2xl"
+        data-testid="map-aware-sheet"
+      >
         <div className="mx-auto mt-3 h-1.5 w-12 rounded-full bg-white/35" aria-hidden="true" />
-        <div className="max-h-[calc(100svh-9rem)] overflow-y-auto px-3 pb-[calc(6.75rem+env(safe-area-inset-bottom))] pt-4">
+        <div
+          className="min-h-[calc(52svh+1rem)] max-h-[calc(100svh-9rem)] overflow-y-auto px-3 pb-[calc(6.75rem+env(safe-area-inset-bottom))] pt-4"
+          data-testid="map-aware-sheet-scroll"
+        >
           <MapAwareSheetHeader monthLabel={monthLabel} title={title} tripId={tripId} />
           <div className="mt-4">
             <ItineraryTimelineBody days={days} error={error} mapAware={true} tripId={tripId} />

@@ -427,6 +427,14 @@ test.describe("mobile soft-launch UX", () => {
     await expect(mapAwareItinerary.getByTestId("mobile-real-map-preview")).toBeVisible();
     await expect(mapAwareItinerary.getByTestId("itinerary-date-strip")).toBeVisible();
     await expect(page.getByRole("navigation", { name: "Itinerary quick actions" })).toBeVisible();
+    await mapAwareItinerary.getByTestId("map-aware-sheet-scroll").evaluate((node) => {
+      node.scrollTop = node.scrollHeight;
+    });
+    const bottomSheetOwnsLowerViewport = await page.evaluate(() => {
+      const target = document.elementFromPoint(window.innerWidth / 2, window.innerHeight - 180);
+      return Boolean(target?.closest('[data-testid="map-aware-sheet"]'));
+    });
+    expect(bottomSheetOwnsLowerViewport, "map-aware sheet should cover lower viewport").toBe(true);
 
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
     expect(overflow, "map-aware itinerary overflow").toBeLessThanOrEqual(1);
