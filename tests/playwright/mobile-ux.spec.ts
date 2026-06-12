@@ -296,21 +296,13 @@ test.describe("mobile soft-launch UX", () => {
 
     try {
       await expect(page.getByTestId("trip-pass-hero")).toHaveCount(0);
-      await expect(page.getByTestId("trip-compact-header")).toBeVisible({ timeout: 20_000 });
-      await expect(page.getByTestId("trip-section-menu")).toBeVisible();
-      await page.getByTestId("trip-section-menu").getByRole("button", { name: /More/ }).click();
-      const moreMenu = page.getByTestId("trip-more-menu");
-      await expect(moreMenu).toBeVisible();
-      await expect(moreMenu.getByRole("menuitem", { name: "Expenses" })).toBeVisible();
-      await expect(moreMenu.getByRole("menuitem", { name: "Documents" })).toBeVisible();
-      await expect(moreMenu.getByRole("menuitem", { name: "Share" })).toBeVisible();
-      await expect(moreMenu.getByRole("menuitem", { name: "Settings" })).toBeVisible();
-      await page.keyboard.press("Escape");
-      await expect(page.getByTestId("trip-more-menu")).toHaveCount(0);
+      await expect(page.getByTestId("trip-compact-header")).toBeHidden();
+      await expect(page.getByTestId("trip-section-menu")).toBeHidden();
       const mobileHub = page.getByTestId("trip-overview-page");
       await expect(mobileHub).toBeVisible();
-      await expect(mobileHub.getByTestId("overview-small-pass")).toBeVisible();
+      await expect(mobileHub.getByTestId("overview-small-pass")).toBeVisible({ timeout: 20_000 });
       await expect(mobileHub.getByTestId("mobile-real-map-preview")).toBeVisible();
+      await expect(mobileHub.getByTestId("mobile-real-map-preview")).toHaveAttribute("data-map-theme", "dark");
       await expect(mobileHub.getByTestId("overview-small-primary-cta")).toBeVisible();
       await expect(mobileHub.getByTestId("overview-small-primary-cta")).toContainText("Add trip item");
       await expect(mobileHub.getByText("Invite Guests")).toHaveCount(0);
@@ -323,6 +315,8 @@ test.describe("mobile soft-launch UX", () => {
       await expect(mobileHub.getByText("Email import coming soon")).toBeHidden();
       await expect(mobileHub.getByText("Currency")).toHaveCount(0);
       await expect(mobileHub.getByText("Notifications")).toHaveCount(0);
+      const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+      expect(overflow, "created mobile overview overflow").toBeLessThanOrEqual(1);
     } finally {
       await deleteTripForTest(request, tripId);
     }
@@ -552,7 +546,7 @@ test.describe("mobile soft-launch UX", () => {
     expect(overflow, "mobile itinerary tab overflow").toBeLessThanOrEqual(1);
   });
 
-  test("trip workspace uses compact header instead of shell hero", async ({ page, request }) => {
+  test("mobile overview owns the trip pass without shell chrome", async ({ page, request }) => {
     test.setTimeout(90_000);
     await page.setViewportSize({ height: 900, width: 390 });
     await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
@@ -592,8 +586,13 @@ test.describe("mobile soft-launch UX", () => {
 
       await page.goto(`${baseUrl}/dashboard/trips/${tripId}`, { waitUntil: "commit" });
       await expect(page.getByTestId("trip-pass-hero")).toHaveCount(0);
-      await expect(page.getByTestId("trip-compact-header")).toBeVisible({ timeout: 20_000 });
-      await expect(page.getByTestId("trip-compact-header")).toContainText(tripPayload.trip.name);
+      await expect(page.getByTestId("overview-small-pass")).toBeVisible({ timeout: 20_000 });
+      await expect(page.getByTestId("trip-compact-header")).toBeHidden();
+      await expect(page.getByTestId("trip-section-menu")).toBeHidden();
+      await expect(page.getByTestId("mobile-real-map-preview")).toHaveAttribute("data-map-theme", "dark");
+      await expect(page.getByTestId("overview-small-pass")).toContainText(tripPayload.trip.name);
+      const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+      expect(overflow, "mobile overview overflow").toBeLessThanOrEqual(1);
     } finally {
       await deleteTripForTest(request, tripId);
     }

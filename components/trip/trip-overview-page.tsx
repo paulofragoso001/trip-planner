@@ -75,7 +75,7 @@ export default function TripOverviewPage({
   ].filter((item) => item.show);
 
   return (
-    <div className="grid gap-4 text-white" data-testid="trip-overview-page">
+    <div className="grid gap-0 text-white lg:gap-4" data-testid="trip-overview-page">
       <MobileOverviewSmallPass
         actionItems={actionItems}
         base={base}
@@ -89,7 +89,7 @@ export default function TripOverviewPage({
         title={title}
       />
 
-      <div className="grid gap-4" id="overview-full">
+      <div className="grid gap-4 px-3 pt-4 lg:px-0 lg:pt-0" id="overview-full">
         {error ? (
           <p className="rounded-[1.5rem] border border-amber-200/20 bg-amber-300/12 px-4 py-3 text-sm font-bold text-amber-50">
             Some trip details are unavailable, but you can still add an item or open the itinerary.
@@ -358,20 +358,20 @@ function MobileOverviewSmallPass({
   return (
     <section
       aria-label="Compressed trip overview"
-      className="overflow-hidden rounded-[2.25rem] border border-white/10 bg-[#24211e]/88 shadow-[0_26px_80px_rgba(0,0,0,0.34)] backdrop-blur-2xl lg:hidden"
+      className="relative min-h-[calc(100svh-5rem)] overflow-hidden bg-[#0b1020] shadow-[0_26px_80px_rgba(0,0,0,0.34)] lg:hidden"
       data-testid="overview-small-pass"
     >
       <MobileMapPreview
         ctaHref={`${base}/map`}
-        height="18rem"
+        height="46svh"
         items={mapPreviewItems}
         label={mapLabel}
         title="Open map"
       />
 
-      <div className="relative -mt-10 rounded-t-[2.25rem] bg-[#3b3832]/94 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] text-white ring-1 ring-white/10">
+      <div className="relative -mt-8 rounded-t-[2.15rem] bg-[#48443d]/96 px-4 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-3 text-white shadow-[0_-24px_70px_rgba(0,0,0,0.42)] ring-1 ring-white/10 backdrop-blur-2xl">
         <div className="mx-auto mb-3 h-1.5 w-14 rounded-full bg-white/44" aria-hidden="true" />
-        <div className="grid grid-cols-[44px_1fr_auto_auto] items-center gap-2">
+        <div className="grid grid-cols-[44px_1fr_44px_44px] items-center gap-2">
           <button
             aria-label="More trip options"
             className="grid h-11 w-11 place-items-center rounded-full bg-black/28 text-white/82"
@@ -399,19 +399,19 @@ function MobileOverviewSmallPass({
           </Link>
         </div>
 
-        <p className="mt-2 truncate text-center text-xs font-bold text-white/48">{destination}</p>
+        <p className="mt-1 truncate text-center text-sm font-semibold text-white/54">{destination}</p>
 
-        <div className="mt-5 grid grid-cols-4 gap-2">
+        <div className="mt-5 grid grid-cols-4 gap-3">
           {actionItems.map((item) => (
             <Link
-              className="grid min-h-[5.6rem] place-items-center gap-2 rounded-[1.35rem] text-center text-[0.7rem] font-semibold text-white/72 transition hover:bg-white/8 focus:outline-none focus:ring-4 focus:ring-orange-300/20"
+              className="grid min-h-[5.8rem] place-items-center gap-2 rounded-[1.35rem] text-center text-[0.72rem] font-semibold text-white/70 transition hover:bg-white/8 focus:outline-none focus:ring-4 focus:ring-orange-300/20"
               data-testid={item.primary ? "overview-small-primary-cta" : undefined}
               href={item.href}
               key={item.label}
             >
               <span
                 className={[
-                  "grid h-14 w-14 place-items-center rounded-full",
+                  "grid h-16 w-16 place-items-center rounded-full",
                   item.primary ? "bg-black/36 text-white" : "bg-black/28 text-white/88"
                 ].join(" ")}
               >
@@ -424,7 +424,7 @@ function MobileOverviewSmallPass({
 
         {nextItem ? (
           <Link
-            className="mt-4 block rounded-[1.6rem] bg-[#171719] p-4 text-white shadow-[0_14px_34px_rgba(0,0,0,0.22)] focus:outline-none focus:ring-4 focus:ring-orange-300/20"
+            className="mt-4 block rounded-[1.65rem] bg-[#19191b] p-4 text-white shadow-[0_14px_34px_rgba(0,0,0,0.24)] focus:outline-none focus:ring-4 focus:ring-orange-300/20"
             href={nextItem.href}
           >
             {nextItem.routeOrigin && nextItem.routeDestination ? (
