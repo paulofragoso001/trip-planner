@@ -217,7 +217,7 @@ function ItineraryMapAwareMobileView({
 }) {
   return (
     <section
-      className="relative -mx-3 -mt-3 min-h-[calc(100svh-5.75rem)] overflow-hidden bg-slate-950 text-white shadow-[0_24px_70px_rgba(2,6,23,0.45)] sm:-mx-4 lg:hidden"
+      className="relative min-h-[calc(100svh-5rem)] overflow-hidden bg-slate-950 text-white shadow-[0_24px_70px_rgba(2,6,23,0.45)] lg:hidden"
       data-testid="itinerary-map-aware-mode"
     >
       <MapAwareRoutePreview items={items} title={title} />

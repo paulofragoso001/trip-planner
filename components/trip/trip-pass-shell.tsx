@@ -19,6 +19,7 @@ export function TripPassShell({ children, trip, tripId }: TripPassShellProps) {
   const basePath = `/dashboard/trips/${tripId}`;
   const isMapRoute = pathname === `${basePath}/map`;
   const isIdeasRoute = pathname === `${basePath}/ideas`;
+  const isTimelineRoute = pathname === `${basePath}/timeline`;
 
   if (isMapRoute) {
     return (
@@ -59,15 +60,26 @@ export function TripPassShell({ children, trip, tripId }: TripPassShellProps) {
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_22%_0%,rgba(255,255,255,0.2),transparent_34%),linear-gradient(180deg,rgba(2,6,23,0.44),rgba(2,6,23,0.88)_46%,rgba(2,6,23,0.96)_88%)]" />
       </div>
 
-      <div className="relative z-10 mx-auto w-full max-w-[1180px] px-3 py-3 pb-[calc(7.5rem+env(safe-area-inset-bottom))] sm:px-6 sm:py-6 sm:pb-[calc(8rem+env(safe-area-inset-bottom))] lg:px-8 lg:py-8 lg:pb-8">
+      <div
+        className={[
+          "relative z-10 mx-auto w-full",
+          isTimelineRoute
+            ? "max-w-none px-0 py-0 pb-[calc(5rem+env(safe-area-inset-bottom))] lg:max-w-[1180px] lg:px-8 lg:py-8 lg:pb-8"
+            : "max-w-[1180px] px-3 py-3 pb-[calc(7.5rem+env(safe-area-inset-bottom))] sm:px-6 sm:py-6 sm:pb-[calc(8rem+env(safe-area-inset-bottom))] lg:px-8 lg:py-8 lg:pb-8"
+        ].join(" ")}
+      >
         <div
-          className="overflow-visible rounded-[2.35rem]"
+          className={isTimelineRoute ? "overflow-visible rounded-none lg:rounded-[2.35rem]" : "overflow-visible rounded-[2.35rem]"}
           data-wallet-trip-surface="true"
           data-testid="trip-workspace-layout"
         >
-          <div className="grid gap-4">
-            <CompactTripHeader trip={trip} tripId={tripId} />
-            <TripTabs tripId={tripId} />
+          <div className={isTimelineRoute ? "grid gap-0 lg:gap-4" : "grid gap-4"}>
+            <div className={isTimelineRoute ? "hidden lg:block" : undefined}>
+              <CompactTripHeader trip={trip} tripId={tripId} />
+            </div>
+            <div className={isTimelineRoute ? "hidden lg:block" : undefined}>
+              <TripTabs tripId={tripId} />
+            </div>
             <div className="min-w-0" data-testid="trip-pass-active-content">
               {children}
             </div>

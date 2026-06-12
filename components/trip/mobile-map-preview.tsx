@@ -25,6 +25,7 @@ export function MobileMapPreview({
     <section
       aria-label={title}
       className="relative min-h-[18rem] overflow-hidden bg-slate-950"
+      data-map-theme="dark"
       data-testid="mobile-real-map-preview"
       style={{ minHeight: height }}
     >
@@ -33,6 +34,7 @@ export function MobileMapPreview({
           <TripMap
             height={height}
             items={items}
+            mapTheme="dark"
             selectedId={items[0]?.id ?? null}
             showRouteDetails={false}
           />

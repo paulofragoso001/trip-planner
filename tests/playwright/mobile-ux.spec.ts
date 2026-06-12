@@ -511,8 +511,11 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page).toHaveURL(/\/dashboard\/trips\/demo\/timeline\?mode=map#/);
     const mapAwareItinerary = page.getByTestId("itinerary-map-aware-mode");
     await expect(mapAwareItinerary).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByTestId("trip-compact-header")).toBeHidden();
+    await expect(page.getByTestId("trip-section-menu")).toBeHidden();
     await expect(page.getByLabel(/route preview/i)).toBeVisible();
     await expect(mapAwareItinerary.getByTestId("mobile-real-map-preview")).toBeVisible();
+    await expect(mapAwareItinerary.getByTestId("mobile-real-map-preview")).toHaveAttribute("data-map-theme", "dark");
     await expect(mapAwareItinerary.getByTestId("itinerary-date-strip")).toBeVisible();
     await expect(page.getByRole("navigation", { name: "Itinerary quick actions" })).toBeVisible();
     await expect(page.locator("details#new-plan")).toBeHidden();
@@ -536,7 +539,10 @@ test.describe("mobile soft-launch UX", () => {
 
     const itinerary = page.getByTestId("itinerary-map-aware-mode");
     await expect(itinerary).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByTestId("trip-compact-header")).toBeHidden();
+    await expect(page.getByTestId("trip-section-menu")).toBeHidden();
     await expect(itinerary.getByTestId("mobile-real-map-preview")).toBeVisible();
+    await expect(itinerary.getByTestId("mobile-real-map-preview")).toHaveAttribute("data-map-theme", "dark");
     await expect(itinerary.getByTestId("map-aware-sheet")).toBeVisible();
     await expect(itinerary.getByTestId("itinerary-date-strip")).toBeVisible();
     await expect(page.locator("details#new-plan")).toBeHidden();
