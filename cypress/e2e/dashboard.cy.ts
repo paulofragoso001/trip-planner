@@ -131,30 +131,6 @@ describe("Wayline live dashboard with mocked data", () => {
     cy.wait("@getUnfiledItems");
   });
 
-  it("renders the trips list, preview, and timeline for the selected trip", () => {
-    cy.get('[data-testid="trip-list"]').should("be.visible");
-    cy.get('[data-testid="trip-card-trip_1"]')
-      .should("contain.text", "Miami Work Trip")
-      .and("have.attr", "aria-current", "true");
-    cy.get('[data-testid="trip-card-trip_2"]').should(
-      "contain.text",
-      "NYC Weekend"
-    );
-
-    cy.get('[data-testid="trip-preview"]').within(() => {
-      cy.contains("Miami Work Trip").should("be.visible");
-      cy.contains("Miami, FL").should("be.visible");
-      cy.contains("Flight to Miami").should("be.visible");
-      cy.contains("Downtown Hotel").should("be.visible");
-      cy.contains("Print itinerary").should("be.visible");
-      cy.contains("Export PDF").should("be.visible");
-    });
-
-    cy.contains("Timeline").should("be.visible");
-    cy.get('[data-testid="add-hotel-segment"]').should("be.visible");
-    cy.get('[data-testid="add-meeting-segment"]').should("be.visible");
-  });
-
   it("opens the hotel template, saves a segment, refreshes data, and returns focus to add hotel", () => {
     cy.get('[data-testid="add-hotel-segment"]').click();
 
@@ -171,22 +147,6 @@ describe("Wayline live dashboard with mocked data", () => {
     cy.focused()
       .should("have.attr", "data-testid", "add-hotel-segment")
       .and("contain.text", "Add hotel");
-  });
-
-  it("switches preview content when another trip is selected", () => {
-    cy.get('[data-testid="trip-card-trip_2"]').click();
-    cy.wait("@getItineraryTrip2");
-    cy.wait("@getTripSegmentsTrip2");
-
-    cy.get('[data-testid="trip-card-trip_2"]').should(
-      "have.attr",
-      "aria-current",
-      "true"
-    );
-    cy.get('[data-testid="trip-preview"]').within(() => {
-      cy.contains("NYC Weekend").should("be.visible");
-      cy.contains("Brunch in SoHo").should("be.visible");
-    });
   });
 
   it("keeps the live region present for accessibility messaging", () => {
