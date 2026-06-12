@@ -219,8 +219,18 @@ test.describe("mobile soft-launch UX", () => {
       await expect(page.getByTestId("mobile-country-map-canvas")).toBeVisible();
       await expect(page.getByTestId("mobile-country-map-canvas").locator(".gm-style")).toBeVisible({ timeout: 30_000 });
       await expect(page.getByRole("heading", { name: "My Trips" })).toBeVisible();
+      await expect(page.getByTestId("mobile-country-sheet-toggle")).toHaveAttribute("aria-expanded", "false");
 
       await page.getByPlaceholder("Search for trips").fill(`Mobile country map ${suffix}`);
+      await expect(
+        page.locator(`[data-testid="mobile-country-map-marker"][aria-label="Open ${mappedTripName}"]`)
+      ).toHaveCount(1);
+      await expect(
+        page.locator(`[data-testid="mobile-country-map-marker"][aria-label="Open ${listOnlyTripName}"]`)
+      ).toHaveCount(0);
+
+      await page.getByTestId("mobile-country-sheet-toggle").click();
+      await expect(page.getByTestId("mobile-country-sheet-toggle")).toHaveAttribute("aria-expanded", "true");
       const countryTripList = page.getByTestId("mobile-country-trip-list");
       const mappedRow = countryTripList.getByRole("link", {
         name: new RegExp(escapeRegExp(mappedTripName))
@@ -232,13 +242,6 @@ test.describe("mobile soft-launch UX", () => {
       await expect(listOnlyRow).toBeVisible();
       await expect(mappedRow.getByText("Mapped")).toBeVisible();
       await expect(listOnlyRow.getByText("List only")).toBeVisible();
-
-      await expect(
-        page.locator(`[data-testid="mobile-country-map-marker"][aria-label="Open ${mappedTripName}"]`)
-      ).toHaveCount(1);
-      await expect(
-        page.locator(`[data-testid="mobile-country-map-marker"][aria-label="Open ${listOnlyTripName}"]`)
-      ).toHaveCount(0);
       await expect(page.getByRole("link", { name: "Show trip cards" })).toHaveCount(1);
       await expect(page.getByRole("link", { name: "Show trip cards" }).first()).toHaveAttribute(
         "href",
