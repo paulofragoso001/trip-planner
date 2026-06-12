@@ -49,49 +49,37 @@ export default function TripTimelinePage({
   const mapAware = presentationMode === "map";
 
   return (
-    <div className={mapAware ? "grid gap-4 lg:gap-5" : "grid gap-4 lg:gap-5"}>
-      {mapAware ? (
-        <>
-          <ItineraryMapAwareMobileView
-            activeDayLabel={activeDayLabel}
-            days={days}
-            error={error}
-            items={items}
-            monthLabel={monthLabel}
-            title={title}
-            tripId={tripId}
-          />
-          <div className="hidden lg:block">
-            <ItineraryTimelinePanel
-              days={days}
-              error={error}
-              mapAware={mapAware}
-              monthLabel={monthLabel}
-              title={title}
-              tripId={tripId}
-            />
-          </div>
-        </>
-      ) : (
+    <div className="grid gap-4 lg:gap-5">
+      <ItineraryMapAwareMobileView
+        activeDayLabel={activeDayLabel}
+        closeHref={`/dashboard/trips/${encodeURIComponent(tripId)}${mapAware ? "/map" : ""}`}
+        days={days}
+        error={error}
+        items={items}
+        monthLabel={monthLabel}
+        title={title}
+        tripId={tripId}
+      />
+      <div className={mapAware ? "hidden lg:block" : "hidden lg:block"}>
         <ItineraryTimelinePanel
           days={days}
           error={error}
-          mapAware={false}
+          mapAware={mapAware}
           monthLabel={monthLabel}
           title={title}
           tripId={tripId}
         />
-      )}
+      </div>
 
       {mapAware ? (
         <div className="hidden lg:block">
           <ItineraryActions firstFlight={firstFlight} timelineItemIds={timelineItemIds} tripId={tripId} />
         </div>
       ) : (
-        <ItineraryActions firstFlight={firstFlight} timelineItemIds={timelineItemIds} tripId={tripId} />
+        <div className="hidden lg:block">
+          <ItineraryActions firstFlight={firstFlight} timelineItemIds={timelineItemIds} tripId={tripId} />
+        </div>
       )}
-
-      {!mapAware ? <MobileTimelineBottomBar activeDayLabel={activeDayLabel} /> : null}
     </div>
   );
 }
@@ -150,7 +138,10 @@ function ItineraryTimelineBody({
 
           {days.map((day) => (
             <section className="scroll-mt-24" id={dayAnchorId(day)} key={day.id}>
-              <div className="sticky top-2 z-10 -mx-3 border-y border-white/10 bg-slate-900/95 px-3 py-2.5 backdrop-blur lg:static lg:mx-0 lg:rounded-2xl lg:border lg:border-slate-200 lg:bg-white/[0.78] lg:px-4 lg:shadow-sm lg:ring-1 lg:ring-white/70">
+              <div className={mapAware
+                ? "-mx-3 border-y border-white/10 bg-slate-900/95 px-3 py-2.5 lg:mx-0 lg:rounded-2xl lg:border lg:border-slate-200 lg:bg-white/[0.78] lg:px-4 lg:shadow-sm lg:ring-1 lg:ring-white/70"
+                : "sticky top-2 z-10 -mx-3 border-y border-white/10 bg-slate-900/95 px-3 py-2.5 backdrop-blur lg:static lg:mx-0 lg:rounded-2xl lg:border lg:border-slate-200 lg:bg-white/[0.78] lg:px-4 lg:shadow-sm lg:ring-1 lg:ring-white/70"
+              }>
                 <div className="flex items-center justify-between gap-3">
                   <h3 className="min-w-0 truncate text-xs font-black uppercase tracking-[0.2em] text-slate-300 lg:text-slate-700 lg:text-sm">
                     {day.date}
@@ -207,6 +198,7 @@ function ItineraryTimelineBody({
 
 function ItineraryMapAwareMobileView({
   activeDayLabel,
+  closeHref,
   days,
   error,
   items,
@@ -215,6 +207,7 @@ function ItineraryMapAwareMobileView({
   tripId
 }: {
   activeDayLabel: string;
+  closeHref: string;
   days: TripTimelineData["days"];
   error: string | null;
   items: TimelineItemView[];
@@ -224,21 +217,21 @@ function ItineraryMapAwareMobileView({
 }) {
   return (
     <section
-      className="relative -mx-3 -mt-3 min-h-[calc(100svh-5.75rem)] overflow-hidden rounded-[2rem] bg-slate-950 text-white shadow-[0_24px_70px_rgba(2,6,23,0.45)] sm:-mx-4 lg:hidden"
+      className="relative -mx-3 -mt-3 min-h-[calc(100svh-5.75rem)] overflow-hidden bg-slate-950 text-white shadow-[0_24px_70px_rgba(2,6,23,0.45)] sm:-mx-4 lg:hidden"
       data-testid="itinerary-map-aware-mode"
     >
       <MapAwareRoutePreview items={items} title={title} />
 
       <div
-        className="relative -mt-12 min-h-[calc(52svh+3rem)] rounded-t-[2rem] border-t border-white/10 bg-[#202022] shadow-[0_-22px_55px_rgba(0,0,0,0.45)] backdrop-blur-2xl"
+        className="absolute inset-x-0 bottom-0 z-20 max-h-[68svh] rounded-t-[2rem] border-t border-white/10 bg-[#202022]/96 shadow-[0_-22px_55px_rgba(0,0,0,0.45)] backdrop-blur-2xl"
         data-testid="map-aware-sheet"
       >
         <div className="mx-auto mt-3 h-1.5 w-12 rounded-full bg-white/35" aria-hidden="true" />
         <div
-          className="min-h-[calc(52svh+1rem)] max-h-[calc(100svh-9rem)] overflow-y-auto px-3 pb-[calc(6.75rem+env(safe-area-inset-bottom))] pt-4"
+          className="max-h-[calc(68svh-1rem)] overflow-y-auto overflow-x-hidden px-3 pb-[calc(6.75rem+env(safe-area-inset-bottom))] pt-4"
           data-testid="map-aware-sheet-scroll"
         >
-          <MapAwareSheetHeader monthLabel={monthLabel} title={title} tripId={tripId} />
+          <MapAwareSheetHeader closeHref={closeHref} monthLabel={monthLabel} title={title} />
           <div className="mt-4">
             <ItineraryTimelineBody days={days} error={error} mapAware={true} tripId={tripId} />
           </div>
@@ -250,13 +243,13 @@ function ItineraryMapAwareMobileView({
 }
 
 function MapAwareSheetHeader({
+  closeHref,
   monthLabel,
-  title,
-  tripId
+  title
 }: {
+  closeHref: string;
   monthLabel: string;
   title: string;
-  tripId: string;
 }) {
   return (
     <header className="flex items-start justify-between gap-3">
@@ -275,7 +268,7 @@ function MapAwareSheetHeader({
         <Link
           aria-label="Close itinerary"
           className="grid h-11 w-11 place-items-center rounded-full bg-white/10 text-slate-200 transition hover:bg-white/[0.15] focus:outline-none focus:ring-4 focus:ring-white/[0.15]"
-          href={`/dashboard/trips/${encodeURIComponent(tripId)}/map`}
+          href={closeHref}
         >
           <X className="h-5 w-5" aria-hidden="true" />
         </Link>

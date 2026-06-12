@@ -522,6 +522,23 @@ test.describe("mobile soft-launch UX", () => {
     expect(overflow, "map-aware itinerary overflow").toBeLessThanOrEqual(1);
   });
 
+  test("mobile itinerary tab uses the same map-backed sheet", async ({ page }) => {
+    await page.setViewportSize({ height: 900, width: 390 });
+    await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
+    await page.goto(`${baseUrl}/dashboard/trips/demo/timeline`, { waitUntil: "commit" });
+
+    const itinerary = page.getByTestId("itinerary-map-aware-mode");
+    await expect(itinerary).toBeVisible({ timeout: 30_000 });
+    await expect(itinerary.getByTestId("mobile-real-map-preview")).toBeVisible();
+    await expect(itinerary.getByTestId("map-aware-sheet")).toBeVisible();
+    await expect(itinerary.getByTestId("itinerary-date-strip")).toBeVisible();
+    await expect(page.locator("details#new-plan")).toBeHidden();
+    await expect(page.getByRole("navigation", { name: "Itinerary quick actions" })).toBeVisible();
+
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+    expect(overflow, "mobile itinerary tab overflow").toBeLessThanOrEqual(1);
+  });
+
   test("trip workspace uses compact header instead of shell hero", async ({ page, request }) => {
     test.setTimeout(90_000);
     await page.setViewportSize({ height: 900, width: 390 });
@@ -637,14 +654,24 @@ test.describe("mobile soft-launch UX", () => {
       .getByTestId("place-photo");
     await expect(photos.first()).toBeVisible({ timeout: 60_000 });
 
-    const count = Math.min(await photos.count(), 6);
-    expect(count).toBeGreaterThan(0);
+    const boxes = await photos.evaluateAll((nodes) =>
+      nodes
+        .map((node) => {
+          const box = node.getBoundingClientRect();
+          return {
+            height: box.height,
+            visible: box.width > 0 && box.height > 0,
+            width: box.width
+          };
+        })
+        .filter((box) => box.visible)
+        .slice(0, 6)
+    );
+    expect(boxes.length).toBeGreaterThan(0);
 
-    for (let index = 0; index < count; index += 1) {
-      const box = await photos.nth(index).boundingBox();
-      expect(box, `photo ${index + 1} should be measurable`).not.toBeNull();
-      expect(box!.width, `photo ${index + 1} should stay compact`).toBeLessThanOrEqual(96);
-      expect(Math.abs(box!.width - box!.height), `photo ${index + 1} should be square`).toBeLessThanOrEqual(2);
+    for (const [index, box] of boxes.entries()) {
+      expect(box.width, `photo ${index + 1} should stay compact`).toBeLessThanOrEqual(96);
+      expect(Math.abs(box.width - box.height), `photo ${index + 1} should be square`).toBeLessThanOrEqual(2);
     }
   });
 
