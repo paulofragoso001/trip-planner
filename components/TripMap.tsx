@@ -155,6 +155,8 @@ export default function TripMap({
     );
   }
 
+  const googleMaps = window.google.maps;
+
   return (
     <div data-map-theme={mapTheme} data-testid="trip-map-canvas">
       <GoogleMap
@@ -165,12 +167,12 @@ export default function TripMap({
         }}
         options={{
           backgroundColor: mapTheme === "dark" ? "#07182b" : undefined,
-          colorScheme: mapTheme === "dark" ? google.maps.ColorScheme.DARK : undefined,
+          colorScheme: mapTheme === "dark" ? googleMaps.ColorScheme?.DARK : undefined,
           clickableIcons: true,
           fullscreenControl: false,
           gestureHandling: "greedy",
           mapTypeControl: false,
-          renderingType: mapTheme === "dark" ? google.maps.RenderingType.RASTER : undefined,
+          renderingType: mapTheme === "dark" ? googleMaps.RenderingType?.RASTER : undefined,
           streetViewControl: false,
           styles: mapTheme === "dark" ? darkMapStyles : undefined,
           zoomControl: mapTheme === "dark" ? false : undefined
