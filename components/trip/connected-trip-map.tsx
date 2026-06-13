@@ -115,11 +115,12 @@ export function ConnectedTripMap({
     >
       {items.length ? (
         <div className="relative min-h-[calc(100dvh-5rem)] lg:grid lg:min-h-0 lg:gap-3">
-          <div className="relative overflow-hidden rounded-none border-0 bg-slate-100 shadow-none lg:rounded-[1.75rem] lg:border lg:border-slate-200 lg:shadow-sm">
+          <div className="relative overflow-hidden rounded-none border-0 bg-slate-950 shadow-none lg:rounded-[1.75rem] lg:border lg:border-slate-800 lg:shadow-sm">
             <GoogleMapsProvider>
               <TripMap
                 height="clamp(520px, calc(100dvh - 5rem), 840px)"
                 items={visibleItems}
+                mapTheme="dark"
                 selectedId={selectedId}
                 onSelect={setSelectedId}
                 showRouteDetails={false}

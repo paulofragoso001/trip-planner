@@ -479,6 +479,7 @@ test.describe("mobile soft-launch UX", () => {
 
       await page.goto(`${baseUrl}/dashboard/trips/${tripId}/map`, { waitUntil: "commit" });
       await expect(page.getByTestId("connected-trip-map")).toBeVisible({ timeout: 30_000 });
+      await expect(page.getByTestId("trip-map-canvas")).toHaveAttribute("data-map-theme", "dark");
       await expect(page.getByTestId("map-day-filter-overlay")).toBeHidden();
       const mobileFilter = page.getByTestId("map-mobile-day-filter");
       await expect(mobileFilter).toBeVisible();
@@ -736,6 +737,7 @@ test.describe("mobile soft-launch UX", () => {
 
       await page.goto(`${baseUrl}/dashboard/trips/${tripId}/map`, { waitUntil: "commit" });
       await expect(page.getByTestId("connected-trip-map")).toBeVisible({ timeout: 30_000 });
+      await expect(page.getByTestId("trip-map-canvas")).toHaveAttribute("data-map-theme", "dark");
       await expect(page.getByText("Showing first 5 of 8 places")).toBeVisible();
       await expect(page.getByRole("button", { name: /Route place 6/ })).toHaveCount(0);
       await expect(page.getByText("1 of 5")).toBeVisible();
