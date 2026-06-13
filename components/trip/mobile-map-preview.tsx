@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { MapIcon, Navigation } from "lucide-react";
 import GoogleMapsProvider from "@/components/GoogleMapsProvider";
 import TripMap, { type TripMapItem } from "@/components/TripMap";
 
@@ -62,6 +63,22 @@ export function MobileMapPreview({
           {ctaLabel}
         </Link>
       ) : null}
+      <div className="absolute right-4 top-5 z-10 grid overflow-hidden rounded-2xl bg-black/86 text-orange-400 shadow-2xl ring-1 ring-white/10 backdrop-blur">
+        <button
+          aria-label="Map layers"
+          className="grid h-12 w-12 place-items-center border-b border-white/10"
+          type="button"
+        >
+          <MapIcon className="h-5 w-5" aria-hidden="true" />
+        </button>
+        <button
+          aria-label="Center route map"
+          className="grid h-12 w-12 place-items-center"
+          type="button"
+        >
+          <Navigation className="h-5 w-5" aria-hidden="true" />
+        </button>
+      </div>
     </section>
   );
 }

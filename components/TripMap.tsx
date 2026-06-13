@@ -172,7 +172,6 @@ export default function TripMap({
           fullscreenControl: false,
           gestureHandling: "greedy",
           mapTypeControl: false,
-          renderingType: mapTheme === "dark" ? googleMaps.RenderingType?.RASTER : undefined,
           streetViewControl: false,
           styles: mapTheme === "dark" ? darkMapStyles : undefined,
           zoomControl: mapTheme === "dark" ? false : undefined

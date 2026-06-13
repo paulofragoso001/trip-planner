@@ -231,12 +231,13 @@ function ItineraryMapAwareMobileView({
           className="max-h-[calc(68svh-1rem)] overflow-y-auto overflow-x-hidden px-3 pb-[calc(6.75rem+env(safe-area-inset-bottom))] pt-4"
           data-testid="map-aware-sheet-scroll"
         >
-          <MapAwareSheetHeader closeHref={closeHref} monthLabel={monthLabel} title={title} />
+          <MapAwareSheetHeader closeHref={closeHref} monthLabel={monthLabel} title={title} tripId={tripId} />
           <div className="mt-4">
             <ItineraryTimelineBody days={days} error={error} mapAware={true} tripId={tripId} />
           </div>
+          <MobileAddTripItem tripId={tripId} />
         </div>
-        <MobileTimelineBottomBar activeDayLabel={activeDayLabel} variant="sheet" />
+        <MobileTimelineBottomBar activeDayLabel={activeDayLabel} tripId={tripId} variant="sheet" />
       </div>
     </section>
   );
@@ -245,11 +246,13 @@ function ItineraryMapAwareMobileView({
 function MapAwareSheetHeader({
   closeHref,
   monthLabel,
-  title
+  title,
+  tripId
 }: {
   closeHref: string;
   monthLabel: string;
   title: string;
+  tripId: string;
 }) {
   return (
     <header className="flex items-start justify-between gap-3">
@@ -258,13 +261,7 @@ function MapAwareSheetHeader({
         <h1 className="mt-1 break-words text-3xl font-black leading-tight text-white">{title}</h1>
       </div>
       <div className="flex shrink-0 items-center gap-2">
-        <button
-          aria-label="More itinerary options"
-          className="grid h-11 w-11 place-items-center rounded-full bg-white/10 text-slate-200 transition hover:bg-white/[0.15] focus:outline-none focus:ring-4 focus:ring-white/[0.15]"
-          type="button"
-        >
-          <MoreHorizontal className="h-5 w-5" aria-hidden="true" />
-        </button>
+        <ItineraryMoreMenu tripId={tripId} />
         <Link
           aria-label="Close itinerary"
           className="grid h-11 w-11 place-items-center rounded-full bg-white/10 text-slate-200 transition hover:bg-white/[0.15] focus:outline-none focus:ring-4 focus:ring-white/[0.15]"
@@ -285,7 +282,7 @@ function MapAwareRoutePreview({
   title: string;
 }) {
   const mappedItems = items
-    .filter((item) => typeof item.lat === "number" && typeof item.lng === "number")
+    .filter((item) => hasResolvedRoute(item.route) || (typeof item.lat === "number" && typeof item.lng === "number"))
     .slice(0, 5)
     .map((item, index) => ({
       category: item.typeLabel,
@@ -294,8 +291,9 @@ function MapAwareRoutePreview({
       imageAlt: item.imageAlt,
       imageAttribution: item.imageAttribution,
       imageUrl: item.imageUrl,
-      lat: item.lat as number,
-      lng: item.lng as number,
+      lat: item.lat ?? item.route?.destination?.lat ?? item.route?.origin?.lat ?? 0,
+      lng: item.lng ?? item.route?.destination?.lng ?? item.route?.origin?.lng ?? 0,
+      route: item.route,
       routeOrder: index + 1,
       title: item.title
     }));
@@ -331,15 +329,9 @@ function ItineraryMobileHeader({
           <h1 className="mt-1 break-words text-3xl font-black leading-tight text-white">
             {title}
           </h1>
-        </div>
-        <div className="flex shrink-0 items-center gap-2">
-          <button
-            aria-label="More itinerary options"
-            className="grid h-11 w-11 place-items-center rounded-full bg-white/10 text-slate-200 transition hover:bg-white/[0.15] focus:outline-none focus:ring-4 focus:ring-white/[0.15]"
-            type="button"
-          >
-            <MoreHorizontal className="h-5 w-5" aria-hidden="true" />
-          </button>
+      </div>
+      <div className="flex shrink-0 items-center gap-2">
+          <ItineraryMoreMenu tripId={tripId} />
           <Link
             aria-label="Close itinerary"
             className="grid h-11 w-11 place-items-center rounded-full bg-white/10 text-slate-200 transition hover:bg-white/[0.15] focus:outline-none focus:ring-4 focus:ring-white/[0.15]"
@@ -367,35 +359,34 @@ function ItineraryDateStrip({
   return (
     <nav
       aria-label="Itinerary dates"
-      className="overflow-x-auto pb-1"
+      className="overflow-x-auto border-b border-white/10 pb-3"
       data-testid="itinerary-date-strip"
     >
-      <div className="flex min-w-0 gap-2">
+      <div className="flex min-w-max gap-5 px-0.5">
         {datedDays.map((day, index) => (
           <a
             aria-label={`Jump to ${day.date}`}
             className={[
-              "inline-flex min-h-14 shrink-0 items-center gap-3 rounded-2xl px-3 text-left ring-1 transition focus:outline-none focus:ring-4 focus:ring-blue-100",
+              "grid min-h-20 w-12 shrink-0 place-items-center gap-1 rounded-2xl px-1 py-2 text-center transition focus:outline-none focus:ring-4 focus:ring-orange-300/20",
               index === 0
-                ? "bg-orange-500/20 text-white ring-orange-400/25 lg:bg-slate-950 lg:ring-slate-950"
-                : "bg-white/[0.06] text-slate-200 ring-white/10 hover:bg-white/10 lg:bg-white lg:text-slate-700 lg:ring-slate-200 lg:hover:bg-slate-50"
+                ? "bg-orange-500/22 text-white"
+                : "text-slate-300 hover:bg-white/[0.06] lg:text-slate-700"
             ].join(" ")}
             href={`#${dayAnchorId(day)}`}
             key={day.id}
           >
-            <span className="grid gap-0.5">
-              <span className={index === 0 ? "text-xs font-black uppercase tracking-[0.16em] text-orange-100/80 lg:text-white/62" : "text-xs font-black uppercase tracking-[0.16em] text-slate-500 lg:text-slate-400"}>
+            <span className="grid gap-1">
+              <span className="text-[0.68rem] font-black uppercase tracking-[0.12em] text-slate-400">
                 {day.label}
               </span>
-              <span className="text-lg font-black leading-none">{day.dayNumber}</span>
+              <span className={index === 0 ? "grid h-9 w-9 place-items-center rounded-full bg-orange-500/35 text-base font-black leading-none text-orange-100" : "text-base font-semibold leading-none"}>
+                {day.dayNumber}
+              </span>
             </span>
-            <span className="flex max-w-16 flex-wrap gap-1" aria-hidden="true">
+            <span className="flex h-2 max-w-10 flex-wrap justify-center gap-1" aria-hidden="true">
               {categoryDotsForDay(day.items).map((className, dotIndex) => (
                 <span className={`h-1.5 w-1.5 rounded-full ${className}`} key={`${day.id}-${dotIndex}`} />
               ))}
-            </span>
-            <span className={index === 0 ? "hidden rounded-full bg-white/[0.12] px-2 py-1 text-[0.65rem] font-black text-white/[0.78] lg:inline-flex" : "hidden rounded-full bg-white/10 px-2 py-1 text-[0.65rem] font-black text-slate-300 lg:inline-flex lg:bg-slate-100 lg:text-slate-600"}>
-              {day.items.length}
             </span>
           </a>
         ))}
@@ -790,7 +781,7 @@ function ItineraryActions({
   return (
     <details
       className="rounded-[1.5rem] border border-white/10 bg-white/[0.08] p-4 text-white shadow-sm backdrop-blur-xl lg:border-slate-200 lg:bg-white lg:text-slate-950 lg:backdrop-blur-none sm:rounded-3xl sm:p-5"
-      id="new-plan"
+      id="desktop-new-plan"
     >
       <summary className="cursor-pointer text-base font-black text-white lg:text-slate-950">
         Add trip item
@@ -958,9 +949,11 @@ function formatActiveDayLabel(days: TripTimelineData["days"]) {
 
 function MobileTimelineBottomBar({
   activeDayLabel,
+  tripId,
   variant = "fixed"
 }: {
   activeDayLabel: string;
+  tripId: string;
   variant?: "fixed" | "sheet";
 }) {
   const className = variant === "sheet"
@@ -977,10 +970,55 @@ function MobileTimelineBottomBar({
       <Link
         aria-label="Add itinerary item"
         className="grid h-11 w-11 place-items-center rounded-full text-orange-400 transition hover:bg-white/10 focus:outline-none focus:ring-4 focus:ring-orange-300/20"
-        href="#new-plan"
+        href={`/dashboard/trips/${encodeURIComponent(tripId)}/timeline#new-plan`}
       >
         <Plus className="h-6 w-6" aria-hidden="true" />
       </Link>
     </nav>
+  );
+}
+
+function ItineraryMoreMenu({ tripId }: { tripId: string }) {
+  const base = `/dashboard/trips/${encodeURIComponent(tripId)}`;
+
+  return (
+    <details className="relative z-50" suppressHydrationWarning>
+      <summary
+        aria-label="More itinerary options"
+        className="grid h-11 w-11 cursor-pointer list-none place-items-center rounded-full bg-white/10 text-slate-200 transition hover:bg-white/[0.15] focus:outline-none focus:ring-4 focus:ring-white/[0.15] [&::-webkit-details-marker]:hidden"
+      >
+        <MoreHorizontal className="h-5 w-5" aria-hidden="true" />
+      </summary>
+      <div className="absolute right-0 z-[80] mt-2 w-44 overflow-hidden rounded-2xl bg-[#111113]/98 p-1 text-sm font-black text-white shadow-2xl ring-1 ring-white/10 backdrop-blur-2xl">
+        <Link className="block rounded-xl px-3 py-3 hover:bg-white/10" href={`${base}/budget`}>
+          Expenses
+        </Link>
+        <Link className="block rounded-xl px-3 py-3 hover:bg-white/10" href={`${base}/documents`}>
+          Documents
+        </Link>
+        <Link className="block rounded-xl px-3 py-3 hover:bg-white/10" href={`${base}/sharing`}>
+          Share
+        </Link>
+        <Link className="block rounded-xl px-3 py-3 hover:bg-white/10" href={`${base}`}>
+          Settings
+        </Link>
+      </div>
+    </details>
+  );
+}
+
+function MobileAddTripItem({ tripId }: { tripId: string }) {
+  return (
+    <details
+      className="mt-4 rounded-[1.5rem] bg-[#171719] p-3 text-white ring-1 ring-white/10"
+      id="new-plan"
+    >
+      <summary className="cursor-pointer text-sm font-black text-orange-400">
+        Add trip item
+      </summary>
+      <div className="mt-3 rounded-2xl bg-white p-2 text-slate-950">
+        <TripSegmentForm buttonLabel="Add trip item" tripId={tripId} />
+      </div>
+    </details>
   );
 }

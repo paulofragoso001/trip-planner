@@ -285,12 +285,14 @@ export function AppShell({
               {children}
             </div>
           </main>
-          <MobileBottomNav
-            hash={hash}
-            onHashChange={setHash}
-            pathname={pathname}
-            view={view}
-          />
+          {!tripWorkspaceContent ? (
+            <MobileBottomNav
+              hash={hash}
+              onHashChange={setHash}
+              pathname={pathname}
+              view={view}
+            />
+          ) : null}
         </div>
       </div>
     </div>

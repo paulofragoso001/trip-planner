@@ -372,13 +372,7 @@ function MobileOverviewSmallPass({
       <div className="relative -mt-8 rounded-t-[2.15rem] bg-[#48443d]/96 px-4 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-3 text-white shadow-[0_-24px_70px_rgba(0,0,0,0.42)] ring-1 ring-white/10 backdrop-blur-2xl">
         <div className="mx-auto mb-3 h-1.5 w-14 rounded-full bg-white/44" aria-hidden="true" />
         <div className="grid grid-cols-[44px_1fr_44px_44px] items-center gap-2">
-          <button
-            aria-label="More trip options"
-            className="grid h-11 w-11 place-items-center rounded-full bg-black/28 text-white/82"
-            type="button"
-          >
-            <MoreHorizontal className="h-5 w-5" aria-hidden="true" />
-          </button>
+          <OverviewMoreMenu base={base} />
           <div className="min-w-0 text-center">
             <h2 className="truncate text-xl font-black leading-tight text-white">{title}</h2>
             <p className="truncate text-sm font-semibold text-white/58">{dateRange}</p>
@@ -460,6 +454,33 @@ function MobileOverviewSmallPass({
         </div>
       </div>
     </section>
+  );
+}
+
+function OverviewMoreMenu({ base }: { base: string }) {
+  return (
+    <details className="relative z-50" suppressHydrationWarning>
+      <summary
+        aria-label="More trip options"
+        className="grid h-11 w-11 cursor-pointer list-none place-items-center rounded-full bg-black/28 text-white/82 [&::-webkit-details-marker]:hidden"
+      >
+        <MoreHorizontal className="h-5 w-5" aria-hidden="true" />
+      </summary>
+      <div className="absolute left-0 z-[80] mt-2 w-44 overflow-hidden rounded-2xl bg-[#111113]/98 p-1 text-sm font-black text-white shadow-2xl ring-1 ring-white/10 backdrop-blur-2xl">
+        <Link className="block rounded-xl px-3 py-3 hover:bg-white/10" href={`${base}/budget`}>
+          Expenses
+        </Link>
+        <Link className="block rounded-xl px-3 py-3 hover:bg-white/10" href={`${base}/documents`}>
+          Documents
+        </Link>
+        <Link className="block rounded-xl px-3 py-3 hover:bg-white/10" href={`${base}/sharing`}>
+          Share
+        </Link>
+        <Link className="block rounded-xl px-3 py-3 hover:bg-white/10" href={base}>
+          Settings
+        </Link>
+      </div>
+    </details>
   );
 }
 

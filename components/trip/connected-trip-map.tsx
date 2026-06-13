@@ -199,7 +199,7 @@ export function ConnectedTripMap({
                   })}
                 </div>
               ) : null}
-              {!hasDayFilter && items.length > visibleItems.length ? (
+              {!hasDayFilter && !showAllPlaces && items.length > visibleItems.length ? (
                 <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-blue-50 px-3 py-2 text-xs font-bold text-blue-900">
                   <span>Showing first {visibleItems.length} of {items.length} places</span>
                   <button

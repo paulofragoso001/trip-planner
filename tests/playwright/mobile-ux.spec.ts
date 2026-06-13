@@ -100,20 +100,18 @@ test.describe("mobile soft-launch UX", () => {
     await expect(nav.getByRole("link", { name: /My Trips/ })).toHaveCount(0);
   });
 
-  test("mobile bottom navigation has one active item for trips and map", async ({ page }) => {
+  test("mobile trip workspace hides global bottom navigation", async ({ page }) => {
     await page.setViewportSize({ height: 900, width: 390 });
     await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
 
     await page.goto(`${baseUrl}/dashboard/trips/demo/timeline`, { waitUntil: "commit" });
     const nav = page.getByRole("navigation", { name: "Primary mobile navigation" });
-    await expect(nav.locator('[aria-current="page"]')).toHaveCount(1);
-    await expect(nav.getByRole("link", { name: /Trips/ })).toHaveAttribute("aria-current", "page");
-    await expect(nav.getByRole("link", { name: /Map/ })).not.toHaveAttribute("aria-current", "page");
+    await expect(nav).toHaveCount(0);
+    await expect(page.getByRole("navigation", { name: "Itinerary quick actions" })).toBeVisible();
 
     await page.goto(`${baseUrl}/dashboard/trips/demo/map`, { waitUntil: "commit" });
-    await expect(nav.locator('[aria-current="page"]')).toHaveCount(1);
-    await expect(nav.getByRole("link", { name: /Map/ })).toHaveAttribute("aria-current", "page");
-    await expect(nav.getByRole("link", { name: /Trips/ })).not.toHaveAttribute("aria-current", "page");
+    await expect(nav).toHaveCount(0);
+    await expect(page.getByTestId("map-route-panel")).toBeVisible({ timeout: 30_000 });
   });
 
   test("mobile hides the global topbar outside Home and keeps it on desktop", async ({ page }) => {
@@ -313,6 +311,8 @@ test.describe("mobile soft-launch UX", () => {
       await expect(mobileHub.getByRole("link", { name: "Open map" }).first()).toBeVisible();
       await expect(mobileHub.getByRole("link", { name: "Open Activities" })).toBeVisible();
       await expect(mobileHub.getByTestId("overview-more-tools")).toBeVisible();
+      await mobileHub.getByLabel("More trip options").click();
+      await expect(mobileHub.getByRole("link", { name: "Expenses" }).first()).toBeVisible();
       await expect(page.getByLabel("Organizer actions")).toBeHidden();
       await expect(page.getByTestId("mobile-trip-overflow-menu")).toHaveCount(0);
       await expect(mobileHub.getByText("Email import coming soon")).toBeHidden();
@@ -405,7 +405,9 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByTestId("compact-route-empty-state")).toHaveCount(0);
     await expect(page.getByTestId("map-route-list")).toBeVisible();
 
-    await page.getByTestId("map-route-panel").getByRole("link", { name: "Open Ideas" }).click();
+    const ideasLink = page.getByTestId("map-route-panel").getByRole("link", { name: "Open Ideas" });
+    await expect(ideasLink).toHaveAttribute("href", "/dashboard/trips/demo/ideas");
+    await page.goto(`${baseUrl}/dashboard/trips/demo/ideas`, { waitUntil: "commit" });
     await expect(page.getByTestId("mobile-activities-view")).toBeVisible();
     const activityMap = page.getByTestId("mobile-activity-map");
     await expect(activityMap).toBeVisible();
@@ -421,18 +423,16 @@ test.describe("mobile soft-launch UX", () => {
       await expect(activityFilters.getByRole("button", { name: "Food" })).toHaveAttribute("aria-pressed", "true");
       await expect(activityFilters.getByRole("button", { name: "All" })).toHaveAttribute("aria-pressed", "false");
     }
-    await expect(page.getByTestId("mobile-activity-list").getByText("Team dinner in El Born")).toBeVisible();
-    await page.getByTestId("mobile-activity-list").getByRole("button", { name: "Details" }).first().click();
+    const teamDinnerRow = page.getByTestId("mobile-activity-list").locator("article", {
+      hasText: "Team dinner in El Born"
+    });
+    await expect(teamDinnerRow).toBeVisible();
+    await teamDinnerRow.getByRole("button", { name: "Details" }).click();
     await expect(page.getByTestId("activity-detail-sheet")).toBeVisible();
     await expect(page.getByTestId("activity-detail-map")).toBeVisible();
     await expect(page.getByTestId("activity-detail-map").locator(".gm-style")).toBeVisible({ timeout: 30_000 });
     await expect(page.getByTestId("activity-detail-sheet").getByRole("link", { name: "Directions" })).toBeVisible();
-    const detailSheetCoversBottomNav = await page.getByTestId("app-shell-mobile-bottom-nav").evaluate((nav) => {
-      const rect = nav.getBoundingClientRect();
-      const topElement = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
-      return Boolean(topElement?.closest('[data-testid="activity-detail-sheet"]'));
-    });
-    expect(detailSheetCoversBottomNav).toBe(true);
+    await expect(page.getByTestId("app-shell-mobile-bottom-nav")).toHaveCount(0);
     await page.getByRole("button", { name: "Close activity detail" }).click();
     await expect(page.getByTestId("activity-detail-sheet")).toHaveCount(0);
   });
@@ -531,7 +531,9 @@ test.describe("mobile soft-launch UX", () => {
     await expect(mapAwareItinerary.getByTestId("mobile-real-map-preview")).toHaveAttribute("data-map-theme", "dark");
     await expect(mapAwareItinerary.getByTestId("itinerary-date-strip")).toBeVisible();
     await expect(page.getByRole("navigation", { name: "Itinerary quick actions" })).toBeVisible();
-    await expect(page.locator("details#new-plan")).toBeHidden();
+    await expect(page.locator("details#new-plan")).toBeVisible();
+    await mapAwareItinerary.getByLabel("More itinerary options").click();
+    await expect(mapAwareItinerary.getByRole("link", { name: "Documents" })).toBeVisible();
     await mapAwareItinerary.getByTestId("map-aware-sheet-scroll").evaluate((node) => {
       node.scrollTop = node.scrollHeight;
     });
@@ -558,7 +560,7 @@ test.describe("mobile soft-launch UX", () => {
     await expect(itinerary.getByTestId("mobile-real-map-preview")).toHaveAttribute("data-map-theme", "dark");
     await expect(itinerary.getByTestId("map-aware-sheet")).toBeVisible();
     await expect(itinerary.getByTestId("itinerary-date-strip")).toBeVisible();
-    await expect(page.locator("details#new-plan")).toBeHidden();
+    await expect(page.locator("details#new-plan")).toBeVisible();
     await expect(page.getByRole("navigation", { name: "Itinerary quick actions" })).toBeVisible();
 
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);

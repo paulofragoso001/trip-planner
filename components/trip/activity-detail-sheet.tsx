@@ -13,10 +13,7 @@ import {
   X
 } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { createPortal } from "react-dom";
-import GoogleMapsProvider from "@/components/GoogleMapsProvider";
 import TripMap, { type TripMapItem } from "@/components/TripMap";
-import { TripSegmentForm } from "@/components/trip/trip-segment-form";
 
 export type ActivityDetailRecommendation = {
   address: string | null;
@@ -56,13 +53,8 @@ export function ActivityDetailSheet({
   tripId
 }: ActivityDetailSheetProps) {
   const [shared, setShared] = useState(false);
-  const [mounted, setMounted] = useState(false);
   const detail = useMemo(() => (target ? getDetailView(target) : null), [target]);
   const mapItem = useMemo(() => (detail ? getDetailMapItem(detail) : null), [detail]);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   useEffect(() => {
     if (!target) return;
@@ -116,16 +108,14 @@ export function ActivityDetailSheet({
         data-testid="activity-detail-map"
       >
         {mapItem ? (
-          <GoogleMapsProvider>
-            <TripMap
-              height="46svh"
-              items={[mapItem]}
-              mapTheme="dark"
-              selectedId={mapItem.id}
-              showRouteDetails={false}
-              travelMode="WALKING"
-            />
-          </GoogleMapsProvider>
+          <TripMap
+            height="46svh"
+            items={[mapItem]}
+            mapTheme="dark"
+            selectedId={mapItem.id}
+            showRouteDetails={false}
+            travelMode="WALKING"
+          />
         ) : (
           <div className="relative h-full overflow-hidden bg-[radial-gradient(circle_at_50%_42%,rgba(249,115,22,0.3),transparent_20%),linear-gradient(145deg,#102032,#090d14_62%,#1b1209)]">
             <div className="absolute inset-0 opacity-35 [background-image:linear-gradient(rgba(255,255,255,.08)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.08)_1px,transparent_1px)] [background-size:40px_40px]" />
@@ -221,7 +211,7 @@ export function ActivityDetailSheet({
     </div>
   );
 
-  return mounted ? createPortal(sheet, document.body) : sheet;
+  return sheet;
 }
 
 function SegmentDetailBody({
@@ -268,27 +258,13 @@ function SegmentDetailBody({
         </div>
       ) : null}
 
-      <div className="rounded-3xl bg-white p-1 text-slate-950">
-        <TripSegmentForm
-          buttonLabel="Update trip item"
-          defaultConfirmationCode={item.confirmationCode}
-          defaultEndTime={item.endTime}
-          defaultHasEndTime={item.hasEndTime}
-          defaultHasStartTime={item.hasStartTime}
-          defaultKind={item.kind || item.category || "place"}
-          defaultLat={item.lat}
-          defaultLng={item.lng}
-          defaultLocation={item.address}
-          defaultNotes={item.notes}
-          defaultProviderMetadata={item.providerMetadata}
-          defaultStartTime={item.startTime}
-          defaultTitle={item.title}
-          onCancel={onClose}
-          onSaved={onClose}
-          segmentId={item.id}
-          tripId={tripId}
-        />
-      </div>
+      <a
+        className="inline-flex min-h-14 items-center justify-center rounded-2xl bg-orange-500 px-5 text-base font-black text-white shadow-xl shadow-orange-950/25"
+        href={`/dashboard/trips/${encodeURIComponent(tripId)}/timeline#${encodeURIComponent(item.id)}`}
+        onClick={onClose}
+      >
+        Open in itinerary
+      </a>
     </div>
   );
 }

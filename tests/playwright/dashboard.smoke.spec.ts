@@ -127,13 +127,14 @@ test("loads dashboard summary and route-split pages", async ({ page }) => {
   await expect(
     page.getByRole("navigation", { name: "Trip tabs" }).getByRole("link", { exact: true, name: "Itinerary" })
   ).toBeVisible();
-  await expect(page.getByText("Add trip item").first()).toBeVisible();
-  await expect(page.getByTestId("itinerary-date-strip")).toBeVisible();
-  await expect(page.getByTestId("itinerary-date-strip").getByRole("link", { name: "Jump to THURSDAY, JUNE 11, 2026" })).toBeVisible();
-  await page.getByTestId("itinerary-date-strip").getByRole("link", { name: "Jump to THURSDAY, JUNE 11, 2026" }).click();
+  await expect(page.locator("details#desktop-new-plan > summary")).toBeVisible();
+  const desktopDateStrip = page.locator('[data-testid="itinerary-date-strip"]:visible').last();
+  await expect(desktopDateStrip).toBeVisible();
+  await expect(desktopDateStrip.getByRole("link", { name: "Jump to THURSDAY, JUNE 11, 2026" })).toBeVisible();
+  await desktopDateStrip.getByRole("link", { name: "Jump to THURSDAY, JUNE 11, 2026" }).click();
   expect(await page.evaluate(() => window.location.hash)).toBe("#day-2026-06-11");
   expect(await page.getByTestId("itinerary-category-icon").count()).toBeGreaterThan(0);
-  await expect(page.getByText("THURSDAY, JUNE 11, 2026")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "THURSDAY, JUNE 11, 2026" }).last()).toBeVisible();
   const timelineTabs = page.getByRole("navigation", { name: "Trip tabs" });
   await expect(timelineTabs.getByRole("link", { exact: true, name: "Itinerary" })).toBeVisible();
   await expect(timelineTabs.getByRole("link", { exact: true, name: "Ideas" })).toBeVisible();
