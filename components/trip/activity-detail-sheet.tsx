@@ -12,7 +12,8 @@ import {
   Sparkles,
   X
 } from "lucide-react";
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import GoogleMapsProvider from "@/components/GoogleMapsProvider";
 import TripMap, { type TripMapItem } from "@/components/TripMap";
 import { TripSegmentForm } from "@/components/trip/trip-segment-form";
@@ -55,8 +56,26 @@ export function ActivityDetailSheet({
   tripId
 }: ActivityDetailSheetProps) {
   const [shared, setShared] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const detail = useMemo(() => (target ? getDetailView(target) : null), [target]);
   const mapItem = useMemo(() => (detail ? getDetailMapItem(detail) : null), [detail]);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!target) return;
+
+    const { overflow, overscrollBehavior } = document.body.style;
+    document.body.style.overflow = "hidden";
+    document.body.style.overscrollBehavior = "none";
+
+    return () => {
+      document.body.style.overflow = overflow;
+      document.body.style.overscrollBehavior = overscrollBehavior;
+    };
+  }, [target]);
 
   async function shareDetail() {
     if (!detail) return;
@@ -85,10 +104,10 @@ export function ActivityDetailSheet({
 
   if (!target || !detail) return null;
 
-  return (
+  const sheet = (
     <div
       aria-modal="true"
-      className="fixed inset-0 z-[140] bg-[#080b10] text-white"
+      className="fixed inset-0 z-[2147483647] isolate bg-[#080b10] text-white"
       data-testid="activity-detail-sheet"
       role="dialog"
     >
@@ -201,6 +220,8 @@ export function ActivityDetailSheet({
       </section>
     </div>
   );
+
+  return mounted ? createPortal(sheet, document.body) : sheet;
 }
 
 function SegmentDetailBody({

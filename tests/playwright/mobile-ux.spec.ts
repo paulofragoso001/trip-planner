@@ -427,6 +427,12 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByTestId("activity-detail-map")).toBeVisible();
     await expect(page.getByTestId("activity-detail-map").locator(".gm-style")).toBeVisible({ timeout: 30_000 });
     await expect(page.getByTestId("activity-detail-sheet").getByRole("link", { name: "Directions" })).toBeVisible();
+    const detailSheetCoversBottomNav = await page.getByTestId("app-shell-mobile-bottom-nav").evaluate((nav) => {
+      const rect = nav.getBoundingClientRect();
+      const topElement = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+      return Boolean(topElement?.closest('[data-testid="activity-detail-sheet"]'));
+    });
+    expect(detailSheetCoversBottomNav).toBe(true);
     await page.getByRole("button", { name: "Close activity detail" }).click();
     await expect(page.getByTestId("activity-detail-sheet")).toHaveCount(0);
   });
