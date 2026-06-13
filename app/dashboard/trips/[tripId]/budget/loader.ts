@@ -12,15 +12,40 @@ type BudgetRecordRow = {
   record_type: "actual" | "planned" | string | null;
 };
 
+type BudgetTripRow = {
+  budget?: number | string | null;
+  destination?: string | null;
+  name?: string | null;
+};
+
 const demoCategories: BudgetCategoryView[] = [
-  { amountLabel: "$1,120", category: "flights", id: "demo-flights", label: "Flights" },
-  { amountLabel: "$1,860", category: "lodging", id: "demo-lodging", label: "Lodging" },
-  { amountLabel: "$520", category: "food", id: "demo-food", label: "Food" },
+  {
+    amountLabel: "$1,120",
+    category: "flights",
+    id: "demo-flights",
+    label: "Flights",
+    records: [{ amountLabel: "$1,120", id: "demo-record-flight", label: "MIA to BCN" }]
+  },
+  {
+    amountLabel: "$1,860",
+    category: "lodging",
+    id: "demo-lodging",
+    label: "Lodging",
+    records: [{ amountLabel: "$1,860", id: "demo-record-hotel", label: "Hotel Arts" }]
+  },
+  {
+    amountLabel: "$520",
+    category: "food",
+    id: "demo-food",
+    label: "Food",
+    records: [{ amountLabel: "$420", id: "demo-record-dinner", label: "Team dinner" }]
+  },
   {
     amountLabel: "$220",
     category: "ground",
     id: "demo-ground",
-    label: "Ground transport"
+    label: "Ground transport",
+    records: [{ amountLabel: "$220", id: "demo-record-ground", label: "Airport transfer" }]
   }
 ];
 
@@ -42,7 +67,7 @@ export async function loadTripBudgetData(tripId: string): Promise<TripBudgetData
   const [{ data: trip }, { data: records, error }] = await Promise.all([
     auth.supabase
       .from("trips")
-      .select("budget")
+      .select("budget,name,destination")
       .eq("id", tripId)
       .eq("user_id", auth.userId)
       .maybeSingle(),
@@ -60,16 +85,17 @@ export async function loadTripBudgetData(tripId: string): Promise<TripBudgetData
 
   return mapRowsToBudgetData(
     tripId,
-    Number((trip as { budget?: number | string } | null)?.budget || 0),
+    (trip || null) as BudgetTripRow | null,
     (records || []) as BudgetRecordRow[]
   );
 }
 
 function mapRowsToBudgetData(
   tripId: string,
-  plannedBudget: number,
+  trip: BudgetTripRow | null,
   rows: BudgetRecordRow[]
 ): TripBudgetData {
+  const plannedBudget = Number(trip?.budget || 0);
   const actualRows = rows.filter((row) => row.record_type !== "planned");
   const actualTotal = actualRows.reduce((total, row) => total + readAmount(row), 0);
   const remaining = plannedBudget - actualTotal;
@@ -80,6 +106,7 @@ function mapRowsToBudgetData(
     actualLabel: formatMoney(actualTotal, currency),
     alerts: buildAlerts(plannedBudget, remaining, actualTotal, categories),
     categories,
+    destination: trip?.destination || "Trip",
     error: null,
     latestRecords: actualRows.slice(-5).reverse().map((row) => ({
       amountLabel: formatMoney(readAmount(row), row.currency || currency),
@@ -90,6 +117,7 @@ function mapRowsToBudgetData(
     })),
     plannedLabel: formatMoney(plannedBudget, currency),
     remainingLabel: formatMoney(remaining, currency),
+    title: trip?.name || "My Spending",
     tripId
   };
 }
@@ -105,23 +133,40 @@ function emptyBudgetData(tripId: string, error: string): TripBudgetData {
       }
     ],
     categories: [],
+    destination: "Trip",
     error,
     latestRecords: [],
     plannedLabel: "$0",
     remainingLabel: "$0",
+    title: "My Spending",
     tripId
   };
 }
 
 function groupCategories(rows: BudgetRecordRow[], currency: string): BudgetCategoryView[] {
-  const totals = new Map<string, { amount: number; label: string }>();
+  const totals = new Map<
+    string,
+    {
+      amount: number;
+      label: string;
+      records: BudgetCategoryView["records"];
+    }
+  >();
 
   for (const row of rows) {
     const category = row.category || "misc";
     const existing = totals.get(category);
     totals.set(category, {
       amount: (existing?.amount || 0) + readAmount(row),
-      label: existing?.label || labelForCategory(category, row.label)
+      label: existing?.label || labelForCategory(category, null),
+      records: [
+        ...(existing?.records || []),
+        {
+          amountLabel: formatMoney(readAmount(row), row.currency || currency),
+          id: row.id,
+          label: row.label || labelForCategory(category, null)
+        }
+      ]
     });
   }
 
@@ -129,7 +174,8 @@ function groupCategories(rows: BudgetRecordRow[], currency: string): BudgetCateg
     amountLabel: formatMoney(value.amount, currency),
     category,
     id: category,
-    label: value.label
+    label: value.label,
+    records: value.records
   }));
 }
 
@@ -191,6 +237,7 @@ function demoBudgetData(tripId: string): TripBudgetData {
       }
     ],
     categories: demoCategories,
+    destination: "Barcelona, Spain",
     error: null,
     latestRecords: [
       {
@@ -217,6 +264,7 @@ function demoBudgetData(tripId: string): TripBudgetData {
     ],
     plannedLabel: "$4,200",
     remainingLabel: "$330",
+    title: "Barcelona Work Trip",
     tripId
   };
 }

@@ -173,14 +173,17 @@ test("loads dashboard summary and route-split pages", async ({ page }) => {
   await expect(routePlaces.getByText("Team dinner in El Born")).toBeVisible();
 
   await openDashboardRoute("/dashboard/trips/demo/budget");
-  await expect(page.getByTestId("app-shell-content").getByText("Category breakdown")).toBeVisible({ timeout: 20_000 });
+  await expect(
+    page.getByTestId("app-shell-content").getByRole("heading", { exact: true, name: "My Spending" }).first()
+  ).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByText("Total in USD")).toBeVisible();
   await expect(page.getByText("Expense notes")).toBeVisible();
 
   await openDashboardRoute("/dashboard/trips/demo/documents");
   await expect(page.getByRole("heading", { exact: true, name: "Documents" })).toBeVisible();
   await expect(page.getByText("No documents yet")).toBeVisible();
-  await expect(page.getByText("Keep reservations, confirmations, screenshots, notes, files, and useful links for this trip in one place.")).toBeVisible();
-  await expect(page.getByText("Email import coming soon")).toBeVisible();
+  await expect(page.getByText("Add reservations, notes, links, and screenshots when document upload is available.")).toBeVisible();
+  await expect(page.getByText("Emails")).toBeVisible();
 
   await openDashboardRoute("/dashboard/trips/demo/sharing");
   await expect(

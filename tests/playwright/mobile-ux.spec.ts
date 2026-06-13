@@ -619,6 +619,31 @@ test.describe("mobile soft-launch UX", () => {
     }
   });
 
+  test("mobile trip component pages use compact dark sheets", async ({ page }) => {
+    await page.setViewportSize({ height: 900, width: 390 });
+    await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
+
+    await page.goto(`${baseUrl}/dashboard/trips/demo/documents`, { waitUntil: "commit" });
+    await expect(page.getByTestId("trip-documents-page")).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByTestId("trip-compact-header")).toBeHidden();
+    await expect(page.getByRole("navigation", { name: "Trip tabs" })).toBeHidden();
+    await expect(page.getByTestId("trip-documents-page").getByRole("heading", { name: "Documents" })).toBeVisible();
+    await expect(page.getByTestId("trip-documents-page")).toContainText("No documents yet");
+    await expect(page.getByTestId("trip-documents-page")).toContainText("What belongs here");
+    let overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+    expect(overflow, "mobile documents overflow").toBeLessThanOrEqual(1);
+
+    await page.goto(`${baseUrl}/dashboard/trips/demo/budget`, { waitUntil: "commit" });
+    await expect(page.getByTestId("trip-budget-page")).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByTestId("trip-compact-header")).toBeHidden();
+    await expect(page.getByRole("navigation", { name: "Trip tabs" })).toBeHidden();
+    await expect(page.getByTestId("trip-budget-page").getByRole("heading", { name: "My Spending" })).toBeVisible();
+    await expect(page.getByTestId("trip-budget-page").getByText("Total").last()).toBeVisible();
+    await expect(page.getByTestId("trip-budget-page").getByText("Latest Added")).toBeVisible();
+    overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+    expect(overflow, "mobile spending overflow").toBeLessThanOrEqual(1);
+  });
+
   test("itinerary cards use compact action buttons and editable mapped locations", async ({
     page,
     request

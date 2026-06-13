@@ -21,7 +21,12 @@ export function TripPassShell({ children, trip, tripId }: TripPassShellProps) {
   const isMapRoute = pathname === `${basePath}/map`;
   const isIdeasRoute = pathname === `${basePath}/ideas`;
   const isTimelineRoute = pathname === `${basePath}/timeline`;
+  const isSecondaryRoute =
+    pathname === `${basePath}/budget` ||
+    pathname === `${basePath}/documents` ||
+    pathname === `${basePath}/sharing`;
   const mobileImmersiveRoute = isOverviewRoute || isTimelineRoute;
+  const mobileSheetRoute = mobileImmersiveRoute || isSecondaryRoute;
 
   if (isMapRoute) {
     return (
@@ -65,21 +70,21 @@ export function TripPassShell({ children, trip, tripId }: TripPassShellProps) {
       <div
         className={[
           "relative z-10 mx-auto w-full",
-          mobileImmersiveRoute
+          mobileSheetRoute
             ? "max-w-none px-0 py-0 pb-[calc(5rem+env(safe-area-inset-bottom))] lg:max-w-[1180px] lg:px-8 lg:py-8 lg:pb-8"
             : "max-w-[1180px] px-3 py-3 pb-[calc(7.5rem+env(safe-area-inset-bottom))] sm:px-6 sm:py-6 sm:pb-[calc(8rem+env(safe-area-inset-bottom))] lg:px-8 lg:py-8 lg:pb-8"
         ].join(" ")}
       >
         <div
-          className={mobileImmersiveRoute ? "overflow-visible rounded-none lg:rounded-[2.35rem]" : "overflow-visible rounded-[2.35rem]"}
+          className={mobileSheetRoute ? "overflow-visible rounded-none lg:rounded-[2.35rem]" : "overflow-visible rounded-[2.35rem]"}
           data-wallet-trip-surface="true"
           data-testid="trip-workspace-layout"
         >
-          <div className={mobileImmersiveRoute ? "grid gap-0 lg:gap-4" : "grid gap-4"}>
-            <div className={mobileImmersiveRoute ? "hidden lg:block" : undefined}>
+          <div className={mobileSheetRoute ? "grid gap-0 lg:gap-4" : "grid gap-4"}>
+            <div className={mobileSheetRoute ? "hidden lg:block" : undefined}>
               <CompactTripHeader trip={trip} tripId={tripId} />
             </div>
-            <div className={mobileImmersiveRoute ? "hidden lg:block" : undefined}>
+            <div className={mobileSheetRoute ? "hidden lg:block" : undefined}>
               <TripTabs tripId={tripId} />
             </div>
             <div className="min-w-0" data-testid="trip-pass-active-content">

@@ -1,96 +1,109 @@
-import { FileImage, FileText, Link as LinkIcon, Mail, Plus, Search } from "lucide-react";
+import Link from "next/link";
+import { FileImage, FileText, Link as LinkIcon, Mail, MoreHorizontal, Plus, X } from "lucide-react";
+import { loadTripWorkspaceData } from "@/app/dashboard/trips/[tripId]/loader";
 
 type PageProps = {
   params: Promise<{ tripId: string }>;
 };
 
-const filters = ["All", "Images", "Notes", "Files", "Links", "Emails"];
-
-const sampleTypes = [
-  { icon: <LinkIcon className="h-5 w-5" aria-hidden="true" />, label: "Links" },
-  { icon: <FileText className="h-5 w-5" aria-hidden="true" />, label: "Notes" },
-  { icon: <FileImage className="h-5 w-5" aria-hidden="true" />, label: "Screenshots" },
-  { icon: <Mail className="h-5 w-5" aria-hidden="true" />, label: "Email import coming soon" }
+const compactDocumentTypes = [
+  { icon: <LinkIcon className="h-4 w-4" aria-hidden="true" />, label: "Links" },
+  { icon: <FileText className="h-4 w-4" aria-hidden="true" />, label: "Notes" },
+  { icon: <FileImage className="h-4 w-4" aria-hidden="true" />, label: "Screenshots" },
+  { icon: <Mail className="h-4 w-4" aria-hidden="true" />, label: "Emails" }
 ];
 
 export default async function DocumentsPage({ params }: PageProps) {
-  await params;
+  const { tripId } = await params;
+  const trip = await loadTripWorkspaceData(tripId);
+  const base = `/dashboard/trips/${encodeURIComponent(tripId)}`;
 
   return (
-    <div className="grid gap-5">
-      <section className="rounded-[1.75rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <p className="text-xs font-black uppercase tracking-[0.18em] text-blue-600">
-              Travel wallet
-            </p>
-            <h2 className="mt-1 text-2xl font-black text-slate-950">Documents</h2>
-            <p className="mt-1 max-w-2xl text-sm font-semibold text-slate-600">
-              Keep reservations, confirmations, screenshots, notes, files, and useful links for this trip in one place.
-            </p>
-          </div>
-          <button
-            className="inline-flex min-h-11 items-center gap-2 rounded-full bg-slate-950 px-4 text-sm font-black text-white opacity-70"
-            disabled
-            title="Document upload is coming soon"
-            type="button"
-          >
-            <Plus className="h-4 w-4" aria-hidden="true" />
-            Add document
-          </button>
-        </div>
-
-        <div className="mt-5 grid gap-3">
-          <label className="relative block">
-            <span className="sr-only">Search documents</span>
-            <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
-            <input
-              className="min-h-12 w-full rounded-full border border-slate-200 bg-slate-50 px-11 text-sm font-semibold text-slate-700 outline-none ring-blue-200 transition placeholder:text-slate-400 focus:border-blue-300 focus:ring-4"
-              disabled
-              placeholder="Search documents"
-              type="search"
-            />
-          </label>
-          <div className="flex gap-2 overflow-x-auto pb-1">
-            {filters.map((filter, index) => (
-              <span
-                className={[
-                  "inline-flex min-h-10 shrink-0 items-center rounded-full px-4 text-xs font-black ring-1",
-                  index === 0
-                    ? "bg-slate-950 text-white ring-slate-950"
-                    : "bg-slate-50 text-slate-700 ring-slate-200"
-                ].join(" ")}
-                key={filter}
-              >
-                {filter}
-              </span>
-            ))}
-          </div>
-        </div>
-
-        <div className="mt-6 rounded-[1.5rem] border border-dashed border-slate-300 bg-slate-50 px-5 py-10 text-center">
-          <div className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-white text-blue-700 shadow-sm">
-            <FileText className="h-7 w-7" aria-hidden="true" />
-          </div>
-          <h3 className="mt-4 text-xl font-black text-slate-950">No documents yet</h3>
-          <p className="mx-auto mt-2 max-w-md text-sm font-semibold leading-6 text-slate-600">
-            Add reservations, notes, links, and screenshots to keep your trip details organized. Uploads and email import are coming soon.
-          </p>
-        </div>
-      </section>
-
-      <section className="rounded-[1.75rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-        <h3 className="text-lg font-black text-slate-950">What belongs here</h3>
-        <div className="mt-4 grid gap-3">
-          {sampleTypes.map((item) => (
-            <div className="flex items-center gap-3 rounded-2xl bg-slate-50 px-3 py-3" key={item.label}>
-              <span className="grid h-10 w-10 place-items-center rounded-full bg-white text-slate-700">
-                {item.icon}
-              </span>
-              <span className="text-sm font-black text-slate-800">{item.label}</span>
+    <div
+      className="min-h-[100svh] bg-[#05070f] px-4 pb-[calc(7rem+env(safe-area-inset-bottom))] pt-4 text-white lg:min-h-0 lg:bg-transparent lg:px-0 lg:pb-0 lg:pt-0"
+      data-testid="trip-documents-page"
+    >
+      <section className="mx-auto grid max-w-xl gap-5 lg:max-w-none lg:grid-cols-[1fr_0.8fr]">
+        <div className="lg:hidden">
+          <div className="mx-auto mb-3 h-1.5 w-14 rounded-full bg-white/42" aria-hidden="true" />
+          <div className="grid grid-cols-[44px_1fr_44px_44px] items-center gap-2">
+            <button
+              aria-label="More document options"
+              className="grid h-11 w-11 place-items-center rounded-full bg-white/12 text-white/76"
+              type="button"
+            >
+              <MoreHorizontal className="h-5 w-5" aria-hidden="true" />
+            </button>
+            <div className="min-w-0 text-center">
+              <h1 className="truncate text-xl font-black leading-tight text-white">{trip.name}</h1>
+              <p className="truncate text-sm font-semibold text-white/48">{trip.dateRange}</p>
             </div>
-          ))}
+            <button
+              aria-label="Add document"
+              className="grid h-11 w-11 place-items-center rounded-full bg-white/12 text-orange-300 opacity-70"
+              disabled
+              title="Document upload is coming soon"
+              type="button"
+            >
+              <Plus className="h-5 w-5" aria-hidden="true" />
+            </button>
+            <Link
+              aria-label="Close documents"
+              className="grid h-11 w-11 place-items-center rounded-full bg-white/12 text-white/76"
+              href={base}
+            >
+              <X className="h-5 w-5" aria-hidden="true" />
+            </Link>
+          </div>
         </div>
+
+        <section className="grid gap-5">
+          <article className="overflow-hidden rounded-[1.55rem] bg-[#1c1c1f] text-white shadow-[0_18px_50px_rgba(0,0,0,0.24)] ring-1 ring-white/8 lg:rounded-[1.75rem]">
+            <div className="grid min-h-14 grid-cols-[auto_1fr_auto] items-center gap-3 border-b border-white/[0.07] px-4 py-3">
+              <span className="grid h-9 w-9 place-items-center rounded-full bg-white/10 text-white/68">
+                <FileText className="h-4 w-4" aria-hidden="true" />
+              </span>
+              <h2 className="text-base font-black text-white">Documents</h2>
+              <button
+                aria-label="Add document"
+                className="grid h-9 w-9 place-items-center rounded-full text-orange-300 opacity-70"
+                disabled
+                title="Document upload is coming soon"
+                type="button"
+              >
+                <Plus className="h-5 w-5" aria-hidden="true" />
+              </button>
+            </div>
+
+            <div className="px-4 py-5">
+              <div className="rounded-xl border border-dashed border-white/12 px-4 py-5 text-sm text-white/62">
+                <p className="font-black text-white">No documents yet</p>
+                <p className="mt-1 font-semibold">
+                  Add reservations, notes, links, and screenshots when document upload is available.
+                </p>
+              </div>
+            </div>
+          </article>
+        </section>
+
+        <section className="grid gap-5">
+          <article className="rounded-[1.55rem] bg-[#1c1c1f] p-4 text-white ring-1 ring-white/8">
+            <h2 className="text-base font-black">What belongs here</h2>
+            <div className="mt-3 overflow-hidden rounded-lg bg-white/[0.06]">
+              {compactDocumentTypes.map((item) => (
+                <div
+                  className="grid min-h-12 grid-cols-[auto_1fr] items-center gap-3 border-b border-white/[0.06] px-3 py-2.5 last:border-b-0"
+                  key={item.label}
+                >
+                  <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-indigo-500/18 text-indigo-200">
+                    {item.icon}
+                  </span>
+                  <span className="text-sm font-semibold text-white/84">{item.label}</span>
+                </div>
+              ))}
+            </div>
+          </article>
+        </section>
       </section>
     </div>
   );

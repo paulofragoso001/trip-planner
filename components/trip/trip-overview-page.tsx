@@ -159,21 +159,21 @@ export default function TripOverviewPage({
         actionLabel="View all"
         eyebrow="Itinerary"
         icon={<CalendarDays className="h-5 w-5" aria-hidden="true" />}
-        title={nextUp ? "Next up" : `${segmentCount} place${segmentCount === 1 ? "" : "s"}`}
+        title={nextUp ? "Today" : `${segmentCount} place${segmentCount === 1 ? "" : "s"}`}
       >
         {itineraryPreview.length ? (
-          <div className="grid gap-1">
+          <div className="overflow-hidden rounded-lg bg-white/[0.06]">
             {itineraryPreview.slice(0, 5).map((item) => (
               <Link
-                className="grid min-h-16 grid-cols-[auto_1fr_auto] items-center gap-3 rounded-[1.25rem] px-2 py-2 text-white/88 transition hover:bg-white/[0.08] focus:outline-none focus:ring-4 focus:ring-orange-300/20"
+                className="grid min-h-12 grid-cols-[auto_1fr_auto] items-center gap-3 border-b border-white/[0.06] px-3 py-2.5 text-white/88 transition last:border-b-0 hover:bg-white/[0.08] focus:outline-none focus:ring-4 focus:ring-orange-300/20"
                 href={`${base}/timeline#${item.id}`}
                 key={item.id}
               >
-                <span className="grid h-11 w-11 place-items-center rounded-full bg-white/10 text-orange-300">
+                <span className={previewIconBubbleClass(item.typeLabel)}>
                   {iconForPreview(item.typeLabel)}
                 </span>
                 <span className="min-w-0">
-                  <span className="block truncate text-sm font-black text-white">{item.title}</span>
+                  <span className="block truncate text-sm font-semibold text-white">{item.title}</span>
                   <span className="block truncate text-xs font-semibold text-white/52">
                     {item.location}
                   </span>
@@ -190,6 +190,31 @@ export default function TripOverviewPage({
           />
         )}
       </OverviewCard>
+
+      {itineraryPreview.length ? (
+        <OverviewCard
+          actionHref={`${base}/timeline`}
+          actionLabel="Open"
+          eyebrow="Latest Added"
+          icon={<Sparkles className="h-5 w-5" aria-hidden="true" />}
+          title="Recent items"
+        >
+          <div className="overflow-hidden rounded-lg bg-white/[0.06]">
+            {itineraryPreview.slice(0, 5).map((item) => (
+              <Link
+                className="grid min-h-12 grid-cols-[auto_1fr] items-center gap-3 border-b border-white/[0.06] px-3 py-2.5 last:border-b-0 hover:bg-white/[0.08]"
+                href={`${base}/timeline#${item.id}`}
+                key={`latest-${item.id}`}
+              >
+                <span className={previewIconBubbleClass(item.typeLabel)}>
+                  {iconForPreview(item.typeLabel)}
+                </span>
+                <span className="min-w-0 truncate text-sm font-semibold text-white/88">{item.title}</span>
+              </Link>
+            ))}
+          </div>
+        </OverviewCard>
+      ) : null}
 
       <OverviewCard
         actionHref={`${base}/map`}
@@ -228,17 +253,17 @@ export default function TripOverviewPage({
           icon={<CircleDollarSign className="h-5 w-5" aria-hidden="true" />}
           title={actualLabel}
         >
-          <div className="grid gap-1">
+          <div className="overflow-hidden rounded-lg bg-white/[0.06]">
             {expenseCategories.slice(0, 3).map((category) => (
               <div
-                className="grid min-h-12 grid-cols-[auto_1fr_auto] items-center gap-3 rounded-[1.15rem] bg-black/26 px-3 py-2 text-sm"
+                className="grid min-h-12 grid-cols-[auto_1fr_auto] items-center gap-3 border-b border-white/[0.06] px-3 py-2.5 text-sm last:border-b-0"
                 key={category.id}
               >
-                <span className="grid h-8 w-8 place-items-center rounded-full bg-white/10 text-orange-300">
+                <span className={previewIconBubbleClass(category.label)}>
                   {iconForPreview(category.label)}
                 </span>
-                <span className="font-bold text-white/78">{category.label}</span>
-                <strong className="text-white">{category.amountLabel}</strong>
+                <span className="font-semibold text-white/78">{category.label}</span>
+                <strong className="text-right text-white">{category.amountLabel}</strong>
               </div>
             ))}
           </div>
@@ -509,19 +534,19 @@ function OverviewCard({
   title: string;
 }) {
   return (
-    <article className="rounded-[2rem] border border-white/10 bg-[#1c1c1f]/88 p-4 text-white shadow-[0_18px_55px_rgba(0,0,0,0.24)] backdrop-blur-2xl">
+    <article className="rounded-[1.55rem] bg-[#1c1c1f]/92 p-4 text-white shadow-[0_18px_55px_rgba(0,0,0,0.24)] ring-1 ring-white/8 backdrop-blur-2xl lg:rounded-[2rem] lg:border lg:border-white/10">
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-start gap-3">
-          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-orange-500/16 text-orange-300">
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-orange-500/16 text-orange-300 lg:h-11 lg:w-11">
             {icon}
           </span>
           <div className="min-w-0">
             <p className="text-xs font-black uppercase tracking-[0.16em] text-white/42">{eyebrow}</p>
-            <h3 className="mt-1 break-words text-xl font-black leading-tight text-white">{title}</h3>
+            <h3 className="mt-1 break-words text-lg font-black leading-tight text-white lg:text-xl">{title}</h3>
           </div>
         </div>
         <Link
-          className="inline-flex min-h-10 shrink-0 items-center rounded-full bg-white/10 px-4 text-xs font-black text-white/76 transition hover:bg-white/16 hover:text-white focus:outline-none focus:ring-4 focus:ring-orange-300/20"
+          className="inline-flex min-h-9 shrink-0 items-center rounded-full bg-white/10 px-3 text-xs font-black text-white/76 transition hover:bg-white/16 hover:text-white focus:outline-none focus:ring-4 focus:ring-orange-300/20"
           href={actionHref}
         >
           {actionLabel}
@@ -577,6 +602,16 @@ function iconForPreview(typeLabel: string) {
   if (/hotel|lodging|stay/.test(normalized)) return <BedDouble className="h-4 w-4" aria-hidden="true" />;
   if (/restaurant|food|dinner|lunch|cafe/.test(normalized)) return <Utensils className="h-4 w-4" aria-hidden="true" />;
   return <MapPin className="h-4 w-4" aria-hidden="true" />;
+}
+
+function previewIconBubbleClass(typeLabel: string) {
+  const normalized = typeLabel.toLowerCase();
+  const base = "grid h-8 w-8 shrink-0 place-items-center rounded-full";
+  if (/flight|airport/.test(normalized)) return `${base} bg-sky-500/18 text-sky-300`;
+  if (/hotel|lodging|stay/.test(normalized)) return `${base} bg-purple-500/18 text-purple-300`;
+  if (/restaurant|food|dinner|lunch|cafe/.test(normalized)) return `${base} bg-orange-500/18 text-orange-300`;
+  if (/bar|party/.test(normalized)) return `${base} bg-amber-500/18 text-amber-300`;
+  return `${base} bg-emerald-500/18 text-emerald-300`;
 }
 
 function EmptyInline({
