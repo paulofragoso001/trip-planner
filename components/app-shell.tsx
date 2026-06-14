@@ -268,7 +268,10 @@ export function AppShell({
 
           <main
             className={cn(
-              "min-h-0 flex-1 overflow-y-auto bg-[radial-gradient(circle_at_72%_8%,rgba(59,130,246,0.1),transparent_26%),linear-gradient(180deg,rgba(15,23,42,0.46),rgba(15,23,42,0.08)_42%,rgba(2,6,23,0.38))] px-3 pb-32 pt-4 text-slate-950 sm:px-6 sm:pb-36 sm:pt-6 lg:pb-6",
+              "min-h-0 flex-1 overflow-y-auto bg-[radial-gradient(circle_at_72%_8%,rgba(59,130,246,0.1),transparent_26%),linear-gradient(180deg,rgba(15,23,42,0.46),rgba(15,23,42,0.08)_42%,rgba(2,6,23,0.38))] px-3 pt-4 text-slate-950 sm:px-6 sm:pt-6 lg:pb-6",
+              tripWorkspaceContent
+                ? "pb-0"
+                : "pb-[calc(5.75rem+env(safe-area-inset-bottom))] sm:pb-[calc(6rem+env(safe-area-inset-bottom))]",
               fullBleedContent ? "lg:px-6" : "lg:px-8",
               density === "compact" ? "lg:py-4" : "lg:py-6"
             )}

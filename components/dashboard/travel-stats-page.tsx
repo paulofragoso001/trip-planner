@@ -53,7 +53,7 @@ export function TravelStatsPage({ data }: { data: TravelStatsData }) {
 
   return (
     <main
-      className="min-h-[calc(100dvh-4rem)] overflow-hidden bg-black pb-[calc(6.5rem+env(safe-area-inset-bottom))] text-white lg:mx-auto lg:my-8 lg:min-h-0 lg:max-w-[28rem] lg:rounded-[2rem] lg:ring-1 lg:ring-white/10"
+      className="min-h-[calc(100dvh-4rem)] overflow-hidden bg-black pb-4 text-white lg:mx-auto lg:my-8 lg:min-h-0 lg:max-w-[28rem] lg:rounded-[2rem] lg:ring-1 lg:ring-white/10"
       data-testid="travel-stats-page"
     >
       <section

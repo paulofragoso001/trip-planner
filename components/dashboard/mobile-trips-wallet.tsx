@@ -76,7 +76,7 @@ export function MobileTripsWallet({ error, trips }: MobileTripsWalletProps) {
       data-testid="mobile-trips-wallet-screen"
     >
       <MobileTripsBackground trip={backgroundTrip} />
-      <div className="relative z-10 mx-auto grid w-full max-w-[31rem] gap-5 px-5 pb-[calc(7.5rem+env(safe-area-inset-bottom))] pt-5">
+      <div className="relative z-10 mx-auto grid w-full max-w-[31rem] gap-5 px-5 pb-5 pt-5">
         <header className="grid gap-5">
           <div className="flex min-h-12 items-center justify-between gap-3">
             <Link

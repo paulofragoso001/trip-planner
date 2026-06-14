@@ -67,7 +67,7 @@ export function SearchPage({
 
   return (
     <main
-      className="min-h-dvh bg-[#171717] px-4 pb-[calc(96px+env(safe-area-inset-bottom))] pt-[calc(18px+env(safe-area-inset-top))] text-white sm:px-6 lg:min-h-0 lg:rounded-[2rem] lg:bg-slate-950/54 lg:p-8"
+      className="min-h-dvh bg-[#171717] px-4 pb-4 pt-[calc(18px+env(safe-area-inset-top))] text-white sm:px-6 lg:min-h-0 lg:rounded-[2rem] lg:bg-slate-950/54 lg:p-8"
       data-testid="search-page"
     >
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">

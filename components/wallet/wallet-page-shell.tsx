@@ -68,7 +68,7 @@ export function WalletPageShell({
         />
       </div>
 
-      <div className="relative z-10 mx-auto grid w-full max-w-[1180px] gap-3 px-3 py-3 pb-[calc(7.5rem+env(safe-area-inset-bottom))] sm:px-6 sm:py-6 lg:px-8 lg:py-8 lg:pb-8">
+      <div className="relative z-10 mx-auto grid w-full max-w-[1180px] gap-3 px-3 py-3 pb-3 sm:px-6 sm:py-6 lg:px-8 lg:py-8 lg:pb-8">
         <section
           className={cn(
             "relative isolate overflow-hidden rounded-[2.35rem] bg-slate-950 text-white shadow-[0_26px_80px_rgba(2,6,23,0.28)] ring-1 ring-white/20",

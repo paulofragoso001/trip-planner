@@ -46,7 +46,7 @@ export default function DashboardPage({
 
   return (
     <div
-      className="mx-auto grid w-full max-w-5xl gap-4 pb-[calc(6rem+env(safe-area-inset-bottom))] sm:gap-5 lg:pb-4"
+      className="mx-auto grid w-full max-w-5xl gap-4 pb-4 sm:gap-5 lg:pb-4"
       data-testid="home-launch-page"
     >
       <section
