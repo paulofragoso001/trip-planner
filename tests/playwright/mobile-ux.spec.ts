@@ -6,6 +6,7 @@ const routes = [
   "/dashboard",
   "/dashboard/search",
   "/dashboard/imports",
+  "/dashboard/profile/stats",
   "/dashboard/trips",
   "/dashboard/trips/demo/timeline",
   "/dashboard/trips/demo/map",
@@ -167,8 +168,27 @@ test.describe("mobile soft-launch UX", () => {
     } else {
       await expect(tripWallet).toBeVisible();
       await expect(tripWallet.getByTestId("mobile-trip-pass-card").first()).toBeVisible();
+      await expect(page.getByRole("link", { name: "Open travel stats" })).toHaveAttribute(
+        "href",
+        "/dashboard/profile/stats"
+      );
       await expect(page.getByTestId("mobile-create-another-trip").getByText("Create trip")).toBeVisible();
     }
+  });
+
+  test("mobile travel stats shows passport overview and detail cards", async ({ page }) => {
+    await page.setViewportSize({ height: 900, width: 390 });
+    await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
+    await page.goto(`${baseUrl}/dashboard/profile/stats`, { waitUntil: "commit" });
+
+    await expect(page.getByTestId("travel-stats-page")).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByTestId("travel-stats-overview").getByRole("heading", { name: "Travel Stats" })).toBeVisible();
+    await expect(page.getByTestId("travel-stats-year-selector")).toBeVisible();
+    await expect(page.getByTestId("travel-stats-countries")).toBeVisible();
+    await expect(page.getByTestId("travel-stats-transport")).toBeVisible();
+
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+    expect(overflow, "mobile travel stats overflow").toBeLessThanOrEqual(1);
   });
 
   test("mobile trips country map uses saved destination coordinates only", async ({ page, request }) => {

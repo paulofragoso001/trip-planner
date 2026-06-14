@@ -208,4 +208,10 @@ test("loads dashboard summary and route-split pages", async ({ page }) => {
   await expect(importsRoute.getByText("Advanced sources")).toBeVisible();
 
   await expect(page.getByTestId("app-shell-nav").getByRole("link", { name: "Admin" })).toHaveCount(0);
+
+  await openDashboardRoute("/dashboard/profile/stats");
+  await expect(page.getByTestId("travel-stats-page")).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByRole("heading", { name: "Travel Stats" })).toBeVisible();
+  await expect(page.getByTestId("travel-stats-countries")).toBeVisible();
+  await expect(page.getByTestId("travel-stats-transport")).toBeVisible();
 });
