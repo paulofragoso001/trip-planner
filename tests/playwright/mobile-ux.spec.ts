@@ -452,6 +452,16 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByTestId("activity-detail-map")).toBeVisible();
     await expect(page.getByTestId("activity-detail-map").locator(".gm-style")).toBeVisible({ timeout: 30_000 });
     await expect(page.getByTestId("activity-detail-sheet").getByRole("link", { name: "Directions" })).toBeVisible();
+    await expect(page.getByTestId("activity-detail-panel").getByText("Starts")).toBeVisible();
+    const detailPanelOwnsFooterZone = await page.evaluate(() => {
+      const target = document.elementFromPoint(window.innerWidth / 2, window.innerHeight - 120);
+      return Boolean(target?.closest('[data-testid="activity-detail-panel"]'));
+    });
+    expect(detailPanelOwnsFooterZone, "activity detail panel should own the lower mobile viewport").toBe(true);
+    await page.getByTestId("activity-detail-panel").evaluate((node) => {
+      node.scrollTop = node.scrollHeight;
+    });
+    await expect(page.getByTestId("activity-detail-panel").getByText(/Open in itinerary|Save to trip/)).toBeVisible();
     await expect(page.getByTestId("app-shell-mobile-bottom-nav")).toHaveCount(0);
     await page.getByRole("button", { name: "Close activity detail" }).click();
     await expect(page.getByTestId("activity-detail-sheet")).toHaveCount(0);
