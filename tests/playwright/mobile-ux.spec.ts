@@ -155,6 +155,7 @@ test.describe("mobile soft-launch UX", () => {
     const tripWallet = page.getByTestId("mobile-trips-wallet");
     await expect(page.getByRole("heading", { name: "My Trips" })).toBeVisible();
     await expect(page.getByPlaceholder("Search for trips")).toBeVisible();
+    await expect(page.getByTestId("mobile-trips-wallet-background").locator("img")).toHaveCount(0);
     await expect(
       page.locator('[data-testid="mobile-first-trip-state"], [data-testid="mobile-trips-wallet"]').first()
     ).toBeVisible({ timeout: 20_000 });

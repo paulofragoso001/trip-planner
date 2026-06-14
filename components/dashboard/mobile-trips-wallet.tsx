@@ -36,7 +36,6 @@ export function MobileTripsWallet({ error, trips }: MobileTripsWalletProps) {
   const activeYearTrips = groupedTrips.find((group) => group.year === activeYear)?.trips || [];
   const hasSearchQuery = query.trim().length > 0;
   const countryMapTrips = hasSearchQuery ? filteredTrips : activeYearTrips;
-  const backgroundTrip = trips.find((trip) => trip.imageUrl) || trips[0] || null;
 
   useEffect(() => {
     setHydrated(true);
@@ -75,7 +74,7 @@ export function MobileTripsWallet({ error, trips }: MobileTripsWalletProps) {
       data-hydrated={hydrated ? "true" : "false"}
       data-testid="mobile-trips-wallet-screen"
     >
-      <MobileTripsBackground trip={backgroundTrip} />
+      <MobileTripsBackground />
       <div className="relative z-10 mx-auto grid w-full max-w-[31rem] gap-5 px-5 pb-5 pt-5">
         <header className="grid gap-5">
           <div className="flex min-h-12 items-center justify-between gap-3">
@@ -592,19 +591,16 @@ function matchesTripSearch(trip: Trip, query: string) {
   return terms.every((term) => haystack.includes(term));
 }
 
-function MobileTripsBackground({ trip }: { trip: Trip | null }) {
+function MobileTripsBackground() {
   return (
-    <div className="pointer-events-none absolute inset-0 z-0" aria-hidden="true">
-      {trip?.imageUrl ? (
-        <img
-          alt=""
-          className="h-full w-full scale-110 object-cover opacity-30 blur-[2px]"
-          src={trip.imageUrl}
-        />
-      ) : null}
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_0%,rgba(20,184,166,0.26),transparent_30%),radial-gradient(circle_at_88%_12%,rgba(37,99,235,0.34),transparent_32%),linear-gradient(180deg,rgba(0,0,0,0.54),#000_34%,#000)]" />
-      <div className="absolute inset-x-0 top-0 h-40 bg-[linear-gradient(180deg,rgba(15,23,42,0.2),transparent)]" />
-      <div className="absolute inset-x-0 top-0 h-28 bg-[linear-gradient(90deg,rgba(20,184,166,0.2),rgba(37,99,235,0.28),rgba(249,115,22,0.08))]" />
+    <div
+      className="pointer-events-none absolute inset-0 z-0"
+      data-testid="mobile-trips-wallet-background"
+      aria-hidden="true"
+    >
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_0%,rgba(20,184,166,0.18),transparent_28%),radial-gradient(circle_at_88%_12%,rgba(37,99,235,0.22),transparent_30%),linear-gradient(180deg,#020617,#000_34%,#000)]" />
+      <div className="absolute inset-x-0 top-0 h-40 bg-[linear-gradient(180deg,rgba(15,23,42,0.32),transparent)]" />
+      <div className="absolute inset-x-0 top-0 h-28 bg-[linear-gradient(90deg,rgba(20,184,166,0.12),rgba(37,99,235,0.18),rgba(249,115,22,0.06))]" />
     </div>
   );
 }
