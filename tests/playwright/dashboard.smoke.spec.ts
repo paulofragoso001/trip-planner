@@ -71,13 +71,17 @@ test("loads dashboard summary and route-split pages", async ({ page }) => {
   await openDashboardRoute("/dashboard/search");
   await expect(page.getByTestId("search-page")).toBeVisible({ timeout: 20_000 });
   await expect(page.getByTestId("search-input")).toBeVisible();
-  await expect(page.getByRole("link", { name: "Cancel" })).toHaveAttribute("href", "/dashboard");
-  await expect(page.getByTestId("search-group-trip-items")).toBeVisible();
-  await expect(page.getByTestId("search-group-documents")).toBeVisible();
-  await expect(page.getByTestId("search-group-saved-ideas")).toBeVisible();
+  await expect(page.getByTestId("search-input")).toHaveAttribute(
+    "placeholder",
+    "Search saved activities and documents"
+  );
+  await expect(page.getByRole("button", { name: "Cancel" })).toBeVisible();
+  await expect(page.getByTestId("search-group-trip-items")).toHaveCount(0);
+  await expect(page.getByTestId("search-group-saved-ideas")).toHaveCount(0);
   await openDashboardRoute("/dashboard/search?q=zzzz-no-wayline-results");
   await expect(page.getByTestId("search-input")).toHaveValue("zzzz-no-wayline-results");
-  await expect(page.getByText("No results found")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "No results found" })).toBeVisible();
+  await expect(page.getByText("Try searching a place, activity, document, or trip.")).toBeVisible();
 
   await openDashboardRoute("/dashboard/trips");
   await expect(page.getByTestId("app-shell-topbar").getByRole("heading", { name: "Trips" })).toBeVisible();

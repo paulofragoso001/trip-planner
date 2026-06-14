@@ -15,6 +15,8 @@ export type SearchResultView = {
   imageAlt: string | null;
   imageUrl: string | null;
   meta: string | null;
+  metaPrimary: string | null;
+  metaSecondary: string | null;
   searchText: string;
   subtitle: string | null;
   title: string;

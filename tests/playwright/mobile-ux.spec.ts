@@ -388,6 +388,107 @@ test.describe("mobile soft-launch UX", () => {
     expect(spacing.mainPaddingBottom).toBeGreaterThanOrEqual(spacing.navHeight + 20);
   });
 
+  test("mobile search renders compact dark activity and route results", async ({ page, request }) => {
+    test.setTimeout(90_000);
+    await page.setViewportSize({ height: 900, width: 390 });
+    await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
+
+    const suffix = Date.now();
+    const tripResponse = await request.post(`${baseUrl}/api/trips`, {
+      data: {
+        destination: "New York City",
+        name: `Mobile search trip ${suffix}`,
+        status: "Planning",
+        travel_style: "balanced"
+      },
+      headers: { "x-cypress-dashboard": "true" }
+    });
+    expect(tripResponse.status()).toBe(201);
+    const tripPayload = await tripResponse.json();
+    const tripId = tripPayload?.trip?.id;
+    expect(typeof tripId).toBe("string");
+
+    const flightNumber = `WS${String(suffix).slice(-6)}`;
+
+    try {
+      const segmentResponse = await request.post(`${baseUrl}/api/trip-segments`, {
+        data: {
+          kind: "flight",
+          location: "Mobile search route",
+          providerMetadata: {
+            route: {
+              carrier: "Wayline Air",
+              departAt: "2026-09-09T11:18:00.000Z",
+              destination: {
+                label: `Search JFK ${suffix}`,
+                lat: 40.6413,
+                lng: -73.7781
+              },
+              flightNumber,
+              mode: "flight",
+              origin: {
+                label: `Search LAX ${suffix}`,
+                lat: 33.9416,
+                lng: -118.4085
+              }
+            }
+          },
+          startTime: "2026-09-09T11:18:00.000Z",
+          title: `Fallback flight ${suffix}`,
+          tripId
+        },
+        headers: { "x-cypress-dashboard": "true" }
+      });
+      expect(segmentResponse.status()).toBe(201);
+
+      await page.goto(`${baseUrl}/dashboard/search?q=${encodeURIComponent(flightNumber)}`, {
+        waitUntil: "commit"
+      });
+      await expect(page.getByTestId("search-page")).toBeVisible({ timeout: 20_000 });
+      await expect(page.getByTestId("app-shell-topbar")).toBeHidden();
+      await expect(page.getByTestId("search-input")).toHaveAttribute(
+        "placeholder",
+        "Search saved activities and documents"
+      );
+      await expect(page.getByRole("button", { name: "Cancel" })).toBeVisible();
+
+      const searchStyle = await page.getByTestId("search-page").evaluate((element) => {
+        const style = window.getComputedStyle(element);
+        return {
+          backgroundColor: style.backgroundColor,
+          color: style.color
+        };
+      });
+      expect(searchStyle.backgroundColor).toBe("rgb(31, 31, 31)");
+      expect(searchStyle.color).toBe("rgb(255, 255, 255)");
+
+      const activityGroup = page.getByTestId("search-group-activity-results");
+      await expect(activityGroup).toBeVisible();
+      await expect(
+        activityGroup.getByRole("link", {
+          name: new RegExp(`Search LAX ${suffix}.*Search JFK ${suffix}`)
+        })
+      ).toBeVisible();
+      await expect(activityGroup.getByText("Wayline Air")).toBeVisible();
+      await expect(activityGroup.getByText(flightNumber)).toBeVisible();
+      await expect(page.getByText("Terminal")).toHaveCount(0);
+      await expect(page.getByText("Baggage")).toHaveCount(0);
+      await expect(page.getByText("Aircraft")).toHaveCount(0);
+
+      await page.getByTestId("search-input").fill(`no-result-${suffix}`);
+      await expect(page.getByRole("heading", { name: "No results found" })).toBeVisible();
+      await expect(
+        page.getByText("Try searching a place, activity, document, or trip.")
+      ).toBeVisible();
+      await expect(page.getByTestId("search-group-documents")).toHaveCount(0);
+
+      const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+      expect(overflow, "mobile search overflow").toBeLessThanOrEqual(1);
+    } finally {
+      await deleteTripForTest(request, tripId);
+    }
+  });
+
   test("home and plan keep mobile guidance compact", async ({ page }) => {
     await page.setViewportSize({ height: 900, width: 390 });
     await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });

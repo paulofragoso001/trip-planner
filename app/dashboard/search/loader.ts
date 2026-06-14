@@ -4,6 +4,7 @@ import { unstable_noStore as noStore } from "next/cache";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { authorizeDashboardApi } from "@/lib/server/dashboard-test-auth";
 import { buildPlacePhotoUrl } from "@/lib/travel-data/photo-url";
+import { readTripSegmentRoute, routeEndpointLabel } from "@/lib/trip-segment-route";
 import type { SearchData, SearchResultIcon, SearchResultView } from "./types";
 
 type TripRow = {
@@ -169,6 +170,8 @@ function mapTrip(trip: TripRow): SearchResultView {
     imageAlt: null,
     imageUrl: null,
     meta: meta || null,
+    metaPrimary: formatDateRange(trip.start_date, trip.end_date),
+    metaSecondary: readString(trip.status),
     searchText: buildSearchText(title, subtitle, meta),
     subtitle,
     title
@@ -176,11 +179,25 @@ function mapTrip(trip: TripRow): SearchResultView {
 }
 
 function mapTripSegment(segment: TripSegmentRow): SearchResultView {
-  const title = readString(segment.title) || "Untitled trip item";
+  const route = readTripSegmentRoute(segment.provider_metadata);
+  const routeOrigin = routeEndpointLabel(route?.origin);
+  const routeDestination = routeEndpointLabel(route?.destination);
+  const routeTitle = routeOrigin && routeDestination ? `${routeOrigin} → ${routeDestination}` : null;
+  const title = routeTitle || readString(segment.title) || "Untitled trip item";
   const imageUrl = buildPlacePhotoUrl(segment.provider_metadata, 160);
   const provider = readString(segment.provider);
-  const subtitle = [readString(segment.location), provider].filter(Boolean).join(" · ");
-  const meta = formatDateTime(segment.start_time) || formatDateTime(segment.inserted_at);
+  const routeDetails = [readString(route?.carrier), readString(route?.flightNumber)]
+    .filter(Boolean)
+    .join(" ");
+  const subtitle = [
+    routeDetails || null,
+    readString(segment.location),
+    provider
+  ]
+    .filter(Boolean)
+    .join(" · ");
+  const dateTime = formatDateTimeParts(segment.start_time) || formatDateTimeParts(segment.inserted_at);
+  const meta = [dateTime?.dateLabel, dateTime?.timeLabel].filter(Boolean).join(" · ");
 
   return {
     href: `/dashboard/trips/${encodeURIComponent(segment.trip_id)}/timeline`,
@@ -188,8 +205,20 @@ function mapTripSegment(segment: TripSegmentRow): SearchResultView {
     id: `segment-${segment.id}`,
     imageAlt: imageUrl ? `Photo of ${title}` : null,
     imageUrl,
-    meta,
-    searchText: buildSearchText(title, subtitle, meta, segment.kind),
+    meta: meta || null,
+    metaPrimary: dateTime?.dateLabel ?? null,
+    metaSecondary: dateTime?.timeLabel ?? null,
+    searchText: buildSearchText(
+      title,
+      subtitle,
+      meta,
+      segment.kind,
+      routeOrigin,
+      routeDestination,
+      route?.carrier,
+      route?.flightNumber,
+      route?.confirmation
+    ),
     subtitle: subtitle || null,
     title
   };
@@ -216,6 +245,8 @@ function mapSavedIdea(idea: SavedIdeaRow): SearchResultView {
     imageAlt: null,
     imageUrl: null,
     meta: meta || null,
+    metaPrimary: readString(idea.status),
+    metaSecondary: formatDateTime(idea.created_at),
     searchText: buildSearchText(title, subtitle, meta, idea.description, idea.travel_note),
     subtitle,
     title
@@ -243,6 +274,8 @@ function mapDocument(document: DocumentRow): SearchResultView {
     imageAlt: null,
     imageUrl: null,
     meta,
+    metaPrimary: formatDateTime(document.date_time) || formatDateTime(document.created_at),
+    metaSecondary: labelize(document.source_type),
     searchText: buildSearchText(title, subtitle, meta, document.source_label, document.source_type),
     subtitle,
     title
@@ -286,6 +319,23 @@ function formatDateTime(value: string | null) {
     minute: "2-digit",
     month: "short"
   }).format(date);
+}
+
+function formatDateTimeParts(value: string | null) {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return {
+    dateLabel: new Intl.DateTimeFormat("en", {
+      day: "2-digit",
+      month: "short",
+      weekday: "short"
+    }).format(date),
+    timeLabel: new Intl.DateTimeFormat("en", {
+      hour: "numeric",
+      minute: "2-digit"
+    }).format(date)
+  };
 }
 
 function buildSearchText(...parts: Array<string | null | undefined>) {

@@ -13,18 +13,16 @@ import {
   Utensils
 } from "lucide-react";
 import Image from "next/image";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import type { SearchData, SearchResultIcon, SearchResultView } from "@/app/dashboard/search/types";
 import { cn } from "@/components/trip-ui";
 
 type SearchGroupProps = {
-  emptyDescription: string;
-  emptyTitle: string;
   id: string;
+  leading?: boolean;
   results: SearchResultView[];
-  showEmpty?: boolean;
-  title: string;
+  title?: string;
 };
 
 const iconStyles: Record<SearchResultIcon, string> = {
@@ -45,6 +43,7 @@ export function SearchPage({
   savedIdeas,
   tripItems
 }: SearchData) {
+  const router = useRouter();
   const [query, setQuery] = useState(initialQuery);
   const normalizedQuery = query.trim().toLowerCase();
   const filteredTripItems = useMemo(
@@ -59,92 +58,85 @@ export function SearchPage({
     () => filterResults(savedIdeas, normalizedQuery),
     [normalizedQuery, savedIdeas]
   );
+  const activityResults = useMemo(
+    () => dedupeResults([...filteredTripItems, ...filteredSavedIdeas]),
+    [filteredSavedIdeas, filteredTripItems]
+  );
   const hasResults =
-    filteredTripItems.length > 0 ||
-    filteredDocuments.length > 0 ||
-    filteredSavedIdeas.length > 0;
-  const isSearching = normalizedQuery.length > 0;
+    activityResults.length > 0 ||
+    filteredDocuments.length > 0;
 
   return (
     <main
-      className="min-h-dvh bg-[#171717] px-4 pb-4 pt-[calc(18px+env(safe-area-inset-top))] text-white sm:px-6 lg:min-h-0 lg:rounded-[2rem] lg:bg-slate-950/54 lg:p-8"
+      className="min-h-dvh bg-[#1f1f1f] text-white lg:min-h-0 lg:rounded-[2rem]"
       data-testid="search-page"
     >
-      <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
-        <div className="sticky top-0 z-10 -mx-4 border-b border-white/8 bg-[#171717]/95 px-4 pb-4 pt-[env(safe-area-inset-top)] backdrop-blur-xl sm:-mx-6 sm:px-6 lg:static lg:-mx-0 lg:border-b-0 lg:bg-transparent lg:px-0 lg:pb-0 lg:pt-0">
+      <div className="mx-auto flex w-full max-w-3xl flex-col pb-[calc(7.25rem+env(safe-area-inset-bottom))] lg:pb-8">
+        <div className="sticky top-0 z-20 border-b border-white/10 bg-[#1f1f1f]/95 px-4 pb-3 pt-[calc(14px+env(safe-area-inset-top))] backdrop-blur-xl sm:px-6 lg:static lg:rounded-t-[2rem]">
           <div className="flex items-center gap-3">
             <label className="relative min-w-0 flex-1">
               <span className="sr-only">Search Wayline</span>
               <Search
                 aria-hidden="true"
-                className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400"
+                className="pointer-events-none absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-[#9b9ba1]"
               />
               <input
                 autoComplete="off"
                 autoFocus
-                className="h-12 w-full rounded-2xl border border-white/6 bg-white/10 pl-12 pr-4 text-base font-semibold text-white outline-none placeholder:text-slate-400 focus:border-orange-300/60 focus:ring-4 focus:ring-orange-400/10"
+                className="h-11 w-full rounded-xl border border-transparent bg-[#343338] pl-11 pr-3 text-[17px] font-medium leading-none text-white outline-none placeholder:text-[#a6a5ad] focus:border-orange-400/60 focus:ring-4 focus:ring-orange-400/10"
                 data-testid="search-input"
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="Search trips, places, ideas, documents..."
+                placeholder="Search saved activities and documents"
                 type="search"
                 value={query}
               />
             </label>
-            <Link
-              className="rounded-xl px-1 py-3 text-base font-semibold text-orange-400 outline-none transition hover:text-orange-300 focus:ring-4 focus:ring-orange-400/15"
-              href="/dashboard"
+            <button
+              className="shrink-0 rounded-xl px-1 py-2.5 text-[17px] font-medium text-[#ff7a2f] outline-none transition hover:text-orange-300 focus:ring-4 focus:ring-orange-400/15"
+              onClick={() => {
+                if (window.history.length > 1) {
+                  router.back();
+                } else {
+                  router.push("/dashboard");
+                }
+              }}
+              type="button"
             >
               Cancel
-            </Link>
+            </button>
           </div>
         </div>
 
         {error ? (
-          <section className="rounded-3xl border border-amber-300/20 bg-amber-400/10 p-4 text-sm font-semibold text-amber-100">
+          <section className="mx-4 mt-4 rounded-2xl border border-amber-300/20 bg-amber-400/10 p-4 text-sm font-semibold text-amber-100 sm:mx-6">
             {error}
           </section>
         ) : null}
 
-        {isSearching && !hasResults ? (
-          <section className="rounded-3xl border border-white/8 bg-white/[0.04] p-6">
+        {!hasResults ? (
+          <section className="mx-4 mt-6 rounded-2xl border border-white/10 bg-white/[0.035] p-5 sm:mx-6">
             <h2 className="text-lg font-black text-white">No results found</h2>
             <p className="mt-2 text-sm font-semibold leading-6 text-slate-400">
-              Try a trip name, place, address, saved idea, or document title.
+              Try searching a place, activity, document, or trip.
             </p>
           </section>
         ) : (
-          <>
-            {(!isSearching || filteredTripItems.length > 0) ? (
+          <div className="flex flex-col">
+            {activityResults.length > 0 ? (
               <SearchGroup
-                emptyDescription="Trip items appear here after you create places, activities, reservations, or mapped places."
-                emptyTitle="No trip items yet"
-                id="search-group-trip-items"
-                results={filteredTripItems}
-                showEmpty={!isSearching}
-                title="Trip items"
+                id="search-group-activity-results"
+                leading
+                results={activityResults}
               />
             ) : null}
-            {(!isSearching || filteredDocuments.length > 0) ? (
+            {filteredDocuments.length > 0 ? (
               <SearchGroup
-                emptyDescription="Documents appear here when they are added to a trip."
-                emptyTitle="No documents yet"
                 id="search-group-documents"
                 results={filteredDocuments}
-                showEmpty={!isSearching}
                 title="Documents & Emails"
               />
             ) : null}
-            {(!isSearching || filteredSavedIdeas.length > 0) ? (
-              <SearchGroup
-                emptyDescription="Saved ideas from Plan appear here when Wayline finds places to review."
-                emptyTitle="No saved ideas yet"
-                id="search-group-saved-ideas"
-                results={filteredSavedIdeas}
-                showEmpty={!isSearching}
-                title="Saved ideas"
-              />
-            ) : null}
-          </>
+          </div>
         )}
       </div>
     </main>
@@ -152,35 +144,25 @@ export function SearchPage({
 }
 
 function SearchGroup({
-  emptyDescription,
-  emptyTitle,
   id,
+  leading = false,
   results,
-  showEmpty = true,
   title
 }: SearchGroupProps) {
-  if (results.length === 0 && !showEmpty) {
-    return null;
-  }
-
   return (
-    <section className="space-y-2" data-testid={id}>
-      <h2 className="px-1 text-sm font-black text-slate-400">{title}</h2>
-      <div className="overflow-hidden rounded-3xl border border-white/8 bg-white/[0.035]">
-        {results.length > 0 ? (
-          <div className="divide-y divide-white/8">
-            {results.map((result) => (
-              <SearchResultRow key={result.id} result={result} />
-            ))}
-          </div>
-        ) : (
-          <div className="p-5">
-            <p className="text-base font-black text-white">{emptyTitle}</p>
-            <p className="mt-1 text-sm font-semibold leading-6 text-slate-400">
-              {emptyDescription}
-            </p>
-          </div>
-        )}
+    <section
+      className={cn("border-b border-white/10", leading ? "pt-2" : "pt-8")}
+      data-testid={id}
+    >
+      {title ? (
+        <h2 className="px-4 pb-3 text-[19px] font-black leading-tight text-[#a7a7ad] sm:px-6">
+          {title}
+        </h2>
+      ) : null}
+      <div className="divide-y divide-white/10">
+        {results.map((result) => (
+          <SearchResultRow key={result.id} result={result} />
+        ))}
       </div>
     </section>
   );
@@ -190,44 +172,52 @@ function SearchResultRow({ result }: { result: SearchResultView }) {
   const Icon = iconForResult(result.icon);
 
   return (
-    <Link
+    <a
       aria-label={`Open ${result.title}`}
-      className="grid min-h-[76px] grid-cols-[52px_minmax(0,1fr)_auto] items-center gap-3 px-3 py-3 outline-none transition hover:bg-white/[0.045] focus:bg-white/[0.055] focus:ring-4 focus:ring-orange-400/15"
+      className="grid min-h-[84px] grid-cols-[56px_minmax(0,1fr)_minmax(58px,auto)] items-center gap-3 px-4 py-3 outline-none transition hover:bg-white/[0.045] focus:bg-white/[0.055] focus:ring-4 focus:ring-orange-400/15 sm:px-6"
       href={result.href}
     >
       <span
         className={cn(
-          "grid h-12 w-12 place-items-center rounded-full",
+          "relative grid h-[52px] w-[52px] place-items-center overflow-hidden rounded-full",
           iconStyles[result.icon]
         )}
       >
-        <Icon aria-hidden="true" className="h-6 w-6" />
+        {result.imageUrl ? (
+          <Image
+            alt={result.imageAlt ?? ""}
+            className="absolute inset-0 h-full w-full object-cover"
+            height={52}
+            src={result.imageUrl}
+            width={52}
+          />
+        ) : (
+          <Icon aria-hidden="true" className="h-7 w-7" />
+        )}
       </span>
       <span className="min-w-0">
-        <span className="block truncate text-base font-black text-white">{result.title}</span>
+        <span className="block truncate text-[17px] font-black leading-tight text-white">
+          {result.title}
+        </span>
         {result.subtitle ? (
-          <span className="mt-0.5 block truncate text-sm font-semibold text-slate-400">
+          <span className="mt-1 block truncate text-[16px] font-medium leading-tight text-[#9c9ba2]">
             {result.subtitle}
           </span>
         ) : null}
       </span>
-      <span className="flex min-w-0 items-center gap-3">
-        {result.meta ? (
-          <span className="hidden max-w-[92px] text-right text-sm font-semibold leading-5 text-slate-400 min-[380px]:block">
-            {result.meta}
+      <span className="min-w-0 text-right">
+        {result.metaPrimary ? (
+          <span className="block truncate text-[15px] font-bold leading-tight text-[#a7a6ad]">
+            {result.metaPrimary}
           </span>
         ) : null}
-        {result.imageUrl ? (
-          <Image
-            alt={result.imageAlt ?? ""}
-            className="h-12 w-12 rounded-xl object-cover"
-            height={48}
-            src={result.imageUrl}
-            width={48}
-          />
+        {result.metaSecondary ? (
+          <span className="mt-1 block truncate text-[15px] font-medium leading-tight text-[#a7a6ad]">
+            {result.metaSecondary}
+          </span>
         ) : null}
       </span>
-    </Link>
+    </a>
   );
 }
 
@@ -239,13 +229,25 @@ function filterResults(results: SearchResultView[], query: string) {
       result.searchText,
       result.title,
       result.subtitle,
-      result.meta
+      result.meta,
+      result.metaPrimary,
+      result.metaSecondary
     ]
       .filter(Boolean)
       .join(" ")
       .toLowerCase()
       .includes(normalizedQuery)
   );
+}
+
+function dedupeResults(results: SearchResultView[]) {
+  const seen = new Set<string>();
+  return results.filter((result) => {
+    const key = `${result.href}:${result.title.toLowerCase()}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 function iconForResult(icon: SearchResultIcon) {
