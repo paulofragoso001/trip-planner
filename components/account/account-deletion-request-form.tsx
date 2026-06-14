@@ -1,6 +1,14 @@
 "use client";
 
 import { FormEvent, useMemo, useState } from "react";
+import {
+  MobileField,
+  MobileFormHeader,
+  MobileFormSection,
+  MobileFormShell,
+  mobilePrimaryActionClassName,
+  mobileTextareaClassName
+} from "@/components/ui/mobile-form";
 import { useWaylineAction } from "@/hooks/use-wayline-action";
 
 type ExistingRequest = {
@@ -41,27 +49,36 @@ export function AccountDeletionRequestForm({
 
   return (
     <form className="grid gap-4" onSubmit={onSubmit}>
-      <label className="grid gap-2 text-sm font-bold text-ink">
-        Deletion reason
-        <textarea
-          className="min-h-28 rounded-xl border border-line px-4 py-3 text-sm font-medium text-ink outline-none transition focus:border-brand focus:ring-4 focus:ring-brand/20"
-          maxLength={1000}
-          onChange={(event) => setReason(event.target.value)}
-          placeholder="Optional context for the operator processing this request"
-          value={reason}
+      <MobileFormShell>
+        <MobileFormHeader
+          rightAction={
+            <button
+              className={`${mobilePrimaryActionClassName} bg-red-600 hover:bg-red-500`}
+              disabled={isPending || Boolean(currentRequest)}
+              type="submit"
+            >
+              {isPending ? "Submitting..." : currentRequest ? "Requested" : "Request"}
+            </button>
+          }
+          subtitle="This is reviewed before anything is removed"
+          title="Delete Account"
         />
-      </label>
-
-      <button
-        className="min-h-11 rounded-xl bg-red-600 px-4 py-3 text-sm font-bold text-white transition hover:bg-red-700 disabled:opacity-50"
-        disabled={isPending || Boolean(currentRequest)}
-        type="submit"
-      >
-        {isPending ? "Submitting..." : currentRequest ? "Deletion requested" : "Request account deletion"}
-      </button>
+        <MobileFormSection title="Request">
+          <MobileField label="Deletion reason">
+            <textarea
+              aria-label="Deletion reason"
+              className={mobileTextareaClassName}
+              maxLength={1000}
+              onChange={(event) => setReason(event.target.value)}
+              placeholder="Optional context for the operator processing this request"
+              value={reason}
+            />
+          </MobileField>
+        </MobileFormSection>
+      </MobileFormShell>
 
       {currentRequest ? (
-        <p className="rounded-xl bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
+        <p className="rounded-2xl bg-amber-400/12 px-4 py-3 text-sm font-semibold text-amber-100 ring-1 ring-amber-300/20 lg:bg-amber-50 lg:text-amber-800 lg:ring-transparent">
           Request status: {currentRequest.status}. Submitted{" "}
           {new Date(currentRequest.requested_at).toLocaleDateString()}.
         </p>
@@ -69,10 +86,10 @@ export function AccountDeletionRequestForm({
 
       {state.message && !currentRequest ? (
         <p
-          className={`rounded-xl px-4 py-3 text-sm font-semibold ${
+          className={`rounded-2xl px-4 py-3 text-sm font-semibold ${
             state.status === "success"
-              ? "bg-emerald-50 text-emerald-700"
-              : "bg-red-50 text-red-700"
+              ? "bg-emerald-400/12 text-emerald-100 ring-1 ring-emerald-300/20 lg:bg-emerald-50 lg:text-emerald-700 lg:ring-transparent"
+              : "bg-red-400/12 text-red-100 ring-1 ring-red-300/20 lg:bg-red-50 lg:text-red-700 lg:ring-transparent"
           }`}
         >
           {state.message}

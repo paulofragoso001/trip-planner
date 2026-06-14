@@ -7,13 +7,22 @@ import GoogleMapsProvider from "@/components/GoogleMapsProvider";
 import LocationAutocomplete, {
   type LocationSelection
 } from "@/components/LocationAutocomplete";
+import {
+  MobileField,
+  MobileFormHeader,
+  MobileFormSection,
+  MobileFormShell,
+  mobileInputClassName,
+  mobilePrimaryActionClassName,
+  mobileSecondaryActionClassName,
+  mobileSelectClassName
+} from "@/components/ui/mobile-form";
 import { useWaylineAction } from "@/hooks/use-wayline-action";
 import {
   TRIP_TRAVEL_STYLES,
   TRIP_TRAVEL_STYLE_LABELS,
   type TripTravelStyle
 } from "@/lib/trips";
-import { buildPlacePhotoUrl } from "@/lib/travel-data/photo-url";
 
 type TripCreateFormProps = {
   mode?: "default" | "mobile-pass";
@@ -36,10 +45,8 @@ export function TripCreateForm({
   const [travelStyle, setTravelStyle] = useState<TripTravelStyle>("balanced");
   const { isPending, run, state } = useWaylineAction<{ trip?: { id: string } }>();
   const mobilePassMode = mode === "mobile-pass";
-  const previewImageUrl = buildPlacePhotoUrl(destinationSelection?.providerMetadata, 800);
-  const previewDestination = destination.trim() || "Choose destination";
-  const previewName = name.trim() || destinationNameFromLabel(previewDestination);
   const previewDates = formatPreviewDates(startDate, endDate);
+  const canCreate = Boolean(name.trim() && destination.trim() && !isPending);
 
   useEffect(() => {
     setHydrated(true);
@@ -87,67 +94,152 @@ export function TripCreateForm({
   }
 
   const message = state.status === "success" ? "Trip saved." : state.message;
+  const messageTone =
+    state.status === "success"
+      ? "bg-emerald-400/12 text-emerald-100 ring-emerald-300/20 lg:bg-emerald-50 lg:text-emerald-700 lg:ring-transparent"
+      : state.status === "error" || state.status === "timeout"
+        ? "bg-red-400/12 text-red-100 ring-red-300/20 lg:bg-red-50 lg:text-red-700 lg:ring-transparent"
+        : "bg-white/[0.06] text-white/70 ring-white/10 lg:bg-slate-50 lg:text-slate-600 lg:ring-transparent";
+
+  if (mobilePassMode) {
+    return (
+      <form
+        className="grid gap-4 pb-[calc(1rem+env(safe-area-inset-bottom))]"
+        data-hydrated={hydrated ? "true" : "false"}
+        data-testid="mobile-trip-create-form"
+        id="new-trip"
+        onSubmit={createTrip}
+      >
+        <MobileFormShell data-testid="mobile-trip-create-sheet">
+          <MobileFormHeader
+            leftAction={
+              <a className={mobileSecondaryActionClassName} href="/dashboard">
+                Cancel
+              </a>
+            }
+            rightAction={
+              <button
+                className={mobilePrimaryActionClassName}
+                disabled={!canCreate}
+                type="submit"
+              >
+                {isPending ? "Creating..." : "Create"}
+              </button>
+            }
+            subtitle={previewDates}
+            title="Create Trip"
+          />
+
+          <MobileFormSection title="Trip">
+            <MobileField label="Trip name">
+              <input
+                aria-label="Trip name"
+                className={mobileInputClassName}
+                onChange={(event) => setName(event.target.value)}
+                placeholder="Miami weekend"
+                required
+                value={name}
+              />
+            </MobileField>
+            <MobileField
+              helper={
+                destination.trim() && !destinationSelection
+                  ? "Manual destination. Select a Google result for better maps."
+                  : destinationSelection
+                    ? "Destination matched for maps and planning."
+                    : null
+              }
+              label="Destination"
+            >
+              <GoogleMapsProvider>
+                <LocationAutocomplete
+                  ariaLabel="Destination"
+                  inputClassName={mobileInputClassName}
+                  name="destination"
+                  onInputChange={(value) => {
+                    setDestination(value);
+                    setDestinationSelection(null);
+                  }}
+                  onSelect={(location) => {
+                    setDestination(location.address);
+                    setDestinationSelection(location);
+                  }}
+                  placeholder="Search Miami, Barcelona, Tokyo..."
+                  required
+                  value={destination}
+                />
+              </GoogleMapsProvider>
+            </MobileField>
+          </MobileFormSection>
+
+          <MobileFormSection title="Dates">
+            <MobileField label="Start date">
+              <input
+                aria-label="Start date"
+                className={mobileInputClassName}
+                id="trip-dates"
+                onChange={(event) => setStartDate(event.target.value)}
+                type="date"
+                value={startDate}
+              />
+            </MobileField>
+            <MobileField label="End date">
+              <input
+                aria-label="End date"
+                className={mobileInputClassName}
+                onChange={(event) => setEndDate(event.target.value)}
+                type="date"
+                value={endDate}
+              />
+            </MobileField>
+          </MobileFormSection>
+
+          <MobileFormSection title="Details">
+            <MobileField label="Expense budget">
+              <input
+                aria-label="Expense budget"
+                className={mobileInputClassName}
+                inputMode="decimal"
+                onChange={(event) => setBudget(event.target.value)}
+                placeholder="Optional"
+                value={budget}
+              />
+            </MobileField>
+            <MobileField label="Travel style">
+              <select
+                aria-label="Travel style"
+                className={mobileSelectClassName}
+                onChange={(event) => setTravelStyle(event.target.value as TripTravelStyle)}
+                value={travelStyle}
+              >
+                {TRIP_TRAVEL_STYLES.map((style) => (
+                  <option className="bg-[#1f1f21] text-white" key={style} value={style}>
+                    {TRIP_TRAVEL_STYLE_LABELS[style]}
+                  </option>
+                ))}
+              </select>
+            </MobileField>
+          </MobileFormSection>
+
+          {state.status !== "idle" && message ? (
+            <div className="px-4 pb-4">
+              <p className={`rounded-2xl px-4 py-3 text-sm font-semibold ring-1 ${messageTone}`}>
+                {message}
+              </p>
+            </div>
+          ) : null}
+        </MobileFormShell>
+      </form>
+    );
+  }
 
   return (
     <form
-      className={mobilePassMode ? "grid gap-4" : "mt-5 grid gap-4"}
+      className="mt-5 grid gap-4"
       data-hydrated={hydrated ? "true" : "false"}
-      data-testid={mobilePassMode ? "mobile-trip-create-form" : undefined}
       id="new-trip"
       onSubmit={createTrip}
     >
-      {mobilePassMode ? (
-        <div
-          className="relative isolate min-h-[21rem] overflow-hidden rounded-[2rem] bg-slate-950 p-4 text-white shadow-2xl"
-          data-testid="mobile-trip-create-preview"
-        >
-          {previewImageUrl ? (
-            <img
-              alt={`Photo of ${previewDestination}`}
-              className="absolute inset-0 h-full w-full object-cover"
-              src={previewImageUrl}
-            />
-          ) : (
-            <div className={previewGradientForDestination(previewDestination)} aria-hidden="true" />
-          )}
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_0%,rgba(255,255,255,0.24),transparent_34%),linear-gradient(135deg,rgba(2,6,23,0.18),rgba(2,6,23,0.84))]" />
-          <div className="relative flex h-full min-h-[19rem] flex-col justify-between">
-            <div className="flex items-center justify-between text-xs font-black">
-              <a
-                className="rounded-full bg-white/14 px-3 py-2 text-white backdrop-blur"
-                href="/dashboard"
-              >
-                Cancel
-              </a>
-              <button
-                className="rounded-full bg-white px-4 py-2 text-slate-950 shadow-sm disabled:opacity-60"
-                disabled={isPending}
-                type="submit"
-              >
-                {isPending ? "Creating..." : "Create Trip"}
-              </button>
-            </div>
-            <div className="text-center">
-              <p className="text-xs font-black uppercase tracking-[0.22em] text-white/60">
-                Trip Pass
-              </p>
-              <h2 className="mt-3 break-words text-4xl font-black leading-none">
-                {previewName}
-              </h2>
-              <p className="mt-3 text-sm font-bold text-white/78">{previewDates}</p>
-              <a
-                className="mt-4 inline-flex min-h-11 items-center justify-center rounded-full bg-white/14 px-4 text-sm font-black text-white ring-1 ring-white/20 backdrop-blur"
-                href="#trip-dates"
-              >
-                Change Dates
-              </a>
-            </div>
-            <p className="text-center text-xs font-semibold text-white/62">
-              {destinationSelection ? "Destination matched" : "Select a destination to update the pass image."}
-            </p>
-          </div>
-        </div>
-      ) : null}
       <label className="grid gap-2 text-sm font-black text-slate-800">
         Trip name
         <input
@@ -269,11 +361,6 @@ function readCreatedTripId(payload: unknown) {
   return null;
 }
 
-function destinationNameFromLabel(value: string) {
-  const primary = value.split(",")[0]?.trim();
-  return primary && primary !== "Choose destination" ? `${primary} Trip` : "New Trip";
-}
-
 function formatPreviewDates(startDate: string, endDate: string) {
   if (!startDate && !endDate) return "Add dates when you are ready";
   if (startDate && !endDate) return formatDate(startDate);
@@ -287,18 +374,4 @@ function formatDate(value: string) {
     month: "short",
     timeZone: "UTC"
   }).format(new Date(`${value}T00:00:00.000Z`));
-}
-
-function previewGradientForDestination(destination: string) {
-  const value = destination.toLowerCase();
-  if (value.includes("miami")) {
-    return "absolute inset-0 bg-[linear-gradient(135deg,#0f766e,#2563eb_46%,#f97316)]";
-  }
-  if (value.includes("barcelona")) {
-    return "absolute inset-0 bg-[linear-gradient(135deg,#7c2d12,#1d4ed8_52%,#f59e0b)]";
-  }
-  if (value.includes("new york")) {
-    return "absolute inset-0 bg-[linear-gradient(135deg,#111827,#334155_45%,#7f1d1d)]";
-  }
-  return "absolute inset-0 bg-[linear-gradient(135deg,#172554,#0f766e_55%,#111827)]";
 }

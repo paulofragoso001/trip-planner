@@ -179,7 +179,7 @@ test.describe("mobile soft-launch UX", () => {
       await expect(firstTripState.getByRole("button", { name: "Create trip" })).toBeVisible();
       const createPanel = page.getByTestId("mobile-create-another-trip");
       await expect(createPanel.getByTestId("mobile-trip-create-form")).toBeVisible();
-      await expect(createPanel.getByTestId("mobile-trip-create-preview")).toBeVisible();
+      await expect(createPanel.getByTestId("mobile-trip-create-sheet")).toBeVisible();
     } else {
       await expect(tripWallet).toBeVisible();
       await expect(tripWallet.getByTestId("mobile-trip-pass-card").first()).toBeVisible();
@@ -322,9 +322,9 @@ test.describe("mobile soft-launch UX", () => {
     await form.getByLabel("Start date").fill("2026-05-29");
     await form.getByLabel("End date").fill("2026-05-31");
 
-    await expect(form.getByTestId("mobile-trip-create-preview")).toContainText(tripName);
-    await expect(form.getByTestId("mobile-trip-create-preview")).toContainText(/May 29 - May 31|29 May - 31 May/);
-    await form.getByRole("button", { name: "Create Trip" }).last().click();
+    await expect(form.getByTestId("mobile-trip-create-sheet")).toContainText("Create Trip");
+    await expect(form.getByTestId("mobile-trip-create-sheet")).toContainText(/May 29 - May 31|29 May - 31 May/);
+    await form.getByRole("button", { name: "Create" }).last().click();
     await page.waitForURL(/\/dashboard\/trips\/[^/]+$/, { timeout: 45_000, waitUntil: "commit" });
 
     const tripId = new URL(page.url()).pathname.split("/").filter(Boolean).at(-1);

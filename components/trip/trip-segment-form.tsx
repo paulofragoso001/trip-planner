@@ -7,6 +7,13 @@ import GoogleMapsProvider from "@/components/GoogleMapsProvider";
 import LocationAutocomplete, {
   type LocationSelection
 } from "@/components/LocationAutocomplete";
+import {
+  mobileInputClassName,
+  mobilePrimaryActionClassName,
+  mobileSecondaryActionClassName,
+  mobileSelectClassName,
+  mobileTextareaClassName
+} from "@/components/ui/mobile-form";
 import { useWaylineAction } from "@/hooks/use-wayline-action";
 import {
   isRouteKind,
@@ -289,68 +296,93 @@ export function TripSegmentForm({
     state.status === "success" ? "Trip item saved." : state.message;
   const tone =
     state.status === "success"
-      ? "bg-emerald-50 text-emerald-700"
+      ? "bg-emerald-400/12 text-emerald-100 ring-emerald-300/20 lg:bg-emerald-50 lg:text-emerald-700 lg:ring-transparent"
       : state.status === "error" || state.status === "timeout"
-        ? "bg-red-50 text-red-700"
-        : "bg-slate-50 text-slate-700";
+        ? "bg-red-400/12 text-red-100 ring-red-300/20 lg:bg-red-50 lg:text-red-700 lg:ring-transparent"
+        : "bg-white/[0.06] text-white/70 ring-white/10 lg:bg-slate-50 lg:text-slate-700 lg:ring-transparent";
   const isEditing = Boolean(segmentId);
-  const fieldClass = "min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:ring-4 focus:ring-blue-100";
-  const textareaClass = "min-h-24 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:ring-4 focus:ring-blue-100";
-  const labelClass = "grid gap-1.5 text-xs font-bold uppercase tracking-[0.12em] text-slate-500";
+  const canSave = hydrated && Boolean(title.trim()) && !isPending;
+  const fieldClass = mobileInputClassName;
+  const selectClass = mobileSelectClassName;
+  const textareaClass = mobileTextareaClassName;
+  const labelClass = "grid gap-1.5 border-b border-white/8 px-4 py-3 text-xs font-black uppercase tracking-[0.14em] text-white/42 last:border-b-0 lg:border-slate-200 lg:text-slate-500";
 
   return (
-    <form className="grid gap-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm" onSubmit={submit}>
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h5 className="text-base font-black text-slate-950">
-            {isEditing ? "Edit trip item" : "Add trip item"}
-          </h5>
-          <p className="mt-1 text-xs font-semibold text-slate-500">{copy.helper}</p>
-        </div>
+    <form
+      className="grid gap-4 rounded-[1.55rem] border border-white/10 bg-[#1f1f21] p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] text-white shadow-[0_22px_60px_rgba(0,0,0,0.32)] lg:rounded-2xl lg:border-slate-200 lg:bg-white lg:text-slate-950 lg:shadow-sm"
+      data-testid={isEditing ? "mobile-edit-trip-item-form" : "mobile-add-trip-item-form"}
+      onSubmit={submit}
+    >
+      <div className="grid grid-cols-[minmax(44px,auto)_minmax(0,1fr)_minmax(44px,auto)] items-start gap-3 border-b border-white/10 pb-3 lg:border-slate-200">
         {onCancel ? (
           <button
-            className="inline-flex min-h-10 shrink-0 items-center justify-center rounded-full px-3 text-xs font-black text-slate-600 transition hover:bg-slate-100 hover:text-slate-950"
+            className={mobileSecondaryActionClassName}
             onClick={onCancel}
             type="button"
           >
             Cancel
           </button>
-        ) : null}
+        ) : (
+          <div aria-hidden="true" />
+        )}
+        <div className="min-w-0 text-center">
+          <h5 className="truncate text-base font-black text-white lg:text-slate-950">
+            {isEditing ? "Edit trip item" : "Add trip item"}
+          </h5>
+          <p className="mt-1 truncate text-xs font-semibold text-white/48 lg:text-slate-500">
+            {copy.helper}
+          </p>
+        </div>
+        <button
+          className={mobilePrimaryActionClassName}
+          disabled={!canSave}
+          type="submit"
+        >
+          {!hydrated
+            ? "Prep..."
+            : isPending
+              ? "Saving..."
+              : buttonLabel
+                  .replace(/^Save trip item$/i, "Save")
+                  .replace(/^Add trip item$/i, "Add")}
+        </button>
       </div>
 
-      <label className={labelClass}>
-        Type
-        <select
-          className={fieldClass}
-          onChange={(event) => handleTypeChange(event.target.value as TripItemFormType)}
-          value={formType}
-        >
-          {tripItemTypeOptions.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-      </label>
+      <div className="overflow-hidden rounded-2xl bg-white/[0.06] ring-1 ring-white/8 lg:bg-slate-50 lg:ring-slate-200">
+        <label className={labelClass}>
+          Type
+          <select
+            className={selectClass}
+            onChange={(event) => handleTypeChange(event.target.value as TripItemFormType)}
+            value={formType}
+          >
+            {tripItemTypeOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
 
-      <label className={labelClass}>
-        {copy.titleLabel}
-        <input
-          className={fieldClass}
-          onChange={(event) => setTitle(event.target.value)}
-          placeholder={copy.titlePlaceholder}
-          required
-          value={title}
-        />
-      </label>
+        <label className={labelClass}>
+          {copy.titleLabel}
+          <input
+            className={fieldClass}
+            onChange={(event) => setTitle(event.target.value)}
+            placeholder={copy.titlePlaceholder}
+            required
+            value={title}
+          />
+        </label>
+      </div>
 
       {isRouteSegment ? (
-        <div className="grid gap-3 rounded-2xl bg-slate-50 p-3">
+        <div className="grid gap-3 overflow-hidden rounded-2xl bg-white/[0.06] py-1 ring-1 ring-white/8 lg:bg-slate-50 lg:ring-slate-200">
           {!isFlightSegment ? (
             <label className={labelClass}>
               Transport type
               <select
-                className={fieldClass}
+                className={selectClass}
                 onChange={(event) => setRouteMode(normalizeRouteMode(event.target.value))}
                 value={routeMode === "flight" ? "transfer" : routeMode}
               >
@@ -364,7 +396,7 @@ export function TripSegmentForm({
               </select>
             </label>
           ) : null}
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-0 sm:grid-cols-2">
             <label className={labelClass}>
               From
               <GoogleMapsProvider>
@@ -401,7 +433,7 @@ export function TripSegmentForm({
             </label>
           </div>
           {routeOriginInput || routeDestinationInput ? (
-            <p className="text-xs font-semibold text-slate-500">
+            <p className="px-4 pb-3 text-xs font-semibold text-white/52 lg:text-slate-500">
               {routeOrigin?.lat != null && routeDestination?.lat != null
                 ? "Route ready."
                 : "Select origin and destination places to draw this route."}
@@ -409,31 +441,33 @@ export function TripSegmentForm({
           ) : null}
         </div>
       ) : (
-        <label className={labelClass}>
-          {copy.locationLabel}
-          <GoogleMapsProvider>
-            <LocationAutocomplete
-              ariaLabel="Stop location"
-              inputClassName={fieldClass}
-              loadingMessage="Places autocomplete is loading. You can still type a location."
-              manualWarning="Select a suggested place to map this item."
-              onInputChange={handleLocationInputChange}
-              onSelect={handleLocationSelect}
-              placeholder={copy.locationPlaceholder}
-              resolveErrorMessage="Wayline could not map that Google result. Try another location."
-              unresolvedMessage="Select a suggested place with a mapped location."
-              value={location}
-            />
-          </GoogleMapsProvider>
-          {location.trim() && !locationSelected ? (
-            <p className="mt-2 text-xs font-semibold text-amber-700">
-              Select a suggested place to map this.
-            </p>
-          ) : null}
-        </label>
+        <div className="overflow-hidden rounded-2xl bg-white/[0.06] ring-1 ring-white/8 lg:bg-slate-50 lg:ring-slate-200">
+          <label className={labelClass}>
+            {copy.locationLabel}
+            <GoogleMapsProvider>
+              <LocationAutocomplete
+                ariaLabel="Stop location"
+                inputClassName={fieldClass}
+                loadingMessage="Places autocomplete is loading. You can still type a location."
+                manualWarning="Select a suggested place to map this item."
+                onInputChange={handleLocationInputChange}
+                onSelect={handleLocationSelect}
+                placeholder={copy.locationPlaceholder}
+                resolveErrorMessage="Wayline could not map that Google result. Try another location."
+                unresolvedMessage="Select a suggested place with a mapped location."
+                value={location}
+              />
+            </GoogleMapsProvider>
+            {location.trim() && !locationSelected ? (
+              <p className="mt-2 text-xs font-semibold text-orange-200/76 lg:text-amber-700">
+                Select a suggested place to map this.
+              </p>
+            ) : null}
+          </label>
+        </div>
       )}
 
-      <div className="grid gap-2 sm:grid-cols-2">
+      <div className="grid overflow-hidden rounded-2xl bg-white/[0.06] ring-1 ring-white/8 sm:grid-cols-2 lg:bg-slate-50 lg:ring-slate-200">
         <label className={labelClass}>
           {copy.startDateLabel}
           <input
@@ -455,7 +489,7 @@ export function TripSegmentForm({
       </div>
 
       {showsEndTime ? (
-        <div className={`grid gap-2 ${usesSeparateEndDate ? "sm:grid-cols-2" : ""}`}>
+        <div className={`grid overflow-hidden rounded-2xl bg-white/[0.06] ring-1 ring-white/8 lg:bg-slate-50 lg:ring-slate-200 ${usesSeparateEndDate ? "sm:grid-cols-2" : ""}`}>
           {usesSeparateEndDate ? (
             <label className={labelClass}>
               {copy.endDateLabel}
@@ -479,8 +513,8 @@ export function TripSegmentForm({
         </div>
       ) : null}
 
-      <details className="rounded-xl bg-slate-50 px-3 py-2">
-        <summary className="cursor-pointer text-xs font-black uppercase tracking-[0.12em] text-slate-500">
+      <details className="rounded-2xl bg-white/[0.06] px-4 py-3 ring-1 ring-white/8 lg:bg-slate-50 lg:ring-slate-200">
+        <summary className="cursor-pointer text-xs font-black uppercase tracking-[0.14em] text-white/42 lg:text-slate-500">
           Notes and details
         </summary>
         <div className="mt-3 grid gap-3">
@@ -538,8 +572,8 @@ export function TripSegmentForm({
       </details>
 
       {includeCoordinates ? (
-        <details className="rounded-xl bg-slate-50 px-3 py-2">
-          <summary className="cursor-pointer text-xs font-black uppercase tracking-[0.12em] text-slate-500">
+        <details className="rounded-2xl bg-white/[0.06] px-4 py-3 ring-1 ring-white/8 lg:bg-slate-50 lg:ring-slate-200">
+          <summary className="cursor-pointer text-xs font-black uppercase tracking-[0.14em] text-white/42 lg:text-slate-500">
             Advanced location details
           </summary>
           <div className="mt-3 grid gap-2 sm:grid-cols-2">
@@ -567,26 +601,8 @@ export function TripSegmentForm({
         </details>
       ) : null}
 
-      <div className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-center">
-        <button
-          className="min-h-11 rounded-xl bg-blue-600 px-4 text-sm font-bold text-white disabled:opacity-60"
-          disabled={isPending || !hydrated}
-          type="submit"
-        >
-          {!hydrated ? "Preparing..." : isPending ? "Saving..." : buttonLabel}
-        </button>
-        {onCancel ? (
-          <button
-            className="min-h-11 rounded-xl bg-slate-100 px-4 text-sm font-bold text-slate-700 transition hover:bg-slate-200"
-            onClick={onCancel}
-            type="button"
-          >
-            Cancel
-          </button>
-        ) : null}
-      </div>
       {state.status !== "idle" && message ? (
-        <p className={`rounded-xl px-3 py-2 text-xs font-semibold ${tone}`}>{message}</p>
+        <p className={`rounded-2xl px-4 py-3 text-xs font-semibold ring-1 ${tone}`}>{message}</p>
       ) : null}
     </form>
   );
