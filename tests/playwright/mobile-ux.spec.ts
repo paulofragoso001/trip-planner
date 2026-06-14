@@ -414,6 +414,18 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByRole("heading", { name: "Capture travel ideas" })).toBeVisible();
     await expect(page.getByText("Create a trip from saved ideas.")).toHaveCount(0);
     await expect(page.getByTestId("plan-workflow-stepper")).toHaveCount(1);
+    const planStepper = page.getByTestId("plan-workflow-stepper");
+    await expect(planStepper.getByText("Add", { exact: true })).toBeVisible();
+    await expect(planStepper.getByText("Review", { exact: true })).toBeVisible();
+    await expect(planStepper.getByText("Trip", { exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Add an idea" })).toHaveCount(0);
+    await expect(page.getByTestId("plan-capture-link")).toBeVisible();
+    await expect(page.getByTestId("plan-capture-upload")).toBeVisible();
+    await expect(page.getByTestId("plan-capture-note")).toBeVisible();
+    await expect(page.getByRole("button", { name: /review idea/i })).toBeVisible();
+    await expect(page.getByText("Optional trip context")).toBeHidden();
+    await expect(page.getByText("Advanced sources")).toBeHidden();
+    await expect(page.getByText("Legacy review queue")).toBeHidden();
     const planCardStyle = await page.locator("#saved-inspiration").evaluate((element) => {
       const style = window.getComputedStyle(element);
       return {

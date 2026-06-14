@@ -18,9 +18,12 @@ type WalletPageShellProps = {
   compactHero?: boolean;
   eyebrow?: string;
   fallbackGradient?: string;
+  heroClassName?: string;
   heroImage?: WalletPageHeroImage | null;
+  subtitleClassName?: string;
   subtitle?: ReactNode;
   title: string;
+  titleClassName?: string;
   variant?: "public" | "app" | "trip";
 };
 
@@ -30,9 +33,12 @@ export function WalletPageShell({
   compactHero = false,
   eyebrow,
   fallbackGradient = "bg-[linear-gradient(135deg,#172554,#0f766e_55%,#111827)]",
+  heroClassName,
   heroImage,
+  subtitleClassName,
   subtitle,
   title,
+  titleClassName,
   variant = "app"
 }: WalletPageShellProps) {
   const imageUrl = heroImage?.src || heroImage?.imageUrl || null;
@@ -72,7 +78,8 @@ export function WalletPageShell({
         <section
           className={cn(
             "relative isolate overflow-hidden rounded-[2.35rem] bg-slate-950 text-white shadow-[0_26px_80px_rgba(2,6,23,0.28)] ring-1 ring-white/20",
-            compactHero ? "min-h-[15rem]" : "min-h-[18rem] sm:min-h-[22rem]"
+            compactHero ? "min-h-[15rem]" : "min-h-[18rem] sm:min-h-[22rem]",
+            heroClassName
           )}
           data-has-image={imageUrl ? "true" : "false"}
           data-testid="wallet-page-hero"
@@ -102,11 +109,11 @@ export function WalletPageShell({
             </div>
 
             <div className="max-w-3xl">
-              <h1 className="break-words text-4xl font-black leading-[0.94] tracking-tight sm:text-6xl">
+              <h1 className={cn("break-words text-4xl font-black leading-[0.94] tracking-tight sm:text-6xl", titleClassName)}>
                 {title}
               </h1>
               {subtitle ? (
-                <p className="mt-4 max-w-2xl text-sm font-bold leading-6 text-white/76 sm:text-base">
+                <p className={cn("mt-4 max-w-2xl text-sm font-bold leading-6 text-white/76 sm:text-base", subtitleClassName)}>
                   {subtitle}
                 </p>
               ) : null}

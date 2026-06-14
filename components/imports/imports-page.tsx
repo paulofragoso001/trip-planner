@@ -5,6 +5,7 @@ import { ExtractedPlaceCard } from "@/components/imports/extracted-place-card";
 import { SocialImportForm } from "@/components/imports/social-import-form";
 import { TripDraftQueue } from "@/components/imports/trip-draft-queue";
 import { UnfiledItemForm } from "@/components/imports/unfiled-item-form";
+import { cn } from "@/components/trip-ui";
 import { EmptyState, StatusBadge, tripUi } from "@/components/trip-ui";
 import { WalletActionLink, WalletCard } from "@/components/wallet/wallet-card";
 import { WalletPageShell } from "@/components/wallet/wallet-page-shell";
@@ -40,44 +41,60 @@ export default function ImportsPage({
       compactHero
       eyebrow="PLAN"
       fallbackGradient={heroImage.fallbackGradient}
+      heroClassName="min-h-[11.5rem] rounded-[2rem] sm:min-h-[15rem]"
       heroImage={heroImage}
-      subtitle="Add a note, link, or screenshot. Wayline finds places for you to review."
+      subtitle="Paste a link, note, or screenshot. Wayline finds places for you to review."
+      subtitleClassName="mt-2 text-[0.9rem] leading-5 text-white/82 sm:mt-4 sm:text-base"
       title="Capture travel ideas"
+      titleClassName="text-[2.35rem] sm:text-6xl"
     >
-      <div className="grid gap-5" data-testid="imports-route">
+      <div
+        className="grid gap-4 pb-[calc(7rem+env(safe-area-inset-bottom))] lg:gap-5 lg:pb-0"
+        data-testid="imports-route"
+      >
         <section className="grid gap-5">
           <WorkflowStepRow />
 
-          <WalletCard
-            className="border-white/10 !bg-[#050505] !text-white shadow-[0_22px_70px_rgba(0,0,0,0.38)] ring-1 ring-white/10 lg:!bg-white lg:!text-slate-950 lg:border-slate-200 lg:shadow-[0_18px_60px_rgba(15,23,42,0.08)] lg:ring-0"
-            eyebrow="Ideas"
+          <section
+            className="rounded-[1.65rem] border border-white/10 bg-[#050505] p-4 text-white shadow-[0_22px_70px_rgba(0,0,0,0.38)] ring-1 ring-white/10 lg:rounded-[2rem] lg:border-slate-200 lg:bg-white lg:p-5 lg:text-slate-950 lg:shadow-[0_18px_60px_rgba(15,23,42,0.08)] lg:ring-0"
             id="saved-inspiration"
-            title="Add an idea"
-            variant="primary"
           >
-            <p className="text-sm font-semibold leading-6 text-white/64 lg:text-slate-600">
-              Paste a travel note, link, or screenshot.
-            </p>
-            <div className="mt-5">
-              <SocialImportForm
-                defaultRawText={sampleInspiration?.text}
-                sampleKey={sampleInspiration?.key}
-                trips={trips}
-              />
+            <div className="mb-4 grid gap-1 lg:mb-5">
+              <p className="text-xs font-black uppercase tracking-[0.18em] text-orange-300 lg:text-blue-600">
+                Ideas
+              </p>
+              <h2 className="hidden text-xl font-black tracking-tight text-slate-950 lg:block">
+                Add an idea
+              </h2>
+              <p className="text-lg font-black tracking-tight text-white lg:hidden">
+                Capture travel inspiration
+              </p>
             </div>
-          </WalletCard>
+            <SocialImportForm
+              defaultRawText={sampleInspiration?.text}
+              sampleKey={sampleInspiration?.key}
+              trips={trips}
+            />
+          </section>
 
           <div id="ai-review" />
           {aiReviewItems.length ? (
             <WalletCard
               action={<StatusBadge tone="blue">{aiReviewItems.length} to review</StatusBadge>}
-              eyebrow="AI Review"
+              className="border-white/10 !bg-[#050505] !text-white ring-1 ring-white/10 lg:border-slate-200 lg:!bg-white lg:!text-slate-950 lg:ring-0"
+              eyebrow="Ready for review"
               title="Review places"
               variant="primary"
             >
-              <p className="text-sm font-semibold leading-6 text-slate-600">
-                Approve, edit, merge, or dismiss each place.
+              <p className="text-sm font-semibold leading-6 text-white/68 lg:text-slate-600">
+                Review places Wayline found before adding them to a trip.
               </p>
+              <a
+                className="mt-4 inline-flex min-h-11 items-center justify-center rounded-full bg-white px-4 text-sm font-black text-slate-950 lg:bg-slate-950 lg:text-white"
+                href="#ai-review"
+              >
+                Review places
+              </a>
               <div className="mt-4 grid gap-4">
                 {aiReviewItems.map((place) => (
                   <ExtractedPlaceCard
@@ -91,9 +108,13 @@ export default function ImportsPage({
             </WalletCard>
           ) : null}
 
-          <TripDraftQueue drafts={tripDrafts} />
+          <MobileTripContext hasTrips={trips.length > 0} />
 
-        <details className="rounded-[2rem] border border-slate-200/80 bg-white/95 p-4 shadow-sm backdrop-blur sm:p-5">
+          <div className="hidden lg:block">
+            <TripDraftQueue drafts={tripDrafts} />
+          </div>
+
+        <details className="hidden rounded-[2rem] border border-slate-200/80 bg-white/95 p-4 shadow-sm backdrop-blur sm:p-5 lg:block">
           <summary className="cursor-pointer text-lg font-black text-slate-950">
             Optional trip context
           </summary>
@@ -105,7 +126,7 @@ export default function ImportsPage({
           </div>
         </details>
 
-        <details className="rounded-[2rem] border border-slate-200/80 bg-white/95 p-4 shadow-sm backdrop-blur sm:p-5">
+        <details className="hidden rounded-[2rem] border border-slate-200/80 bg-white/95 p-4 shadow-sm backdrop-blur sm:p-5 lg:block">
           <summary className="cursor-pointer text-lg font-black text-slate-950">
             Advanced sources
           </summary>
@@ -148,7 +169,7 @@ export default function ImportsPage({
         </details>
       </section>
 
-        <details className="rounded-[2rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+        <details className="hidden rounded-[2rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5 lg:block">
           <summary className="cursor-pointer text-base font-black text-slate-950">
             Recent ideas
           </summary>
@@ -196,7 +217,7 @@ export default function ImportsPage({
           </div>
         </details>
 
-        <details className="rounded-[2rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+        <details className="hidden rounded-[2rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5 lg:block">
           <summary className="cursor-pointer text-base font-black text-slate-950">
             Legacy review queue
           </summary>
@@ -250,17 +271,17 @@ function WorkflowStepRow() {
   return (
     <nav
       aria-label="Plan workflow"
-      className="grid grid-cols-3 gap-2 rounded-[1.75rem] border border-white/10 !bg-[#050505] p-2 shadow-[0_18px_50px_rgba(0,0,0,0.28)] ring-1 ring-white/10 lg:!bg-white lg:border-slate-200 lg:shadow-sm lg:ring-0"
+      className="grid grid-cols-3 gap-2 rounded-[1.5rem] border border-white/10 !bg-[#050505] p-1.5 shadow-[0_18px_50px_rgba(0,0,0,0.28)] ring-1 ring-white/10 lg:rounded-[1.75rem] lg:!bg-white lg:p-2 lg:border-slate-200 lg:shadow-sm lg:ring-0"
       data-testid="plan-workflow-stepper"
     >
-      {["Add", "Review", "Create"].map((label, index) => (
+      {["Add", "Review", "Trip"].map((label, index) => (
         <div
-          className={[
-            "flex min-h-11 items-center justify-center gap-2 rounded-full px-3 text-xs font-black",
+          className={cn(
+            "flex min-h-11 items-center justify-center gap-2 rounded-full px-2 text-xs font-black sm:px-3",
             index === 0
               ? "bg-white text-slate-950 lg:bg-slate-950 lg:text-white"
-              : "bg-white/[0.08] text-white/58 lg:bg-slate-50 lg:text-slate-700"
-          ].join(" ")}
+              : "bg-white/[0.1] text-white/76 lg:bg-slate-50 lg:text-slate-700"
+          )}
           key={label}
         >
           <span>{index + 1}</span>
@@ -268,5 +289,36 @@ function WorkflowStepRow() {
         </div>
       ))}
     </nav>
+  );
+}
+
+function MobileTripContext({ hasTrips }: { hasTrips: boolean }) {
+  return (
+    <section
+      className="rounded-[1.65rem] border border-white/10 bg-[#050505] p-4 text-white shadow-[0_18px_48px_rgba(0,0,0,0.28)] ring-1 ring-white/10 lg:hidden"
+      data-testid="plan-trip-context"
+    >
+      <p className="text-xs font-black uppercase tracking-[0.18em] text-orange-300">
+        Trip
+      </p>
+      <div className="mt-2 flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="text-lg font-black tracking-tight">
+            {hasTrips ? "Add to trip" : "Create trip"}
+          </h2>
+          <p className="mt-1 text-sm font-semibold leading-5 text-white/68">
+            {hasTrips
+              ? "Choose a trip after Wayline finds places."
+              : "Create a trip when your idea is ready."}
+          </p>
+        </div>
+        <a
+          className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-full bg-white px-4 text-sm font-black text-slate-950"
+          href="/dashboard/trips"
+        >
+          {hasTrips ? "Trips" : "Create"}
+        </a>
+      </div>
+    </section>
   );
 }
