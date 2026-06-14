@@ -338,10 +338,13 @@ test.describe("mobile soft-launch UX", () => {
       const mobileHub = page.getByTestId("trip-overview-page");
       await expect(mobileHub).toBeVisible();
       await expect(mobileHub.getByTestId("overview-small-pass")).toBeVisible({ timeout: 20_000 });
-      await expect(mobileHub.getByTestId("mobile-real-map-preview")).toBeVisible();
-      await expect(mobileHub.getByTestId("mobile-real-map-preview")).toHaveAttribute("data-map-theme", "dark");
+      await expect(mobileHub.getByTestId("overview-mobile-hero")).toBeVisible();
+      await expect(mobileHub.getByTestId("overview-quick-actions")).toBeVisible();
+      await expect(mobileHub.getByTestId("overview-itinerary-preview")).toBeVisible();
+      await expect(mobileHub.getByTestId("overview-documents-preview")).toBeVisible();
+      await expect(mobileHub.getByTestId("overview-spending-summary")).toBeVisible();
       await expect(mobileHub.getByTestId("overview-small-primary-cta")).toBeVisible();
-      await expect(mobileHub.getByTestId("overview-small-primary-cta")).toContainText("Add trip item");
+      await expect(mobileHub.getByTestId("overview-small-primary-cta")).toContainText("New Activity");
       await expect(mobileHub.getByText("Invite Guests")).toHaveCount(0);
       await expect(mobileHub.getByText("Trip guests")).toBeHidden();
       await expect(mobileHub.getByRole("link", { name: "Open map" }).first()).toBeVisible();
@@ -675,7 +678,11 @@ test.describe("mobile soft-launch UX", () => {
       await expect(page.getByTestId("trip-pass-desktop-background")).toBeHidden();
       await expect(page.getByTestId("trip-compact-header")).toBeHidden();
       await expect(page.getByTestId("trip-section-menu")).toBeHidden();
-      await expect(page.getByTestId("mobile-real-map-preview")).toHaveAttribute("data-map-theme", "dark");
+      await expect(page.getByTestId("overview-mobile-hero")).toBeVisible();
+      await expect(page.getByTestId("overview-quick-actions")).toBeVisible();
+      await expect(page.getByTestId("overview-itinerary-preview")).toBeVisible();
+      await expect(page.getByTestId("overview-documents-preview")).toBeVisible();
+      await expect(page.getByTestId("overview-spending-summary")).toBeVisible();
       await expect(page.getByTestId("overview-small-pass")).toContainText(tripPayload.trip.name);
       const overviewOwnsLowerViewport = await page.evaluate(() => {
         const target = document.elementFromPoint(window.innerWidth / 2, window.innerHeight - 120);

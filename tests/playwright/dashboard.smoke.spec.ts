@@ -94,7 +94,7 @@ test("loads dashboard summary and route-split pages", async ({ page }) => {
   await expect(overview.getByText("Trip organizer")).toHaveCount(0);
   await expect(overview.getByText("All your trip details in one place")).toHaveCount(0);
   await expect(overview.getByText("Trip Overview")).toHaveCount(0);
-  await expect(overview.getByRole("link", { name: /Add trip item/ })).toBeVisible();
+  await expect(overview.getByRole("link", { name: /New Activity/ })).toBeVisible();
   await expect(overview.getByRole("link", { name: "Open map" }).first()).toBeVisible();
   await expect(overview.getByRole("link", { name: "Open Activities" })).toBeVisible();
   await expect(overview.getByRole("link", { name: "Open documents" })).toHaveCount(0);

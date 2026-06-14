@@ -3,6 +3,11 @@ import "server-only";
 import { authorizeDashboardApi } from "@/lib/server/dashboard-test-auth";
 import { isDemoTripId, isUuid } from "@/lib/server/trip-id";
 import {
+  getTripHeroImage,
+  type WalletHeroImage,
+  type WalletHeroSegment
+} from "@/lib/wallet/hero-image";
+import {
   isRouteKind,
   readTripSegmentRoute,
   routeEndpointLabel,
@@ -26,6 +31,7 @@ export type TripOverviewData = {
     label: string;
   }>;
   hasExpenses: boolean;
+  heroImage: WalletHeroImage;
   itineraryPreview: Array<{
     id: string;
     isMapped: boolean;
@@ -58,6 +64,7 @@ export type TripOverviewData = {
   } | null;
   segmentCount: number;
   status: string;
+  statusLabel: string | null;
   suggestionsCount: number;
   title: string;
   tripId: string;
@@ -137,6 +144,10 @@ export async function loadTripOverviewData(tripId: string): Promise<TripOverview
         }
       ],
       hasExpenses: true,
+      heroImage: getTripHeroImage(
+        { destination: "Barcelona, Spain", name: "Barcelona Work Trip" },
+        []
+      ),
       mappedCount: 3,
       mapPreviewItems: [
         {
@@ -189,6 +200,7 @@ export async function loadTripOverviewData(tripId: string): Promise<TripOverview
       },
       segmentCount: 5,
       status: "On track",
+      statusLabel: "Happening now",
       suggestionsCount: 2,
       title: "Barcelona Work Trip",
       tripId
@@ -260,6 +272,13 @@ export async function loadTripOverviewData(tripId: string): Promise<TripOverview
   const segments = (segmentResultWithFallback.data || []) as SegmentRow[];
   const itineraryPreview = segments.slice(0, 5).map(mapSegmentPreview);
   const expenseCategories = groupExpenseCategories(budgetRows, currency).slice(0, 4);
+  const heroImage = getTripHeroImage(
+    {
+      destination: trip.destination,
+      name: trip.name
+    },
+    segments as WalletHeroSegment[]
+  );
 
   return {
     actualLabel: formatMoney(actual, currency),
@@ -269,6 +288,7 @@ export async function loadTripOverviewData(tripId: string): Promise<TripOverview
     error: null,
     expenseCategories,
     hasExpenses: actual > 0 || expenseCategories.length > 0,
+    heroImage,
     itineraryPreview,
     mappedCount: segments.filter(isMappedSegment).length,
     mapPreviewItems: segments.filter(isMappedSegment).slice(0, 5).map(mapSegmentMapPreview),
@@ -279,6 +299,7 @@ export async function loadTripOverviewData(tripId: string): Promise<TripOverview
     routePreview: mapRoutePreview(segments.find(isOverviewRouteSegment) || null),
     segmentCount: segmentResultWithFallback.count || segments.length,
     status: trip.status || "Planning",
+    statusLabel: formatTripStatus(trip.start_date, trip.end_date, trip.status),
     suggestionsCount: suggestionsResult.error ? 0 : suggestionsResult.count || 0,
     title: trip.name,
     tripId
@@ -298,6 +319,7 @@ function emptyOverviewData(tripId: string, error: string): TripOverviewData {
     error,
     expenseCategories: [],
     hasExpenses: false,
+    heroImage: getTripHeroImage({ destination: "Trip", name: "Trip unavailable" }, []),
     itineraryPreview: [],
     mappedCount: 0,
     mapPreviewItems: [],
@@ -308,6 +330,7 @@ function emptyOverviewData(tripId: string, error: string): TripOverviewData {
     routePreview: null,
     segmentCount: 0,
     status: "Unavailable",
+    statusLabel: null,
     suggestionsCount: 0,
     title: "Trip unavailable",
     tripId
@@ -449,6 +472,38 @@ function formatDateRange(startDate: string | null, endDate: string | null) {
   if (startDate && !endDate) return formatDate(startDate);
   if (!startDate && endDate) return formatDate(endDate);
   return `${formatDate(startDate!)} - ${formatDate(endDate!)}`;
+}
+
+function formatTripStatus(startDate: string | null, endDate: string | null, fallback: string | null) {
+  if (!startDate && !endDate) return fallback || null;
+
+  const today = startOfUtcDay(new Date());
+  const start = startDate ? startOfUtcDay(new Date(`${startDate}T00:00:00Z`)) : null;
+  const end = endDate ? startOfUtcDay(new Date(`${endDate}T00:00:00Z`)) : null;
+
+  if (start && start > today) {
+    const days = dayDiff(today, start);
+    return days === 1 ? "Starts tomorrow" : `Starts in ${days} days`;
+  }
+
+  if (start && end && start <= today && end >= today) {
+    return "Happening now";
+  }
+
+  if (end && end < today) {
+    const days = dayDiff(end, today);
+    return days === 1 ? "Ended yesterday" : `Ended ${days} days ago`;
+  }
+
+  return fallback || null;
+}
+
+function startOfUtcDay(value: Date) {
+  return new Date(Date.UTC(value.getUTCFullYear(), value.getUTCMonth(), value.getUTCDate()));
+}
+
+function dayDiff(from: Date, to: Date) {
+  return Math.max(0, Math.round((to.getTime() - from.getTime()) / 86_400_000));
 }
 
 function formatDate(value: string) {
