@@ -957,7 +957,7 @@ function MobileTimelineBottomBar({
   variant?: "fixed" | "sheet";
 }) {
   const className = variant === "sheet"
-    ? "z-30 mx-3 mb-[calc(0.75rem+env(safe-area-inset-bottom))] flex max-w-md items-center justify-between self-center rounded-[1.6rem] border border-white/10 bg-[#1b1b1d]/95 px-4 py-3 text-orange-400 shadow-2xl backdrop-blur-2xl lg:hidden"
+    ? "z-30 mx-3 mb-[calc(0.75rem+env(safe-area-inset-bottom))] flex w-[calc(100%-1.5rem)] max-w-md items-center justify-between self-center rounded-[1.6rem] border border-white/10 bg-[#1b1b1d]/95 px-4 py-3 text-orange-400 shadow-2xl backdrop-blur-2xl lg:hidden"
     : "fixed inset-x-3 bottom-[calc(5.75rem+env(safe-area-inset-bottom))] z-30 mx-auto flex max-w-md items-center justify-between rounded-[1.6rem] border border-white/10 bg-slate-950/[0.88] px-4 py-3 text-orange-400 shadow-2xl backdrop-blur-2xl lg:hidden";
 
   return (

@@ -89,7 +89,7 @@ export default function TripOverviewPage({
         title={title}
       />
 
-      <div className="grid gap-4 px-3 pt-4 lg:px-0 lg:pt-0" id="overview-full">
+      <div className="hidden gap-4 px-3 pt-4 lg:grid lg:px-0 lg:pt-0" id="overview-full">
         {error ? (
           <p className="rounded-[1.5rem] border border-amber-200/20 bg-amber-300/12 px-4 py-3 text-sm font-bold text-amber-50">
             Some trip details are unavailable, but you can still add an item or open the itinerary.
@@ -476,8 +476,8 @@ function MobileOverviewSmallPass({
 
         <div className="mt-4 flex items-center justify-between gap-3 text-xs font-black uppercase tracking-[0.14em] text-white/42">
           <span>{segmentCount} {segmentCount === 1 ? "place" : "places"}</span>
-          <Link className="text-orange-300" href="#overview-full">
-            Full overview
+          <Link className="text-orange-300" href={`${base}/timeline`}>
+            Itinerary
           </Link>
         </div>
       </div>

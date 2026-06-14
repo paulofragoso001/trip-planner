@@ -328,10 +328,10 @@ test.describe("mobile soft-launch UX", () => {
       await expect(mobileHub.getByTestId("overview-small-primary-cta")).toBeVisible();
       await expect(mobileHub.getByTestId("overview-small-primary-cta")).toContainText("Add trip item");
       await expect(mobileHub.getByText("Invite Guests")).toHaveCount(0);
-      await expect(mobileHub.getByText("Trip guests")).toBeVisible();
+      await expect(mobileHub.getByText("Trip guests")).toBeHidden();
       await expect(mobileHub.getByRole("link", { name: "Open map" }).first()).toBeVisible();
-      await expect(mobileHub.getByRole("link", { name: "Open Activities" })).toBeVisible();
-      await expect(mobileHub.getByTestId("overview-more-tools")).toBeVisible();
+      await expect(mobileHub.getByRole("link", { name: "Search trip activities" })).toBeVisible();
+      await expect(mobileHub.getByTestId("overview-more-tools")).toBeHidden();
       const overviewOwnsLowerViewport = await page.evaluate(() => {
         const target = document.elementFromPoint(window.innerWidth / 2, window.innerHeight - 120);
         return Boolean(target?.closest('[data-testid="overview-small-sheet"]'));

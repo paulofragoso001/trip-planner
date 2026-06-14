@@ -129,7 +129,7 @@ export function ActivityDetailSheet({
       </div>
 
       <section
-        className="absolute inset-x-0 bottom-0 max-h-[min(82dvh,calc(100dvh-5rem))] overflow-y-auto overscroll-contain rounded-t-[2rem] bg-[#252527]/98 px-4 pb-[calc(8.5rem+env(safe-area-inset-bottom))] pt-3 shadow-[0_-24px_80px_rgba(0,0,0,0.55)] ring-1 ring-white/10 backdrop-blur-2xl sm:left-1/2 sm:max-w-2xl sm:-translate-x-1/2 sm:pb-[calc(2rem+env(safe-area-inset-bottom))] lg:max-h-[82vh] lg:pb-6"
+        className="absolute inset-x-0 bottom-0 max-h-[82dvh] overflow-y-auto overscroll-contain rounded-t-[2rem] bg-[#252527]/98 px-4 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-3 shadow-[0_-24px_80px_rgba(0,0,0,0.55)] ring-1 ring-white/10 backdrop-blur-2xl sm:left-1/2 sm:max-w-2xl sm:-translate-x-1/2 sm:pb-[calc(2rem+env(safe-area-inset-bottom))] lg:max-h-[82vh] lg:pb-6"
         data-testid="activity-detail-panel"
       >
         <div className="mx-auto mb-4 h-1.5 w-12 rounded-full bg-white/40" />
