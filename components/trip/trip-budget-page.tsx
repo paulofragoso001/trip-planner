@@ -78,7 +78,7 @@ export default function TripBudgetPage({
             {categories.length ? (
               <div className="grid gap-5 p-4">
                 {categories.map((category) => (
-                  <section className="grid gap-2" key={category.id}>
+                  <section className="grid gap-2" data-testid="mobile-spending-category" key={category.id}>
                     <div className="flex items-center gap-2 text-[0.7rem] font-black uppercase tracking-[0.12em] text-white/44">
                       <span className={iconBubbleClass(category.category, "tiny")}>
                         {iconForCategory(category.category, "tiny")}
@@ -121,7 +121,7 @@ export default function TripBudgetPage({
 
         <section className="grid gap-5">
           {latestRecords.length ? (
-            <article className="rounded-[1.55rem] bg-[#1c1c1f] p-4 text-white ring-1 ring-white/8">
+            <article className="hidden rounded-[1.55rem] bg-[#1c1c1f] p-4 text-white ring-1 ring-white/8 lg:block">
               <div className="flex items-center justify-between gap-3">
                 <h2 className="text-base font-black">Latest Added</h2>
                 <ReceiptText className="h-5 w-5 text-white/42" aria-hidden="true" />
@@ -156,7 +156,7 @@ export default function TripBudgetPage({
           <BudgetRecordForm tripId={tripId} />
         </section>
 
-        <section className="rounded-[1.55rem] bg-[#1c1c1f] p-4 shadow-sm ring-1 ring-white/8 lg:bg-white lg:text-slate-950 lg:ring-slate-200">
+        <section className="hidden rounded-[1.55rem] bg-[#1c1c1f] p-4 shadow-sm ring-1 ring-white/8 lg:block lg:bg-white lg:text-slate-950 lg:ring-slate-200">
           <h3 className="text-base font-black text-white lg:text-slate-950">Expense notes</h3>
           {error ? (
             <p className="mt-4 rounded-2xl bg-amber-50 px-4 py-3 text-sm font-bold text-amber-800">

@@ -695,7 +695,14 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByRole("navigation", { name: "Trip tabs" })).toBeHidden();
     await expect(page.getByTestId("trip-budget-page").getByRole("heading", { name: "My Spending" })).toBeVisible();
     await expect(page.getByTestId("trip-budget-page").getByText("Total").last()).toBeVisible();
-    await expect(page.getByTestId("trip-budget-page").getByText("Latest Added")).toBeVisible();
+    await expect(page.getByTestId("mobile-spending-category").filter({ hasText: "Flights" })).toBeVisible();
+    await expect(page.getByTestId("mobile-spending-category").filter({ hasText: "Lodging" })).toBeVisible();
+    await page.getByTestId("trip-budget-page").getByRole("button", { name: "Add expense" }).click();
+    await expect(page.getByTestId("mobile-expense-amount-sheet")).toBeVisible();
+    await expect(page.getByTestId("mobile-expense-amount-sheet").getByRole("button", { name: "Save" })).toBeDisabled();
+    await expect(page.getByTestId("mobile-expense-amount-sheet").getByRole("button", { name: "Backspace amount" })).toBeVisible();
+    await page.getByTestId("mobile-expense-amount-sheet").getByRole("button", { name: "Cancel" }).click();
+    await expect(page.getByTestId("mobile-expense-amount-sheet")).toHaveCount(0);
     overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
     expect(overflow, "mobile spending overflow").toBeLessThanOrEqual(1);
   });
