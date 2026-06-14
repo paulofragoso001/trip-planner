@@ -1,6 +1,6 @@
 "use client";
 
-import { BarChart3, ChevronDown, List, Plus, Search, Settings } from "lucide-react";
+import { BarChart3, ChevronDown, LocateFixed, Map as MapIcon, Plus, Search, Settings } from "lucide-react";
 import { GoogleMap, OverlayView } from "@react-google-maps/api";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -20,7 +20,7 @@ export function MobileTripsWallet({ error, trips }: MobileTripsWalletProps) {
   const [hydrated, setHydrated] = useState(false);
   const [selectedYear, setSelectedYear] = useState<string | null>(null);
   const createRef = useRef<HTMLDivElement | null>(null);
-  const isMapView = searchParams.get("view") === "map";
+  const isListView = searchParams.get("view") === "list";
 
   const filteredTrips = useMemo(() => {
     if (!query.trim()) return trips;
@@ -36,6 +36,11 @@ export function MobileTripsWallet({ error, trips }: MobileTripsWalletProps) {
   const activeYearTrips = groupedTrips.find((group) => group.year === activeYear)?.trips || [];
   const hasSearchQuery = query.trim().length > 0;
   const countryMapTrips = hasSearchQuery ? filteredTrips : activeYearTrips;
+  const visibleTripGroups = hasSearchQuery
+    ? groupedTrips
+    : activeYearTrips.length
+      ? [{ trips: activeYearTrips, year: activeYear }]
+      : [];
 
   useEffect(() => {
     setHydrated(true);
@@ -49,7 +54,7 @@ export function MobileTripsWallet({ error, trips }: MobileTripsWalletProps) {
     });
   }
 
-  if (isMapView) {
+  if (!isListView) {
     return (
       <MobileTripsCountriesMap
         activeYear={activeYear}
@@ -75,7 +80,7 @@ export function MobileTripsWallet({ error, trips }: MobileTripsWalletProps) {
       data-testid="mobile-trips-wallet-screen"
     >
       <MobileTripsBackground />
-      <div className="relative z-10 mx-auto grid w-full max-w-[31rem] gap-5 px-5 pb-5 pt-5">
+      <div className="relative z-10 mx-auto grid w-full max-w-[31rem] gap-5 px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-5">
         <header className="grid gap-5">
           <div className="flex min-h-12 items-center justify-between gap-3">
             <Link
@@ -136,12 +141,24 @@ export function MobileTripsWallet({ error, trips }: MobileTripsWalletProps) {
           </div>
         ) : (
           <div className="grid gap-6" data-testid="mobile-trips-wallet">
-            {groupedTrips.length > 0 ? (
-              groupedTrips.map((group) => (
+            {visibleTripGroups.length > 0 ? (
+              visibleTripGroups.map((group) => (
                 <section className="grid gap-4" key={group.year}>
-                  <h2 className="text-5xl font-black leading-none tracking-tight text-orange-500">
-                    {group.year}
-                  </h2>
+                  <label className="relative inline-flex w-fit items-center">
+                    <span className="sr-only">Trip year</span>
+                    <select
+                      className="h-12 appearance-none rounded-full border border-transparent bg-transparent py-0 pl-0 pr-9 text-5xl font-black leading-none tracking-tight text-orange-500 outline-none focus:ring-4 focus:ring-orange-400/20"
+                      onChange={(event) => setSelectedYear(event.target.value)}
+                      value={group.year}
+                    >
+                      {years.map((year) => (
+                        <option className="bg-black text-white" key={year} value={year}>
+                          {year}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown className="pointer-events-none ml-[-2.1rem] h-7 w-7 text-orange-500" aria-hidden="true" />
+                  </label>
                   <div className="grid gap-4">
                     {group.trips.map((trip) => (
                       <MobileTripPassCard key={trip.id} trip={trip} />
@@ -159,7 +176,7 @@ export function MobileTripsWallet({ error, trips }: MobileTripsWalletProps) {
 
         <section
           className={cn(
-            "grid gap-3 rounded-[1.75rem] border border-white/10 bg-white/[0.06] p-3 backdrop-blur-2xl",
+            "grid gap-3 rounded-[1.75rem] border border-white/10 bg-[#111113] p-3",
             createOpen ? "shadow-[0_26px_70px_rgba(0,0,0,0.34)]" : "p-2"
           )}
           data-testid="mobile-create-another-trip"
@@ -232,22 +249,21 @@ function MobileTripsCountriesMap({
     >
       <MobileCountryMapCanvas trips={markerTrips} />
 
-      <div className="absolute right-4 top-10 z-20 overflow-hidden rounded-full border border-white/10 bg-black/82 text-orange-400 shadow-[0_18px_50px_rgba(0,0,0,0.45)] backdrop-blur-xl">
-        <button
-          aria-label="Show trip pins"
+      <div className="absolute right-4 top-10 z-20 overflow-hidden rounded-full border border-white/10 bg-black/86 text-orange-400 shadow-[0_18px_50px_rgba(0,0,0,0.45)] backdrop-blur-xl">
+        <Link
+          aria-label="Show trip cards"
           className="grid h-12 w-12 place-items-center border-b border-white/10 transition hover:bg-white/10 focus:outline-none focus:ring-4 focus:ring-orange-400/20"
-          onClick={() => setExpanded(false)}
-          type="button"
+          href="/dashboard/trips?view=list"
         >
-          <BarChart3 className="h-5 w-5" aria-hidden="true" />
-        </button>
+          <MapIcon className="h-5 w-5" aria-hidden="true" />
+        </Link>
         <button
-          aria-label={expanded ? "Collapse trip list" : "Expand trip list"}
+          aria-label={expanded ? "Collapse trip sheet" : "Locate trips"}
           className="grid h-12 w-12 place-items-center transition hover:bg-white/10 focus:outline-none focus:ring-4 focus:ring-orange-400/20"
           onClick={() => setExpanded((current) => !current)}
           type="button"
         >
-          <ChevronDown className="h-5 w-5 -rotate-90" aria-hidden="true" />
+          <LocateFixed className="h-5 w-5" aria-hidden="true" />
         </button>
       </div>
 
@@ -255,7 +271,7 @@ function MobileTripsCountriesMap({
         <div
           className={cn(
             "mx-auto w-full overflow-y-auto rounded-t-[2rem] bg-black p-4 shadow-[0_-26px_80px_rgba(0,0,0,0.58)] ring-1 ring-white/10 transition-[max-height,border-radius] duration-300",
-            expanded ? "max-h-[72dvh] max-w-[31rem] border border-white/10 backdrop-blur-2xl" : "max-h-[14.25rem] max-w-none"
+            expanded ? "max-h-[72dvh] max-w-[31rem] border border-white/10 backdrop-blur-2xl" : "max-h-[13.75rem] max-w-none"
           )}
           data-testid="mobile-country-sheet"
         >
@@ -281,11 +297,11 @@ function MobileTripsCountriesMap({
             </h1>
             <div className="flex items-center gap-2">
               <Link
-                aria-label="Show trip cards"
+                aria-label="Open travel stats"
                 className="grid h-11 w-11 place-items-center rounded-full bg-orange-500/[0.14] text-orange-400 ring-1 ring-orange-400/[0.12] transition hover:bg-orange-500/20 focus:outline-none focus:ring-4 focus:ring-orange-400/20"
-                href="/dashboard/trips"
+                href="/dashboard/profile/stats"
               >
-                <List className="h-5 w-5" aria-hidden="true" />
+                <BarChart3 className="h-5 w-5" aria-hidden="true" />
               </Link>
               <button
                 aria-label="Create trip"
@@ -358,7 +374,7 @@ function MobileTripsCountriesMap({
               {!hasSearchQuery && activeYearTrips.length > 5 ? (
                 <Link
                   className="mt-3 inline-flex min-h-11 items-center justify-center rounded-full bg-white/10 px-4 text-sm font-black text-white transition hover:bg-white/15 focus:outline-none focus:ring-4 focus:ring-orange-400/20"
-                  href="/dashboard/trips"
+                  href="/dashboard/trips?view=list"
                 >
                   View all trip cards
                 </Link>
