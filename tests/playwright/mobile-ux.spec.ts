@@ -441,7 +441,7 @@ test.describe("mobile soft-launch UX", () => {
     await expect(activityMap.locator(".gm-style")).toBeVisible({ timeout: 30_000 });
     const activityMapHeight = await activityMap.evaluate((node) => Math.round(node.getBoundingClientRect().height));
     expect(activityMapHeight, "mobile activity map height").toBeGreaterThanOrEqual(300);
-    await expect(page.getByText("Places / Activities")).toBeVisible();
+    await expect(page.getByTestId("mobile-activities-sheet").getByRole("button", { name: /Places/ })).toBeVisible();
     await expect(page.getByTestId("mobile-activity-list")).toBeVisible();
     const activityFilters = page.getByTestId("activity-category-filters");
     if ((await activityFilters.count()) > 0) {
@@ -454,7 +454,7 @@ test.describe("mobile soft-launch UX", () => {
       hasText: "Team dinner in El Born"
     });
     await expect(teamDinnerRow).toBeVisible();
-    await teamDinnerRow.getByRole("button", { name: "Details" }).click();
+    await teamDinnerRow.getByRole("button", { name: /Details for Team dinner in El Born/ }).click();
     await expect(page.getByTestId("activity-detail-sheet")).toBeVisible();
     await expect(page.getByTestId("activity-detail-map")).toBeVisible();
     await expect(page.getByTestId("activity-detail-map").locator(".gm-style")).toBeVisible({ timeout: 30_000 });

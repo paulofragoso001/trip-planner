@@ -399,61 +399,89 @@ function MobileActivitiesView({
   showFilters: boolean;
   tripId: string;
 }) {
+  const [expanded, setExpanded] = useState(false);
   const tripTitle = destination?.split(",")[0]?.trim() || "Your trip";
   const anchorPlace = items[0]?.title || destination || "your route";
   const mapItems = useMemo(() => buildMobileActivityMapItems(items, rows), [items, rows]);
   const selectedMapId = mapItems[0]?.id ?? null;
+  const anchorPoint = items.find((item) => typeof item.lat === "number" && typeof item.lng === "number") || null;
+  const shouldShowSort = Boolean(anchorPoint && rows.some((row) => hasActivityCoordinates(row)));
+  const displayRows = useMemo(() => {
+    if (!anchorPoint) return rows;
+
+    return [...rows].sort((left, right) => {
+      const leftDistance = getDistanceMiles(left, anchorPoint);
+      const rightDistance = getDistanceMiles(right, anchorPoint);
+
+      if (leftDistance === null && rightDistance === null) return 0;
+      if (leftDistance === null) return 1;
+      if (rightDistance === null) return -1;
+      return leftDistance - rightDistance;
+    });
+  }, [anchorPoint, rows]);
+  const compactRows = expanded ? displayRows : displayRows.slice(0, 6);
 
   return (
     <section
-      className="relative isolate -mx-1 overflow-hidden rounded-[2.2rem] bg-[#111113] text-white shadow-2xl ring-1 ring-white/10 lg:hidden"
+      className={[
+        "relative isolate -mx-1 overflow-hidden bg-[#111113] text-white shadow-2xl ring-1 ring-white/10 lg:hidden",
+        expanded ? "min-h-[calc(100svh-1rem)] rounded-[1.6rem]" : "rounded-[2.2rem]"
+      ].join(" ")}
       data-testid="mobile-activities-view"
     >
-      <div
-        className="relative h-[44svh] min-h-[320px] overflow-hidden bg-[#07182b]"
-        aria-label={`${tripTitle} nearby activity map`}
-        data-testid="mobile-activity-map"
-      >
-        {mapItems.length ? (
-          <GoogleMapsProvider>
-            <TripMap
-              height="44svh"
-              items={mapItems}
-              mapTheme="dark"
-              selectedId={selectedMapId}
-              showRouteDetails={false}
-              travelMode="WALKING"
-            />
-          </GoogleMapsProvider>
-        ) : (
-          <div className="relative h-full overflow-hidden bg-[radial-gradient(circle_at_30%_25%,rgba(37,99,235,0.45),transparent_28%),radial-gradient(circle_at_70%_50%,rgba(249,115,22,0.25),transparent_24%),linear-gradient(135deg,#052f3b,#07111f_52%,#17110b)]">
-            <div className="absolute inset-0 opacity-35 [background-image:linear-gradient(rgba(255,255,255,.08)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.08)_1px,transparent_1px)] [background-size:44px_44px]" />
-            <div className="absolute inset-x-8 top-1/2 h-px -translate-y-1/2 bg-white/20" />
-            <div className="absolute left-1/2 top-1/2 h-40 w-40 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/16" />
+      {!expanded ? (
+        <div
+          className="relative h-[48svh] min-h-[340px] overflow-hidden bg-[#07182b]"
+          aria-label={`${tripTitle} nearby activity map`}
+          data-testid="mobile-activity-map"
+        >
+          {mapItems.length ? (
+            <GoogleMapsProvider>
+              <TripMap
+                height="48svh"
+                items={mapItems}
+                mapTheme="dark"
+                selectedId={selectedMapId}
+                showRouteDetails={false}
+                travelMode="WALKING"
+              />
+            </GoogleMapsProvider>
+          ) : (
+            <div className="relative h-full overflow-hidden bg-[radial-gradient(circle_at_30%_25%,rgba(37,99,235,0.45),transparent_28%),radial-gradient(circle_at_70%_50%,rgba(249,115,22,0.25),transparent_24%),linear-gradient(135deg,#052f3b,#07111f_52%,#17110b)]">
+              <div className="absolute inset-0 opacity-35 [background-image:linear-gradient(rgba(255,255,255,.08)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.08)_1px,transparent_1px)] [background-size:44px_44px]" />
+              <div className="absolute inset-x-8 top-1/2 h-px -translate-y-1/2 bg-white/20" />
+              <div className="absolute left-1/2 top-1/2 h-40 w-40 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/16" />
+            </div>
+          )}
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-slate-950/20 via-transparent to-[#111113]" />
+          <div className="absolute right-4 top-4 z-10 grid overflow-hidden rounded-2xl bg-black/84 text-orange-400 shadow-2xl ring-1 ring-white/10 backdrop-blur">
+            <Link
+              aria-label="Open route map"
+              className="grid h-12 w-12 place-items-center border-b border-white/10"
+              href={`/dashboard/trips/${tripId}/map`}
+            >
+              <MapIcon className="h-5 w-5" aria-hidden="true" />
+            </Link>
+            <button
+              aria-label="Find ideas near current route"
+              className="grid h-12 w-12 place-items-center"
+              disabled={disabled}
+              onClick={onFindIdeas}
+              type="button"
+            >
+              {disabled ? <Loader2 className="h-5 w-5 animate-spin" /> : <Navigation className="h-5 w-5" aria-hidden="true" />}
+            </button>
           </div>
-        )}
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-slate-950/20 via-transparent to-[#111113]" />
-        <div className="absolute right-4 top-4 z-10 grid overflow-hidden rounded-2xl bg-black/84 text-orange-400 shadow-2xl ring-1 ring-white/10 backdrop-blur">
-          <Link
-            aria-label="Open route map"
-            className="grid h-12 w-12 place-items-center border-b border-white/10"
-            href={`/dashboard/trips/${tripId}/map`}
-          >
-            <MapIcon className="h-5 w-5" aria-hidden="true" />
-          </Link>
-          <button
-            aria-label="Find ideas near current route"
-            className="grid h-12 w-12 place-items-center"
-            disabled={disabled}
-            onClick={onFindIdeas}
-            type="button"
-          >
-            {disabled ? <Loader2 className="h-5 w-5 animate-spin" /> : <Navigation className="h-5 w-5" aria-hidden="true" />}
-          </button>
         </div>
-      </div>
+      ) : null}
 
-      <div className="relative -mt-8 rounded-t-[2rem] bg-[#1f1f21]/96 pb-[calc(4.5rem+env(safe-area-inset-bottom))] shadow-[0_-20px_60px_rgba(0,0,0,0.45)] ring-1 ring-white/10 backdrop-blur-2xl">
+      <div
+        className={[
+          "relative rounded-t-[2rem] bg-[#1f1f21]/96 pb-[calc(4.5rem+env(safe-area-inset-bottom))] shadow-[0_-20px_60px_rgba(0,0,0,0.45)] ring-1 ring-white/10 backdrop-blur-2xl",
+          expanded ? "min-h-[calc(100svh-1rem)]" : "-mt-10"
+        ].join(" ")}
+        data-testid="mobile-activities-sheet"
+      >
         <div className="mx-auto pt-3">
           <div className="mx-auto h-1.5 w-12 rounded-full bg-white/45" />
         </div>
@@ -463,9 +491,10 @@ function MobileActivitiesView({
             <div className="min-w-0">
               <button
                 className="inline-flex min-h-8 items-center gap-1 text-base font-bold text-white/60"
+                onClick={() => setExpanded((current) => !current)}
                 type="button"
               >
-                Places / Activities
+                Places
                 <ChevronDown className="h-4 w-4" aria-hidden="true" />
               </button>
               <h2 className="mt-0.5 truncate text-3xl font-black tracking-tight text-white">
@@ -477,17 +506,29 @@ function MobileActivitiesView({
               <button
                 aria-label="More activity options"
                 className="grid h-11 w-11 place-items-center rounded-full bg-white/10 text-white/70"
+                onClick={() => setExpanded((current) => !current)}
                 type="button"
               >
                 <MoreHorizontal className="h-5 w-5" aria-hidden="true" />
               </button>
-              <Link
-                aria-label="Close activities"
-                className="grid h-11 w-11 place-items-center rounded-full bg-white/10 text-white/70"
-                href={`/dashboard/trips/${tripId}`}
-              >
-                <X className="h-5 w-5" aria-hidden="true" />
-              </Link>
+              {expanded ? (
+                <button
+                  aria-label="Collapse activities"
+                  className="grid h-11 w-11 place-items-center rounded-full bg-white/10 text-white/70"
+                  onClick={() => setExpanded(false)}
+                  type="button"
+                >
+                  <X className="h-5 w-5" aria-hidden="true" />
+                </button>
+            ) : (
+                <Link
+                  aria-label="Close activities"
+                  className="grid h-11 w-11 place-items-center rounded-full bg-white/10 text-white/70"
+                  href={`/dashboard/trips/${tripId}`}
+                >
+                  <X className="h-5 w-5" aria-hidden="true" />
+                </Link>
+              )}
             </div>
           </div>
 
@@ -535,11 +576,15 @@ function MobileActivitiesView({
             </div>
           ) : null}
 
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-4 text-sm font-bold text-orange-400">
-            <button className="inline-flex min-h-10 items-center gap-1" type="button">
-              Sort by Distance
-              <span aria-hidden="true">↑↓</span>
-            </button>
+          <div className="mt-4 flex items-center justify-between gap-3 border-b border-white/10 pb-4 text-sm font-bold text-orange-400">
+            {shouldShowSort ? (
+              <button className="inline-flex min-h-10 shrink-0 items-center gap-1" type="button">
+                Sort by Distance
+                <span aria-hidden="true">↑↓</span>
+              </button>
+            ) : (
+              <span className="inline-flex min-h-10 shrink-0 items-center text-white/44">Trip order</span>
+            )}
             <span className="inline-flex min-h-10 min-w-0 items-center gap-2 text-right">
               <Navigation className="h-4 w-4 shrink-0" aria-hidden="true" />
               <span className="truncate">{anchorPlace}</span>
@@ -547,11 +592,18 @@ function MobileActivitiesView({
           </div>
         </div>
 
-        <div className="max-h-[42svh] overflow-y-auto px-4 pb-3" data-testid="mobile-activity-list">
-          {rows.length ? (
+        <div
+          className={[
+            "overflow-y-auto px-4 pb-3",
+            expanded ? "max-h-[calc(100svh-17rem)]" : "max-h-[40svh]"
+          ].join(" ")}
+          data-testid="mobile-activity-list"
+        >
+          {displayRows.length ? (
             <div className="divide-y divide-white/10">
-              {rows.map((row) => (
+              {compactRows.map((row) => (
                 <MobileActivityRow
+                  anchorPoint={anchorPoint}
                   disabled={disabled}
                   key={`${row.type}-${row.id}`}
                   onDismiss={onDismiss}
@@ -561,6 +613,15 @@ function MobileActivitiesView({
                   tripId={tripId}
                 />
               ))}
+              {!expanded && displayRows.length > compactRows.length ? (
+                <button
+                  className="min-h-12 w-full text-center text-sm font-black text-orange-400"
+                  onClick={() => setExpanded(true)}
+                  type="button"
+                >
+                  Show all {displayRows.length} activities
+                </button>
+              ) : null}
             </div>
           ) : (
             <div className="rounded-3xl bg-white/8 p-4 text-sm text-white/70">
@@ -583,6 +644,7 @@ function MobileActivitiesView({
           <button
             aria-label="Show activities list"
             className="grid h-11 w-11 place-items-center rounded-full bg-white/6"
+            onClick={() => setExpanded((current) => !current)}
             type="button"
           >
             <ListFilter className="h-5 w-5" aria-hidden="true" />
@@ -607,6 +669,7 @@ function MobileActivitiesView({
 }
 
 function MobileActivityRow({
+  anchorPoint,
   disabled,
   onDismiss,
   onOpenDetail,
@@ -614,6 +677,7 @@ function MobileActivityRow({
   row,
   tripId
 }: {
+  anchorPoint: TripMapItem | null;
   disabled: boolean;
   onDismiss: (row: Extract<ActivityRow, { type: "recommendation" }>) => void;
   onOpenDetail: (row: ActivityRow) => void;
@@ -623,115 +687,79 @@ function MobileActivityRow({
 }) {
   const icon = categoryIcon(row.category);
   const title = row.title;
-  const detail = mobileRowDetail(row);
+  const detail = mobileRowDetail(row, anchorPoint);
   const sideLabel = mobileRowSideLabel(row);
+  const added = row.type === "place";
+  const canOpenDetail = row.type === "recommendation" || row.type === "place";
 
   return (
-    <article className="py-3.5">
-      <div className="flex min-w-0 gap-3">
-        <span className="relative grid h-12 w-12 shrink-0 place-items-center rounded-full bg-white/8 text-orange-400">
+    <article className="py-3">
+      <div className="flex min-w-0 items-center gap-3">
+        <span className={["relative grid h-12 w-12 shrink-0 place-items-center rounded-full", categoryIconClass(row.category)].join(" ")}>
           {icon}
-          {row.type === "place" ? (
+          {added ? (
             <span className="absolute -bottom-0.5 -right-0.5 grid h-5 w-5 place-items-center rounded-full bg-emerald-500 text-[0.6rem] font-black text-white ring-2 ring-[#1f1f21]">
               ✓
             </span>
           ) : null}
         </span>
-        <div className="min-w-0 flex-1">
-          <div className="flex min-w-0 items-start justify-between gap-3">
-            <div className="min-w-0">
-              <h3 className="truncate text-base font-black leading-tight text-white">{title}</h3>
-              <p className="mt-1 truncate text-sm font-semibold text-white/48">{detail}</p>
-            </div>
+        <button
+          aria-label={canOpenDetail ? `Details for ${title}` : `Plan ${title}`}
+          className="min-w-0 flex-1 text-left"
+          onClick={() => {
+            if (canOpenDetail) {
+              onOpenDetail(row);
+            }
+          }}
+          type="button"
+        >
+          <span className="flex min-w-0 items-start justify-between gap-3">
+            <span className="min-w-0">
+              <span className="block truncate text-base font-black leading-tight text-white">{title}</span>
+              <span className="mt-1 block truncate text-sm font-semibold text-white/48">{detail}</span>
+            </span>
             {sideLabel ? (
-              <p className="shrink-0 whitespace-pre-line text-right text-sm font-bold leading-tight text-white/48">
+              <span className="shrink-0 whitespace-pre-line text-right text-sm font-bold leading-tight text-white/48">
                 {sideLabel}
-              </p>
+              </span>
             ) : null}
-          </div>
-          <div className="mt-2 flex flex-wrap gap-2 text-xs font-black">
-            {row.type === "recommendation" ? (
-              <>
-                <button
-                  className="min-h-9 rounded-full bg-white/8 px-3 text-white/72"
-                  onClick={() => onOpenDetail(row)}
-                  type="button"
-                >
-                  Details
-                </button>
-                <button
-                  className="min-h-9 rounded-full bg-orange-500/18 px-3 text-orange-300 disabled:opacity-60"
-                  disabled={disabled}
-                  onClick={() => onSave(row)}
-                  type="button"
-                >
-                  Save
-                </button>
-                {row.bookingUrl ? (
-                  <a
-                    className="inline-flex min-h-9 items-center rounded-full bg-white/8 px-3 text-white/72"
-                    href={row.bookingUrl}
-                    rel="noreferrer"
-                    target="_blank"
-                  >
-                    Open
-                  </a>
-                ) : null}
-                <button
-                  className="min-h-9 rounded-full bg-white/8 px-3 text-white/60 disabled:opacity-60"
-                  disabled={disabled}
-                  onClick={() => onDismiss(row)}
-                  type="button"
-                >
-                  Dismiss
-                </button>
-              </>
-            ) : row.type === "place" ? (
-              <>
-                <button
-                  className="min-h-9 rounded-full bg-white/8 px-3 text-white/72"
-                  onClick={() => onOpenDetail(row)}
-                  type="button"
-                >
-                  Details
-                </button>
-                <Link
-                  className="inline-flex min-h-9 items-center rounded-full bg-white/8 px-3 text-white/72"
-                  href={row.secondaryHref}
-                >
-                  Map
-                </Link>
-                <Link
-                  className="inline-flex min-h-9 items-center rounded-full bg-white/8 px-3 text-white/72"
-                  href={row.ctaHref}
-                >
-                  Itinerary
-                </Link>
-              </>
-            ) : (
-              <Link
-                className="inline-flex min-h-9 items-center rounded-full bg-white/8 px-3 text-white/72"
-                href={`/dashboard/trips/${tripId}/timeline#new-plan`}
-              >
-                {row.type === "activity" ? "Add to itinerary" : "Add location"}
-              </Link>
-            )}
-          </div>
-        </div>
+          </span>
+        </button>
+        {row.type === "recommendation" ? (
+          <button
+            aria-label={`Save ${title}`}
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-orange-500/14 text-orange-400 disabled:opacity-60"
+            disabled={disabled}
+            onClick={() => onSave(row)}
+            type="button"
+          >
+            <Plus className="h-5 w-5" aria-hidden="true" />
+          </button>
+        ) : row.type === "activity" || row.type === "needs-location" ? (
+          <Link
+            aria-label={row.type === "activity" ? `Add ${title} to itinerary` : `Add location for ${title}`}
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white/8 text-white/60"
+            href={`/dashboard/trips/${tripId}/timeline#new-plan`}
+          >
+            <Plus className="h-5 w-5" aria-hidden="true" />
+          </Link>
+        ) : null}
       </div>
     </article>
   );
 }
 
-function mobileRowDetail(row: ActivityRow) {
+function mobileRowDetail(row: ActivityRow, anchorPoint: TripMapItem | null) {
+  const distance = getDistanceLabel(row, anchorPoint);
+
   if (row.type === "recommendation") {
-    return [row.ratingLabel ? `${row.ratingLabel} ★` : null, row.meta, row.reason]
+    return [distance, row.ratingLabel ? `${row.ratingLabel} ★` : null, row.address || row.meta]
       .filter(Boolean)
       .join(" · ");
   }
 
   if (row.type === "place") {
-    return [row.meta, row.address].filter(Boolean).join(" · ");
+    return [distance, row.address || row.meta].filter(Boolean).join(" · ");
   }
 
   return [row.location, row.status, row.description].filter(Boolean).join(" · ");
@@ -740,13 +768,82 @@ function mobileRowDetail(row: ActivityRow) {
 function mobileRowSideLabel(row: ActivityRow) {
   if (row.type !== "place") return null;
 
-  const labels = row.meta
-    .split(" · ")
-    .map((part) => part.trim())
-    .filter(Boolean)
-    .filter((part) => !/^mapped$/i.test(part) && part.toLowerCase() !== row.category);
+  const schedule = formatMobileActivitySchedule(row.startTime, row.hasStartTime);
+  if (schedule) return schedule;
 
+  const labels = row.meta.split(" · ").map((part) => part.trim()).filter(Boolean);
   return labels.length ? labels.slice(0, 2).join("\n") : null;
+}
+
+function hasActivityCoordinates(row: ActivityRow) {
+  return getActivityCoordinates(row) !== null;
+}
+
+function getActivityCoordinates(row: ActivityRow) {
+  if (row.type !== "place" && row.type !== "recommendation") return null;
+  if (typeof row.lat !== "number" || typeof row.lng !== "number") return null;
+  return { lat: row.lat, lng: row.lng };
+}
+
+function getDistanceLabel(row: ActivityRow, anchorPoint: TripMapItem | null) {
+  const distance = getDistanceMiles(row, anchorPoint);
+  if (distance === null) return null;
+  if (distance < 0.05) return null;
+  if (distance < 10) return `${distance.toFixed(1)}mi`;
+  return `${Math.round(distance)}mi`;
+}
+
+function getDistanceMiles(row: ActivityRow, anchorPoint: TripMapItem | null) {
+  const coordinates = getActivityCoordinates(row);
+  if (!coordinates || typeof anchorPoint?.lat !== "number" || typeof anchorPoint.lng !== "number") {
+    return null;
+  }
+
+  const earthRadiusMiles = 3958.8;
+  const toRadians = (value: number) => (value * Math.PI) / 180;
+  const latDelta = toRadians(coordinates.lat - anchorPoint.lat);
+  const lngDelta = toRadians(coordinates.lng - anchorPoint.lng);
+  const startLat = toRadians(anchorPoint.lat);
+  const endLat = toRadians(coordinates.lat);
+  const haversine =
+    Math.sin(latDelta / 2) ** 2 +
+    Math.cos(startLat) * Math.cos(endLat) * Math.sin(lngDelta / 2) ** 2;
+
+  return earthRadiusMiles * 2 * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine));
+}
+
+function formatMobileActivitySchedule(value: string | null, hasTime?: boolean) {
+  if (!value) return null;
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+
+  const dateLabel = new Intl.DateTimeFormat("en-US", {
+    day: "numeric",
+    month: "short",
+    timeZone: "UTC",
+    weekday: "short"
+  }).format(date);
+
+  if (!hasTime) return dateLabel;
+
+  const timeLabel = new Intl.DateTimeFormat("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: "UTC"
+  }).format(date);
+
+  return `${dateLabel}\n${timeLabel}`;
+}
+
+function categoryIconClass(category: ActivityFilterId) {
+  if (category === "food") return "bg-orange-500/18 text-orange-300";
+  if (category === "nightlife") return "bg-amber-500/18 text-amber-300";
+  if (category === "lodging") return "bg-violet-500/18 text-violet-300";
+  if (category === "activities") return "bg-fuchsia-500/18 text-fuchsia-300";
+  if (category === "shopping") return "bg-rose-500/18 text-rose-300";
+  if (category === "places") return "bg-blue-500/18 text-blue-300";
+  return "bg-orange-500/18 text-orange-300";
 }
 
 function buildMobileActivityMapItems(
