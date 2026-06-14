@@ -383,7 +383,7 @@ function MobileOverviewSmallPass({
   return (
     <section
       aria-label="Compressed trip overview"
-      className="relative min-h-[calc(100svh-5rem)] overflow-hidden bg-[#0b1020] shadow-[0_26px_80px_rgba(0,0,0,0.34)] lg:hidden"
+      className="relative min-h-[100svh] overflow-hidden bg-[#0b1020] shadow-[0_26px_80px_rgba(0,0,0,0.34)] lg:hidden"
       data-testid="overview-small-pass"
     >
       <MobileMapPreview
@@ -394,7 +394,10 @@ function MobileOverviewSmallPass({
         title="Open map"
       />
 
-      <div className="relative -mt-8 rounded-t-[2.15rem] bg-[#48443d]/96 px-4 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-3 text-white shadow-[0_-24px_70px_rgba(0,0,0,0.42)] ring-1 ring-white/10 backdrop-blur-2xl">
+      <div
+        className="relative -mt-8 min-h-[calc(54svh+env(safe-area-inset-bottom))] rounded-t-[2.15rem] bg-[#48443d]/96 px-4 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-3 text-white shadow-[0_-24px_70px_rgba(0,0,0,0.42)] ring-1 ring-white/10 backdrop-blur-2xl"
+        data-testid="overview-small-sheet"
+      >
         <div className="mx-auto mb-3 h-1.5 w-14 rounded-full bg-white/44" aria-hidden="true" />
         <div className="grid grid-cols-[44px_1fr_44px_44px] items-center gap-2">
           <OverviewMoreMenu base={base} />

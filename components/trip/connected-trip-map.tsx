@@ -110,11 +110,11 @@ export function ConnectedTripMap({
 
   return (
     <div
-      className="relative min-h-[calc(100dvh-5rem)] overflow-hidden bg-slate-950 lg:min-h-0 lg:overflow-visible lg:rounded-[2rem] lg:bg-transparent"
+      className="relative min-h-[100dvh] overflow-hidden bg-slate-950 lg:min-h-0 lg:overflow-visible lg:rounded-[2rem] lg:bg-transparent"
       data-testid="connected-trip-map"
     >
       {items.length ? (
-        <div className="relative min-h-[calc(100dvh-5rem)] lg:grid lg:min-h-0 lg:gap-3">
+        <div className="relative min-h-[100dvh] lg:grid lg:min-h-0 lg:gap-3">
           <div className="relative overflow-hidden rounded-none border-0 bg-slate-950 shadow-none lg:rounded-[1.75rem] lg:border lg:border-slate-800 lg:shadow-sm">
             <GoogleMapsProvider>
               <TripMap
@@ -164,7 +164,7 @@ export function ConnectedTripMap({
           </div>
 
           <div
-            className="absolute inset-x-0 bottom-0 z-20 grid max-h-[56dvh] gap-3 overflow-y-auto overflow-x-hidden rounded-t-[2rem] border border-white/10 bg-slate-950/92 p-3 pb-[calc(6.25rem+env(safe-area-inset-bottom))] text-white shadow-2xl backdrop-blur-2xl sm:p-4 lg:relative lg:inset-auto lg:max-h-none lg:overflow-visible lg:rounded-[2rem] lg:border-slate-200 lg:bg-white lg:pb-4 lg:text-slate-950 lg:shadow-sm lg:backdrop-blur-none"
+            className="absolute inset-x-0 bottom-0 z-20 grid max-h-[56dvh] gap-3 overflow-y-auto overflow-x-hidden rounded-t-[2rem] border border-white/10 bg-slate-950/92 p-3 pb-[calc(1rem+env(safe-area-inset-bottom))] text-white shadow-2xl backdrop-blur-2xl sm:p-4 lg:relative lg:inset-auto lg:max-h-none lg:overflow-visible lg:rounded-[2rem] lg:border-slate-200 lg:bg-white lg:pb-4 lg:text-slate-950 lg:shadow-sm lg:backdrop-blur-none"
             data-map-bottom-sheet="true"
             data-testid="map-route-panel"
           >
@@ -368,7 +368,7 @@ export function ConnectedTripMap({
           </div>
         </div>
       ) : (
-        <div className="relative min-h-[calc(100dvh-5rem)] overflow-hidden bg-slate-950 lg:min-h-[520px] lg:rounded-[2rem] lg:border lg:border-slate-200">
+        <div className="relative min-h-[100dvh] overflow-hidden bg-slate-950 lg:min-h-[520px] lg:rounded-[2rem] lg:border lg:border-slate-200">
           <div
             className="absolute inset-0 bg-[linear-gradient(rgba(59,130,246,0.16)_1px,transparent_1px),linear-gradient(90deg,rgba(59,130,246,0.16)_1px,transparent_1px),radial-gradient(circle_at_32%_24%,rgba(56,189,248,0.28),transparent_34%),radial-gradient(circle_at_72%_64%,rgba(37,99,235,0.22),transparent_38%),linear-gradient(135deg,#08111f,#132a46_54%,#07111f)] bg-[size:72px_72px,72px_72px,auto,auto,auto]"
             aria-hidden="true"
@@ -377,7 +377,7 @@ export function ConnectedTripMap({
             {destination || "Trip map"}
           </div>
           <section
-            className="absolute inset-x-0 bottom-0 z-10 rounded-t-[2rem] border border-white/10 bg-slate-950/92 p-4 pb-[calc(6.25rem+env(safe-area-inset-bottom))] text-sm text-white shadow-2xl backdrop-blur-2xl lg:inset-x-4 lg:bottom-4 lg:rounded-[1.5rem] lg:pb-4"
+            className="absolute inset-x-0 bottom-0 z-10 rounded-t-[2rem] border border-white/10 bg-slate-950/92 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] text-sm text-white shadow-2xl backdrop-blur-2xl lg:inset-x-4 lg:bottom-4 lg:rounded-[1.5rem] lg:pb-4"
             data-testid="compact-route-empty-state"
           >
             <div className="mx-auto mb-3 h-1.5 w-16 rounded-full bg-white/45 lg:hidden" aria-hidden="true" />

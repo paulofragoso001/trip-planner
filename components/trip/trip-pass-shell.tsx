@@ -36,7 +36,7 @@ export function TripPassShell({ children, trip, tripId }: TripPassShellProps) {
         data-map-mode="true"
         data-testid="trip-pass-shell"
       >
-        <div className="relative z-10 mx-auto w-full max-w-none px-0 py-0 pb-[calc(5rem+env(safe-area-inset-bottom))] lg:px-6 lg:py-6 lg:pb-6">
+        <div className="relative z-10 mx-auto w-full max-w-none px-0 py-0 pb-[env(safe-area-inset-bottom)] lg:px-6 lg:py-6 lg:pb-6">
           <div
             className="min-w-0"
             data-wallet-trip-surface="map-mode"
@@ -71,8 +71,8 @@ export function TripPassShell({ children, trip, tripId }: TripPassShellProps) {
         className={[
           "relative z-10 mx-auto w-full",
           mobileSheetRoute
-            ? "max-w-none px-0 py-0 pb-[calc(5rem+env(safe-area-inset-bottom))] lg:max-w-[1180px] lg:px-8 lg:py-8 lg:pb-8"
-            : "max-w-[1180px] px-3 py-3 pb-[calc(7.5rem+env(safe-area-inset-bottom))] sm:px-6 sm:py-6 sm:pb-[calc(8rem+env(safe-area-inset-bottom))] lg:px-8 lg:py-8 lg:pb-8"
+            ? "max-w-none px-0 py-0 pb-[env(safe-area-inset-bottom)] lg:max-w-[1180px] lg:px-8 lg:py-8 lg:pb-8"
+            : "max-w-[1180px] px-3 py-3 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:px-6 sm:py-6 sm:pb-[calc(1.25rem+env(safe-area-inset-bottom))] lg:px-8 lg:py-8 lg:pb-8"
         ].join(" ")}
       >
         <div
@@ -104,7 +104,7 @@ export function TripPassShell({ children, trip, tripId }: TripPassShellProps) {
         data-ideas-mode="true"
         data-testid="trip-pass-shell"
       >
-        <div className="relative z-10 mx-auto w-full max-w-none px-0 py-0 pb-[calc(5rem+env(safe-area-inset-bottom))] lg:px-6 lg:py-6 lg:pb-6">
+        <div className="relative z-10 mx-auto w-full max-w-none px-0 py-0 pb-[env(safe-area-inset-bottom)] lg:px-6 lg:py-6 lg:pb-6">
           <div
             className="min-w-0"
             data-wallet-trip-surface="ideas-mode"

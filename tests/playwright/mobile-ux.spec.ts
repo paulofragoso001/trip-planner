@@ -331,6 +331,11 @@ test.describe("mobile soft-launch UX", () => {
       await expect(mobileHub.getByRole("link", { name: "Open map" }).first()).toBeVisible();
       await expect(mobileHub.getByRole("link", { name: "Open Activities" })).toBeVisible();
       await expect(mobileHub.getByTestId("overview-more-tools")).toBeVisible();
+      const overviewOwnsLowerViewport = await page.evaluate(() => {
+        const target = document.elementFromPoint(window.innerWidth / 2, window.innerHeight - 120);
+        return Boolean(target?.closest('[data-testid="overview-small-sheet"]'));
+      });
+      expect(overviewOwnsLowerViewport, "mobile overview sheet should fill the lower viewport").toBe(true);
       await mobileHub.getByLabel("More trip options").click();
       await expect(mobileHub.getByRole("link", { name: "Expenses" }).first()).toBeVisible();
       await expect(page.getByLabel("Organizer actions")).toBeHidden();
@@ -534,6 +539,11 @@ test.describe("mobile soft-launch UX", () => {
         return Boolean(panel && card.left >= panel.left - 1 && card.right <= panel.right + 1);
       });
       expect(selectedCardFitsPanel, "selected route card should not overflow the mobile sheet").toBe(true);
+      const mapPanelOwnsLowerViewport = await page.evaluate(() => {
+        const target = document.elementFromPoint(window.innerWidth / 2, window.innerHeight - 120);
+        return Boolean(target?.closest('[data-testid="map-route-panel"]'));
+      });
+      expect(mapPanelOwnsLowerViewport, "mobile map route panel should fill the lower viewport").toBe(true);
     } finally {
       await deleteTripForTest(request, tripId);
     }
@@ -568,7 +578,7 @@ test.describe("mobile soft-launch UX", () => {
       node.scrollTop = node.scrollHeight;
     });
     const bottomSheetOwnsLowerViewport = await page.evaluate(() => {
-      const target = document.elementFromPoint(window.innerWidth / 2, window.innerHeight - 180);
+      const target = document.elementFromPoint(window.innerWidth / 2, window.innerHeight - 120);
       return Boolean(target?.closest('[data-testid="map-aware-sheet"]'));
     });
     expect(bottomSheetOwnsLowerViewport, "map-aware sheet should cover lower viewport").toBe(true);
@@ -642,6 +652,11 @@ test.describe("mobile soft-launch UX", () => {
       await expect(page.getByTestId("trip-section-menu")).toBeHidden();
       await expect(page.getByTestId("mobile-real-map-preview")).toHaveAttribute("data-map-theme", "dark");
       await expect(page.getByTestId("overview-small-pass")).toContainText(tripPayload.trip.name);
+      const overviewOwnsLowerViewport = await page.evaluate(() => {
+        const target = document.elementFromPoint(window.innerWidth / 2, window.innerHeight - 120);
+        return Boolean(target?.closest('[data-testid="trip-overview-page"]'));
+      });
+      expect(overviewOwnsLowerViewport, "mobile overview should own the lower viewport").toBe(true);
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
       expect(overflow, "mobile overview overflow").toBeLessThanOrEqual(1);
     } finally {

@@ -217,18 +217,18 @@ function ItineraryMapAwareMobileView({
 }) {
   return (
     <section
-      className="relative min-h-[calc(100svh-5rem)] overflow-hidden bg-slate-950 text-white shadow-[0_24px_70px_rgba(2,6,23,0.45)] lg:hidden"
+      className="relative min-h-[100svh] overflow-hidden bg-slate-950 text-white shadow-[0_24px_70px_rgba(2,6,23,0.45)] lg:hidden"
       data-testid="itinerary-map-aware-mode"
     >
       <MapAwareRoutePreview items={items} title={title} />
 
       <div
-        className="absolute inset-x-0 bottom-0 z-20 max-h-[68svh] rounded-t-[2rem] border-t border-white/10 bg-[#202022]/96 shadow-[0_-22px_55px_rgba(0,0,0,0.45)] backdrop-blur-2xl"
+        className="absolute inset-x-0 bottom-0 z-20 flex max-h-[68svh] flex-col rounded-t-[2rem] border-t border-white/10 bg-[#202022]/96 shadow-[0_-22px_55px_rgba(0,0,0,0.45)] backdrop-blur-2xl"
         data-testid="map-aware-sheet"
       >
         <div className="mx-auto mt-3 h-1.5 w-12 rounded-full bg-white/35" aria-hidden="true" />
         <div
-          className="max-h-[calc(68svh-1rem)] overflow-y-auto overflow-x-hidden px-3 pb-[calc(6.75rem+env(safe-area-inset-bottom))] pt-4"
+          className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-3 pb-4 pt-4"
           data-testid="map-aware-sheet-scroll"
         >
           <MapAwareSheetHeader closeHref={closeHref} monthLabel={monthLabel} title={title} tripId={tripId} />
@@ -957,7 +957,7 @@ function MobileTimelineBottomBar({
   variant?: "fixed" | "sheet";
 }) {
   const className = variant === "sheet"
-    ? "absolute inset-x-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-30 mx-auto flex max-w-md items-center justify-between rounded-[1.6rem] border border-white/10 bg-[#1b1b1d]/95 px-4 py-3 text-orange-400 shadow-2xl backdrop-blur-2xl lg:hidden"
+    ? "z-30 mx-3 mb-[calc(0.75rem+env(safe-area-inset-bottom))] flex max-w-md items-center justify-between self-center rounded-[1.6rem] border border-white/10 bg-[#1b1b1d]/95 px-4 py-3 text-orange-400 shadow-2xl backdrop-blur-2xl lg:hidden"
     : "fixed inset-x-3 bottom-[calc(5.75rem+env(safe-area-inset-bottom))] z-30 mx-auto flex max-w-md items-center justify-between rounded-[1.6rem] border border-white/10 bg-slate-950/[0.88] px-4 py-3 text-orange-400 shadow-2xl backdrop-blur-2xl lg:hidden";
 
   return (
