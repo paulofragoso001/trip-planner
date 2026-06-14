@@ -459,7 +459,13 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByTestId("activity-detail-map")).toBeVisible();
     await expect(page.getByTestId("activity-detail-map").locator(".gm-style")).toBeVisible({ timeout: 30_000 });
     await expect(page.getByTestId("activity-detail-sheet").getByRole("link", { name: "Directions" })).toBeVisible();
-    await expect(page.getByTestId("activity-detail-panel").getByText("Starts")).toBeVisible();
+    await expect(page.getByTestId("activity-detail-panel").getByText("Team dinner in El Born")).toBeVisible();
+    await expect(page.getByTestId("activity-detail-panel").getByText("Save this idea to schedule it")).toHaveCount(0);
+    await expect(page.getByTestId("activity-detail-panel").getByText("After it is on your trip")).toHaveCount(0);
+    await expect(page.getByTestId("activity-detail-panel").getByText("Date / Time")).toHaveCount(0);
+    await expect(page.getByTestId("activity-detail-panel").getByRole("button", { name: "More" })).toBeVisible();
+    await page.getByTestId("activity-detail-panel").getByRole("button", { name: "More" }).click();
+    await expect(page.getByTestId("activity-detail-panel").getByRole("link", { name: "Edit in itinerary" })).toBeVisible();
     const detailPanelOwnsFooterZone = await page.evaluate(() => {
       const target = document.elementFromPoint(window.innerWidth / 2, window.innerHeight - 120);
       return Boolean(target?.closest('[data-testid="activity-detail-panel"]'));

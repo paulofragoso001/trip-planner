@@ -8,12 +8,18 @@ import {
   MapPin,
   MoreHorizontal,
   Navigation,
+  Plane,
   Share2,
-  Sparkles,
   X
 } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import TripMap, { type TripMapItem } from "@/components/TripMap";
+import {
+  hasResolvedRoute,
+  routeEndpointLabel,
+  routeTitleLabel,
+  type TripRouteEndpoint
+} from "@/lib/trip-segment-route";
 
 export type ActivityDetailRecommendation = {
   address: string | null;
@@ -45,6 +51,43 @@ type ActivityDetailSheetProps = {
   tripId: string;
 };
 
+type DetailKind = "lodging" | "route" | "place" | "recommendation";
+
+type DetailRow = {
+  accent?: boolean;
+  label: string;
+  value: string;
+};
+
+type ScheduleParts = {
+  date: string;
+  time: string;
+};
+
+type DetailView = {
+  address: string | null;
+  bookingUrl: string | null;
+  category: string | null;
+  categoryLabel: string | null;
+  confirmation: string | null;
+  details: DetailRow[];
+  directionsUrl: string | null;
+  id: string;
+  imageAlt: string | null;
+  imageAttribution: string | null;
+  imageUrl: string | null;
+  kind: DetailKind;
+  lat: number | null;
+  lng: number | null;
+  location: string | null;
+  notes: string | null;
+  providerMetadata: Record<string, unknown> | null;
+  route: TripMapItem["route"];
+  subtitle: string | null;
+  title: string;
+  websiteUrl: string | null;
+};
+
 export function ActivityDetailSheet({
   disabled = false,
   onClose,
@@ -53,8 +96,14 @@ export function ActivityDetailSheet({
   tripId
 }: ActivityDetailSheetProps) {
   const [shared, setShared] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
   const detail = useMemo(() => (target ? getDetailView(target) : null), [target]);
   const mapItem = useMemo(() => (detail ? getDetailMapItem(detail) : null), [detail]);
+
+  useEffect(() => {
+    setMoreOpen(false);
+    setShared(false);
+  }, [target?.item.id]);
 
   useEffect(() => {
     if (!target) return;
@@ -96,52 +145,54 @@ export function ActivityDetailSheet({
 
   if (!target || !detail) return null;
 
-  const sheet = (
+  return (
     <div
       aria-modal="true"
-      className="fixed inset-0 z-[2147483647] isolate bg-[#080b10] text-white"
+      className="fixed inset-0 z-[2147483647] isolate overflow-hidden bg-[#080b10] text-white"
       data-testid="activity-detail-sheet"
       role="dialog"
     >
       <div
-        className="relative h-[46svh] min-h-[300px] overflow-hidden bg-[#07182b]"
+        className="relative h-[42svh] min-h-[280px] overflow-hidden bg-[#07182b]"
         data-testid="activity-detail-map"
       >
         {mapItem ? (
           <TripMap
-            height="46svh"
+            height="42svh"
             items={[mapItem]}
             mapTheme="dark"
             selectedId={mapItem.id}
             showRouteDetails={false}
             travelMode="WALKING"
           />
+        ) : detail.imageUrl ? (
+          <img
+            alt={detail.imageAlt || ""}
+            className="h-full w-full object-cover"
+            src={detail.imageUrl}
+          />
         ) : (
-          <div className="relative h-full overflow-hidden bg-[radial-gradient(circle_at_50%_42%,rgba(249,115,22,0.3),transparent_20%),linear-gradient(145deg,#102032,#090d14_62%,#1b1209)]">
-            <div className="absolute inset-0 opacity-35 [background-image:linear-gradient(rgba(255,255,255,.08)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.08)_1px,transparent_1px)] [background-size:40px_40px]" />
-            <div className="absolute inset-x-8 top-1/2 h-px -translate-y-1/2 bg-white/20" />
-            <div className="absolute left-1/2 top-1/2 grid h-16 w-16 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-orange-500 text-white shadow-2xl ring-4 ring-black/35">
-              <MapPin className="h-7 w-7" aria-hidden="true" />
-            </div>
-          </div>
+          <DarkFallbackHeader />
         )}
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-slate-950/15 via-transparent to-[#252527]" />
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-slate-950/10 via-transparent to-[#252527]" />
       </div>
 
       <section
-        className="absolute inset-x-0 bottom-0 max-h-[82dvh] overflow-y-auto overscroll-contain rounded-t-[2rem] bg-[#252527]/98 px-4 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-3 shadow-[0_-24px_80px_rgba(0,0,0,0.55)] ring-1 ring-white/10 backdrop-blur-2xl sm:left-1/2 sm:max-w-2xl sm:-translate-x-1/2 sm:pb-[calc(2rem+env(safe-area-inset-bottom))] lg:max-h-[82vh] lg:pb-6"
+        className="absolute inset-x-0 bottom-0 max-h-[80dvh] overflow-y-auto overscroll-contain rounded-t-[2rem] bg-[#252527]/98 px-4 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-3 shadow-[0_-24px_80px_rgba(0,0,0,0.55)] ring-1 ring-white/10 backdrop-blur-2xl sm:left-1/2 sm:max-w-2xl sm:-translate-x-1/2 sm:pb-[calc(2rem+env(safe-area-inset-bottom))] lg:max-h-[82vh] lg:pb-6"
         data-testid="activity-detail-panel"
       >
         <div className="mx-auto mb-4 h-1.5 w-12 rounded-full bg-white/40" />
 
-        <div className="flex items-start justify-between gap-4">
+        <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <h2 className="break-words text-4xl font-black tracking-tight text-white">
+            <h2 className="break-words text-[2.35rem] font-black leading-[0.98] tracking-tight text-white sm:text-4xl">
               {detail.title}
             </h2>
-            <p className="mt-1 max-w-sm text-lg font-semibold leading-tight text-white/48">
-              {[detail.categoryLabel, detail.location].filter(Boolean).join(" in ")}
-            </p>
+            {detail.subtitle ? (
+              <p className="mt-2 max-w-sm text-base font-semibold leading-tight text-white/52">
+                {detail.subtitle}
+              </p>
+            ) : null}
           </div>
           <div className="flex shrink-0 gap-2">
             <button
@@ -169,36 +220,53 @@ export function ActivityDetailSheet({
           </p>
         ) : null}
 
-        <div className="mt-6 grid grid-cols-[repeat(auto-fit,minmax(96px,1fr))] gap-3">
+        <div className="relative mt-6 grid grid-cols-[repeat(auto-fit,minmax(92px,1fr))] gap-3">
           {detail.directionsUrl ? (
-            <a
-              className="grid min-h-[92px] place-items-center rounded-2xl bg-[#1a1a1c] px-2 text-center text-sm font-bold text-white/62 ring-1 ring-white/6"
-              href={detail.directionsUrl}
-              rel="noreferrer"
-              target="_blank"
-            >
-              <Navigation className="mb-2 h-7 w-7 text-orange-400" aria-hidden="true" />
-              Directions
-            </a>
+            <ActionLink href={detail.directionsUrl} icon={<Navigation />} label="Directions" />
           ) : null}
-          {detail.websiteUrl ? (
-            <a
-              className="grid min-h-[92px] place-items-center rounded-2xl bg-[#1a1a1c] px-2 text-center text-sm font-bold text-white/62 ring-1 ring-white/6"
-              href={detail.websiteUrl}
-              rel="noreferrer"
-              target="_blank"
-            >
-              <ExternalLink className="mb-2 h-7 w-7 text-orange-400" aria-hidden="true" />
-              Website
-            </a>
+          {detail.bookingUrl ? (
+            <ActionLink href={detail.bookingUrl} icon={<ExternalLink />} label="Reservation" />
+          ) : detail.websiteUrl ? (
+            <ActionLink href={detail.websiteUrl} icon={<ExternalLink />} label="Website" />
           ) : null}
           <button
-            className="grid min-h-[92px] place-items-center rounded-2xl bg-[#1a1a1c] px-2 text-center text-sm font-bold text-white/62 ring-1 ring-white/6"
+            aria-expanded={moreOpen}
+            className="grid min-h-[86px] place-items-center rounded-2xl bg-[#1a1a1c] px-2 text-center text-sm font-bold text-white/62 ring-1 ring-white/6"
+            onClick={() => setMoreOpen((current) => !current)}
             type="button"
           >
             <MoreHorizontal className="mb-2 h-7 w-7 text-orange-400" aria-hidden="true" />
             More
           </button>
+          {moreOpen ? (
+            <div className="absolute right-0 top-[calc(100%+0.5rem)] z-10 w-56 overflow-hidden rounded-2xl bg-[#151517] shadow-2xl ring-1 ring-white/10">
+              {target.type === "segment" ? (
+                <a
+                  className="block px-4 py-3 text-sm font-bold text-white/78 hover:bg-white/8"
+                  href={`/dashboard/trips/${encodeURIComponent(tripId)}/timeline#${encodeURIComponent(target.item.id)}`}
+                  onClick={onClose}
+                >
+                  Edit in itinerary
+                </a>
+              ) : onSaveRecommendation ? (
+                <button
+                  className="block w-full px-4 py-3 text-left text-sm font-bold text-white/78 hover:bg-white/8 disabled:opacity-60"
+                  disabled={disabled}
+                  onClick={() => onSaveRecommendation(target.item)}
+                  type="button"
+                >
+                  Save to trip
+                </button>
+              ) : null}
+              <button
+                className="block w-full px-4 py-3 text-left text-sm font-bold text-white/58 hover:bg-white/8"
+                onClick={shareDetail}
+                type="button"
+              >
+                Share
+              </button>
+            </div>
+          ) : null}
         </div>
 
         {target.type === "recommendation" ? (
@@ -213,8 +281,6 @@ export function ActivityDetailSheet({
       </section>
     </div>
   );
-
-  return sheet;
 }
 
 function SegmentDetailBody({
@@ -228,46 +294,70 @@ function SegmentDetailBody({
   onClose: () => void;
   tripId: string;
 }) {
+  if (detail.kind === "route") {
+    return <RouteDetailBody detail={detail} item={item} onClose={onClose} tripId={tripId} />;
+  }
+
+  const scheduleRows = getScheduleRows(detail.kind, item);
+
   return (
     <div className="mt-5 grid gap-4">
-      <div className="rounded-2xl bg-[#1a1a1c] ring-1 ring-white/6">
-        <ScheduleSummaryRow
-          icon={<CalendarClock className="h-5 w-5" aria-hidden="true" />}
-          label="Starts"
-          value={formatSchedule(item.startTime, item.hasStartTime)}
-        />
-        <ScheduleSummaryRow
-          icon={<Clock className="h-5 w-5" aria-hidden="true" />}
-          label="Ends"
-          value={formatSchedule(item.endTime, item.hasEndTime) || "Date / Time"}
-        />
-      </div>
+      {scheduleRows.length ? (
+        <DetailGroup>
+          {scheduleRows.map((row) => (
+            <ScheduleSummaryRow key={row.label} {...row} />
+          ))}
+        </DetailGroup>
+      ) : null}
 
       {detail.details.length ? (
-        <div className="rounded-2xl bg-[#1a1a1c] px-4 py-3 ring-1 ring-white/6">
-          {detail.details.map((entry) => (
-            <div className="border-b border-white/8 py-3 last:border-0" key={entry.label}>
-              <p className="text-sm font-semibold text-white/42">{entry.label}</p>
-              <p className="mt-1 break-words text-base font-semibold text-orange-300">{entry.value}</p>
-            </div>
-          ))}
+        <DetailRows rows={detail.details} />
+      ) : null}
+
+      {detail.notes ? (
+        <NotesBlock notes={detail.notes} />
+      ) : null}
+
+      <OpenItineraryLink itemId={item.id} onClose={onClose} tripId={tripId} />
+    </div>
+  );
+}
+
+function RouteDetailBody({
+  detail,
+  item,
+  onClose,
+  tripId
+}: {
+  detail: DetailView;
+  item: TripMapItem;
+  onClose: () => void;
+  tripId: string;
+}) {
+  const route = detail.route;
+  const origin = route?.origin || null;
+  const destination = route?.destination || null;
+  const depart = formatScheduleParts(route?.departAt || item.startTime, item.hasStartTime);
+  const arrive = formatScheduleParts(route?.arriveAt || item.endTime, item.hasEndTime);
+
+  return (
+    <div className="mt-5 grid gap-4">
+      {origin || destination ? (
+        <div className="rounded-2xl bg-[#1a1a1c] px-4 py-2 ring-1 ring-white/6">
+          {origin ? <RouteEndpointRow endpoint={origin} label="From" schedule={depart} /> : null}
+          {destination ? <RouteEndpointRow endpoint={destination} label="To" schedule={arrive} /> : null}
         </div>
       ) : null}
 
-      {item.notes ? (
-        <div className="rounded-2xl bg-[#1a1a1c] px-4 py-3 ring-1 ring-white/6">
-          <p className="text-sm font-semibold text-white/42">Notes</p>
-          <p className="mt-1 whitespace-pre-wrap text-sm font-semibold leading-6 text-white/68">{item.notes}</p>
-        </div>
+      {detail.details.length ? (
+        <DetailRows rows={detail.details} />
       ) : null}
 
-      <a
-        className="inline-flex min-h-14 items-center justify-center rounded-2xl bg-orange-500 px-5 text-base font-black text-white shadow-xl shadow-orange-950/25"
-        href={`/dashboard/trips/${encodeURIComponent(tripId)}/timeline#${encodeURIComponent(item.id)}`}
-        onClick={onClose}
-      >
-        Open in itinerary
-      </a>
+      {detail.notes ? (
+        <NotesBlock notes={detail.notes} />
+      ) : null}
+
+      <OpenItineraryLink itemId={item.id} onClose={onClose} tripId={tripId} />
     </div>
   );
 }
@@ -283,35 +373,12 @@ function RecommendationDetailBody({
 }) {
   return (
     <div className="mt-5 grid gap-4">
-      <div className="rounded-2xl bg-[#1a1a1c] ring-1 ring-white/6">
-        <ScheduleSummaryRow
-          icon={<CalendarClock className="h-5 w-5" aria-hidden="true" />}
-          label="Starts"
-          value="Save this idea to schedule it"
-        />
-        <ScheduleSummaryRow
-          icon={<Clock className="h-5 w-5" aria-hidden="true" />}
-          label="Ends"
-          value="After it is on your trip"
-        />
-      </div>
-
       {detail.details.length ? (
-        <div className="rounded-2xl bg-[#1a1a1c] px-4 py-3 ring-1 ring-white/6">
-          {detail.details.map((entry) => (
-            <div className="border-b border-white/8 py-3 last:border-0" key={entry.label}>
-              <p className="text-sm font-semibold text-white/42">{entry.label}</p>
-              <p className="mt-1 break-words text-base font-semibold text-orange-300">{entry.value}</p>
-            </div>
-          ))}
-        </div>
+        <DetailRows rows={detail.details} />
       ) : null}
 
       {detail.notes ? (
-        <div className="rounded-2xl bg-[#1a1a1c] px-4 py-3 ring-1 ring-white/6">
-          <p className="text-sm font-semibold text-white/42">Notes</p>
-          <p className="mt-1 text-sm font-semibold leading-6 text-white/68">{detail.notes}</p>
-        </div>
+        <NotesBlock notes={detail.notes} />
       ) : null}
 
       <button
@@ -333,97 +400,337 @@ function RecommendationDetailBody({
   );
 }
 
-function ScheduleSummaryRow({
-  icon,
-  label,
-  value
-}: {
-  icon: ReactNode;
-  label: string;
-  value: string;
-}) {
+function ActionLink({ href, icon, label }: { href: string; icon: ReactNode; label: string }) {
   return (
-    <div className="grid grid-cols-[36px_1fr_auto] items-center gap-3 border-b border-white/8 px-4 py-4 last:border-0">
-      <span className="grid h-9 w-9 place-items-center rounded-xl bg-white/8 text-white/52">{icon}</span>
-      <span className="text-base font-black text-white/46">{label}</span>
-      <span className="max-w-[12rem] truncate rounded-xl bg-white/8 px-3 py-2 text-right text-base font-semibold text-white">
-        {value}
+    <a
+      className="grid min-h-[86px] place-items-center rounded-2xl bg-[#1a1a1c] px-2 text-center text-sm font-bold text-white/62 ring-1 ring-white/6"
+      href={href}
+      rel="noreferrer"
+      target="_blank"
+    >
+      <span className="[&>svg]:mb-2 [&>svg]:h-7 [&>svg]:w-7 [&>svg]:text-orange-400" aria-hidden="true">
+        {icon}
       </span>
+      {label}
+    </a>
+  );
+}
+
+function DetailGroup({ children }: { children: ReactNode }) {
+  return <div className="rounded-2xl bg-[#1a1a1c] ring-1 ring-white/6">{children}</div>;
+}
+
+function DetailRows({ rows }: { rows: DetailRow[] }) {
+  return (
+    <div className="rounded-2xl bg-[#1a1a1c] px-4 py-3 ring-1 ring-white/6">
+      {rows.map((entry) => (
+        <div className="border-b border-white/8 py-3 last:border-0" key={entry.label}>
+          <p className="text-sm font-semibold text-white/42">{entry.label}</p>
+          <p className={`mt-1 break-words text-base font-semibold ${entry.accent ? "text-orange-300" : "text-white/78"}`}>
+            {entry.value}
+          </p>
+        </div>
+      ))}
     </div>
   );
 }
 
-type DetailView = {
-  address: string | null;
-  category: string | null;
-  categoryLabel: string | null;
-  details: { label: string; value: string }[];
-  directionsUrl: string | null;
-  id: string;
-  imageAlt: string | null;
-  imageAttribution: string | null;
-  imageUrl: string | null;
-  lat: number | null;
-  lng: number | null;
-  location: string | null;
-  notes: string | null;
-  title: string;
-  websiteUrl: string | null;
-};
+function NotesBlock({ notes }: { notes: string }) {
+  return (
+    <div className="rounded-2xl bg-[#1a1a1c] px-4 py-3 ring-1 ring-white/6">
+      <p className="text-sm font-semibold text-white/42">Notes</p>
+      <p className="mt-1 whitespace-pre-wrap text-sm font-semibold leading-6 text-white/68">{notes}</p>
+    </div>
+  );
+}
+
+function OpenItineraryLink({
+  itemId,
+  onClose,
+  tripId
+}: {
+  itemId: string;
+  onClose: () => void;
+  tripId: string;
+}) {
+  return (
+    <a
+      className="inline-flex min-h-14 items-center justify-center rounded-2xl bg-orange-500 px-5 text-base font-black text-white shadow-xl shadow-orange-950/25"
+      href={`/dashboard/trips/${encodeURIComponent(tripId)}/timeline#${encodeURIComponent(itemId)}`}
+      onClick={onClose}
+    >
+      Open in itinerary
+    </a>
+  );
+}
+
+function ScheduleSummaryRow({
+  icon,
+  label,
+  schedule,
+  value
+}: {
+  icon: ReactNode;
+  label: string;
+  schedule?: ScheduleParts | null;
+  value?: string | null;
+}) {
+  if (!schedule && !value) return null;
+
+  return (
+    <div className="grid grid-cols-[36px_minmax(0,1fr)_auto] items-center gap-3 border-b border-white/8 px-4 py-4 last:border-0">
+      <span className="grid h-9 w-9 place-items-center rounded-xl bg-white/8 text-white/52">{icon}</span>
+      <span className="min-w-0 truncate text-base font-black text-white/58">{label}</span>
+      {schedule ? (
+        <span className="flex min-w-0 max-w-[13rem] items-center gap-2 text-right">
+          <span className="truncate rounded-xl bg-white/8 px-3 py-2 text-sm font-semibold text-white">
+            {schedule.date}
+          </span>
+          <span className="truncate rounded-xl bg-white/8 px-3 py-2 text-sm font-semibold text-white">
+            {schedule.time}
+          </span>
+        </span>
+      ) : (
+        <span className="max-w-[13rem] truncate rounded-xl bg-white/8 px-3 py-2 text-right text-sm font-semibold text-white">
+          {value}
+        </span>
+      )}
+    </div>
+  );
+}
+
+function RouteEndpointRow({
+  endpoint,
+  label,
+  schedule
+}: {
+  endpoint: TripRouteEndpoint;
+  label: string;
+  schedule: ScheduleParts | null;
+}) {
+  const endpointLabel = routeEndpointLabel(endpoint);
+  const code = endpoint.code && endpoint.code !== endpointLabel ? endpoint.code : null;
+
+  return (
+    <div className="grid grid-cols-[32px_minmax(0,1fr)_auto] gap-3 border-b border-white/8 py-4 last:border-0">
+      <span className="mt-1 grid h-8 w-8 place-items-center rounded-full bg-white/10 text-white/56">
+        <Plane className="h-4 w-4" aria-hidden="true" />
+      </span>
+      <div className="min-w-0">
+        <p className="text-xs font-black uppercase tracking-[0.22em] text-white/36">{label}</p>
+        <p className="mt-1 truncate text-lg font-black text-white">{code || endpointLabel || "Route point"}</p>
+        {code && endpointLabel ? (
+          <p className="truncate text-sm font-semibold text-white/46">{endpointLabel}</p>
+        ) : endpoint.address ? (
+          <p className="truncate text-sm font-semibold text-white/46">{endpoint.address}</p>
+        ) : null}
+      </div>
+      {schedule ? (
+        <div className="text-right">
+          <p className="text-lg font-black text-orange-300">{schedule.time}</p>
+          <p className="text-sm font-semibold text-white/48">{schedule.date}</p>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function DarkFallbackHeader() {
+  return (
+    <div className="relative h-full overflow-hidden bg-[radial-gradient(circle_at_50%_42%,rgba(249,115,22,0.3),transparent_20%),linear-gradient(145deg,#102032,#090d14_62%,#1b1209)]">
+      <div className="absolute inset-0 opacity-35 [background-image:linear-gradient(rgba(255,255,255,.08)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.08)_1px,transparent_1px)] [background-size:40px_40px]" />
+      <div className="absolute inset-x-8 top-1/2 h-px -translate-y-1/2 bg-white/20" />
+      <div className="absolute left-1/2 top-1/2 grid h-16 w-16 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-orange-500 text-white shadow-2xl ring-4 ring-black/35">
+        <MapPin className="h-7 w-7" aria-hidden="true" />
+      </div>
+    </div>
+  );
+}
 
 function getDetailView(target: ActivityDetailTarget): DetailView {
   if (target.type === "segment") {
     const { item } = target;
-    const details = [
-      item.provider ? { label: "Source", value: item.provider.replace(/_/g, " ") } : null,
-      item.confirmationCode ? { label: "Confirmation", value: item.confirmationCode } : null
-    ].filter(Boolean) as { label: string; value: string }[];
+    const providerMetadata = item.providerMetadata || null;
+    const kind = getSegmentDetailKind(item);
+    const route = item.route || null;
+    const confirmation = cleanString(item.confirmationCode) || cleanString(route?.confirmation);
+    const websiteUrl = readProviderUrl(providerMetadata, ["website", "websiteUrl", "websiteUri", "homepage"]);
+    const title =
+      kind === "route"
+        ? routeTitleLabel(route, item.title)
+        : item.title;
+    const categoryLabel = labelize(item.category || item.kind);
+    const subtitle = getSegmentSubtitle(item, kind, categoryLabel);
+    const details = getSegmentDetails(item, kind, providerMetadata, confirmation, websiteUrl);
 
     return {
       address: item.address || null,
+      bookingUrl: item.bookingUrl || null,
       category: item.category || item.kind || null,
-      categoryLabel: labelize(item.category || item.kind),
+      categoryLabel,
+      confirmation,
       details,
-      directionsUrl: buildDirectionsUrl(item.lat, item.lng, item.address || item.title),
+      directionsUrl: buildDirectionsUrl(item),
       id: item.id,
       imageAlt: item.imageAlt || null,
       imageAttribution: item.imageAttribution || null,
       imageUrl: item.imageUrl || null,
-      lat: item.lat,
-      lng: item.lng,
-      location: item.address || null,
+      kind,
+      lat: getFiniteNumber(item.lat),
+      lng: getFiniteNumber(item.lng),
+      location: item.address || routeEndpointLabel(route?.destination) || routeEndpointLabel(route?.origin) || null,
       notes: item.notes || null,
-      title: item.title,
-      websiteUrl: item.bookingUrl || null
+      providerMetadata,
+      route,
+      subtitle,
+      title,
+      websiteUrl
     };
   }
 
   const { item } = target;
   const details = [
-    item.provider ? { label: "Source", value: item.provider.replace(/_/g, " ") } : null,
-    item.ratingLabel ? { label: "Rating", value: `${item.ratingLabel} stars` } : null
-  ].filter(Boolean) as { label: string; value: string }[];
+    item.provider ? { label: "Source", value: item.provider.replace(/_/g, " "), accent: true } : null,
+    item.ratingLabel ? { label: "Rating", value: `${item.ratingLabel} stars` } : null,
+    item.address ? { label: "Address", value: item.address } : null
+  ].filter(Boolean) as DetailRow[];
 
   return {
     address: item.address || null,
+    bookingUrl: item.bookingUrl || null,
     category: item.category || item.type || null,
     categoryLabel: labelize(item.category || item.type),
+    confirmation: null,
     details,
-    directionsUrl: buildDirectionsUrl(item.lat, item.lng, item.address || item.title),
+    directionsUrl: buildPointDirectionsUrl(item.lat, item.lng, item.address || null),
     id: item.id,
     imageAlt: item.imageAlt || null,
     imageAttribution: item.imageAttribution || null,
     imageUrl: item.imageUrl || null,
+    kind: "recommendation",
     lat: item.lat,
     lng: item.lng,
     location: item.address || null,
     notes: item.reason || null,
+    providerMetadata: null,
+    route: null,
+    subtitle: [labelize(item.category || item.type), item.address].filter(Boolean).join(" in ") || null,
     title: item.title,
-    websiteUrl: item.bookingUrl || null
+    websiteUrl: null
   };
 }
 
+function getSegmentDetailKind(item: TripMapItem): DetailKind {
+  const kind = String(item.kind || item.category || "").toLowerCase();
+  if (item.route || ["flight", "drive", "train", "bus", "transfer", "ferry", "transport", "transportation"].includes(kind)) {
+    return "route";
+  }
+  if (["hotel", "lodging", "stay", "accommodation"].includes(kind)) {
+    return "lodging";
+  }
+  return "place";
+}
+
+function getSegmentSubtitle(item: TripMapItem, kind: DetailKind, categoryLabel: string | null) {
+  if (kind === "route") {
+    return [item.route?.carrier, item.route?.flightNumber].filter(Boolean).join(" ") || categoryLabel || "Route";
+  }
+  if (kind === "lodging") {
+    return ["Lodging", item.address].filter(Boolean).join(" in ");
+  }
+  return [categoryLabel, item.address].filter(Boolean).join(" in ") || item.address || categoryLabel;
+}
+
+function getSegmentDetails(
+  item: TripMapItem,
+  kind: DetailKind,
+  providerMetadata: Record<string, unknown> | null,
+  confirmation: string | null,
+  websiteUrl: string | null
+): DetailRow[] {
+  const rows: (DetailRow | null)[] = [];
+
+  if (kind === "route") {
+    const duration = getDurationLabel(item.route?.departAt || item.startTime, item.route?.arriveAt || item.endTime);
+    const distance = getRouteDistance(providerMetadata);
+    rows.push(
+      duration ? { label: "Duration", value: duration } : null,
+      distance ? { label: "Distance", value: distance } : null,
+      item.route?.carrier ? { label: "Company", value: item.route.carrier } : null,
+      item.route?.flightNumber ? { label: "Flight", value: item.route.flightNumber } : null,
+      confirmation ? { label: "Confirmation", value: confirmation, accent: true } : null,
+      readProviderString(providerMetadata, ["aircraft", "aircraftType"]) ? { label: "Aircraft", value: readProviderString(providerMetadata, ["aircraft", "aircraftType"]) || "" } : null,
+      readProviderString(providerMetadata, ["baggageClaim", "baggage"]) ? { label: "Baggage Claim", value: readProviderString(providerMetadata, ["baggageClaim", "baggage"]) || "" } : null
+    );
+  } else if (kind === "lodging") {
+    rows.push(
+      getNightsLabel(item.startTime, item.endTime) ? { label: "Nights", value: getNightsLabel(item.startTime, item.endTime) || "" } : null,
+      readProviderString(providerMetadata, ["roomType", "room_type"]) ? { label: "Room Type", value: readProviderString(providerMetadata, ["roomType", "room_type"]) || "" } : null,
+      readProviderString(providerMetadata, ["roomNumber", "room_number"]) ? { label: "Room Number", value: readProviderString(providerMetadata, ["roomNumber", "room_number"]) || "" } : null,
+      confirmation ? { label: "Confirmation", value: confirmation, accent: true } : null
+    );
+  } else {
+    rows.push(
+      item.address ? { label: "Address", value: item.address } : null,
+      confirmation ? { label: "Confirmation", value: confirmation, accent: true } : null
+    );
+  }
+
+  rows.push(
+    readProviderString(providerMetadata, ["phone", "phoneNumber", "formatted_phone_number", "international_phone_number"])
+      ? {
+          label: "Phone",
+          value: readProviderString(providerMetadata, ["phone", "phoneNumber", "formatted_phone_number", "international_phone_number"]) || ""
+        }
+      : null,
+    websiteUrl ? { label: "Website", value: displayUrl(websiteUrl), accent: true } : null,
+    item.provider ? { label: "Source", value: item.provider.replace(/_/g, " "), accent: true } : null
+  );
+
+  return rows.filter(Boolean) as DetailRow[];
+}
+
+function getScheduleRows(kind: DetailKind, item: TripMapItem) {
+  const start = formatScheduleParts(item.startTime, item.hasStartTime);
+  const end = formatScheduleParts(item.endTime, item.hasEndTime);
+
+  if (kind === "lodging") {
+    return [
+      start ? { icon: <CalendarClock className="h-5 w-5" aria-hidden="true" />, label: "Check-in", schedule: start } : null,
+      end ? { icon: <Clock className="h-5 w-5" aria-hidden="true" />, label: "Check-out", schedule: end } : null
+    ].filter(Boolean) as { icon: ReactNode; label: string; schedule: ScheduleParts }[];
+  }
+
+  return [
+    start ? { icon: <CalendarClock className="h-5 w-5" aria-hidden="true" />, label: "Starts", schedule: start } : null,
+    end ? { icon: <Clock className="h-5 w-5" aria-hidden="true" />, label: "Ends", schedule: end } : null
+  ].filter(Boolean) as { icon: ReactNode; label: string; schedule: ScheduleParts }[];
+}
+
 function getDetailMapItem(detail: DetailView): TripMapItem | null {
+  const route = detail.route;
+  if (route && hasResolvedRoute(route)) {
+    const destination = route.destination;
+    const lat = getFiniteNumber(destination?.lat) ?? getFiniteNumber(route.origin?.lat);
+    const lng = getFiniteNumber(destination?.lng) ?? getFiniteNumber(route.origin?.lng);
+    if (typeof lat !== "number" || typeof lng !== "number") return null;
+
+    return {
+      address: detail.address,
+      category: detail.category,
+      id: detail.id,
+      imageAlt: detail.imageAlt,
+      imageAttribution: detail.imageAttribution,
+      imageUrl: detail.imageUrl,
+      lat,
+      lng,
+      route,
+      routeOrder: 1,
+      status: "resolved",
+      title: detail.title
+    };
+  }
+
   if (typeof detail.lat !== "number" || typeof detail.lng !== "number") return null;
 
   return {
@@ -441,7 +748,19 @@ function getDetailMapItem(detail: DetailView): TripMapItem | null {
   };
 }
 
-function buildDirectionsUrl(lat: number | null, lng: number | null, fallback: string | null) {
+function buildDirectionsUrl(item: TripMapItem) {
+  if (hasResolvedRoute(item.route)) {
+    const origin = routeEndpointLabel(item.route?.origin);
+    const destination = routeEndpointLabel(item.route?.destination);
+    if (origin && destination) {
+      return `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}`;
+    }
+  }
+
+  return buildPointDirectionsUrl(getFiniteNumber(item.lat), getFiniteNumber(item.lng), item.address || null);
+}
+
+function buildPointDirectionsUrl(lat: number | null, lng: number | null, fallback: string | null) {
   if (typeof lat === "number" && typeof lng === "number") {
     return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(`${lat},${lng}`)}`;
   }
@@ -451,26 +770,103 @@ function buildDirectionsUrl(lat: number | null, lng: number | null, fallback: st
   return null;
 }
 
-function formatSchedule(value: string | null | undefined, hasTime?: boolean) {
-  if (!value) return "Date / Time";
+function formatScheduleParts(value: string | null | undefined, hasTime?: boolean): ScheduleParts | null {
+  if (!value) return null;
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "Date / Time";
+  if (Number.isNaN(date.getTime())) return null;
 
-  if (hasTime === false) {
-    return new Intl.DateTimeFormat("en", {
-      month: "short",
-      day: "numeric",
-      timeZone: "UTC"
-    }).format(date);
-  }
-
-  return new Intl.DateTimeFormat("en", {
+  const dateLabel = new Intl.DateTimeFormat("en", {
     month: "short",
     day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-    timeZone: "UTC"
+    timeZone: "UTC",
+    weekday: "short"
   }).format(date);
+
+  if (hasTime === false) {
+    return { date: dateLabel, time: "Anytime" };
+  }
+
+  return {
+    date: dateLabel,
+    time: new Intl.DateTimeFormat("en", {
+      hour: "numeric",
+      minute: "2-digit",
+      timeZone: "UTC"
+    }).format(date)
+  };
+}
+
+function getDurationLabel(start: string | null | undefined, end: string | null | undefined) {
+  if (!start || !end) return null;
+  const startDate = new Date(start);
+  const endDate = new Date(end);
+  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) return null;
+  const minutes = Math.max(0, Math.round((endDate.getTime() - startDate.getTime()) / 60000));
+  if (!minutes) return null;
+  const hours = Math.floor(minutes / 60);
+  const remainder = minutes % 60;
+  if (!hours) return `${remainder}m`;
+  return remainder ? `${hours}h ${remainder}m` : `${hours}h`;
+}
+
+function getNightsLabel(start: string | null | undefined, end: string | null | undefined) {
+  if (!start || !end) return null;
+  const startDate = new Date(start);
+  const endDate = new Date(end);
+  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) return null;
+  const nights = Math.round((endDate.getTime() - startDate.getTime()) / 86_400_000);
+  return nights > 0 ? String(nights) : null;
+}
+
+function getRouteDistance(metadata: Record<string, unknown> | null) {
+  const value = readProviderString(metadata, ["distance", "distanceLabel", "distanceText"]);
+  if (value) return value;
+  const miles = readProviderNumber(metadata, ["distanceMiles", "distance_miles"]);
+  if (typeof miles === "number") return `${Math.round(miles).toLocaleString("en")} mi`;
+  return null;
+}
+
+function readProviderString(metadata: Record<string, unknown> | null, keys: string[]) {
+  if (!metadata) return null;
+  for (const key of keys) {
+    const value = metadata[key];
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+  return null;
+}
+
+function readProviderNumber(metadata: Record<string, unknown> | null, keys: string[]) {
+  if (!metadata) return null;
+  for (const key of keys) {
+    const value = metadata[key];
+    if (typeof value === "number" && Number.isFinite(value)) return value;
+  }
+  return null;
+}
+
+function readProviderUrl(metadata: Record<string, unknown> | null, keys: string[]) {
+  const value = readProviderString(metadata, keys);
+  if (!value) return null;
+  if (/^https?:\/\//i.test(value)) return value;
+  if (/^[\w.-]+\.[a-z]{2,}/i.test(value)) return `https://${value}`;
+  return null;
+}
+
+function displayUrl(value: string) {
+  try {
+    const url = new URL(value);
+    return url.hostname.replace(/^www\./, "");
+  } catch {
+    return value;
+  }
+}
+
+function getFiniteNumber(value: unknown) {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function cleanString(value: unknown) {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
 function labelize(value: string | null | undefined) {
