@@ -317,6 +317,7 @@ test.describe("mobile soft-launch UX", () => {
 
     try {
       await expect(page.getByTestId("trip-pass-hero")).toHaveCount(0);
+      await expect(page.getByTestId("trip-pass-desktop-background")).toBeHidden();
       await expect(page.getByTestId("trip-compact-header")).toBeHidden();
       await expect(page.getByTestId("trip-section-menu")).toBeHidden();
       const mobileHub = page.getByTestId("trip-overview-page");
@@ -566,6 +567,7 @@ test.describe("mobile soft-launch UX", () => {
     await expect(mapAwareItinerary).toBeVisible({ timeout: 30_000 });
     await expect(page.getByTestId("trip-compact-header")).toBeHidden();
     await expect(page.getByTestId("trip-section-menu")).toBeHidden();
+    await expect(page.getByTestId("trip-pass-desktop-background")).toBeHidden();
     await expect(page.getByLabel(/route preview/i)).toBeVisible();
     await expect(mapAwareItinerary.getByTestId("mobile-real-map-preview")).toBeVisible();
     await expect(mapAwareItinerary.getByTestId("mobile-real-map-preview")).toHaveAttribute("data-map-theme", "dark");
@@ -596,6 +598,7 @@ test.describe("mobile soft-launch UX", () => {
     await expect(itinerary).toBeVisible({ timeout: 30_000 });
     await expect(page.getByTestId("trip-compact-header")).toBeHidden();
     await expect(page.getByTestId("trip-section-menu")).toBeHidden();
+    await expect(page.getByTestId("trip-pass-desktop-background")).toBeHidden();
     await expect(itinerary.getByTestId("mobile-real-map-preview")).toBeVisible();
     await expect(itinerary.getByTestId("mobile-real-map-preview")).toHaveAttribute("data-map-theme", "dark");
     await expect(itinerary.getByTestId("map-aware-sheet")).toBeVisible();
@@ -648,6 +651,7 @@ test.describe("mobile soft-launch UX", () => {
       await page.goto(`${baseUrl}/dashboard/trips/${tripId}`, { waitUntil: "commit" });
       await expect(page.getByTestId("trip-pass-hero")).toHaveCount(0);
       await expect(page.getByTestId("overview-small-pass")).toBeVisible({ timeout: 20_000 });
+      await expect(page.getByTestId("trip-pass-desktop-background")).toBeHidden();
       await expect(page.getByTestId("trip-compact-header")).toBeHidden();
       await expect(page.getByTestId("trip-section-menu")).toBeHidden();
       await expect(page.getByTestId("mobile-real-map-preview")).toHaveAttribute("data-map-theme", "dark");

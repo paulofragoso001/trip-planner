@@ -53,7 +53,11 @@ export function TripPassShell({ children, trip, tripId }: TripPassShellProps) {
 
   const standardTripPass = (
     <>
-      <div className="pointer-events-none absolute inset-0 z-0" aria-hidden="true">
+      <div
+        className="pointer-events-none absolute inset-0 z-0 hidden lg:block"
+        aria-hidden="true"
+        data-testid="trip-pass-desktop-background"
+      >
         {hasPhoto ? (
           <img
             alt=""
@@ -121,8 +125,8 @@ export function TripPassShell({ children, trip, tripId }: TripPassShellProps) {
 
   return (
     <section
-      className="relative isolate -mx-3 -mt-4 min-h-[calc(100dvh-3.5rem)] overflow-hidden bg-slate-950 sm:-mx-6 sm:-mt-6 lg:-mx-8 lg:-my-6"
-      data-has-background-image={hasPhoto ? "true" : "false"}
+      className="relative isolate -mx-3 -mt-4 min-h-[100dvh] overflow-hidden bg-slate-950 sm:-mx-6 sm:-mt-6 lg:-mx-8 lg:-my-6"
+      data-has-background-image={hasPhoto ? "desktop-only" : "false"}
       data-testid="trip-pass-shell"
     >
       {standardTripPass}
