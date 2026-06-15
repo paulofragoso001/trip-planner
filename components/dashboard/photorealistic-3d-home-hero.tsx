@@ -43,8 +43,8 @@ const DEFAULT_COUNTRY: CountryFocus = {
   lat: 39.8283,
   lng: -98.5795,
   name: "United States",
-  pinX: 58,
-  pinY: 29
+  pinX: 56,
+  pinY: 39
 };
 
 const COUNTRY_BY_CODE: Record<string, CountryFocus> = {
@@ -246,12 +246,12 @@ export function Photorealistic3DHomeHero({ className }: Photorealistic3DHomeHero
       } as CSSProperties}
     >
       <div
-        className="absolute inset-0 overflow-hidden"
+        className="absolute inset-0 overflow-hidden opacity-0"
         data-testid="home-3d-map-stage"
         ref={mapHostRef}
       />
-      {heroMode !== "3d" ? <HomeHeroFallback reduceMotion={reduceMotion} /> : null}
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_var(--wayline-pin-x)_var(--wayline-pin-y),rgba(251,191,36,0.22),transparent_10%),linear-gradient(180deg,rgba(2,9,22,0.02),rgba(2,9,22,0.1)_42%,rgba(2,8,20,0.62)_76%,#020817_100%)]" />
+      <HomeHeroFallback reduceMotion={reduceMotion} />
+      <div className="absolute inset-0 z-10 bg-[radial-gradient(circle_at_var(--wayline-pin-x)_var(--wayline-pin-y),rgba(251,191,36,0.18),transparent_11%),linear-gradient(180deg,rgba(2,9,22,0.02),rgba(2,9,22,0.04)_38%,rgba(2,8,20,0.42)_76%,#020817_100%)]" />
       {showPin && country ? (
         <div
           className="wayline-country-pin absolute z-20 -translate-x-1/2 -translate-y-full text-center"
@@ -273,8 +273,8 @@ export function Photorealistic3DHomeHero({ className }: Photorealistic3DHomeHero
           </div>
         </div>
       ) : null}
-      <div className="absolute inset-x-0 top-0 h-28 bg-[linear-gradient(180deg,rgba(2,9,22,0.72),transparent)]" />
-      <div className="absolute inset-x-0 bottom-0 h-[38%] bg-[linear-gradient(180deg,transparent,rgba(2,8,20,0.5)_46%,#020817_100%)]" />
+      <div className="absolute inset-x-0 top-0 z-10 h-20 bg-[linear-gradient(180deg,rgba(2,9,22,0.36),transparent)]" />
+      <div className="absolute inset-x-0 bottom-0 z-10 h-[34%] bg-[linear-gradient(180deg,transparent,rgba(2,8,20,0.42)_46%,#020817_100%)]" />
     </div>
   );
 }
@@ -282,14 +282,14 @@ export function Photorealistic3DHomeHero({ className }: Photorealistic3DHomeHero
 function HomeHeroFallback({ reduceMotion }: { reduceMotion: boolean }) {
   return (
     <div
-      className="absolute inset-0 overflow-hidden"
+      className="absolute inset-0 z-[1] overflow-hidden"
       data-earth-source="photorealistic-3d-fallback"
       data-testid="home-3d-fallback"
     >
       <Image
         alt=""
         className={[
-          "object-cover object-[50%_20%] opacity-100 brightness-[0.86] contrast-[1.1] saturate-[1.08]",
+          "object-cover object-center opacity-100 brightness-[0.84] contrast-[1.12] saturate-[1.06]",
           reduceMotion ? "" : "wayline-home-3d-fallback-intro"
         ]
           .filter(Boolean)
@@ -322,19 +322,19 @@ function getStartCamera(country: CountryFocus, reduceMotion: boolean) {
   }
 
   return {
-    center: `${country.lat - 7},${country.lng - 28},${country.altitude + 420000}`,
-    heading: "292",
-    range: "5200000",
-    tilt: "56"
+    center: `${country.lat + 7},${country.lng - 18},${country.altitude + 720000}`,
+    heading: "310",
+    range: "6500000",
+    tilt: "34"
   };
 }
 
 function getSettledCamera(country: CountryFocus) {
   return {
-    center: `${country.lat},${country.lng},${country.altitude}`,
-    heading: "330",
-    range: "2450000",
-    tilt: "67"
+    center: `${country.lat + 2},${country.lng - 8},${country.altitude + 520000}`,
+    heading: "318",
+    range: "4700000",
+    tilt: "38"
   };
 }
 
