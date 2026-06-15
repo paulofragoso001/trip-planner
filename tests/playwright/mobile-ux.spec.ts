@@ -502,35 +502,50 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByTestId("mobile-home-wallet")).toBeVisible();
     await expect(page.getByTestId("mobile-home-globe-launch")).toBeVisible();
     await expect(page.getByTestId("mobile-home-globe")).toBeVisible();
-    await expect(page.getByTestId("mobile-home-earth-texture")).toBeVisible();
-    await expect(page.getByTestId("mobile-home-earth-ocean")).toBeVisible();
-    await expect(page.getByTestId("mobile-home-earth-continents")).toBeVisible();
+    await expect(page.getByTestId("mobile-home-earth-photorealistic")).toBeVisible();
+    await expect(page.getByTestId("mobile-home-earth-image")).toBeVisible();
+    await expect(page.getByTestId("mobile-home-earth-texture")).toHaveCount(0);
+    await expect(page.getByTestId("mobile-home-earth-ocean")).toHaveCount(0);
+    await expect(page.getByTestId("mobile-home-earth-continents")).toHaveCount(0);
     await expect(page.getByText("Scroll", { exact: true })).toHaveCount(0);
     await expect(page.getByTestId("mobile-home-country-pin")).toBeVisible({ timeout: 5_000 });
     await expect(page.getByTestId("mobile-home-country-pin")).toHaveAttribute("data-country-code", "US");
     await expect(page.getByTestId("mobile-home-country-name")).toHaveText("United States");
     const globeStyle = await page.getByTestId("mobile-home-globe").evaluate((element) => {
       const style = window.getComputedStyle(element);
-      const earth = element.querySelector('[data-testid="mobile-home-earth-continents"]');
+      const earth = element.querySelector<HTMLImageElement>('[data-testid="mobile-home-earth-image"]');
       const earthStyle = earth ? window.getComputedStyle(earth) : null;
-      const continentCount = earth?.querySelectorAll("path").length ?? 0;
+      const earthRect = earth?.getBoundingClientRect();
       return {
-        continentCount,
+        height: earthRect?.height ?? 0,
+        naturalHeight: earth?.naturalHeight ?? 0,
+        naturalWidth: earth?.naturalWidth ?? 0,
         opacity: style.opacity,
-        earthOpacity: earthStyle?.opacity ?? "0"
+        width: earthRect?.width ?? 0,
+        earthOpacity: earthStyle?.opacity ?? "0",
+        earthSrc: earth?.currentSrc || earth?.src || ""
       };
     });
     expect(Number(globeStyle.opacity), "home globe opacity").toBeGreaterThan(0.9);
-    expect(Number(globeStyle.earthOpacity), "home globe land opacity").toBeGreaterThan(0.85);
-    expect(globeStyle.continentCount, "realistic earth continent silhouettes").toBeGreaterThanOrEqual(7);
+    expect(Number(globeStyle.earthOpacity), "home earth image opacity").toBeGreaterThan(0.85);
+    expect(globeStyle.width, "photoreal earth image covers viewport width").toBeGreaterThanOrEqual(390);
+    expect(globeStyle.height, "photoreal earth image covers launch height").toBeGreaterThanOrEqual(360);
+    expect(globeStyle.naturalWidth, "optimized earth image width").toBeGreaterThanOrEqual(390);
+    expect(globeStyle.naturalHeight, "optimized earth image height").toBeGreaterThanOrEqual(260);
+    expect(decodeURIComponent(globeStyle.earthSrc), "home earth image source").toContain(
+      "/globe/wayline-earth-hero"
+    );
     const homeLaunchLayout = await page.evaluate(() => {
       const launch = document.querySelector('[data-testid="mobile-home-globe-launch"]')?.getBoundingClientRect();
       const content = document.querySelector('[data-testid="mobile-home-content"]')?.getBoundingClientRect();
       const heading = document
         .querySelector('[data-testid="mobile-home-content"] h1')
         ?.getBoundingClientRect();
+      const contentElement = document.querySelector('[data-testid="mobile-home-content"]');
+      const contentStyle = contentElement ? window.getComputedStyle(contentElement) : null;
 
       return {
+        contentBorderTopWidth: contentStyle?.borderTopWidth ?? "",
         contentGap: Math.round((content?.top ?? 0) - (launch?.bottom ?? 0)),
         contentTop: content?.top ?? 0,
         headingTop: heading?.top ?? 0,
@@ -552,6 +567,7 @@ test.describe("mobile soft-launch UX", () => {
     expect(homeLaunchLayout.headingTop, "wallet heading starts after globe").toBeGreaterThanOrEqual(
       homeLaunchLayout.launchBottom - 1
     );
+    expect(homeLaunchLayout.contentBorderTopWidth, "home wallet has no hard divider").toBe("0px");
     expect(homeLaunchLayout.contentGap, "wallet content is directly under globe").toBeLessThanOrEqual(2);
     expect(homeLaunchLayout.scrollHeight, "home page avoids split-screen footer gap").toBeLessThanOrEqual(
       homeLaunchLayout.viewportHeight * 1.55
@@ -632,8 +648,10 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByTestId("mobile-home-wallet")).toBeVisible();
     await expect(page.getByTestId("mobile-home-globe-launch")).toBeVisible();
     await expect(page.getByTestId("mobile-home-globe")).toBeVisible();
-    await expect(page.getByTestId("mobile-home-earth-texture")).toBeVisible();
-    await expect(page.getByTestId("mobile-home-earth-continents")).toBeVisible();
+    await expect(page.getByTestId("mobile-home-earth-photorealistic")).toBeVisible();
+    await expect(page.getByTestId("mobile-home-earth-image")).toBeVisible();
+    await expect(page.getByTestId("mobile-home-earth-texture")).toHaveCount(0);
+    await expect(page.getByTestId("mobile-home-earth-continents")).toHaveCount(0);
     await expect(page.getByTestId("mobile-home-country-pin")).toHaveCount(0);
     await page.getByTestId("mobile-home-content").scrollIntoViewIfNeeded();
     await expect(page.getByTestId("mobile-home-content")).toBeVisible();
