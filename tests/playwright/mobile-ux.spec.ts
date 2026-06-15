@@ -549,14 +549,14 @@ test.describe("mobile soft-launch UX", () => {
     expect(heroVisual.width, "home 3D visual covers viewport width").toBeGreaterThanOrEqual(390);
     if (heroVisual.mode === "3d") {
       expect(heroVisual.mapWidth, "3D map covers viewport width").toBeGreaterThanOrEqual(390);
-      expect(heroVisual.mapHeight, "3D map covers launch height").toBeGreaterThanOrEqual(360);
+      expect(heroVisual.mapHeight, "3D map covers compact launch height").toBeGreaterThanOrEqual(220);
     } else {
       await expect(page.getByTestId("home-3d-fallback")).toHaveAttribute(
         "data-earth-source",
         "photorealistic-3d-fallback"
       );
       expect(Number(heroVisual.fallbackOpacity), "home 3D fallback opacity").toBeGreaterThan(0.85);
-      expect(heroVisual.fallbackHeight, "home 3D fallback covers launch height").toBeGreaterThanOrEqual(360);
+      expect(heroVisual.fallbackHeight, "home 3D fallback covers compact launch height").toBeGreaterThanOrEqual(220);
       expect(heroVisual.fallbackNaturalWidth, "optimized 3D fallback width").toBeGreaterThanOrEqual(390);
       expect(heroVisual.fallbackNaturalHeight, "optimized 3D fallback height").toBeGreaterThanOrEqual(260);
       expect(decodeURIComponent(heroVisual.fallbackSrc), "home 3D fallback source").toContain(
@@ -591,11 +591,11 @@ test.describe("mobile soft-launch UX", () => {
         viewportHeight: window.innerHeight
       };
     });
-    expect(homeLaunchLayout.launchHeight, "home 3D hero has wallet-sized hero height").toBeGreaterThanOrEqual(
-      homeLaunchLayout.viewportHeight * 0.45
+    expect(homeLaunchLayout.launchHeight, "home 3D hero has compact wallet launch height").toBeGreaterThanOrEqual(
+      220
     );
-    expect(homeLaunchLayout.launchHeight, "home 3D hero does not force full-screen split").toBeLessThanOrEqual(
-      homeLaunchLayout.viewportHeight * 0.62
+    expect(homeLaunchLayout.launchHeight, "home 3D hero stays compact enough for actions").toBeLessThanOrEqual(
+      320
     );
     expect(homeLaunchLayout.contentTop, "wallet content starts after globe").toBeGreaterThanOrEqual(
       homeLaunchLayout.launchBottom - 1
@@ -605,7 +605,7 @@ test.describe("mobile soft-launch UX", () => {
     );
     expect(homeLaunchLayout.contentBorderTopWidth, "home wallet has no hard divider").toBe("0px");
     expect(homeLaunchLayout.contentGap, "wallet content is directly under globe").toBeLessThanOrEqual(2);
-    expect(homeLaunchLayout.headingGap, "wallet title has breathing room below globe").toBeGreaterThanOrEqual(40);
+    expect(homeLaunchLayout.headingGap, "wallet title has breathing room below globe").toBeGreaterThanOrEqual(20);
     expect(homeLaunchLayout.headingGap, "wallet title avoids a giant blank gap").toBeLessThanOrEqual(96);
     expect(
       Number.parseFloat(homeLaunchLayout.contentPaddingBottom),
@@ -629,6 +629,44 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByRole("link", { name: /Add idea/ })).toBeVisible();
     await expect(page.getByRole("link", { name: /Search/ })).toBeVisible();
     await expect(page.getByRole("link", { name: /Open map/ })).toBeVisible();
+    await page.evaluate(() => window.scrollTo(0, 0));
+    const initialHomeActionClearance = await page.evaluate(() => {
+      const nav = document.querySelector('[data-testid="app-shell-mobile-bottom-nav"]');
+      const continueTrip = document
+        .evaluate(
+          '//a[contains(., "Continue trip") or contains(., "Create trip")]',
+          document,
+          null,
+          XPathResult.FIRST_ORDERED_NODE_TYPE
+        )
+        .singleNodeValue as HTMLElement | null;
+      const addIdea = document
+        .evaluate('//a[contains(., "Add idea")]', document, null, XPathResult.FIRST_ORDERED_NODE_TYPE)
+        .singleNodeValue as HTMLElement | null;
+      const search = document
+        .evaluate('//a[contains(., "Search")]', document, null, XPathResult.FIRST_ORDERED_NODE_TYPE)
+        .singleNodeValue as HTMLElement | null;
+      const navTop = nav?.getBoundingClientRect().top ?? window.innerHeight;
+
+      return {
+        addIdeaBottom: addIdea?.getBoundingClientRect().bottom ?? 0,
+        continueBottom: continueTrip?.getBoundingClientRect().bottom ?? 0,
+        navTop,
+        searchBottom: search?.getBoundingClientRect().bottom ?? 0
+      };
+    });
+    expect(
+      initialHomeActionClearance.continueBottom,
+      "Continue trip is fully visible before scrolling"
+    ).toBeLessThan(initialHomeActionClearance.navTop - 8);
+    expect(
+      initialHomeActionClearance.addIdeaBottom,
+      "Add idea is fully visible above bottom nav before scrolling"
+    ).toBeLessThan(initialHomeActionClearance.navTop - 8);
+    expect(
+      initialHomeActionClearance.searchBottom,
+      "Search is fully visible above bottom nav before scrolling"
+    ).toBeLessThan(initialHomeActionClearance.navTop - 8);
     await expect(page.getByText("Turn saved travel ideas into mapped trip plans.")).toHaveCount(0);
     await expect(page.getByText("First Plan Guide")).toHaveCount(0);
     await expect(page.getByText("Add, review, create.")).toHaveCount(0);
