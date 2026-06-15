@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import type { DashboardData } from "@/app/dashboard/loader";
 import { HomeSmartStart } from "@/components/dashboard/home-smart-start";
+import { MobileHomeWallet } from "@/components/dashboard/mobile-home-wallet";
 import { tripUi } from "@/components/trip-ui";
 import { WalletActionLink, WalletCard } from "@/components/wallet/wallet-card";
 import { WalletPageShell } from "@/components/wallet/wallet-page-shell";
@@ -45,10 +46,12 @@ export default function DashboardPage({
   const heroImageAlt = heroImage.imageAlt || "Wayline travel pass background";
 
   return (
-    <div
-      className="mx-auto grid w-full max-w-5xl gap-4 pb-4 sm:gap-5 lg:pb-4"
-      data-testid="home-launch-page"
-    >
+    <>
+      <MobileHomeWallet metrics={metrics} recentTrips={recentTrips} />
+      <div
+        className="mx-auto hidden w-full max-w-5xl gap-4 pb-4 sm:gap-5 lg:grid lg:pb-4"
+        data-testid="home-launch-page"
+      >
       <section
         className="relative isolate overflow-visible rounded-[2rem] border border-white/10 bg-slate-950 p-4 text-white shadow-[0_28px_90px_rgba(2,6,23,0.28)] sm:rounded-[2.25rem] sm:p-6 lg:p-7"
         data-testid="home-hero"
@@ -185,7 +188,8 @@ export default function DashboardPage({
           </section>
         ) : null}
       </div>
-    </div>
+      </div>
+    </>
   );
 }
 

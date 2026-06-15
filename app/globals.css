@@ -47,3 +47,38 @@ gmp-place-autocomplete {
   --gmp-input-border-radius: 16px;
   --gmp-input-font-size: 14px;
 }
+
+@keyframes wayline-globe-drift {
+  0%,
+  100% {
+    transform: translateX(-50%) translateY(0) rotate(-8deg);
+  }
+  50% {
+    transform: translateX(-50%) translateY(10px) rotate(-3deg);
+  }
+}
+
+@keyframes wayline-orbit-drift {
+  0%,
+  100% {
+    transform: translateX(-50%) rotate(-13deg);
+  }
+  50% {
+    transform: translateX(-50%) rotate(-8deg);
+  }
+}
+
+.wayline-globe-drift {
+  animation: wayline-globe-drift 18s ease-in-out infinite;
+}
+
+.wayline-orbit-drift {
+  animation: wayline-orbit-drift 24s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wayline-globe-drift,
+  .wayline-orbit-drift {
+    animation: none;
+  }
+}

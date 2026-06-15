@@ -115,7 +115,7 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByTestId("map-route-panel")).toBeVisible({ timeout: 30_000 });
   });
 
-  test("mobile hides the global topbar outside Home and keeps it on desktop", async ({ page }) => {
+  test("mobile hides the global topbar and keeps it on desktop", async ({ page }) => {
     test.setTimeout(300_000);
     await page.setViewportSize({ height: 900, width: 390 });
     await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
@@ -139,7 +139,8 @@ test.describe("mobile soft-launch UX", () => {
     }
 
     await page.goto(`${baseUrl}/dashboard`, { waitUntil: "commit" });
-    await expect(page.getByTestId("app-shell-topbar")).toBeVisible();
+    await expect(page.getByTestId("app-shell-topbar")).toBeHidden();
+    await expect(page.getByTestId("mobile-home-wallet")).toBeVisible();
 
     await page.setViewportSize({ height: 900, width: 1024 });
     await page.goto(`${baseUrl}/dashboard/trips/demo/map`, { waitUntil: "commit" });
@@ -494,16 +495,19 @@ test.describe("mobile soft-launch UX", () => {
     await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
 
     await page.goto(`${baseUrl}/dashboard`, { waitUntil: "commit" });
-    await expect(page.getByRole("heading", { name: "Your travel companion" })).toBeVisible();
+    await expect(page.getByTestId("mobile-home-wallet")).toBeVisible();
+    await expect(page.getByTestId("mobile-home-globe")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Travel wallet" })).toBeVisible();
     await expect(
-      page.getByText("Pick up a trip, start planning, or review ideas waiting for you.")
+      page.getByText("Pick up a trip, start planning, or review saved ideas.")
     ).toBeVisible();
-    await expect(page.getByTestId("home-launch-page")).toBeVisible();
-    await expect(page.getByTestId("home-smart-start")).toBeVisible();
-    await expect(page.getByLabel("Where are you headed?")).toBeVisible();
-    await expect(page.getByTestId("home-smart-create-trip")).toBeVisible();
-    await expect(page.getByTestId("home-primary-cta")).toHaveCount(1);
-    await expect(page.getByText("Start with an idea")).toBeVisible();
+    await expect(page.getByTestId("home-launch-page")).toBeHidden();
+    await expect(page.getByTestId("home-smart-start")).toBeHidden();
+    await expect(page.getByLabel("Where are you headed?")).toBeHidden();
+    await expect(page.getByRole("link", { name: /Continue trip|Create trip/ })).toBeVisible();
+    await expect(page.getByRole("link", { name: /Add idea/ })).toBeVisible();
+    await expect(page.getByRole("link", { name: /Search/ })).toBeVisible();
+    await expect(page.getByRole("link", { name: /Open map/ })).toBeVisible();
     await expect(page.getByText("Turn saved travel ideas into mapped trip plans.")).toHaveCount(0);
     await expect(page.getByText("First Plan Guide")).toHaveCount(0);
     await expect(page.getByText("Add, review, create.")).toHaveCount(0);

@@ -46,7 +46,7 @@ export function AppShell({
   const fullBleedContent =
     tripWorkspaceContent || pathname.includes("/map") || pathname.startsWith("/dashboard/layout-simulator");
   const isDashboardHome = pathname === "/dashboard" && !view;
-  const hideMobileTopbar = !isDashboardHome;
+  const hideMobileTopbar = true;
 
   useEffect(() => {
     const stored = window.localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY);
@@ -268,7 +268,8 @@ export function AppShell({
 
           <main
             className={cn(
-              "min-h-0 flex-1 overflow-y-auto bg-[radial-gradient(circle_at_72%_8%,rgba(59,130,246,0.1),transparent_26%),linear-gradient(180deg,rgba(15,23,42,0.46),rgba(15,23,42,0.08)_42%,rgba(2,6,23,0.38))] px-3 pt-4 text-slate-950 sm:px-6 sm:pt-6 lg:pb-6",
+              "min-h-0 flex-1 overflow-y-auto bg-[radial-gradient(circle_at_72%_8%,rgba(59,130,246,0.1),transparent_26%),linear-gradient(180deg,rgba(15,23,42,0.46),rgba(15,23,42,0.08)_42%,rgba(2,6,23,0.38))] text-slate-950 lg:pb-6",
+              isDashboardHome ? "px-0 pt-0 lg:px-8 lg:pt-6" : "px-3 pt-4 sm:px-6 sm:pt-6",
               tripWorkspaceContent
                 ? "pb-0"
                 : "pb-[calc(5.75rem+env(safe-area-inset-bottom))] sm:pb-[calc(6rem+env(safe-area-inset-bottom))]",
