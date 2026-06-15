@@ -490,7 +490,7 @@ test.describe("mobile soft-launch UX", () => {
     }
   });
 
-  test("home and plan keep mobile guidance compact", async ({ page }) => {
+  test("home globe launches full screen before wallet actions", async ({ page }) => {
     await page.setViewportSize({ height: 900, width: 390 });
     await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
     await page.addInitScript(() => {
@@ -500,18 +500,60 @@ test.describe("mobile soft-launch UX", () => {
 
     await page.goto(`${baseUrl}/dashboard`, { waitUntil: "commit" });
     await expect(page.getByTestId("mobile-home-wallet")).toBeVisible();
+    await expect(page.getByTestId("mobile-home-globe-launch")).toBeVisible();
     await expect(page.getByTestId("mobile-home-globe")).toBeVisible();
-    await expect(page.getByTestId("mobile-home-sheet")).toBeVisible();
+    await expect(page.getByTestId("mobile-home-earth-svg")).toBeVisible();
+    await expect(page.getByTestId("mobile-home-earth-ocean")).toBeVisible();
+    await expect(page.getByTestId("mobile-home-earth-land")).toBeVisible();
+    await expect(page.getByTestId("mobile-home-country-pin")).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByTestId("mobile-home-country-pin")).toHaveAttribute("data-country-code", "US");
+    await expect(page.getByTestId("mobile-home-country-name")).toHaveText("United States");
+    const globeStyle = await page.getByTestId("mobile-home-globe").evaluate((element) => {
+      const style = window.getComputedStyle(element);
+      const earth = element.querySelector('[data-testid="mobile-home-earth-land"]');
+      const earthStyle = earth ? window.getComputedStyle(earth) : null;
+      return {
+        opacity: style.opacity,
+        earthOpacity: earthStyle?.opacity ?? "0"
+      };
+    });
+    expect(Number(globeStyle.opacity), "home globe opacity").toBeGreaterThan(0.9);
+    expect(Number(globeStyle.earthOpacity), "home globe land opacity").toBeGreaterThan(0.85);
+    const homeLaunchLayout = await page.evaluate(() => {
+      const launch = document.querySelector('[data-testid="mobile-home-globe-launch"]')?.getBoundingClientRect();
+      const content = document.querySelector('[data-testid="mobile-home-content"]')?.getBoundingClientRect();
+      const heading = document
+        .querySelector('[data-testid="mobile-home-content"] h1')
+        ?.getBoundingClientRect();
+
+      return {
+        contentTop: content?.top ?? 0,
+        headingTop: heading?.top ?? 0,
+        launchBottom: launch?.bottom ?? 0,
+        launchHeight: launch?.height ?? 0,
+        viewportHeight: window.innerHeight
+      };
+    });
+    expect(homeLaunchLayout.launchHeight, "home launch fills first viewport").toBeGreaterThanOrEqual(
+      homeLaunchLayout.viewportHeight * 0.95
+    );
+    expect(homeLaunchLayout.contentTop, "wallet content starts after globe").toBeGreaterThanOrEqual(
+      homeLaunchLayout.launchBottom - 1
+    );
+    expect(homeLaunchLayout.headingTop, "wallet heading starts after globe").toBeGreaterThanOrEqual(
+      homeLaunchLayout.launchBottom - 1
+    );
+    await expect(page.getByTestId("home-launch-page")).toBeHidden();
+    await expect(page.getByTestId("home-smart-start")).toBeHidden();
+    await expect(page.getByLabel("Where are you headed?")).toBeHidden();
+
+    await page.getByTestId("mobile-home-content").scrollIntoViewIfNeeded();
+    await expect(page.getByTestId("mobile-home-content")).toBeVisible();
+    await expect(page.getByTestId("mobile-home-actions")).toBeVisible();
     await expect(page.getByRole("heading", { name: "Travel wallet" })).toBeVisible();
     await expect(
       page.getByText("Pick up a trip, start planning, or review saved ideas.")
     ).toBeVisible();
-    await expect(page.getByTestId("mobile-home-country-pin")).toBeVisible({ timeout: 5_000 });
-    await expect(page.getByTestId("mobile-home-country-pin")).toHaveAttribute("data-country-code", "US");
-    await expect(page.getByTestId("mobile-home-country-name")).toHaveText("United States");
-    await expect(page.getByTestId("home-launch-page")).toBeHidden();
-    await expect(page.getByTestId("home-smart-start")).toBeHidden();
-    await expect(page.getByLabel("Where are you headed?")).toBeHidden();
     await expect(page.getByRole("link", { name: /Continue trip|Create trip/ })).toBeVisible();
     await expect(page.getByRole("link", { name: /Add idea/ })).toBeVisible();
     await expect(page.getByRole("link", { name: /Search/ })).toBeVisible();
@@ -575,13 +617,21 @@ test.describe("mobile soft-launch UX", () => {
 
     await page.goto(`${baseUrl}/dashboard`, { waitUntil: "commit" });
     await expect(page.getByTestId("mobile-home-wallet")).toBeVisible();
+    await expect(page.getByTestId("mobile-home-globe-launch")).toBeVisible();
     await expect(page.getByTestId("mobile-home-globe")).toBeVisible();
-    await expect(page.getByTestId("mobile-home-sheet")).toBeVisible();
+    await expect(page.getByTestId("mobile-home-earth-svg")).toBeVisible();
+    await expect(page.getByTestId("mobile-home-earth-land")).toBeVisible();
     await expect(page.getByTestId("mobile-home-country-pin")).toHaveCount(0);
+    await page.getByTestId("mobile-home-content").scrollIntoViewIfNeeded();
+    await expect(page.getByTestId("mobile-home-content")).toBeVisible();
+    await expect(page.getByTestId("mobile-home-actions")).toBeVisible();
     await expect(page.getByRole("link", { name: /Continue trip|Create trip/ })).toBeVisible();
 
-    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
-    expect(overflow, "reduced-motion home overflow").toBeLessThanOrEqual(1);
+    for (const width of [360, 390, 430]) {
+      await page.setViewportSize({ height: 900, width });
+      const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+      expect(overflow, `reduced-motion home overflow at ${width}px`).toBeLessThanOrEqual(1);
+    }
   });
 
   test("demo map exposes ordered route cards on mobile", async ({ page }) => {

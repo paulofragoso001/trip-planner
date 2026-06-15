@@ -1,6 +1,6 @@
 import type { DashboardData } from "@/app/dashboard/loader";
+import { MobileHomeContent } from "@/components/dashboard/mobile-home-content";
 import { MobileHomeGlobe } from "@/components/dashboard/mobile-home-globe";
-import { MobileHomeSheet } from "@/components/dashboard/mobile-home-sheet";
 import { cn } from "@/components/trip-ui";
 
 type MobileHomeWalletProps = Pick<DashboardData, "metrics" | "recentTrips"> & {
@@ -27,33 +27,29 @@ export function MobileHomeWallet({
   return (
     <section
       className={cn(
-        "relative isolate min-h-[calc(100dvh-6.25rem)] overflow-hidden bg-[#020916] text-white lg:hidden",
+        "relative isolate overflow-hidden bg-[#020916] text-white lg:hidden",
         className
       )}
       data-testid="mobile-home-wallet"
     >
-      <MobileHomeGlobe />
-
-      <div className="relative z-10 flex min-h-[calc(100dvh-6.25rem)] flex-col justify-end px-4 pb-[calc(6.75rem+env(safe-area-inset-bottom))] pt-8">
-        <div className="mb-5 text-center">
-          <p className="text-xs font-black uppercase tracking-[0.32em] text-orange-300/86">
-            Wayline
-          </p>
-          <h1 className="mt-2 text-4xl font-black leading-none tracking-normal text-white">
-            Travel wallet
-          </h1>
-          <p className="mx-auto mt-2 max-w-[20rem] text-sm font-semibold leading-5 text-slate-300">
-            Pick up a trip, start planning, or review saved ideas.
-          </p>
+      <section
+        className="relative min-h-[100svh] overflow-hidden"
+        data-testid="mobile-home-globe-launch"
+      >
+        <MobileHomeGlobe />
+        <div className="pointer-events-none absolute inset-x-0 bottom-[calc(2.25rem+env(safe-area-inset-bottom))] z-10 flex justify-center">
+          <div className="rounded-full border border-white/10 bg-black/20 px-3 py-2 text-[0.65rem] font-black uppercase tracking-[0.2em] text-white/54 backdrop-blur">
+            Scroll
+          </div>
         </div>
+      </section>
 
-        <MobileHomeSheet
-          ideasWaitingCount={ideasWaitingCount}
-          primaryHref={primaryHref}
-          primaryLabel={primaryLabel}
-          primaryMeta={primaryMeta}
-        />
-      </div>
+      <MobileHomeContent
+        ideasWaitingCount={ideasWaitingCount}
+        primaryHref={primaryHref}
+        primaryLabel={primaryLabel}
+        primaryMeta={primaryMeta}
+      />
     </section>
   );
 }
