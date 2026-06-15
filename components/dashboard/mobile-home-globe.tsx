@@ -21,7 +21,7 @@ const DEFAULT_COUNTRY: CountryFocus = {
   flag: "🇺🇸",
   name: "United States",
   x: 58,
-  y: 42
+  y: 28
 };
 
 const COUNTRY_BY_CODE: Record<string, CountryFocus> = {
@@ -189,7 +189,7 @@ export function MobileHomeGlobe({ className }: MobileHomeGlobeProps) {
     >
       <div
         className="absolute inset-0 overflow-hidden"
-        data-earth-source="static-photorealistic-fallback"
+        data-earth-source="clean-earth-only-fallback"
         data-testid="mobile-home-earth-photorealistic"
       >
         <Image

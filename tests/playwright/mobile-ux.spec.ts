@@ -503,6 +503,10 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByTestId("mobile-home-earth-hero")).toBeVisible();
     await expect(page.getByTestId("mobile-home-globe")).toBeVisible();
     await expect(page.getByTestId("mobile-home-earth-photorealistic")).toBeVisible();
+    await expect(page.getByTestId("mobile-home-earth-photorealistic")).toHaveAttribute(
+      "data-earth-source",
+      "clean-earth-only-fallback"
+    );
     await expect(page.getByTestId("mobile-home-earth-image")).toBeVisible();
     await expect(page.getByRole("heading", { name: "Travel wallet" })).toHaveCount(1);
     await expect(page.getByTestId("mobile-home-earth-hero").getByText("Travel wallet")).toHaveCount(0);
@@ -669,6 +673,10 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByTestId("mobile-home-earth-hero")).toBeVisible();
     await expect(page.getByTestId("mobile-home-globe")).toBeVisible();
     await expect(page.getByTestId("mobile-home-earth-photorealistic")).toBeVisible();
+    await expect(page.getByTestId("mobile-home-earth-photorealistic")).toHaveAttribute(
+      "data-earth-source",
+      "clean-earth-only-fallback"
+    );
     await expect(page.getByTestId("mobile-home-earth-image")).toBeVisible();
     await expect(page.getByTestId("mobile-home-earth-texture")).toHaveCount(0);
     await expect(page.getByTestId("mobile-home-earth-continents")).toHaveCount(0);
