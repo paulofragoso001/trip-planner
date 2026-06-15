@@ -50,11 +50,11 @@ gmp-place-autocomplete {
 
 @keyframes wayline-home-3d-fallback-intro {
   0% {
-    transform: scale(1.1) translate3d(-2%, -1%, 0);
+    transform: translate3d(-52%, -1%, 0) scale(1.1);
     filter: saturate(1.18) contrast(1.08) brightness(0.82);
   }
   100% {
-    transform: scale(1.02) translate3d(0, 0, 0);
+    transform: translate3d(-50%, 0, 0) scale(1.02);
     filter: saturate(1.08) contrast(1.1) brightness(0.86);
   }
 }

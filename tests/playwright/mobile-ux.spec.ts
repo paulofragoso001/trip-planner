@@ -572,13 +572,20 @@ test.describe("mobile soft-launch UX", () => {
     const homeLaunchLayout = await page.evaluate(() => {
       const launch = document.querySelector('[data-testid="mobile-home-3d-hero"]')?.getBoundingClientRect();
       const content = document.querySelector('[data-testid="mobile-home-wallet-content"]')?.getBoundingClientRect();
+      const stage = document.querySelector('[data-testid="mobile-home-wallet-stage"]')?.getBoundingClientRect();
       const heading = document
         .querySelector('[data-testid="mobile-home-wallet-content"] h1')
         ?.getBoundingClientRect();
+      const actions = document.querySelector('[data-testid="mobile-home-actions"]')?.getBoundingClientRect();
+      const nav = document.querySelector('[data-testid="app-shell-mobile-bottom-nav"]')?.getBoundingClientRect();
       const contentElement = document.querySelector('[data-testid="mobile-home-wallet-content"]');
       const contentStyle = contentElement ? window.getComputedStyle(contentElement) : null;
+      const stageElement = document.querySelector('[data-testid="mobile-home-wallet-stage"]');
+      const stageStyle = stageElement ? window.getComputedStyle(stageElement) : null;
 
       return {
+        actionsBottom: actions?.bottom ?? 0,
+        actionsTop: actions?.top ?? 0,
         contentBorderTopWidth: contentStyle?.borderTopWidth ?? "",
         contentGap: Math.round((content?.top ?? 0) - (launch?.bottom ?? 0)),
         contentPaddingBottom: contentStyle?.paddingBottom ?? "",
@@ -587,30 +594,37 @@ test.describe("mobile soft-launch UX", () => {
         headingTop: heading?.top ?? 0,
         launchBottom: launch?.bottom ?? 0,
         launchHeight: launch?.height ?? 0,
+        navTop: nav?.top ?? window.innerHeight,
         scrollHeight: document.documentElement.scrollHeight,
+        stagePaddingBottom: stageStyle?.paddingBottom ?? "",
+        stageTop: stage?.top ?? 0,
         viewportHeight: window.innerHeight
       };
     });
-    expect(homeLaunchLayout.launchHeight, "home 3D hero has compact wallet launch height").toBeGreaterThanOrEqual(
-      220
+    expect(homeLaunchLayout.launchHeight, "home globe fills the top of the launch screen").toBeGreaterThanOrEqual(
+      420
     );
-    expect(homeLaunchLayout.launchHeight, "home 3D hero stays compact enough for actions").toBeLessThanOrEqual(
-      320
+    expect(homeLaunchLayout.launchHeight, "home globe leaves room for wallet actions").toBeLessThanOrEqual(
+      580
     );
-    expect(homeLaunchLayout.contentTop, "wallet content starts after globe").toBeGreaterThanOrEqual(
-      homeLaunchLayout.launchBottom - 1
+    expect(homeLaunchLayout.contentTop, "wallet content overlaps the hero fade instead of sitting below an empty gap").toBeLessThan(
+      homeLaunchLayout.launchBottom
     );
-    expect(homeLaunchLayout.headingTop, "wallet heading starts after globe").toBeGreaterThanOrEqual(
-      homeLaunchLayout.launchBottom - 1
+    expect(homeLaunchLayout.headingTop, "wallet title sits in the lower hero fade").toBeLessThan(
+      homeLaunchLayout.launchBottom
     );
     expect(homeLaunchLayout.contentBorderTopWidth, "home wallet has no hard divider").toBe("0px");
-    expect(homeLaunchLayout.contentGap, "wallet content is directly under globe").toBeLessThanOrEqual(2);
-    expect(homeLaunchLayout.headingGap, "wallet title has breathing room below globe").toBeGreaterThanOrEqual(20);
-    expect(homeLaunchLayout.headingGap, "wallet title avoids a giant blank gap").toBeLessThanOrEqual(96);
+    expect(homeLaunchLayout.contentGap, "wallet content is pulled into the globe stage").toBeLessThanOrEqual(-40);
+    expect(homeLaunchLayout.actionsTop, "wallet form sits below the title").toBeGreaterThan(
+      homeLaunchLayout.headingTop + 80
+    );
+    expect(homeLaunchLayout.actionsBottom, "wallet form sits above the bottom nav").toBeLessThan(
+      homeLaunchLayout.navTop - 8
+    );
     expect(
-      Number.parseFloat(homeLaunchLayout.contentPaddingBottom),
-      "home content owns one bottom-nav clearance"
-    ).toBeGreaterThanOrEqual(176);
+      Number.parseFloat(homeLaunchLayout.stagePaddingBottom),
+      "home stage owns one bottom-nav clearance"
+    ).toBeGreaterThanOrEqual(96);
     expect(homeLaunchLayout.scrollHeight, "home page avoids split-screen footer gap").toBeLessThanOrEqual(
       homeLaunchLayout.viewportHeight * 1.55
     );

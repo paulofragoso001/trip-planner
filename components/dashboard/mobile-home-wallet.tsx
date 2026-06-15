@@ -27,24 +27,29 @@ export function MobileHomeWallet({
   return (
     <section
       className={cn(
-        "relative isolate overflow-hidden bg-[#020916] text-white lg:hidden",
+        "relative isolate min-h-[100svh] overflow-hidden bg-[#020916] text-white lg:hidden",
         className
       )}
       data-testid="mobile-home-wallet"
     >
       <section
-        className="relative h-[clamp(220px,34svh,320px)] overflow-hidden bg-[#020817]"
+        className="absolute inset-x-0 top-0 h-[clamp(420px,58svh,560px)] overflow-hidden bg-[#020817]"
         data-testid="mobile-home-3d-hero"
       >
         <Photorealistic3DHomeHero />
       </section>
 
-      <MobileHomeContent
-        ideasWaitingCount={ideasWaitingCount}
-        primaryHref={primaryHref}
-        primaryLabel={primaryLabel}
-        primaryMeta={primaryMeta}
-      />
+      <div
+        className="relative z-10 flex min-h-[100svh] flex-col justify-end px-4 pb-[calc(96px+env(safe-area-inset-bottom))] pt-[clamp(290px,42svh,390px)]"
+        data-testid="mobile-home-wallet-stage"
+      >
+        <MobileHomeContent
+          ideasWaitingCount={ideasWaitingCount}
+          primaryHref={primaryHref}
+          primaryLabel={primaryLabel}
+          primaryMeta={primaryMeta}
+        />
+      </div>
     </section>
   );
 }
