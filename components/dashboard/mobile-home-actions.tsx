@@ -19,7 +19,7 @@ export function MobileHomeAction({
   return (
     <Link
       className={cn(
-        "grid min-h-20 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-[1.45rem] px-4 py-3 text-left transition focus:outline-none focus:ring-4 focus:ring-orange-300/20",
+        "grid min-h-[4.75rem] grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-[1.45rem] px-4 py-2.5 text-left transition focus:outline-none focus:ring-4 focus:ring-orange-300/20",
         primary
           ? "bg-white text-slate-950 shadow-[0_16px_44px_rgba(255,255,255,0.12)]"
           : "bg-white/[0.075] text-white ring-1 ring-white/10 hover:bg-white/12"
@@ -64,7 +64,7 @@ export function MobileHomeTile({
 }) {
   return (
     <Link
-      className="grid min-h-24 place-items-center gap-2 rounded-[1.45rem] bg-white/[0.075] px-3 py-4 text-center text-sm font-black text-white ring-1 ring-white/10 transition hover:bg-white/12 focus:outline-none focus:ring-4 focus:ring-orange-300/20"
+      className="grid min-h-[5.25rem] place-items-center gap-1.5 rounded-[1.45rem] bg-white/[0.075] px-3 py-3 text-center text-sm font-black text-white ring-1 ring-white/10 transition hover:bg-white/12 focus:outline-none focus:ring-4 focus:ring-orange-300/20"
       href={href}
     >
       <span className="grid h-11 w-11 place-items-center rounded-full bg-orange-500/16 text-orange-300">

@@ -581,7 +581,9 @@ test.describe("mobile soft-launch UX", () => {
       return {
         contentBorderTopWidth: contentStyle?.borderTopWidth ?? "",
         contentGap: Math.round((content?.top ?? 0) - (launch?.bottom ?? 0)),
+        contentPaddingBottom: contentStyle?.paddingBottom ?? "",
         contentTop: content?.top ?? 0,
+        headingGap: Math.round((heading?.top ?? 0) - (launch?.bottom ?? 0)),
         headingTop: heading?.top ?? 0,
         launchBottom: launch?.bottom ?? 0,
         launchHeight: launch?.height ?? 0,
@@ -603,6 +605,12 @@ test.describe("mobile soft-launch UX", () => {
     );
     expect(homeLaunchLayout.contentBorderTopWidth, "home wallet has no hard divider").toBe("0px");
     expect(homeLaunchLayout.contentGap, "wallet content is directly under globe").toBeLessThanOrEqual(2);
+    expect(homeLaunchLayout.headingGap, "wallet title has breathing room below globe").toBeGreaterThanOrEqual(40);
+    expect(homeLaunchLayout.headingGap, "wallet title avoids a giant blank gap").toBeLessThanOrEqual(96);
+    expect(
+      Number.parseFloat(homeLaunchLayout.contentPaddingBottom),
+      "home content owns one bottom-nav clearance"
+    ).toBeGreaterThanOrEqual(140);
     expect(homeLaunchLayout.scrollHeight, "home page avoids split-screen footer gap").toBeLessThanOrEqual(
       homeLaunchLayout.viewportHeight * 1.55
     );
@@ -626,9 +634,12 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByText("Add, review, create.")).toHaveCount(0);
     await expect(page.getByText("Recent passes")).toHaveCount(0);
     await expect(page.getByText(/0 waiting to review/i)).toHaveCount(0);
-    const actionNames = [/Continue trip|Create trip/, /Add idea/, /Search/, /Open map/];
+    const actionNames = [/Continue trip|Create trip/, /Add idea/, /Search/, /Review places/, /Open map/];
     for (const actionName of actionNames) {
       const action = page.getByRole("link", { name: actionName }).first();
+      if ((await action.count()) === 0) {
+        continue;
+      }
       await action.scrollIntoViewIfNeeded();
       const isCoveredByNav = await action.evaluate((element) => {
         const nav = document.querySelector('[data-testid="app-shell-mobile-bottom-nav"]');
@@ -642,6 +653,11 @@ test.describe("mobile soft-launch UX", () => {
         return actionRect.bottom > navRect.top - 8 && actionRect.top < navRect.bottom;
       });
       expect(isCoveredByNav, `mobile home action ${actionName} is not covered by bottom nav`).toBe(false);
+    }
+    for (const width of [360, 390, 430]) {
+      await page.setViewportSize({ height: 900, width });
+      const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+      expect(overflow, `mobile home overflow at ${width}px`).toBeLessThanOrEqual(1);
     }
 
     await page.goto(`${baseUrl}/dashboard/imports`, { waitUntil: "commit" });

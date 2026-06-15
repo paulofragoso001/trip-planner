@@ -272,6 +272,8 @@ export function AppShell({
               isDashboardHome ? "px-0 pt-0 lg:px-8 lg:pt-6" : "px-3 pt-4 sm:px-6 sm:pt-6",
               tripWorkspaceContent
                 ? "pb-0"
+                : isDashboardHome
+                  ? "pb-0"
                 : "pb-[calc(5.75rem+env(safe-area-inset-bottom))] sm:pb-[calc(6rem+env(safe-area-inset-bottom))]",
               fullBleedContent ? "lg:px-6" : "lg:px-8",
               density === "compact" ? "lg:py-4" : "lg:py-6"

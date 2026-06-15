@@ -20,11 +20,11 @@ export function MobileHomeContent({
 }) {
   return (
     <section
-      className="relative z-10 bg-[#020817] px-4 pb-[calc(9rem+env(safe-area-inset-bottom))] pt-4"
+      className="relative z-10 bg-[#020817] px-4 pb-[calc(140px+env(safe-area-inset-bottom))] pt-8 before:pointer-events-none before:absolute before:inset-x-0 before:-top-24 before:h-28 before:bg-[linear-gradient(180deg,rgba(2,8,23,0),rgba(2,8,23,0.82)_58%,#020817_100%)]"
       data-testid="mobile-home-wallet-content"
     >
       <div className="mx-auto max-w-[25rem]">
-        <div className="mb-4 text-center">
+        <div className="relative mb-4 text-center">
           <p className="text-xs font-black uppercase tracking-[0.32em] text-orange-300/86">
             Wayline
           </p>
