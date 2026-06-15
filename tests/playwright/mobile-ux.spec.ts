@@ -493,14 +493,22 @@ test.describe("mobile soft-launch UX", () => {
   test("home and plan keep mobile guidance compact", async ({ page }) => {
     await page.setViewportSize({ height: 900, width: 390 });
     await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
+    await page.addInitScript(() => {
+      Object.defineProperty(navigator, "language", { configurable: true, value: "en-US" });
+      Object.defineProperty(navigator, "languages", { configurable: true, value: ["en-US", "en"] });
+    });
 
     await page.goto(`${baseUrl}/dashboard`, { waitUntil: "commit" });
     await expect(page.getByTestId("mobile-home-wallet")).toBeVisible();
     await expect(page.getByTestId("mobile-home-globe")).toBeVisible();
+    await expect(page.getByTestId("mobile-home-sheet")).toBeVisible();
     await expect(page.getByRole("heading", { name: "Travel wallet" })).toBeVisible();
     await expect(
       page.getByText("Pick up a trip, start planning, or review saved ideas.")
     ).toBeVisible();
+    await expect(page.getByTestId("mobile-home-country-pin")).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByTestId("mobile-home-country-pin")).toHaveAttribute("data-country-code", "US");
+    await expect(page.getByTestId("mobile-home-country-name")).toHaveText("United States");
     await expect(page.getByTestId("home-launch-page")).toBeHidden();
     await expect(page.getByTestId("home-smart-start")).toBeHidden();
     await expect(page.getByLabel("Where are you headed?")).toBeHidden();
@@ -540,6 +548,40 @@ test.describe("mobile soft-launch UX", () => {
     });
     expect(planCardStyle.backgroundColor).toBe("rgb(5, 5, 5)");
     expect(planCardStyle.color).toBe("rgb(255, 255, 255)");
+  });
+
+  test("mobile home globe supports reduced motion and unknown country fallback", async ({ page }) => {
+    await page.setViewportSize({ height: 900, width: 390 });
+    await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.setViewportSize({ height: 900, width: 390 });
+    await page.addInitScript(() => {
+      Object.defineProperty(navigator, "language", { configurable: true, value: "zz" });
+      Object.defineProperty(navigator, "languages", { configurable: true, value: ["zz"] });
+      const originalResolvedOptions = Intl.DateTimeFormat.prototype.resolvedOptions;
+      Intl.DateTimeFormat.prototype.resolvedOptions = function resolvedOptions() {
+        return {
+          ...originalResolvedOptions.call(this),
+          timeZone: ""
+        };
+      };
+      Object.defineProperty(navigator, "permissions", {
+        configurable: true,
+        value: {
+          query: () => Promise.resolve({ state: "denied" })
+        }
+      });
+    });
+
+    await page.goto(`${baseUrl}/dashboard`, { waitUntil: "commit" });
+    await expect(page.getByTestId("mobile-home-wallet")).toBeVisible();
+    await expect(page.getByTestId("mobile-home-globe")).toBeVisible();
+    await expect(page.getByTestId("mobile-home-sheet")).toBeVisible();
+    await expect(page.getByTestId("mobile-home-country-pin")).toHaveCount(0);
+    await expect(page.getByRole("link", { name: /Continue trip|Create trip/ })).toBeVisible();
+
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+    expect(overflow, "reduced-motion home overflow").toBeLessThanOrEqual(1);
   });
 
   test("demo map exposes ordered route cards on mobile", async ({ page }) => {

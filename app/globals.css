@@ -58,6 +58,18 @@ gmp-place-autocomplete {
   }
 }
 
+@keyframes wayline-globe-intro {
+  0% {
+    transform: translateX(-50%) translateY(0) rotate(0deg);
+  }
+  72% {
+    transform: translateX(-50%) translateY(2px) rotate(-360deg);
+  }
+  100% {
+    transform: translateX(-50%) translateY(0) rotate(-372deg);
+  }
+}
+
 @keyframes wayline-orbit-drift {
   0%,
   100% {
@@ -66,6 +78,11 @@ gmp-place-autocomplete {
   50% {
     transform: translateX(-50%) rotate(-8deg);
   }
+}
+
+.wayline-globe-intro {
+  animation: wayline-globe-intro 3.3s cubic-bezier(0.2, 0.82, 0.17, 1) both;
+  will-change: transform;
 }
 
 .wayline-globe-drift {
@@ -77,6 +94,7 @@ gmp-place-autocomplete {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .wayline-globe-intro,
   .wayline-globe-drift,
   .wayline-orbit-drift {
     animation: none;
