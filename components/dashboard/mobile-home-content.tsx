@@ -20,8 +20,8 @@ export function MobileHomeContent({
 }) {
   return (
     <section
-      className="relative z-10 bg-[#020916] px-4 pb-[calc(5.75rem+env(safe-area-inset-bottom))] pt-5"
-      data-testid="mobile-home-content"
+      className="relative z-10 bg-[#020817] px-4 pb-[calc(7rem+env(safe-area-inset-bottom))] pt-5"
+      data-testid="mobile-home-wallet-content"
     >
       <div className="mx-auto max-w-[25rem]">
         <div className="mb-5 text-center">

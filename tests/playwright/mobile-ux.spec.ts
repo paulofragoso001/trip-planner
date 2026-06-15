@@ -500,10 +500,13 @@ test.describe("mobile soft-launch UX", () => {
 
     await page.goto(`${baseUrl}/dashboard`, { waitUntil: "commit" });
     await expect(page.getByTestId("mobile-home-wallet")).toBeVisible();
-    await expect(page.getByTestId("mobile-home-globe-launch")).toBeVisible();
+    await expect(page.getByTestId("mobile-home-earth-hero")).toBeVisible();
     await expect(page.getByTestId("mobile-home-globe")).toBeVisible();
     await expect(page.getByTestId("mobile-home-earth-photorealistic")).toBeVisible();
     await expect(page.getByTestId("mobile-home-earth-image")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Travel wallet" })).toHaveCount(1);
+    await expect(page.getByTestId("mobile-home-earth-hero").getByText("Travel wallet")).toHaveCount(0);
+    await expect(page.getByTestId("mobile-home-earth-hero").getByRole("link")).toHaveCount(0);
     await expect(page.getByTestId("mobile-home-earth-texture")).toHaveCount(0);
     await expect(page.getByTestId("mobile-home-earth-ocean")).toHaveCount(0);
     await expect(page.getByTestId("mobile-home-earth-continents")).toHaveCount(0);
@@ -536,12 +539,12 @@ test.describe("mobile soft-launch UX", () => {
       "/globe/wayline-earth-hero"
     );
     const homeLaunchLayout = await page.evaluate(() => {
-      const launch = document.querySelector('[data-testid="mobile-home-globe-launch"]')?.getBoundingClientRect();
-      const content = document.querySelector('[data-testid="mobile-home-content"]')?.getBoundingClientRect();
+      const launch = document.querySelector('[data-testid="mobile-home-earth-hero"]')?.getBoundingClientRect();
+      const content = document.querySelector('[data-testid="mobile-home-wallet-content"]')?.getBoundingClientRect();
       const heading = document
-        .querySelector('[data-testid="mobile-home-content"] h1')
+        .querySelector('[data-testid="mobile-home-wallet-content"] h1')
         ?.getBoundingClientRect();
-      const contentElement = document.querySelector('[data-testid="mobile-home-content"]');
+      const contentElement = document.querySelector('[data-testid="mobile-home-wallet-content"]');
       const contentStyle = contentElement ? window.getComputedStyle(contentElement) : null;
 
       return {
@@ -576,8 +579,8 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByTestId("home-smart-start")).toBeHidden();
     await expect(page.getByLabel("Where are you headed?")).toBeHidden();
 
-    await page.getByTestId("mobile-home-content").scrollIntoViewIfNeeded();
-    await expect(page.getByTestId("mobile-home-content")).toBeVisible();
+    await page.getByTestId("mobile-home-wallet-content").scrollIntoViewIfNeeded();
+    await expect(page.getByTestId("mobile-home-wallet-content")).toBeVisible();
     await expect(page.getByTestId("mobile-home-actions")).toBeVisible();
     await expect(page.getByRole("heading", { name: "Travel wallet" })).toBeVisible();
     await expect(
@@ -592,6 +595,23 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByText("Add, review, create.")).toHaveCount(0);
     await expect(page.getByText("Recent passes")).toHaveCount(0);
     await expect(page.getByText(/0 waiting to review/i)).toHaveCount(0);
+    const actionNames = [/Continue trip|Create trip/, /Add idea/, /Search/, /Open map/];
+    for (const actionName of actionNames) {
+      const action = page.getByRole("link", { name: actionName }).first();
+      await action.scrollIntoViewIfNeeded();
+      const isCoveredByNav = await action.evaluate((element) => {
+        const nav = document.querySelector('[data-testid="app-shell-mobile-bottom-nav"]');
+        const navRect = nav?.getBoundingClientRect();
+        const actionRect = element.getBoundingClientRect();
+
+        if (!navRect) {
+          return false;
+        }
+
+        return actionRect.bottom > navRect.top - 8 && actionRect.top < navRect.bottom;
+      });
+      expect(isCoveredByNav, `mobile home action ${actionName} is not covered by bottom nav`).toBe(false);
+    }
 
     await page.goto(`${baseUrl}/dashboard/imports`, { waitUntil: "commit" });
     await expect(page.getByTestId("imports-route")).toBeVisible({ timeout: 15_000 });
@@ -646,15 +666,15 @@ test.describe("mobile soft-launch UX", () => {
 
     await page.goto(`${baseUrl}/dashboard`, { waitUntil: "commit" });
     await expect(page.getByTestId("mobile-home-wallet")).toBeVisible();
-    await expect(page.getByTestId("mobile-home-globe-launch")).toBeVisible();
+    await expect(page.getByTestId("mobile-home-earth-hero")).toBeVisible();
     await expect(page.getByTestId("mobile-home-globe")).toBeVisible();
     await expect(page.getByTestId("mobile-home-earth-photorealistic")).toBeVisible();
     await expect(page.getByTestId("mobile-home-earth-image")).toBeVisible();
     await expect(page.getByTestId("mobile-home-earth-texture")).toHaveCount(0);
     await expect(page.getByTestId("mobile-home-earth-continents")).toHaveCount(0);
     await expect(page.getByTestId("mobile-home-country-pin")).toHaveCount(0);
-    await page.getByTestId("mobile-home-content").scrollIntoViewIfNeeded();
-    await expect(page.getByTestId("mobile-home-content")).toBeVisible();
+    await page.getByTestId("mobile-home-wallet-content").scrollIntoViewIfNeeded();
+    await expect(page.getByTestId("mobile-home-wallet-content")).toBeVisible();
     await expect(page.getByTestId("mobile-home-actions")).toBeVisible();
     await expect(page.getByRole("link", { name: /Continue trip|Create trip/ })).toBeVisible();
 

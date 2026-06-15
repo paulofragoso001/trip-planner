@@ -195,7 +195,7 @@ export function MobileHomeGlobe({ className }: MobileHomeGlobeProps) {
         <Image
           alt=""
           className={[
-            "wayline-earth-image object-cover object-center opacity-100 brightness-[0.94] contrast-[1.08] saturate-[1.06]",
+            "wayline-earth-image object-cover object-[52%_50%] opacity-100 brightness-[0.94] contrast-[1.08] saturate-[1.06]",
             animated && !introComplete ? "wayline-earth-intro" : ""
           ]
             .filter(Boolean)
@@ -230,8 +230,7 @@ export function MobileHomeGlobe({ className }: MobileHomeGlobeProps) {
         </div>
       ) : null}
       <div className="absolute inset-x-0 top-0 h-36 bg-[linear-gradient(180deg,rgba(2,9,22,0.7),transparent)]" />
-      <div className="absolute inset-x-0 bottom-0 h-[46%] bg-[linear-gradient(180deg,transparent,rgba(2,9,22,0.38)_42%,#020916_98%)]" />
-      <div className="absolute inset-x-0 bottom-0 h-24 bg-[#020916]" />
+      <div className="absolute inset-x-0 bottom-0 h-[54%] bg-[linear-gradient(180deg,transparent,rgba(2,9,22,0.48)_48%,#020817_100%)]" />
     </div>
   );
 }
