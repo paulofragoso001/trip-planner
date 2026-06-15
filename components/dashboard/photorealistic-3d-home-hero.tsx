@@ -1,0 +1,494 @@
+"use client";
+
+import Image from "next/image";
+import type { CSSProperties } from "react";
+import { useEffect, useRef, useState } from "react";
+
+type Photorealistic3DHomeHeroProps = {
+  className?: string;
+};
+
+type HeroMode = "loading" | "3d" | "fallback";
+
+type CountryFocus = {
+  altitude: number;
+  code: string;
+  flag: string;
+  lat: number;
+  lng: number;
+  name: string;
+  pinX: number;
+  pinY: number;
+};
+
+type MapsImportLibrary = (libraryName: string) => Promise<unknown>;
+
+declare global {
+  interface Window {
+    google?: {
+      maps?: {
+        importLibrary?: MapsImportLibrary;
+      };
+    };
+  }
+}
+
+const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? "";
+const ENABLE_3D_HOME_GLOBE = process.env.NEXT_PUBLIC_ENABLE_3D_HOME_GLOBE !== "false";
+
+const DEFAULT_COUNTRY: CountryFocus = {
+  altitude: 1_850_000,
+  code: "US",
+  flag: "🇺🇸",
+  lat: 39.8283,
+  lng: -98.5795,
+  name: "United States",
+  pinX: 58,
+  pinY: 29
+};
+
+const COUNTRY_BY_CODE: Record<string, CountryFocus> = {
+  AR: { altitude: 1_900_000, code: "AR", flag: "🇦🇷", lat: -38.4161, lng: -63.6167, name: "Argentina", pinX: 57, pinY: 74 },
+  AW: { altitude: 1_350_000, code: "AW", flag: "🇦🇼", lat: 12.5211, lng: -69.9683, name: "Aruba", pinX: 54, pinY: 58 },
+  BR: { altitude: 2_150_000, code: "BR", flag: "🇧🇷", lat: -14.235, lng: -51.9253, name: "Brazil", pinX: 66, pinY: 72 },
+  CA: { altitude: 2_450_000, code: "CA", flag: "🇨🇦", lat: 56.1304, lng: -106.3468, name: "Canada", pinX: 45, pinY: 29 },
+  CL: { altitude: 1_800_000, code: "CL", flag: "🇨🇱", lat: -35.6751, lng: -71.543, name: "Chile", pinX: 54, pinY: 78 },
+  CO: { altitude: 1_550_000, code: "CO", flag: "🇨🇴", lat: 4.5709, lng: -74.2973, name: "Colombia", pinX: 55, pinY: 62 },
+  DE: { altitude: 1_250_000, code: "DE", flag: "🇩🇪", lat: 51.1657, lng: 10.4515, name: "Germany", pinX: 78, pinY: 35 },
+  ES: { altitude: 1_250_000, code: "ES", flag: "🇪🇸", lat: 40.4637, lng: -3.7492, name: "Spain", pinX: 75, pinY: 45 },
+  FR: { altitude: 1_250_000, code: "FR", flag: "🇫🇷", lat: 46.2276, lng: 2.2137, name: "France", pinX: 77, pinY: 39 },
+  GB: { altitude: 1_150_000, code: "GB", flag: "🇬🇧", lat: 55.3781, lng: -3.436, name: "United Kingdom", pinX: 73, pinY: 33 },
+  GR: { altitude: 1_100_000, code: "GR", flag: "🇬🇷", lat: 39.0742, lng: 21.8243, name: "Greece", pinX: 82, pinY: 47 },
+  IS: { altitude: 900_000, code: "IS", flag: "🇮🇸", lat: 64.9631, lng: -19.0208, name: "Iceland", pinX: 64, pinY: 26 },
+  IT: { altitude: 1_100_000, code: "IT", flag: "🇮🇹", lat: 41.8719, lng: 12.5674, name: "Italy", pinX: 79, pinY: 44 },
+  MX: { altitude: 1_750_000, code: "MX", flag: "🇲🇽", lat: 23.6345, lng: -102.5528, name: "Mexico", pinX: 43, pinY: 57 },
+  NL: { altitude: 950_000, code: "NL", flag: "🇳🇱", lat: 52.1326, lng: 5.2913, name: "Netherlands", pinX: 77, pinY: 35 },
+  PA: { altitude: 1_250_000, code: "PA", flag: "🇵🇦", lat: 8.538, lng: -80.7821, name: "Panama", pinX: 54, pinY: 59 },
+  PT: { altitude: 1_150_000, code: "PT", flag: "🇵🇹", lat: 39.3999, lng: -8.2245, name: "Portugal", pinX: 73, pinY: 45 },
+  US: DEFAULT_COUNTRY
+};
+
+const COUNTRY_BY_TIME_ZONE_PREFIX: Array<[string, CountryFocus]> = [
+  ["America/", COUNTRY_BY_CODE.US],
+  ["US/", COUNTRY_BY_CODE.US],
+  ["Canada/", COUNTRY_BY_CODE.CA],
+  ["Europe/London", COUNTRY_BY_CODE.GB],
+  ["Europe/Paris", COUNTRY_BY_CODE.FR],
+  ["Europe/Madrid", COUNTRY_BY_CODE.ES],
+  ["Europe/Lisbon", COUNTRY_BY_CODE.PT],
+  ["Europe/Rome", COUNTRY_BY_CODE.IT],
+  ["Europe/Berlin", COUNTRY_BY_CODE.DE],
+  ["Europe/Amsterdam", COUNTRY_BY_CODE.NL],
+  ["Europe/Athens", COUNTRY_BY_CODE.GR],
+  ["Atlantic/Reykjavik", COUNTRY_BY_CODE.IS],
+  ["Mexico/", COUNTRY_BY_CODE.MX],
+  ["Brazil/", COUNTRY_BY_CODE.BR]
+];
+
+let googleMapsScriptPromise: Promise<void> | null = null;
+
+export function Photorealistic3DHomeHero({ className }: Photorealistic3DHomeHeroProps) {
+  const mapHostRef = useRef<HTMLDivElement | null>(null);
+  const introTimerRef = useRef<number | null>(null);
+  const [country, setCountry] = useState<CountryFocus | null>(null);
+  const [heroMode, setHeroMode] = useState<HeroMode>(ENABLE_3D_HOME_GLOBE ? "loading" : "fallback");
+  const [introComplete, setIntroComplete] = useState(false);
+  const [reduceMotion, setReduceMotion] = useState(false);
+
+  useEffect(() => {
+    const media = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const syncMotion = () => {
+      setReduceMotion(media.matches);
+      if (media.matches) {
+        setIntroComplete(true);
+      }
+    };
+
+    syncMotion();
+    media.addEventListener("change", syncMotion);
+
+    return () => media.removeEventListener("change", syncMotion);
+  }, []);
+
+  useEffect(() => {
+    const localeCountry = countryFromLocale(navigator.languages?.[0] || navigator.language);
+    const timezoneCountry = countryFromTimeZone(Intl.DateTimeFormat().resolvedOptions().timeZone);
+
+    setCountry(localeCountry || timezoneCountry);
+
+    const permissions = navigator.permissions;
+
+    if (!navigator.geolocation || !permissions?.query) {
+      return;
+    }
+
+    let cancelled = false;
+
+    permissions
+      .query({ name: "geolocation" as PermissionName })
+      .then((permission) => {
+        if (cancelled || permission.state !== "granted") {
+          return;
+        }
+
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            if (cancelled) {
+              return;
+            }
+
+            const countryFromCoordinates = countryFromApproximateCoordinates(
+              position.coords.latitude,
+              position.coords.longitude
+            );
+
+            if (countryFromCoordinates) {
+              setCountry(countryFromCoordinates);
+            }
+          },
+          () => undefined,
+          { enableHighAccuracy: false, maximumAge: 86_400_000, timeout: 1_500 }
+        );
+      })
+      .catch(() => undefined);
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (reduceMotion) {
+      return;
+    }
+
+    introTimerRef.current = window.setTimeout(() => setIntroComplete(true), 2_300);
+
+    return () => {
+      if (introTimerRef.current !== null) {
+        window.clearTimeout(introTimerRef.current);
+      }
+    };
+  }, [reduceMotion]);
+
+  useEffect(() => {
+    if (!ENABLE_3D_HOME_GLOBE || !GOOGLE_MAPS_API_KEY || !mapHostRef.current) {
+      setHeroMode("fallback");
+      return;
+    }
+
+    let cancelled = false;
+    let settleTimer: number | null = null;
+    const host = mapHostRef.current;
+    const focus = country ?? DEFAULT_COUNTRY;
+
+    async function mount3DMap() {
+      try {
+        await ensureGoogleMaps3D(GOOGLE_MAPS_API_KEY);
+        await window.google?.maps?.importLibrary?.("maps3d");
+
+        if (cancelled || !host) {
+          return;
+        }
+
+        const mapElement = document.createElement("gmp-map-3d");
+        mapElement.className = "absolute inset-0 h-full w-full";
+        mapElement.setAttribute("data-testid", "home-3d-map");
+        mapElement.setAttribute("mode", "hybrid");
+        setMapCamera(mapElement, getStartCamera(focus, reduceMotion));
+        host.replaceChildren(mapElement);
+        setHeroMode("3d");
+
+        if (!reduceMotion) {
+          settleTimer = window.setTimeout(() => {
+            if (!cancelled) {
+              setMapCamera(mapElement, getSettledCamera(focus));
+            }
+          }, 360);
+        }
+      } catch {
+        if (!cancelled) {
+          host.replaceChildren();
+          setHeroMode("fallback");
+        }
+      }
+    }
+
+    mount3DMap();
+
+    return () => {
+      cancelled = true;
+      if (settleTimer !== null) {
+        window.clearTimeout(settleTimer);
+      }
+      host.replaceChildren();
+    };
+  }, [country, reduceMotion]);
+
+  const focus = country ?? DEFAULT_COUNTRY;
+  const showPin = Boolean(country) && (introComplete || reduceMotion);
+
+  return (
+    <div
+      aria-hidden="true"
+      className={[
+        "pointer-events-none absolute inset-0 overflow-hidden bg-[#020916]",
+        className
+      ]
+        .filter(Boolean)
+        .join(" ")}
+      data-3d-enabled={ENABLE_3D_HOME_GLOBE ? "true" : "false"}
+      data-hero-mode={heroMode}
+      data-testid="photorealistic-3d-home-hero"
+      style={{
+        "--wayline-pin-x": `${focus.pinX}%`,
+        "--wayline-pin-y": `${focus.pinY}%`
+      } as CSSProperties}
+    >
+      <div
+        className="absolute inset-0 overflow-hidden"
+        data-testid="home-3d-map-stage"
+        ref={mapHostRef}
+      />
+      {heroMode !== "3d" ? <HomeHeroFallback reduceMotion={reduceMotion} /> : null}
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_var(--wayline-pin-x)_var(--wayline-pin-y),rgba(251,191,36,0.22),transparent_10%),linear-gradient(180deg,rgba(2,9,22,0.02),rgba(2,9,22,0.1)_42%,rgba(2,8,20,0.62)_76%,#020817_100%)]" />
+      {showPin && country ? (
+        <div
+          className="wayline-country-pin absolute z-20 -translate-x-1/2 -translate-y-full text-center"
+          data-country-code={country.code}
+          data-testid="mobile-home-country-pin"
+          style={{
+            left: "var(--wayline-pin-x)",
+            top: "var(--wayline-pin-y)"
+          }}
+        >
+          <div className="mx-auto grid h-11 w-11 place-items-center rounded-full border-2 border-white/88 bg-slate-50 text-2xl shadow-[0_12px_34px_rgba(0,0,0,0.42),0_0_26px_rgba(251,146,60,0.24)]">
+            <span aria-hidden="true">{country.flag}</span>
+          </div>
+          <div
+            className="mt-1 max-w-28 truncate rounded-full bg-black/54 px-2 py-0.5 text-[0.62rem] font-black uppercase tracking-[0.12em] text-white/88 backdrop-blur"
+            data-testid="mobile-home-country-name"
+          >
+            {country.name}
+          </div>
+        </div>
+      ) : null}
+      <div className="absolute inset-x-0 top-0 h-28 bg-[linear-gradient(180deg,rgba(2,9,22,0.72),transparent)]" />
+      <div className="absolute inset-x-0 bottom-0 h-[38%] bg-[linear-gradient(180deg,transparent,rgba(2,8,20,0.5)_46%,#020817_100%)]" />
+    </div>
+  );
+}
+
+function HomeHeroFallback({ reduceMotion }: { reduceMotion: boolean }) {
+  return (
+    <div
+      className="absolute inset-0 overflow-hidden"
+      data-earth-source="photorealistic-3d-fallback"
+      data-testid="home-3d-fallback"
+    >
+      <Image
+        alt=""
+        className={[
+          "object-cover object-[50%_20%] opacity-100 brightness-[0.86] contrast-[1.1] saturate-[1.08]",
+          reduceMotion ? "" : "wayline-home-3d-fallback-intro"
+        ]
+          .filter(Boolean)
+          .join(" ")}
+        data-testid="home-3d-fallback-image"
+        fill
+        priority
+        sizes="(max-width: 1023px) 100vw, 1px"
+        src="/globe/wayline-earth-3d-fallback.png"
+      />
+    </div>
+  );
+}
+
+function setMapCamera(mapElement: HTMLElement, camera: {
+  center: string;
+  heading: string;
+  range: string;
+  tilt: string;
+}) {
+  mapElement.setAttribute("center", camera.center);
+  mapElement.setAttribute("heading", camera.heading);
+  mapElement.setAttribute("range", camera.range);
+  mapElement.setAttribute("tilt", camera.tilt);
+}
+
+function getStartCamera(country: CountryFocus, reduceMotion: boolean) {
+  if (reduceMotion) {
+    return getSettledCamera(country);
+  }
+
+  return {
+    center: `${country.lat - 7},${country.lng - 28},${country.altitude + 420000}`,
+    heading: "292",
+    range: "5200000",
+    tilt: "56"
+  };
+}
+
+function getSettledCamera(country: CountryFocus) {
+  return {
+    center: `${country.lat},${country.lng},${country.altitude}`,
+    heading: "330",
+    range: "2450000",
+    tilt: "67"
+  };
+}
+
+async function ensureGoogleMaps3D(apiKey: string) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  if (getMapsImportLibrary()) {
+    return;
+  }
+
+  if (googleMapsScriptPromise) {
+    return googleMapsScriptPromise;
+  }
+
+  googleMapsScriptPromise = new Promise<void>((resolve, reject) => {
+    const existingScript = document.querySelector<HTMLScriptElement>(
+      'script[src*="maps.googleapis.com/maps/api/js"]'
+    );
+
+    if (existingScript) {
+      waitForImportLibrary(resolve, reject);
+      return;
+    }
+
+    waitForExistingMapsScript(1_800)
+      .then((foundExistingScript) => {
+        if (foundExistingScript || getMapsImportLibrary()) {
+          waitForImportLibrary(resolve, reject);
+          return;
+        }
+
+        const callbackName = `__waylineHome3DMapsReady_${Date.now()}`;
+        const script = document.createElement("script");
+        const params = new URLSearchParams({
+          callback: callbackName,
+          key: apiKey,
+          libraries: "maps3d",
+          loading: "async",
+          v: "alpha"
+        });
+
+        (window as unknown as Record<string, () => void>)[callbackName] = () => {
+          delete (window as unknown as Record<string, unknown>)[callbackName];
+          waitForImportLibrary(resolve, reject);
+        };
+
+        script.async = true;
+        script.defer = true;
+        script.onerror = () => {
+          delete (window as unknown as Record<string, unknown>)[callbackName];
+          reject(new Error("Google Maps 3D script failed to load"));
+        };
+        script.src = `https://maps.googleapis.com/maps/api/js?${params.toString()}`;
+        document.head.appendChild(script);
+      })
+      .catch(reject);
+  });
+
+  return googleMapsScriptPromise;
+}
+
+function waitForExistingMapsScript(timeoutMs: number) {
+  return new Promise<boolean>((resolve) => {
+    const startedAt = Date.now();
+    const check = () => {
+      if (
+        getMapsImportLibrary() ||
+        document.querySelector<HTMLScriptElement>('script[src*="maps.googleapis.com/maps/api/js"]')
+      ) {
+        resolve(true);
+        return;
+      }
+
+      if (Date.now() - startedAt > timeoutMs) {
+        resolve(false);
+        return;
+      }
+
+      window.setTimeout(check, 80);
+    };
+
+    check();
+  });
+}
+
+function getMapsImportLibrary() {
+  const maybeGoogle = window.google as unknown as
+    | { maps?: { importLibrary?: unknown } }
+    | undefined;
+
+  return typeof maybeGoogle?.maps?.importLibrary === "function"
+    ? maybeGoogle.maps.importLibrary
+    : null;
+}
+
+function waitForImportLibrary(resolve: () => void, reject: (reason?: unknown) => void) {
+  const startedAt = Date.now();
+  const check = () => {
+    if (getMapsImportLibrary()) {
+      resolve();
+      return;
+    }
+
+    if (Date.now() - startedAt > 6_000) {
+      reject(new Error("Google Maps importLibrary unavailable"));
+      return;
+    }
+
+    window.setTimeout(check, 100);
+  };
+
+  check();
+}
+
+function countryFromLocale(locale: string | undefined) {
+  if (!locale) {
+    return null;
+  }
+
+  try {
+    const region = new Intl.Locale(locale).region?.toUpperCase();
+    return region ? COUNTRY_BY_CODE[region] ?? null : null;
+  } catch {
+    const region = locale.split("-").at(-1)?.toUpperCase();
+    return region ? COUNTRY_BY_CODE[region] ?? null : null;
+  }
+}
+
+function countryFromTimeZone(timeZone: string | undefined) {
+  if (!timeZone) {
+    return null;
+  }
+
+  return COUNTRY_BY_TIME_ZONE_PREFIX.find(([prefix]) => timeZone.startsWith(prefix))?.[1] ?? null;
+}
+
+function countryFromApproximateCoordinates(latitude: number, longitude: number) {
+  if (latitude >= 24 && latitude <= 50 && longitude >= -125 && longitude <= -66) return COUNTRY_BY_CODE.US;
+  if (latitude >= 42 && latitude <= 84 && longitude >= -142 && longitude <= -52) return COUNTRY_BY_CODE.CA;
+  if (latitude >= 14 && latitude <= 33 && longitude >= -118 && longitude <= -86) return COUNTRY_BY_CODE.MX;
+  if (latitude >= -34 && latitude <= 6 && longitude >= -74 && longitude <= -34) return COUNTRY_BY_CODE.BR;
+  if (latitude >= -56 && latitude <= -17 && longitude >= -76 && longitude <= -66) return COUNTRY_BY_CODE.CL;
+  if (latitude >= -56 && latitude <= -21 && longitude >= -74 && longitude <= -53) return COUNTRY_BY_CODE.AR;
+  if (latitude >= -5 && latitude <= 13 && longitude >= -82 && longitude <= -66) return COUNTRY_BY_CODE.CO;
+  if (latitude >= 35 && latitude <= 59 && longitude >= -10 && longitude <= 2) return COUNTRY_BY_CODE.GB;
+  if (latitude >= 41 && latitude <= 51 && longitude >= -5 && longitude <= 10) return COUNTRY_BY_CODE.FR;
+  if (latitude >= 36 && latitude <= 44 && longitude >= -10 && longitude <= 4) return COUNTRY_BY_CODE.ES;
+  if (latitude >= 36 && latitude <= 47 && longitude >= 6 && longitude <= 19) return COUNTRY_BY_CODE.IT;
+  if (latitude >= 47 && latitude <= 55 && longitude >= 5 && longitude <= 16) return COUNTRY_BY_CODE.DE;
+  if (latitude >= 50 && latitude <= 54 && longitude >= 3 && longitude <= 8) return COUNTRY_BY_CODE.NL;
+  if (latitude >= 36 && latitude <= 42 && longitude >= 19 && longitude <= 29) return COUNTRY_BY_CODE.GR;
+  if (latitude >= 63 && latitude <= 67 && longitude >= -25 && longitude <= -13) return COUNTRY_BY_CODE.IS;
+
+  return null;
+}

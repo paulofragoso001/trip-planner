@@ -490,7 +490,7 @@ test.describe("mobile soft-launch UX", () => {
     }
   });
 
-  test("home globe uses realistic earth texture before wallet actions", async ({ page }) => {
+  test("home launch uses photorealistic 3D hero before wallet actions", async ({ page }) => {
     await page.setViewportSize({ height: 900, width: 390 });
     await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
     await page.addInitScript(() => {
@@ -500,25 +500,23 @@ test.describe("mobile soft-launch UX", () => {
 
     await page.goto(`${baseUrl}/dashboard`, { waitUntil: "commit" });
     await expect(page.getByTestId("mobile-home-wallet")).toBeVisible();
-    await expect(page.getByTestId("mobile-home-earth-hero")).toBeVisible();
-    await expect(page.getByTestId("mobile-home-globe")).toBeVisible();
-    await expect(page.getByTestId("earth-only-visual")).toBeVisible();
-    await expect(page.getByTestId("earth-only-visual")).toHaveAttribute(
-      "data-earth-source",
-      "clean-static-earth-only"
-    );
+    await expect(page.getByTestId("mobile-home-3d-hero")).toBeVisible();
+    await expect(page.getByTestId("photorealistic-3d-home-hero")).toBeVisible();
+    await expect(page.getByTestId("home-3d-map-stage")).toBeVisible();
+    await expect(page.getByTestId("mobile-home-globe")).toHaveCount(0);
+    await expect(page.getByTestId("earth-only-visual")).toHaveCount(0);
     await expect(page.getByTestId("mobile-home-earth-photorealistic")).toHaveCount(0);
-    await expect(page.getByTestId("mobile-home-earth-image")).toBeVisible();
+    await expect(page.getByTestId("mobile-home-earth-image")).toHaveCount(0);
     await expect(page.getByRole("heading", { name: "Travel wallet" })).toHaveCount(1);
-    const earthHero = page.getByTestId("mobile-home-earth-hero");
-    await expect(earthHero.getByText("Wayline", { exact: true })).toHaveCount(0);
-    await expect(earthHero.getByText("Travel wallet")).toHaveCount(0);
-    await expect(earthHero.getByText("Continue trip")).toHaveCount(0);
-    await expect(earthHero.getByText("Create trip")).toHaveCount(0);
-    await expect(earthHero.getByText("Add idea")).toHaveCount(0);
-    await expect(earthHero.getByText("Search")).toHaveCount(0);
-    await expect(earthHero.getByText("Review places")).toHaveCount(0);
-    await expect(page.getByTestId("mobile-home-earth-hero").getByRole("link")).toHaveCount(0);
+    const home3DHero = page.getByTestId("mobile-home-3d-hero");
+    await expect(home3DHero.getByText("Wayline", { exact: true })).toHaveCount(0);
+    await expect(home3DHero.getByText("Travel wallet")).toHaveCount(0);
+    await expect(home3DHero.getByText("Continue trip")).toHaveCount(0);
+    await expect(home3DHero.getByText("Create trip")).toHaveCount(0);
+    await expect(home3DHero.getByText("Add idea")).toHaveCount(0);
+    await expect(home3DHero.getByText("Search")).toHaveCount(0);
+    await expect(home3DHero.getByText("Review places")).toHaveCount(0);
+    await expect(home3DHero.getByRole("link")).toHaveCount(0);
     await expect(page.getByTestId("mobile-home-earth-texture")).toHaveCount(0);
     await expect(page.getByTestId("mobile-home-earth-ocean")).toHaveCount(0);
     await expect(page.getByTestId("mobile-home-earth-continents")).toHaveCount(0);
@@ -526,35 +524,53 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByTestId("mobile-home-country-pin")).toBeVisible({ timeout: 5_000 });
     await expect(page.getByTestId("mobile-home-country-pin")).toHaveAttribute("data-country-code", "US");
     await expect(page.getByTestId("mobile-home-country-name")).toHaveText("United States");
-    const globeStyle = await page.getByTestId("mobile-home-globe").evaluate((element) => {
+    const heroVisual = await page.getByTestId("photorealistic-3d-home-hero").evaluate((element) => {
       const style = window.getComputedStyle(element);
-      const earth = element.querySelector<HTMLImageElement>('[data-testid="mobile-home-earth-image"]');
-      const earthStyle = earth ? window.getComputedStyle(earth) : null;
-      const earthRect = earth?.getBoundingClientRect();
+      const fallback = element.querySelector<HTMLImageElement>('[data-testid="home-3d-fallback-image"]');
+      const fallbackStyle = fallback ? window.getComputedStyle(fallback) : null;
+      const fallbackRect = fallback?.getBoundingClientRect();
+      const map = element.querySelector<HTMLElement>('[data-testid="home-3d-map"]');
+      const mapRect = map?.getBoundingClientRect();
       return {
-        height: earthRect?.height ?? 0,
-        naturalHeight: earth?.naturalHeight ?? 0,
-        naturalWidth: earth?.naturalWidth ?? 0,
+        fallbackHeight: fallbackRect?.height ?? 0,
+        fallbackNaturalHeight: fallback?.naturalHeight ?? 0,
+        fallbackNaturalWidth: fallback?.naturalWidth ?? 0,
+        fallbackOpacity: fallbackStyle?.opacity ?? "0",
+        fallbackSrc: fallback?.currentSrc || fallback?.src || "",
+        mapHeight: mapRect?.height ?? 0,
+        mapWidth: mapRect?.width ?? 0,
+        mode: element.getAttribute("data-hero-mode") ?? "",
         opacity: style.opacity,
-        width: earthRect?.width ?? 0,
-        earthOpacity: earthStyle?.opacity ?? "0",
-        earthSrc: earth?.currentSrc || earth?.src || ""
+        width: fallbackRect?.width ?? mapRect?.width ?? 0
       };
     });
-    expect(Number(globeStyle.opacity), "home globe opacity").toBeGreaterThan(0.9);
-    expect(Number(globeStyle.earthOpacity), "home earth image opacity").toBeGreaterThan(0.85);
-    expect(globeStyle.width, "photoreal earth image covers viewport width").toBeGreaterThanOrEqual(390);
-    expect(globeStyle.height, "photoreal earth image covers launch height").toBeGreaterThanOrEqual(360);
-    expect(globeStyle.naturalWidth, "optimized earth image width").toBeGreaterThanOrEqual(390);
-    expect(globeStyle.naturalHeight, "optimized earth image height").toBeGreaterThanOrEqual(260);
-    expect(decodeURIComponent(globeStyle.earthSrc), "home earth image source").toContain(
-      "/globe/wayline-earth-visual"
-    );
-    expect(decodeURIComponent(globeStyle.earthSrc), "old baked home hero asset is not used").not.toContain(
+    expect(["3d", "fallback", "loading"]).toContain(heroVisual.mode);
+    expect(Number(heroVisual.opacity), "home 3D hero opacity").toBeGreaterThan(0.9);
+    expect(heroVisual.width, "home 3D visual covers viewport width").toBeGreaterThanOrEqual(390);
+    if (heroVisual.mode === "3d") {
+      expect(heroVisual.mapWidth, "3D map covers viewport width").toBeGreaterThanOrEqual(390);
+      expect(heroVisual.mapHeight, "3D map covers launch height").toBeGreaterThanOrEqual(360);
+    } else {
+      await expect(page.getByTestId("home-3d-fallback")).toHaveAttribute(
+        "data-earth-source",
+        "photorealistic-3d-fallback"
+      );
+      expect(Number(heroVisual.fallbackOpacity), "home 3D fallback opacity").toBeGreaterThan(0.85);
+      expect(heroVisual.fallbackHeight, "home 3D fallback covers launch height").toBeGreaterThanOrEqual(360);
+      expect(heroVisual.fallbackNaturalWidth, "optimized 3D fallback width").toBeGreaterThanOrEqual(390);
+      expect(heroVisual.fallbackNaturalHeight, "optimized 3D fallback height").toBeGreaterThanOrEqual(260);
+      expect(decodeURIComponent(heroVisual.fallbackSrc), "home 3D fallback source").toContain(
+        "/globe/wayline-earth-3d-fallback"
+      );
+    }
+    expect(decodeURIComponent(heroVisual.fallbackSrc), "old baked home hero asset is not used").not.toContain(
       "/globe/wayline-earth-hero"
     );
+    expect(decodeURIComponent(heroVisual.fallbackSrc), "old cropped home earth asset is not used").not.toContain(
+      "/globe/wayline-earth-visual"
+    );
     const homeLaunchLayout = await page.evaluate(() => {
-      const launch = document.querySelector('[data-testid="mobile-home-earth-hero"]')?.getBoundingClientRect();
+      const launch = document.querySelector('[data-testid="mobile-home-3d-hero"]')?.getBoundingClientRect();
       const content = document.querySelector('[data-testid="mobile-home-wallet-content"]')?.getBoundingClientRect();
       const heading = document
         .querySelector('[data-testid="mobile-home-wallet-content"] h1')
@@ -573,11 +589,11 @@ test.describe("mobile soft-launch UX", () => {
         viewportHeight: window.innerHeight
       };
     });
-    expect(homeLaunchLayout.launchHeight, "home globe has wallet-sized hero height").toBeGreaterThanOrEqual(
-      homeLaunchLayout.viewportHeight * 0.4
+    expect(homeLaunchLayout.launchHeight, "home 3D hero has wallet-sized hero height").toBeGreaterThanOrEqual(
+      homeLaunchLayout.viewportHeight * 0.45
     );
-    expect(homeLaunchLayout.launchHeight, "home globe does not force full-screen split").toBeLessThanOrEqual(
-      homeLaunchLayout.viewportHeight * 0.6
+    expect(homeLaunchLayout.launchHeight, "home 3D hero does not force full-screen split").toBeLessThanOrEqual(
+      homeLaunchLayout.viewportHeight * 0.62
     );
     expect(homeLaunchLayout.contentTop, "wallet content starts after globe").toBeGreaterThanOrEqual(
       homeLaunchLayout.launchBottom - 1
@@ -656,7 +672,7 @@ test.describe("mobile soft-launch UX", () => {
     expect(planCardStyle.color).toBe("rgb(255, 255, 255)");
   });
 
-  test("mobile home globe supports reduced motion and unknown country fallback", async ({ page }) => {
+  test("mobile home 3D hero supports reduced motion and unknown country fallback", async ({ page }) => {
     await page.setViewportSize({ height: 900, width: 390 });
     await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
     await page.emulateMedia({ reducedMotion: "reduce" });
@@ -681,14 +697,17 @@ test.describe("mobile soft-launch UX", () => {
 
     await page.goto(`${baseUrl}/dashboard`, { waitUntil: "commit" });
     await expect(page.getByTestId("mobile-home-wallet")).toBeVisible();
-    await expect(page.getByTestId("mobile-home-earth-hero")).toBeVisible();
-    await expect(page.getByTestId("mobile-home-globe")).toBeVisible();
-    await expect(page.getByTestId("earth-only-visual")).toBeVisible();
-    await expect(page.getByTestId("earth-only-visual")).toHaveAttribute(
+    await expect(page.getByTestId("mobile-home-3d-hero")).toBeVisible();
+    await expect(page.getByTestId("photorealistic-3d-home-hero")).toBeVisible();
+    await expect(page.getByTestId("home-3d-map-stage")).toBeVisible();
+    await expect(page.getByTestId("mobile-home-globe")).toHaveCount(0);
+    await expect(page.getByTestId("earth-only-visual")).toHaveCount(0);
+    await expect(page.getByTestId("home-3d-fallback")).toHaveAttribute(
       "data-earth-source",
-      "clean-static-earth-only"
+      "photorealistic-3d-fallback"
     );
-    await expect(page.getByTestId("mobile-home-earth-image")).toBeVisible();
+    await expect(page.getByTestId("home-3d-fallback-image")).toBeVisible();
+    await expect(page.getByTestId("mobile-home-earth-image")).toHaveCount(0);
     await expect(page.getByTestId("mobile-home-earth-texture")).toHaveCount(0);
     await expect(page.getByTestId("mobile-home-earth-continents")).toHaveCount(0);
     await expect(page.getByTestId("mobile-home-country-pin")).toHaveCount(0);

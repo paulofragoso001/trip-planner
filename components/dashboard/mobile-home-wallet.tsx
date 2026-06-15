@@ -1,6 +1,6 @@
 import type { DashboardData } from "@/app/dashboard/loader";
 import { MobileHomeContent } from "@/components/dashboard/mobile-home-content";
-import { MobileHomeGlobe } from "@/components/dashboard/mobile-home-globe";
+import { Photorealistic3DHomeHero } from "@/components/dashboard/photorealistic-3d-home-hero";
 import { cn } from "@/components/trip-ui";
 
 type MobileHomeWalletProps = Pick<DashboardData, "metrics" | "recentTrips"> & {
@@ -33,10 +33,10 @@ export function MobileHomeWallet({
       data-testid="mobile-home-wallet"
     >
       <section
-        className="relative h-[42svh] min-h-[17rem] max-h-[27rem] overflow-hidden bg-[#020817]"
-        data-testid="mobile-home-earth-hero"
+        className="relative h-[50svh] min-h-[19rem] max-h-[32rem] overflow-hidden bg-[#020817]"
+        data-testid="mobile-home-3d-hero"
       >
-        <MobileHomeGlobe />
+        <Photorealistic3DHomeHero />
       </section>
 
       <MobileHomeContent
