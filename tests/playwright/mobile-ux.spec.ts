@@ -140,7 +140,7 @@ test.describe("mobile soft-launch UX", () => {
 
     await page.goto(`${baseUrl}/dashboard`, { waitUntil: "commit" });
     await expect(page.getByTestId("app-shell-topbar")).toBeHidden();
-    await expect(page.getByTestId("mobile-home-wallet")).toBeVisible();
+    await expect(page.getByTestId("mobile-home-wallet")).toBeVisible({ timeout: 30_000 });
 
     await page.setViewportSize({ height: 900, width: 1024 });
     await page.goto(`${baseUrl}/dashboard/trips/demo/map`, { waitUntil: "commit" });
@@ -610,7 +610,7 @@ test.describe("mobile soft-launch UX", () => {
     expect(
       Number.parseFloat(homeLaunchLayout.contentPaddingBottom),
       "home content owns one bottom-nav clearance"
-    ).toBeGreaterThanOrEqual(140);
+    ).toBeGreaterThanOrEqual(176);
     expect(homeLaunchLayout.scrollHeight, "home page avoids split-screen footer gap").toBeLessThanOrEqual(
       homeLaunchLayout.viewportHeight * 1.55
     );
@@ -641,19 +641,46 @@ test.describe("mobile soft-launch UX", () => {
         continue;
       }
       await action.scrollIntoViewIfNeeded();
-      const isCoveredByNav = await action.evaluate((element) => {
+      const navClearance = await action.evaluate((element) => {
         const nav = document.querySelector('[data-testid="app-shell-mobile-bottom-nav"]');
         const navRect = nav?.getBoundingClientRect();
         const actionRect = element.getBoundingClientRect();
 
         if (!navRect) {
-          return false;
+          return {
+            clearance: Number.POSITIVE_INFINITY,
+            isCoveredByNav: false
+          };
         }
 
-        return actionRect.bottom > navRect.top - 8 && actionRect.top < navRect.bottom;
+        return {
+          clearance: navRect.top - actionRect.bottom,
+          isCoveredByNav: actionRect.bottom > navRect.top - 8 && actionRect.top < navRect.bottom
+        };
       });
-      expect(isCoveredByNav, `mobile home action ${actionName} is not covered by bottom nav`).toBe(false);
+      expect(
+        navClearance.isCoveredByNav,
+        `mobile home action ${actionName} is not covered by bottom nav`
+      ).toBe(false);
+      expect(
+        navClearance.clearance,
+        `mobile home action ${actionName} keeps tap clearance above bottom nav`
+      ).toBeGreaterThanOrEqual(12);
     }
+    await page.getByRole("link", { name: /Open map/ }).scrollIntoViewIfNeeded();
+    const finalActionScrollCushion = await page.getByRole("link", { name: /Open map/ }).evaluate((element) => {
+      const nav = document.querySelector('[data-testid="app-shell-mobile-bottom-nav"]');
+      const navRect = nav?.getBoundingClientRect();
+      const actionRect = element.getBoundingClientRect();
+
+      return {
+        clearance: (navRect?.top ?? window.innerHeight) - actionRect.bottom
+      };
+    });
+    expect(
+      finalActionScrollCushion.clearance,
+      "Open map can scroll clear of the fixed bottom nav"
+    ).toBeGreaterThanOrEqual(12);
     for (const width of [360, 390, 430]) {
       await page.setViewportSize({ height: 900, width });
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);

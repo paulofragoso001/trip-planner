@@ -20,7 +20,7 @@ export function MobileHomeContent({
 }) {
   return (
     <section
-      className="relative z-10 bg-[#020817] px-4 pb-[calc(140px+env(safe-area-inset-bottom))] pt-8 before:pointer-events-none before:absolute before:inset-x-0 before:-top-24 before:h-28 before:bg-[linear-gradient(180deg,rgba(2,8,23,0),rgba(2,8,23,0.82)_58%,#020817_100%)]"
+      className="relative z-10 bg-[#020817] px-4 pb-[calc(176px+env(safe-area-inset-bottom))] pt-8 before:pointer-events-none before:absolute before:inset-x-0 before:-top-24 before:h-28 before:bg-[linear-gradient(180deg,rgba(2,8,23,0),rgba(2,8,23,0.82)_58%,#020817_100%)]"
       data-testid="mobile-home-wallet-content"
     >
       <div className="mx-auto max-w-[25rem]">
@@ -37,10 +37,10 @@ export function MobileHomeContent({
         </div>
 
         <div
-          className="rounded-[2rem] border border-white/12 bg-[#050914] p-4 shadow-[0_28px_90px_rgba(0,0,0,0.45)]"
+          className="rounded-[2rem] border border-white/12 bg-[#050914] p-3.5 shadow-[0_28px_90px_rgba(0,0,0,0.45)]"
           data-testid="mobile-home-actions"
         >
-          <div className="grid gap-3">
+          <div className="grid gap-2.5">
             <MobileHomeAction
               href={primaryHref}
               icon={<Plane className="h-5 w-5" aria-hidden="true" />}
@@ -48,7 +48,7 @@ export function MobileHomeContent({
               meta={primaryMeta}
               primary
             />
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-2.5">
               <MobileHomeTile
                 href="/dashboard/imports"
                 icon={<Plus className="h-5 w-5" aria-hidden="true" />}
