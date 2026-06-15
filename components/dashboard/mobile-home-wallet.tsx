@@ -33,7 +33,7 @@ export function MobileHomeWallet({
       data-testid="mobile-home-wallet"
     >
       <section
-        className="relative h-[44svh] min-h-[18rem] max-h-[29rem] overflow-hidden bg-[#020817]"
+        className="relative h-[42svh] min-h-[17rem] max-h-[27rem] overflow-hidden bg-[#020817]"
         data-testid="mobile-home-earth-hero"
       >
         <MobileHomeGlobe />

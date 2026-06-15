@@ -502,14 +502,22 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByTestId("mobile-home-wallet")).toBeVisible();
     await expect(page.getByTestId("mobile-home-earth-hero")).toBeVisible();
     await expect(page.getByTestId("mobile-home-globe")).toBeVisible();
-    await expect(page.getByTestId("mobile-home-earth-photorealistic")).toBeVisible();
-    await expect(page.getByTestId("mobile-home-earth-photorealistic")).toHaveAttribute(
+    await expect(page.getByTestId("earth-only-visual")).toBeVisible();
+    await expect(page.getByTestId("earth-only-visual")).toHaveAttribute(
       "data-earth-source",
-      "clean-earth-only-fallback"
+      "clean-static-earth-only"
     );
+    await expect(page.getByTestId("mobile-home-earth-photorealistic")).toHaveCount(0);
     await expect(page.getByTestId("mobile-home-earth-image")).toBeVisible();
     await expect(page.getByRole("heading", { name: "Travel wallet" })).toHaveCount(1);
-    await expect(page.getByTestId("mobile-home-earth-hero").getByText("Travel wallet")).toHaveCount(0);
+    const earthHero = page.getByTestId("mobile-home-earth-hero");
+    await expect(earthHero.getByText("Wayline", { exact: true })).toHaveCount(0);
+    await expect(earthHero.getByText("Travel wallet")).toHaveCount(0);
+    await expect(earthHero.getByText("Continue trip")).toHaveCount(0);
+    await expect(earthHero.getByText("Create trip")).toHaveCount(0);
+    await expect(earthHero.getByText("Add idea")).toHaveCount(0);
+    await expect(earthHero.getByText("Search")).toHaveCount(0);
+    await expect(earthHero.getByText("Review places")).toHaveCount(0);
     await expect(page.getByTestId("mobile-home-earth-hero").getByRole("link")).toHaveCount(0);
     await expect(page.getByTestId("mobile-home-earth-texture")).toHaveCount(0);
     await expect(page.getByTestId("mobile-home-earth-ocean")).toHaveCount(0);
@@ -540,6 +548,9 @@ test.describe("mobile soft-launch UX", () => {
     expect(globeStyle.naturalWidth, "optimized earth image width").toBeGreaterThanOrEqual(390);
     expect(globeStyle.naturalHeight, "optimized earth image height").toBeGreaterThanOrEqual(260);
     expect(decodeURIComponent(globeStyle.earthSrc), "home earth image source").toContain(
+      "/globe/wayline-earth-visual"
+    );
+    expect(decodeURIComponent(globeStyle.earthSrc), "old baked home hero asset is not used").not.toContain(
       "/globe/wayline-earth-hero"
     );
     const homeLaunchLayout = await page.evaluate(() => {
@@ -672,10 +683,10 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByTestId("mobile-home-wallet")).toBeVisible();
     await expect(page.getByTestId("mobile-home-earth-hero")).toBeVisible();
     await expect(page.getByTestId("mobile-home-globe")).toBeVisible();
-    await expect(page.getByTestId("mobile-home-earth-photorealistic")).toBeVisible();
-    await expect(page.getByTestId("mobile-home-earth-photorealistic")).toHaveAttribute(
+    await expect(page.getByTestId("earth-only-visual")).toBeVisible();
+    await expect(page.getByTestId("earth-only-visual")).toHaveAttribute(
       "data-earth-source",
-      "clean-earth-only-fallback"
+      "clean-static-earth-only"
     );
     await expect(page.getByTestId("mobile-home-earth-image")).toBeVisible();
     await expect(page.getByTestId("mobile-home-earth-texture")).toHaveCount(0);

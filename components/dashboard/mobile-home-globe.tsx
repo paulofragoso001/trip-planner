@@ -189,8 +189,8 @@ export function MobileHomeGlobe({ className }: MobileHomeGlobeProps) {
     >
       <div
         className="absolute inset-0 overflow-hidden"
-        data-earth-source="clean-earth-only-fallback"
-        data-testid="mobile-home-earth-photorealistic"
+        data-earth-source="clean-static-earth-only"
+        data-testid="earth-only-visual"
       >
         <Image
           alt=""
@@ -204,7 +204,7 @@ export function MobileHomeGlobe({ className }: MobileHomeGlobeProps) {
           fill
           priority
           sizes="(max-width: 1023px) 100vw, 1px"
-          src="/globe/wayline-earth-hero.png"
+          src="/globe/wayline-earth-visual.png"
         />
       </div>
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_var(--wayline-pin-x)_var(--wayline-pin-y),rgba(251,191,36,0.24),transparent_9%),radial-gradient(circle_at_22%_12%,rgba(147,197,253,0.18),transparent_24%),linear-gradient(180deg,rgba(2,9,22,0.05),rgba(2,9,22,0.02)_48%,#020916_100%)]" />
