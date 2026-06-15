@@ -490,7 +490,7 @@ test.describe("mobile soft-launch UX", () => {
     }
   });
 
-  test("home globe launches full screen before wallet actions", async ({ page }) => {
+  test("home globe uses realistic earth texture before wallet actions", async ({ page }) => {
     await page.setViewportSize({ height: 900, width: 390 });
     await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
     await page.addInitScript(() => {
@@ -502,23 +502,27 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByTestId("mobile-home-wallet")).toBeVisible();
     await expect(page.getByTestId("mobile-home-globe-launch")).toBeVisible();
     await expect(page.getByTestId("mobile-home-globe")).toBeVisible();
-    await expect(page.getByTestId("mobile-home-earth-svg")).toBeVisible();
+    await expect(page.getByTestId("mobile-home-earth-texture")).toBeVisible();
     await expect(page.getByTestId("mobile-home-earth-ocean")).toBeVisible();
-    await expect(page.getByTestId("mobile-home-earth-land")).toBeVisible();
+    await expect(page.getByTestId("mobile-home-earth-continents")).toBeVisible();
+    await expect(page.getByText("Scroll", { exact: true })).toHaveCount(0);
     await expect(page.getByTestId("mobile-home-country-pin")).toBeVisible({ timeout: 5_000 });
     await expect(page.getByTestId("mobile-home-country-pin")).toHaveAttribute("data-country-code", "US");
     await expect(page.getByTestId("mobile-home-country-name")).toHaveText("United States");
     const globeStyle = await page.getByTestId("mobile-home-globe").evaluate((element) => {
       const style = window.getComputedStyle(element);
-      const earth = element.querySelector('[data-testid="mobile-home-earth-land"]');
+      const earth = element.querySelector('[data-testid="mobile-home-earth-continents"]');
       const earthStyle = earth ? window.getComputedStyle(earth) : null;
+      const continentCount = earth?.querySelectorAll("path").length ?? 0;
       return {
+        continentCount,
         opacity: style.opacity,
         earthOpacity: earthStyle?.opacity ?? "0"
       };
     });
     expect(Number(globeStyle.opacity), "home globe opacity").toBeGreaterThan(0.9);
     expect(Number(globeStyle.earthOpacity), "home globe land opacity").toBeGreaterThan(0.85);
+    expect(globeStyle.continentCount, "realistic earth continent silhouettes").toBeGreaterThanOrEqual(7);
     const homeLaunchLayout = await page.evaluate(() => {
       const launch = document.querySelector('[data-testid="mobile-home-globe-launch"]')?.getBoundingClientRect();
       const content = document.querySelector('[data-testid="mobile-home-content"]')?.getBoundingClientRect();
@@ -527,21 +531,30 @@ test.describe("mobile soft-launch UX", () => {
         ?.getBoundingClientRect();
 
       return {
+        contentGap: Math.round((content?.top ?? 0) - (launch?.bottom ?? 0)),
         contentTop: content?.top ?? 0,
         headingTop: heading?.top ?? 0,
         launchBottom: launch?.bottom ?? 0,
         launchHeight: launch?.height ?? 0,
+        scrollHeight: document.documentElement.scrollHeight,
         viewportHeight: window.innerHeight
       };
     });
-    expect(homeLaunchLayout.launchHeight, "home launch fills first viewport").toBeGreaterThanOrEqual(
-      homeLaunchLayout.viewportHeight * 0.95
+    expect(homeLaunchLayout.launchHeight, "home globe has wallet-sized hero height").toBeGreaterThanOrEqual(
+      homeLaunchLayout.viewportHeight * 0.4
+    );
+    expect(homeLaunchLayout.launchHeight, "home globe does not force full-screen split").toBeLessThanOrEqual(
+      homeLaunchLayout.viewportHeight * 0.6
     );
     expect(homeLaunchLayout.contentTop, "wallet content starts after globe").toBeGreaterThanOrEqual(
       homeLaunchLayout.launchBottom - 1
     );
     expect(homeLaunchLayout.headingTop, "wallet heading starts after globe").toBeGreaterThanOrEqual(
       homeLaunchLayout.launchBottom - 1
+    );
+    expect(homeLaunchLayout.contentGap, "wallet content is directly under globe").toBeLessThanOrEqual(2);
+    expect(homeLaunchLayout.scrollHeight, "home page avoids split-screen footer gap").toBeLessThanOrEqual(
+      homeLaunchLayout.viewportHeight * 1.55
     );
     await expect(page.getByTestId("home-launch-page")).toBeHidden();
     await expect(page.getByTestId("home-smart-start")).toBeHidden();
@@ -619,8 +632,8 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByTestId("mobile-home-wallet")).toBeVisible();
     await expect(page.getByTestId("mobile-home-globe-launch")).toBeVisible();
     await expect(page.getByTestId("mobile-home-globe")).toBeVisible();
-    await expect(page.getByTestId("mobile-home-earth-svg")).toBeVisible();
-    await expect(page.getByTestId("mobile-home-earth-land")).toBeVisible();
+    await expect(page.getByTestId("mobile-home-earth-texture")).toBeVisible();
+    await expect(page.getByTestId("mobile-home-earth-continents")).toBeVisible();
     await expect(page.getByTestId("mobile-home-country-pin")).toHaveCount(0);
     await page.getByTestId("mobile-home-content").scrollIntoViewIfNeeded();
     await expect(page.getByTestId("mobile-home-content")).toBeVisible();

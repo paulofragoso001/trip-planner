@@ -51,32 +51,22 @@ gmp-place-autocomplete {
 @keyframes wayline-globe-drift {
   0%,
   100% {
-    transform: translateX(-50%) translateY(0) rotate(-8deg);
+    transform: translateX(-50%) translateY(-50%) rotate(-8deg);
   }
   50% {
-    transform: translateX(-50%) translateY(10px) rotate(-3deg);
+    transform: translateX(-50%) translateY(calc(-50% + 10px)) rotate(-3deg);
   }
 }
 
 @keyframes wayline-globe-intro {
   0% {
-    transform: translateX(-50%) translateY(0) rotate(0deg);
+    transform: translateX(-50%) translateY(-50%) rotate(0deg);
   }
   72% {
-    transform: translateX(-50%) translateY(2px) rotate(-360deg);
+    transform: translateX(-50%) translateY(calc(-50% + 2px)) rotate(-360deg);
   }
   100% {
-    transform: translateX(-50%) translateY(0) rotate(-372deg);
-  }
-}
-
-@keyframes wayline-orbit-drift {
-  0%,
-  100% {
-    transform: translateX(-50%) rotate(-13deg);
-  }
-  50% {
-    transform: translateX(-50%) rotate(-8deg);
+    transform: translateX(-50%) translateY(-50%) rotate(-372deg);
   }
 }
 
@@ -89,14 +79,9 @@ gmp-place-autocomplete {
   animation: wayline-globe-drift 18s ease-in-out infinite;
 }
 
-.wayline-orbit-drift {
-  animation: wayline-orbit-drift 24s ease-in-out infinite;
-}
-
 @media (prefers-reduced-motion: reduce) {
   .wayline-globe-intro,
-  .wayline-globe-drift,
-  .wayline-orbit-drift {
+  .wayline-globe-drift {
     animation: none;
   }
 }

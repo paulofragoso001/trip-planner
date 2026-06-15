@@ -184,7 +184,7 @@ export function MobileHomeGlobe({ className }: MobileHomeGlobeProps) {
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_-12%,rgba(45,212,191,0.22),transparent_32%),radial-gradient(circle_at_82%_14%,rgba(37,99,235,0.18),transparent_32%),linear-gradient(180deg,rgba(2,9,22,0.08),#020916_84%)]" />
       <div
         className={[
-          "wayline-globe-sphere absolute left-1/2 top-[10svh] h-[92vw] max-h-[620px] min-h-[360px] w-[92vw] min-w-[360px] max-w-[620px] -translate-x-1/2 overflow-hidden rounded-full opacity-100 shadow-[0_0_90px_rgba(20,184,166,0.24),0_0_140px_rgba(37,99,235,0.12),inset_-42px_-46px_80px_rgba(0,0,0,0.62),inset_30px_24px_70px_rgba(125,211,252,0.16)]",
+          "wayline-globe-sphere absolute left-1/2 top-1/2 h-[88vw] max-h-[440px] min-h-[300px] w-[88vw] min-w-[300px] max-w-[440px] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-full opacity-100 shadow-[0_0_90px_rgba(20,184,166,0.24),0_0_140px_rgba(37,99,235,0.12),inset_-42px_-46px_80px_rgba(0,0,0,0.62),inset_30px_24px_70px_rgba(125,211,252,0.16)]",
           animated && !introComplete ? "wayline-globe-intro" : "",
           animated && introComplete ? "wayline-globe-drift" : ""
         ]
@@ -221,15 +221,7 @@ export function MobileHomeGlobe({ className }: MobileHomeGlobeProps) {
         ) : null}
       </div>
       <div className="absolute inset-x-0 top-0 h-36 bg-[linear-gradient(180deg,rgba(2,9,22,0.92),transparent)]" />
-      <div className="absolute inset-x-0 bottom-0 h-[36%] bg-[linear-gradient(180deg,transparent,rgba(2,9,22,0.5)_36%,#020916_92%)]" />
-      <div
-        className={[
-          "wayline-orbit-line absolute left-1/2 top-[34%] h-[34vw] max-h-[240px] min-h-[150px] w-[86vw] max-w-[640px] min-w-[380px] -translate-x-1/2 rounded-[999px] border border-cyan-200/16 opacity-60",
-          animated ? "wayline-orbit-drift" : ""
-        ]
-          .filter(Boolean)
-          .join(" ")}
-      />
+      <div className="absolute inset-x-0 bottom-0 h-[28%] bg-[linear-gradient(180deg,transparent,rgba(2,9,22,0.5)_42%,#020916_96%)]" />
     </div>
   );
 }
@@ -238,7 +230,7 @@ function EarthGlobeSvg() {
   return (
     <svg
       className="absolute inset-0 h-full w-full"
-      data-testid="mobile-home-earth-svg"
+      data-testid="mobile-home-earth-texture"
       focusable="false"
       role="presentation"
       viewBox="0 0 400 400"
@@ -248,15 +240,15 @@ function EarthGlobeSvg() {
           <circle cx="200" cy="200" r="198" />
         </clipPath>
         <radialGradient id="wayline-home-ocean" cx="38%" cy="28%" r="74%">
-          <stop offset="0%" stopColor="#1f8ea0" />
-          <stop offset="38%" stopColor="#0e4056" />
-          <stop offset="72%" stopColor="#071b36" />
+          <stop offset="0%" stopColor="#1b8798" />
+          <stop offset="34%" stopColor="#0d5265" />
+          <stop offset="72%" stopColor="#061e3f" />
           <stop offset="100%" stopColor="#020817" />
         </radialGradient>
         <linearGradient id="wayline-home-land" x1="0%" x2="100%" y1="0%" y2="100%">
-          <stop offset="0%" stopColor="#4f8f76" />
-          <stop offset="46%" stopColor="#24695d" />
-          <stop offset="100%" stopColor="#123a3b" />
+          <stop offset="0%" stopColor="#6da886" />
+          <stop offset="42%" stopColor="#326f60" />
+          <stop offset="100%" stopColor="#173f39" />
         </linearGradient>
         <filter id="wayline-home-land-shadow" x="-20%" y="-20%" width="140%" height="140%">
           <feDropShadow dx="0" dy="2" floodColor="#020617" floodOpacity="0.5" stdDeviation="2" />
@@ -271,10 +263,10 @@ function EarthGlobeSvg() {
         />
         <g
           fill="none"
-          opacity="0.34"
+          opacity="0.24"
           stroke="#a7f3d0"
           strokeLinecap="round"
-          strokeWidth="1.1"
+          strokeWidth="0.85"
         >
           <ellipse cx="200" cy="200" rx="190" ry="64" />
           <ellipse cx="200" cy="200" rx="190" ry="116" />
@@ -285,26 +277,29 @@ function EarthGlobeSvg() {
           <path d="M42 282c86-24 223-24 316 0" />
         </g>
         <g
-          data-testid="mobile-home-earth-land"
+          data-testid="mobile-home-earth-continents"
           fill="url(#wayline-home-land)"
           filter="url(#wayline-home-land-shadow)"
-          opacity="0.92"
+          opacity="0.94"
           stroke="#77d0b8"
-          strokeOpacity="0.3"
-          strokeWidth="1"
+          strokeOpacity="0.38"
+          strokeWidth="1.1"
         >
-          <path d="M69 91c17-22 48-30 83-22 24 6 38 20 55 31 17 12 42 8 55 26 10 15-6 28-24 29-18 2-37-6-50 6-12 10-6 28-20 39-16 12-43 2-49-15-5-13 6-25 1-38-6-14-27-10-42-18-14-8-19-25-9-38Z" />
-          <path d="M139 195c18-5 34 5 43 21 8 14 20 24 30 36 13 16 8 35-4 52-10 14-15 31-28 42-14 12-31 3-31-15 0-21-9-39-17-57-7-16-2-32-8-47-6-14-1-28 15-32Z" />
-          <path d="M242 103c23-20 59-20 90-5 25 12 37 33 35 56-2 19-21 21-37 17-19-4-27 6-40 17-17 14-42 13-58 0-17-14-6-33 9-42 14-9-12-21 1-43Z" />
-          <path d="M248 198c29-15 76-13 100 6 20 17 8 43-19 42-16-1-25-11-42-6-18 5-29 27-49 17-24-12-12-47 10-59Z" />
-          <path d="M300 268c21-4 44 7 55 24 9 15 0 29-17 31-20 3-35-8-49-20-15-14-9-31 11-35Z" />
-          <path d="M101 55c26-18 66-18 95-2 11 6 7 18-7 20-40 5-68 2-93-4-12-3-9-10 5-14Z" />
-          <path d="M198 82c12-11 31-16 50-12 17 3 23 13 16 25-7 11-27 13-45 10-18-3-32-11-21-23Z" />
+          <path d="M56 104c12-20 32-31 58-36 20-4 50 0 68 12 10 6 14 18 25 22 15 5 32-1 45 8 10 8 12 22 5 33-8 13-24 15-39 12-18-4-34-9-50-3-11 5-13 18-22 27-11 12-29 8-38-4-7-10-6-25-16-32-11-9-30-4-41-15-8-8-3-17 5-24Z" />
+          <path d="M118 157c12 5 22 15 21 28-1 15-15 24-27 19-13-5-23-22-18-35 4-11 13-15 24-12Z" />
+          <path d="M151 204c18-6 36 6 43 24 5 14 17 24 25 37 8 14 5 32-6 46-10 14-12 32-27 41-14 9-28-4-29-21-2-19-11-35-21-51-8-14-2-29-7-43-5-15 5-29 22-33Z" />
+          <path d="M108 60c20-13 49-17 75-12 17 3 28 11 28 21 0 12-19 16-39 13-22-2-42-5-63-2-18 2-18-10-1-20Z" />
+          <path d="M216 73c17-10 45-10 60 0 11 8 7 21-8 25-16 4-43-1-55-10-7-5-4-11 3-15Z" />
+          <path d="M231 120c20-24 58-32 91-20 30 10 50 34 47 62-2 19-18 28-36 22-20-7-35-1-49 12-16 14-39 16-58 5-14-8-19-22-12-36 7-13 24-16 32-27 5-7-23-4-15-18Z" />
+          <path d="M260 194c21-12 51-12 78-4 20 6 40 21 44 40 4 17-9 29-30 29-21 0-34-13-54-8-18 5-27 24-47 18-18-6-25-22-17-39 5-13 13-28 26-36Z" />
+          <path d="M306 270c20-5 43 3 56 19 12 14 8 30-8 37-18 8-37-2-52-15-16-13-17-35 4-41Z" />
+          <path d="M82 335c57 18 154 24 242 11 34-5 46 13 15 24-56 19-191 20-260-2-31-9-29-43 3-33Z" />
         </g>
-        <g fill="#8bd3c7" opacity="0.34">
-          <path d="M91 253c8-9 20-8 29-2 10 7 9 19-2 23-12 4-31-6-27-21Z" />
-          <path d="M328 95c14 1 29 8 32 19 4 13-11 18-25 14-14-5-24-18-7-33Z" />
-          <path d="M217 318c13-4 30 2 33 13 3 10-11 17-26 13-14-4-19-17-7-26Z" />
+        <g fill="#9dd5c8" opacity="0.38">
+          <path d="M88 246c8-8 21-8 30-2 9 6 9 18-2 23-12 5-33-5-28-21Z" />
+          <path d="M334 112c12 0 25 8 28 18 3 12-11 17-24 12-13-4-20-17-4-30Z" />
+          <path d="M222 316c14-4 31 3 34 14 2 10-12 17-27 12-14-4-19-17-7-26Z" />
+          <path d="M278 151c7-4 17-3 23 3 5 5 3 12-5 14-10 2-24-5-18-17Z" />
         </g>
       </g>
     </svg>

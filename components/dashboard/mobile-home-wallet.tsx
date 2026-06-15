@@ -33,15 +33,10 @@ export function MobileHomeWallet({
       data-testid="mobile-home-wallet"
     >
       <section
-        className="relative min-h-[100svh] overflow-hidden"
+        className="relative h-[48svh] min-h-[21rem] max-h-[34rem] overflow-hidden"
         data-testid="mobile-home-globe-launch"
       >
         <MobileHomeGlobe />
-        <div className="pointer-events-none absolute inset-x-0 bottom-[calc(2.25rem+env(safe-area-inset-bottom))] z-10 flex justify-center">
-          <div className="rounded-full border border-white/10 bg-black/20 px-3 py-2 text-[0.65rem] font-black uppercase tracking-[0.2em] text-white/54 backdrop-blur">
-            Scroll
-          </div>
-        </div>
       </section>
 
       <MobileHomeContent
