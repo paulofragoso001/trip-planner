@@ -558,7 +558,7 @@ test.describe("mobile soft-launch UX", () => {
     expect(loadingHeroVisual.mode).toBe("loading");
     expect(Number(loadingHeroVisual.mapStageOpacity), "3D map stays hidden while loading").toBeLessThan(0.1);
     await page.waitForTimeout(2_450);
-    const loadingContentReveal = await page.getByTestId("mobile-home-wallet-content").evaluate((element) => {
+    const loadingContentBeforeFocus = await page.getByTestId("mobile-home-wallet-content").evaluate((element) => {
       const hero = document.querySelector('[data-testid="photorealistic-3d-home-hero"]');
       const fallback = document.querySelector('[data-testid="home-3d-fallback-image"]');
       const style = window.getComputedStyle(element);
@@ -569,9 +569,29 @@ test.describe("mobile soft-launch UX", () => {
         opacity: style.opacity
       };
     });
-    expect(loadingContentReveal.heroMode, "Home content is not blocked by slow 3D loading").toBe("loading");
-    expect(loadingContentReveal.fallbackMounted, "clean fallback does not flash before the 3D timeout").toBe(false);
-    expect(Number(loadingContentReveal.opacity), "Home content fades in after the 2s intro").toBeGreaterThan(0.9);
+    expect(loadingContentBeforeFocus.heroMode, "Home content waits while the 3D launch focuses").toBe("loading");
+    expect(loadingContentBeforeFocus.fallbackMounted, "clean fallback does not flash before the 3D timeout").toBe(false);
+    expect(
+      Number(loadingContentBeforeFocus.opacity),
+      "Home content stays hidden during the early cinematic launch"
+    ).toBeLessThan(0.35);
+    await page.waitForTimeout(1_450);
+    const loadingContentAfterFocus = await page.getByTestId("mobile-home-wallet-content").evaluate((element) => {
+      const hero = document.querySelector('[data-testid="photorealistic-3d-home-hero"]');
+      const fallback = document.querySelector('[data-testid="home-3d-fallback-image"]');
+      const style = window.getComputedStyle(element);
+
+      return {
+        fallbackMounted: Boolean(fallback),
+        heroMode: hero?.getAttribute("data-hero-mode") ?? "",
+        opacity: style.opacity
+      };
+    });
+    expect(loadingContentAfterFocus.heroMode, "Home content is not blocked by slow 3D loading").toBe("loading");
+    expect(loadingContentAfterFocus.fallbackMounted, "fallback still waits for the 3D timeout").toBe(false);
+    expect(Number(loadingContentAfterFocus.opacity), "Home content fades in after the focus timing").toBeGreaterThan(
+      0.9
+    );
     await page.evaluate(() => {
       const testWindow = window as typeof window & { __waylineResolveMaps3D?: () => void };
       testWindow.__waylineResolveMaps3D?.();
@@ -592,7 +612,9 @@ test.describe("mobile soft-launch UX", () => {
     }));
     expect(cameraStart.center, "3D camera starts with a country-focused center").toContain(",");
     expect(Number(cameraStart.progress), "3D camera intro starts before the settled frame").toBeLessThan(1);
-    await page.waitForTimeout(320);
+    await expect(page.getByTestId("photorealistic-3d-home-hero")).toHaveAttribute("data-launch-phase", /loading|zooming-in/);
+    await expect(page.getByTestId("mobile-home-country-pin")).toHaveCount(0);
+    await page.waitForTimeout(900);
     const cameraMid = await page.getByTestId("home-3d-map").evaluate((element) => ({
       center: element.getAttribute("center") ?? "",
       heading: element.getAttribute("heading") ?? "",
@@ -606,7 +628,11 @@ test.describe("mobile soft-launch UX", () => {
     expect(Number(cameraMid.progress), "3D camera intro progresses after launch").toBeGreaterThan(
       Number(cameraStart.progress)
     );
-    await page.waitForTimeout(2_150);
+    await expect(page.getByTestId("photorealistic-3d-home-hero")).toHaveAttribute("data-launch-phase", /zooming-in|spinning/);
+    await page.waitForTimeout(1_850);
+    await expect(page.getByTestId("photorealistic-3d-home-hero")).toHaveAttribute("data-launch-phase", /settling|pin|content/);
+    await expect(page.getByTestId("mobile-home-country-pin")).toBeVisible({ timeout: 2_000 });
+    await page.waitForTimeout(1_150);
     const cameraSettled = await page.getByTestId("home-3d-map").evaluate((element) => ({
       center: element.getAttribute("center") ?? "",
       heading: element.getAttribute("heading") ?? "",

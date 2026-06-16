@@ -9,6 +9,15 @@ type Photorealistic3DHomeHeroProps = {
 };
 
 type HeroState = "loading" | "ready3d" | "3d-static" | "fallback" | "error";
+type LaunchPhase =
+  | "loading"
+  | "zooming-in"
+  | "spinning"
+  | "settling"
+  | "pin"
+  | "content"
+  | "done"
+  | "fallback";
 
 type CountryFocus = {
   altitude: number;
@@ -43,7 +52,9 @@ declare global {
 
 const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? "";
 const ENABLE_3D_HOME_GLOBE = process.env.NEXT_PUBLIC_ENABLE_3D_HOME_GLOBE === "true";
-const THREE_D_CAMERA_INTRO_MS = 2_200;
+const THREE_D_CAMERA_INTRO_MS = 3_800;
+const THREE_D_PIN_REVEAL_MS = 3_200;
+const THREE_D_CONTENT_REVEAL_MS = 3_600;
 const THREE_D_LOAD_TIMEOUT_MS = 4_500;
 
 const DEFAULT_COUNTRY: CountryFocus = {
@@ -102,6 +113,7 @@ export function Photorealistic3DHomeHero({ className }: Photorealistic3DHomeHero
   const introTimerRef = useRef<number | null>(null);
   const [country, setCountry] = useState<CountryFocus>(DEFAULT_COUNTRY);
   const [heroState, setHeroState] = useState<HeroState>(ENABLE_3D_HOME_GLOBE ? "loading" : "fallback");
+  const [launchPhase, setLaunchPhase] = useState<LaunchPhase>(ENABLE_3D_HOME_GLOBE ? "loading" : "fallback");
   const [introComplete, setIntroComplete] = useState(false);
   const [reduceMotion, setReduceMotion] = useState(false);
 
@@ -110,6 +122,7 @@ export function Photorealistic3DHomeHero({ className }: Photorealistic3DHomeHero
     const syncMotion = () => {
       setReduceMotion(media.matches);
       if (media.matches) {
+        setLaunchPhase("done");
         setIntroComplete(true);
       }
     };
@@ -168,11 +181,24 @@ export function Photorealistic3DHomeHero({ className }: Photorealistic3DHomeHero
   }, []);
 
   useEffect(() => {
+    document.documentElement.dataset.waylineHomeLaunchPhase = reduceMotion ? "done" : launchPhase;
+
+    return () => {
+      delete document.documentElement.dataset.waylineHomeLaunchPhase;
+    };
+  }, [launchPhase, reduceMotion]);
+
+  useEffect(() => {
     if (reduceMotion) {
       return;
     }
 
-    introTimerRef.current = window.setTimeout(() => setIntroComplete(true), 2_000);
+    introTimerRef.current = window.setTimeout(() => {
+      setIntroComplete(true);
+      setLaunchPhase((currentPhase) =>
+        currentPhase === "fallback" || currentPhase === "done" ? currentPhase : "content"
+      );
+    }, THREE_D_CONTENT_REVEAL_MS);
 
     return () => {
       if (introTimerRef.current !== null) {
@@ -194,6 +220,8 @@ export function Photorealistic3DHomeHero({ className }: Photorealistic3DHomeHero
     const host = mapHostRef.current;
     const focus = country ?? DEFAULT_COUNTRY;
     setHeroState("loading");
+    setLaunchPhase("loading");
+    setIntroComplete(false);
     host.replaceChildren();
 
     loadTimeout = window.setTimeout(() => {
@@ -203,6 +231,8 @@ export function Photorealistic3DHomeHero({ className }: Photorealistic3DHomeHero
 
       host.replaceChildren();
       setHeroState("fallback");
+      setLaunchPhase("fallback");
+      setIntroComplete(true);
     }, THREE_D_LOAD_TIMEOUT_MS);
 
     async function mount3DMap() {
@@ -235,14 +265,17 @@ export function Photorealistic3DHomeHero({ className }: Photorealistic3DHomeHero
 
         if (!reduceMotion) {
           if (typeof window.requestAnimationFrame === "function") {
-            cancelCameraAnimation = animateMapCamera(mapElement, focus, () => {
+            cancelCameraAnimation = animateMapCamera(mapElement, focus, setLaunchPhase, () => {
               if (!cancelled) {
                 setHeroState("ready3d");
+                setLaunchPhase("done");
               }
             });
           } else {
             setMapCamera(mapElement, getSettledCamera(focus));
             setHeroState("3d-static");
+            setLaunchPhase("done");
+            setIntroComplete(true);
           }
         }
       } catch {
@@ -253,6 +286,8 @@ export function Photorealistic3DHomeHero({ className }: Photorealistic3DHomeHero
           }
           host.replaceChildren();
           setHeroState("fallback");
+          setLaunchPhase("fallback");
+          setIntroComplete(true);
         }
       }
     }
@@ -273,8 +308,9 @@ export function Photorealistic3DHomeHero({ className }: Photorealistic3DHomeHero
 
   const focus = country;
   const showPin =
-    (heroState === "ready3d" || heroState === "3d-static" || heroState === "fallback") &&
-    (introComplete || reduceMotion);
+    (heroState === "ready3d" && (reduceMotion || shouldShowPinForPhase(launchPhase))) ||
+    heroState === "3d-static" ||
+    (heroState === "fallback" && (introComplete || reduceMotion));
 
   return (
     <div
@@ -288,6 +324,7 @@ export function Photorealistic3DHomeHero({ className }: Photorealistic3DHomeHero
       data-3d-enabled={ENABLE_3D_HOME_GLOBE ? "true" : "false"}
       data-home-hero-mode={`home-hero-mode: ${reduceMotion ? "reduced-motion" : heroState}`}
       data-hero-mode={heroState}
+      data-launch-phase={reduceMotion ? "done" : launchPhase}
       data-testid="photorealistic-3d-home-hero"
       style={{
         "--wayline-pin-x": `${focus.pinX}%`,
@@ -378,11 +415,10 @@ function HomeHeroLoading() {
 function animateMapCamera(
   mapElement: HTMLElement,
   country: CountryFocus,
+  onPhaseChange: (phase: LaunchPhase) => void,
   onComplete: () => void
 ) {
   const startedAt = performance.now();
-  const startCamera = getStartCamera(country);
-  const endCamera = getSettledCamera(country);
   let animationFrame: number | null = null;
   let cancelled = false;
 
@@ -392,8 +428,8 @@ function animateMapCamera(
     }
 
     const progress = Math.min((now - startedAt) / THREE_D_CAMERA_INTRO_MS, 1);
-    const eased = easeOutCubic(progress);
-    setMapCamera(mapElement, interpolateCamera(startCamera, endCamera, eased));
+    onPhaseChange(getLaunchPhaseForProgress(progress));
+    setMapCamera(mapElement, getCameraForLaunchProgress(country, progress));
     mapElement.setAttribute("data-camera-progress", progress.toFixed(3));
 
     if (progress < 1) {
@@ -402,6 +438,7 @@ function animateMapCamera(
     }
 
     mapElement.setAttribute("data-camera-progress", "1");
+    onPhaseChange("pin");
     onComplete();
   };
 
@@ -423,12 +460,12 @@ function setMapCamera(mapElement: HTMLElement, camera: MapCameraFrame) {
 
 function getStartCamera(country: CountryFocus): MapCameraFrame {
   return {
-    altitude: country.altitude + 1_080_000,
-    heading: 384,
-    lat: country.lat + 10,
-    lng: country.lng - 36,
-    range: 8_200_000,
-    tilt: 26
+    altitude: country.altitude + 2_650_000,
+    heading: 238,
+    lat: country.lat + 30,
+    lng: country.lng - 118,
+    range: 13_200_000,
+    tilt: 12
   };
 }
 
@@ -441,6 +478,58 @@ function getSettledCamera(country: CountryFocus): MapCameraFrame {
     range: 4_700_000,
     tilt: 38
   };
+}
+
+function getApproachCamera(country: CountryFocus): MapCameraFrame {
+  return {
+    altitude: country.altitude + 360_000,
+    heading: 356,
+    lat: country.lat + 3.5,
+    lng: country.lng - 18,
+    range: 2_150_000,
+    tilt: 64
+  };
+}
+
+function getSpinCamera(country: CountryFocus): MapCameraFrame {
+  return {
+    altitude: country.altitude + 740_000,
+    heading: 438,
+    lat: country.lat + 5.5,
+    lng: country.lng - 6,
+    range: 3_050_000,
+    tilt: 58
+  };
+}
+
+function getCameraForLaunchProgress(country: CountryFocus, progress: number): MapCameraFrame {
+  const startCamera = getStartCamera(country);
+  const approachCamera = getApproachCamera(country);
+  const spinCamera = getSpinCamera(country);
+  const settledCamera = getSettledCamera(country);
+
+  if (progress < 0.4) {
+    return interpolateCamera(startCamera, approachCamera, easeInOutCubic(progress / 0.4));
+  }
+
+  if (progress < 0.7) {
+    return interpolateCamera(approachCamera, spinCamera, easeInOutCubic((progress - 0.4) / 0.3));
+  }
+
+  return interpolateCamera(spinCamera, settledCamera, easeOutCubic((progress - 0.7) / 0.3));
+}
+
+function getLaunchPhaseForProgress(progress: number): LaunchPhase {
+  if (progress < 0.16) return "loading";
+  if (progress < 0.4) return "zooming-in";
+  if (progress < 0.7) return "spinning";
+  if (progress < THREE_D_PIN_REVEAL_MS / THREE_D_CAMERA_INTRO_MS) return "settling";
+  if (progress < THREE_D_CONTENT_REVEAL_MS / THREE_D_CAMERA_INTRO_MS) return "pin";
+  return "content";
+}
+
+function shouldShowPinForPhase(phase: LaunchPhase) {
+  return phase === "pin" || phase === "content" || phase === "done" || phase === "fallback";
 }
 
 function interpolateCamera(start: MapCameraFrame, end: MapCameraFrame, progress: number): MapCameraFrame {
@@ -460,6 +549,12 @@ function interpolate(start: number, end: number, progress: number) {
 
 function easeOutCubic(progress: number) {
   return 1 - Math.pow(1 - progress, 3);
+}
+
+function easeInOutCubic(progress: number) {
+  return progress < 0.5
+    ? 4 * progress * progress * progress
+    : 1 - Math.pow(-2 * progress + 2, 3) / 2;
 }
 
 async function ensureGoogleMaps3D(apiKey: string) {
