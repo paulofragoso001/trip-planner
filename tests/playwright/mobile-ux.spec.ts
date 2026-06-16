@@ -549,24 +549,30 @@ test.describe("mobile soft-launch UX", () => {
     const loadingHeroVisual = await page.getByTestId("photorealistic-3d-home-hero").evaluate((element) => {
       const mapStage = element.querySelector<HTMLElement>('[data-testid="home-3d-map-stage"]');
       const mapStageStyle = mapStage ? window.getComputedStyle(mapStage) : null;
+      const shade = element.querySelector<HTMLElement>('[data-testid="mobile-home-shade-layer"]');
+      const shadeStyle = shade ? window.getComputedStyle(shade) : null;
 
       return {
         mapStageOpacity: mapStageStyle?.opacity ?? "0",
-        mode: element.getAttribute("data-hero-mode") ?? ""
+        mode: element.getAttribute("data-hero-mode") ?? "",
+        shadeOpacity: shadeStyle?.opacity ?? "1"
       };
     });
     expect(loadingHeroVisual.mode).toBe("loading");
     expect(Number(loadingHeroVisual.mapStageOpacity), "3D map stays hidden while loading").toBeLessThan(0.1);
+    expect(Number(loadingHeroVisual.shadeOpacity), "Home shade starts hidden during launch").toBeLessThan(0.05);
     await page.waitForTimeout(2_450);
     const loadingContentBeforeFocus = await page.getByTestId("mobile-home-wallet-content").evaluate((element) => {
       const hero = document.querySelector('[data-testid="photorealistic-3d-home-hero"]');
       const fallback = document.querySelector('[data-testid="home-3d-fallback-image"]');
+      const shade = document.querySelector<HTMLElement>('[data-testid="mobile-home-shade-layer"]');
       const style = window.getComputedStyle(element);
 
       return {
         fallbackMounted: Boolean(fallback),
         heroMode: hero?.getAttribute("data-hero-mode") ?? "",
-        opacity: style.opacity
+        opacity: style.opacity,
+        shadeOpacity: shade ? window.getComputedStyle(shade).opacity : "1"
       };
     });
     expect(loadingContentBeforeFocus.heroMode, "Home content waits while the 3D launch focuses").toBe("loading");
@@ -575,22 +581,31 @@ test.describe("mobile soft-launch UX", () => {
       Number(loadingContentBeforeFocus.opacity),
       "Home content stays hidden during the early cinematic launch"
     ).toBeLessThan(0.35);
+    expect(
+      Number(loadingContentBeforeFocus.shadeOpacity),
+      "Home shade stays hidden before the focus reveal"
+    ).toBeLessThan(0.05);
     await page.waitForTimeout(1_450);
     const loadingContentAfterFocus = await page.getByTestId("mobile-home-wallet-content").evaluate((element) => {
       const hero = document.querySelector('[data-testid="photorealistic-3d-home-hero"]');
       const fallback = document.querySelector('[data-testid="home-3d-fallback-image"]');
+      const shade = document.querySelector<HTMLElement>('[data-testid="mobile-home-shade-layer"]');
       const style = window.getComputedStyle(element);
 
       return {
         fallbackMounted: Boolean(fallback),
         heroMode: hero?.getAttribute("data-hero-mode") ?? "",
-        opacity: style.opacity
+        opacity: style.opacity,
+        shadeOpacity: shade ? window.getComputedStyle(shade).opacity : "0"
       };
     });
     expect(loadingContentAfterFocus.heroMode, "Home content is not blocked by slow 3D loading").toBe("loading");
     expect(loadingContentAfterFocus.fallbackMounted, "fallback still waits for the 3D timeout").toBe(false);
     expect(Number(loadingContentAfterFocus.opacity), "Home content fades in after the focus timing").toBeGreaterThan(
       0.9
+    );
+    expect(Number(loadingContentAfterFocus.shadeOpacity), "Home shade fades in with wallet content").toBeGreaterThan(
+      0.25
     );
     await page.evaluate(() => {
       const testWindow = window as typeof window & { __waylineResolveMaps3D?: () => void };
@@ -614,6 +629,10 @@ test.describe("mobile soft-launch UX", () => {
     expect(Number(cameraStart.progress), "3D camera intro starts before the settled frame").toBeLessThan(1);
     await expect(page.getByTestId("photorealistic-3d-home-hero")).toHaveAttribute("data-launch-phase", /loading|zooming-in/);
     await expect(page.getByTestId("mobile-home-country-pin")).toHaveCount(0);
+    await page.waitForFunction(() => {
+      const shade = document.querySelector<HTMLElement>('[data-testid="mobile-home-shade-layer"]');
+      return shade ? Number(window.getComputedStyle(shade).opacity) < 0.05 : false;
+    });
     await page.waitForTimeout(900);
     const cameraMid = await page.getByTestId("home-3d-map").evaluate((element) => ({
       center: element.getAttribute("center") ?? "",
@@ -629,9 +648,17 @@ test.describe("mobile soft-launch UX", () => {
       Number(cameraStart.progress)
     );
     await expect(page.getByTestId("photorealistic-3d-home-hero")).toHaveAttribute("data-launch-phase", /zooming-in|spinning/);
+    await page.waitForFunction(() => {
+      const shade = document.querySelector<HTMLElement>('[data-testid="mobile-home-shade-layer"]');
+      return shade ? Number(window.getComputedStyle(shade).opacity) < 0.05 : false;
+    });
     await page.waitForTimeout(1_850);
     await expect(page.getByTestId("photorealistic-3d-home-hero")).toHaveAttribute("data-launch-phase", /settling|pin|content/);
     await expect(page.getByTestId("mobile-home-country-pin")).toBeVisible({ timeout: 2_000 });
+    await page.waitForFunction(() => {
+      const shade = document.querySelector<HTMLElement>('[data-testid="mobile-home-shade-layer"]');
+      return shade ? Number(window.getComputedStyle(shade).opacity) > 0.45 : false;
+    });
     await page.waitForTimeout(1_150);
     const cameraSettled = await page.getByTestId("home-3d-map").evaluate((element) => ({
       center: element.getAttribute("center") ?? "",
@@ -931,6 +958,7 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByTestId("mobile-home-country-pin")).toBeVisible();
     await expect(page.getByTestId("mobile-home-country-pin")).toHaveAttribute("data-country-code", "US");
     await expect(page.getByTestId("mobile-home-country-name")).toHaveText("United States");
+    await expect(page.getByTestId("mobile-home-shade-layer")).toHaveCSS("opacity", "1");
     const reducedMotionContentReveal = await page.getByTestId("mobile-home-wallet-content").evaluate((element) => {
       const style = window.getComputedStyle(element);
 
@@ -992,6 +1020,7 @@ test.describe("mobile soft-launch UX", () => {
     );
     await expect(page.getByTestId("home-3d-fallback-image")).toBeVisible();
     await expect(page.getByTestId("mobile-home-country-pin")).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByTestId("mobile-home-shade-layer")).toHaveCSS("opacity", "1");
     await expect(page.getByRole("heading", { name: "Travel wallet" })).toHaveCount(1);
   });
 

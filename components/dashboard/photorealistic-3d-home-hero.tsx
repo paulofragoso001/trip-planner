@@ -311,6 +311,16 @@ export function Photorealistic3DHomeHero({ className }: Photorealistic3DHomeHero
     (heroState === "ready3d" && (reduceMotion || shouldShowPinForPhase(launchPhase))) ||
     heroState === "3d-static" ||
     (heroState === "fallback" && (introComplete || reduceMotion));
+  const isLateLaunchPhase =
+    launchPhase === "pin" ||
+    launchPhase === "content" ||
+    launchPhase === "done";
+  const showAtmosphereFade =
+    reduceMotion ||
+    heroState === "3d-static" ||
+    heroState === "fallback" ||
+    (heroState === "loading" && introComplete) ||
+    (heroState === "ready3d" && isLateLaunchPhase);
 
   return (
     <div
@@ -343,7 +353,14 @@ export function Photorealistic3DHomeHero({ className }: Photorealistic3DHomeHero
           ref={mapHostRef}
         />
       </div>
-      <div className="absolute inset-0 z-10 bg-[radial-gradient(circle_at_var(--wayline-pin-x)_var(--wayline-pin-y),rgba(251,191,36,0.3),transparent_7%),radial-gradient(ellipse_at_50%_0%,rgba(125,194,255,0.24),transparent_33%),linear-gradient(180deg,rgba(2,9,22,0)_0%,rgba(2,9,22,0.02)_36%,rgba(2,8,20,0.38)_76%,#020817_100%)]" />
+      <div className="absolute inset-0 z-10 bg-[radial-gradient(circle_at_var(--wayline-pin-x)_var(--wayline-pin-y),rgba(251,191,36,0.22),transparent_7%),radial-gradient(ellipse_at_50%_0%,rgba(125,194,255,0.22),transparent_33%),radial-gradient(ellipse_at_50%_100%,rgba(2,8,20,0.16),transparent_42%)]" />
+      <div
+        className={[
+          "absolute inset-x-0 bottom-0 z-10 h-[52%] bg-[linear-gradient(180deg,transparent,rgba(2,8,20,0.5)_38%,#020817_100%)] transition-opacity duration-700 ease-out",
+          showAtmosphereFade ? "opacity-100" : "opacity-0"
+        ].join(" ")}
+        data-testid="mobile-home-shade-layer"
+      />
       {showPin ? (
         <div
           className="wayline-country-pin absolute z-20 -translate-x-1/2 -translate-y-1/2 text-center"
@@ -368,7 +385,6 @@ export function Photorealistic3DHomeHero({ className }: Photorealistic3DHomeHero
         </div>
       ) : null}
       <div className="absolute inset-x-0 top-0 z-10 h-20 bg-[linear-gradient(180deg,rgba(2,9,22,0.36),transparent)]" />
-      <div className="absolute inset-x-0 bottom-0 z-10 h-[46%] bg-[linear-gradient(180deg,transparent,rgba(2,8,20,0.48)_38%,#020817_100%)]" />
     </div>
   );
 }
@@ -405,9 +421,8 @@ function HomeHeroLoading() {
       className="absolute inset-0 z-[1] overflow-hidden bg-[#020916]"
       data-testid="home-3d-loading"
     >
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_0%,rgba(96,165,250,0.24),transparent_28%),radial-gradient(circle_at_14%_14%,rgba(255,255,255,0.16),transparent_1px),radial-gradient(circle_at_82%_18%,rgba(255,255,255,0.16),transparent_1px),radial-gradient(circle_at_22%_32%,rgba(255,255,255,0.1),transparent_1px),radial-gradient(circle_at_74%_5%,rgba(255,255,255,0.18),transparent_1px),linear-gradient(180deg,#041225_0%,#020916_74%,#020817_100%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_0%,rgba(96,165,250,0.24),transparent_28%),radial-gradient(circle_at_14%_14%,rgba(255,255,255,0.16),transparent_1px),radial-gradient(circle_at_82%_18%,rgba(255,255,255,0.16),transparent_1px),radial-gradient(circle_at_22%_32%,rgba(255,255,255,0.1),transparent_1px),radial-gradient(circle_at_74%_5%,rgba(255,255,255,0.18),transparent_1px),linear-gradient(180deg,#041225_0%,#020916_84%,#020817_100%)]" />
       <div className="wayline-home-3d-loading-glow absolute left-1/2 top-[10%] h-[42vw] min-h-[150px] w-[154vw] max-w-[760px] -translate-x-1/2 rounded-[50%] border-t border-sky-200/30 bg-[radial-gradient(ellipse_at_50%_0%,rgba(56,189,248,0.16),transparent_55%)] opacity-80 shadow-[0_0_64px_rgba(96,165,250,0.18)]" />
-      <div className="absolute inset-x-0 bottom-0 h-[60%] bg-[linear-gradient(180deg,transparent,rgba(2,9,22,0.54)_42%,#020817_100%)]" />
     </div>
   );
 }
