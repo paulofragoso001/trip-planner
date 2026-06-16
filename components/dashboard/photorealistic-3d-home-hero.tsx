@@ -56,6 +56,7 @@ const THREE_D_CAMERA_INTRO_MS = 3_800;
 const THREE_D_PIN_REVEAL_MS = 3_200;
 const THREE_D_CONTENT_REVEAL_MS = 3_600;
 const THREE_D_LOAD_TIMEOUT_MS = 4_500;
+const HERO_EARTH_Y_NUDGE_PERCENT = 4;
 
 const DEFAULT_COUNTRY: CountryFocus = {
   altitude: 1_850_000,
@@ -328,10 +329,10 @@ export function Photorealistic3DHomeHero({ className }: Photorealistic3DHomeHero
       data-testid="photorealistic-3d-home-hero"
       style={{
         "--wayline-pin-x": `${focus.pinX}%`,
-        "--wayline-pin-y": `${focus.pinY}%`
+        "--wayline-pin-y": `${focus.pinY - HERO_EARTH_Y_NUDGE_PERCENT}%`
       } as CSSProperties}
     >
-      <div className="absolute inset-0" data-testid="earth-only-visual">
+      <div className="absolute inset-0 -translate-y-[4%]" data-testid="earth-only-visual">
         {heroState === "loading" ? <HomeHeroLoading /> : null}
         {heroState === "fallback" ? <HomeHeroFallback reduceMotion={reduceMotion} /> : null}
         <div
