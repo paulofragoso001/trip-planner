@@ -539,6 +539,10 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByTestId("mobile-home-earth-continents")).toHaveCount(0);
     await expect(page.getByText("Scroll", { exact: true })).toHaveCount(0);
     await expect(page.getByTestId("photorealistic-3d-home-hero")).toHaveAttribute("data-hero-mode", "loading");
+    await expect(page.getByTestId("photorealistic-3d-home-hero")).toHaveAttribute(
+      "data-home-hero-mode",
+      "home-hero-mode: loading"
+    );
     await expect(page.getByTestId("home-3d-loading")).toBeVisible();
     await expect(page.getByTestId("earth-static-fallback")).toHaveCount(0);
     await expect(page.getByTestId("home-3d-fallback-image")).toHaveCount(0);
@@ -575,6 +579,43 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByTestId("photorealistic-3d-home-hero")).toHaveAttribute("data-hero-mode", "ready3d", {
       timeout: 5_000
     });
+    await expect(page.getByTestId("photorealistic-3d-home-hero")).toHaveAttribute(
+      "data-home-hero-mode",
+      "home-hero-mode: ready3d"
+    );
+    const cameraStart = await page.getByTestId("home-3d-map").evaluate((element) => ({
+      center: element.getAttribute("center") ?? "",
+      heading: element.getAttribute("heading") ?? "",
+      progress: element.getAttribute("data-camera-progress") ?? "0",
+      range: element.getAttribute("range") ?? "",
+      tilt: element.getAttribute("tilt") ?? ""
+    }));
+    expect(cameraStart.center, "3D camera starts with a country-focused center").toContain(",");
+    expect(Number(cameraStart.progress), "3D camera intro starts before the settled frame").toBeLessThan(1);
+    await page.waitForTimeout(320);
+    const cameraMid = await page.getByTestId("home-3d-map").evaluate((element) => ({
+      center: element.getAttribute("center") ?? "",
+      heading: element.getAttribute("heading") ?? "",
+      progress: element.getAttribute("data-camera-progress") ?? "0",
+      range: element.getAttribute("range") ?? "",
+      tilt: element.getAttribute("tilt") ?? ""
+    }));
+    expect(cameraMid.center, "3D camera center changes during launch").not.toBe(cameraStart.center);
+    expect(cameraMid.heading, "3D camera heading changes during launch").not.toBe(cameraStart.heading);
+    expect(cameraMid.range, "3D camera range changes during launch").not.toBe(cameraStart.range);
+    expect(Number(cameraMid.progress), "3D camera intro progresses after launch").toBeGreaterThan(
+      Number(cameraStart.progress)
+    );
+    await page.waitForTimeout(2_150);
+    const cameraSettled = await page.getByTestId("home-3d-map").evaluate((element) => ({
+      center: element.getAttribute("center") ?? "",
+      heading: element.getAttribute("heading") ?? "",
+      progress: element.getAttribute("data-camera-progress") ?? "0",
+      range: element.getAttribute("range") ?? "",
+      tilt: element.getAttribute("tilt") ?? ""
+    }));
+    expect(cameraSettled.center, "3D camera settles after launch").not.toBe(cameraMid.center);
+    expect(cameraSettled.progress, "3D camera intro marks completion").toBe("1");
     await expect(page.getByTestId("home-3d-loading")).toHaveCount(0);
     await expect(page.getByTestId("earth-static-fallback")).toHaveCount(0);
     await expect(page.getByTestId("home-3d-fallback-image")).toHaveCount(0);
@@ -848,6 +889,10 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByTestId("mobile-home-globe")).toHaveCount(0);
     await expect(page.getByTestId("earth-only-visual")).toBeVisible();
     await expect(page.getByTestId("photorealistic-3d-home-hero")).toHaveAttribute("data-hero-mode", "fallback");
+    await expect(page.getByTestId("photorealistic-3d-home-hero")).toHaveAttribute(
+      "data-home-hero-mode",
+      "home-hero-mode: reduced-motion"
+    );
     await expect(page.getByTestId("home-3d-loading")).toHaveCount(0);
     await expect(page.getByTestId("earth-static-fallback")).toHaveAttribute(
       "data-earth-source",
@@ -910,6 +955,10 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByTestId("photorealistic-3d-home-hero")).toHaveAttribute("data-hero-mode", "fallback", {
       timeout: 5_000
     });
+    await expect(page.getByTestId("photorealistic-3d-home-hero")).toHaveAttribute(
+      "data-home-hero-mode",
+      "home-hero-mode: fallback"
+    );
     await expect(page.getByTestId("home-3d-loading")).toHaveCount(0);
     await expect(page.getByTestId("earth-static-fallback")).toHaveAttribute(
       "data-earth-source",
