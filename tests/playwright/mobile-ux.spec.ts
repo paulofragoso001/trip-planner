@@ -496,6 +496,23 @@ test.describe("mobile soft-launch UX", () => {
     await page.addInitScript(() => {
       Object.defineProperty(navigator, "language", { configurable: true, value: "en-US" });
       Object.defineProperty(navigator, "languages", { configurable: true, value: ["en-US", "en"] });
+      const testWindow = window as typeof window & {
+        __waylineResolveMaps3D?: () => void;
+        google?: {
+          maps?: {
+            importLibrary?: (libraryName: string) => Promise<unknown>;
+          };
+        };
+      };
+
+      testWindow.google = {
+        maps: {
+          importLibrary: () =>
+            new Promise((resolve) => {
+              testWindow.__waylineResolveMaps3D = () => resolve({});
+            })
+        }
+      };
     });
 
     await page.goto(`${baseUrl}/dashboard`, { waitUntil: "commit" });
@@ -521,6 +538,31 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByTestId("mobile-home-earth-ocean")).toHaveCount(0);
     await expect(page.getByTestId("mobile-home-earth-continents")).toHaveCount(0);
     await expect(page.getByText("Scroll", { exact: true })).toHaveCount(0);
+    await expect(page.getByTestId("photorealistic-3d-home-hero")).toHaveAttribute("data-hero-mode", "loading");
+    await expect(page.getByTestId("home-3d-loading")).toBeVisible();
+    await expect(page.getByTestId("earth-static-fallback")).toHaveCount(0);
+    await expect(page.getByTestId("home-3d-fallback-image")).toHaveCount(0);
+    const loadingHeroVisual = await page.getByTestId("photorealistic-3d-home-hero").evaluate((element) => {
+      const mapStage = element.querySelector<HTMLElement>('[data-testid="home-3d-map-stage"]');
+      const mapStageStyle = mapStage ? window.getComputedStyle(mapStage) : null;
+
+      return {
+        mapStageOpacity: mapStageStyle?.opacity ?? "0",
+        mode: element.getAttribute("data-hero-mode") ?? ""
+      };
+    });
+    expect(loadingHeroVisual.mode).toBe("loading");
+    expect(Number(loadingHeroVisual.mapStageOpacity), "3D map stays hidden while loading").toBeLessThan(0.1);
+    await page.evaluate(() => {
+      const testWindow = window as typeof window & { __waylineResolveMaps3D?: () => void };
+      testWindow.__waylineResolveMaps3D?.();
+    });
+    await expect(page.getByTestId("photorealistic-3d-home-hero")).toHaveAttribute("data-hero-mode", "ready3d", {
+      timeout: 5_000
+    });
+    await expect(page.getByTestId("home-3d-loading")).toHaveCount(0);
+    await expect(page.getByTestId("earth-static-fallback")).toHaveCount(0);
+    await expect(page.getByTestId("home-3d-fallback-image")).toHaveCount(0);
     await expect(page.getByTestId("mobile-home-country-pin")).toBeVisible({ timeout: 5_000 });
     await expect(page.getByTestId("mobile-home-country-pin")).toHaveAttribute("data-country-code", "US");
     await expect(page.getByTestId("mobile-home-country-name")).toHaveText("United States");
@@ -547,26 +589,13 @@ test.describe("mobile soft-launch UX", () => {
         width: fallbackRect?.width ?? mapRect?.width ?? 0
       };
     });
-    expect(["3d", "fallback", "loading"]).toContain(heroVisual.mode);
+    expect(heroVisual.mode).toBe("ready3d");
     expect(Number(heroVisual.opacity), "home 3D hero opacity").toBeGreaterThan(0.9);
     expect(heroVisual.width, "home 3D visual covers viewport width").toBeGreaterThanOrEqual(390);
-    if (heroVisual.mode === "3d") {
-      expect(Number(heroVisual.mapStageOpacity), "3D map stage is visible when enabled").toBeGreaterThan(0.9);
-      expect(heroVisual.mapWidth, "3D map covers viewport width").toBeGreaterThanOrEqual(390);
-      expect(heroVisual.mapHeight, "3D map covers compact launch height").toBeGreaterThanOrEqual(220);
-    } else {
-      await expect(page.getByTestId("earth-static-fallback")).toHaveAttribute(
-        "data-earth-source",
-        "photorealistic-3d-fallback"
-      );
-      expect(Number(heroVisual.fallbackOpacity), "home 3D fallback opacity").toBeGreaterThan(0.85);
-      expect(heroVisual.fallbackHeight, "home 3D fallback covers compact launch height").toBeGreaterThanOrEqual(220);
-      expect(heroVisual.fallbackNaturalWidth, "optimized 3D fallback width").toBeGreaterThanOrEqual(390);
-      expect(heroVisual.fallbackNaturalHeight, "optimized 3D fallback height").toBeGreaterThanOrEqual(260);
-      expect(decodeURIComponent(heroVisual.fallbackSrc), "home 3D fallback source").toContain(
-        "/globe/wayline-earth-3d-fallback"
-      );
-    }
+    expect(Number(heroVisual.mapStageOpacity), "3D map stage is visible when ready").toBeGreaterThan(0.9);
+    expect(heroVisual.mapWidth, "3D map covers viewport width").toBeGreaterThanOrEqual(390);
+    expect(heroVisual.mapHeight, "3D map covers compact launch height").toBeGreaterThanOrEqual(220);
+    expect(heroVisual.fallbackSrc, "fallback image is not mounted behind ready 3D").toBe("");
     expect(decodeURIComponent(heroVisual.fallbackSrc), "old baked home hero asset is not used").not.toContain(
       "/globe/wayline-earth-hero"
     );
@@ -797,6 +826,8 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByTestId("home-3d-map-stage")).toBeVisible();
     await expect(page.getByTestId("mobile-home-globe")).toHaveCount(0);
     await expect(page.getByTestId("earth-only-visual")).toBeVisible();
+    await expect(page.getByTestId("photorealistic-3d-home-hero")).toHaveAttribute("data-hero-mode", "fallback");
+    await expect(page.getByTestId("home-3d-loading")).toHaveCount(0);
     await expect(page.getByTestId("earth-static-fallback")).toHaveAttribute(
       "data-earth-source",
       "photorealistic-3d-fallback"
@@ -818,6 +849,42 @@ test.describe("mobile soft-launch UX", () => {
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
       expect(overflow, `reduced-motion home overflow at ${width}px`).toBeLessThanOrEqual(1);
     }
+  });
+
+  test("mobile home 3D hero falls back after simulated 3D failure", async ({ page }) => {
+    await page.setViewportSize({ height: 900, width: 390 });
+    await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
+    await page.addInitScript(() => {
+      Object.defineProperty(navigator, "language", { configurable: true, value: "en-US" });
+      Object.defineProperty(navigator, "languages", { configurable: true, value: ["en-US", "en"] });
+      const testWindow = window as typeof window & {
+        google?: {
+          maps?: {
+            importLibrary?: (libraryName: string) => Promise<unknown>;
+          };
+        };
+      };
+
+      testWindow.google = {
+        maps: {
+          importLibrary: () => Promise.reject(new Error("simulated maps3d failure"))
+        }
+      };
+    });
+
+    await page.goto(`${baseUrl}/dashboard`, { waitUntil: "commit" });
+    await expect(page.getByTestId("mobile-home-wallet")).toBeVisible();
+    await expect(page.getByTestId("photorealistic-3d-home-hero")).toHaveAttribute("data-hero-mode", "fallback", {
+      timeout: 5_000
+    });
+    await expect(page.getByTestId("home-3d-loading")).toHaveCount(0);
+    await expect(page.getByTestId("earth-static-fallback")).toHaveAttribute(
+      "data-earth-source",
+      "photorealistic-3d-fallback"
+    );
+    await expect(page.getByTestId("home-3d-fallback-image")).toBeVisible();
+    await expect(page.getByTestId("mobile-home-country-pin")).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByRole("heading", { name: "Travel wallet" })).toHaveCount(1);
   });
 
   test("demo map exposes ordered route cards on mobile", async ({ page }) => {

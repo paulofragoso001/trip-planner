@@ -8,7 +8,7 @@ type Photorealistic3DHomeHeroProps = {
   className?: string;
 };
 
-type HeroMode = "loading" | "3d" | "fallback";
+type HeroState = "loading" | "ready3d" | "fallback";
 
 type CountryFocus = {
   altitude: number;
@@ -35,6 +35,7 @@ declare global {
 
 const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? "";
 const ENABLE_3D_HOME_GLOBE = process.env.NEXT_PUBLIC_ENABLE_3D_HOME_GLOBE === "true";
+const THREE_D_LOAD_TIMEOUT_MS = 4_500;
 
 const DEFAULT_COUNTRY: CountryFocus = {
   altitude: 1_850_000,
@@ -91,7 +92,7 @@ export function Photorealistic3DHomeHero({ className }: Photorealistic3DHomeHero
   const mapHostRef = useRef<HTMLDivElement | null>(null);
   const introTimerRef = useRef<number | null>(null);
   const [country, setCountry] = useState<CountryFocus>(DEFAULT_COUNTRY);
-  const [heroMode, setHeroMode] = useState<HeroMode>(ENABLE_3D_HOME_GLOBE ? "loading" : "fallback");
+  const [heroState, setHeroState] = useState<HeroState>(ENABLE_3D_HOME_GLOBE ? "loading" : "fallback");
   const [introComplete, setIntroComplete] = useState(false);
   const [reduceMotion, setReduceMotion] = useState(false);
 
@@ -172,23 +173,47 @@ export function Photorealistic3DHomeHero({ className }: Photorealistic3DHomeHero
   }, [reduceMotion]);
 
   useEffect(() => {
-    if (!ENABLE_3D_HOME_GLOBE || !GOOGLE_MAPS_API_KEY || !mapHostRef.current) {
-      setHeroMode("fallback");
+    if (reduceMotion || !ENABLE_3D_HOME_GLOBE || !GOOGLE_MAPS_API_KEY || !mapHostRef.current) {
+      mapHostRef.current?.replaceChildren();
+      setHeroState("fallback");
       return;
     }
 
     let cancelled = false;
+    let loadTimeout: number | null = null;
     let settleTimer: number | null = null;
     const host = mapHostRef.current;
     const focus = country ?? DEFAULT_COUNTRY;
+    setHeroState("loading");
+    host.replaceChildren();
+
+    loadTimeout = window.setTimeout(() => {
+      if (cancelled) {
+        return;
+      }
+
+      host.replaceChildren();
+      setHeroState("fallback");
+    }, THREE_D_LOAD_TIMEOUT_MS);
 
     async function mount3DMap() {
       try {
         await ensureGoogleMaps3D(GOOGLE_MAPS_API_KEY);
-        await window.google?.maps?.importLibrary?.("maps3d");
+        const importLibrary = getMapsImportLibrary();
+
+        if (!importLibrary) {
+          throw new Error("Google Maps importLibrary unavailable");
+        }
+
+        await importLibrary("maps3d");
 
         if (cancelled || !host) {
           return;
+        }
+
+        if (loadTimeout !== null) {
+          window.clearTimeout(loadTimeout);
+          loadTimeout = null;
         }
 
         const mapElement = document.createElement("gmp-map-3d");
@@ -197,7 +222,7 @@ export function Photorealistic3DHomeHero({ className }: Photorealistic3DHomeHero
         mapElement.setAttribute("mode", "hybrid");
         setMapCamera(mapElement, getStartCamera(focus, reduceMotion));
         host.replaceChildren(mapElement);
-        setHeroMode("3d");
+        setHeroState("ready3d");
 
         if (!reduceMotion) {
           settleTimer = window.setTimeout(() => {
@@ -208,8 +233,12 @@ export function Photorealistic3DHomeHero({ className }: Photorealistic3DHomeHero
         }
       } catch {
         if (!cancelled) {
+          if (loadTimeout !== null) {
+            window.clearTimeout(loadTimeout);
+            loadTimeout = null;
+          }
           host.replaceChildren();
-          setHeroMode("fallback");
+          setHeroState("fallback");
         }
       }
     }
@@ -221,12 +250,15 @@ export function Photorealistic3DHomeHero({ className }: Photorealistic3DHomeHero
       if (settleTimer !== null) {
         window.clearTimeout(settleTimer);
       }
+      if (loadTimeout !== null) {
+        window.clearTimeout(loadTimeout);
+      }
       host.replaceChildren();
     };
   }, [country, reduceMotion]);
 
   const focus = country;
-  const showPin = introComplete || reduceMotion;
+  const showPin = (heroState === "ready3d" || heroState === "fallback") && (introComplete || reduceMotion);
 
   return (
     <div
@@ -238,7 +270,7 @@ export function Photorealistic3DHomeHero({ className }: Photorealistic3DHomeHero
         .filter(Boolean)
         .join(" ")}
       data-3d-enabled={ENABLE_3D_HOME_GLOBE ? "true" : "false"}
-      data-hero-mode={heroMode}
+      data-hero-mode={heroState}
       data-testid="photorealistic-3d-home-hero"
       style={{
         "--wayline-pin-x": `${focus.pinX}%`,
@@ -246,11 +278,12 @@ export function Photorealistic3DHomeHero({ className }: Photorealistic3DHomeHero
       } as CSSProperties}
     >
       <div className="absolute inset-0" data-testid="earth-only-visual">
-        <HomeHeroFallback reduceMotion={reduceMotion} />
+        {heroState === "loading" ? <HomeHeroLoading /> : null}
+        {heroState === "fallback" ? <HomeHeroFallback reduceMotion={reduceMotion} /> : null}
         <div
           className={[
             "absolute inset-0 z-[2] overflow-hidden transition-opacity duration-700",
-            heroMode === "3d" ? "opacity-100" : "opacity-0"
+            heroState === "ready3d" ? "opacity-100" : "opacity-0"
           ].join(" ")}
           data-testid="home-3d-map-stage"
           ref={mapHostRef}
@@ -308,6 +341,19 @@ function HomeHeroFallback({ reduceMotion }: { reduceMotion: boolean }) {
         src="/globe/wayline-earth-3d-fallback.png"
         width={1200}
       />
+    </div>
+  );
+}
+
+function HomeHeroLoading() {
+  return (
+    <div
+      className="absolute inset-0 z-[1] overflow-hidden bg-[#020916]"
+      data-testid="home-3d-loading"
+    >
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_0%,rgba(96,165,250,0.24),transparent_28%),radial-gradient(circle_at_14%_14%,rgba(255,255,255,0.16),transparent_1px),radial-gradient(circle_at_82%_18%,rgba(255,255,255,0.16),transparent_1px),radial-gradient(circle_at_22%_32%,rgba(255,255,255,0.1),transparent_1px),radial-gradient(circle_at_74%_5%,rgba(255,255,255,0.18),transparent_1px),linear-gradient(180deg,#041225_0%,#020916_74%,#020817_100%)]" />
+      <div className="wayline-home-3d-loading-glow absolute left-1/2 top-[10%] h-[42vw] min-h-[150px] w-[154vw] max-w-[760px] -translate-x-1/2 rounded-[50%] border-t border-sky-200/30 bg-[radial-gradient(ellipse_at_50%_0%,rgba(56,189,248,0.16),transparent_55%)] opacity-80 shadow-[0_0_64px_rgba(96,165,250,0.18)]" />
+      <div className="absolute inset-x-0 bottom-0 h-[60%] bg-[linear-gradient(180deg,transparent,rgba(2,9,22,0.54)_42%,#020817_100%)]" />
     </div>
   );
 }
@@ -430,13 +476,13 @@ function waitForExistingMapsScript(timeoutMs: number) {
   });
 }
 
-function getMapsImportLibrary() {
+function getMapsImportLibrary(): MapsImportLibrary | null {
   const maybeGoogle = window.google as unknown as
     | { maps?: { importLibrary?: unknown } }
     | undefined;
 
   return typeof maybeGoogle?.maps?.importLibrary === "function"
-    ? maybeGoogle.maps.importLibrary
+    ? (maybeGoogle.maps.importLibrary as MapsImportLibrary)
     : null;
 }
 

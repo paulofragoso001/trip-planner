@@ -68,8 +68,26 @@ gmp-place-autocomplete {
   transform-origin: 54% 36%;
 }
 
+@keyframes wayline-home-3d-loading-glow {
+  0%,
+  100% {
+    opacity: 0.58;
+    transform: translate3d(-50%, 0, 0) scaleX(0.98);
+  }
+  50% {
+    opacity: 0.88;
+    transform: translate3d(-50%, 0, 0) scaleX(1.02);
+  }
+}
+
+.wayline-home-3d-loading-glow {
+  animation: wayline-home-3d-loading-glow 2.8s ease-in-out infinite;
+  transform-origin: 50% 0;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .wayline-home-3d-fallback-intro {
+  .wayline-home-3d-fallback-intro,
+  .wayline-home-3d-loading-glow {
     animation: none;
   }
 }
