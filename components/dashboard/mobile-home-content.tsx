@@ -37,7 +37,7 @@ export function MobileHomeContent({
         </div>
 
         <div
-          className="rounded-[1.75rem] border border-white/16 bg-[#050914]/76 p-3 shadow-[0_28px_90px_rgba(0,0,0,0.45)] backdrop-blur-xl"
+          className="rounded-[1.75rem] bg-[#050914]/76 p-3 shadow-[0_28px_90px_rgba(0,0,0,0.45)] backdrop-blur-xl"
           data-testid="mobile-home-actions"
         >
           <div className="grid gap-2">

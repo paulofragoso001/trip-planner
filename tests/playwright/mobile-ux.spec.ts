@@ -580,10 +580,13 @@ test.describe("mobile soft-launch UX", () => {
       const nav = document.querySelector('[data-testid="app-shell-mobile-bottom-nav"]')?.getBoundingClientRect();
       const contentElement = document.querySelector('[data-testid="mobile-home-wallet-content"]');
       const contentStyle = contentElement ? window.getComputedStyle(contentElement) : null;
+      const actionsElement = document.querySelector('[data-testid="mobile-home-actions"]');
+      const actionsStyle = actionsElement ? window.getComputedStyle(actionsElement) : null;
       const stageElement = document.querySelector('[data-testid="mobile-home-wallet-stage"]');
       const stageStyle = stageElement ? window.getComputedStyle(stageElement) : null;
 
       return {
+        actionsBorderTopWidth: actionsStyle?.borderTopWidth ?? "",
         actionsBottom: actions?.bottom ?? 0,
         actionsTop: actions?.top ?? 0,
         contentBorderTopWidth: contentStyle?.borderTopWidth ?? "",
@@ -617,6 +620,7 @@ test.describe("mobile soft-launch UX", () => {
       homeLaunchLayout.launchBottom - 56
     );
     expect(homeLaunchLayout.contentBorderTopWidth, "home wallet has no hard divider").toBe("0px");
+    expect(homeLaunchLayout.actionsBorderTopWidth, "home action form has no white outline").toBe("0px");
     expect(homeLaunchLayout.contentGap, "wallet content has a controlled overlap with the Earth fade").toBeLessThanOrEqual(0);
     expect(homeLaunchLayout.contentGap, "wallet content avoids a giant upward overlap into the Earth").toBeGreaterThanOrEqual(-56);
     expect(homeLaunchLayout.actionsTop, "wallet form sits below the title").toBeGreaterThan(
@@ -627,8 +631,12 @@ test.describe("mobile soft-launch UX", () => {
     );
     expect(
       Number.parseFloat(homeLaunchLayout.stagePaddingBottom),
-      "home stage owns one bottom-nav clearance"
-    ).toBeGreaterThanOrEqual(150);
+      "home stage owns a tighter single bottom-nav clearance"
+    ).toBeGreaterThanOrEqual(100);
+    expect(
+      Number.parseFloat(homeLaunchLayout.stagePaddingBottom),
+      "home stage avoids a dead footer strip"
+    ).toBeLessThanOrEqual(140);
     expect(homeLaunchLayout.scrollHeight, "home page avoids split-screen footer gap").toBeLessThanOrEqual(
       homeLaunchLayout.viewportHeight * 1.55
     );
