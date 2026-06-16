@@ -655,6 +655,9 @@ test.describe("mobile soft-launch UX", () => {
     await page.waitForTimeout(1_850);
     await expect(page.getByTestId("photorealistic-3d-home-hero")).toHaveAttribute("data-launch-phase", /settling|pin|content/);
     await expect(page.getByTestId("mobile-home-country-pin")).toBeVisible({ timeout: 2_000 });
+    await expect(page.getByTestId("photorealistic-3d-home-hero")).toHaveAttribute("data-launch-phase", /content|done/, {
+      timeout: 2_000
+    });
     await page.waitForFunction(() => {
       const shade = document.querySelector<HTMLElement>('[data-testid="mobile-home-shade-layer"]');
       return shade ? Number(window.getComputedStyle(shade).opacity) > 0.45 : false;
@@ -758,19 +761,19 @@ test.describe("mobile soft-launch UX", () => {
     expect(homeLaunchLayout.launchHeight, "home Earth hero leaves room for wallet actions").toBeLessThanOrEqual(
       430
     );
-    expect(homeLaunchLayout.contentTop, "wallet content starts directly under the Earth fade").toBeGreaterThanOrEqual(
-      homeLaunchLayout.launchBottom - 56
-    );
-    expect(homeLaunchLayout.contentTop, "wallet content overlaps only the lower Earth fade").toBeLessThanOrEqual(
+    expect(homeLaunchLayout.contentTop, "wallet content starts below the 3D hero attribution area").toBeGreaterThanOrEqual(
       homeLaunchLayout.launchBottom
     );
-    expect(homeLaunchLayout.headingTop, "wallet title sits just below the Earth visual").toBeGreaterThanOrEqual(
-      homeLaunchLayout.launchBottom - 56
+    expect(homeLaunchLayout.contentTop, "wallet content keeps a controlled gap after the Earth fade").toBeLessThanOrEqual(
+      homeLaunchLayout.launchBottom + 24
+    );
+    expect(homeLaunchLayout.headingTop, "wallet title sits below the Earth visual").toBeGreaterThanOrEqual(
+      homeLaunchLayout.launchBottom
     );
     expect(homeLaunchLayout.contentBorderTopWidth, "home wallet has no hard divider").toBe("0px");
     expect(homeLaunchLayout.actionsBorderTopWidth, "home action form has no white outline").toBe("0px");
-    expect(homeLaunchLayout.contentGap, "wallet content has a controlled overlap with the Earth fade").toBeLessThanOrEqual(0);
-    expect(homeLaunchLayout.contentGap, "wallet content avoids a giant upward overlap into the Earth").toBeGreaterThanOrEqual(-56);
+    expect(homeLaunchLayout.contentGap, "wallet content does not cover Google Maps attribution").toBeGreaterThanOrEqual(0);
+    expect(homeLaunchLayout.contentGap, "wallet content avoids a giant gap after the Earth").toBeLessThanOrEqual(24);
     expect(homeLaunchLayout.actionsTop, "wallet form sits below the title").toBeGreaterThan(
       homeLaunchLayout.headingTop + 112
     );

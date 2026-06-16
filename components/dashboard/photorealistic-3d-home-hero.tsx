@@ -311,16 +311,12 @@ export function Photorealistic3DHomeHero({ className }: Photorealistic3DHomeHero
     (heroState === "ready3d" && (reduceMotion || shouldShowPinForPhase(launchPhase))) ||
     heroState === "3d-static" ||
     (heroState === "fallback" && (introComplete || reduceMotion));
-  const isLateLaunchPhase =
-    launchPhase === "pin" ||
-    launchPhase === "content" ||
-    launchPhase === "done";
-  const showAtmosphereFade =
+  const showRevealShade =
     reduceMotion ||
     heroState === "3d-static" ||
     heroState === "fallback" ||
     (heroState === "loading" && introComplete) ||
-    (heroState === "ready3d" && isLateLaunchPhase);
+    (heroState === "ready3d" && (launchPhase === "content" || launchPhase === "done"));
 
   return (
     <div
@@ -353,12 +349,16 @@ export function Photorealistic3DHomeHero({ className }: Photorealistic3DHomeHero
           ref={mapHostRef}
         />
       </div>
-      <div className="absolute inset-0 z-10 bg-[radial-gradient(circle_at_var(--wayline-pin-x)_var(--wayline-pin-y),rgba(251,191,36,0.22),transparent_7%),radial-gradient(ellipse_at_50%_0%,rgba(125,194,255,0.22),transparent_33%),radial-gradient(ellipse_at_50%_100%,rgba(2,8,20,0.16),transparent_42%)]" />
+      <div
+        className="absolute inset-0 z-10 bg-[radial-gradient(circle_at_var(--wayline-pin-x)_var(--wayline-pin-y),rgba(251,191,36,0.18),transparent_6%),radial-gradient(ellipse_at_50%_0%,rgba(125,194,255,0.18),transparent_30%),radial-gradient(ellipse_at_50%_100%,rgba(2,8,20,0.08),transparent_46%)]"
+        data-testid="mobile-home-subtle-hero-overlay"
+      />
       <div
         className={[
-          "absolute inset-x-0 bottom-0 z-10 h-[52%] bg-[linear-gradient(180deg,transparent,rgba(2,8,20,0.5)_38%,#020817_100%)] transition-opacity duration-700 ease-out",
-          showAtmosphereFade ? "opacity-100" : "opacity-0"
+          "absolute inset-x-0 bottom-0 z-10 h-[46%] bg-[linear-gradient(180deg,transparent,rgba(2,8,20,0.34)_42%,#020817_100%)] transition-opacity duration-700 ease-out",
+          showRevealShade ? "opacity-100" : "opacity-0"
         ].join(" ")}
+        data-reveal-shade={showRevealShade ? "true" : "false"}
         data-testid="mobile-home-shade-layer"
       />
       {showPin ? (
