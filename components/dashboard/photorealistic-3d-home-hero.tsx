@@ -245,12 +245,17 @@ export function Photorealistic3DHomeHero({ className }: Photorealistic3DHomeHero
         "--wayline-pin-y": `${focus.pinY}%`
       } as CSSProperties}
     >
-      <div
-        className="absolute inset-0 overflow-hidden opacity-0"
-        data-testid="home-3d-map-stage"
-        ref={mapHostRef}
-      />
-      <HomeHeroFallback reduceMotion={reduceMotion} />
+      <div className="absolute inset-0" data-testid="earth-only-visual">
+        <HomeHeroFallback reduceMotion={reduceMotion} />
+        <div
+          className={[
+            "absolute inset-0 z-[2] overflow-hidden transition-opacity duration-700",
+            heroMode === "3d" ? "opacity-100" : "opacity-0"
+          ].join(" ")}
+          data-testid="home-3d-map-stage"
+          ref={mapHostRef}
+        />
+      </div>
       <div className="absolute inset-0 z-10 bg-[radial-gradient(circle_at_var(--wayline-pin-x)_var(--wayline-pin-y),rgba(251,191,36,0.3),transparent_7%),radial-gradient(ellipse_at_50%_0%,rgba(125,194,255,0.24),transparent_33%),linear-gradient(180deg,rgba(2,9,22,0)_0%,rgba(2,9,22,0.02)_36%,rgba(2,8,20,0.38)_76%,#020817_100%)]" />
       {showPin ? (
         <div
@@ -286,7 +291,7 @@ function HomeHeroFallback({ reduceMotion }: { reduceMotion: boolean }) {
     <div
       className="absolute inset-0 z-[1] overflow-hidden bg-[radial-gradient(circle_at_50%_0%,rgba(96,165,250,0.22),transparent_25%),radial-gradient(circle_at_14%_14%,rgba(255,255,255,0.18),transparent_1px),radial-gradient(circle_at_82%_18%,rgba(255,255,255,0.16),transparent_1px),radial-gradient(circle_at_22%_32%,rgba(255,255,255,0.12),transparent_1px),radial-gradient(circle_at_74%_5%,rgba(255,255,255,0.18),transparent_1px),#020916]"
       data-earth-source="photorealistic-3d-fallback"
-      data-testid="home-3d-fallback"
+      data-testid="earth-static-fallback"
     >
       <Image
         alt=""

@@ -504,7 +504,7 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByTestId("photorealistic-3d-home-hero")).toBeVisible();
     await expect(page.getByTestId("home-3d-map-stage")).toBeVisible();
     await expect(page.getByTestId("mobile-home-globe")).toHaveCount(0);
-    await expect(page.getByTestId("earth-only-visual")).toHaveCount(0);
+    await expect(page.getByTestId("earth-only-visual")).toBeVisible();
     await expect(page.getByTestId("mobile-home-earth-photorealistic")).toHaveCount(0);
     await expect(page.getByTestId("mobile-home-earth-image")).toHaveCount(0);
     await expect(page.getByRole("heading", { name: "Travel wallet" })).toHaveCount(1);
@@ -531,6 +531,8 @@ test.describe("mobile soft-launch UX", () => {
       const fallbackRect = fallback?.getBoundingClientRect();
       const map = element.querySelector<HTMLElement>('[data-testid="home-3d-map"]');
       const mapRect = map?.getBoundingClientRect();
+      const mapStage = element.querySelector<HTMLElement>('[data-testid="home-3d-map-stage"]');
+      const mapStageStyle = mapStage ? window.getComputedStyle(mapStage) : null;
       return {
         fallbackHeight: fallbackRect?.height ?? 0,
         fallbackNaturalHeight: fallback?.naturalHeight ?? 0,
@@ -538,6 +540,7 @@ test.describe("mobile soft-launch UX", () => {
         fallbackOpacity: fallbackStyle?.opacity ?? "0",
         fallbackSrc: fallback?.currentSrc || fallback?.src || "",
         mapHeight: mapRect?.height ?? 0,
+        mapStageOpacity: mapStageStyle?.opacity ?? "0",
         mapWidth: mapRect?.width ?? 0,
         mode: element.getAttribute("data-hero-mode") ?? "",
         opacity: style.opacity,
@@ -548,10 +551,11 @@ test.describe("mobile soft-launch UX", () => {
     expect(Number(heroVisual.opacity), "home 3D hero opacity").toBeGreaterThan(0.9);
     expect(heroVisual.width, "home 3D visual covers viewport width").toBeGreaterThanOrEqual(390);
     if (heroVisual.mode === "3d") {
+      expect(Number(heroVisual.mapStageOpacity), "3D map stage is visible when enabled").toBeGreaterThan(0.9);
       expect(heroVisual.mapWidth, "3D map covers viewport width").toBeGreaterThanOrEqual(390);
       expect(heroVisual.mapHeight, "3D map covers compact launch height").toBeGreaterThanOrEqual(220);
     } else {
-      await expect(page.getByTestId("home-3d-fallback")).toHaveAttribute(
+      await expect(page.getByTestId("earth-static-fallback")).toHaveAttribute(
         "data-earth-source",
         "photorealistic-3d-fallback"
       );
@@ -792,8 +796,8 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByTestId("photorealistic-3d-home-hero")).toBeVisible();
     await expect(page.getByTestId("home-3d-map-stage")).toBeVisible();
     await expect(page.getByTestId("mobile-home-globe")).toHaveCount(0);
-    await expect(page.getByTestId("earth-only-visual")).toHaveCount(0);
-    await expect(page.getByTestId("home-3d-fallback")).toHaveAttribute(
+    await expect(page.getByTestId("earth-only-visual")).toBeVisible();
+    await expect(page.getByTestId("earth-static-fallback")).toHaveAttribute(
       "data-earth-source",
       "photorealistic-3d-fallback"
     );
