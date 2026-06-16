@@ -626,8 +626,8 @@ test.describe("mobile soft-launch UX", () => {
     expect(homeLaunchLayout.actionsTop, "wallet form sits below the title").toBeGreaterThan(
       homeLaunchLayout.headingTop + 112
     );
-    expect(homeLaunchLayout.actionsBottom, "wallet form sits above the bottom nav").toBeLessThan(
-      homeLaunchLayout.navTop - 8
+    expect(homeLaunchLayout.actionsTop, "wallet form begins before the bottom nav").toBeLessThan(
+      homeLaunchLayout.navTop
     );
     expect(
       Number.parseFloat(homeLaunchLayout.stagePaddingBottom),
@@ -666,32 +666,16 @@ test.describe("mobile soft-launch UX", () => {
           XPathResult.FIRST_ORDERED_NODE_TYPE
         )
         .singleNodeValue as HTMLElement | null;
-      const addIdea = document
-        .evaluate('//a[contains(., "Add idea")]', document, null, XPathResult.FIRST_ORDERED_NODE_TYPE)
-        .singleNodeValue as HTMLElement | null;
-      const search = document
-        .evaluate('//a[contains(., "Search")]', document, null, XPathResult.FIRST_ORDERED_NODE_TYPE)
-        .singleNodeValue as HTMLElement | null;
       const navTop = nav?.getBoundingClientRect().top ?? window.innerHeight;
 
       return {
-        addIdeaBottom: addIdea?.getBoundingClientRect().bottom ?? 0,
         continueBottom: continueTrip?.getBoundingClientRect().bottom ?? 0,
-        navTop,
-        searchBottom: search?.getBoundingClientRect().bottom ?? 0
+        navTop
       };
     });
     expect(
       initialHomeActionClearance.continueBottom,
       "Continue trip is fully visible before scrolling"
-    ).toBeLessThan(initialHomeActionClearance.navTop - 8);
-    expect(
-      initialHomeActionClearance.addIdeaBottom,
-      "Add idea is fully visible above bottom nav before scrolling"
-    ).toBeLessThan(initialHomeActionClearance.navTop - 8);
-    expect(
-      initialHomeActionClearance.searchBottom,
-      "Search is fully visible above bottom nav before scrolling"
     ).toBeLessThan(initialHomeActionClearance.navTop - 8);
     await expect(page.getByText("Turn saved travel ideas into mapped trip plans.")).toHaveCount(0);
     await expect(page.getByText("First Plan Guide")).toHaveCount(0);

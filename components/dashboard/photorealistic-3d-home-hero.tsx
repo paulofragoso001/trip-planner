@@ -43,8 +43,8 @@ const DEFAULT_COUNTRY: CountryFocus = {
   lat: 39.8283,
   lng: -98.5795,
   name: "United States",
-  pinX: 57,
-  pinY: 38
+  pinX: 58,
+  pinY: 36
 };
 
 const COUNTRY_BY_CODE: Record<string, CountryFocus> = {
@@ -251,10 +251,10 @@ export function Photorealistic3DHomeHero({ className }: Photorealistic3DHomeHero
         ref={mapHostRef}
       />
       <HomeHeroFallback reduceMotion={reduceMotion} />
-      <div className="absolute inset-0 z-10 bg-[radial-gradient(circle_at_var(--wayline-pin-x)_var(--wayline-pin-y),rgba(251,191,36,0.22),transparent_10%),linear-gradient(180deg,rgba(2,9,22,0.02),rgba(2,9,22,0.02)_34%,rgba(2,8,20,0.36)_70%,#020817_100%)]" />
+      <div className="absolute inset-0 z-10 bg-[radial-gradient(circle_at_var(--wayline-pin-x)_var(--wayline-pin-y),rgba(251,191,36,0.3),transparent_7%),radial-gradient(ellipse_at_50%_0%,rgba(125,194,255,0.24),transparent_33%),linear-gradient(180deg,rgba(2,9,22,0)_0%,rgba(2,9,22,0.02)_36%,rgba(2,8,20,0.38)_76%,#020817_100%)]" />
       {showPin ? (
         <div
-          className="wayline-country-pin absolute z-20 -translate-x-1/2 -translate-y-full text-center"
+          className="wayline-country-pin absolute z-20 -translate-x-1/2 -translate-y-1/2 text-center"
           data-country-code={focus.code}
           data-testid="mobile-home-country-pin"
           style={{
@@ -262,11 +262,13 @@ export function Photorealistic3DHomeHero({ className }: Photorealistic3DHomeHero
             top: "var(--wayline-pin-y)"
           }}
         >
-          <div className="mx-auto grid h-11 w-11 place-items-center rounded-full border-2 border-white/88 bg-slate-50 text-2xl shadow-[0_12px_34px_rgba(0,0,0,0.42),0_0_26px_rgba(251,146,60,0.24)]">
+          <div className="mx-auto grid h-11 w-11 place-items-center rounded-full border-2 border-white/88 bg-slate-50 text-2xl shadow-[0_14px_36px_rgba(0,0,0,0.5),0_0_30px_rgba(251,146,60,0.34)]">
             <span aria-hidden="true">{focus.flag}</span>
           </div>
+          <div className="mx-auto h-4 w-0.5 bg-orange-300/90 shadow-[0_0_18px_rgba(251,146,60,0.9)]" />
+          <div className="mx-auto -mt-1 h-3 w-3 rotate-45 rounded-[0.2rem] bg-orange-300 shadow-[0_0_20px_rgba(251,146,60,0.85)]" />
           <div
-            className="mt-1 max-w-28 truncate rounded-full bg-black/54 px-2 py-0.5 text-[0.62rem] font-black uppercase tracking-[0.12em] text-white/88 backdrop-blur"
+            className="mt-2 max-w-32 truncate text-[0.62rem] font-black uppercase tracking-[0.2em] text-white/90 drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]"
             data-testid="mobile-home-country-name"
           >
             {focus.name}
@@ -274,7 +276,7 @@ export function Photorealistic3DHomeHero({ className }: Photorealistic3DHomeHero
         </div>
       ) : null}
       <div className="absolute inset-x-0 top-0 z-10 h-20 bg-[linear-gradient(180deg,rgba(2,9,22,0.36),transparent)]" />
-      <div className="absolute inset-x-0 bottom-0 z-10 h-[44%] bg-[linear-gradient(180deg,transparent,rgba(2,8,20,0.46)_38%,#020817_100%)]" />
+      <div className="absolute inset-x-0 bottom-0 z-10 h-[46%] bg-[linear-gradient(180deg,transparent,rgba(2,8,20,0.48)_38%,#020817_100%)]" />
     </div>
   );
 }
@@ -282,14 +284,14 @@ export function Photorealistic3DHomeHero({ className }: Photorealistic3DHomeHero
 function HomeHeroFallback({ reduceMotion }: { reduceMotion: boolean }) {
   return (
     <div
-      className="absolute inset-0 z-[1] overflow-hidden bg-[radial-gradient(circle_at_52%_2%,rgba(96,165,250,0.22),transparent_22%),radial-gradient(circle_at_14%_16%,rgba(255,255,255,0.16),transparent_1px),radial-gradient(circle_at_82%_18%,rgba(255,255,255,0.14),transparent_1px),radial-gradient(circle_at_22%_32%,rgba(255,255,255,0.1),transparent_1px),#020916]"
+      className="absolute inset-0 z-[1] overflow-hidden bg-[radial-gradient(circle_at_50%_0%,rgba(96,165,250,0.22),transparent_25%),radial-gradient(circle_at_14%_14%,rgba(255,255,255,0.18),transparent_1px),radial-gradient(circle_at_82%_18%,rgba(255,255,255,0.16),transparent_1px),radial-gradient(circle_at_22%_32%,rgba(255,255,255,0.12),transparent_1px),radial-gradient(circle_at_74%_5%,rgba(255,255,255,0.18),transparent_1px),#020916]"
       data-earth-source="photorealistic-3d-fallback"
       data-testid="home-3d-fallback"
     >
       <Image
         alt=""
         className={[
-          "absolute left-1/2 top-5 h-auto w-[112vw] max-w-none -translate-x-1/2 opacity-100 brightness-[0.92] contrast-[1.16] saturate-[1.08] drop-shadow-[0_0_30px_rgba(96,165,250,0.22)]",
+          "absolute left-1/2 top-[-2.4rem] h-auto w-[174vw] max-w-[46rem] -translate-x-1/2 opacity-100 brightness-[0.88] contrast-[1.22] saturate-[1.1] drop-shadow-[0_0_46px_rgba(96,165,250,0.34)]",
           reduceMotion ? "" : "wayline-home-3d-fallback-intro"
         ]
           .filter(Boolean)

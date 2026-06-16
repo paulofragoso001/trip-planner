@@ -50,12 +50,12 @@ gmp-place-autocomplete {
 
 @keyframes wayline-home-3d-fallback-intro {
   0% {
-    transform: translate3d(-52%, -1%, 0) scale(1.1);
-    filter: saturate(1.18) contrast(1.08) brightness(0.82);
+    transform: translate3d(-52%, -3%, 0) scale(1.06);
+    filter: saturate(1.2) contrast(1.16) brightness(0.82);
   }
   100% {
-    transform: translate3d(-50%, 0, 0) scale(1.02);
-    filter: saturate(1.08) contrast(1.1) brightness(0.86);
+    transform: translate3d(-50%, 0, 0) scale(1);
+    filter: saturate(1.1) contrast(1.2) brightness(0.86);
   }
 }
 
@@ -65,7 +65,7 @@ gmp-place-autocomplete {
 }
 
 .wayline-home-3d-fallback-intro {
-  transform-origin: 52% 42%;
+  transform-origin: 54% 36%;
 }
 
 @media (prefers-reduced-motion: reduce) {
