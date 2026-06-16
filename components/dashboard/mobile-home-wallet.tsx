@@ -40,7 +40,7 @@ export function MobileHomeWallet({
       </section>
 
       <div
-        className="relative z-10 px-4 pt-3 pb-[calc(112px+env(safe-area-inset-bottom))]"
+        className="relative z-10 -mt-10 px-4 pb-[calc(112px+env(safe-area-inset-bottom))]"
         data-testid="mobile-home-wallet-stage"
       >
         <MobileHomeContent
