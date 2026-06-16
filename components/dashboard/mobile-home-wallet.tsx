@@ -27,20 +27,20 @@ export function MobileHomeWallet({
   return (
     <section
       className={cn(
-        "relative isolate min-h-[100dvh] overflow-x-hidden bg-[#020817] text-white lg:hidden",
+        "relative isolate h-[100dvh] overflow-hidden bg-[#020817] text-white lg:hidden",
         className
       )}
       data-testid="mobile-home-wallet"
     >
       <section
-        className="relative h-[42svh] min-h-[340px] max-h-[430px] overflow-hidden bg-[#020817]"
+        className="relative h-[36dvh] min-h-[260px] max-h-[350px] overflow-hidden bg-[#020817] min-[390px]:min-h-[285px]"
         data-testid="mobile-home-3d-hero"
       >
         <Photorealistic3DHomeHero />
       </section>
 
       <div
-        className="relative z-10 -mt-10 px-4 pb-[calc(112px+env(safe-area-inset-bottom))]"
+        className="relative z-10 -mt-7 px-4 pb-[calc(5.75rem+env(safe-area-inset-bottom))]"
         data-testid="mobile-home-wallet-stage"
       >
         <MobileHomeContent

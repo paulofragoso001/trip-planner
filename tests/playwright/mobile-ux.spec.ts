@@ -744,22 +744,22 @@ test.describe("mobile soft-launch UX", () => {
     expect(homeLaunchLayout.actionsBorderTopWidth, "home action form has no white outline").toBe("0px");
     expect(homeLaunchLayout.contentGap, "wallet content has a controlled overlap with the Earth fade").toBeLessThanOrEqual(0);
     expect(homeLaunchLayout.contentGap, "wallet content avoids a giant upward overlap into the Earth").toBeGreaterThanOrEqual(-56);
-    expect(homeLaunchLayout.actionsTop, "wallet form sits below the title").toBeGreaterThan(
-      homeLaunchLayout.headingTop + 112
+    expect(homeLaunchLayout.actionsTop, "wallet form sits below the compact title").toBeGreaterThan(
+      homeLaunchLayout.headingTop + 96
     );
     expect(homeLaunchLayout.actionsTop, "wallet form begins before the bottom nav").toBeLessThan(
       homeLaunchLayout.navTop
     );
     expect(
       Number.parseFloat(homeLaunchLayout.stagePaddingBottom),
-      "home stage owns a tighter single bottom-nav clearance"
-    ).toBeGreaterThanOrEqual(100);
+      "home stage owns compact bottom-nav clearance"
+    ).toBeGreaterThanOrEqual(88);
     expect(
       Number.parseFloat(homeLaunchLayout.stagePaddingBottom),
       "home stage avoids a dead footer strip"
-    ).toBeLessThanOrEqual(140);
-    expect(homeLaunchLayout.scrollHeight, "home page avoids split-screen footer gap").toBeLessThanOrEqual(
-      homeLaunchLayout.viewportHeight * 1.55
+    ).toBeLessThanOrEqual(112);
+    expect(homeLaunchLayout.scrollHeight, "home page fits the launch screen without document scroll").toBeLessThanOrEqual(
+      homeLaunchLayout.viewportHeight + 2
     );
     await expect(page.getByTestId("home-launch-page")).toBeHidden();
     await expect(page.getByTestId("home-smart-start")).toBeHidden();

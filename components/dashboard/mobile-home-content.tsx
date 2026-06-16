@@ -24,20 +24,20 @@ export function MobileHomeContent({
       data-testid="mobile-home-wallet-content"
     >
       <div className="mx-auto max-w-[25rem]">
-        <div className="relative mb-4 text-left">
-          <p className="text-xs font-black uppercase tracking-[0.32em] text-orange-300/86">
+        <div className="relative mb-3 text-left">
+          <p className="text-[0.66rem] font-black uppercase tracking-[0.3em] text-orange-300/86">
             Wayline
           </p>
-          <h1 className="mt-2 text-[2.75rem] font-black leading-none tracking-normal text-white">
+          <h1 className="mt-1.5 text-[clamp(2.15rem,10vw,2.65rem)] font-black leading-none tracking-normal text-white">
             Travel wallet
           </h1>
-          <p className="mt-3 max-w-[20rem] text-base font-semibold leading-6 text-slate-300">
+          <p className="mt-2 max-w-[20rem] text-sm font-semibold leading-5 text-slate-300 min-[390px]:text-base min-[390px]:leading-6">
             Pick up a trip, start planning, or review saved ideas.
           </p>
         </div>
 
         <div
-          className="rounded-[1.75rem] bg-[#050914]/76 p-3 shadow-[0_28px_90px_rgba(0,0,0,0.45)] backdrop-blur-xl"
+          className="rounded-[1.5rem] bg-[#050914]/76 p-2.5 shadow-[0_28px_90px_rgba(0,0,0,0.45)] backdrop-blur-xl min-[390px]:rounded-[1.75rem] min-[390px]:p-3"
           data-testid="mobile-home-actions"
         >
           <div className="grid gap-2">
