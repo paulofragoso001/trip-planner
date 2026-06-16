@@ -20,7 +20,7 @@ export function MobileHomeContent({
 }) {
   return (
     <section
-      className="relative z-10"
+      className="wayline-home-content-reveal relative z-10"
       data-testid="mobile-home-wallet-content"
     >
       <div className="mx-auto max-w-[25rem]">

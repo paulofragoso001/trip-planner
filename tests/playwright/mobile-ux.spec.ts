@@ -553,6 +553,21 @@ test.describe("mobile soft-launch UX", () => {
     });
     expect(loadingHeroVisual.mode).toBe("loading");
     expect(Number(loadingHeroVisual.mapStageOpacity), "3D map stays hidden while loading").toBeLessThan(0.1);
+    await page.waitForTimeout(2_450);
+    const loadingContentReveal = await page.getByTestId("mobile-home-wallet-content").evaluate((element) => {
+      const hero = document.querySelector('[data-testid="photorealistic-3d-home-hero"]');
+      const fallback = document.querySelector('[data-testid="home-3d-fallback-image"]');
+      const style = window.getComputedStyle(element);
+
+      return {
+        fallbackMounted: Boolean(fallback),
+        heroMode: hero?.getAttribute("data-hero-mode") ?? "",
+        opacity: style.opacity
+      };
+    });
+    expect(loadingContentReveal.heroMode, "Home content is not blocked by slow 3D loading").toBe("loading");
+    expect(loadingContentReveal.fallbackMounted, "clean fallback does not flash before the 3D timeout").toBe(false);
+    expect(Number(loadingContentReveal.opacity), "Home content fades in after the 2s intro").toBeGreaterThan(0.9);
     await page.evaluate(() => {
       const testWindow = window as typeof window & { __waylineResolveMaps3D?: () => void };
       testWindow.__waylineResolveMaps3D?.();
@@ -566,6 +581,12 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByTestId("mobile-home-country-pin")).toBeVisible({ timeout: 5_000 });
     await expect(page.getByTestId("mobile-home-country-pin")).toHaveAttribute("data-country-code", "US");
     await expect(page.getByTestId("mobile-home-country-name")).toHaveText("United States");
+    await page.waitForFunction(() => {
+      const mapStage = document.querySelector<HTMLElement>('[data-testid="home-3d-map-stage"]');
+      const mapStageOpacity = mapStage ? Number(window.getComputedStyle(mapStage).opacity) : 0;
+
+      return mapStageOpacity > 0.9;
+    });
     const heroVisual = await page.getByTestId("photorealistic-3d-home-hero").evaluate((element) => {
       const style = window.getComputedStyle(element);
       const fallback = element.querySelector<HTMLImageElement>('[data-testid="home-3d-fallback-image"]');
@@ -839,6 +860,18 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByTestId("mobile-home-country-pin")).toBeVisible();
     await expect(page.getByTestId("mobile-home-country-pin")).toHaveAttribute("data-country-code", "US");
     await expect(page.getByTestId("mobile-home-country-name")).toHaveText("United States");
+    const reducedMotionContentReveal = await page.getByTestId("mobile-home-wallet-content").evaluate((element) => {
+      const style = window.getComputedStyle(element);
+
+      return {
+        opacity: style.opacity,
+        transform: style.transform
+      };
+    });
+    expect(Number(reducedMotionContentReveal.opacity), "reduced-motion Home content is immediate").toBeGreaterThan(
+      0.9
+    );
+    expect(reducedMotionContentReveal.transform, "reduced-motion Home content does not animate").toBe("none");
     await page.getByTestId("mobile-home-wallet-content").scrollIntoViewIfNeeded();
     await expect(page.getByTestId("mobile-home-wallet-content")).toBeVisible();
     await expect(page.getByTestId("mobile-home-actions")).toBeVisible();

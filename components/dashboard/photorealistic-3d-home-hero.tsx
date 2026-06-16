@@ -163,7 +163,7 @@ export function Photorealistic3DHomeHero({ className }: Photorealistic3DHomeHero
       return;
     }
 
-    introTimerRef.current = window.setTimeout(() => setIntroComplete(true), 2_300);
+    introTimerRef.current = window.setTimeout(() => setIntroComplete(true), 2_000);
 
     return () => {
       if (introTimerRef.current !== null) {

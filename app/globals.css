@@ -85,9 +85,31 @@ gmp-place-autocomplete {
   transform-origin: 50% 0;
 }
 
+@keyframes wayline-home-content-reveal {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 14px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+.wayline-home-content-reveal {
+  animation: wayline-home-content-reveal 420ms ease-out 2s both;
+  will-change: opacity, transform;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .wayline-home-3d-fallback-intro,
-  .wayline-home-3d-loading-glow {
+  .wayline-home-3d-loading-glow,
+  .wayline-home-content-reveal {
     animation: none;
+  }
+
+  .wayline-home-content-reveal {
+    opacity: 1;
+    transform: none;
   }
 }
