@@ -601,22 +601,26 @@ test.describe("mobile soft-launch UX", () => {
         viewportHeight: window.innerHeight
       };
     });
-    expect(homeLaunchLayout.launchHeight, "home globe fills the top of the launch screen").toBeGreaterThanOrEqual(
-      420
+    expect(homeLaunchLayout.launchHeight, "home Earth hero owns the top of the launch screen").toBeGreaterThanOrEqual(
+      320
     );
-    expect(homeLaunchLayout.launchHeight, "home globe leaves room for wallet actions").toBeLessThanOrEqual(
-      580
+    expect(homeLaunchLayout.launchHeight, "home Earth hero leaves room for wallet actions").toBeLessThanOrEqual(
+      430
     );
-    expect(homeLaunchLayout.contentTop, "wallet content overlaps the hero fade instead of sitting below an empty gap").toBeLessThan(
+    expect(homeLaunchLayout.contentTop, "wallet content starts directly under the Earth fade").toBeGreaterThanOrEqual(
+      homeLaunchLayout.launchBottom - 56
+    );
+    expect(homeLaunchLayout.contentTop, "wallet content overlaps only the lower Earth fade").toBeLessThanOrEqual(
       homeLaunchLayout.launchBottom
     );
-    expect(homeLaunchLayout.headingTop, "wallet title sits in the lower hero fade").toBeLessThan(
-      homeLaunchLayout.launchBottom
+    expect(homeLaunchLayout.headingTop, "wallet title sits just below the Earth visual").toBeGreaterThanOrEqual(
+      homeLaunchLayout.launchBottom - 56
     );
     expect(homeLaunchLayout.contentBorderTopWidth, "home wallet has no hard divider").toBe("0px");
-    expect(homeLaunchLayout.contentGap, "wallet content is pulled into the globe stage").toBeLessThanOrEqual(-40);
+    expect(homeLaunchLayout.contentGap, "wallet content has a controlled overlap with the Earth fade").toBeLessThanOrEqual(0);
+    expect(homeLaunchLayout.contentGap, "wallet content avoids a giant upward overlap into the Earth").toBeGreaterThanOrEqual(-56);
     expect(homeLaunchLayout.actionsTop, "wallet form sits below the title").toBeGreaterThan(
-      homeLaunchLayout.headingTop + 80
+      homeLaunchLayout.headingTop + 112
     );
     expect(homeLaunchLayout.actionsBottom, "wallet form sits above the bottom nav").toBeLessThan(
       homeLaunchLayout.navTop - 8
@@ -624,7 +628,7 @@ test.describe("mobile soft-launch UX", () => {
     expect(
       Number.parseFloat(homeLaunchLayout.stagePaddingBottom),
       "home stage owns one bottom-nav clearance"
-    ).toBeGreaterThanOrEqual(96);
+    ).toBeGreaterThanOrEqual(150);
     expect(homeLaunchLayout.scrollHeight, "home page avoids split-screen footer gap").toBeLessThanOrEqual(
       homeLaunchLayout.viewportHeight * 1.55
     );
@@ -805,7 +809,9 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByTestId("mobile-home-earth-image")).toHaveCount(0);
     await expect(page.getByTestId("mobile-home-earth-texture")).toHaveCount(0);
     await expect(page.getByTestId("mobile-home-earth-continents")).toHaveCount(0);
-    await expect(page.getByTestId("mobile-home-country-pin")).toHaveCount(0);
+    await expect(page.getByTestId("mobile-home-country-pin")).toBeVisible();
+    await expect(page.getByTestId("mobile-home-country-pin")).toHaveAttribute("data-country-code", "US");
+    await expect(page.getByTestId("mobile-home-country-name")).toHaveText("United States");
     await page.getByTestId("mobile-home-wallet-content").scrollIntoViewIfNeeded();
     await expect(page.getByTestId("mobile-home-wallet-content")).toBeVisible();
     await expect(page.getByTestId("mobile-home-actions")).toBeVisible();

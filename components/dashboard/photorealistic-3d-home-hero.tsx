@@ -43,8 +43,8 @@ const DEFAULT_COUNTRY: CountryFocus = {
   lat: 39.8283,
   lng: -98.5795,
   name: "United States",
-  pinX: 56,
-  pinY: 31
+  pinX: 57,
+  pinY: 38
 };
 
 const COUNTRY_BY_CODE: Record<string, CountryFocus> = {
@@ -90,7 +90,7 @@ let googleMapsScriptPromise: Promise<void> | null = null;
 export function Photorealistic3DHomeHero({ className }: Photorealistic3DHomeHeroProps) {
   const mapHostRef = useRef<HTMLDivElement | null>(null);
   const introTimerRef = useRef<number | null>(null);
-  const [country, setCountry] = useState<CountryFocus | null>(null);
+  const [country, setCountry] = useState<CountryFocus>(DEFAULT_COUNTRY);
   const [heroMode, setHeroMode] = useState<HeroMode>(ENABLE_3D_HOME_GLOBE ? "loading" : "fallback");
   const [introComplete, setIntroComplete] = useState(false);
   const [reduceMotion, setReduceMotion] = useState(false);
@@ -114,7 +114,7 @@ export function Photorealistic3DHomeHero({ className }: Photorealistic3DHomeHero
     const localeCountry = countryFromLocale(navigator.languages?.[0] || navigator.language);
     const timezoneCountry = countryFromTimeZone(Intl.DateTimeFormat().resolvedOptions().timeZone);
 
-    setCountry(localeCountry || timezoneCountry);
+    setCountry(localeCountry || timezoneCountry || DEFAULT_COUNTRY);
 
     const permissions = navigator.permissions;
 
@@ -225,8 +225,8 @@ export function Photorealistic3DHomeHero({ className }: Photorealistic3DHomeHero
     };
   }, [country, reduceMotion]);
 
-  const focus = country ?? DEFAULT_COUNTRY;
-  const showPin = Boolean(country) && (introComplete || reduceMotion);
+  const focus = country;
+  const showPin = introComplete || reduceMotion;
 
   return (
     <div
@@ -251,11 +251,11 @@ export function Photorealistic3DHomeHero({ className }: Photorealistic3DHomeHero
         ref={mapHostRef}
       />
       <HomeHeroFallback reduceMotion={reduceMotion} />
-      <div className="absolute inset-0 z-10 bg-[radial-gradient(circle_at_var(--wayline-pin-x)_var(--wayline-pin-y),rgba(251,191,36,0.2),transparent_12%),linear-gradient(180deg,rgba(2,9,22,0.02),rgba(2,9,22,0.02)_38%,rgba(2,8,20,0.38)_72%,#020817_100%)]" />
-      {showPin && country ? (
+      <div className="absolute inset-0 z-10 bg-[radial-gradient(circle_at_var(--wayline-pin-x)_var(--wayline-pin-y),rgba(251,191,36,0.22),transparent_10%),linear-gradient(180deg,rgba(2,9,22,0.02),rgba(2,9,22,0.02)_34%,rgba(2,8,20,0.36)_70%,#020817_100%)]" />
+      {showPin ? (
         <div
           className="wayline-country-pin absolute z-20 -translate-x-1/2 -translate-y-full text-center"
-          data-country-code={country.code}
+          data-country-code={focus.code}
           data-testid="mobile-home-country-pin"
           style={{
             left: "var(--wayline-pin-x)",
@@ -263,18 +263,18 @@ export function Photorealistic3DHomeHero({ className }: Photorealistic3DHomeHero
           }}
         >
           <div className="mx-auto grid h-11 w-11 place-items-center rounded-full border-2 border-white/88 bg-slate-50 text-2xl shadow-[0_12px_34px_rgba(0,0,0,0.42),0_0_26px_rgba(251,146,60,0.24)]">
-            <span aria-hidden="true">{country.flag}</span>
+            <span aria-hidden="true">{focus.flag}</span>
           </div>
           <div
             className="mt-1 max-w-28 truncate rounded-full bg-black/54 px-2 py-0.5 text-[0.62rem] font-black uppercase tracking-[0.12em] text-white/88 backdrop-blur"
             data-testid="mobile-home-country-name"
           >
-            {country.name}
+            {focus.name}
           </div>
         </div>
       ) : null}
       <div className="absolute inset-x-0 top-0 z-10 h-20 bg-[linear-gradient(180deg,rgba(2,9,22,0.36),transparent)]" />
-      <div className="absolute inset-x-0 bottom-0 z-10 h-[40%] bg-[linear-gradient(180deg,transparent,rgba(2,8,20,0.44)_42%,#020817_100%)]" />
+      <div className="absolute inset-x-0 bottom-0 z-10 h-[44%] bg-[linear-gradient(180deg,transparent,rgba(2,8,20,0.46)_38%,#020817_100%)]" />
     </div>
   );
 }
@@ -289,7 +289,7 @@ function HomeHeroFallback({ reduceMotion }: { reduceMotion: boolean }) {
       <Image
         alt=""
         className={[
-          "absolute left-1/2 top-[-1.25rem] h-auto w-[155vw] max-w-none -translate-x-1/2 opacity-100 brightness-[0.9] contrast-[1.14] saturate-[1.08] drop-shadow-[0_0_30px_rgba(96,165,250,0.22)]",
+          "absolute left-1/2 top-5 h-auto w-[112vw] max-w-none -translate-x-1/2 opacity-100 brightness-[0.92] contrast-[1.16] saturate-[1.08] drop-shadow-[0_0_30px_rgba(96,165,250,0.22)]",
           reduceMotion ? "" : "wayline-home-3d-fallback-intro"
         ]
           .filter(Boolean)
@@ -297,7 +297,7 @@ function HomeHeroFallback({ reduceMotion }: { reduceMotion: boolean }) {
         data-testid="home-3d-fallback-image"
         height={820}
         priority
-        sizes="(max-width: 1023px) 155vw, 1px"
+        sizes="(max-width: 1023px) 112vw, 1px"
         src="/globe/wayline-earth-3d-fallback.png"
         width={1200}
       />
