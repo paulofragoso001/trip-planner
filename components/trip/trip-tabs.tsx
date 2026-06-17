@@ -12,7 +12,7 @@ const tabs = [
   { label: "Ideas", href: "/ideas" },
   { label: "Expenses", href: "/budget" },
   { label: "Documents", href: "/documents" },
-  { label: "Share", href: "/sharing" }
+  { label: "Share", href: "/share" }
 ] as const;
 
 const mobileTabs = tabs.slice(0, 4);
@@ -25,7 +25,7 @@ export function TripTabs({ tripId }: { tripId: string }) {
   const moreRef = useRef<HTMLDivElement>(null);
   const moreMenuId = `trip-more-menu-${tripId}`;
   const moreActive =
-    secondaryTabs.some((tab) => pathname === `${base}${tab.href}`) ||
+    secondaryTabs.some((tab) => isTabActive(pathname, base, tab.href)) ||
     pathname === "/dashboard/account";
 
   useEffect(() => {
@@ -63,10 +63,7 @@ export function TripTabs({ tripId }: { tripId: string }) {
       >
         {mobileTabs.map((tab) => {
           const href = `${base}${tab.href}`;
-          const active =
-            tab.href === ""
-              ? pathname === base
-              : pathname === href;
+          const active = isTabActive(pathname, base, tab.href);
 
           return (
             <Link
@@ -111,7 +108,7 @@ export function TripTabs({ tripId }: { tripId: string }) {
             >
               {secondaryTabs.map((tab) => {
                 const href = `${base}${tab.href}`;
-                const active = pathname === href;
+                const active = isTabActive(pathname, base, tab.href);
 
                 return (
                   <Link
@@ -150,10 +147,7 @@ export function TripTabs({ tripId }: { tripId: string }) {
       >
         {tabs.map((tab) => {
           const href = `${base}${tab.href}`;
-          const active =
-            tab.href === ""
-              ? pathname === base
-              : pathname === href;
+          const active = isTabActive(pathname, base, tab.href);
 
           return (
             <Link
@@ -174,4 +168,16 @@ export function TripTabs({ tripId }: { tripId: string }) {
       </nav>
     </div>
   );
+}
+
+function isTabActive(pathname: string, base: string, href: string) {
+  if (href === "") {
+    return pathname === base;
+  }
+
+  if (href === "/share") {
+    return pathname === `${base}/share` || pathname === `${base}/sharing`;
+  }
+
+  return pathname === `${base}${href}`;
 }

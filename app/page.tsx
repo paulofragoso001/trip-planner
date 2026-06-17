@@ -64,7 +64,7 @@ export default async function HomePage() {
           <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Link
               className="inline-flex min-h-12 w-full items-center justify-center rounded-full bg-slate-950 px-7 py-3 text-sm font-black text-white shadow-[0_16px_40px_rgba(15,23,42,0.18)] transition hover:bg-slate-800 focus:outline-none focus:ring-4 focus:ring-blue-200 sm:w-auto"
-              href={user ? "/dashboard/imports" : "/signup"}
+              href={user ? "/dashboard/plan" : "/signup"}
             >
               Start planning
             </Link>

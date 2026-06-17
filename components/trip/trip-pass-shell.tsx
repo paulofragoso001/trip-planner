@@ -24,6 +24,7 @@ export function TripPassShell({ children, trip, tripId }: TripPassShellProps) {
   const isSecondaryRoute =
     pathname === `${basePath}/budget` ||
     pathname === `${basePath}/documents` ||
+    pathname === `${basePath}/share` ||
     pathname === `${basePath}/sharing`;
   const mobileImmersiveRoute = isOverviewRoute || isTimelineRoute;
   const mobileSheetRoute = mobileImmersiveRoute || isSecondaryRoute;
@@ -173,7 +174,7 @@ function CompactTripHeader({
       <Link
         aria-label="Share trip"
         className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/15"
-        href={`${base}/sharing`}
+        href={`${base}/share`}
       >
         <Share2 className="h-5 w-5" aria-hidden="true" />
       </Link>

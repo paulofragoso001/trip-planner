@@ -181,7 +181,7 @@ function ItineraryTimelineBody({
               <div className="grid gap-2 sm:flex sm:flex-wrap">
                 <Link
                   className="inline-flex min-h-11 items-center justify-center rounded-2xl bg-blue-600 px-4 text-sm font-black text-white"
-                  href="/dashboard/imports"
+                  href="/dashboard/plan"
                 >
                   Plan with AI
                 </Link>
@@ -1012,7 +1012,7 @@ function ItineraryMoreMenu({ tripId }: { tripId: string }) {
         <Link className="block rounded-xl px-3 py-3 hover:bg-white/10" href={`${base}/documents`}>
           Documents
         </Link>
-        <Link className="block rounded-xl px-3 py-3 hover:bg-white/10" href={`${base}/sharing`}>
+        <Link className="block rounded-xl px-3 py-3 hover:bg-white/10" href={`${base}/share`}>
           Share
         </Link>
         <Link className="block rounded-xl px-3 py-3 hover:bg-white/10" href={`${base}`}>

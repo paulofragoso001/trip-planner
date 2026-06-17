@@ -19,7 +19,7 @@ export default function TripsPage({ error, heroImage, trips }: TripsPageProps) {
           actions={
             <>
               <WalletActionLink href="#new-trip">Create trip</WalletActionLink>
-              <WalletActionLink className="bg-white text-slate-950 hover:bg-slate-100" href="/dashboard/imports">
+              <WalletActionLink className="bg-white text-slate-950 hover:bg-slate-100" href="/dashboard/plan">
                 Start planning
               </WalletActionLink>
             </>

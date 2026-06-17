@@ -472,7 +472,11 @@ function isMobileNavActive(
     case "Home":
       return pathname === "/dashboard" && !view;
     case "Plan":
-      return pathname.startsWith("/dashboard/imports") || (pathname === "/dashboard" && view === "imports");
+      return (
+        pathname.startsWith("/dashboard/plan") ||
+        pathname.startsWith("/dashboard/imports") ||
+        (pathname === "/dashboard" && view === "imports")
+      );
     case "Trips":
       return (
         pathname === "/dashboard/trips" ||

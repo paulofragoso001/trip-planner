@@ -42,7 +42,7 @@ export default async function DashboardMapPage() {
       actions={
         <>
           <WalletActionLink href="/dashboard/trips#new-trip">Create trip</WalletActionLink>
-          <WalletActionLink className="bg-white text-slate-950 hover:bg-slate-100" href="/dashboard/imports">
+          <WalletActionLink className="bg-white text-slate-950 hover:bg-slate-100" href="/dashboard/plan">
             Start planning
           </WalletActionLink>
         </>
@@ -74,7 +74,7 @@ export default async function DashboardMapPage() {
               <Plane className="mr-2 h-4 w-4" aria-hidden="true" />
               Create trip
             </WalletActionLink>
-            <WalletActionLink className="bg-blue-50 text-blue-700 hover:bg-blue-100" href="/dashboard/imports">
+            <WalletActionLink className="bg-blue-50 text-blue-700 hover:bg-blue-100" href="/dashboard/plan">
               <Sparkles className="mr-2 h-4 w-4" aria-hidden="true" />
               Add ideas
             </WalletActionLink>

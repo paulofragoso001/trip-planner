@@ -282,7 +282,7 @@ export default function TripOverviewPage({
       ) : null}
 
       <OverviewCard
-        actionHref={`${base}/sharing`}
+        actionHref={`${base}/share`}
         actionLabel="Invite"
         eyebrow="Share"
         icon={<Share2 className="h-5 w-5" aria-hidden="true" />}
@@ -328,7 +328,7 @@ export default function TripOverviewPage({
       {itineraryPreview.length === 0 && !routePreview ? (
         <Link
           className="inline-flex min-h-12 items-center justify-center rounded-full bg-white px-5 text-sm font-black text-slate-950 shadow-sm focus:outline-none focus:ring-4 focus:ring-white/25"
-          href="/dashboard/imports"
+          href="/dashboard/plan"
         >
           Start with an idea
         </Link>
@@ -691,7 +691,7 @@ function OverviewMoreMenu({ base }: { base: string }) {
         <Link className="block rounded-xl px-3 py-3 hover:bg-white/10" href={`${base}/documents`}>
           Documents
         </Link>
-        <Link className="block rounded-xl px-3 py-3 hover:bg-white/10" href={`${base}/sharing`}>
+        <Link className="block rounded-xl px-3 py-3 hover:bg-white/10" href={`${base}/share`}>
           Share
         </Link>
         <Link className="block rounded-xl px-3 py-3 hover:bg-white/10" href={base}>

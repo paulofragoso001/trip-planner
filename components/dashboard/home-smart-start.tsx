@@ -103,7 +103,7 @@ export function HomeSmartStart() {
 
         <Link
           className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-blue-600 px-5 text-sm font-black text-white transition hover:bg-blue-700 lg:mt-[2.15rem]"
-          href="/dashboard/imports"
+          href="/dashboard/plan"
         >
           <Sparkles aria-hidden="true" className="h-4 w-4" />
           Add idea

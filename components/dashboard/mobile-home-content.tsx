@@ -50,7 +50,7 @@ export function MobileHomeContent({
             />
             <div className="grid grid-cols-2 gap-1.5 min-[390px]:gap-2">
               <MobileHomeTile
-                href="/dashboard/imports"
+                href="/dashboard/plan"
                 icon={<Plus className="h-5 w-5" aria-hidden="true" />}
                 label="Add idea"
               />
@@ -62,7 +62,7 @@ export function MobileHomeContent({
             </div>
             {ideasWaitingCount > 0 ? (
               <MobileHomeAction
-                href="/dashboard/imports#ai-review"
+                href="/dashboard/plan#ai-review"
                 icon={<Sparkles className="h-5 w-5" aria-hidden="true" />}
                 label="Review places"
                 meta={`${ideasWaitingCount} item${ideasWaitingCount === 1 ? "" : "s"} waiting`}

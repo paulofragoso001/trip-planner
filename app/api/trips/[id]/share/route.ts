@@ -206,7 +206,7 @@ async function upsertInvite({
 
 function buildTripUrl(tripId: string) {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-  return `${appUrl.replace(/\/$/, "")}/dashboard/trips/${tripId}/sharing`;
+  return `${appUrl.replace(/\/$/, "")}/dashboard/trips/${tripId}/share`;
 }
 
 function readTripTitle(trip: Record<string, unknown>) {

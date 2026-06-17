@@ -239,7 +239,7 @@ function mapSavedIdea(idea: SavedIdeaRow): SearchResultView {
   return {
     href: idea.trip_id
       ? `/dashboard/trips/${encodeURIComponent(idea.trip_id)}/ideas`
-      : "/dashboard/imports",
+      : "/dashboard/plan",
     icon: "idea",
     id: `idea-${idea.id}`,
     imageAlt: null,

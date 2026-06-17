@@ -74,6 +74,7 @@ export function BudgetRecordForm({ tripId }: { tripId: string }) {
     <>
       <button
         className="mt-4 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-orange-500 px-5 text-sm font-black text-white shadow-[0_18px_38px_rgba(249,115,22,0.22)] lg:hidden"
+        data-testid="mobile-add-expense-button"
         onClick={() => setOpen(true)}
         type="button"
       >

@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 const dashboardTabs = [
   { label: "Home", href: "/dashboard" },
   { label: "Trips", href: "/dashboard/trips" },
-  { label: "Plan", href: "/dashboard/imports" }
+  { label: "Plan", href: "/dashboard/plan" }
 ] as const;
 
 export function DashboardNav() {

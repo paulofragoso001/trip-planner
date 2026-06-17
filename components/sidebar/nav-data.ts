@@ -50,11 +50,12 @@ export const navSections: NavSection[] = [
         match: (pathname, view) => pathname === "/dashboard" && !view
       },
       {
-        href: "/dashboard/imports",
+        href: "/dashboard/plan",
         icon: Compass,
         label: "Plan",
-        match: (pathname, view, hash) =>
-          (pathname.startsWith("/dashboard/imports") && hash !== "#saved-inspiration") ||
+        match: (pathname, view) =>
+          pathname.startsWith("/dashboard/plan") ||
+          pathname.startsWith("/dashboard/imports") ||
           (pathname === "/dashboard" && view === "imports")
       },
       {
@@ -129,8 +130,9 @@ export const navSections: NavSection[] = [
         href: "/dashboard/trips",
         icon: Users,
         label: "Share",
-        getHref: (pathname, tripId) => currentTripHref(pathname, "/sharing", tripId),
+        getHref: (pathname, tripId) => currentTripHref(pathname, "/share", tripId),
         match: (pathname, view) =>
+          pathname.includes("/share") ||
           pathname.includes("/sharing") ||
           (pathname === "/dashboard" && view === "sharing")
       }

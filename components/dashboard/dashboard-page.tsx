@@ -79,7 +79,7 @@ export default function DashboardPage({
             </Link>
             <Link
               className="inline-flex min-h-11 items-center justify-center rounded-full border border-white/18 bg-white/10 px-4 text-sm font-black text-white backdrop-blur transition hover:bg-white/16 focus:outline-none focus:ring-4 focus:ring-white/20"
-              href="/dashboard/imports"
+              href="/dashboard/plan"
             >
               Start planning
             </Link>
@@ -139,7 +139,7 @@ export default function DashboardPage({
 
         <HomeRow
           cta="Add idea"
-          href="/dashboard/imports"
+          href="/dashboard/plan"
           icon={<Sparkles aria-hidden="true" className="h-5 w-5" />}
           label="Start with an idea"
           meta="Paste a note, link, or screenshot. Wayline will find places for you to review."
@@ -148,7 +148,7 @@ export default function DashboardPage({
         {ideasWaitingCount > 0 ? (
           <HomeRow
             cta="Review places"
-            href="/dashboard/imports#ai-review"
+            href="/dashboard/plan#ai-review"
             icon={<Sparkles aria-hidden="true" className="h-5 w-5" />}
             label="Ready for review"
             meta={`${ideasWaitingCount} idea${ideasWaitingCount === 1 ? "" : "s"} waiting to become places.`}

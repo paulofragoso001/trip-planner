@@ -6,7 +6,7 @@ const sampleText =
 test.describe("first-run onboarding", () => {
   test("sample inspiration opens Plan with AI and prefills the input", async ({ page }) => {
     await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
-    await page.goto("http://127.0.0.1:3000/dashboard/imports?sample=miami#saved-inspiration", {
+    await page.goto("http://127.0.0.1:3000/dashboard/plan?sample=miami#saved-inspiration", {
       waitUntil: "commit"
     });
 
@@ -20,7 +20,7 @@ test.describe("first-run onboarding", () => {
     test(`sample onboarding has no horizontal overflow at ${width}px`, async ({ page }) => {
       await page.setViewportSize({ height: 900, width });
       await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
-      await page.goto("http://127.0.0.1:3000/dashboard/imports?sample=miami#saved-inspiration", {
+      await page.goto("http://127.0.0.1:3000/dashboard/plan?sample=miami#saved-inspiration", {
         waitUntil: "commit"
       });
 

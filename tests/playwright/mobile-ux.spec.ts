@@ -5,7 +5,7 @@ const viewports = [360, 390, 430, 768, 820, 1024, 1280, 1440] as const;
 const routes = [
   "/dashboard",
   "/dashboard/search",
-  "/dashboard/imports",
+  "/dashboard/plan",
   "/dashboard/profile/stats",
   "/dashboard/trips",
   "/dashboard/trips/demo/timeline",
@@ -88,6 +88,7 @@ test.describe("mobile soft-launch UX", () => {
     await expect(nav).toBeVisible();
     await expect(nav.getByRole("link", { name: /Trips/ })).toBeVisible();
     await expect(nav.getByRole("link", { name: /Plan/ })).toBeVisible();
+    await expect(nav.getByRole("link", { name: /Plan/ })).toHaveAttribute("href", "/dashboard/plan");
     await expect(nav.getByRole("link", { name: /Map/ })).toBeVisible();
     await expect(nav.getByRole("link", { name: /Profile/ })).toBeVisible();
     await expect(nav.getByRole("link")).toHaveCount(4);
@@ -121,7 +122,7 @@ test.describe("mobile soft-launch UX", () => {
     await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
 
     for (const route of [
-      "/dashboard/imports",
+      "/dashboard/plan",
       "/dashboard/search",
       "/dashboard/trips",
       "/dashboard/trips/demo",
@@ -130,7 +131,7 @@ test.describe("mobile soft-launch UX", () => {
       "/dashboard/trips/demo/ideas",
       "/dashboard/trips/demo/budget",
       "/dashboard/trips/demo/documents",
-      "/dashboard/trips/demo/sharing",
+      "/dashboard/trips/demo/share",
       "/dashboard/account"
     ] as const) {
       await page.goto(`${baseUrl}${route}`, { waitUntil: "commit" });
@@ -373,7 +374,7 @@ test.describe("mobile soft-launch UX", () => {
   test("bottom nav does not cover the scrollable content area", async ({ page }) => {
     await page.setViewportSize({ height: 900, width: 390 });
     await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
-    await page.goto(`${baseUrl}/dashboard/imports`, { waitUntil: "commit" });
+    await page.goto(`${baseUrl}/dashboard/plan`, { waitUntil: "commit" });
     await expect(page.getByTestId("app-shell-main")).toBeVisible();
     await expect(page.getByTestId("app-shell-mobile-bottom-nav")).toBeVisible();
     await expect(page.getByTestId("imports-route")).toBeVisible({ timeout: 15_000 });
@@ -858,7 +859,7 @@ test.describe("mobile soft-launch UX", () => {
       expect(overflow, `mobile home overflow at ${width}px`).toBeLessThanOrEqual(1);
     }
 
-    await page.goto(`${baseUrl}/dashboard/imports`, { waitUntil: "commit" });
+    await page.goto(`${baseUrl}/dashboard/plan`, { waitUntil: "commit" });
     await expect(page.getByTestId("imports-route")).toBeVisible({ timeout: 15_000 });
     await expect(page.getByRole("heading", { name: "Capture travel ideas" })).toBeVisible();
     await expect(page.getByText("Create a trip from saved ideas.")).toHaveCount(0);
@@ -874,7 +875,7 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByRole("button", { name: /review idea/i })).toBeVisible();
     await expect(page.getByText("Optional trip context")).toBeHidden();
     await expect(page.getByText("Advanced sources")).toBeHidden();
-    await expect(page.getByText("Legacy review queue")).toBeHidden();
+    await expect(page.locator("details > summary", { hasText: "Review queue" })).toBeHidden();
     const planCardStyle = await page.locator("#saved-inspiration").evaluate((element) => {
       const style = window.getComputedStyle(element);
       return {
@@ -1290,7 +1291,7 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByTestId("trip-budget-page").getByText("Total").last()).toBeVisible();
     await expect(page.getByTestId("mobile-spending-category").filter({ hasText: "Flights" })).toBeVisible();
     await expect(page.getByTestId("mobile-spending-category").filter({ hasText: "Lodging" })).toBeVisible();
-    await page.getByTestId("trip-budget-page").getByRole("button", { name: "Add expense" }).click();
+    await page.getByTestId("trip-budget-page").getByTestId("mobile-add-expense-button").click();
     await expect(page.getByTestId("mobile-expense-amount-sheet")).toBeVisible();
     await expect(page.getByTestId("mobile-expense-amount-sheet").getByRole("button", { name: "Save" })).toBeDisabled();
     await expect(page.getByTestId("mobile-expense-amount-sheet").getByRole("button", { name: "Backspace amount" })).toBeVisible();

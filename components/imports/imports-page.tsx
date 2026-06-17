@@ -204,7 +204,7 @@ export default function ImportsPage({
                 action={
                   <a
                     className={tripUi.button.primaryCompact}
-                    href="/dashboard/imports?sample=miami#saved-inspiration"
+                    href="/dashboard/plan?sample=miami#saved-inspiration"
                   >
                     Try sample inspiration
                   </a>
@@ -219,7 +219,7 @@ export default function ImportsPage({
 
         <details className="hidden rounded-[2rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5 lg:block">
           <summary className="cursor-pointer text-base font-black text-slate-950">
-            Legacy review queue
+              Review queue
           </summary>
           <div className="mt-4 grid gap-3 text-sm text-slate-700">
             <UnfiledItemForm defaultTitle={defaultReviewTitle} />

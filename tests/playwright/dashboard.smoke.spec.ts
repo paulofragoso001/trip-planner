@@ -49,7 +49,7 @@ test("loads dashboard summary and route-split pages", async ({ page }) => {
   ).toBeVisible();
   await expect(
     dashboardContent.getByRole("link", { exact: true, name: "Start planning" }).first()
-  ).toHaveAttribute("href", "/dashboard/imports");
+  ).toHaveAttribute("href", "/dashboard/plan");
   await expect(dashboardContent.getByText("Start with an idea")).toBeVisible();
   await expect(page.getByTestId("app-shell-nav").getByRole("link", { name: "Saved Inspiration" })).toHaveCount(0);
   await expect(page.getByTestId("app-shell-nav").getByRole("link", { name: "Flight Status" })).toHaveCount(0);
@@ -189,7 +189,7 @@ test("loads dashboard summary and route-split pages", async ({ page }) => {
   await expect(page.getByText("Add reservations, notes, links, and screenshots when document upload is available.")).toBeVisible();
   await expect(page.getByText("Emails")).toBeVisible();
 
-  await openDashboardRoute("/dashboard/trips/demo/sharing");
+  await openDashboardRoute("/dashboard/trips/demo/share");
   await expect(
     page
       .getByTestId("app-shell-content")
@@ -197,7 +197,14 @@ test("loads dashboard summary and route-split pages", async ({ page }) => {
   ).toBeVisible();
   await expect(page.getByRole("heading", { exact: true, name: "Invite guest" })).toBeVisible();
 
-  await openDashboardRoute("/dashboard/imports");
+  await openDashboardRoute("/dashboard/trips/demo/sharing");
+  await expect(
+    page
+      .getByTestId("app-shell-content")
+      .getByRole("heading", { exact: true, name: "Share this trip" })
+  ).toBeVisible();
+
+  await openDashboardRoute("/dashboard/plan");
   const importsRoute = page.getByTestId("imports-route");
   await expect(importsRoute).toBeVisible({ timeout: 30_000 });
   await expect(page.getByRole("heading", { exact: true, name: "Capture travel ideas" })).toBeVisible();
@@ -210,6 +217,9 @@ test("loads dashboard summary and route-split pages", async ({ page }) => {
   await expect(importsRoute.getByText("Optional trip context")).toBeVisible();
   await expect(importsRoute.getByText("Create a trip from saved ideas.")).toHaveCount(0);
   await expect(importsRoute.getByText("Advanced sources")).toBeVisible();
+
+  await openDashboardRoute("/dashboard/imports");
+  await expect(page.getByTestId("imports-route")).toBeVisible({ timeout: 30_000 });
 
   await expect(page.getByTestId("app-shell-nav").getByRole("link", { name: "Admin" })).toHaveCount(0);
 
