@@ -24,23 +24,23 @@ export function MobileHomeContent({
       data-testid="mobile-home-wallet-content"
     >
       <div className="mx-auto max-w-[25rem]">
-        <div className="relative mb-3 text-left">
+        <div className="relative mb-2 text-left">
           <p className="text-[0.66rem] font-black uppercase tracking-[0.3em] text-orange-300/86">
             Wayline
           </p>
-          <h1 className="mt-1.5 text-[clamp(2.15rem,10vw,2.65rem)] font-black leading-none tracking-normal text-white">
+          <h1 className="mt-1 text-[clamp(2rem,9.5vw,2.5rem)] font-black leading-none tracking-normal text-white">
             Travel wallet
           </h1>
-          <p className="mt-2 max-w-[20rem] text-sm font-semibold leading-5 text-slate-300 min-[390px]:text-base min-[390px]:leading-6">
+          <p className="mt-1.5 max-w-[20rem] text-[0.82rem] font-semibold leading-4 text-slate-300 min-[390px]:text-sm min-[390px]:leading-5">
             Pick up a trip, start planning, or review saved ideas.
           </p>
         </div>
 
         <div
-          className="rounded-[1.5rem] bg-[#050914]/76 p-2.5 shadow-[0_28px_90px_rgba(0,0,0,0.45)] backdrop-blur-xl min-[390px]:rounded-[1.75rem] min-[390px]:p-3"
+          className="rounded-[1.35rem] bg-[#050914]/76 p-2 shadow-[0_28px_90px_rgba(0,0,0,0.45)] backdrop-blur-xl min-[390px]:rounded-[1.55rem] min-[390px]:p-2.5"
           data-testid="mobile-home-actions"
         >
-          <div className="grid gap-2">
+          <div className="grid gap-1.5 min-[390px]:gap-2">
             <MobileHomeAction
               href={primaryHref}
               icon={<Plane className="h-5 w-5" aria-hidden="true" />}
@@ -48,7 +48,7 @@ export function MobileHomeContent({
               meta={primaryMeta}
               primary
             />
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-1.5 min-[390px]:gap-2">
               <MobileHomeTile
                 href="/dashboard/imports"
                 icon={<Plus className="h-5 w-5" aria-hidden="true" />}

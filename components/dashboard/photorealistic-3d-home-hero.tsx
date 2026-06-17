@@ -257,8 +257,9 @@ export function Photorealistic3DHomeHero({ className }: Photorealistic3DHomeHero
         }
 
         const mapElement = document.createElement("gmp-map-3d");
-        mapElement.className = "absolute inset-0 h-full w-full";
+        mapElement.className = "absolute inset-x-0 -top-8 -bottom-28 h-[calc(100%+8rem)] w-full";
         mapElement.setAttribute("data-testid", "home-3d-map");
+        mapElement.setAttribute("default-ui-hidden", "");
         mapElement.setAttribute("mode", "hybrid");
         setMapCamera(mapElement, reduceMotion ? getSettledCamera(focus) : getStartCamera(focus));
         host.replaceChildren(mapElement);
@@ -344,7 +345,7 @@ export function Photorealistic3DHomeHero({ className }: Photorealistic3DHomeHero
           ref={mapHostRef}
         />
       </div>
-      <div className="absolute inset-0 z-10 bg-[radial-gradient(circle_at_var(--wayline-pin-x)_var(--wayline-pin-y),rgba(251,191,36,0.3),transparent_7%),radial-gradient(ellipse_at_50%_0%,rgba(125,194,255,0.24),transparent_33%),linear-gradient(180deg,rgba(2,9,22,0)_0%,rgba(2,9,22,0.02)_36%,rgba(2,8,20,0.38)_76%,#020817_100%)]" />
+      <div className="absolute inset-0 z-10 bg-[radial-gradient(circle_at_var(--wayline-pin-x)_var(--wayline-pin-y),rgba(251,191,36,0.3),transparent_7%),radial-gradient(ellipse_at_50%_0%,rgba(125,194,255,0.24),transparent_33%),linear-gradient(180deg,rgba(2,9,22,0)_0%,rgba(2,9,22,0.02)_34%,rgba(2,8,20,0.58)_68%,#020817_96%,#020817_100%)]" />
       {showPin ? (
         <div
           className="wayline-country-pin absolute z-20 -translate-x-1/2 -translate-y-1/2 text-center"
@@ -369,7 +370,7 @@ export function Photorealistic3DHomeHero({ className }: Photorealistic3DHomeHero
         </div>
       ) : null}
       <div className="absolute inset-x-0 top-0 z-10 h-20 bg-[linear-gradient(180deg,rgba(2,9,22,0.36),transparent)]" />
-      <div className="absolute inset-x-0 bottom-0 z-10 h-[46%] bg-[linear-gradient(180deg,transparent,rgba(2,8,20,0.48)_38%,#020817_100%)]" />
+      <div className="absolute inset-x-0 bottom-0 z-10 h-[58%] bg-[linear-gradient(180deg,transparent,rgba(2,8,20,0.7)_34%,#020817_82%,#020817_100%)]" />
     </div>
   );
 }

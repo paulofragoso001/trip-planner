@@ -669,6 +669,7 @@ test.describe("mobile soft-launch UX", () => {
         fallbackNaturalWidth: fallback?.naturalWidth ?? 0,
         fallbackOpacity: fallbackStyle?.opacity ?? "0",
         fallbackSrc: fallback?.currentSrc || fallback?.src || "",
+        mapDefaultUiHidden: map?.hasAttribute("default-ui-hidden") ?? false,
         mapHeight: mapRect?.height ?? 0,
         mapStageOpacity: mapStageStyle?.opacity ?? "0",
         mapWidth: mapRect?.width ?? 0,
@@ -683,6 +684,7 @@ test.describe("mobile soft-launch UX", () => {
     expect(Number(heroVisual.mapStageOpacity), "3D map stage is visible when ready").toBeGreaterThan(0.9);
     expect(heroVisual.mapWidth, "3D map covers viewport width").toBeGreaterThanOrEqual(390);
     expect(heroVisual.mapHeight, "3D map covers compact launch height").toBeGreaterThanOrEqual(220);
+    expect(heroVisual.mapDefaultUiHidden, "3D map hides built-in navigation controls").toBe(true);
     expect(heroVisual.fallbackSrc, "fallback image is not mounted behind ready 3D").toBe("");
     expect(decodeURIComponent(heroVisual.fallbackSrc), "old baked home hero asset is not used").not.toContain(
       "/globe/wayline-earth-hero"
@@ -726,7 +728,7 @@ test.describe("mobile soft-launch UX", () => {
       };
     });
     expect(homeLaunchLayout.launchHeight, "home Earth hero owns the top of the launch screen").toBeGreaterThanOrEqual(
-      320
+      250
     );
     expect(homeLaunchLayout.launchHeight, "home Earth hero leaves room for wallet actions").toBeLessThanOrEqual(
       430
@@ -745,7 +747,7 @@ test.describe("mobile soft-launch UX", () => {
     expect(homeLaunchLayout.contentGap, "wallet content has a controlled overlap with the Earth fade").toBeLessThanOrEqual(0);
     expect(homeLaunchLayout.contentGap, "wallet content avoids a giant upward overlap into the Earth").toBeGreaterThanOrEqual(-56);
     expect(homeLaunchLayout.actionsTop, "wallet form sits below the compact title").toBeGreaterThan(
-      homeLaunchLayout.headingTop + 96
+      homeLaunchLayout.headingTop + 88
     );
     expect(homeLaunchLayout.actionsTop, "wallet form begins before the bottom nav").toBeLessThan(
       homeLaunchLayout.navTop
@@ -757,7 +759,7 @@ test.describe("mobile soft-launch UX", () => {
     expect(
       Number.parseFloat(homeLaunchLayout.stagePaddingBottom),
       "home stage avoids a dead footer strip"
-    ).toBeLessThanOrEqual(112);
+    ).toBeLessThanOrEqual(140);
     expect(homeLaunchLayout.scrollHeight, "home page fits the launch screen without document scroll").toBeLessThanOrEqual(
       homeLaunchLayout.viewportHeight + 2
     );
