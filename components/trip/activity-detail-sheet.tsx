@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import TripMap, { type TripMapItem } from "@/components/TripMap";
+import { DisplayAddressSheet } from "@/components/trip/display-address-sheet";
 import {
   hasResolvedRoute,
   routeEndpointLabel,
@@ -96,11 +97,14 @@ export function ActivityDetailSheet({
   tripId
 }: ActivityDetailSheetProps) {
   const [shared, setShared] = useState(false);
+  const [displayAddressOpen, setDisplayAddressOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const detail = useMemo(() => (target ? getDetailView(target) : null), [target]);
   const mapItem = useMemo(() => (detail ? getDetailMapItem(detail) : null), [detail]);
+  const displayAddress = useMemo(() => (detail ? getDisplayAddress(detail) : null), [detail]);
 
   useEffect(() => {
+    setDisplayAddressOpen(false);
     setMoreOpen(false);
     setShared(false);
   }, [target?.item.id]);
@@ -258,6 +262,18 @@ export function ActivityDetailSheet({
                   Save to trip
                 </button>
               ) : null}
+              {displayAddress ? (
+                <button
+                  className="block w-full px-4 py-3 text-left text-sm font-bold text-white/78 hover:bg-white/8"
+                  onClick={() => {
+                    setMoreOpen(false);
+                    setDisplayAddressOpen(true);
+                  }}
+                  type="button"
+                >
+                  Display address
+                </button>
+              ) : null}
               <button
                 className="block w-full px-4 py-3 text-left text-sm font-bold text-white/58 hover:bg-white/8"
                 onClick={shareDetail}
@@ -279,6 +295,15 @@ export function ActivityDetailSheet({
           <SegmentDetailBody detail={detail} item={target.item} onClose={onClose} tripId={tripId} />
         )}
       </section>
+
+      {displayAddressOpen && displayAddress ? (
+        <DisplayAddressSheet
+          address={displayAddress}
+          mapItem={mapItem}
+          onClose={() => setDisplayAddressOpen(false)}
+          title={detail.title}
+        />
+      ) : null}
     </div>
   );
 }
@@ -555,6 +580,14 @@ function getDetailView(target: ActivityDetailTarget): DetailView {
     const route = item.route || null;
     const confirmation = cleanString(item.confirmationCode) || cleanString(route?.confirmation);
     const websiteUrl = readProviderUrl(providerMetadata, ["website", "websiteUrl", "websiteUri", "homepage"]);
+    const providerAddress = readProviderString(providerMetadata, [
+      "address",
+      "formattedAddress",
+      "formatted_address",
+      "placeAddress",
+      "location",
+      "vicinity"
+    ]);
     const title =
       kind === "route"
         ? routeTitleLabel(route, item.title)
@@ -564,7 +597,7 @@ function getDetailView(target: ActivityDetailTarget): DetailView {
     const details = getSegmentDetails(item, kind, providerMetadata, confirmation, websiteUrl);
 
     return {
-      address: item.address || null,
+      address: item.address || providerAddress || null,
       bookingUrl: item.bookingUrl || null,
       category: item.category || item.kind || null,
       categoryLabel,
@@ -578,7 +611,12 @@ function getDetailView(target: ActivityDetailTarget): DetailView {
       kind,
       lat: getFiniteNumber(item.lat),
       lng: getFiniteNumber(item.lng),
-      location: item.address || routeEndpointLabel(route?.destination) || routeEndpointLabel(route?.origin) || null,
+      location:
+        item.address ||
+        providerAddress ||
+        routeEndpointLabel(route?.destination) ||
+        routeEndpointLabel(route?.origin) ||
+        null,
       notes: item.notes || null,
       providerMetadata,
       route,
@@ -618,6 +656,17 @@ function getDetailView(target: ActivityDetailTarget): DetailView {
     title: item.title,
     websiteUrl: null
   };
+}
+
+function getDisplayAddress(detail: DetailView) {
+  return (
+    cleanString(detail.address) ||
+    cleanString(detail.location) ||
+    cleanString(detail.route?.destination?.address) ||
+    cleanString(routeEndpointLabel(detail.route?.destination)) ||
+    cleanString(detail.route?.origin?.address) ||
+    cleanString(routeEndpointLabel(detail.route?.origin))
+  );
 }
 
 function getSegmentDetailKind(item: TripMapItem): DetailKind {

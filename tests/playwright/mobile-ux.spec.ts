@@ -1113,6 +1113,17 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByTestId("activity-detail-panel").getByRole("button", { name: "More" })).toBeVisible();
     await page.getByTestId("activity-detail-panel").getByRole("button", { name: "More" }).click();
     await expect(page.getByTestId("activity-detail-panel").getByRole("link", { name: "Edit in itinerary" })).toBeVisible();
+    await expect(page.getByTestId("activity-detail-panel").getByRole("button", { name: "Display address" })).toBeVisible();
+    await page.getByTestId("activity-detail-panel").getByRole("button", { name: "Display address" }).click();
+    await expect(page.getByTestId("display-address-sheet")).toBeVisible();
+    await expect(page.getByTestId("display-address-title")).toContainText("Team dinner in El Born");
+    await expect(page.getByTestId("display-address-text")).toContainText(/El Born|Barcelona/);
+    await expect(page.getByTestId("display-address-speak")).toBeVisible();
+    await expect(page.getByTestId("display-address-translate")).toBeVisible();
+    await expect(page.getByTestId("display-address-map")).toBeVisible();
+    await expect(page.getByTestId("app-shell-mobile-bottom-nav")).toHaveCount(0);
+    await page.getByRole("button", { name: "Close display address" }).click();
+    await expect(page.getByTestId("display-address-sheet")).toHaveCount(0);
     const detailPanelOwnsFooterZone = await page.evaluate(() => {
       const target = document.elementFromPoint(window.innerWidth / 2, window.innerHeight - 120);
       return Boolean(target?.closest('[data-testid="activity-detail-panel"]'));

@@ -83,7 +83,7 @@ type TripSegmentMapRow = {
 const demoItems: TripMapItem[] = [
   { id: "bcn-airport", category: "transportation", lat: 41.2974, lng: 2.0833, routeOrder: 1, status: "resolved", title: "Barcelona-El Prat Airport" },
   { id: "hotel-arts", category: "hotel", lat: 41.3864, lng: 2.1963, routeOrder: 2, status: "resolved", title: "Hotel Arts Barcelona" },
-  { id: "el-born-dinner", category: "restaurant", lat: 41.3839, lng: 2.1823, routeOrder: 3, status: "resolved", title: "Team dinner in El Born" },
+  { id: "el-born-dinner", address: "El Born, Barcelona", category: "restaurant", lat: 41.3839, lng: 2.1823, routeOrder: 3, status: "resolved", title: "Team dinner in El Born" },
   { id: "fira-meeting", category: "meeting", lat: 41.3547, lng: 2.1287, routeOrder: 4, status: "resolved", title: "Fira Barcelona meeting" }
 ];
 
