@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Circle,
   GoogleMap,
   OverlayView,
   Polyline
@@ -43,6 +44,16 @@ export type TripMapItem = {
 
 export type TripTravelMode = "DRIVING" | "WALKING" | "BICYCLING" | "TRANSIT";
 
+export type TripMapDistanceRing = {
+  center: {
+    lat: number;
+    lng: number;
+  };
+  id: string;
+  label: string;
+  radiusMeters: number;
+};
+
 type LegInfo = {
   id: string;
   from: string;
@@ -52,6 +63,7 @@ type LegInfo = {
 };
 
 type TripMapProps = {
+  distanceRings?: TripMapDistanceRing[];
   items: TripMapItem[];
   selectedId?: string | null;
   onSelect?: (id: string) => void;
@@ -66,6 +78,7 @@ const mapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 const mapsConfigured = Boolean(mapsApiKey && !mapsApiKey.startsWith("YOUR_"));
 
 export default function TripMap({
+  distanceRings = [],
   items,
   selectedId,
   onSelect,
@@ -178,6 +191,35 @@ export default function TripMap({
         }}
         zoom={12}
       >
+        {distanceRings.map((ring, index) => (
+          <Fragment key={ring.id}>
+            <Circle
+              center={ring.center}
+              radius={ring.radiusMeters}
+              options={{
+                clickable: false,
+                fillOpacity: 0,
+                strokeColor: "#f8fafc",
+                strokeOpacity: Math.max(0.28, 0.58 - index * 0.12),
+                strokeWeight: index === 0 ? 2.5 : 2,
+                zIndex: 1
+              }}
+            />
+            <OverlayView
+              position={ringLabelPosition(ring.center, ring.radiusMeters)}
+              mapPaneName={OverlayView.OVERLAY_MOUSE_TARGET}
+            >
+              <span
+                className="pointer-events-none rounded-full bg-black/55 px-2 py-0.5 text-xs font-black text-white shadow-[0_2px_10px_rgba(0,0,0,0.45)] ring-1 ring-white/20"
+                data-testid="map-distance-ring-label"
+                style={{ transform: "translate(-50%, -50%)" }}
+              >
+                {ring.label}
+              </span>
+            </OverlayView>
+          </Fragment>
+        ))}
+
         {routePath.length > 1 ? (
           <Polyline
             path={routePath}
@@ -453,6 +495,13 @@ function endpointPosition(endpoint: TripRouteEndpoint | null | undefined) {
     return null;
   }
   return { lat: endpoint.lat, lng: endpoint.lng };
+}
+
+function ringLabelPosition(center: google.maps.LatLngLiteral, radiusMeters: number) {
+  return {
+    lat: center.lat + radiusMeters / 111320,
+    lng: center.lng
+  };
 }
 
 function toRadians(value: number) {

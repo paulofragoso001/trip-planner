@@ -29,11 +29,20 @@ import type {
 } from "@/app/dashboard/trips/[tripId]/map/loader";
 import GoogleMapsProvider from "@/components/GoogleMapsProvider";
 import { PlacePhoto } from "@/components/place-photo";
-import TripMap, { type TripMapItem } from "@/components/TripMap";
+import TripMap, { type TripMapDistanceRing, type TripMapItem } from "@/components/TripMap";
 import {
   ActivityDetailSheet,
   type ActivityDetailRecommendation
 } from "@/components/trip/activity-detail-sheet";
+import {
+  distanceUnitForLocale,
+  formatDistance,
+  getDistanceAnchorOptions,
+  haversineDistanceKm,
+  sortByDistance,
+  type DistanceAnchorOption,
+  type GeoPoint
+} from "@/lib/geo/distance";
 
 type TripIdeasPageProps = TripMapData;
 
@@ -144,7 +153,10 @@ export function TripIdeasPage({
       : baseFilters;
   }, [rows]);
   const discoveryRows = rows.filter((row) => row.type !== "place");
-  const showFilters = discoveryRows.length >= 5;
+  const categoryCount = new Set(
+    discoveryRows.map((row) => row.category).filter((category) => category !== "all")
+  ).size;
+  const showFilters = categoryCount > 1;
   const filteredDiscoveryRows =
     !showFilters || activeFilter === "all"
       ? discoveryRows
@@ -158,7 +170,6 @@ export function TripIdeasPage({
     () => [...filteredDiscoveryRows, ...savedPlacesForFilter],
     [filteredDiscoveryRows, savedPlacesForFilter]
   );
-  const mobileActivityCount = mobileRows.length;
 
   useEffect(() => {
     setHydrated(true);
@@ -200,7 +211,6 @@ export function TripIdeasPage({
         filters={filters}
         hydrated={hydrated}
         items={items}
-        mobileActivityCount={mobileActivityCount}
         onDismiss={(row) => run(`/api/trip-recommendations/${row.id}/dismiss`, "Dismissing idea")}
         onFilter={setActiveFilter}
         onFindIdeas={() => run(`/api/trips/${tripId}/generate-suggestions`, "Finding ideas")}
@@ -372,7 +382,6 @@ function MobileActivitiesView({
   filters,
   hydrated,
   items,
-  mobileActivityCount,
   onDismiss,
   onFilter,
   onFindIdeas,
@@ -389,7 +398,6 @@ function MobileActivitiesView({
   filters: { id: ActivityFilterId; label: string; icon: ReactNode }[];
   hydrated: boolean;
   items: TripMapData["items"];
-  mobileActivityCount: number;
   onDismiss: (row: Extract<ActivityRow, { type: "recommendation" }>) => void;
   onFilter: (filter: ActivityFilterId) => void;
   onFindIdeas: () => void;
@@ -400,26 +408,139 @@ function MobileActivitiesView({
   tripId: string;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const [anchorId, setAnchorId] = useState<string | null>(null);
+  const [anchorPickerOpen, setAnchorPickerOpen] = useState(false);
+  const [currentLocationAnchor, setCurrentLocationAnchor] = useState<DistanceAnchorOption | null>(null);
+  const [locationMessage, setLocationMessage] = useState("");
+  const [cityFilter, setCityFilter] = useState("all");
   const tripTitle = destination?.split(",")[0]?.trim() || "Your trip";
-  const anchorPlace = items[0]?.title || destination || "your route";
+  const locale = typeof window === "undefined" ? "en-US" : window.navigator.language || "en-US";
+  const distanceUnit = distanceUnitForLocale(locale);
   const mapItems = useMemo(() => buildMobileActivityMapItems(items, rows), [items, rows]);
-  const selectedMapId = mapItems[0]?.id ?? null;
-  const anchorPoint = items.find((item) => typeof item.lat === "number" && typeof item.lng === "number") || null;
+  const anchorOptions = useMemo(() => {
+    const mappedOptions = getDistanceAnchorOptions(
+      items.map((item) => ({
+        address: item.address,
+        category: item.category,
+        id: item.id,
+        kind: item.kind,
+        lat: item.lat,
+        lng: item.lng,
+        title: item.title
+      }))
+    );
+
+    if (!currentLocationAnchor) return mappedOptions;
+
+    return [
+      currentLocationAnchor,
+      ...mappedOptions.filter((option) => option.id !== currentLocationAnchor.id)
+    ];
+  }, [currentLocationAnchor, items]);
+  const selectedAnchor =
+    anchorOptions.find((option) => option.id === anchorId) || anchorOptions[0] || null;
+  const anchorPoint = selectedAnchor?.point ?? null;
   const shouldShowSort = Boolean(anchorPoint && rows.some((row) => hasActivityCoordinates(row)));
+  const mapItemsWithAnchor = useMemo(() => {
+    if (!selectedAnchor || mapItems.some((item) => item.id === selectedAnchor.id)) return mapItems;
+
+    return [
+      {
+        address: selectedAnchor.detail || null,
+        category: "anchor",
+        dayLabel: "Anchor",
+        id: selectedAnchor.id,
+        lat: selectedAnchor.point.lat,
+        lng: selectedAnchor.point.lng,
+        routeOrder: null,
+        status: "anchor",
+        title: selectedAnchor.label
+      },
+      ...mapItems
+    ];
+  }, [mapItems, selectedAnchor]);
+  const selectedMapId =
+    selectedAnchor && mapItemsWithAnchor.some((item) => item.id === selectedAnchor.id)
+      ? selectedAnchor.id
+      : mapItemsWithAnchor[0]?.id ?? null;
+  const cityOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(rows.map(getActivityCity).filter((city): city is string => Boolean(city)))
+      ).sort((left, right) => left.localeCompare(right)),
+    [rows]
+  );
+  const showCityFilters = cityOptions.length > 1;
+  const rowsForCity = useMemo(
+    () => (cityFilter === "all" ? rows : rows.filter((row) => getActivityCity(row) === cityFilter)),
+    [cityFilter, rows]
+  );
   const displayRows = useMemo(() => {
-    if (!anchorPoint) return rows;
-
-    return [...rows].sort((left, right) => {
-      const leftDistance = getDistanceMiles(left, anchorPoint);
-      const rightDistance = getDistanceMiles(right, anchorPoint);
-
-      if (leftDistance === null && rightDistance === null) return 0;
-      if (leftDistance === null) return 1;
-      if (rightDistance === null) return -1;
-      return leftDistance - rightDistance;
-    });
-  }, [anchorPoint, rows]);
+    if (!shouldShowSort) return rowsForCity;
+    return sortByDistance(rowsForCity, anchorPoint, getActivityCoordinates);
+  }, [anchorPoint, rowsForCity, shouldShowSort]);
   const compactRows = expanded ? displayRows : displayRows.slice(0, 6);
+  const visibleActivityCount = displayRows.length;
+  const distanceRings = useMemo<TripMapDistanceRing[]>(() => {
+    if (!shouldShowSort || !anchorPoint) return [];
+
+    const metersPerUnit = distanceUnit === "mi" ? 1609.344 : 1000;
+    return [1, 2, 3].map((value) => ({
+      center: anchorPoint,
+      id: `distance-${value}-${distanceUnit}`,
+      label: `${value}${distanceUnit}`,
+      radiusMeters: value * metersPerUnit
+    }));
+  }, [anchorPoint, distanceUnit, shouldShowSort]);
+
+  useEffect(() => {
+    if (!anchorOptions.length) {
+      if (anchorId) setAnchorId(null);
+      return;
+    }
+
+    if (!anchorId || !anchorOptions.some((option) => option.id === anchorId)) {
+      setAnchorId(anchorOptions[0]?.id ?? null);
+    }
+  }, [anchorId, anchorOptions]);
+
+  useEffect(() => {
+    if (cityFilter !== "all" && !cityOptions.includes(cityFilter)) {
+      setCityFilter("all");
+    }
+  }, [cityFilter, cityOptions]);
+
+  function requestCurrentLocation() {
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      setLocationMessage("Current location is not available in this browser.");
+      return;
+    }
+
+    setLocationMessage("Requesting current location...");
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const nextAnchor: DistanceAnchorOption = {
+          detail: "Your device location",
+          id: "current-location",
+          kind: "current-location",
+          label: "Current location",
+          point: {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude
+          }
+        };
+
+        setCurrentLocationAnchor(nextAnchor);
+        setAnchorId(nextAnchor.id);
+        setAnchorPickerOpen(false);
+        setLocationMessage("");
+      },
+      () => {
+        setLocationMessage("Location permission was not granted. Keeping the previous anchor.");
+      },
+      { enableHighAccuracy: false, maximumAge: 300000, timeout: 8000 }
+    );
+  }
 
   return (
     <section
@@ -438,8 +559,9 @@ function MobileActivitiesView({
           {mapItems.length ? (
             <GoogleMapsProvider>
               <TripMap
+                distanceRings={distanceRings}
                 height="48svh"
-                items={mapItems}
+                items={mapItemsWithAnchor}
                 mapTheme="dark"
                 selectedId={selectedMapId}
                 showRouteDetails={false}
@@ -520,7 +642,7 @@ function MobileActivitiesView({
                 >
                   <X className="h-5 w-5" aria-hidden="true" />
                 </button>
-            ) : (
+              ) : (
                 <Link
                   aria-label="Close activities"
                   className="grid h-11 w-11 place-items-center rounded-full bg-white/10 text-white/70"
@@ -540,14 +662,10 @@ function MobileActivitiesView({
 
           {showFilters ? (
             <div className="mt-4" data-testid="activity-category-filters">
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <span className="inline-flex min-h-11 items-center gap-2 rounded-full bg-orange-500/18 px-4 text-sm font-black text-orange-300">
                   Categories
                   <ListFilter className="h-4 w-4" aria-hidden="true" />
-                </span>
-                <span className="inline-flex min-h-11 items-center gap-2 rounded-full bg-orange-500/12 px-4 text-sm font-black text-orange-300/80">
-                  Cities
-                  <MapPin className="h-4 w-4" aria-hidden="true" />
                 </span>
               </div>
               <div className="mt-2 flex gap-2 overflow-x-auto pb-1" aria-label="Activity categories">
@@ -576,20 +694,126 @@ function MobileActivitiesView({
             </div>
           ) : null}
 
+          {showCityFilters ? (
+            <div className="mt-3" data-testid="activity-city-filters">
+              <div className="flex flex-wrap gap-2">
+                <span className="inline-flex min-h-10 items-center gap-2 rounded-full bg-orange-500/12 px-4 text-sm font-black text-orange-300/80">
+                  Cities
+                  <MapPin className="h-4 w-4" aria-hidden="true" />
+                </span>
+              </div>
+              <div className="mt-2 flex gap-2 overflow-x-auto pb-1" aria-label="Activity cities">
+                {["all", ...cityOptions].map((city) => {
+                  const active = cityFilter === city;
+                  const label = city === "all" ? "All cities" : city;
+                  return (
+                    <button
+                      aria-pressed={active}
+                      className={[
+                        "inline-flex min-h-10 shrink-0 items-center rounded-full px-3 text-xs font-black transition",
+                        active
+                          ? "bg-orange-500 text-white"
+                          : "bg-white/8 text-white/72 hover:bg-white/12"
+                      ].join(" ")}
+                      key={city}
+                      onClick={() => setCityFilter(city)}
+                      type="button"
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
+
           <div className="mt-4 flex items-center justify-between gap-3 border-b border-white/10 pb-4 text-sm font-bold text-orange-400">
             {shouldShowSort ? (
-              <button className="inline-flex min-h-10 shrink-0 items-center gap-1" type="button">
+              <button
+                className="inline-flex min-h-10 shrink-0 items-center gap-1"
+                data-testid="distance-sort-control"
+                type="button"
+              >
                 Sort by Distance
                 <span aria-hidden="true">↑↓</span>
               </button>
             ) : (
-              <span className="inline-flex min-h-10 shrink-0 items-center text-white/44">Trip order</span>
+              <span
+                className="inline-flex min-h-10 shrink-0 items-center text-white/44"
+                data-testid="distance-sort-control"
+              >
+                Add locations to sort by distance.
+              </span>
             )}
-            <span className="inline-flex min-h-10 min-w-0 items-center gap-2 text-right">
+            <button
+              aria-expanded={anchorPickerOpen}
+              className="inline-flex min-h-10 min-w-0 items-center gap-2 text-right disabled:text-white/36"
+              data-testid="distance-anchor-selector"
+              disabled={!anchorOptions.length}
+              onClick={() => setAnchorPickerOpen((current) => !current)}
+              type="button"
+            >
               <Navigation className="h-4 w-4 shrink-0" aria-hidden="true" />
-              <span className="truncate">{anchorPlace}</span>
-            </span>
+              <span className="truncate">{selectedAnchor?.label || "Choose anchor"}</span>
+            </button>
           </div>
+
+          {anchorPickerOpen ? (
+            <div
+              className="mt-3 rounded-3xl bg-black/28 p-3 ring-1 ring-white/10"
+              data-testid="distance-anchor-picker"
+            >
+              <p className="px-1 text-xs font-black uppercase tracking-[0.18em] text-white/42">
+                Sort from
+              </p>
+              <div className="mt-2 grid gap-2">
+                {anchorOptions.map((option) => {
+                  const active = selectedAnchor?.id === option.id;
+                  return (
+                    <button
+                      aria-pressed={active}
+                      className={[
+                        "min-h-12 rounded-2xl px-3 py-2 text-left transition",
+                        active
+                          ? "bg-orange-500/18 text-orange-200 ring-1 ring-orange-400/35"
+                          : "bg-white/8 text-white/78 hover:bg-white/12"
+                      ].join(" ")}
+                      data-testid="distance-anchor-option"
+                      key={option.id}
+                      onClick={() => {
+                        setAnchorId(option.id);
+                        setAnchorPickerOpen(false);
+                      }}
+                      type="button"
+                    >
+                      <span className="block truncate text-sm font-black">{option.label}</span>
+                      {option.detail ? (
+                        <span className="mt-0.5 block truncate text-xs font-semibold opacity-60">
+                          {option.detail}
+                        </span>
+                      ) : null}
+                    </button>
+                  );
+                })}
+                <button
+                  className="min-h-12 rounded-2xl bg-white/8 px-3 py-2 text-left text-sm font-black text-white/78 transition hover:bg-white/12"
+                  data-testid="distance-current-location"
+                  onClick={requestCurrentLocation}
+                  type="button"
+                >
+                  Use current location
+                  <span className="mt-0.5 block text-xs font-semibold text-white/42">
+                    Requests permission only after this tap.
+                  </span>
+                </button>
+              </div>
+              {locationMessage ? (
+                <p aria-live="polite" className="mt-2 px-1 text-xs font-semibold text-white/58">
+                  {locationMessage}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
         </div>
 
         <div
@@ -606,6 +830,7 @@ function MobileActivitiesView({
                   anchorPoint={anchorPoint}
                   disabled={disabled}
                   key={`${row.type}-${row.id}`}
+                  locale={locale}
                   onDismiss={onDismiss}
                   onOpenDetail={onOpenDetail}
                   onSave={onSave}
@@ -652,7 +877,7 @@ function MobileActivitiesView({
           <p className="text-center text-xs font-bold text-white/48">
             All
             <span className="block text-base font-black text-orange-400">
-              {mobileActivityCount} {mobileActivityCount === 1 ? "activity" : "activities"}
+              {visibleActivityCount} {visibleActivityCount === 1 ? "activity" : "activities"}
             </span>
           </p>
           <Link
@@ -671,14 +896,16 @@ function MobileActivitiesView({
 function MobileActivityRow({
   anchorPoint,
   disabled,
+  locale,
   onDismiss,
   onOpenDetail,
   onSave,
   row,
   tripId
 }: {
-  anchorPoint: TripMapItem | null;
+  anchorPoint: GeoPoint | null;
   disabled: boolean;
+  locale: string;
   onDismiss: (row: Extract<ActivityRow, { type: "recommendation" }>) => void;
   onOpenDetail: (row: ActivityRow) => void;
   onSave: (row: Extract<ActivityRow, { type: "recommendation" }>) => void;
@@ -687,7 +914,7 @@ function MobileActivityRow({
 }) {
   const icon = categoryIcon(row.category);
   const title = row.title;
-  const detail = mobileRowDetail(row, anchorPoint);
+  const detail = mobileRowDetail(row, anchorPoint, locale);
   const sideLabel = mobileRowSideLabel(row);
   const added = row.type === "place";
   const canOpenDetail = row.type === "recommendation" || row.type === "place";
@@ -716,7 +943,15 @@ function MobileActivityRow({
           <span className="flex min-w-0 items-start justify-between gap-3">
             <span className="min-w-0">
               <span className="block truncate text-base font-black leading-tight text-white">{title}</span>
-              <span className="mt-1 block truncate text-sm font-semibold text-white/48">{detail}</span>
+              <span className="mt-1 block truncate text-sm font-semibold text-white/48">
+                {detail.distance ? (
+                  <>
+                    <span className="text-orange-400">{detail.distance}</span>
+                    {detail.text ? " · " : ""}
+                  </>
+                ) : null}
+                {detail.text}
+              </span>
             </span>
             {sideLabel ? (
               <span className="shrink-0 whitespace-pre-line text-right text-sm font-bold leading-tight text-white/48">
@@ -749,20 +984,28 @@ function MobileActivityRow({
   );
 }
 
-function mobileRowDetail(row: ActivityRow, anchorPoint: TripMapItem | null) {
-  const distance = getDistanceLabel(row, anchorPoint);
-
+function mobileRowDetail(row: ActivityRow, anchorPoint: GeoPoint | null, locale: string) {
+  const distance = getDistanceLabel(row, anchorPoint, locale);
   if (row.type === "recommendation") {
-    return [distance, row.ratingLabel ? `${row.ratingLabel} ★` : null, row.address || row.meta]
-      .filter(Boolean)
-      .join(" · ");
+    return {
+      distance,
+      text: [row.ratingLabel ? `${row.ratingLabel} ★` : null, row.address || row.meta]
+        .filter(Boolean)
+        .join(" · ")
+    };
   }
 
   if (row.type === "place") {
-    return [distance, row.address || row.meta].filter(Boolean).join(" · ");
+    return {
+      distance,
+      text: [row.address || row.meta].filter(Boolean).join(" · ")
+    };
   }
 
-  return [row.location, row.status, row.description].filter(Boolean).join(" · ");
+  return {
+    distance: null,
+    text: [row.location, row.status, row.description].filter(Boolean).join(" · ")
+  };
 }
 
 function mobileRowSideLabel(row: ActivityRow) {
@@ -779,37 +1022,39 @@ function hasActivityCoordinates(row: ActivityRow) {
   return getActivityCoordinates(row) !== null;
 }
 
-function getActivityCoordinates(row: ActivityRow) {
+function getActivityCoordinates(row: ActivityRow): GeoPoint | null {
   if (row.type !== "place" && row.type !== "recommendation") return null;
   if (typeof row.lat !== "number" || typeof row.lng !== "number") return null;
   return { lat: row.lat, lng: row.lng };
 }
 
-function getDistanceLabel(row: ActivityRow, anchorPoint: TripMapItem | null) {
-  const distance = getDistanceMiles(row, anchorPoint);
-  if (distance === null) return null;
-  if (distance < 0.05) return null;
-  if (distance < 10) return `${distance.toFixed(1)}mi`;
-  return `${Math.round(distance)}mi`;
+function getDistanceLabel(row: ActivityRow, anchorPoint: GeoPoint | null, locale: string) {
+  const coordinates = getActivityCoordinates(row);
+  if (!coordinates || !anchorPoint) return null;
+  return formatDistance(haversineDistanceKm(anchorPoint, coordinates), locale);
 }
 
-function getDistanceMiles(row: ActivityRow, anchorPoint: TripMapItem | null) {
-  const coordinates = getActivityCoordinates(row);
-  if (!coordinates || typeof anchorPoint?.lat !== "number" || typeof anchorPoint.lng !== "number") {
-    return null;
-  }
+function getActivityCity(row: ActivityRow) {
+  const source =
+    row.type === "recommendation" || row.type === "place"
+      ? row.address || row.meta
+      : row.location;
+  if (!source) return null;
 
-  const earthRadiusMiles = 3958.8;
-  const toRadians = (value: number) => (value * Math.PI) / 180;
-  const latDelta = toRadians(coordinates.lat - anchorPoint.lat);
-  const lngDelta = toRadians(coordinates.lng - anchorPoint.lng);
-  const startLat = toRadians(anchorPoint.lat);
-  const endLat = toRadians(coordinates.lat);
-  const haversine =
-    Math.sin(latDelta / 2) ** 2 +
-    Math.cos(startLat) * Math.cos(endLat) * Math.sin(lngDelta / 2) ** 2;
+  const parts = source
+    .replace(/\s+/g, " ")
+    .trim()
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean);
 
-  return earthRadiusMiles * 2 * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine));
+  if (parts.length >= 3) return stripPostalCode(parts[parts.length - 2]);
+  if (parts.length === 2) return stripPostalCode(parts[0]);
+  return null;
+}
+
+function stripPostalCode(value: string) {
+  return value.replace(/\s+\d{4,}(?:-\d+)?$/, "").trim();
 }
 
 function formatMobileActivitySchedule(value: string | null, hasTime?: boolean) {

@@ -1059,6 +1059,32 @@ test.describe("mobile soft-launch UX", () => {
     test.setTimeout(90_000);
     await page.setViewportSize({ height: 900, width: 390 });
     await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
+    await page.addInitScript(() => {
+      Object.defineProperty(navigator, "language", { configurable: true, value: "en-US" });
+      Object.defineProperty(navigator, "languages", { configurable: true, value: ["en-US", "en"] });
+      (window as typeof window & { __waylineGeoRequests?: number }).__waylineGeoRequests = 0;
+      Object.defineProperty(navigator, "geolocation", {
+        configurable: true,
+        value: {
+          getCurrentPosition(success: (position: GeolocationPosition) => void) {
+            const state = window as typeof window & { __waylineGeoRequests?: number };
+            state.__waylineGeoRequests = (state.__waylineGeoRequests || 0) + 1;
+            success({
+              coords: {
+                accuracy: 20,
+                altitude: null,
+                altitudeAccuracy: null,
+                heading: null,
+                latitude: 41.3874,
+                longitude: 2.1686,
+                speed: null
+              },
+              timestamp: Date.now()
+            } as GeolocationPosition);
+          }
+        }
+      });
+    });
     await page.goto(`${baseUrl}/dashboard/trips/demo/map`, { waitUntil: "commit" });
 
     await expect(page.getByTestId("trip-pass-shell")).toBeVisible({ timeout: 30_000 });
@@ -1090,6 +1116,34 @@ test.describe("mobile soft-launch UX", () => {
     expect(activityMapHeight, "mobile activity map height").toBeGreaterThanOrEqual(300);
     await expect(page.getByTestId("mobile-activities-sheet").getByRole("button", { name: /Places/ })).toBeVisible();
     await expect(page.getByTestId("mobile-activity-list")).toBeVisible();
+    await expect(page.getByTestId("distance-sort-control")).toContainText("Sort by Distance");
+    await expect(page.getByTestId("distance-anchor-selector")).toBeVisible();
+    await expect(page.getByTestId("map-distance-ring-label")).toHaveCount(3, { timeout: 30_000 });
+    expect(
+      await page.evaluate(() => (window as typeof window & { __waylineGeoRequests?: number }).__waylineGeoRequests || 0),
+      "current location should not be requested until the user chooses it"
+    ).toBe(0);
+
+    const sortedRows = page.getByTestId("mobile-activity-list").locator("article");
+    await expect(sortedRows.filter({ hasText: /\d+(?:\.\d+)?\s(?:mi|km)/ }).first()).toBeVisible();
+
+    await page.getByTestId("distance-anchor-selector").click();
+    await expect(page.getByTestId("distance-anchor-picker")).toBeVisible();
+    await expect(page.getByTestId("distance-anchor-option").first()).toBeVisible();
+    await page.getByTestId("distance-current-location").click();
+    await expect
+      .poll(() => page.evaluate(() => (window as typeof window & { __waylineGeoRequests?: number }).__waylineGeoRequests || 0))
+      .toBe(1);
+    await expect(sortedRows.first()).toContainText(/\d+(?:\.\d+)?\s(?:mi|km)/);
+
+    for (const width of [360, 390, 430]) {
+      await page.setViewportSize({ height: 900, width });
+      await expect(page.getByTestId("mobile-activities-view")).toBeVisible();
+      const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+      expect(overflow, `ideas page horizontal overflow at ${width}px`).toBeLessThanOrEqual(1);
+    }
+    await page.setViewportSize({ height: 900, width: 390 });
+
     const activityFilters = page.getByTestId("activity-category-filters");
     if ((await activityFilters.count()) > 0) {
       await expect(activityFilters.getByRole("button", { name: "All" })).toHaveAttribute("aria-pressed", "true");
