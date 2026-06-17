@@ -97,6 +97,7 @@ export function MobileTripsWallet({ error, trips }: MobileTripsWalletProps) {
               <Link
                 aria-label="Open travel stats"
                 className="grid h-11 w-11 place-items-center rounded-full bg-orange-500/[0.14] text-orange-400 ring-1 ring-orange-400/[0.12] transition hover:bg-orange-500/20 focus:outline-none focus:ring-4 focus:ring-orange-400/20"
+                data-testid="mobile-trips-stats-link"
                 href="/dashboard/profile/stats"
               >
                 <BarChart3 className="h-5 w-5" aria-hidden="true" />
@@ -299,6 +300,7 @@ function MobileTripsCountriesMap({
               <Link
                 aria-label="Open travel stats"
                 className="grid h-11 w-11 place-items-center rounded-full bg-orange-500/[0.14] text-orange-400 ring-1 ring-orange-400/[0.12] transition hover:bg-orange-500/20 focus:outline-none focus:ring-4 focus:ring-orange-400/20"
+                data-testid="mobile-trips-stats-link"
                 href="/dashboard/profile/stats"
               >
                 <BarChart3 className="h-5 w-5" aria-hidden="true" />

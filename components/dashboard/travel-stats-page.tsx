@@ -3,6 +3,7 @@ import {
   ArrowLeft,
   CalendarDays,
   Car,
+  ChevronRight,
   Plane,
   Share2,
   Train,
@@ -18,7 +19,10 @@ import { cn } from "@/components/trip-ui";
 
 const WORLD_COUNTRY_TOTAL = 246;
 
+type TravelStatsView = "overview" | "countries";
+
 type Metric = {
+  href?: string;
   label: string;
   value: number | null;
 };
@@ -43,17 +47,26 @@ const transportTones: Record<TravelStatsTransportCard["id"], TransportTone> = {
   }
 };
 
-export function TravelStatsPage({ data }: { data: TravelStatsData }) {
+export function TravelStatsPage({
+  data,
+  view = "overview"
+}: {
+  data: TravelStatsData;
+  view?: TravelStatsView;
+}) {
+  const countryPercent = countryVisitPercent(data);
+
+  if (view === "countries") {
+    return <CountriesDetailView countryPercent={countryPercent} data={data} />;
+  }
+
   const metrics = buildMetrics(data);
   const visibleFlags = data.flags.slice(0, 8);
   const hiddenFlags = Math.max(data.countries.length - visibleFlags.length, 0);
-  const countryPercent = data.stats.countries
-    ? Math.round((data.stats.countries / WORLD_COUNTRY_TOTAL) * 100)
-    : 0;
 
   return (
     <main
-      className="min-h-[calc(100dvh-4rem)] overflow-hidden bg-black pb-4 text-white lg:mx-auto lg:my-8 lg:min-h-0 lg:max-w-[28rem] lg:rounded-[2rem] lg:ring-1 lg:ring-white/10"
+      className="min-h-[calc(100dvh-4rem)] overflow-y-auto bg-black pb-[calc(7rem+env(safe-area-inset-bottom))] text-white lg:mx-auto lg:my-8 lg:min-h-0 lg:max-w-[28rem] lg:rounded-[2rem] lg:pb-6 lg:ring-1 lg:ring-white/10"
       data-testid="travel-stats-page"
     >
       <section
@@ -61,36 +74,12 @@ export function TravelStatsPage({ data }: { data: TravelStatsData }) {
         data-testid="travel-stats-overview"
       >
         <StatsCollage />
-        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.1)_0%,rgba(0,0,0,0.62)_45%,#1f1f20_100%)]" />
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.08)_0%,rgba(0,0,0,0.6)_44%,#1f1f20_100%)]" />
 
-        <div className="relative z-10 flex items-center justify-between">
-          <Link
-            href="/dashboard"
-            aria-label="Back to dashboard"
-            className="grid h-10 w-10 place-items-center rounded-full bg-black/38 text-white ring-1 ring-white/12 backdrop-blur-xl transition hover:bg-black/50 focus:outline-none focus:ring-4 focus:ring-orange-400/20"
-          >
-            <ArrowLeft className="h-5 w-5" aria-hidden="true" />
-          </Link>
-          <div className="flex items-center gap-2">
-            <button
-              aria-label="Share travel stats"
-              className="grid h-10 w-10 place-items-center rounded-full bg-black/38 text-white/85 ring-1 ring-white/12 backdrop-blur-xl"
-              type="button"
-            >
-              <Share2 className="h-5 w-5" aria-hidden="true" />
-            </button>
-            <Link
-              href="/dashboard/profile"
-              aria-label="Close travel stats"
-              className="grid h-10 w-10 place-items-center rounded-full bg-black/38 text-white/85 ring-1 ring-white/12 backdrop-blur-xl transition hover:bg-black/50 focus:outline-none focus:ring-4 focus:ring-orange-400/20"
-            >
-              <X className="h-5 w-5" aria-hidden="true" />
-            </Link>
-          </div>
-        </div>
+        <StatsTopBar closeHref="/dashboard/trips" />
 
         <div className="relative z-10 mt-52 flex flex-col items-center text-center">
-          <YearSelector data={data} />
+          <YearSelector data={data} view="overview" />
           <h1 className="mt-5 text-4xl font-black tracking-tight text-white">
             Travel Stats
           </h1>
@@ -131,17 +120,87 @@ export function TravelStatsPage({ data }: { data: TravelStatsData }) {
         </div>
       </section>
 
-      <section className="relative z-20 -mt-6 space-y-4 rounded-t-[2rem] bg-[#202020] px-5 pb-6 pt-5 shadow-[0_-20px_60px_rgba(0,0,0,0.38)] ring-1 ring-white/10">
+      <section className="relative z-20 -mt-6 space-y-4 rounded-t-[2rem] bg-[#202020] px-5 pb-8 pt-5 shadow-[0_-20px_60px_rgba(0,0,0,0.38)] ring-1 ring-white/10">
         <div className="mx-auto mb-2 h-1.5 w-16 rounded-full bg-white/45" />
-        {data.error ? (
-          <div className="rounded-2xl bg-amber-300/10 p-4 text-sm font-semibold text-amber-100 ring-1 ring-amber-300/20">
-            {data.error}
-          </div>
-        ) : null}
+        {data.error ? <ErrorBanner message={data.error} /> : null}
 
         <TotalCard data={data} />
-        <CountriesCard data={data} countryPercent={countryPercent} />
+        <CountriesCard countryPercent={countryPercent} data={data} />
         <TransportSection transport={data.transport} />
+      </section>
+    </main>
+  );
+}
+
+function CountriesDetailView({
+  countryPercent,
+  data
+}: {
+  countryPercent: number;
+  data: TravelStatsData;
+}) {
+  return (
+    <main
+      className="min-h-[calc(100dvh-4rem)] overflow-y-auto bg-[#1f1f20] px-5 pb-[calc(7rem+env(safe-area-inset-bottom))] pt-5 text-white lg:mx-auto lg:my-8 lg:min-h-0 lg:max-w-[28rem] lg:rounded-[2rem] lg:pb-6 lg:ring-1 lg:ring-white/10"
+      data-testid="travel-stats-countries-detail"
+    >
+      <div className="relative z-10 flex items-center justify-between">
+        <Link
+          href={statsHref(data, "overview")}
+          aria-label="Back to travel stats"
+          className="grid h-10 w-10 place-items-center rounded-full bg-white/10 text-white ring-1 ring-white/12 transition hover:bg-white/15 focus:outline-none focus:ring-4 focus:ring-orange-400/20"
+        >
+          <ArrowLeft className="h-5 w-5" aria-hidden="true" />
+        </Link>
+        <Link
+          href="/dashboard/trips"
+          aria-label="Close countries stats"
+          className="grid h-10 w-10 place-items-center rounded-full bg-white/10 text-white/85 ring-1 ring-white/12 transition hover:bg-white/15 focus:outline-none focus:ring-4 focus:ring-orange-400/20"
+        >
+          <X className="h-5 w-5" aria-hidden="true" />
+        </Link>
+      </div>
+
+      <section className="mt-7" data-testid="travel-stats-countries">
+        <div className="mb-5 flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-4xl font-black tracking-tight text-white">Countries</h1>
+            <p className="mt-1 text-base font-semibold text-white/45">{selectedYearLabel(data)}</p>
+          </div>
+          <div className="relative grid h-24 w-24 shrink-0 place-items-center">
+            <div
+              className="absolute inset-0 rounded-full"
+              style={{
+                background: `conic-gradient(#f59e0b ${Math.min(countryPercent, 100)}%, rgba(255,255,255,0.14) 0)`
+              }}
+            />
+            <div className="relative grid h-16 w-16 place-items-center rounded-full bg-[#1f1f20] text-base font-black text-amber-300">
+              {countryPercent}%
+            </div>
+          </div>
+        </div>
+
+        <div className="mb-6 grid grid-cols-[auto_1fr] items-end gap-x-6">
+          <p className="text-6xl font-black leading-none text-amber-400">{data.stats.countries ?? 0}</p>
+          <p className="text-6xl font-black leading-none text-white/50">{WORLD_COUNTRY_TOTAL}</p>
+          <p className="text-base font-black text-amber-400">Visited</p>
+          <p className="text-base font-black text-white/42">World total</p>
+        </div>
+
+        {data.countries.length ? (
+          <div className="divide-y divide-white/8 rounded-[1.35rem] bg-[#19191b] px-3 ring-1 ring-white/8">
+            {data.countries.map((country) => (
+              <CountryRow key={country.country} country={country} />
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-[1.35rem] bg-[#19191b] p-5 ring-1 ring-white/8">
+            <h2 className="text-xl font-black text-white">No country stats yet</h2>
+            <p className="mt-2 text-sm font-semibold leading-6 text-white/55">
+              Create trips with destinations to build your travel history.
+            </p>
+          </div>
+        )}
       </section>
     </main>
   );
@@ -159,16 +218,50 @@ function StatsCollage() {
   );
 }
 
-function YearSelector({ data }: { data: TravelStatsData }) {
-  const label = data.selectedYear === null ? "All time" : String(data.selectedYear);
+function StatsTopBar({ closeHref }: { closeHref: string }) {
+  return (
+    <div className="relative z-10 flex items-center justify-between">
+      <Link
+        href="/dashboard/trips"
+        aria-label="Back to trips"
+        className="grid h-10 w-10 place-items-center rounded-full bg-black/38 text-white ring-1 ring-white/12 backdrop-blur-xl transition hover:bg-black/50 focus:outline-none focus:ring-4 focus:ring-orange-400/20"
+      >
+        <ArrowLeft className="h-5 w-5" aria-hidden="true" />
+      </Link>
+      <div className="flex items-center gap-2">
+        <button
+          aria-label="Share travel stats"
+          className="grid h-10 w-10 place-items-center rounded-full bg-black/38 text-white/85 ring-1 ring-white/12 backdrop-blur-xl"
+          type="button"
+        >
+          <Share2 className="h-5 w-5" aria-hidden="true" />
+        </button>
+        <Link
+          href={closeHref}
+          aria-label="Close travel stats"
+          className="grid h-10 w-10 place-items-center rounded-full bg-black/38 text-white/85 ring-1 ring-white/12 backdrop-blur-xl transition hover:bg-black/50 focus:outline-none focus:ring-4 focus:ring-orange-400/20"
+        >
+          <X className="h-5 w-5" aria-hidden="true" />
+        </Link>
+      </div>
+    </div>
+  );
+}
 
+function YearSelector({
+  data,
+  view
+}: {
+  data: TravelStatsData;
+  view: TravelStatsView;
+}) {
   return (
     <div
       className="inline-flex items-center gap-2 rounded-full bg-black/42 px-4 py-2 text-sm font-bold text-white/90 ring-1 ring-white/12 backdrop-blur-xl"
       data-testid="travel-stats-year-selector"
     >
       <CalendarDays className="h-4 w-4" aria-hidden="true" />
-      <span>{label}</span>
+      <span>{selectedYearLabel(data)}</span>
       {data.yearOptions.length > 1 ? (
         <span className="text-white/45" aria-hidden="true">
           /
@@ -176,7 +269,7 @@ function YearSelector({ data }: { data: TravelStatsData }) {
       ) : null}
       {data.yearOptions.length > 1 ? (
         <Link
-          href="/dashboard/profile/stats?year=all"
+          href={statsHrefForYear("all", view)}
           className="text-white/55 transition hover:text-white"
         >
           All
@@ -189,16 +282,30 @@ function YearSelector({ data }: { data: TravelStatsData }) {
 function MetricStat({ metric }: { metric: Metric }) {
   if (metric.value === null) return null;
 
-  return (
-    <div className="min-w-0 text-center">
+  const content = (
+    <>
       <p className="text-3xl font-black leading-none tracking-tight text-white">
         {metric.value}
       </p>
       <p className="mt-1 text-xs font-medium text-white/55">
         {metric.label}
       </p>
-    </div>
+    </>
   );
+
+  if (metric.href) {
+    return (
+      <Link
+        aria-label={`Open ${metric.label.toLowerCase()} stats`}
+        className="min-w-0 rounded-2xl text-center transition hover:bg-white/[0.05] focus:outline-none focus:ring-4 focus:ring-orange-400/20"
+        href={metric.href}
+      >
+        {content}
+      </Link>
+    );
+  }
+
+  return <div className="min-w-0 text-center">{content}</div>;
 }
 
 function TotalCard({ data }: { data: TravelStatsData }) {
@@ -238,7 +345,7 @@ function CountriesCard({
         <div>
           <h2 className="text-3xl font-black tracking-tight text-white">Countries</h2>
           <p className="text-sm font-semibold text-white/45">
-            {data.selectedYear === null ? "All time" : data.selectedYear}
+            {selectedYearLabel(data)}
           </p>
         </div>
         <div className="relative grid h-20 w-20 shrink-0 place-items-center">
@@ -262,23 +369,42 @@ function CountriesCard({
       </div>
 
       {data.countries.length ? (
-        <div className="divide-y divide-white/8">
-          {data.countries.slice(0, 9).map((country) => (
-            <div key={country.country} className="grid min-h-12 grid-cols-[2rem_1fr_auto] items-center gap-3">
-              <span className="grid h-7 w-7 place-items-center rounded-full bg-white text-sm">
-                {country.flag}
-              </span>
-              <span className="truncate text-sm font-bold text-white/90">{country.country}</span>
-              <span className="text-sm font-semibold text-white/45">{country.count}x</span>
-            </div>
-          ))}
-        </div>
+        <>
+          <div className="divide-y divide-white/8">
+            {data.countries.slice(0, 5).map((country) => (
+              <CountryRow key={country.country} country={country} />
+            ))}
+          </div>
+          <Link
+            className="mt-3 flex min-h-11 items-center justify-between rounded-2xl bg-white/[0.06] px-4 text-sm font-black text-white transition hover:bg-white/[0.1] focus:outline-none focus:ring-4 focus:ring-orange-400/20"
+            data-testid="travel-stats-countries-link"
+            href={statsHref(data, "countries")}
+          >
+            View all countries
+            <ChevronRight className="h-4 w-4 text-white/55" aria-hidden="true" />
+          </Link>
+        </>
       ) : (
-        <p className="rounded-2xl bg-white/[0.04] p-4 text-sm font-semibold text-white/55">
-          Not enough destination country data yet.
-        </p>
+        <div className="rounded-2xl bg-white/[0.04] p-4">
+          <h3 className="text-base font-black text-white">No country stats yet</h3>
+          <p className="mt-1 text-sm font-semibold leading-6 text-white/55">
+            Create trips with destinations to build your travel history.
+          </p>
+        </div>
       )}
     </section>
+  );
+}
+
+function CountryRow({ country }: { country: TravelStatsData["countries"][number] }) {
+  return (
+    <div className="grid min-h-12 grid-cols-[2rem_1fr_auto] items-center gap-3">
+      <span className="grid h-7 w-7 place-items-center rounded-full bg-white text-sm">
+        {country.flag}
+      </span>
+      <span className="truncate text-sm font-bold text-white/90">{country.country}</span>
+      <span className="text-sm font-semibold text-white/45">{country.count}x</span>
+    </div>
   );
 }
 
@@ -327,13 +453,7 @@ function TransportCard({ card }: { card: TravelStatsTransportCard }) {
           {card.breakdown.length ? (
             <div className="divide-y divide-white/8">
               {card.breakdown.map((country) => (
-                <div key={country.country} className="grid min-h-11 grid-cols-[2rem_1fr_auto] items-center gap-3">
-                  <span className="grid h-7 w-7 place-items-center rounded-full bg-white text-sm">
-                    {country.flag}
-                  </span>
-                  <span className="truncate text-sm font-bold text-white/88">{country.country}</span>
-                  <span className="text-sm font-semibold text-white/45">{country.count}x</span>
-                </div>
+                <CountryRow key={country.country} country={country} />
               ))}
             </div>
           ) : null}
@@ -347,13 +467,47 @@ function TransportCard({ card }: { card: TravelStatsTransportCard }) {
   );
 }
 
+function ErrorBanner({ message }: { message: string }) {
+  return (
+    <div className="rounded-2xl bg-amber-300/10 p-4 text-sm font-semibold text-amber-100 ring-1 ring-amber-300/20">
+      {message}
+    </div>
+  );
+}
+
 function buildMetrics(data: TravelStatsData): Metric[] {
+  const countriesHref = data.countries.length ? statsHref(data, "countries") : undefined;
+
   return [
     { label: "Trips", value: data.stats.trips },
-    { label: "Countries", value: data.stats.countries ?? 0 },
+    { href: countriesHref, label: "Countries", value: data.stats.countries ?? 0 },
     { label: "Cities", value: data.stats.cities ?? 0 },
     { label: "Flights", value: data.stats.flights },
     { label: "Hotels", value: data.stats.hotels },
     { label: "Activities", value: data.stats.activities }
   ];
+}
+
+function countryVisitPercent(data: TravelStatsData) {
+  return data.stats.countries
+    ? Math.round((data.stats.countries / WORLD_COUNTRY_TOTAL) * 100)
+    : 0;
+}
+
+function selectedYearLabel(data: TravelStatsData) {
+  return data.selectedYear === null ? "All Time" : String(data.selectedYear);
+}
+
+function statsHref(data: TravelStatsData, view: TravelStatsView) {
+  return statsHrefForYear(data.selectedYear === null ? "all" : data.selectedYear, view);
+}
+
+function statsHrefForYear(year: number | "all", view: TravelStatsView) {
+  const params = new URLSearchParams();
+  params.set("year", String(year));
+  if (view === "countries") {
+    params.set("view", "countries");
+  }
+
+  return `/dashboard/profile/stats?${params.toString()}`;
 }

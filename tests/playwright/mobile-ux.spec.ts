@@ -7,6 +7,7 @@ const routes = [
   "/dashboard/search",
   "/dashboard/plan",
   "/dashboard/profile/stats",
+  "/dashboard/profile/stats?view=countries&year=all",
   "/dashboard/trips",
   "/dashboard/trips/demo/timeline",
   "/dashboard/trips/demo/map",
@@ -165,6 +166,10 @@ test.describe("mobile soft-launch UX", () => {
       "href",
       "/dashboard/profile/stats"
     );
+    await expect(page.getByTestId("mobile-trips-stats-link")).toHaveAttribute(
+      "href",
+      "/dashboard/profile/stats"
+    );
 
     await page.goto(`${baseUrl}/dashboard/trips?view=list`, { waitUntil: "commit" });
     const firstTripState = page.getByTestId("mobile-first-trip-state");
@@ -189,23 +194,75 @@ test.describe("mobile soft-launch UX", () => {
         "href",
         "/dashboard/profile/stats"
       );
+      await expect(page.getByTestId("mobile-trips-stats-link")).toHaveAttribute(
+        "href",
+        "/dashboard/profile/stats"
+      );
       await expect(page.getByTestId("mobile-create-another-trip").getByText("Create trip")).toBeVisible();
     }
   });
 
-  test("mobile travel stats shows passport overview and detail cards", async ({ page }) => {
+  for (const width of [360, 390, 430] as const) {
+    test(`mobile travel stats shows overview and country detail at ${width}px`, async ({ page }) => {
+      await page.setViewportSize({ height: 900, width });
+      await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
+      await page.goto(`${baseUrl}/dashboard/profile/stats`, { waitUntil: "commit" });
+
+      await expect(page.getByTestId("travel-stats-page")).toBeVisible({ timeout: 20_000 });
+      await expect(
+        page.getByTestId("travel-stats-overview").getByRole("heading", { name: "Travel Stats" })
+      ).toBeVisible();
+      await expect(page.getByTestId("travel-stats-year-selector")).toBeVisible();
+      await expect(page.getByTestId("travel-stats-countries")).toBeVisible();
+      await expect(page.getByTestId("travel-stats-transport")).toBeVisible();
+
+      const countriesLink = page.getByTestId("travel-stats-countries-link");
+      if ((await countriesLink.count()) > 0) {
+        await expect(countriesLink).toHaveAttribute("href", /\/dashboard\/profile\/stats\?.*view=countries/);
+      } else {
+        await expect(page.getByText("No country stats yet")).toBeVisible();
+        await expect(page.getByText("Create trips with destinations to build your travel history.")).toBeVisible();
+      }
+
+      let overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+      expect(overflow, `mobile travel stats overview overflow at ${width}px`).toBeLessThanOrEqual(1);
+
+      const transportCard = page.getByTestId("travel-stats-transport").locator("article").last();
+      await transportCard.scrollIntoViewIfNeeded();
+      const transportClearance = await transportCard.evaluate((element) => {
+        const nav = document.querySelector('[data-testid="app-shell-mobile-bottom-nav"]');
+        const navTop = nav?.getBoundingClientRect().top ?? window.innerHeight;
+        return Math.round(navTop - element.getBoundingClientRect().bottom);
+      });
+      expect(transportClearance, `travel stats transport nav clearance at ${width}px`).toBeGreaterThanOrEqual(8);
+
+      await page.goto(`${baseUrl}/dashboard/profile/stats?view=countries&year=all`, { waitUntil: "commit" });
+      await expect(page.getByTestId("travel-stats-countries-detail")).toBeVisible({ timeout: 20_000 });
+      await expect(page.getByTestId("travel-stats-countries").getByRole("heading", { name: "Countries" })).toBeVisible();
+      await expect(page.getByText("World total")).toBeVisible();
+      await expect(page.getByText(/Visited/)).toBeVisible();
+
+      if ((await page.getByText("No country stats yet").count()) > 0) {
+        await expect(page.getByText("Create trips with destinations to build your travel history.")).toBeVisible();
+      } else {
+        await expect(page.getByTestId("travel-stats-countries").getByText(/\d+x/).first()).toBeVisible();
+      }
+
+      overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+      expect(overflow, `mobile travel stats countries overflow at ${width}px`).toBeLessThanOrEqual(1);
+    });
+  }
+
+  test("mobile travel stats is reachable from the trips stats control", async ({ page }) => {
     await page.setViewportSize({ height: 900, width: 390 });
     await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
-    await page.goto(`${baseUrl}/dashboard/profile/stats`, { waitUntil: "commit" });
+    await page.goto(`${baseUrl}/dashboard/trips`, { waitUntil: "commit" });
 
+    const statsLink = page.getByTestId("mobile-trips-stats-link").first();
+    await expect(statsLink).toHaveAttribute("href", "/dashboard/profile/stats");
+    await statsLink.click();
+    await expect(page).toHaveURL(/\/dashboard\/profile\/stats/);
     await expect(page.getByTestId("travel-stats-page")).toBeVisible({ timeout: 20_000 });
-    await expect(page.getByTestId("travel-stats-overview").getByRole("heading", { name: "Travel Stats" })).toBeVisible();
-    await expect(page.getByTestId("travel-stats-year-selector")).toBeVisible();
-    await expect(page.getByTestId("travel-stats-countries")).toBeVisible();
-    await expect(page.getByTestId("travel-stats-transport")).toBeVisible();
-
-    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
-    expect(overflow, "mobile travel stats overflow").toBeLessThanOrEqual(1);
   });
 
   test("mobile trips country map uses saved destination coordinates only", async ({ page, request }) => {

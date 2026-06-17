@@ -4,6 +4,7 @@ import { loadTravelStatsData } from "./loader";
 
 type ProfileStatsPageProps = {
   searchParams?: Promise<{
+    view?: string;
     year?: string;
   }>;
 };
@@ -11,9 +12,10 @@ type ProfileStatsPageProps = {
 export default async function ProfileStatsPage({ searchParams }: ProfileStatsPageProps) {
   const params = await searchParams;
   const year = parseYearParam(params?.year);
+  const view = params?.view === "countries" ? "countries" : "overview";
   const data = await loadTravelStatsData(year);
 
-  return <TravelStatsPage data={data} />;
+  return <TravelStatsPage data={data} view={view} />;
 }
 
 function parseYearParam(value: string | undefined) {

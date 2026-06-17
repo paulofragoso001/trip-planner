@@ -228,4 +228,9 @@ test("loads dashboard summary and route-split pages", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Travel Stats" })).toBeVisible();
   await expect(page.getByTestId("travel-stats-countries")).toBeVisible();
   await expect(page.getByTestId("travel-stats-transport")).toBeVisible();
+
+  await openDashboardRoute("/dashboard/profile/stats?view=countries&year=all");
+  await expect(page.getByTestId("travel-stats-countries-detail")).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByTestId("travel-stats-countries").getByRole("heading", { name: "Countries" })).toBeVisible();
+  await expect(page.getByText("World total")).toBeVisible();
 });

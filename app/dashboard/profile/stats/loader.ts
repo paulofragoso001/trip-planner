@@ -81,7 +81,6 @@ type TransportAccumulator = {
   hasDistance: boolean;
 };
 
-const WORLD_COUNTRY_TOTAL = 246;
 const CURRENT_YEAR = new Date().getFullYear();
 
 const COUNTRY_FLAG_BY_NAME = new Map<string, string>([
@@ -339,12 +338,21 @@ function deriveCountries(trips: TripStatsRow[], segments: SegmentStatsRow[]) {
 
   for (const segment of segments) {
     const route = readTripSegmentRoute(segment.provider_metadata);
-    const endpointCountries = [
-      countryFromEndpoint(route?.origin),
-      countryFromEndpoint(route?.destination)
-    ].filter(Boolean) as string[];
+    const endpointCountries = new Set(
+      [
+        countryFromEndpoint(route?.origin),
+        countryFromEndpoint(route?.destination)
+      ].filter(Boolean) as string[]
+    );
+
+    if (endpointCountries.size) {
+      for (const country of endpointCountries) {
+        incrementMap(countries, country);
+      }
+      continue;
+    }
+
     const country =
-      endpointCountries[0] ||
       countryFromMetadata(segment.provider_metadata) ||
       countryFromText(segment.location);
     if (country) incrementMap(countries, country);
@@ -363,9 +371,19 @@ function deriveCities(trips: TripStatsRow[], segments: SegmentStatsRow[]) {
 
   for (const segment of segments) {
     const route = readTripSegmentRoute(segment.provider_metadata);
+    const endpointCities = [
+      cityFromEndpoint(route?.origin),
+      cityFromEndpoint(route?.destination)
+    ].filter(Boolean) as string[];
+
+    if (endpointCities.length) {
+      for (const city of endpointCities) {
+        cities.add(city.toLowerCase());
+      }
+      continue;
+    }
+
     const city =
-      cityFromEndpoint(route?.origin) ||
-      cityFromEndpoint(route?.destination) ||
       cityFromMetadata(segment.provider_metadata) ||
       cityFromDestination(segment.location);
     if (city) cities.add(city.toLowerCase());
@@ -399,25 +417,29 @@ function deriveTransportStats(segments: SegmentStatsRow[]): TravelStatsTransport
       accumulator.hasDistance = true;
     }
 
+    let hasEndpointCountry = false;
     for (const endpoint of [route?.origin, route?.destination]) {
       if (endpoint?.code) accumulator.endpointLabels.add(endpoint.code);
       else if (endpoint?.label) accumulator.endpointLabels.add(endpoint.label);
       const country = countryFromEndpoint(endpoint);
-      if (country) incrementMap(accumulator.countries, country);
+      if (country) {
+        incrementMap(accumulator.countries, country);
+        hasEndpointCountry = true;
+      }
     }
 
     const fallbackCountry =
       countryFromMetadata(segment.provider_metadata) ||
       countryFromText(segment.location);
-    if (fallbackCountry && accumulator.countries.size === 0) {
+    if (fallbackCountry && !hasEndpointCountry) {
       incrementMap(accumulator.countries, fallbackCountry);
     }
   }
 
   return [
     buildTransportCard("air", "In the air", "Airports", accumulators.air),
-    buildTransportCard("train", "On the train", "Stations", accumulators.train),
-    buildTransportCard("road", "On the road", "Distance", accumulators.road)
+    buildTransportCard("road", "On the road", "Distance", accumulators.road),
+    buildTransportCard("train", "On the train", "Stations", accumulators.train)
   ];
 }
 
