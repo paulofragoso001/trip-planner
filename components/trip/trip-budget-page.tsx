@@ -10,6 +10,7 @@ export default function TripBudgetPage({
   actualLabel,
   alerts,
   categories,
+  currencyTotals,
   destination,
   error,
   latestRecords,
@@ -22,7 +23,7 @@ export default function TripBudgetPage({
 
   return (
     <div
-      className="min-h-[100svh] bg-[#05070f] px-4 pb-[calc(7rem+env(safe-area-inset-bottom))] pt-4 text-white lg:min-h-0 lg:bg-transparent lg:px-0 lg:pb-0 lg:pt-0"
+      className="min-h-[100svh] bg-[#05070f] px-4 pb-[calc(8.5rem+env(safe-area-inset-bottom))] pt-4 text-white lg:min-h-0 lg:bg-transparent lg:px-0 lg:pb-0 lg:pt-0"
       data-testid="trip-budget-page"
     >
       <section className="mx-auto grid max-w-xl gap-5 lg:max-w-none lg:grid-cols-[1fr_0.8fr]">
@@ -56,7 +57,9 @@ export default function TripBudgetPage({
               <p className="text-xs font-black uppercase tracking-[0.18em] text-orange-300">
                 Expenses
               </p>
-              <p className="mt-5 text-sm font-bold text-white/60">Total in USD</p>
+              <p className="mt-5 text-sm font-bold text-white/60">
+                {currencyTotals.length > 1 ? "Totals by currency" : "Total in USD"}
+              </p>
               <h2 className="mt-1 text-5xl font-black tracking-tight">{actualLabel}</h2>
               <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-3">
                 <Metric label="Planned" value={plannedLabel} />
@@ -66,7 +69,7 @@ export default function TripBudgetPage({
             </div>
           </article>
 
-          <article className="rounded-[1.55rem] bg-[#1c1c1f] text-white shadow-[0_18px_50px_rgba(0,0,0,0.24)] ring-1 ring-white/8 lg:rounded-[1.75rem] lg:p-1">
+          <article className="overflow-hidden rounded-[1.55rem] bg-[#1c1c1f] text-white shadow-[0_18px_50px_rgba(0,0,0,0.24)] ring-1 ring-white/8 lg:rounded-[1.75rem] lg:p-1">
             <div className="hidden items-center justify-between gap-3 p-4 lg:flex">
               <div>
                 <p className="text-xs font-black uppercase tracking-[0.18em] text-white/42">{title}</p>
@@ -76,28 +79,28 @@ export default function TripBudgetPage({
             </div>
 
             {categories.length ? (
-              <div className="grid gap-5 p-4">
+              <div className="grid gap-7 p-4 lg:gap-5">
                 {categories.map((category) => (
-                  <section className="grid gap-2" data-testid="mobile-spending-category" key={category.id}>
-                    <div className="flex items-center gap-2 text-[0.7rem] font-black uppercase tracking-[0.12em] text-white/44">
+                  <section className="grid gap-2.5" data-testid="mobile-spending-category" key={category.id}>
+                    <div className="flex items-center gap-2 text-[0.72rem] font-black uppercase tracking-[0.12em] text-white/44">
                       <span className={iconBubbleClass(category.category, "tiny")}>
                         {iconForCategory(category.category, "tiny")}
                       </span>
                       <span>{category.label}</span>
                     </div>
-                    <div className="overflow-hidden rounded-lg bg-white/[0.08]">
+                    <div className="overflow-hidden rounded-xl bg-white/[0.085]">
                       {(category.records.length ? category.records : [{ amountLabel: category.amountLabel, id: `${category.id}-summary`, label: category.label }]).map((record) => (
                         <div
-                          className="grid min-h-11 grid-cols-[1fr_auto] items-center gap-3 border-b border-white/[0.06] px-3 py-2.5 last:border-b-0"
+                          className="grid min-h-12 grid-cols-[1fr_auto] items-center gap-3 border-b border-white/[0.06] px-3.5 py-2.5 last:border-b-0"
                           key={record.id}
                         >
-                          <span className="min-w-0 truncate text-sm font-semibold text-white/86">{record.label}</span>
-                          <span className="text-right text-sm font-semibold text-white/54">{record.amountLabel}</span>
+                          <span className="min-w-0 truncate text-base font-semibold text-white/88 lg:text-sm">{record.label}</span>
+                          <span className="text-right text-sm font-semibold text-white/56" data-testid="mobile-spending-amount">{record.amountLabel}</span>
                         </div>
                       ))}
-                      <div className="grid min-h-11 grid-cols-[1fr_auto] items-center gap-3 border-t border-white/[0.08] px-3 py-2.5">
+                      <div className="grid min-h-12 grid-cols-[1fr_auto] items-center gap-3 border-t border-white/[0.08] px-3.5 py-2.5">
                         <span className="text-sm font-black text-white">Total</span>
-                        <strong className="text-right text-sm text-white">{category.amountLabel}</strong>
+                        <strong className="text-right text-sm text-white" data-testid="mobile-spending-category-total">{category.amountLabel}</strong>
                       </div>
                     </div>
                   </section>
@@ -112,7 +115,10 @@ export default function TripBudgetPage({
               </div>
             )}
 
-            <div className="sticky bottom-[calc(5.75rem+env(safe-area-inset-bottom))] grid grid-cols-[1fr_auto] items-center border-t border-white/[0.08] bg-[#1c1c1f]/96 px-4 py-4 backdrop-blur-xl lg:static lg:bottom-auto">
+            <div
+              className="grid grid-cols-[1fr_auto] items-center border-t border-white/[0.08] bg-[#1c1c1f] px-4 py-5"
+              data-testid="mobile-spending-total"
+            >
               <span className="text-2xl font-black text-white/48">Total</span>
               <strong className="text-3xl font-black tracking-tight text-white">{actualLabel}</strong>
             </div>
@@ -143,18 +149,20 @@ export default function TripBudgetPage({
             </article>
           ) : null}
 
-          <section className="rounded-[1.55rem] bg-[#1c1c1f] p-4 shadow-sm ring-1 ring-white/8 lg:bg-white lg:text-slate-950 lg:ring-slate-200">
-          <div className="flex items-center gap-3">
-            <span className="grid h-11 w-11 place-items-center rounded-full bg-orange-500/18 text-orange-300 lg:bg-blue-600 lg:text-white">
-              <Plus className="h-5 w-5" aria-hidden="true" />
-            </span>
-            <div>
-              <h3 className="text-base font-black text-white lg:text-slate-950">Add expense</h3>
-              <p className="text-sm font-semibold text-white/46 lg:text-slate-500">Track a cost for this trip.</p>
+          <section className="lg:rounded-[1.55rem] lg:bg-white lg:p-4 lg:text-slate-950 lg:shadow-sm lg:ring-1 lg:ring-slate-200">
+            <div className="hidden items-center gap-3 lg:flex">
+              <span className="grid h-11 w-11 place-items-center rounded-full bg-orange-500/18 text-orange-300 lg:bg-blue-600 lg:text-white">
+                <Plus className="h-5 w-5" aria-hidden="true" />
+              </span>
+              <div>
+                <h3 className="text-base font-black text-white lg:text-slate-950">Add expense</h3>
+                <p className="text-sm font-semibold text-white/46 lg:text-slate-500">Track a cost for this trip.</p>
+              </div>
             </div>
-          </div>
-          <BudgetRecordForm tripId={tripId} />
-        </section>
+            <div className="lg:mt-0">
+              <BudgetRecordForm tripId={tripId} />
+            </div>
+          </section>
 
         <section className="hidden rounded-[1.55rem] bg-[#1c1c1f] p-4 shadow-sm ring-1 ring-white/8 lg:block lg:bg-white lg:text-slate-950 lg:ring-slate-200">
           <h3 className="text-base font-black text-white lg:text-slate-950">Expense notes</h3>

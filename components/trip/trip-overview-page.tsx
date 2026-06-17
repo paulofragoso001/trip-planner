@@ -611,7 +611,10 @@ function MobileOverviewSmallPass({
               <span className="grid h-8 w-8 place-items-center rounded-full bg-orange-500/18 text-orange-300">
                 <Plus className="h-4 w-4" aria-hidden="true" />
               </span>
-              Track spending
+              <span>
+                <span className="block font-black text-white">No expenses yet</span>
+                <span className="block text-xs font-semibold text-white/48">Add an expense to track trip spending.</span>
+              </span>
             </Link>
           )}
         </MobileOverviewSection>

@@ -1346,8 +1346,23 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByRole("navigation", { name: "Trip tabs" })).toBeHidden();
     await expect(page.getByTestId("trip-budget-page").getByRole("heading", { name: "My Spending" })).toBeVisible();
     await expect(page.getByTestId("trip-budget-page").getByText("Total").last()).toBeVisible();
-    await expect(page.getByTestId("mobile-spending-category").filter({ hasText: "Flights" })).toBeVisible();
+    await expect(page.getByTestId("trip-budget-page")).toContainText("$3,651.00");
+    await expect(page.getByTestId("mobile-spending-category").filter({ hasText: "Bar & Party" })).toBeVisible();
+    await expect(page.getByTestId("mobile-spending-category").filter({ hasText: "Flight" })).toBeVisible();
     await expect(page.getByTestId("mobile-spending-category").filter({ hasText: "Lodging" })).toBeVisible();
+    await expect(page.getByTestId("mobile-spending-category").filter({ hasText: "Restaurant" })).toBeVisible();
+    await page.getByTestId("mobile-spending-total").scrollIntoViewIfNeeded();
+    const spendingClearance = await page.getByTestId("mobile-spending-total").evaluate((element) => {
+      const nav = document.querySelector('[data-testid="app-shell-mobile-bottom-nav"]');
+      const navRect = nav?.getBoundingClientRect();
+      const totalRect = element.getBoundingClientRect();
+      return {
+        clearance: (navRect?.top ?? window.innerHeight) - totalRect.bottom,
+        covered: Boolean(navRect && totalRect.bottom > navRect.top - 8 && totalRect.top < navRect.bottom)
+      };
+    });
+    expect(spendingClearance.covered, "mobile spending total is not covered by bottom nav").toBe(false);
+    expect(spendingClearance.clearance, "mobile spending total keeps tap clearance above bottom nav").toBeGreaterThanOrEqual(8);
     await page.getByTestId("trip-budget-page").getByTestId("mobile-add-expense-button").click();
     await expect(page.getByTestId("mobile-expense-amount-sheet")).toBeVisible();
     await expect(page.getByTestId("mobile-expense-amount-sheet").getByRole("button", { name: "Save" })).toBeDisabled();

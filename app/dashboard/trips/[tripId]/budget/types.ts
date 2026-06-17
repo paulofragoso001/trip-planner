@@ -1,6 +1,12 @@
+export type BudgetCurrencyTotal = {
+  currency: string;
+  label: string;
+};
+
 export type BudgetCategoryView = {
   amountLabel: string;
   category: string;
+  currencyTotals: BudgetCurrencyTotal[];
   id: string;
   label: string;
   records: Array<{
@@ -19,6 +25,7 @@ export type BudgetAlertView = {
 export type TripBudgetData = {
   alerts: BudgetAlertView[];
   categories: BudgetCategoryView[];
+  currencyTotals: BudgetCurrencyTotal[];
   destination: string;
   error: string | null;
   latestRecords: Array<{

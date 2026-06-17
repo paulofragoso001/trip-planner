@@ -10,7 +10,7 @@ export function BudgetRecordForm({ tripId }: { tripId: string }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [amount, setAmount] = useState("");
-  const [category, setCategory] = useState("food");
+  const [category, setCategory] = useState("restaurant");
   const [label, setLabel] = useState("");
   const [recordType, setRecordType] = useState("actual");
   const { isPending, run, state } = useWaylineAction();
@@ -237,10 +237,11 @@ export function BudgetRecordForm({ tripId }: { tripId: string }) {
 }
 
 const expenseCategories = [
-  { label: "Flights", value: "flights" },
+  { label: "Bar & Party", value: "bar-party" },
+  { label: "Flight", value: "flight" },
   { label: "Lodging", value: "lodging" },
-  { label: "Restaurant", value: "food" },
-  { label: "Ground", value: "ground" },
-  { label: "Activity", value: "meetings" },
-  { label: "Other", value: "misc" }
+  { label: "Restaurant", value: "restaurant" },
+  { label: "Transport", value: "transport" },
+  { label: "Activity", value: "activity" },
+  { label: "Other", value: "other" }
 ];

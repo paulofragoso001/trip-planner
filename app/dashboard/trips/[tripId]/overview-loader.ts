@@ -103,7 +103,7 @@ type SegmentRow = {
 export async function loadTripOverviewData(tripId: string): Promise<TripOverviewData> {
   if (isDemoTripId(tripId)) {
     return {
-      actualLabel: "$3,870",
+      actualLabel: "$3,651.00",
       actionSummary: {
         hasFlight: true,
         hasLodging: true,
@@ -113,9 +113,9 @@ export async function loadTripOverviewData(tripId: string): Promise<TripOverview
       destination: "Barcelona, Spain",
       error: null,
       expenseCategories: [
-        { amountLabel: "$1,120", id: "flights", label: "Flights" },
-        { amountLabel: "$1,860", id: "lodging", label: "Lodging" },
-        { amountLabel: "$520", id: "food", label: "Food" }
+        { amountLabel: "$42.00", id: "bar-party", label: "Bar & Party" },
+        { amountLabel: "$1,075.00", id: "flight", label: "Flight" },
+        { amountLabel: "$2,500.00", id: "lodging", label: "Lodging" }
       ],
       itineraryPreview: [
         {
@@ -186,8 +186,8 @@ export async function loadTripOverviewData(tripId: string): Promise<TripOverview
         typeLabel: "Hotel"
       },
       notes: "Demo workspace",
-      plannedLabel: "$4,200",
-      remainingLabel: "$330",
+      plannedLabel: "$4,200.00",
+      remainingLabel: "$549.00",
       routePreview: {
         destinationLabel: "BCN",
         id: "flight-demo",
@@ -308,7 +308,7 @@ export async function loadTripOverviewData(tripId: string): Promise<TripOverview
 
 function emptyOverviewData(tripId: string, error: string): TripOverviewData {
   return {
-    actualLabel: "$0",
+    actualLabel: "$0.00",
     actionSummary: {
       hasFlight: false,
       hasLodging: false,
@@ -325,8 +325,8 @@ function emptyOverviewData(tripId: string, error: string): TripOverviewData {
     mapPreviewItems: [],
     nextUp: null,
     notes: null,
-    plannedLabel: "$0",
-    remainingLabel: "$0",
+    plannedLabel: "$0.00",
+    remainingLabel: "$0.00",
     routePreview: null,
     segmentCount: 0,
     status: "Unavailable",
@@ -422,15 +422,45 @@ function groupExpenseCategories(rows: BudgetRow[], currency: string) {
 
   for (const row of rows) {
     if (row.record_type === "planned") continue;
-    const key = row.category || "misc";
+    const key = normalizeExpenseCategory(row.category);
     totals.set(key, (totals.get(key) || 0) + Number(row.amount || 0));
   }
 
   return Array.from(totals.entries()).map(([category, amount]) => ({
     amountLabel: formatMoney(amount, currency),
     id: category,
-    label: labelForKind(category)
+    label: labelForExpenseCategory(category)
   }));
+}
+
+function labelForExpenseCategory(category: string) {
+  switch (category) {
+    case "activity":
+      return "Activity";
+    case "bar-party":
+      return "Bar & Party";
+    case "flight":
+      return "Flight";
+    case "lodging":
+      return "Lodging";
+    case "restaurant":
+      return "Restaurant";
+    case "transport":
+      return "Transport";
+    default:
+      return "Other";
+  }
+}
+
+function normalizeExpenseCategory(category: string | null | undefined) {
+  const normalized = String(category || "misc").toLowerCase();
+  if (/flight|air|airport/.test(normalized)) return "flight";
+  if (/lodging|hotel|stay|room/.test(normalized)) return "lodging";
+  if (/restaurant|food|dining|dinner|lunch|breakfast|meal|potluck/.test(normalized)) return "restaurant";
+  if (/bar|nightlife|party|club|drink|cocktail/.test(normalized)) return "bar-party";
+  if (/ground|transport|car|train|rail|road|taxi|uber|transfer|bus/.test(normalized)) return "transport";
+  if (/activity|place|attraction|museum|tour|event|meeting|park/.test(normalized)) return "activity";
+  return "other";
 }
 
 function labelForKind(value: string | null) {
@@ -462,7 +492,8 @@ function formatTime(value: string | null) {
 function formatMoney(value: number, currency = "USD") {
   return new Intl.NumberFormat("en-US", {
     currency,
-    maximumFractionDigits: 0,
+    maximumFractionDigits: 2,
+    minimumFractionDigits: 2,
     style: "currency"
   }).format(value);
 }

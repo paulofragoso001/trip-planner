@@ -20,32 +20,36 @@ type BudgetTripRow = {
 
 const demoCategories: BudgetCategoryView[] = [
   {
-    amountLabel: "$1,120",
-    category: "flights",
-    id: "demo-flights",
-    label: "Flights",
-    records: [{ amountLabel: "$1,120", id: "demo-record-flight", label: "MIA to BCN" }]
+    amountLabel: "$42.00",
+    category: "bar-party",
+    currencyTotals: [{ currency: "USD", label: "$42.00" }],
+    id: "demo-bar-party",
+    label: "Bar & Party",
+    records: [{ amountLabel: "$42.00", id: "demo-record-magic-hour", label: "Magic Hour" }]
   },
   {
-    amountLabel: "$1,860",
+    amountLabel: "$1,075.00",
+    category: "flight",
+    currencyTotals: [{ currency: "USD", label: "$1,075.00" }],
+    id: "demo-flight",
+    label: "Flight",
+    records: [{ amountLabel: "$1,075.00", id: "demo-record-flight", label: "LAX → JFK" }]
+  },
+  {
+    amountLabel: "$2,500.00",
     category: "lodging",
+    currencyTotals: [{ currency: "USD", label: "$2,500.00" }],
     id: "demo-lodging",
     label: "Lodging",
-    records: [{ amountLabel: "$1,860", id: "demo-record-hotel", label: "Hotel Arts" }]
+    records: [{ amountLabel: "$2,500.00", id: "demo-record-hotel", label: "Aman New York" }]
   },
   {
-    amountLabel: "$520",
-    category: "food",
-    id: "demo-food",
-    label: "Food",
-    records: [{ amountLabel: "$420", id: "demo-record-dinner", label: "Team dinner" }]
-  },
-  {
-    amountLabel: "$220",
-    category: "ground",
-    id: "demo-ground",
-    label: "Ground transport",
-    records: [{ amountLabel: "$220", id: "demo-record-ground", label: "Airport transfer" }]
+    amountLabel: "$34.00",
+    category: "restaurant",
+    currencyTotals: [{ currency: "USD", label: "$34.00" }],
+    id: "demo-restaurant",
+    label: "Restaurant",
+    records: [{ amountLabel: "$34.00", id: "demo-record-potluck", label: "Potluck Club" }]
   }
 ];
 
@@ -99,18 +103,20 @@ function mapRowsToBudgetData(
   const actualRows = rows.filter((row) => row.record_type !== "planned");
   const actualTotal = actualRows.reduce((total, row) => total + readAmount(row), 0);
   const remaining = plannedBudget - actualTotal;
-  const currency = rows[0]?.currency || "USD";
+  const currency = normalizeCurrency(rows[0]?.currency);
+  const currencyTotals = buildCurrencyTotals(actualRows, currency);
   const categories = groupCategories(actualRows, currency);
 
   return {
-    actualLabel: formatMoney(actualTotal, currency),
+    actualLabel: formatCurrencyTotals(currencyTotals),
     alerts: buildAlerts(plannedBudget, remaining, actualTotal, categories),
     categories,
+    currencyTotals,
     destination: trip?.destination || "Trip",
     error: null,
     latestRecords: actualRows.slice(-5).reverse().map((row) => ({
-      amountLabel: formatMoney(readAmount(row), row.currency || currency),
-      category: row.category || "misc",
+      amountLabel: formatMoney(readAmount(row), normalizeCurrency(row.currency || currency)),
+      category: normalizeBudgetCategory(row.category),
       id: row.id,
       label: row.label || labelForCategory(row.category || "misc", null),
       recordType: row.record_type || "actual"
@@ -124,7 +130,7 @@ function mapRowsToBudgetData(
 
 function emptyBudgetData(tripId: string, error: string): TripBudgetData {
   return {
-    actualLabel: "$0",
+    actualLabel: "$0.00",
     alerts: [
       {
         id: "budget-error",
@@ -133,11 +139,12 @@ function emptyBudgetData(tripId: string, error: string): TripBudgetData {
       }
     ],
     categories: [],
+    currencyTotals: [{ currency: "USD", label: "$0.00" }],
     destination: "Trip",
     error,
     latestRecords: [],
-    plannedLabel: "$0",
-    remainingLabel: "$0",
+    plannedLabel: "$0.00",
+    remainingLabel: "$0.00",
     title: "My Spending",
     tripId
   };
@@ -147,22 +154,25 @@ function groupCategories(rows: BudgetRecordRow[], currency: string): BudgetCateg
   const totals = new Map<
     string,
     {
-      amount: number;
+      currencyTotals: Map<string, number>;
       label: string;
       records: BudgetCategoryView["records"];
     }
   >();
 
   for (const row of rows) {
-    const category = row.category || "misc";
+    const category = normalizeBudgetCategory(row.category);
+    const rowCurrency = normalizeCurrency(row.currency || currency);
     const existing = totals.get(category);
+    const currencyTotals = new Map(existing?.currencyTotals || []);
+    currencyTotals.set(rowCurrency, (currencyTotals.get(rowCurrency) || 0) + readAmount(row));
     totals.set(category, {
-      amount: (existing?.amount || 0) + readAmount(row),
+      currencyTotals,
       label: existing?.label || labelForCategory(category, null),
       records: [
         ...(existing?.records || []),
         {
-          amountLabel: formatMoney(readAmount(row), row.currency || currency),
+          amountLabel: formatMoney(readAmount(row), rowCurrency),
           id: row.id,
           label: row.label || labelForCategory(category, null)
         }
@@ -171,8 +181,9 @@ function groupCategories(rows: BudgetRecordRow[], currency: string): BudgetCateg
   }
 
   return Array.from(totals.entries()).map(([category, value]) => ({
-    amountLabel: formatMoney(value.amount, currency),
+    amountLabel: formatCurrencyTotals(mapCurrencyTotals(value.currencyTotals)),
     category,
+    currencyTotals: mapCurrencyTotals(value.currencyTotals),
     id: category,
     label: value.label,
     records: value.records
@@ -227,43 +238,44 @@ function buildAlerts(
 
 function demoBudgetData(tripId: string): TripBudgetData {
   return {
-    actualLabel: "$3,870",
+    actualLabel: "$3,651.00",
     alerts: [
-      { id: "demo-good", message: "On track: remaining budget is $330.", tone: "good" },
+      { id: "demo-good", message: "On track: remaining budget is $549.00.", tone: "good" },
       {
         id: "demo-warning",
-        message: "Category warning: food is close to limit.",
+        message: "Restaurant spending is ready for review.",
         tone: "warning"
       }
     ],
     categories: demoCategories,
+    currencyTotals: [{ currency: "USD", label: "$3,651.00" }],
     destination: "Barcelona, Spain",
     error: null,
     latestRecords: [
       {
-        amountLabel: "$1,120",
-        category: "flights",
+        amountLabel: "$1,075.00",
+        category: "flight",
         id: "demo-record-flight",
-        label: "MIA to BCN",
+        label: "LAX → JFK",
         recordType: "actual"
       },
       {
-        amountLabel: "$420",
-        category: "food",
-        id: "demo-record-dinner",
-        label: "Team dinner",
+        amountLabel: "$42.00",
+        category: "bar-party",
+        id: "demo-record-magic-hour",
+        label: "Magic Hour",
         recordType: "actual"
       },
       {
-        amountLabel: "$1,860",
+        amountLabel: "$2,500.00",
         category: "lodging",
         id: "demo-record-hotel",
-        label: "Hotel Arts",
+        label: "Aman New York",
         recordType: "actual"
       }
     ],
-    plannedLabel: "$4,200",
-    remainingLabel: "$330",
+    plannedLabel: "$4,200.00",
+    remainingLabel: "$549.00",
     title: "Barcelona Work Trip",
     tripId
   };
@@ -274,21 +286,71 @@ function labelForCategory(category: string, fallback: string | null) {
     return fallback;
   }
 
-  return category
-    .split(/[-_ ]+/)
-    .filter(Boolean)
-    .map((part) => `${part.slice(0, 1).toUpperCase()}${part.slice(1)}`)
-    .join(" ");
+  switch (normalizeBudgetCategory(category)) {
+    case "activity":
+      return "Activity";
+    case "bar-party":
+      return "Bar & Party";
+    case "flight":
+      return "Flight";
+    case "lodging":
+      return "Lodging";
+    case "restaurant":
+      return "Restaurant";
+    case "transport":
+      return "Transport";
+    default:
+      return "Other";
+  }
 }
 
 function readAmount(row: BudgetRecordRow) {
   return Number(row.amount || 0);
 }
 
+function buildCurrencyTotals(rows: BudgetRecordRow[], fallbackCurrency: string) {
+  const totals = new Map<string, number>();
+  for (const row of rows) {
+    const currency = normalizeCurrency(row.currency || fallbackCurrency);
+    totals.set(currency, (totals.get(currency) || 0) + readAmount(row));
+  }
+
+  return mapCurrencyTotals(totals);
+}
+
+function mapCurrencyTotals(totals: Map<string, number>) {
+  return Array.from(totals.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([currency, amount]) => ({
+      currency,
+      label: formatMoney(amount, currency)
+    }));
+}
+
+function formatCurrencyTotals(totals: Array<{ label: string }>) {
+  return totals.length ? totals.map((total) => total.label).join(" + ") : "$0.00";
+}
+
+function normalizeCurrency(currency: string | null | undefined) {
+  return String(currency || "USD").trim().toUpperCase() || "USD";
+}
+
+function normalizeBudgetCategory(category: string | null | undefined) {
+  const normalized = String(category || "misc").toLowerCase();
+  if (/flight|air|airport/.test(normalized)) return "flight";
+  if (/lodging|hotel|stay|room/.test(normalized)) return "lodging";
+  if (/restaurant|food|dining|dinner|lunch|breakfast|meal|potluck/.test(normalized)) return "restaurant";
+  if (/bar|nightlife|party|club|drink|cocktail/.test(normalized)) return "bar-party";
+  if (/ground|transport|car|train|rail|road|taxi|uber|transfer|bus/.test(normalized)) return "transport";
+  if (/activity|place|attraction|museum|tour|event|meeting|park/.test(normalized)) return "activity";
+  return "other";
+}
+
 function formatMoney(value: number, currency = "USD") {
   return new Intl.NumberFormat("en-US", {
     currency,
-    maximumFractionDigits: 0,
+    maximumFractionDigits: 2,
+    minimumFractionDigits: 2,
     style: "currency"
   }).format(value);
 }
