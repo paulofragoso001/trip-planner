@@ -1391,6 +1391,100 @@ test.describe("mobile soft-launch UX", () => {
     }
   });
 
+  test("mobile overview surfaces real flight info and opens route detail", async ({ page, request }) => {
+    test.setTimeout(90_000);
+    await page.setViewportSize({ height: 900, width: 390 });
+    await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
+
+    const tripResponse = await request.post(`${baseUrl}/api/trips`, {
+      data: {
+        destination: "New York City",
+        name: `Flight info test ${Date.now()}`,
+        status: "Planning",
+        travel_style: "balanced"
+      },
+      headers: { "x-cypress-dashboard": "true" }
+    });
+    expect(tripResponse.status()).toBe(201);
+    const tripPayload = await tripResponse.json();
+    const tripId = tripPayload?.trip?.id;
+    expect(typeof tripId).toBe("string");
+
+    try {
+      const route = {
+        arriveAt: "2026-09-09T15:55:00.000Z",
+        carrier: "Virgin Atlantic",
+        confirmation: "DL979-TEST",
+        departAt: "2026-09-09T07:18:00.000Z",
+        destination: {
+          address: "Terminal 4 Gate B34",
+          code: "JFK",
+          label: "JFK",
+          lat: 40.6413,
+          lng: -73.7781
+        },
+        flightNumber: "DL979",
+        mode: "flight",
+        origin: {
+          address: "Terminal 3 Gate 34",
+          code: "LAX",
+          label: "LAX",
+          lat: 33.9416,
+          lng: -118.4085
+        }
+      };
+
+      const segmentResponse = await request.post(`${baseUrl}/api/trip-segments`, {
+        data: {
+          endTime: route.arriveAt,
+          kind: "flight",
+          lat: 33.9416,
+          lng: -118.4085,
+          location: "Los Angeles International Airport to John F Kennedy International Airport",
+          provider: "google_places",
+          providerMetadata: {
+            aircraft: "B764",
+            baggageClaim: "T4",
+            route,
+            timezoneDifference: "+3 hr"
+          },
+          startTime: route.departAt,
+          title: "LAX to JFK",
+          tripId
+        },
+        headers: { "x-cypress-dashboard": "true" }
+      });
+      expect(segmentResponse.status()).toBe(201);
+
+      await page.goto(`${baseUrl}/dashboard/trips/${tripId}`, { waitUntil: "commit" });
+      const flightCard = page.getByTestId("overview-flight-card");
+      await expect(flightCard).toBeVisible({ timeout: 20_000 });
+      await expect(flightCard).toContainText("Flight");
+      await expect(flightCard).toContainText("LAX");
+      await expect(flightCard).toContainText("JFK");
+      await expect(flightCard).toContainText("Virgin Atlantic DL979");
+      await expect(flightCard).toContainText("7:18 AM");
+      await expect(flightCard).toContainText("3:55 PM");
+
+      await flightCard.click();
+      const detail = page.getByTestId("activity-detail-sheet");
+      await expect(detail).toBeVisible();
+      await expect(detail).toContainText("LAX to JFK");
+      await expect(detail).toContainText("LAX");
+      await expect(detail).toContainText("JFK");
+      await expect(detail).toContainText("Flight Duration");
+      await expect(detail).toContainText("8h 37m");
+      await expect(detail).toContainText("Timezone Difference");
+      await expect(detail).toContainText("+3 hr");
+      await expect(detail).toContainText("Distance");
+      await expect(detail).toContainText("Virgin Atlantic");
+      await expect(detail).toContainText("B764");
+      await expect(detail).toContainText("T4");
+    } finally {
+      await deleteTripForTest(request, tripId);
+    }
+  });
+
   test("mobile trip component pages use compact dark sheets", async ({ page }) => {
     await page.setViewportSize({ height: 900, width: 390 });
     await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });

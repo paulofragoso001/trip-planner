@@ -11,9 +11,11 @@ import {
   isRouteKind,
   readTripSegmentRoute,
   routeEndpointLabel,
-  routeTitleLabel
+  routeTitleLabel,
+  type TripRouteEndpoint
 } from "@/lib/trip-segment-route";
 import type { TripMapItem } from "@/components/TripMap";
+import type { MobileFlightRoutePreview } from "@/components/trip/mobile-flight-route-card";
 
 export type TripOverviewData = {
   actualLabel: string;
@@ -30,6 +32,7 @@ export type TripOverviewData = {
     id: string;
     label: string;
   }>;
+  flightPreview: MobileFlightRoutePreview | null;
   hasExpenses: boolean;
   heroImage: WalletHeroImage;
   itineraryPreview: Array<{
@@ -88,6 +91,9 @@ type BudgetRow = {
 };
 
 type SegmentRow = {
+  booking_url?: string | null;
+  confirmation_code?: string | null;
+  end_time?: string | null;
   id: string;
   kind: string | null;
   lat?: number | null;
@@ -95,7 +101,10 @@ type SegmentRow = {
   latitude?: number | null;
   longitude?: number | null;
   location: string | null;
+  notes?: string | null;
+  provider?: string | null;
   provider_metadata?: Record<string, unknown> | null;
+  provider_place_id?: string | null;
   start_time: string | null;
   title: string;
 };
@@ -117,6 +126,7 @@ export async function loadTripOverviewData(tripId: string): Promise<TripOverview
         { amountLabel: "$1,075.00", id: "flight", label: "Flight" },
         { amountLabel: "$2,500.00", id: "lodging", label: "Lodging" }
       ],
+      flightPreview: null,
       itineraryPreview: [
         {
           id: "flight-demo",
@@ -226,7 +236,10 @@ export async function loadTripOverviewData(tripId: string): Promise<TripOverview
       .maybeSingle(),
     auth.supabase
       .from("trip_segments")
-      .select("id,title,kind,location,start_time,lat,lng,provider_metadata", { count: "exact" })
+      .select(
+        "id,title,kind,location,start_time,end_time,lat,lng,provider,provider_place_id,provider_metadata,confirmation_code,booking_url,notes",
+        { count: "exact" }
+      )
       .eq("trip_id", tripId)
       .eq("user_id", auth.userId)
       .order("start_time", { ascending: true, nullsFirst: false })
@@ -247,7 +260,10 @@ export async function loadTripOverviewData(tripId: string): Promise<TripOverview
     segmentResult.error && isMissingLatLngColumns(segmentResult.error.message)
       ? await auth.supabase
           .from("trip_segments")
-          .select("id,title,kind,location,start_time,latitude,longitude,provider_metadata", { count: "exact" })
+          .select(
+            "id,title,kind,location,start_time,end_time,latitude,longitude,provider,provider_place_id,provider_metadata,confirmation_code,booking_url,notes",
+            { count: "exact" }
+          )
           .eq("trip_id", tripId)
           .eq("user_id", auth.userId)
           .order("start_time", { ascending: true, nullsFirst: false })
@@ -287,6 +303,7 @@ export async function loadTripOverviewData(tripId: string): Promise<TripOverview
     destination: trip.destination || "No destination set",
     error: null,
     expenseCategories,
+    flightPreview: mapFlightPreview(segments.find(isFlightSegment) || null),
     hasExpenses: actual > 0 || expenseCategories.length > 0,
     heroImage,
     itineraryPreview,
@@ -318,6 +335,7 @@ function emptyOverviewData(tripId: string, error: string): TripOverviewData {
     destination: "Destination unavailable",
     error,
     expenseCategories: [],
+    flightPreview: null,
     hasExpenses: false,
     heroImage: getTripHeroImage({ destination: "Trip", name: "Trip unavailable" }, []),
     itineraryPreview: [],
@@ -380,6 +398,91 @@ function mapRoutePreview(row: SegmentRow | null) {
     title: row.title,
     typeLabel
   };
+}
+
+function isFlightSegment(row: SegmentRow) {
+  const kind = String(row.kind || "").toLowerCase();
+  const route = readTripSegmentRoute(row.provider_metadata);
+  return kind === "flight" || route?.mode === "flight";
+}
+
+function mapFlightPreview(row: SegmentRow | null): MobileFlightRoutePreview | null {
+  if (!row) return null;
+
+  const route = readTripSegmentRoute(row.provider_metadata);
+  if (String(row.kind || "").toLowerCase() !== "flight" && route?.mode !== "flight") {
+    return null;
+  }
+
+  const departAt = route?.departAt || row.start_time;
+  const arriveAt = route?.arriveAt || row.end_time || null;
+  const hasStartTime = readScheduleFlag(row.provider_metadata, "hasStartTime", Boolean(departAt));
+  const hasEndTime = readScheduleFlag(row.provider_metadata, "hasEndTime", Boolean(arriveAt));
+  const originLabel = routeEndpointLabel(route?.origin) || null;
+  const destinationLabel = routeEndpointLabel(route?.destination) || null;
+  const originCode = routeEndpointCode(route?.origin);
+  const destinationCode = routeEndpointCode(route?.destination);
+  const metaLabel = [route?.carrier, route?.flightNumber].filter(Boolean).join(" ") || "Flight";
+  const title = routeTitleLabel(route, row.location || row.title);
+  const lat = row.lat ?? row.latitude ?? route?.origin?.lat ?? route?.destination?.lat ?? 0;
+  const lng = row.lng ?? row.longitude ?? route?.origin?.lng ?? route?.destination?.lng ?? 0;
+
+  return {
+    arriveLabel: hasEndTime ? formatNullableTime(arriveAt) : null,
+    dateLabel: departAt ? formatFullDate(departAt) : null,
+    departLabel: hasStartTime ? formatNullableTime(departAt) : null,
+    destinationCode,
+    destinationLabel,
+    id: row.id,
+    item: {
+      address: row.location || null,
+      bookingUrl: row.booking_url || null,
+      category: "Flight",
+      confirmationCode: cleanString(row.confirmation_code) || cleanString(route?.confirmation),
+      dayLabel: departAt ? formatDate(departAt.slice(0, 10)) : null,
+      endTime: arriveAt,
+      hasEndTime,
+      hasStartTime,
+      id: row.id,
+      kind: row.kind || "flight",
+      lat,
+      lng,
+      notes: row.notes || null,
+      provider: row.provider || null,
+      providerMetadata: row.provider_metadata || null,
+      providerPlaceId: row.provider_place_id || null,
+      route,
+      routeOrder: 1,
+      startTime: departAt,
+      timeLabel: hasStartTime ? formatNullableTime(departAt) : null,
+      title
+    },
+    metaLabel,
+    originCode,
+    originLabel,
+    title
+  };
+}
+
+function routeEndpointCode(endpoint: TripRouteEndpoint | null | undefined) {
+  return cleanString(endpoint?.code);
+}
+
+function readScheduleFlag(
+  metadata: Record<string, unknown> | null | undefined,
+  key: string,
+  fallback: boolean
+) {
+  const direct = metadata?.[key];
+  if (typeof direct === "boolean") return fallback || direct;
+
+  const schedule = metadata?.schedule;
+  if (schedule && typeof schedule === "object" && !Array.isArray(schedule)) {
+    const nested = (schedule as Record<string, unknown>)[key];
+    if (typeof nested === "boolean") return fallback || nested;
+  }
+
+  return fallback;
 }
 
 function summarizeSegments(rows: SegmentRow[]) {
@@ -487,6 +590,28 @@ function formatTime(value: string | null) {
     minute: "2-digit",
     timeZone: "UTC"
   }).format(new Date(value));
+}
+
+function formatNullableTime(value: string | null | undefined) {
+  if (!value) return null;
+  return new Intl.DateTimeFormat("en", {
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: "UTC"
+  }).format(new Date(value));
+}
+
+function formatFullDate(value: string) {
+  return new Intl.DateTimeFormat("en", {
+    day: "numeric",
+    month: "short",
+    timeZone: "UTC",
+    weekday: "short"
+  }).format(new Date(value));
+}
+
+function cleanString(value: unknown) {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
 function formatMoney(value: number, currency = "USD") {

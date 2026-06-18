@@ -19,7 +19,8 @@ import {
   hasResolvedRoute,
   routeEndpointLabel,
   routeTitleLabel,
-  type TripRouteEndpoint
+  type TripRouteEndpoint,
+  type TripSegmentRouteMetadata
 } from "@/lib/trip-segment-route";
 
 export type ActivityDetailRecommendation = {
@@ -690,6 +691,14 @@ function getSegmentSubtitle(item: TripMapItem, kind: DetailKind, categoryLabel: 
   return [categoryLabel, item.address].filter(Boolean).join(" in ") || item.address || categoryLabel;
 }
 
+function isFlightRoute(item: TripMapItem) {
+  return item.route?.mode === "flight" || String(item.kind || item.category || "").toLowerCase() === "flight";
+}
+
+function isFlightDetail(detail: DetailView) {
+  return detail.route?.mode === "flight" || String(detail.category || "").toLowerCase() === "flight";
+}
+
 function getSegmentDetails(
   item: TripMapItem,
   kind: DetailKind,
@@ -700,10 +709,19 @@ function getSegmentDetails(
   const rows: (DetailRow | null)[] = [];
 
   if (kind === "route") {
+    const flightRoute = isFlightRoute(item);
     const duration = getDurationLabel(item.route?.departAt || item.startTime, item.route?.arriveAt || item.endTime);
-    const distance = getRouteDistance(providerMetadata);
+    const timezoneDifference = readProviderString(providerMetadata, [
+      "timezoneDifference",
+      "timezone_difference",
+      "timezoneDiff",
+      "timeZoneDifference",
+      "time_zone_difference"
+    ]);
+    const distance = getRouteDistance(providerMetadata, item.route);
     rows.push(
-      duration ? { label: "Duration", value: duration } : null,
+      duration ? { label: flightRoute ? "Flight Duration" : "Duration", value: duration } : null,
+      timezoneDifference ? { label: "Timezone Difference", value: timezoneDifference } : null,
       distance ? { label: "Distance", value: distance } : null,
       item.route?.carrier ? { label: "Company", value: item.route.carrier } : null,
       item.route?.flightNumber ? { label: "Flight", value: item.route.flightNumber } : null,
@@ -759,6 +777,8 @@ function getScheduleRows(kind: DetailKind, item: TripMapItem) {
 function getDetailMapItem(detail: DetailView): TripMapItem | null {
   const route = detail.route;
   if (route && hasResolvedRoute(route)) {
+    if (isFlightDetail(detail)) return null;
+
     const destination = route.destination;
     const lat = getFiniteNumber(destination?.lat) ?? getFiniteNumber(route.origin?.lat);
     const lng = getFiniteNumber(destination?.lng) ?? getFiniteNumber(route.origin?.lng);
@@ -780,6 +800,8 @@ function getDetailMapItem(detail: DetailView): TripMapItem | null {
     };
   }
 
+  if (isFlightDetail(detail)) return null;
+
   if (typeof detail.lat !== "number" || typeof detail.lng !== "number") return null;
 
   return {
@@ -799,12 +821,16 @@ function getDetailMapItem(detail: DetailView): TripMapItem | null {
 
 function buildDirectionsUrl(item: TripMapItem) {
   if (hasResolvedRoute(item.route)) {
+    if (isFlightRoute(item)) return null;
+
     const origin = routeEndpointLabel(item.route?.origin);
     const destination = routeEndpointLabel(item.route?.destination);
     if (origin && destination) {
       return `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}`;
     }
   }
+
+  if (isFlightRoute(item)) return null;
 
   return buildPointDirectionsUrl(getFiniteNumber(item.lat), getFiniteNumber(item.lng), item.address || null);
 }
@@ -867,12 +893,47 @@ function getNightsLabel(start: string | null | undefined, end: string | null | u
   return nights > 0 ? String(nights) : null;
 }
 
-function getRouteDistance(metadata: Record<string, unknown> | null) {
+function getRouteDistance(
+  metadata: Record<string, unknown> | null,
+  route?: TripSegmentRouteMetadata | null
+) {
   const value = readProviderString(metadata, ["distance", "distanceLabel", "distanceText"]);
   if (value) return value;
-  const miles = readProviderNumber(metadata, ["distanceMiles", "distance_miles"]);
+  const miles = readProviderNumber(metadata, ["distanceMiles", "distance_miles", "miles"]);
   if (typeof miles === "number") return `${Math.round(miles).toLocaleString("en")} mi`;
+  const routeMiles = getRouteDistanceMiles(route);
+  if (routeMiles) return `${Math.round(routeMiles).toLocaleString("en")} mi`;
   return null;
+}
+
+function getRouteDistanceMiles(route?: TripSegmentRouteMetadata | null) {
+  const originLat = getFiniteNumber(route?.origin?.lat);
+  const originLng = getFiniteNumber(route?.origin?.lng);
+  const destinationLat = getFiniteNumber(route?.destination?.lat);
+  const destinationLng = getFiniteNumber(route?.destination?.lng);
+  if (
+    originLat == null ||
+    originLng == null ||
+    destinationLat == null ||
+    destinationLng == null
+  ) {
+    return null;
+  }
+
+  const earthRadiusMiles = 3958.8;
+  const dLat = toRadians(destinationLat - originLat);
+  const dLng = toRadians(destinationLng - originLng);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRadians(originLat)) *
+      Math.cos(toRadians(destinationLat)) *
+      Math.sin(dLng / 2) ** 2;
+
+  return earthRadiusMiles * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function toRadians(value: number) {
+  return (value * Math.PI) / 180;
 }
 
 function readProviderString(metadata: Record<string, unknown> | null, keys: string[]) {

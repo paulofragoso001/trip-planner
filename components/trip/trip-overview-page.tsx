@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import type { ReactNode } from "react";
 import type { TripOverviewData } from "@/app/dashboard/trips/[tripId]/overview-loader";
+import { MobileFlightRouteCard } from "@/components/trip/mobile-flight-route-card";
 
 type TripOverviewPageProps = TripOverviewData;
 
@@ -27,6 +28,7 @@ export default function TripOverviewPage({
   destination,
   error,
   expenseCategories,
+  flightPreview,
   hasExpenses,
   heroImage,
   itineraryPreview,
@@ -88,6 +90,7 @@ export default function TripOverviewPage({
         dateRange={dateRange}
         destination={destination}
         expenseCategories={expenseCategories}
+        flightPreview={flightPreview}
         hasExpenses={hasExpenses}
         heroImage={heroImage}
         itineraryPreview={itineraryPreview}
@@ -98,6 +101,7 @@ export default function TripOverviewPage({
         spendingLabel={actualLabel}
         statusLabel={statusLabel}
         title={title}
+        tripId={tripId}
       />
 
       <div className="hidden gap-4 px-3 pt-4 lg:grid lg:px-0 lg:pt-0" id="overview-full">
@@ -346,6 +350,7 @@ function MobileOverviewSmallPass({
   dateRange,
   destination,
   expenseCategories,
+  flightPreview,
   hasExpenses,
   heroImage,
   itineraryPreview,
@@ -355,7 +360,8 @@ function MobileOverviewSmallPass({
   segmentCount,
   spendingLabel,
   statusLabel,
-  title
+  title,
+  tripId
 }: {
   actionItems: Array<{
     href: string;
@@ -369,6 +375,7 @@ function MobileOverviewSmallPass({
   dateRange: string;
   destination: string;
   expenseCategories: TripOverviewData["expenseCategories"];
+  flightPreview: TripOverviewData["flightPreview"];
   hasExpenses: boolean;
   heroImage: TripOverviewData["heroImage"];
   itineraryPreview: TripOverviewData["itineraryPreview"];
@@ -379,20 +386,23 @@ function MobileOverviewSmallPass({
   spendingLabel: string;
   statusLabel: string | null;
   title: string;
+  tripId: string;
 }) {
-  const nextItem = routePreview
+  const routePreviewForNext = routePreview?.id === flightPreview?.id ? null : routePreview;
+  const nextUpForNext = nextUp?.id === flightPreview?.id ? null : nextUp;
+  const nextItem = routePreviewForNext
     ? {
-        href: `${base}/timeline#${routePreview.id}`,
-        label: routePreview.routeLabel,
-        meta: [routePreview.timeLabel, routePreview.metaLabel].filter(Boolean).join(" · "),
-        routeDestination: routePreview.destinationLabel,
-        routeOrigin: routePreview.originLabel
+        href: `${base}/timeline#${routePreviewForNext.id}`,
+        label: routePreviewForNext.routeLabel,
+        meta: [routePreviewForNext.timeLabel, routePreviewForNext.metaLabel].filter(Boolean).join(" · "),
+        routeDestination: routePreviewForNext.destinationLabel,
+        routeOrigin: routePreviewForNext.originLabel
       }
-    : nextUp
+    : nextUpForNext
       ? {
-          href: `${base}/timeline#${nextUp.id}`,
-          label: nextUp.title,
-          meta: [nextUp.timeLabel, nextUp.location, nextUp.typeLabel].filter(Boolean).join(" · "),
+          href: `${base}/timeline#${nextUpForNext.id}`,
+          label: nextUpForNext.title,
+          meta: [nextUpForNext.timeLabel, nextUpForNext.location, nextUpForNext.typeLabel].filter(Boolean).join(" · "),
           routeDestination: null,
           routeOrigin: null
         }
@@ -488,6 +498,8 @@ function MobileOverviewSmallPass({
             </Link>
           ))}
         </div>
+
+        <MobileFlightRouteCard flight={flightPreview} tripId={tripId} />
 
         {nextItem ? (
           <Link
