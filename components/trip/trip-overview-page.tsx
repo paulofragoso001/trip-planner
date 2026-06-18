@@ -26,6 +26,7 @@ export default function TripOverviewPage({
   actualLabel,
   dateRange,
   destination,
+  documentsPreview,
   error,
   expenseCategories,
   flightPreview,
@@ -89,6 +90,7 @@ export default function TripOverviewPage({
         base={base}
         dateRange={dateRange}
         destination={destination}
+        documentsPreview={documentsPreview}
         expenseCategories={expenseCategories}
         flightPreview={flightPreview}
         hasExpenses={hasExpenses}
@@ -349,6 +351,7 @@ function MobileOverviewSmallPass({
   base,
   dateRange,
   destination,
+  documentsPreview,
   expenseCategories,
   flightPreview,
   hasExpenses,
@@ -374,6 +377,7 @@ function MobileOverviewSmallPass({
   base: string;
   dateRange: string;
   destination: string;
+  documentsPreview: TripOverviewData["documentsPreview"];
   expenseCategories: TripOverviewData["expenseCategories"];
   flightPreview: TripOverviewData["flightPreview"];
   hasExpenses: boolean;
@@ -575,20 +579,50 @@ function MobileOverviewSmallPass({
 
         <MobileOverviewSection
           actionHref={`${base}/documents`}
-          actionLabel="Add"
+          actionLabel={documentsPreview.length ? "Open" : "Add"}
           icon={<FileText className="h-4 w-4" aria-hidden="true" />}
           testId="overview-documents-preview"
           title="Documents"
         >
-          <Link
-            className="grid min-h-12 grid-cols-[auto_1fr] items-center gap-3 rounded-xl bg-white/[0.04] px-3 py-2.5 text-sm font-semibold text-white/62"
-            href={`${base}/documents`}
-          >
-            <span className="grid h-8 w-8 place-items-center rounded-full bg-indigo-500/18 text-indigo-200">
-              <FileText className="h-4 w-4" aria-hidden="true" />
-            </span>
-            Add documents
-          </Link>
+          {documentsPreview.length ? (
+            <div className="overflow-hidden rounded-xl bg-white/[0.04]">
+              {documentsPreview.map((document) => (
+                <Link
+                  className="grid min-h-12 grid-cols-[auto_1fr_auto] items-center gap-3 border-b border-white/[0.07] px-3 py-2.5 last:border-b-0"
+                  href={document.href}
+                  key={document.id}
+                >
+                  <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-indigo-500/18 text-indigo-200">
+                    <FileText className="h-4 w-4" aria-hidden="true" />
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm font-black text-white">{document.title}</span>
+                    <span className="block truncate text-xs font-semibold text-white/48">
+                      {document.metaLabel}
+                    </span>
+                  </span>
+                  <span className="text-[0.65rem] font-black uppercase tracking-[0.12em] text-white/34">
+                    {document.typeLabel}
+                  </span>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <Link
+              className="grid min-h-12 grid-cols-[auto_1fr] items-center gap-3 rounded-xl bg-white/[0.04] px-3 py-2.5 text-sm font-semibold text-white/62"
+              href={`${base}/documents`}
+            >
+              <span className="grid h-8 w-8 place-items-center rounded-full bg-indigo-500/18 text-indigo-200">
+                <FileText className="h-4 w-4" aria-hidden="true" />
+              </span>
+              <span>
+                <span className="block font-black text-white">Add documents</span>
+                <span className="block text-xs font-semibold text-white/48">
+                  Reservations, links, screenshots, and notes.
+                </span>
+              </span>
+            </Link>
+          )}
         </MobileOverviewSection>
 
         <MobileOverviewSection

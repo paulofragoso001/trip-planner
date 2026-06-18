@@ -26,6 +26,13 @@ export type TripOverviewData = {
   };
   dateRange: string;
   destination: string;
+  documentsPreview: Array<{
+    href: string;
+    id: string;
+    metaLabel: string;
+    title: string;
+    typeLabel: string;
+  }>;
   error: string | null;
   expenseCategories: Array<{
     amountLabel: string;
@@ -90,6 +97,17 @@ type BudgetRow = {
   record_type: string | null;
 };
 
+type DocumentRow = {
+  created_at: string | null;
+  date_time: string | null;
+  id: string;
+  location: string | null;
+  notes: string | null;
+  source_label: string | null;
+  source_type: string | null;
+  title: string | null;
+};
+
 type SegmentRow = {
   booking_url?: string | null;
   confirmation_code?: string | null;
@@ -120,6 +138,7 @@ export async function loadTripOverviewData(tripId: string): Promise<TripOverview
       },
       dateRange: "Jun 11 - Jun 17",
       destination: "Barcelona, Spain",
+      documentsPreview: [],
       error: null,
       expenseCategories: [
         { amountLabel: "$42.00", id: "bar-party", label: "Bar & Party" },
@@ -227,7 +246,7 @@ export async function loadTripOverviewData(tripId: string): Promise<TripOverview
     return emptyOverviewData(tripId, "Sign in to load trip overview data.");
   }
 
-  const [tripResult, segmentResult, budgetResult, suggestionsResult] = await Promise.all([
+  const [tripResult, segmentResult, budgetResult, suggestionsResult, documentsResult] = await Promise.all([
     auth.supabase
       .from("trips")
       .select("name,destination,status,budget,notes,start_date,end_date")
@@ -253,7 +272,14 @@ export async function loadTripOverviewData(tripId: string): Promise<TripOverview
       .from("trip_recommendations")
       .select("id", { count: "exact", head: true })
       .eq("trip_id", tripId)
-      .eq("status", "suggested")
+      .eq("status", "suggested"),
+    auth.supabase
+      .from("unfiled_items")
+      .select("id,title,source_type,source_label,location,date_time,notes,created_at")
+      .eq("trip_id", tripId)
+      .eq("user_id", auth.userId)
+      .order("created_at", { ascending: false, nullsFirst: false })
+      .limit(3)
   ]);
 
   const segmentResultWithFallback =
@@ -301,6 +327,9 @@ export async function loadTripOverviewData(tripId: string): Promise<TripOverview
     actionSummary: summarizeSegments(segments),
     dateRange: formatDateRange(trip.start_date, trip.end_date),
     destination: trip.destination || "No destination set",
+    documentsPreview: documentsResult.error
+      ? []
+      : ((documentsResult.data || []) as DocumentRow[]).map((row) => mapDocumentPreview(row, tripId)),
     error: null,
     expenseCategories,
     flightPreview: mapFlightPreview(segments.find(isFlightSegment) || null),
@@ -333,6 +362,7 @@ function emptyOverviewData(tripId: string, error: string): TripOverviewData {
     },
     dateRange: "Dates unavailable",
     destination: "Destination unavailable",
+    documentsPreview: [],
     error,
     expenseCategories: [],
     flightPreview: null,
@@ -353,6 +383,33 @@ function emptyOverviewData(tripId: string, error: string): TripOverviewData {
     title: "Trip unavailable",
     tripId
   };
+}
+
+function mapDocumentPreview(row: DocumentRow, tripId: string) {
+  const typeLabel = labelForDocumentType(row.source_type);
+  const title = cleanString(row.title) || cleanString(row.source_label) || typeLabel;
+  const metaLabel =
+    [cleanString(row.location), row.date_time ? formatDate(row.date_time.slice(0, 10)) : null]
+      .filter(Boolean)
+      .join(" · ") ||
+    cleanString(row.notes) ||
+    "Trip document";
+
+  return {
+    href: `/dashboard/trips/${encodeURIComponent(tripId)}/documents`,
+    id: row.id,
+    metaLabel,
+    title,
+    typeLabel
+  };
+}
+
+function labelForDocumentType(value: string | null | undefined) {
+  const normalized = String(value || "").toLowerCase();
+  if (/email|gmail|reservation|booking/.test(normalized)) return "Reservation";
+  if (/link|url|web|article/.test(normalized)) return "Link";
+  if (/image|photo|screenshot/.test(normalized)) return "Photo";
+  return "Document";
 }
 
 function mapSegmentPreview(row: SegmentRow) {

@@ -141,8 +141,9 @@ test.describe("mobile soft-launch UX", () => {
     }
 
     await page.goto(`${baseUrl}/dashboard`, { waitUntil: "commit" });
+    await expect(page.getByTestId("app-shell-root")).toBeVisible({ timeout: 30_000 });
     await expect(page.getByTestId("app-shell-topbar")).toBeHidden();
-    await expect(page.getByTestId("mobile-home-wallet")).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByRole("navigation", { name: "Primary mobile navigation" })).toBeVisible();
 
     await page.setViewportSize({ height: 900, width: 1024 });
     await page.goto(`${baseUrl}/dashboard/trips/demo/map`, { waitUntil: "commit" });
