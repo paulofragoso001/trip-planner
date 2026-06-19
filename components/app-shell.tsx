@@ -291,7 +291,7 @@ export function AppShell({
               {children}
             </div>
           </main>
-          {!tripWorkspaceContent ? (
+          {!tripWorkspaceContent && !isDashboardHome ? (
             <MobileBottomNav
               hash={hash}
               onHashChange={setHash}

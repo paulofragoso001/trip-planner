@@ -80,12 +80,15 @@ test.describe("mobile soft-launch UX", () => {
     });
   }
 
-  test("mobile bottom navigation exposes soft-launch destinations", async ({ page }) => {
+  test("mobile bottom navigation stays off launch and exposes soft-launch destinations on child routes", async ({ page }) => {
     await page.setViewportSize({ height: 900, width: 390 });
     await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
     await page.goto(`${baseUrl}/dashboard`, { waitUntil: "commit" });
 
     const nav = page.getByRole("navigation", { name: "Primary mobile navigation" });
+    await expect(nav).toHaveCount(0);
+
+    await page.goto(`${baseUrl}/dashboard/trips`, { waitUntil: "commit" });
     await expect(nav).toBeVisible();
     await expect(nav.getByRole("link", { name: /Trips/ })).toBeVisible();
     await expect(nav.getByRole("link", { name: /Plan/ })).toBeVisible();
@@ -143,7 +146,7 @@ test.describe("mobile soft-launch UX", () => {
     await page.goto(`${baseUrl}/dashboard`, { waitUntil: "commit" });
     await expect(page.getByTestId("app-shell-root")).toBeVisible({ timeout: 30_000 });
     await expect(page.getByTestId("app-shell-topbar")).toBeHidden();
-    await expect(page.getByRole("navigation", { name: "Primary mobile navigation" })).toBeVisible();
+    await expect(page.getByRole("navigation", { name: "Primary mobile navigation" })).toHaveCount(0);
 
     await page.setViewportSize({ height: 900, width: 1024 });
     await page.goto(`${baseUrl}/dashboard/trips/demo/map`, { waitUntil: "commit" });
@@ -793,7 +796,7 @@ test.describe("mobile soft-launch UX", () => {
       homeLaunchLayout.viewportHeight - 2
     );
     expect(homeLaunchLayout.contentTop, "bottom sheet starts over the lower globe").toBeGreaterThan(
-      homeLaunchLayout.viewportHeight * 0.42
+      homeLaunchLayout.viewportHeight * 0.56
     );
     expect(homeLaunchLayout.headingTop, "wallet title sits inside the bottom sheet").toBeGreaterThan(
       homeLaunchLayout.contentTop
@@ -801,7 +804,7 @@ test.describe("mobile soft-launch UX", () => {
     expect(homeLaunchLayout.contentBorderTopWidth, "home wallet has no hard divider").toBe("0px");
     expect(homeLaunchLayout.actionsBorderTopWidth, "home action form has no white outline").toBe("0px");
     expect(homeLaunchLayout.actionsTop, "wallet actions sit inside the sheet below the title").toBeGreaterThan(
-      homeLaunchLayout.headingTop + 56
+      homeLaunchLayout.headingTop + 48
     );
     expect(homeLaunchLayout.actionsTop, "wallet actions begin before the bottom nav").toBeLessThan(
       homeLaunchLayout.navTop
@@ -820,13 +823,16 @@ test.describe("mobile soft-launch UX", () => {
     const launchSheet = page.getByTestId("mobile-home-wallet-content");
     await launchSheet.scrollIntoViewIfNeeded();
     await expect(launchSheet).toBeVisible();
+    await expect(launchSheet).toHaveAttribute("data-sheet-state", "collapsed");
     await expect(page.getByTestId("mobile-home-actions")).toBeVisible();
+    await expect(page.getByTestId("mobile-home-compact-actions")).toBeVisible();
+    await expect(page.getByTestId("ios-launch-sheet-expanded")).toBeHidden();
     await expect(launchSheet.getByRole("heading", { name: "Travel Wallet" })).toBeVisible();
     await expect(launchSheet.getByRole("link", { name: /Continue trip|Create trip/ })).toBeVisible();
-    await expect(launchSheet.getByRole("link", { name: /Add idea/ })).toBeVisible();
     await expect(launchSheet.getByRole("link", { name: /Search/ })).toBeVisible();
     await expect(launchSheet.getByRole("link", { name: /Travel Book/ })).toBeVisible();
-    await expect(launchSheet.getByRole("link", { name: /Open map/ })).toBeVisible();
+    await expect(launchSheet.getByRole("link", { name: /Add idea/ })).toBeHidden();
+    await expect(launchSheet.getByRole("link", { name: /Open map/ })).toBeHidden();
     await page.evaluate(() => window.scrollTo(0, 0));
     const initialHomeActionClearance = await page.evaluate(() => {
       const nav = document.querySelector('[data-testid="app-shell-mobile-bottom-nav"]');
@@ -854,7 +860,30 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByText("Add, review, create.")).toHaveCount(0);
     await expect(page.getByText("Recent passes")).toHaveCount(0);
     await expect(page.getByText(/0 waiting to review/i)).toHaveCount(0);
-    const actionNames = [/Continue trip|Create trip/, /Add idea/, /Search/, /Travel Book/, /Review places/, /Open map/];
+
+    await page.getByTestId("ios-launch-sheet-handle").click();
+    await expect(launchSheet).toHaveAttribute("data-sheet-state", "expanded");
+    await expect(page.getByTestId("ios-launch-sheet-expanded")).toBeVisible();
+    await expect(launchSheet.getByRole("heading", { name: "Main" })).toBeVisible();
+    await expect(launchSheet.getByRole("heading", { name: "Resources" })).toBeVisible();
+    await expect(launchSheet.getByRole("heading", { name: "Account" })).toBeVisible();
+    await expect(launchSheet.getByRole("link", { name: /Add idea/ })).toBeVisible();
+    await expect(launchSheet.getByRole("link", { name: /Open map/ })).toBeVisible();
+    await expect(launchSheet.getByRole("link", { name: /My Trips/ })).toBeVisible();
+    await expect(launchSheet.getByRole("link", { name: /Profile/ })).toBeVisible();
+    await expect(launchSheet.getByRole("link", { name: /Settings/ })).toBeVisible();
+
+    const actionNames = [
+      /Continue trip|Create trip/,
+      /Add idea/,
+      /Search/,
+      /Travel Book/,
+      /Review places/,
+      /Open map/,
+      /My Trips/,
+      /Profile/,
+      /Settings/
+    ];
     for (const actionName of actionNames) {
       const action = launchSheet.getByRole("link", { name: actionName }).first();
       if ((await action.count()) === 0) {
