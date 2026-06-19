@@ -44,7 +44,7 @@ export function MobileHomeWallet({
       </section>
 
       <section
-        className="launch-bottom-sheet pointer-events-none absolute inset-x-0 bottom-[calc(4.9rem+env(safe-area-inset-bottom))] z-30 px-3 min-[390px]:px-4"
+        className="launch-bottom-sheet pointer-events-none absolute inset-x-0 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-30 px-3 min-[390px]:px-4"
         data-testid="mobile-home-wallet-stage"
       >
         <MobileHomeContent

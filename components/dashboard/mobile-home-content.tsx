@@ -68,17 +68,17 @@ export function MobileHomeContent({
       <div
         className={cn(
           "mx-auto max-w-[28rem] overflow-hidden rounded-t-[2rem] bg-white text-slate-950 shadow-[0_-24px_70px_rgba(0,0,0,0.34)] transition-[max-height] duration-300 ease-out min-[390px]:rounded-t-[2.25rem]",
-          isExpanded ? "max-h-[min(78dvh,43rem)]" : "max-h-[15.5rem]"
+          isExpanded ? "max-h-[min(78dvh,43rem)]" : "max-h-[19.75rem]"
         )}
         data-testid="ios-launch-sheet"
       >
-        <div className="px-4 pb-4 pt-2 min-[390px]:px-5 min-[390px]:pb-5">
+        <div className="px-4 pb-3 pt-1.5 min-[390px]:px-5 min-[390px]:pb-4">
           <button
             type="button"
             aria-expanded={isExpanded}
             aria-controls="mobile-launch-expanded-menu"
             aria-label={isExpanded ? "Collapse launch menu" : "Expand launch menu"}
-            className="mx-auto mb-3 grid h-8 w-24 place-items-center rounded-full focus:outline-none focus:ring-4 focus:ring-orange-300/20"
+            className="mx-auto mb-2 grid h-7 w-24 place-items-center rounded-full focus:outline-none focus:ring-4 focus:ring-orange-300/20"
             data-testid="ios-launch-sheet-handle"
             onPointerDown={handlePointerDown}
             onPointerUp={handlePointerUp}
@@ -98,7 +98,7 @@ export function MobileHomeContent({
                 Wayline
               </p>
               <span className="mt-1 flex min-w-0 items-center gap-2">
-                <h1 className="truncate text-[clamp(2rem,8.6vw,2.75rem)] font-black leading-none tracking-normal text-slate-950">
+                <h1 className="truncate text-[clamp(1.9rem,8vw,2.5rem)] font-black leading-none tracking-normal text-slate-950">
                   Travel Wallet
                 </h1>
                 <ChevronDown
@@ -119,17 +119,17 @@ export function MobileHomeContent({
             ) : (
               <Link
                 aria-label="Add trip"
-                className="grid h-14 w-14 shrink-0 place-items-center rounded-[1.1rem] bg-orange-500 text-white shadow-[0_18px_38px_rgba(249,115,22,0.24)] transition hover:bg-orange-600 focus:outline-none focus:ring-4 focus:ring-orange-300/20"
+                className="grid h-[3.25rem] w-[3.25rem] shrink-0 place-items-center rounded-[1.05rem] bg-orange-500 text-white shadow-[0_18px_38px_rgba(249,115,22,0.24)] transition hover:bg-orange-600 focus:outline-none focus:ring-4 focus:ring-orange-300/20"
                 href="/dashboard/trips#new-trip"
               >
-                <Plus className="h-8 w-8" aria-hidden="true" />
+                <Plus className="h-7 w-7" aria-hidden="true" />
               </Link>
             )}
           </div>
 
-          <div className="mt-4" data-testid="mobile-home-actions">
+          <div className="mt-3" data-testid="mobile-home-actions">
             <CompactPrimaryRow href={primaryHref} label={primaryLabel} meta={primaryMeta} />
-            <div className="mt-3 grid grid-cols-3 gap-2" data-testid="mobile-home-compact-actions">
+            <div className="mt-2.5 grid grid-cols-3 gap-2" data-testid="mobile-home-compact-actions">
               <CompactAction href="/dashboard/search" icon={<Search />} label="Search" />
               <CompactAction href="/dashboard/profile/stats" icon={<BookOpen />} label="Travel Book" />
               <CompactAction href="/dashboard/trips#new-trip" icon={<Plus />} label="Add" primary />
@@ -146,7 +146,7 @@ export function MobileHomeContent({
           >
             <div className="min-h-0">
               {isExpanded ? (
-                <div className="mt-5 max-h-[calc(78dvh-14.75rem)] overflow-y-auto pb-24">
+                <div className="mt-4 max-h-[calc(78dvh-14.75rem)] overflow-y-auto pb-12">
                   <ActionGroup label="Main">
                     <SheetRow href={primaryHref} icon={<Plane />} label={primaryLabel} meta={primaryMeta} />
                     <SheetRow
@@ -194,15 +194,15 @@ export function MobileHomeContent({
 function CompactPrimaryRow({ href, label, meta }: { href: string; label: string; meta: string }) {
   return (
     <Link
-      className="grid min-h-[3.7rem] grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-[1.25rem] bg-slate-100 px-3.5 py-2 text-left text-slate-950 ring-1 ring-slate-200 transition hover:bg-slate-200/70 focus:outline-none focus:ring-4 focus:ring-orange-300/20"
+      className="grid min-h-[3.45rem] grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-[1.15rem] bg-slate-100 px-3 py-2 text-left text-slate-950 ring-1 ring-slate-200 transition hover:bg-slate-200/70 focus:outline-none focus:ring-4 focus:ring-orange-300/20"
       href={href}
     >
-      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white text-orange-500 shadow-sm">
+      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white text-orange-500 shadow-sm">
         <Plane className="h-5 w-5" aria-hidden="true" />
       </span>
       <span className="min-w-0">
-        <span className="block truncate text-[1rem] font-black">{label}</span>
-        <span className="mt-0.5 block truncate text-[0.78rem] font-bold text-slate-500">{meta}</span>
+        <span className="block truncate text-[0.96rem] font-black">{label}</span>
+        <span className="mt-0.5 block truncate text-[0.74rem] font-bold text-slate-500">{meta}</span>
       </span>
       <ChevronRight className="h-5 w-5 text-slate-400" aria-hidden="true" />
     </Link>
@@ -223,7 +223,7 @@ function CompactAction({
   return (
     <Link
       className={cn(
-        "grid min-h-[3.5rem] place-items-center rounded-[1.15rem] px-2 text-center text-[0.78rem] font-black transition focus:outline-none focus:ring-4 focus:ring-orange-300/20",
+        "grid min-h-[3.35rem] place-items-center rounded-[1.05rem] px-2 text-center text-[0.76rem] font-black transition focus:outline-none focus:ring-4 focus:ring-orange-300/20",
         primary
           ? "bg-orange-500 text-white shadow-[0_18px_38px_rgba(249,115,22,0.24)] hover:bg-orange-600"
           : "bg-white text-slate-950 shadow-[0_14px_34px_rgba(15,23,42,0.08)] ring-1 ring-slate-200 hover:bg-slate-50"
@@ -232,7 +232,7 @@ function CompactAction({
     >
       <span
         className={cn(
-          "grid h-8 w-8 place-items-center rounded-full",
+          "grid h-7 w-7 place-items-center rounded-full",
           primary ? "bg-white/16 text-white" : "bg-orange-50 text-orange-500"
         )}
       >

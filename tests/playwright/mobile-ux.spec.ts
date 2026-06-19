@@ -765,6 +765,8 @@ test.describe("mobile soft-launch UX", () => {
         .querySelector('[data-testid="mobile-home-wallet-content"] h1')
         ?.getBoundingClientRect();
       const actions = document.querySelector('[data-testid="mobile-home-actions"]')?.getBoundingClientRect();
+      const compactActions = document.querySelector('[data-testid="mobile-home-compact-actions"]')?.getBoundingClientRect();
+      const iosSheet = document.querySelector('[data-testid="ios-launch-sheet"]')?.getBoundingClientRect();
       const nav = document.querySelector('[data-testid="app-shell-mobile-bottom-nav"]')?.getBoundingClientRect();
       const contentElement = document.querySelector('[data-testid="mobile-home-wallet-content"]');
       const contentStyle = contentElement ? window.getComputedStyle(contentElement) : null;
@@ -777,12 +779,14 @@ test.describe("mobile soft-launch UX", () => {
         actionsBorderTopWidth: actionsStyle?.borderTopWidth ?? "",
         actionsBottom: actions?.bottom ?? 0,
         actionsTop: actions?.top ?? 0,
+        compactActionsBottom: compactActions?.bottom ?? 0,
         contentBorderTopWidth: contentStyle?.borderTopWidth ?? "",
         contentGap: Math.round((content?.top ?? 0) - (launch?.bottom ?? 0)),
         contentPaddingBottom: contentStyle?.paddingBottom ?? "",
         contentTop: content?.top ?? 0,
         headingGap: Math.round((heading?.top ?? 0) - (launch?.bottom ?? 0)),
         headingTop: heading?.top ?? 0,
+        iosSheetBottom: iosSheet?.bottom ?? 0,
         launchBottom: launch?.bottom ?? 0,
         launchHeight: launch?.height ?? 0,
         navTop: nav?.top ?? window.innerHeight,
@@ -804,7 +808,10 @@ test.describe("mobile soft-launch UX", () => {
     expect(homeLaunchLayout.contentBorderTopWidth, "home wallet has no hard divider").toBe("0px");
     expect(homeLaunchLayout.actionsBorderTopWidth, "home action form has no white outline").toBe("0px");
     expect(homeLaunchLayout.actionsTop, "wallet actions sit inside the sheet below the title").toBeGreaterThan(
-      homeLaunchLayout.headingTop + 48
+      homeLaunchLayout.headingTop + 40
+    );
+    expect(homeLaunchLayout.compactActionsBottom, "compact launch actions are not clipped by the sheet").toBeLessThan(
+      homeLaunchLayout.iosSheetBottom - 8
     );
     expect(homeLaunchLayout.actionsTop, "wallet actions begin before the bottom nav").toBeLessThan(
       homeLaunchLayout.navTop
