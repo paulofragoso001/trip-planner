@@ -1,3 +1,5 @@
+import { LocateFixed, Map } from "lucide-react";
+import Link from "next/link";
 import type { DashboardData } from "@/app/dashboard/loader";
 import { MobileHomeContent } from "@/components/dashboard/mobile-home-content";
 import { Photorealistic3DHomeHero } from "@/components/dashboard/photorealistic-3d-home-hero";
@@ -27,20 +29,22 @@ export function MobileHomeWallet({
   return (
     <section
       className={cn(
-        "relative isolate h-[100dvh] overflow-x-hidden overflow-y-auto overscroll-none bg-[#020817] text-white [-webkit-overflow-scrolling:touch] lg:hidden",
+        "mobile-launch-globe relative isolate h-[100dvh] overflow-hidden bg-black text-white lg:hidden",
         className
       )}
       data-testid="mobile-home-wallet"
     >
       <section
-        className="relative h-[34dvh] min-h-[238px] max-h-[330px] overflow-hidden bg-[#020817] min-[390px]:min-h-[252px]"
+        className="globe-layer absolute inset-0 overflow-hidden bg-black"
         data-testid="mobile-home-3d-hero"
       >
         <Photorealistic3DHomeHero />
+        <GlobePins />
+        <FloatingGlobeControls />
       </section>
 
-      <div
-        className="relative z-10 -mt-5 px-4 pb-[calc(7.25rem+env(safe-area-inset-bottom))]"
+      <section
+        className="launch-bottom-sheet pointer-events-none absolute inset-x-0 bottom-[calc(4.9rem+env(safe-area-inset-bottom))] z-30 px-3 min-[390px]:px-4"
         data-testid="mobile-home-wallet-stage"
       >
         <MobileHomeContent
@@ -49,7 +53,42 @@ export function MobileHomeWallet({
           primaryLabel={primaryLabel}
           primaryMeta={primaryMeta}
         />
-      </div>
+      </section>
     </section>
+  );
+}
+
+function FloatingGlobeControls() {
+  return (
+    <div
+      aria-label="Globe controls"
+      className="absolute right-4 top-[calc(5.5rem+env(safe-area-inset-top))] z-30 overflow-hidden rounded-full border border-white/12 bg-black/68 p-1 text-white shadow-[0_18px_42px_rgba(0,0,0,0.38)] backdrop-blur-xl"
+      data-testid="mobile-home-globe-controls"
+      role="toolbar"
+    >
+      <Link
+        aria-label="Open map"
+        className="grid h-11 w-11 place-items-center rounded-full text-white transition hover:bg-white/10 focus:outline-none focus:ring-4 focus:ring-orange-300/20"
+        href="/dashboard/map"
+      >
+        <Map aria-hidden="true" className="h-5 w-5" />
+      </Link>
+      <span className="mx-auto block h-px w-7 bg-white/18" />
+      <Link
+        aria-label="Center globe"
+        className="grid h-11 w-11 place-items-center rounded-full text-white transition hover:bg-white/10 focus:outline-none focus:ring-4 focus:ring-orange-300/20"
+        href="/dashboard"
+      >
+        <LocateFixed aria-hidden="true" className="h-5 w-5" />
+      </Link>
+    </div>
+  );
+}
+
+function GlobePins() {
+  return (
+    <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-20" data-testid="mobile-home-globe-pins">
+      <span className="absolute left-[62%] top-[48%] h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-[3px] border-white bg-orange-500 shadow-[0_12px_34px_rgba(0,0,0,0.42),0_0_22px_rgba(249,115,22,0.45)]" />
+    </div>
   );
 }

@@ -583,7 +583,7 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByTestId("earth-only-visual")).toBeVisible();
     await expect(page.getByTestId("mobile-home-earth-photorealistic")).toHaveCount(0);
     await expect(page.getByTestId("mobile-home-earth-image")).toHaveCount(0);
-    await expect(page.getByRole("heading", { name: "Travel wallet" })).toHaveCount(1);
+    await expect(page.getByRole("heading", { name: "Travel Wallet" })).toHaveCount(1);
     const home3DHero = page.getByTestId("mobile-home-3d-hero");
     await expect(home3DHero.getByText("Wayline", { exact: true })).toHaveCount(0);
     await expect(home3DHero.getByText("Travel wallet")).toHaveCount(0);
@@ -592,7 +592,10 @@ test.describe("mobile soft-launch UX", () => {
     await expect(home3DHero.getByText("Add idea")).toHaveCount(0);
     await expect(home3DHero.getByText("Search")).toHaveCount(0);
     await expect(home3DHero.getByText("Review places")).toHaveCount(0);
-    await expect(home3DHero.getByRole("link")).toHaveCount(0);
+    await expect(page.getByTestId("mobile-home-globe-controls")).toBeVisible();
+    await expect(home3DHero.getByRole("link")).toHaveCount(2);
+    await expect(home3DHero.getByRole("link", { name: "Open map" })).toHaveAttribute("href", "/dashboard/map");
+    await expect(home3DHero.getByRole("link", { name: "Center globe" })).toHaveAttribute("href", "/dashboard");
     await expect(page.getByTestId("mobile-home-earth-texture")).toHaveCount(0);
     await expect(page.getByTestId("mobile-home-earth-ocean")).toHaveCount(0);
     await expect(page.getByTestId("mobile-home-earth-continents")).toHaveCount(0);
@@ -742,8 +745,8 @@ test.describe("mobile soft-launch UX", () => {
     expect(heroVisual.width, "home 3D visual covers viewport width").toBeGreaterThanOrEqual(390);
     expect(Number(heroVisual.mapStageOpacity), "3D map stage is visible when ready").toBeGreaterThan(0.9);
     expect(heroVisual.mapWidth, "3D map covers viewport width").toBeGreaterThanOrEqual(390);
-    expect(heroVisual.mapHeight, "3D map covers compact launch height").toBeGreaterThanOrEqual(220);
-    expect(heroVisual.mapDefaultUiHidden, "3D map hides built-in navigation controls").toBe(true);
+    expect(heroVisual.mapHeight, "3D map covers the launch globe").toBeGreaterThanOrEqual(820);
+    expect(heroVisual.mapDefaultUiHidden, "3D map keeps Google UI available").toBe(false);
     expect(heroVisual.fallbackSrc, "fallback image is not mounted behind ready 3D").toBe("");
     expect(decodeURIComponent(heroVisual.fallbackSrc), "old baked home hero asset is not used").not.toContain(
       "/globe/wayline-earth-hero"
@@ -786,39 +789,27 @@ test.describe("mobile soft-launch UX", () => {
         viewportHeight: window.innerHeight
       };
     });
-    expect(homeLaunchLayout.launchHeight, "home Earth hero owns the top of the launch screen").toBeGreaterThanOrEqual(
-      250
+    expect(homeLaunchLayout.launchHeight, "home globe owns the full launch screen").toBeGreaterThanOrEqual(
+      homeLaunchLayout.viewportHeight - 2
     );
-    expect(homeLaunchLayout.launchHeight, "home Earth hero leaves room for wallet actions").toBeLessThanOrEqual(
-      430
+    expect(homeLaunchLayout.contentTop, "bottom sheet starts over the lower globe").toBeGreaterThan(
+      homeLaunchLayout.viewportHeight * 0.42
     );
-    expect(homeLaunchLayout.contentTop, "wallet content starts directly under the Earth fade").toBeGreaterThanOrEqual(
-      homeLaunchLayout.launchBottom - 56
-    );
-    expect(homeLaunchLayout.contentTop, "wallet content overlaps only the lower Earth fade").toBeLessThanOrEqual(
-      homeLaunchLayout.launchBottom
-    );
-    expect(homeLaunchLayout.headingTop, "wallet title sits just below the Earth visual").toBeGreaterThanOrEqual(
-      homeLaunchLayout.launchBottom - 56
+    expect(homeLaunchLayout.headingTop, "wallet title sits inside the bottom sheet").toBeGreaterThan(
+      homeLaunchLayout.contentTop
     );
     expect(homeLaunchLayout.contentBorderTopWidth, "home wallet has no hard divider").toBe("0px");
     expect(homeLaunchLayout.actionsBorderTopWidth, "home action form has no white outline").toBe("0px");
-    expect(homeLaunchLayout.contentGap, "wallet content has a controlled overlap with the Earth fade").toBeLessThanOrEqual(0);
-    expect(homeLaunchLayout.contentGap, "wallet content avoids a giant upward overlap into the Earth").toBeGreaterThanOrEqual(-56);
-    expect(homeLaunchLayout.actionsTop, "wallet form sits below the compact title").toBeGreaterThan(
-      homeLaunchLayout.headingTop + 88
+    expect(homeLaunchLayout.actionsTop, "wallet actions sit inside the sheet below the title").toBeGreaterThan(
+      homeLaunchLayout.headingTop + 56
     );
-    expect(homeLaunchLayout.actionsTop, "wallet form begins before the bottom nav").toBeLessThan(
+    expect(homeLaunchLayout.actionsTop, "wallet actions begin before the bottom nav").toBeLessThan(
       homeLaunchLayout.navTop
     );
     expect(
       Number.parseFloat(homeLaunchLayout.stagePaddingBottom),
-      "home stage owns compact bottom-nav clearance"
-    ).toBeGreaterThanOrEqual(88);
-    expect(
-      Number.parseFloat(homeLaunchLayout.stagePaddingBottom),
-      "home stage avoids a dead footer strip"
-    ).toBeLessThanOrEqual(140);
+      "home stage relies on bottom anchoring instead of extra padding"
+    ).toBe(0);
     expect(homeLaunchLayout.scrollHeight, "home page fits the launch screen without document scroll").toBeLessThanOrEqual(
       homeLaunchLayout.viewportHeight + 2
     );
@@ -826,17 +817,16 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByTestId("home-smart-start")).toBeHidden();
     await expect(page.getByLabel("Where are you headed?")).toBeHidden();
 
-    await page.getByTestId("mobile-home-wallet-content").scrollIntoViewIfNeeded();
-    await expect(page.getByTestId("mobile-home-wallet-content")).toBeVisible();
+    const launchSheet = page.getByTestId("mobile-home-wallet-content");
+    await launchSheet.scrollIntoViewIfNeeded();
+    await expect(launchSheet).toBeVisible();
     await expect(page.getByTestId("mobile-home-actions")).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Travel wallet" })).toBeVisible();
-    await expect(
-      page.getByText("Pick up a trip, start planning, or review saved ideas.")
-    ).toBeVisible();
-    await expect(page.getByRole("link", { name: /Continue trip|Create trip/ })).toBeVisible();
-    await expect(page.getByRole("link", { name: /Add idea/ })).toBeVisible();
-    await expect(page.getByRole("link", { name: /Search/ })).toBeVisible();
-    await expect(page.getByRole("link", { name: /Open map/ })).toBeVisible();
+    await expect(launchSheet.getByRole("heading", { name: "Travel Wallet" })).toBeVisible();
+    await expect(launchSheet.getByRole("link", { name: /Continue trip|Create trip/ })).toBeVisible();
+    await expect(launchSheet.getByRole("link", { name: /Add idea/ })).toBeVisible();
+    await expect(launchSheet.getByRole("link", { name: /Search/ })).toBeVisible();
+    await expect(launchSheet.getByRole("link", { name: /Travel Book/ })).toBeVisible();
+    await expect(launchSheet.getByRole("link", { name: /Open map/ })).toBeVisible();
     await page.evaluate(() => window.scrollTo(0, 0));
     const initialHomeActionClearance = await page.evaluate(() => {
       const nav = document.querySelector('[data-testid="app-shell-mobile-bottom-nav"]');
@@ -864,9 +854,9 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByText("Add, review, create.")).toHaveCount(0);
     await expect(page.getByText("Recent passes")).toHaveCount(0);
     await expect(page.getByText(/0 waiting to review/i)).toHaveCount(0);
-    const actionNames = [/Continue trip|Create trip/, /Add idea/, /Search/, /Review places/, /Open map/];
+    const actionNames = [/Continue trip|Create trip/, /Add idea/, /Search/, /Travel Book/, /Review places/, /Open map/];
     for (const actionName of actionNames) {
-      const action = page.getByRole("link", { name: actionName }).first();
+      const action = launchSheet.getByRole("link", { name: actionName }).first();
       if ((await action.count()) === 0) {
         continue;
       }
@@ -897,8 +887,8 @@ test.describe("mobile soft-launch UX", () => {
         `mobile home action ${actionName} keeps tap clearance above bottom nav`
       ).toBeGreaterThanOrEqual(12);
     }
-    await page.getByRole("link", { name: /Open map/ }).scrollIntoViewIfNeeded();
-    const finalActionScrollCushion = await page.getByRole("link", { name: /Open map/ }).evaluate((element) => {
+    await launchSheet.getByRole("link", { name: /Open map/ }).scrollIntoViewIfNeeded();
+    const finalActionScrollCushion = await launchSheet.getByRole("link", { name: /Open map/ }).evaluate((element) => {
       const nav = document.querySelector('[data-testid="app-shell-mobile-bottom-nav"]');
       const navRect = nav?.getBoundingClientRect();
       const actionRect = element.getBoundingClientRect();
@@ -1053,7 +1043,7 @@ test.describe("mobile soft-launch UX", () => {
     );
     await expect(page.getByTestId("home-3d-fallback-image")).toBeVisible();
     await expect(page.getByTestId("mobile-home-country-pin")).toBeVisible({ timeout: 5_000 });
-    await expect(page.getByRole("heading", { name: "Travel wallet" })).toHaveCount(1);
+    await expect(page.getByRole("heading", { name: "Travel Wallet" })).toHaveCount(1);
   });
 
   test("demo map exposes ordered route cards on mobile", async ({ page }) => {
