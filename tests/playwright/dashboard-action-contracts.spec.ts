@@ -10,6 +10,7 @@ import {
   parseRouteId,
   tripMutationPayloadSchema
 } from "../../lib/server/mutation-schemas";
+import { isAllowedSessionMutationRequest } from "../../lib/request-protection-core";
 
 test("dashboard action contracts stay well-formed", () => {
   const ids = new Set<string>();
@@ -83,4 +84,33 @@ test("dashboard mutation schemas reject drift and normalize server inputs", () =
     value: { action: "health" }
   });
   expect(parseMutationPayload(adminSyncPayloadSchema, { action: "delete" }).ok).toBe(false);
+});
+
+test("dashboard session mutations require same-site or same-origin requests", async () => {
+  const sameOriginRequest = new Request("https://app.wayline.test/api/trips", {
+    headers: { origin: "https://app.wayline.test" },
+    method: "POST"
+  });
+  expect(isAllowedSessionMutationRequest(sameOriginRequest)).toBe(true);
+
+  const sameSiteRequest = new Request("https://app.wayline.test/api/trips", {
+    headers: { "sec-fetch-site": "same-site" },
+    method: "POST"
+  });
+  expect(isAllowedSessionMutationRequest(sameSiteRequest)).toBe(true);
+
+  const crossSiteRequest = new Request("https://app.wayline.test/api/trips", {
+    headers: { origin: "https://evil.example" },
+    method: "POST"
+  });
+  expect(isAllowedSessionMutationRequest(crossSiteRequest)).toBe(false);
+
+  const testBypassRequest = new Request("https://app.wayline.test/api/trips", {
+    headers: { "x-cypress-dashboard": "true" },
+    method: "POST"
+  });
+  expect(isAllowedSessionMutationRequest(testBypassRequest)).toBe(false);
+  expect(
+    isAllowedSessionMutationRequest(testBypassRequest, { allowTestBypass: true })
+  ).toBe(true);
 });

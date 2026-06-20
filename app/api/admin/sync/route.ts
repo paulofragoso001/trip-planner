@@ -6,6 +6,7 @@ import {
 } from "@/lib/api/errors";
 import { requireAdmin } from "@/lib/server/admin-auth";
 import { adminSyncPayloadSchema, parseMutationPayload } from "@/lib/server/mutation-schemas";
+import { validateSessionMutationRequest } from "@/lib/server/request-protection";
 import { getFlightRefreshHealth } from "@/workers/monitor.worker";
 
 export const dynamic = "force-dynamic";
@@ -49,6 +50,11 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    const csrfError = validateSessionMutationRequest(request);
+    if (csrfError) {
+      return csrfError;
+    }
+
     const auth = await requireAdmin();
     if (!auth.isAdmin) {
       return adminAuthFailure(auth.reason);

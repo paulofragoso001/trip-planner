@@ -5,6 +5,7 @@ import {
   parseRouteId,
   tripMutationPayloadSchema
 } from "@/lib/server/mutation-schemas";
+import { validateSessionMutationRequest } from "@/lib/server/request-protection";
 import {
   isMissingTripDestinationMetadataColumn,
   mapTripRecord,
@@ -45,6 +46,11 @@ export async function GET(_request: Request, context: RouteContext) {
 }
 
 export async function PATCH(request: Request, context: RouteContext) {
+  const csrfError = validateSessionMutationRequest(request);
+  if (csrfError) {
+    return csrfError;
+  }
+
   const { id } = await context.params;
   const routeId = parseRouteId(id, "Trip id");
   if (!routeId.ok) {
@@ -114,7 +120,12 @@ export async function PATCH(request: Request, context: RouteContext) {
   return NextResponse.json({ trip: mapTripRecord(data as Record<string, unknown>) });
 }
 
-export async function DELETE(_request: Request, context: RouteContext) {
+export async function DELETE(request: Request, context: RouteContext) {
+  const csrfError = validateSessionMutationRequest(request);
+  if (csrfError) {
+    return csrfError;
+  }
+
   const { id } = await context.params;
   const routeId = parseRouteId(id, "Trip id");
   if (!routeId.ok) {

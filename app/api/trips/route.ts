@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { slugify } from "@/lib/slug";
 import { authorizeDashboardApi } from "@/lib/server/dashboard-test-auth";
 import { parseMutationPayload, tripMutationPayloadSchema } from "@/lib/server/mutation-schemas";
+import { validateSessionMutationRequest } from "@/lib/server/request-protection";
 import {
   isMissingTripDestinationMetadataColumn,
   mapTripRecord,
@@ -35,6 +36,11 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const csrfError = validateSessionMutationRequest(request);
+  if (csrfError) {
+    return csrfError;
+  }
+
   const auth = await authorizeDashboardApi();
 
   if (!auth) {
