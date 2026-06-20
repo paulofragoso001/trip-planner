@@ -547,12 +547,12 @@ function setMapCamera(mapElement: HTMLElement, camera: MapCameraFrame) {
 function getStartCamera(country: CountryFocus): MapCameraFrame {
   if (country.source === "user") {
     return {
-      altitude: country.altitude + 2_200_000,
+      altitude: country.altitude + 3_250_000,
       heading: 238,
       lat: country.lat,
       lng: country.lng,
-      range: 8_800_000,
-      tilt: 12
+      range: 9_600_000,
+      tilt: 8
     };
   }
 
@@ -569,12 +569,12 @@ function getStartCamera(country: CountryFocus): MapCameraFrame {
 function getSettledCamera(country: CountryFocus): MapCameraFrame {
   if (country.source === "user") {
     return {
-      altitude: country.altitude + 360_000,
-      heading: 318,
+      altitude: country.altitude + 1_650_000,
+      heading: 336,
       lat: country.lat,
       lng: country.lng,
-      range: 1_150_000,
-      tilt: 50
+      range: 4_650_000,
+      tilt: 34
     };
   }
 
@@ -591,12 +591,12 @@ function getSettledCamera(country: CountryFocus): MapCameraFrame {
 function getApproachCamera(country: CountryFocus): MapCameraFrame {
   if (country.source === "user") {
     return {
-      altitude: country.altitude + 260_000,
+      altitude: country.altitude + 1_450_000,
       heading: 356,
       lat: country.lat,
       lng: country.lng,
-      range: 780_000,
-      tilt: 64
+      range: 3_950_000,
+      tilt: 46
     };
   }
 
@@ -613,12 +613,12 @@ function getApproachCamera(country: CountryFocus): MapCameraFrame {
 function getSpinCamera(country: CountryFocus): MapCameraFrame {
   if (country.source === "user") {
     return {
-      altitude: country.altitude + 420_000,
+      altitude: country.altitude + 1_900_000,
       heading: 438,
       lat: country.lat,
       lng: country.lng,
-      range: 1_350_000,
-      tilt: 58
+      range: 5_300_000,
+      tilt: 40
     };
   }
 

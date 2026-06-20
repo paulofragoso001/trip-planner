@@ -106,10 +106,10 @@ export function MobileHomeContent({
     >
       <div
         className={cn(
-          "mx-auto max-w-[28rem] overflow-hidden bg-white text-slate-950 shadow-[0_-24px_70px_rgba(0,0,0,0.34)] transition-[max-height,border-radius] duration-300 ease-out",
+          "mx-auto overflow-hidden bg-white text-slate-950 shadow-[0_-24px_70px_rgba(0,0,0,0.34)] transition-[height,max-height,border-radius] duration-300 ease-out",
           isCollapsed
-            ? "max-h-[11.25rem] rounded-[2rem] min-[390px]:rounded-[2.2rem]"
-            : "max-h-[88dvh] rounded-t-[2rem] min-[390px]:rounded-t-[2.25rem]"
+            ? "max-h-[11.25rem] max-w-[28rem] rounded-[2rem] min-[390px]:rounded-[2.2rem]"
+            : "h-[100dvh] min-h-[100dvh] max-h-[100dvh] w-full max-w-[28rem] rounded-t-[2rem] min-[390px]:rounded-t-[2.25rem]"
         )}
         data-testid="ios-launch-sheet"
       >
@@ -234,7 +234,7 @@ function ExpandedTrips({
   const featuredTrip = recentTrips[0] || null;
 
   return (
-    <div className="mt-5 max-h-[calc(88dvh-6rem)] overflow-y-auto pb-28" data-testid="ios-launch-sheet-expanded">
+    <div className="mt-5 h-[calc(100dvh-6.75rem)] overflow-y-auto pb-[calc(7rem+env(safe-area-inset-bottom))]" data-testid="ios-launch-sheet-expanded">
       <div className="inline-flex rounded-full bg-orange-50 px-4 py-2 text-xl font-black text-orange-500">
         {currentYear}
       </div>
@@ -282,7 +282,7 @@ function ExpandedTrips({
 
 function SettingsPanel({ onClose }: { onClose: () => void }) {
   return (
-    <div className="max-h-[88dvh] overflow-y-auto bg-slate-100 px-5 pb-10 pt-3" data-testid="mobile-home-settings">
+    <div className="h-[100dvh] overflow-y-auto bg-slate-100 px-5 pb-10 pt-3" data-testid="mobile-home-settings">
       <header className="relative min-h-24">
         <button
           type="button"

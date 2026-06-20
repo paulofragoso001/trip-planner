@@ -873,6 +873,17 @@ test.describe("mobile soft-launch UX", () => {
     await page.getByTestId("ios-launch-sheet-handle").click();
     await expect(launchSheet).toHaveAttribute("data-sheet-state", "expanded");
     await expect(page.getByTestId("ios-launch-sheet-expanded")).toBeVisible();
+    await expect.poll(async () => {
+      return page.getByTestId("ios-launch-sheet").evaluate((element) => {
+        const rect = element.getBoundingClientRect();
+
+        return Math.round(rect.height - window.innerHeight);
+      });
+    }, { message: "expanded trips sheet fills the viewport" }).toBeGreaterThanOrEqual(-2);
+    const expandedSheetTop = await page.getByTestId("ios-launch-sheet").evaluate((element) => {
+      return element.getBoundingClientRect().top;
+    });
+    expect(expandedSheetTop, "expanded trips sheet starts at the top of the viewport").toBeLessThanOrEqual(1);
     await expect(launchSheet.getByRole("heading", { name: "My Trips" })).toBeVisible();
     await expect(launchSheet.getByText("Upcoming")).toBeVisible();
     await expect(page.getByTestId("mobile-home-featured-trip")).toBeVisible();
@@ -1042,7 +1053,8 @@ test.describe("mobile soft-launch UX", () => {
     const [cameraLatitude, cameraLongitude] = camera.center.split(",").map(Number);
     expect(Math.abs(cameraLatitude - 25.7617), "3D map centers on the granted browser latitude").toBeLessThan(0.01);
     expect(Math.abs(cameraLongitude - -80.1918), "3D map centers on the granted browser longitude").toBeLessThan(0.01);
-    expect(Number(camera.range), "user location is more tightly focused than country view").toBeLessThan(2_000_000);
+    expect(Number(camera.range), "user location settles into a wide globe view").toBeGreaterThan(3_000_000);
+    expect(Number(camera.range), "user location is still tighter than the global intro").toBeLessThan(6_000_000);
   });
 
   test("mobile home 3D hero supports reduced motion and unknown country fallback", async ({ page }) => {
