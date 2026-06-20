@@ -596,9 +596,9 @@ test.describe("mobile soft-launch UX", () => {
     await expect(home3DHero.getByText("Search")).toHaveCount(0);
     await expect(home3DHero.getByText("Review places")).toHaveCount(0);
     await expect(page.getByTestId("mobile-home-globe-controls")).toBeVisible();
-    await expect(home3DHero.getByRole("link")).toHaveCount(2);
+    await expect(home3DHero.getByRole("link")).toHaveCount(1);
     await expect(home3DHero.getByRole("link", { name: "Open map" })).toHaveAttribute("href", "/dashboard/map");
-    await expect(home3DHero.getByRole("link", { name: "Center globe" })).toHaveAttribute("href", "/dashboard");
+    await expect(home3DHero.getByRole("button", { name: "Use current location" })).toBeVisible();
     await expect(page.getByTestId("mobile-home-earth-texture")).toHaveCount(0);
     await expect(page.getByTestId("mobile-home-earth-ocean")).toHaveCount(0);
     await expect(page.getByTestId("mobile-home-earth-continents")).toHaveCount(0);
@@ -969,6 +969,71 @@ test.describe("mobile soft-launch UX", () => {
     });
     expect(planCardStyle.backgroundColor).toBe("rgb(5, 5, 5)");
     expect(planCardStyle.color).toBe("rgb(255, 255, 255)");
+  });
+
+  test("mobile home 3D hero uses granted browser location for map center and pin", async ({ page }) => {
+    await page.setViewportSize({ height: 900, width: 390 });
+    await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
+    await page.addInitScript(() => {
+      Object.defineProperty(navigator, "language", { configurable: true, value: "en-US" });
+      Object.defineProperty(navigator, "languages", { configurable: true, value: ["en-US", "en"] });
+      Object.defineProperty(navigator, "permissions", {
+        configurable: true,
+        value: {
+          query: () => Promise.resolve({ state: "granted" })
+        }
+      });
+      Object.defineProperty(navigator, "geolocation", {
+        configurable: true,
+        value: {
+          getCurrentPosition(success: (position: GeolocationPosition) => void) {
+            success({
+              coords: {
+                accuracy: 20,
+                altitude: null,
+                altitudeAccuracy: null,
+                heading: null,
+                latitude: 25.7617,
+                longitude: -80.1918,
+                speed: null
+              },
+              timestamp: Date.now()
+            } as GeolocationPosition);
+          }
+        }
+      });
+
+      (window as typeof window & {
+        google?: {
+          maps?: {
+            importLibrary?: (libraryName: string) => Promise<unknown>;
+          };
+        };
+      }).google = {
+        maps: {
+          importLibrary: () => Promise.resolve({})
+        }
+      };
+    });
+
+    await page.goto(`${baseUrl}/dashboard`, { waitUntil: "commit" });
+    await expect(page.getByTestId("photorealistic-3d-home-hero")).toHaveAttribute("data-hero-mode", "ready3d", {
+      timeout: 5_000
+    });
+    await expect(page.getByTestId("mobile-home-country-pin")).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByTestId("mobile-home-country-pin")).toHaveAttribute("data-location-source", "user");
+    await expect(page.getByTestId("mobile-home-country-pin")).toHaveAttribute("data-user-latitude", "25.76170");
+    await expect(page.getByTestId("mobile-home-country-pin")).toHaveAttribute("data-user-longitude", "-80.19180");
+    await expect(page.getByTestId("mobile-home-country-name")).toHaveText("Your location");
+
+    const camera = await page.getByTestId("home-3d-map").evaluate((element) => ({
+      center: element.getAttribute("center") ?? "",
+      range: element.getAttribute("range") ?? ""
+    }));
+    const [cameraLatitude, cameraLongitude] = camera.center.split(",").map(Number);
+    expect(Math.abs(cameraLatitude - 25.7617), "3D map centers near the granted browser latitude").toBeLessThan(2);
+    expect(Math.abs(cameraLongitude - -80.1918), "3D map centers near the granted browser longitude").toBeLessThan(2);
+    expect(Number(camera.range), "user location is more tightly focused than country view").toBeLessThan(2_000_000);
   });
 
   test("mobile home 3D hero supports reduced motion and unknown country fallback", async ({ page }) => {

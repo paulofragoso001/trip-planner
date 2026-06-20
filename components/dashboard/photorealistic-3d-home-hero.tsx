@@ -28,6 +28,7 @@ type CountryFocus = {
   name: string;
   pinX: number;
   pinY: number;
+  source?: "country" | "user";
 };
 
 type MapsImportLibrary = (libraryName: string) => Promise<unknown>;
@@ -57,6 +58,7 @@ const THREE_D_PIN_REVEAL_MS = 3_200;
 const THREE_D_CONTENT_REVEAL_MS = 3_600;
 const THREE_D_LOAD_TIMEOUT_MS = 4_500;
 const HERO_EARTH_Y_NUDGE_PERCENT = 4;
+const USE_CURRENT_LOCATION_EVENT = "wayline:home-use-current-location";
 
 const DEFAULT_COUNTRY: CountryFocus = {
   altitude: 1_850_000,
@@ -140,13 +142,26 @@ export function Photorealistic3DHomeHero({ className }: Photorealistic3DHomeHero
 
     setCountry(localeCountry || timezoneCountry || DEFAULT_COUNTRY);
 
+    let cancelled = false;
+
+    const useCurrentLocation = () => {
+      requestCurrentLocation((nextCountry) => {
+        if (!cancelled) {
+          setCountry(nextCountry);
+        }
+      });
+    };
+
+    window.addEventListener(USE_CURRENT_LOCATION_EVENT, useCurrentLocation);
+
     const permissions = navigator.permissions;
 
     if (!navigator.geolocation || !permissions?.query) {
-      return;
+      return () => {
+        cancelled = true;
+        window.removeEventListener(USE_CURRENT_LOCATION_EVENT, useCurrentLocation);
+      };
     }
-
-    let cancelled = false;
 
     permissions
       .query({ name: "geolocation" as PermissionName })
@@ -155,29 +170,13 @@ export function Photorealistic3DHomeHero({ className }: Photorealistic3DHomeHero
           return;
         }
 
-        navigator.geolocation.getCurrentPosition(
-          (position) => {
-            if (cancelled) {
-              return;
-            }
-
-            const countryFromCoordinates = countryFromApproximateCoordinates(
-              position.coords.latitude,
-              position.coords.longitude
-            );
-
-            if (countryFromCoordinates) {
-              setCountry(countryFromCoordinates);
-            }
-          },
-          () => undefined,
-          { enableHighAccuracy: false, maximumAge: 86_400_000, timeout: 1_500 }
-        );
+        useCurrentLocation();
       })
       .catch(() => undefined);
 
     return () => {
       cancelled = true;
+      window.removeEventListener(USE_CURRENT_LOCATION_EVENT, useCurrentLocation);
     };
   }, []);
 
@@ -349,6 +348,9 @@ export function Photorealistic3DHomeHero({ className }: Photorealistic3DHomeHero
         <div
           className="wayline-country-pin pointer-events-none absolute z-20 -translate-x-1/2 -translate-y-1/2 text-center"
           data-country-code={focus.code}
+          data-location-source={focus.source ?? "country"}
+          data-user-latitude={focus.source === "user" ? focus.lat.toFixed(5) : undefined}
+          data-user-longitude={focus.source === "user" ? focus.lng.toFixed(5) : undefined}
           data-testid="mobile-home-country-pin"
           style={{
             left: "var(--wayline-pin-x)",
@@ -372,6 +374,39 @@ export function Photorealistic3DHomeHero({ className }: Photorealistic3DHomeHero
       <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-[34%] bg-[linear-gradient(180deg,transparent,rgba(2,8,20,0.62)_72%,rgba(2,8,20,0.88)_100%)]" />
     </div>
   );
+}
+
+function requestCurrentLocation(onLocation: (country: CountryFocus) => void) {
+  if (!navigator.geolocation) {
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition(
+    (position) => {
+      onLocation(focusFromPosition(position));
+    },
+    () => undefined,
+    { enableHighAccuracy: true, maximumAge: 300_000, timeout: 6_000 }
+  );
+}
+
+function focusFromPosition(position: GeolocationPosition): CountryFocus {
+  const latitude = clamp(position.coords.latitude, -85, 85);
+  const longitude = normalizeLongitude(position.coords.longitude);
+  const approximateCountry = countryFromApproximateCoordinates(latitude, longitude) ?? DEFAULT_COUNTRY;
+
+  return {
+    ...approximateCountry,
+    altitude: 850_000,
+    code: approximateCountry.code,
+    flag: "📍",
+    lat: latitude,
+    lng: longitude,
+    name: "Your location",
+    pinX: 58,
+    pinY: 36,
+    source: "user"
+  };
 }
 
 function HomeHeroFallback({ reduceMotion }: { reduceMotion: boolean }) {
@@ -460,6 +495,17 @@ function setMapCamera(mapElement: HTMLElement, camera: MapCameraFrame) {
 }
 
 function getStartCamera(country: CountryFocus): MapCameraFrame {
+  if (country.source === "user") {
+    return {
+      altitude: country.altitude + 2_200_000,
+      heading: 238,
+      lat: clamp(country.lat + 16, -85, 85),
+      lng: normalizeLongitude(country.lng - 76),
+      range: 8_800_000,
+      tilt: 12
+    };
+  }
+
   return {
     altitude: country.altitude + 2_650_000,
     heading: 238,
@@ -471,6 +517,17 @@ function getStartCamera(country: CountryFocus): MapCameraFrame {
 }
 
 function getSettledCamera(country: CountryFocus): MapCameraFrame {
+  if (country.source === "user") {
+    return {
+      altitude: country.altitude + 360_000,
+      heading: 318,
+      lat: clamp(country.lat + 0.55, -85, 85),
+      lng: normalizeLongitude(country.lng - 1.15),
+      range: 1_150_000,
+      tilt: 50
+    };
+  }
+
   return {
     altitude: country.altitude + 520_000,
     heading: 318,
@@ -482,6 +539,17 @@ function getSettledCamera(country: CountryFocus): MapCameraFrame {
 }
 
 function getApproachCamera(country: CountryFocus): MapCameraFrame {
+  if (country.source === "user") {
+    return {
+      altitude: country.altitude + 260_000,
+      heading: 356,
+      lat: clamp(country.lat + 1.35, -85, 85),
+      lng: normalizeLongitude(country.lng - 3.6),
+      range: 780_000,
+      tilt: 64
+    };
+  }
+
   return {
     altitude: country.altitude + 360_000,
     heading: 356,
@@ -493,6 +561,17 @@ function getApproachCamera(country: CountryFocus): MapCameraFrame {
 }
 
 function getSpinCamera(country: CountryFocus): MapCameraFrame {
+  if (country.source === "user") {
+    return {
+      altitude: country.altitude + 420_000,
+      heading: 438,
+      lat: clamp(country.lat + 1.6, -85, 85),
+      lng: normalizeLongitude(country.lng - 1.6),
+      range: 1_350_000,
+      tilt: 58
+    };
+  }
+
   return {
     altitude: country.altitude + 740_000,
     heading: 438,
@@ -711,4 +790,12 @@ function countryFromApproximateCoordinates(latitude: number, longitude: number) 
   if (latitude >= 63 && latitude <= 67 && longitude >= -25 && longitude <= -13) return COUNTRY_BY_CODE.IS;
 
   return null;
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
+}
+
+function normalizeLongitude(longitude: number) {
+  return ((((longitude + 180) % 360) + 360) % 360) - 180;
 }

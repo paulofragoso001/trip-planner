@@ -1,3 +1,5 @@
+"use client";
+
 import { LocateFixed, Map } from "lucide-react";
 import Link from "next/link";
 import type { DashboardData } from "@/app/dashboard/loader";
@@ -39,7 +41,6 @@ export function MobileHomeWallet({
         data-testid="mobile-home-3d-hero"
       >
         <Photorealistic3DHomeHero />
-        <GlobePins />
         <FloatingGlobeControls />
       </section>
 
@@ -74,21 +75,16 @@ function FloatingGlobeControls() {
         <Map aria-hidden="true" className="h-5 w-5" />
       </Link>
       <span className="mx-auto block h-px w-7 bg-white/18" />
-      <Link
-        aria-label="Center globe"
+      <button
+        aria-label="Use current location"
         className="grid h-11 w-11 place-items-center rounded-full text-white transition hover:bg-white/10 focus:outline-none focus:ring-4 focus:ring-orange-300/20"
-        href="/dashboard"
+        onClick={() => {
+          window.dispatchEvent(new CustomEvent("wayline:home-use-current-location"));
+        }}
+        type="button"
       >
         <LocateFixed aria-hidden="true" className="h-5 w-5" />
-      </Link>
-    </div>
-  );
-}
-
-function GlobePins() {
-  return (
-    <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-20" data-testid="mobile-home-globe-pins">
-      <span className="absolute left-[62%] top-[48%] h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-[3px] border-white bg-orange-500 shadow-[0_12px_34px_rgba(0,0,0,0.42),0_0_22px_rgba(249,115,22,0.45)]" />
+      </button>
     </div>
   );
 }
