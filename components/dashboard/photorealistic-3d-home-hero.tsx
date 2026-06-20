@@ -120,6 +120,10 @@ export function Photorealistic3DHomeHero({ className }: Photorealistic3DHomeHero
   const [introComplete, setIntroComplete] = useState(false);
   const [reduceMotion, setReduceMotion] = useState(false);
 
+  function setLocationFocus(nextCountry: CountryFocus) {
+    setCountry((currentCountry) => (shouldUpdateFocus(currentCountry, nextCountry) ? nextCountry : currentCountry));
+  }
+
   useEffect(() => {
     const media = window.matchMedia("(prefers-reduced-motion: reduce)");
     const syncMotion = () => {
@@ -147,7 +151,7 @@ export function Photorealistic3DHomeHero({ className }: Photorealistic3DHomeHero
     const useCurrentLocation = () => {
       requestCurrentLocation((nextCountry) => {
         if (!cancelled) {
-          setCountry(nextCountry);
+          setLocationFocus(nextCountry);
         }
       });
     };
@@ -186,22 +190,6 @@ export function Photorealistic3DHomeHero({ className }: Photorealistic3DHomeHero
       window.removeEventListener(USE_CURRENT_LOCATION_EVENT, useCurrentLocation);
     };
   }, []);
-
-  useEffect(() => {
-    if (country.source !== "user" || !navigator.geolocation?.watchPosition) {
-      return;
-    }
-
-    const watchId = navigator.geolocation.watchPosition(
-      (position) => {
-        setCountry(focusFromPosition(position));
-      },
-      () => undefined,
-      { enableHighAccuracy: true, maximumAge: 60_000, timeout: 10_000 }
-    );
-
-    return () => navigator.geolocation.clearWatch(watchId);
-  }, [country.source]);
 
   useEffect(() => {
     document.documentElement.dataset.waylineHomeLaunchPhase = reduceMotion ? "done" : launchPhase;
@@ -430,6 +418,45 @@ function focusFromPosition(position: GeolocationPosition): CountryFocus {
     pinY: 50,
     source: "user"
   };
+}
+
+function shouldUpdateFocus(currentCountry: CountryFocus, nextCountry: CountryFocus) {
+  if (currentCountry.source !== nextCountry.source || currentCountry.code !== nextCountry.code) {
+    return true;
+  }
+
+  if (nextCountry.source !== "user") {
+    return currentCountry.name !== nextCountry.name;
+  }
+
+  return distanceBetweenCoordinates(
+    currentCountry.lat,
+    currentCountry.lng,
+    nextCountry.lat,
+    nextCountry.lng
+  ) > 0.25;
+}
+
+function distanceBetweenCoordinates(
+  startLatitude: number,
+  startLongitude: number,
+  endLatitude: number,
+  endLongitude: number
+) {
+  const earthRadiusKm = 6371;
+  const latitudeDelta = degreesToRadians(endLatitude - startLatitude);
+  const longitudeDelta = degreesToRadians(endLongitude - startLongitude);
+  const startLatitudeRadians = degreesToRadians(startLatitude);
+  const endLatitudeRadians = degreesToRadians(endLatitude);
+  const haversine =
+    Math.sin(latitudeDelta / 2) ** 2 +
+    Math.cos(startLatitudeRadians) * Math.cos(endLatitudeRadians) * Math.sin(longitudeDelta / 2) ** 2;
+
+  return 2 * earthRadiusKm * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine));
+}
+
+function degreesToRadians(value: number) {
+  return (value * Math.PI) / 180;
 }
 
 function HomeHeroFallback({ reduceMotion }: { reduceMotion: boolean }) {
