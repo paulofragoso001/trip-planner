@@ -9,10 +9,12 @@ import { cn } from "@/components/trip-ui";
 
 type MobileHomeWalletProps = Pick<DashboardData, "metrics" | "recentTrips"> & {
   className?: string;
+  initialSheetState?: "collapsed" | "expanded";
 };
 
 export function MobileHomeWallet({
   className,
+  initialSheetState = "collapsed",
   metrics,
   recentTrips
 }: MobileHomeWalletProps) {
@@ -54,6 +56,7 @@ export function MobileHomeWallet({
           primaryLabel={primaryLabel}
           primaryMeta={primaryMeta}
           recentTrips={recentTrips}
+          initialSheetState={initialSheetState}
         />
       </section>
     </section>

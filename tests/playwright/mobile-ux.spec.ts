@@ -91,6 +91,7 @@ test.describe("mobile soft-launch UX", () => {
     await page.goto(`${baseUrl}/dashboard/trips`, { waitUntil: "commit" });
     await expect(nav).toBeVisible();
     await expect(nav.getByRole("link", { name: /Trips/ })).toBeVisible();
+    await expect(nav.getByRole("link", { name: /Trips/ })).toHaveAttribute("href", "/dashboard?view=trips");
     await expect(nav.getByRole("link", { name: /Plan/ })).toBeVisible();
     await expect(nav.getByRole("link", { name: /Plan/ })).toHaveAttribute("href", "/dashboard/plan");
     await expect(nav.getByRole("link", { name: /Map/ })).toBeVisible();
@@ -104,6 +105,12 @@ test.describe("mobile soft-launch UX", () => {
     await expect(nav.getByRole("link", { name: /Saved/ })).toHaveCount(0);
     await expect(nav.getByRole("link", { name: /Plan with AI/ })).toHaveCount(0);
     await expect(nav.getByRole("link", { name: /My Trips/ })).toHaveCount(0);
+
+    await page.goto(`${baseUrl}/dashboard?view=trips`, { waitUntil: "commit" });
+    await expect(nav).toHaveCount(0);
+    await expect(page.getByTestId("mobile-home-wallet")).toBeVisible();
+    await expect(page.getByTestId("mobile-home-wallet-content")).toHaveAttribute("data-sheet-state", "expanded");
+    await expect(page.getByTestId("ios-launch-sheet-expanded")).toBeVisible();
   });
 
   test("mobile trip workspace hides global bottom navigation", async ({ page }) => {

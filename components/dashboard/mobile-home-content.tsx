@@ -30,7 +30,7 @@ import {
   X
 } from "lucide-react";
 import Link from "next/link";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { PointerEvent, ReactNode } from "react";
 import type { DashboardRecentTripView } from "@/app/dashboard/loader";
 import { cn } from "@/components/trip-ui";
@@ -39,24 +39,30 @@ type SheetState = "collapsed" | "expanded" | "settings";
 
 export function MobileHomeContent({
   ideasWaitingCount,
+  initialSheetState = "collapsed",
   primaryHref,
   primaryLabel,
   primaryMeta,
   recentTrips
 }: {
   ideasWaitingCount: number;
+  initialSheetState?: SheetState;
   primaryHref: string;
   primaryLabel: string;
   primaryMeta: string;
   recentTrips: DashboardRecentTripView[];
 }) {
-  const [sheetState, setSheetState] = useState<SheetState>("collapsed");
+  const [sheetState, setSheetState] = useState<SheetState>(initialSheetState);
   const dragStartY = useRef<number | null>(null);
   const ignoreNextHandleClick = useRef(false);
   const isCollapsed = sheetState === "collapsed";
   const isExpanded = sheetState === "expanded";
   const isSettings = sheetState === "settings";
   const currentYear = new Date().getFullYear();
+
+  useEffect(() => {
+    setSheetState(initialSheetState);
+  }, [initialSheetState]);
 
   function expandTrips() {
     setSheetState("expanded");

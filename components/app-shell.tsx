@@ -45,7 +45,7 @@ export function AppShell({
   const tripWorkspaceContent = /^\/dashboard\/trips\/[^/]+/.test(pathname);
   const fullBleedContent =
     tripWorkspaceContent || pathname.includes("/map") || pathname.startsWith("/dashboard/layout-simulator");
-  const isDashboardHome = pathname === "/dashboard" && !view;
+  const isDashboardLaunch = pathname === "/dashboard" && (!view || view === "trips");
   const hideMobileTopbar = true;
 
   useEffect(() => {
@@ -269,10 +269,10 @@ export function AppShell({
           <main
             className={cn(
               "min-h-0 flex-1 overflow-y-auto bg-[radial-gradient(circle_at_72%_8%,rgba(59,130,246,0.1),transparent_26%),linear-gradient(180deg,rgba(15,23,42,0.46),rgba(15,23,42,0.08)_42%,rgba(2,6,23,0.38))] text-slate-950 lg:pb-6",
-              isDashboardHome ? "px-0 pt-0 lg:px-8 lg:pt-6" : "px-3 pt-4 sm:px-6 sm:pt-6",
+              isDashboardLaunch ? "px-0 pt-0 lg:px-8 lg:pt-6" : "px-3 pt-4 sm:px-6 sm:pt-6",
               tripWorkspaceContent
                 ? "pb-0"
-                : isDashboardHome
+                : isDashboardLaunch
                   ? "pb-0"
                 : "pb-[calc(5.75rem+env(safe-area-inset-bottom))] sm:pb-[calc(6rem+env(safe-area-inset-bottom))]",
               fullBleedContent ? "lg:px-6" : "lg:px-8",
@@ -291,7 +291,7 @@ export function AppShell({
               {children}
             </div>
           </main>
-          {!tripWorkspaceContent && !isDashboardHome ? (
+          {!tripWorkspaceContent && !isDashboardLaunch ? (
             <MobileBottomNav
               hash={hash}
               onHashChange={setHash}

@@ -47,7 +47,11 @@ export default function DashboardPage({
 
   return (
     <>
-      <MobileHomeWallet metrics={metrics} recentTrips={recentTrips} />
+      <MobileHomeWallet
+        initialSheetState={view === "trips" ? "expanded" : "collapsed"}
+        metrics={metrics}
+        recentTrips={recentTrips}
+      />
       <div
         className="mx-auto hidden w-full max-w-5xl gap-4 pb-4 sm:gap-5 lg:grid lg:pb-4"
         data-testid="home-launch-page"
