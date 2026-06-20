@@ -2,8 +2,7 @@ export type DashboardActionKind =
   | "navigation-only"
   | "client-ui-state"
   | "authenticated-mutation"
-  | "external-service"
-  | "placeholder-no-op";
+  | "external-service";
 
 export type DashboardActionAuth = "none" | "dashboard-session" | "dashboard-session-or-test-bypass";
 
@@ -13,8 +12,7 @@ export type DashboardActionPermission =
   | "trip-owner"
   | "admin"
   | "browser-geolocation"
-  | "external-provider"
-  | "not-yet-wired";
+  | "external-provider";
 
 export type DashboardActionContract = {
   id: string;
@@ -544,119 +542,132 @@ export const dashboardActionContracts = [
   {
     id: "settings-pro-redeem-trial",
     label: "Redeem 15 Days Free",
-    kind: "placeholder-no-op",
+    kind: "client-ui-state",
     surface: "Mobile settings Pro card",
     selectorHint: 'role=button[name="Redeem 15 Days Free"]',
-    intendedFunction: "Start Pro trial redemption flow.",
-    target: { type: "none", value: "Not wired yet" },
+    intendedFunction: "Open a trial availability sheet with an account settings route.",
+    target: { type: "local-state", value: "TrialAvailabilitySheet open" },
     requiredAuth: "dashboard-session",
-    requiredPermissions: ["not-yet-wired"],
-    expectedSuccessUi: "Future: trial checkout/activation sheet opens or success state appears.",
-    expectedFailureUi: "Future: billing/trial error shown inline without changing account state."
+    requiredPermissions: ["signed-in-user"],
+    expectedSuccessUi: "Trial availability sheet opens with an Open account settings action.",
+    expectedFailureUi: "No network failure path; user remains on settings if the sheet is dismissed."
   },
   {
     id: "expanded-pro-accept-trial",
     label: "Accept 15 Days Free",
-    kind: "placeholder-no-op",
+    kind: "client-ui-state",
     surface: "Mobile expanded Pro feature card",
     selectorHint: 'role=button[name="Accept 15 Days Free"]',
-    intendedFunction: "Accept the Pro trial offer from the expanded trips sheet.",
-    target: { type: "none", value: "Not wired yet" },
+    intendedFunction: "Open a trial availability sheet with an account settings route.",
+    target: { type: "local-state", value: "TrialAvailabilitySheet open" },
     requiredAuth: "dashboard-session",
-    requiredPermissions: ["not-yet-wired"],
-    expectedSuccessUi: "Future: trial checkout/activation sheet opens or success state appears.",
-    expectedFailureUi: "Future: billing/trial error shown inline without changing account state."
+    requiredPermissions: ["signed-in-user"],
+    expectedSuccessUi: "Trial availability sheet opens with an Open account settings action.",
+    expectedFailureUi: "No network failure path; user remains on the expanded trips sheet if the sheet is dismissed."
   },
   {
     id: "expanded-pro-dismiss",
     label: "Dismiss pro card",
-    kind: "placeholder-no-op",
+    kind: "client-ui-state",
     surface: "Mobile expanded Pro feature card",
     selectorHint: 'role=button[name="Dismiss pro card"]',
-    intendedFunction: "Dismiss the Pro upsell card for the current user/session.",
-    target: { type: "none", value: "Not wired yet" },
+    intendedFunction: "Dismiss the Pro upsell card for the current view.",
+    target: { type: "local-state", value: "showProFeature=false" },
     requiredAuth: "dashboard-session",
-    requiredPermissions: ["not-yet-wired"],
-    expectedSuccessUi: "Future: card disappears and preference is persisted or session-scoped.",
-    expectedFailureUi: "Future: card remains visible with an unobtrusive error."
+    requiredPermissions: ["signed-in-user"],
+    expectedSuccessUi: "Pro feature card disappears from the expanded trips sheet.",
+    expectedFailureUi: "No network failure path; the card remains visible if React state cannot update."
   },
   {
     id: "email-automation-dismiss",
     label: "Dismiss email automation card",
-    kind: "placeholder-no-op",
+    kind: "client-ui-state",
     surface: "Mobile email automation card",
     selectorHint: 'role=button[name="Dismiss email automation card"]',
-    intendedFunction: "Dismiss the email automation prompt.",
-    target: { type: "none", value: "Not wired yet" },
+    intendedFunction: "Dismiss the email automation prompt for the current view.",
+    target: { type: "local-state", value: "showEmailAutomation=false" },
     requiredAuth: "dashboard-session",
-    requiredPermissions: ["not-yet-wired"],
-    expectedSuccessUi: "Future: card disappears and preference is persisted or session-scoped.",
-    expectedFailureUi: "Future: card remains visible with an unobtrusive error."
+    requiredPermissions: ["signed-in-user"],
+    expectedSuccessUi: "Email automation card disappears from the expanded trips sheet.",
+    expectedFailureUi: "No network failure path; the card remains visible if React state cannot update."
   },
   {
     id: "settings-force-sync",
     label: "Force Sync",
-    kind: "placeholder-no-op",
+    kind: "client-ui-state",
     surface: "Mobile settings footer",
     selectorHint: 'role=button[name="Force Sync"]',
-    intendedFunction: "Trigger manual sync for connected services.",
-    target: { type: "none", value: "Not wired yet" },
+    intendedFunction: "Show that manual sync is unavailable until connected services are enabled.",
+    target: { type: "local-state", value: "disabled unavailable state" },
     requiredAuth: "dashboard-session",
-    requiredPermissions: ["not-yet-wired"],
-    expectedSuccessUi: "Future: sync starts, pending state appears, and last-sync timestamp updates.",
-    expectedFailureUi: "Future: sync error is shown inline with retry available."
+    requiredPermissions: ["signed-in-user"],
+    expectedSuccessUi: "Button is disabled and visible helper text explains why sync is unavailable.",
+    expectedFailureUi: "No network failure path because the unavailable action cannot be submitted."
   },
   {
-    id: "settings-row-actions",
-    label: "Settings rows",
-    kind: "placeholder-no-op",
+    id: "settings-routed-row-actions",
+    label: "Save your trips / Add Reservations via Email / TripIt Importer / Trips Timeline / My Wayline Book / Need help? / Talk to us / Your Membership / About Wayline / Terms of Service / Privacy Policy",
+    kind: "navigation-only",
     surface: "Mobile settings rows",
-    selectorHint: "SettingsRow buttons",
-    intendedFunction: "Open settings detail pages or pickers for account, automations, customize, help, and about items.",
-    target: { type: "none", value: "Not wired yet" },
+    selectorHint: "SettingsRow links",
+    intendedFunction: "Open the closest implemented account, imports, trip, profile, support, legal, or about route.",
+    target: { type: "route", value: "/dashboard/account, /dashboard/imports, /dashboard/trips, /dashboard/profile/stats, mailto:support@wayline.app, /dashboard/profile, /terms, /privacy" },
     requiredAuth: "dashboard-session",
-    requiredPermissions: ["not-yet-wired"],
-    expectedSuccessUi: "Future: matching detail sheet, picker, route, or external support flow opens.",
-    expectedFailureUi: "Future: unavailable settings show disabled state or inline error."
+    requiredPermissions: ["signed-in-user"],
+    expectedSuccessUi: "Selected route or mail client opens.",
+    expectedFailureUi: "Dashboard auth boundary redirects unauthenticated users; external mail clients may be unavailable."
+  },
+  {
+    id: "settings-unavailable-row-actions",
+    label: "Custom Categories / Calendar Feed / Connect with Claude / MCP / Shortcuts / Currency / Distance Unit / Language / App Icon / Notifications / Widgets / Storage and Data / Review the App / App Updates / Share to a Friend",
+    kind: "client-ui-state",
+    surface: "Mobile settings rows",
+    selectorHint: "SettingsRow disabled buttons with Soon/Pro soon badges",
+    intendedFunction: "Represent settings that are intentionally unavailable until their underlying service or picker exists.",
+    target: { type: "local-state", value: "disabled unavailable state" },
+    requiredAuth: "dashboard-session",
+    requiredPermissions: ["signed-in-user"],
+    expectedSuccessUi: "Rows are disabled and show a visible Soon or Pro soon badge.",
+    expectedFailureUi: "No network failure path because unavailable settings cannot be submitted."
   },
   {
     id: "travel-stats-share",
     label: "Share travel stats",
-    kind: "placeholder-no-op",
+    kind: "client-ui-state",
     surface: "Travel stats page",
     selectorHint: 'role=button[name="Share travel stats"]',
-    intendedFunction: "Share or export travel stats.",
-    target: { type: "none", value: "Not wired yet" },
+    intendedFunction: "Represent sharing as intentionally unavailable until native/share export support is implemented.",
+    target: { type: "local-state", value: "disabled unavailable state" },
     requiredAuth: "dashboard-session",
-    requiredPermissions: ["not-yet-wired"],
-    expectedSuccessUi: "Future: native share sheet or export confirmation appears.",
-    expectedFailureUi: "Future: unsupported browser/share error shown inline."
+    requiredPermissions: ["signed-in-user"],
+    expectedSuccessUi: "Share button is disabled and shows a visible Soon badge.",
+    expectedFailureUi: "No network failure path because the unavailable action cannot be submitted."
   },
   {
     id: "documents-more-options",
     label: "More document options",
-    kind: "placeholder-no-op",
+    kind: "client-ui-state",
     surface: "Trip documents page",
     selectorHint: 'role=button[name="More document options"]',
-    intendedFunction: "Open document options menu.",
-    target: { type: "none", value: "Not wired yet" },
+    intendedFunction: "Represent document options as intentionally unavailable until document actions exist.",
+    target: { type: "local-state", value: "disabled unavailable state" },
     requiredAuth: "dashboard-session",
-    requiredPermissions: ["not-yet-wired"],
-    expectedSuccessUi: "Future: document actions menu opens.",
-    expectedFailureUi: "Future: menu remains closed with accessible error if actions cannot load."
+    requiredPermissions: ["trip-owner"],
+    expectedSuccessUi: "Button is disabled and shows a visible Soon badge.",
+    expectedFailureUi: "No network failure path because the unavailable action cannot be submitted."
   },
   {
     id: "documents-add-document",
     label: "Add document",
-    kind: "placeholder-no-op",
+    kind: "client-ui-state",
     surface: "Trip documents page",
     selectorHint: 'role=button[name="Add document"]',
-    intendedFunction: "Upload or attach a trip document.",
-    target: { type: "none", value: "Not wired yet" },
+    intendedFunction: "Represent document upload as intentionally unavailable until upload/storage support exists.",
+    target: { type: "local-state", value: "disabled unavailable state" },
     requiredAuth: "dashboard-session",
-    requiredPermissions: ["not-yet-wired"],
-    expectedSuccessUi: "Future: upload picker opens and uploaded document appears in list.",
-    expectedFailureUi: "Future: upload/auth/storage errors are shown inline."
+    requiredPermissions: ["trip-owner"],
+    expectedSuccessUi: "Button is disabled and shows a visible Soon badge.",
+    expectedFailureUi: "No network failure path because the unavailable action cannot be submitted."
   },
   {
     id: "external-location-autocomplete",
@@ -674,5 +685,5 @@ export const dashboardActionContracts = [
 ] as const satisfies readonly DashboardActionContract[];
 
 export const unwiredDashboardActionContracts = dashboardActionContracts.filter(
-  (contract) => contract.kind === "placeholder-no-op"
+  (contract: DashboardActionContract) => contract.target.type === "none"
 );

@@ -40,8 +40,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const body = await request.json();
-  const trip = normalizeTripInput(body);
+  const body = await readJsonObject(request);
+  if (!body.ok) {
+    return NextResponse.json({ error: body.error }, { status: 400 });
+  }
+
+  const trip = normalizeTripInput(body.value);
 
   if (!trip.name || !trip.destination) {
     return NextResponse.json(
@@ -90,4 +94,17 @@ export async function POST(request: Request) {
 
 function isMissingTravelStyleColumn(message: string) {
   return /travel_style/i.test(message) && /column|schema cache|could not find/i.test(message);
+}
+
+async function readJsonObject(request: Request) {
+  try {
+    const value = await request.json();
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+      return { error: "Request body must be a JSON object.", ok: false as const };
+    }
+
+    return { ok: true as const, value: value as Record<string, unknown> };
+  } catch {
+    return { error: "Request body must be valid JSON.", ok: false as const };
+  }
 }

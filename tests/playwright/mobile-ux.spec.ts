@@ -916,7 +916,17 @@ test.describe("mobile soft-launch UX", () => {
     await expect(launchSheet.getByText("Upcoming")).toBeVisible();
     await expect(page.getByTestId("mobile-home-featured-trip")).toBeVisible();
     await expect(launchSheet.getByText("Explore all the Pro features")).toBeVisible();
-    await expect(launchSheet.getByRole("button", { name: "Accept 15 Days Free" })).toBeVisible();
+    const acceptTrialButton = launchSheet.getByRole("button", { name: "Accept 15 Days Free" });
+    await expect(acceptTrialButton).toBeVisible();
+    await acceptTrialButton.click();
+    await expect(page.getByRole("dialog").getByText("Trial activation coming soon")).toBeVisible();
+    await expect(page.getByRole("dialog").getByRole("link", { name: "Open account settings" })).toHaveAttribute(
+      "href",
+      "/dashboard/account"
+    );
+    await page.getByRole("button", { name: "Close trial availability" }).click();
+    await launchSheet.getByRole("button", { name: "Dismiss pro card" }).click();
+    await expect(launchSheet.getByText("Explore all the Pro features")).toHaveCount(0);
     await expect(launchSheet.getByText("Add Reservations via Email")).toBeVisible();
     await expect(launchSheet.getByRole("link", { name: "Forward Your Reservation" })).toBeVisible();
     await expect(launchSheet.getByRole("link", { name: /Travel Book/ })).toBeVisible();
@@ -975,16 +985,26 @@ test.describe("mobile soft-launch UX", () => {
       finalActionScrollCushion.clearance,
       "Forward reservation can scroll clear of the fixed bottom nav"
     ).toBeGreaterThanOrEqual(12);
+    await launchSheet.getByRole("button", { name: "Dismiss email automation card" }).click();
+    await expect(launchSheet.getByTestId("mobile-home-email-card")).toHaveCount(0);
     await launchSheet.getByRole("button", { name: "Open settings" }).click();
     await expect(launchSheet).toHaveAttribute("data-sheet-state", "settings");
     await expect(page.getByTestId("mobile-home-settings")).toBeVisible();
     await expect(launchSheet.getByRole("heading", { name: "Settings" })).toBeVisible();
     await expect(launchSheet.getByText("Redeem 15 Days Free")).toBeVisible();
-    await expect(launchSheet.getByText("Add Reservations via Email")).toBeVisible();
+    await launchSheet.getByRole("button", { name: "Redeem 15 Days Free" }).click();
+    await expect(page.getByRole("dialog").getByText("Trial activation coming soon")).toBeVisible();
+    await page.getByRole("button", { name: "Close trial availability" }).click();
+    await expect(launchSheet.getByRole("link", { name: "Add Reservations via Email" })).toHaveAttribute(
+      "href",
+      "/dashboard/imports"
+    );
     await expect(launchSheet.getByText("Currency")).toBeVisible();
     await expect(launchSheet.getByText("Need help?")).toBeVisible();
-    await expect(launchSheet.getByText("Privacy Policy")).toBeVisible();
-    await expect(launchSheet.getByText("Force Sync")).toBeVisible();
+    await expect(launchSheet.getByRole("link", { name: "Privacy Policy" })).toHaveAttribute("href", "/privacy");
+    await expect(launchSheet.getByText("Soon").first()).toBeVisible();
+    await expect(launchSheet.getByRole("button", { name: "Force Sync" })).toBeDisabled();
+    await expect(launchSheet.getByText("Sync is unavailable until connected services are enabled.")).toBeVisible();
     for (const width of [360, 390, 430]) {
       await page.setViewportSize({ height: 900, width });
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);

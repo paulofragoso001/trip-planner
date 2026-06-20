@@ -231,10 +231,15 @@ function StatsTopBar({ closeHref }: { closeHref: string }) {
       <div className="flex items-center gap-2">
         <button
           aria-label="Share travel stats"
-          className="grid h-10 w-10 place-items-center rounded-full bg-black/38 text-white/85 ring-1 ring-white/12 backdrop-blur-xl"
+          className="relative grid h-10 w-10 cursor-not-allowed place-items-center rounded-full bg-black/24 text-white/45 ring-1 ring-white/10 backdrop-blur-xl"
+          disabled
+          title="Sharing is coming soon"
           type="button"
         >
           <Share2 className="h-5 w-5" aria-hidden="true" />
+          <span className="absolute -bottom-1 -right-1 rounded-full bg-white px-1.5 py-0.5 text-[0.55rem] font-black uppercase text-slate-950">
+            Soon
+          </span>
         </button>
         <Link
           href={closeHref}

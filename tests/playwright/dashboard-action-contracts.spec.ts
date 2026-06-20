@@ -1,5 +1,8 @@
 import { expect, test } from "@playwright/test";
-import { dashboardActionContracts } from "../fixtures/dashboard-action-contracts";
+import {
+  dashboardActionContracts,
+  unwiredDashboardActionContracts
+} from "../fixtures/dashboard-action-contracts";
 
 test("dashboard action contracts stay well-formed", () => {
   const ids = new Set<string>();
@@ -22,9 +25,8 @@ test("dashboard action contracts stay well-formed", () => {
       expect(contract.target.type, `${contract.id} mutation target`).toMatch(/^(api|server-action)$/);
     }
 
-    if (contract.kind === "placeholder-no-op") {
-      expect(contract.target.type, `${contract.id} placeholder target`).toBe("none");
-      expect(contract.requiredPermissions, `${contract.id} placeholder permissions`).toContain("not-yet-wired");
-    }
+    expect(contract.target.type, `${contract.id} target should be wired or visibly unavailable`).not.toBe("none");
   }
+
+  expect(unwiredDashboardActionContracts, "no dashboard action should drift back to a no-op target").toHaveLength(0);
 });

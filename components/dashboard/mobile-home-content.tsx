@@ -53,6 +53,7 @@ export function MobileHomeContent({
   recentTrips: DashboardRecentTripView[];
 }) {
   const [sheetState, setSheetState] = useState<SheetState>(initialSheetState);
+  const [trialSheetCopy, setTrialSheetCopy] = useState<string | null>(null);
   const dragStartY = useRef<number | null>(null);
   const ignoreNextHandleClick = useRef(false);
   const isCollapsed = sheetState === "collapsed";
@@ -134,7 +135,12 @@ export function MobileHomeContent({
         </button>
 
         {isSettings ? (
-          <SettingsPanel onClose={collapseSheet} />
+          <SettingsPanel
+            onClose={collapseSheet}
+            onOpenTrial={() =>
+              setTrialSheetCopy("Your 15 day Wayline Pro trial will be available from billing settings soon.")
+            }
+          />
         ) : (
           <div
             id="mobile-launch-expanded-menu"
@@ -181,11 +187,20 @@ export function MobileHomeContent({
                 primaryLabel={primaryLabel}
                 primaryMeta={primaryMeta}
                 recentTrips={recentTrips}
+                onOpenTrial={() =>
+                  setTrialSheetCopy("Your 15 day Wayline Pro trial will be available from billing settings soon.")
+                }
               />
             )}
           </div>
         )}
       </div>
+      {trialSheetCopy ? (
+        <TrialAvailabilitySheet
+          message={trialSheetCopy}
+          onClose={() => setTrialSheetCopy(null)}
+        />
+      ) : null}
     </section>
   );
 }
@@ -228,16 +243,20 @@ function ExpandedTrips({
   primaryHref,
   primaryLabel,
   primaryMeta,
-  recentTrips
+  recentTrips,
+  onOpenTrial
 }: {
   currentYear: number;
   ideasWaitingCount: number;
+  onOpenTrial: () => void;
   primaryHref: string;
   primaryLabel: string;
   primaryMeta: string;
   recentTrips: DashboardRecentTripView[];
 }) {
   const featuredTrip = recentTrips[0] || null;
+  const [showEmailAutomation, setShowEmailAutomation] = useState(true);
+  const [showProFeature, setShowProFeature] = useState(true);
 
   return (
     <div className="mt-5 h-[calc(100dvh-6.75rem)] overflow-y-auto pb-[calc(7rem+env(safe-area-inset-bottom))]" data-testid="ios-launch-sheet-expanded">
@@ -254,8 +273,15 @@ function ExpandedTrips({
         dateRange={featuredTrip?.dateRange || primaryMeta}
         status={featuredTrip?.status || ""}
       />
-      <ProFeatureCard />
-      <EmailAutomationCard />
+      {showProFeature ? (
+        <ProFeatureCard
+          onDismiss={() => setShowProFeature(false)}
+          onOpenTrial={onOpenTrial}
+        />
+      ) : null}
+      {showEmailAutomation ? (
+        <EmailAutomationCard onDismiss={() => setShowEmailAutomation(false)} />
+      ) : null}
       {ideasWaitingCount > 0 ? (
         <Link
           className="mt-5 grid min-h-[4.5rem] grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-[1.5rem] bg-orange-50 px-4 text-slate-950 ring-1 ring-orange-100"
@@ -286,7 +312,13 @@ function ExpandedTrips({
   );
 }
 
-function SettingsPanel({ onClose }: { onClose: () => void }) {
+function SettingsPanel({
+  onClose,
+  onOpenTrial
+}: {
+  onClose: () => void;
+  onOpenTrial: () => void;
+}) {
   return (
     <div className="h-[100dvh] overflow-y-auto bg-slate-100 px-5 pb-10 pt-3" data-testid="mobile-home-settings">
       <header className="relative min-h-24">
@@ -301,53 +333,65 @@ function SettingsPanel({ onClose }: { onClose: () => void }) {
         <h2 className="pt-14 text-[2.6rem] font-black leading-none tracking-normal text-black">Settings</h2>
       </header>
 
-      <ProSettingsCard />
+      <ProSettingsCard onOpenTrial={onOpenTrial} />
       <SettingsGroup>
-        <SettingsRow icon={<Cloud />} label="Save your trips" meta="Login or create an account" accentMeta />
-        <SettingsRow icon={<SlidersHorizontal />} label="Custom Categories" />
+        <SettingsRow
+          accentMeta
+          href="/dashboard/account"
+          icon={<Cloud />}
+          label="Save your trips"
+          meta="Login or create an account"
+        />
+        <SettingsRow icon={<SlidersHorizontal />} label="Custom Categories" unavailableLabel="Soon" />
       </SettingsGroup>
 
       <SettingsSection title="Automations">
-        <SettingsRow icon={<Send />} label="Add Reservations via Email" pro />
-        <SettingsRow icon={<CalendarDays />} label="Calendar Feed" pro />
-        <SettingsRow icon={<PackageOpen />} label="Connect with Claude / MCP" />
-        <SettingsRow icon={<Briefcase />} label="Shortcuts" />
-        <SettingsRow icon={<Upload />} label="TripIt Importer" pro />
+        <SettingsRow href="/dashboard/imports" icon={<Send />} label="Add Reservations via Email" pro />
+        <SettingsRow icon={<CalendarDays />} label="Calendar Feed" pro unavailableLabel="Pro soon" />
+        <SettingsRow icon={<PackageOpen />} label="Connect with Claude / MCP" unavailableLabel="Soon" />
+        <SettingsRow icon={<Briefcase />} label="Shortcuts" unavailableLabel="Soon" />
+        <SettingsRow href="/dashboard/imports" icon={<Upload />} label="TripIt Importer" pro />
       </SettingsSection>
 
       <SettingsSection title="Customize">
-        <SettingsRow icon={<RefreshCw />} label="Currency" value="US Dollar" picker />
-        <SettingsRow icon={<SlidersHorizontal />} label="Distance Unit" value="Miles" picker />
-        <SettingsRow icon={<Languages />} label="Language" value="English" picker />
-        <SettingsRow icon={<Wallet />} label="Trips Timeline" />
-        <SettingsRow icon={<BookOpen />} label="App Icon" />
-        <SettingsRow icon={<Globe2 />} label="My Wayline Book" />
-        <SettingsRow icon={<Bell />} label="Notifications" />
-        <SettingsRow icon={<CreditCard />} label="Widgets" />
-        <SettingsRow icon={<PackageOpen />} label="Storage and Data" />
+        <SettingsRow icon={<RefreshCw />} label="Currency" value="US Dollar" picker unavailableLabel="Soon" />
+        <SettingsRow icon={<SlidersHorizontal />} label="Distance Unit" value="Miles" picker unavailableLabel="Soon" />
+        <SettingsRow icon={<Languages />} label="Language" value="English" picker unavailableLabel="Soon" />
+        <SettingsRow href="/dashboard/trips" icon={<Wallet />} label="Trips Timeline" />
+        <SettingsRow icon={<BookOpen />} label="App Icon" unavailableLabel="Soon" />
+        <SettingsRow href="/dashboard/profile/stats" icon={<Globe2 />} label="My Wayline Book" />
+        <SettingsRow icon={<Bell />} label="Notifications" unavailableLabel="Soon" />
+        <SettingsRow icon={<CreditCard />} label="Widgets" unavailableLabel="Soon" />
+        <SettingsRow icon={<PackageOpen />} label="Storage and Data" unavailableLabel="Soon" />
       </SettingsSection>
 
       <SettingsSection title="Help Center">
-        <SettingsRow icon={<LifeBuoy />} label="Need help?" />
-        <SettingsRow icon={<Mail />} label="Talk to us" />
-        <SettingsRow icon={<Star />} label="Review the App" />
-        <SettingsRow icon={<Sparkles />} label="App Updates" />
-        <SettingsRow icon={<Star />} label="Your Membership" />
+        <SettingsRow href="/dashboard/account" icon={<LifeBuoy />} label="Need help?" />
+        <SettingsRow href="mailto:support@wayline.app" icon={<Mail />} label="Talk to us" />
+        <SettingsRow icon={<Star />} label="Review the App" unavailableLabel="Soon" />
+        <SettingsRow icon={<Sparkles />} label="App Updates" unavailableLabel="Soon" />
+        <SettingsRow href="/dashboard/account" icon={<Star />} label="Your Membership" />
       </SettingsSection>
 
       <SettingsSection title="About">
-        <SettingsRow icon={<Briefcase />} label="About Wayline" />
-        <SettingsRow icon={<MessageSquare />} label="Terms of Service" />
-        <SettingsRow icon={<Shield />} label="Privacy Policy" />
-        <SettingsRow icon={<Upload />} label="Share to a Friend" />
+        <SettingsRow href="/dashboard/profile" icon={<Briefcase />} label="About Wayline" />
+        <SettingsRow href="/terms" icon={<MessageSquare />} label="Terms of Service" />
+        <SettingsRow href="/privacy" icon={<Shield />} label="Privacy Policy" />
+        <SettingsRow icon={<Upload />} label="Share to a Friend" unavailableLabel="Soon" />
       </SettingsSection>
 
       <div className="mt-14 pb-4 text-center text-slate-400">
         <p className="text-2xl font-medium">Version: 1.0.0</p>
         <p className="mt-1 text-base font-medium">Last Sync: Never</p>
-        <button className="mt-4 text-lg font-black text-orange-500" type="button">
+        <button
+          aria-disabled="true"
+          className="mt-4 cursor-not-allowed text-lg font-black text-slate-400"
+          disabled
+          type="button"
+        >
           Force Sync
         </button>
+        <p className="mt-1 text-sm font-bold text-slate-400">Sync is unavailable until connected services are enabled.</p>
       </div>
     </div>
   );
@@ -380,13 +424,20 @@ function TripFeatureCard({
   );
 }
 
-function ProFeatureCard() {
+function ProFeatureCard({
+  onDismiss,
+  onOpenTrial
+}: {
+  onDismiss: () => void;
+  onOpenTrial: () => void;
+}) {
   return (
     <section className="relative mt-6 overflow-hidden rounded-[1.75rem] bg-[linear-gradient(135deg,#9f3d16,#7e255f_48%,#3510b7)] p-6 text-white">
       <button
         type="button"
         aria-label="Dismiss pro card"
         className="absolute right-5 top-5 text-white/45"
+        onClick={onDismiss}
       >
         <X className="h-7 w-7" aria-hidden="true" />
       </button>
@@ -398,6 +449,7 @@ function ProFeatureCard() {
       <button
         type="button"
         className="mt-6 h-14 w-full rounded-full bg-white/70 text-xl font-black text-black ring-2 ring-white/50"
+        onClick={onOpenTrial}
       >
         Accept 15 Days Free
       </button>
@@ -405,14 +457,19 @@ function ProFeatureCard() {
   );
 }
 
-function EmailAutomationCard() {
+function EmailAutomationCard({ onDismiss }: { onDismiss: () => void }) {
   return (
     <section className="mt-6 rounded-[1.75rem] bg-white p-6 ring-1 ring-slate-200" data-testid="mobile-home-email-card">
       <div className="flex justify-between gap-4">
         <div className="grid h-14 w-14 place-items-center rounded-xl border-2 border-dashed border-orange-300 text-orange-500">
           <Mail className="h-8 w-8" aria-hidden="true" />
         </div>
-        <button type="button" aria-label="Dismiss email automation card" className="self-start text-slate-400">
+        <button
+          type="button"
+          aria-label="Dismiss email automation card"
+          className="self-start text-slate-400"
+          onClick={onDismiss}
+        >
           <X className="h-7 w-7" aria-hidden="true" />
         </button>
       </div>
@@ -431,7 +488,7 @@ function EmailAutomationCard() {
   );
 }
 
-function ProSettingsCard() {
+function ProSettingsCard({ onOpenTrial }: { onOpenTrial: () => void }) {
   return (
     <section className="mt-7 rounded-[1.65rem] bg-white p-5">
       <div className="flex items-center justify-between gap-4">
@@ -442,7 +499,11 @@ function ProSettingsCard() {
           <p className="mt-2 max-w-[15rem] text-xl leading-snug text-slate-400">
             Receive alerts for any updates on your flights: schedules, gate changes and terminal
           </p>
-          <button type="button" className="mt-2 text-xl font-black text-orange-500">
+          <button
+            type="button"
+            className="mt-2 text-xl font-black text-orange-500"
+            onClick={onOpenTrial}
+          >
             Redeem 15 Days Free
           </button>
         </div>
@@ -469,26 +530,27 @@ function SettingsGroup({ children }: { children: ReactNode }) {
 
 function SettingsRow({
   accentMeta = false,
+  href,
   icon,
   label,
   meta,
   picker = false,
   pro = false,
+  unavailableLabel,
   value
 }: {
   accentMeta?: boolean;
+  href?: string;
   icon: ReactNode;
   label: string;
   meta?: string;
   picker?: boolean;
   pro?: boolean;
+  unavailableLabel?: string;
   value?: string;
 }) {
-  return (
-    <button
-      type="button"
-      className="grid min-h-[4.35rem] w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4 border-b border-slate-200 px-5 text-left last:border-b-0"
-    >
+  const content = (
+    <>
       <span className="text-orange-500 [&_svg]:h-6 [&_svg]:w-6" aria-hidden="true">
         {icon}
       </span>
@@ -504,10 +566,77 @@ function SettingsRow({
       </span>
       <span className="flex items-center gap-2 text-xl font-medium text-slate-400">
         {pro ? <span className="rounded-md bg-slate-400 px-2 py-0.5 text-sm font-black text-white">PRO</span> : null}
+        {unavailableLabel ? (
+          <span className="rounded-md bg-slate-100 px-2 py-0.5 text-sm font-black text-slate-500">
+            {unavailableLabel}
+          </span>
+        ) : null}
         {value ? <span>{value}</span> : null}
-        {picker ? <ChevronDown className="h-5 w-5" aria-hidden="true" /> : <ChevronRight className="h-5 w-5" aria-hidden="true" />}
+        {picker && !unavailableLabel ? <ChevronDown className="h-5 w-5" aria-hidden="true" /> : null}
+        {!unavailableLabel ? <ChevronRight className="h-5 w-5" aria-hidden="true" /> : null}
       </span>
+    </>
+  );
+  const className = cn(
+    "grid min-h-[4.35rem] w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4 border-b border-slate-200 px-5 text-left last:border-b-0",
+    unavailableLabel ? "cursor-not-allowed opacity-70" : "transition hover:bg-slate-50"
+  );
+
+  if (href && !unavailableLabel) {
+    return (
+      <Link className={className} href={href}>
+        {content}
+      </Link>
+    );
+  }
+
+  return (
+    <button
+      aria-disabled="true"
+      className={className}
+      disabled
+      type="button"
+    >
+      {content}
     </button>
+  );
+}
+
+function TrialAvailabilitySheet({
+  message,
+  onClose
+}: {
+  message: string;
+  onClose: () => void;
+}) {
+  return (
+    <div
+      aria-modal="true"
+      className="fixed inset-x-4 bottom-[calc(1rem+env(safe-area-inset-bottom))] z-30 rounded-[1.75rem] bg-white p-5 text-slate-950 shadow-[0_24px_80px_rgba(15,23,42,0.3)] ring-1 ring-slate-200"
+      role="dialog"
+    >
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-sm font-black uppercase tracking-[0.18em] text-orange-500">Wayline Pro</p>
+          <h2 className="mt-2 text-2xl font-black">Trial activation coming soon</h2>
+          <p className="mt-2 text-sm font-semibold leading-6 text-slate-600">{message}</p>
+        </div>
+        <button
+          aria-label="Close trial availability"
+          className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-slate-100 text-slate-600"
+          onClick={onClose}
+          type="button"
+        >
+          <X className="h-5 w-5" aria-hidden="true" />
+        </button>
+      </div>
+      <Link
+        className="mt-4 grid min-h-12 place-items-center rounded-full bg-slate-950 px-5 text-sm font-black text-white"
+        href="/dashboard/account"
+      >
+        Open account settings
+      </Link>
+    </div>
   );
 }
 

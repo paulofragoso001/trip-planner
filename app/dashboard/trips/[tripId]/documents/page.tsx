@@ -29,10 +29,15 @@ export default async function DocumentsPage({ params }: PageProps) {
           <div className="grid grid-cols-[44px_1fr_44px_44px] items-center gap-2">
             <button
               aria-label="More document options"
-              className="grid h-11 w-11 place-items-center rounded-full bg-white/12 text-white/76"
+              className="relative grid h-11 w-11 cursor-not-allowed place-items-center rounded-full bg-white/8 text-white/42"
+              disabled
+              title="Document options are coming soon"
               type="button"
             >
               <MoreHorizontal className="h-5 w-5" aria-hidden="true" />
+              <span className="absolute -bottom-1 -right-1 rounded-full bg-white px-1.5 py-0.5 text-[0.55rem] font-black uppercase text-slate-950">
+                Soon
+              </span>
             </button>
             <div className="min-w-0 text-center">
               <h1 className="truncate text-xl font-black leading-tight text-white">{trip.name}</h1>
@@ -40,12 +45,15 @@ export default async function DocumentsPage({ params }: PageProps) {
             </div>
             <button
               aria-label="Add document"
-              className="grid h-11 w-11 place-items-center rounded-full bg-white/12 text-orange-300 opacity-70"
+              className="relative grid h-11 w-11 cursor-not-allowed place-items-center rounded-full bg-white/8 text-orange-200/55"
               disabled
               title="Document upload is coming soon"
               type="button"
             >
               <Plus className="h-5 w-5" aria-hidden="true" />
+              <span className="absolute -bottom-1 -right-1 rounded-full bg-white px-1.5 py-0.5 text-[0.55rem] font-black uppercase text-slate-950">
+                Soon
+              </span>
             </button>
             <Link
               aria-label="Close documents"
@@ -66,12 +74,15 @@ export default async function DocumentsPage({ params }: PageProps) {
               <h2 className="text-base font-black text-white">Documents</h2>
               <button
                 aria-label="Add document"
-                className="grid h-9 w-9 place-items-center rounded-full text-orange-300 opacity-70"
+                className="relative grid h-9 w-9 cursor-not-allowed place-items-center rounded-full text-orange-200/55"
                 disabled
                 title="Document upload is coming soon"
                 type="button"
               >
                 <Plus className="h-5 w-5" aria-hidden="true" />
+                <span className="absolute -bottom-1 -right-1 rounded-full bg-white px-1.5 py-0.5 text-[0.55rem] font-black uppercase text-slate-950">
+                  Soon
+                </span>
               </button>
             </div>
 

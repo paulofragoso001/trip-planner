@@ -14,6 +14,10 @@ type RouteContext = {
 
 export async function GET(_request: Request, context: RouteContext) {
   const { id } = await context.params;
+  if (!isValidRouteId(id)) {
+    return NextResponse.json({ error: "Invalid trip id." }, { status: 400 });
+  }
+
   const auth = await authorizeDashboardApi();
 
   if (!auth) {
@@ -36,14 +40,22 @@ export async function GET(_request: Request, context: RouteContext) {
 
 export async function PATCH(request: Request, context: RouteContext) {
   const { id } = await context.params;
+  if (!isValidRouteId(id)) {
+    return NextResponse.json({ error: "Invalid trip id." }, { status: 400 });
+  }
+
   const auth = await authorizeDashboardApi();
 
   if (!auth) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const body = await request.json();
-  const trip = normalizeTripInput(body);
+  const body = await readJsonObject(request);
+  if (!body.ok) {
+    return NextResponse.json({ error: body.error }, { status: 400 });
+  }
+
+  const trip = normalizeTripInput(body.value);
 
   if (!trip.name || !trip.destination) {
     return NextResponse.json(
@@ -80,7 +92,11 @@ export async function PATCH(request: Request, context: RouteContext) {
   }
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const status = isMissingOrUnauthorizedTripError(error.message) ? 404 : 500;
+    return NextResponse.json(
+      { error: status === 404 ? "Trip not found." : error.message },
+      { status },
+    );
   }
 
   return NextResponse.json({ trip: mapTripRecord(data as Record<string, unknown>) });
@@ -88,20 +104,30 @@ export async function PATCH(request: Request, context: RouteContext) {
 
 export async function DELETE(_request: Request, context: RouteContext) {
   const { id } = await context.params;
+  if (!isValidRouteId(id)) {
+    return NextResponse.json({ error: "Invalid trip id." }, { status: 400 });
+  }
+
   const auth = await authorizeDashboardApi();
 
   if (!auth) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { error } = await auth.supabase
+  const { data, error } = await auth.supabase
     .from("trips")
     .delete()
     .eq("id", id)
-    .eq("user_id", auth.userId);
+    .eq("user_id", auth.userId)
+    .select("id")
+    .maybeSingle();
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  if (!data) {
+    return NextResponse.json({ error: "Trip not found." }, { status: 404 });
   }
 
   return NextResponse.json({ ok: true });
@@ -109,4 +135,25 @@ export async function DELETE(_request: Request, context: RouteContext) {
 
 function isMissingTravelStyleColumn(message: string) {
   return /travel_style/i.test(message) && /column|schema cache|could not find/i.test(message);
+}
+
+function isValidRouteId(value: string) {
+  return /^[a-zA-Z0-9_-]{1,160}$/.test(value);
+}
+
+async function readJsonObject(request: Request) {
+  try {
+    const value = await request.json();
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+      return { error: "Request body must be a JSON object.", ok: false as const };
+    }
+
+    return { ok: true as const, value: value as Record<string, unknown> };
+  } catch {
+    return { error: "Request body must be valid JSON.", ok: false as const };
+  }
+}
+
+function isMissingOrUnauthorizedTripError(message: string) {
+  return /no rows|multiple rows|not found|406/i.test(message);
 }

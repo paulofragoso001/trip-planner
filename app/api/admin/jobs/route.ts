@@ -26,8 +26,13 @@ export async function POST(request: Request) {
       return adminAuthFailure(auth.reason);
     }
 
-    const payload = await request.json().catch(() => ({}));
-    const action = typeof payload.action === "string" ? payload.action : "status";
+    const payload = await readJsonObject(request);
+    if (!payload.ok) {
+      return validationFailure(payload.error);
+    }
+
+    const action =
+      typeof payload.value.action === "string" ? payload.value.action : "status";
 
     if (action === "status") {
       return GET();
@@ -52,4 +57,17 @@ function adminAuthFailure(reason: "forbidden" | "unauthorized") {
   return reason === "unauthorized"
     ? apiFailure("unauthorized", "Unauthorized", 401)
     : apiFailure("forbidden", "Forbidden", 403);
+}
+
+async function readJsonObject(request: Request) {
+  try {
+    const value = await request.json();
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+      return { error: "Request body must be a JSON object.", ok: false as const };
+    }
+
+    return { ok: true as const, value: value as Record<string, unknown> };
+  } catch {
+    return { error: "Request body must be valid JSON.", ok: false as const };
+  }
 }
