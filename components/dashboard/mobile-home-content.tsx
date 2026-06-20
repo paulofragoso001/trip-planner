@@ -443,7 +443,7 @@ function ProSettingsCard() {
             Receive alerts for any updates on your flights: schedules, gate changes and terminal
           </p>
           <button type="button" className="mt-2 text-xl font-black text-orange-500">
-            Redeem 7 Days Free
+            Redeem 15 Days Free
           </button>
         </div>
         <div className="grid h-20 w-20 place-items-center rounded-full bg-sky-400 text-white">

@@ -979,7 +979,7 @@ test.describe("mobile soft-launch UX", () => {
     await expect(launchSheet).toHaveAttribute("data-sheet-state", "settings");
     await expect(page.getByTestId("mobile-home-settings")).toBeVisible();
     await expect(launchSheet.getByRole("heading", { name: "Settings" })).toBeVisible();
-    await expect(launchSheet.getByText("Redeem 7 Days Free")).toBeVisible();
+    await expect(launchSheet.getByText("Redeem 15 Days Free")).toBeVisible();
     await expect(launchSheet.getByText("Add Reservations via Email")).toBeVisible();
     await expect(launchSheet.getByText("Currency")).toBeVisible();
     await expect(launchSheet.getByText("Need help?")).toBeVisible();
