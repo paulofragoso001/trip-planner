@@ -787,12 +787,15 @@ test.describe("mobile soft-launch UX", () => {
         headingGap: Math.round((heading?.top ?? 0) - (launch?.bottom ?? 0)),
         headingTop: heading?.top ?? 0,
         iosSheetBottom: iosSheet?.bottom ?? 0,
+        iosSheetLeft: iosSheet?.left ?? 0,
+        iosSheetRight: iosSheet?.right ?? 0,
         launchBottom: launch?.bottom ?? 0,
         launchHeight: launch?.height ?? 0,
         navTop: nav?.top ?? window.innerHeight,
         scrollHeight: document.documentElement.scrollHeight,
         stagePaddingBottom: stageStyle?.paddingBottom ?? "",
         stageTop: stage?.top ?? 0,
+        viewportWidth: window.innerWidth,
         viewportHeight: window.innerHeight
       };
     });
@@ -812,6 +815,13 @@ test.describe("mobile soft-launch UX", () => {
     );
     expect(homeLaunchLayout.compactActionsBottom, "compact launch actions are not clipped by the sheet").toBeLessThan(
       homeLaunchLayout.iosSheetBottom - 8
+    );
+    expect(homeLaunchLayout.iosSheetLeft, "collapsed sheet touches the left viewport edge").toBeLessThanOrEqual(1);
+    expect(homeLaunchLayout.iosSheetRight, "collapsed sheet touches the right viewport edge").toBeGreaterThanOrEqual(
+      homeLaunchLayout.viewportWidth - 1
+    );
+    expect(homeLaunchLayout.iosSheetBottom, "collapsed sheet is flush with the viewport bottom").toBeGreaterThanOrEqual(
+      homeLaunchLayout.viewportHeight - 1
     );
     expect(homeLaunchLayout.actionsTop, "wallet actions begin before the bottom nav").toBeLessThan(
       homeLaunchLayout.navTop
