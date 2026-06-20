@@ -154,31 +154,54 @@ export function Photorealistic3DHomeHero({ className }: Photorealistic3DHomeHero
 
     window.addEventListener(USE_CURRENT_LOCATION_EVENT, useCurrentLocation);
 
-    const permissions = navigator.permissions;
-
-    if (!navigator.geolocation || !permissions?.query) {
+    if (!navigator.geolocation) {
       return () => {
         cancelled = true;
         window.removeEventListener(USE_CURRENT_LOCATION_EVENT, useCurrentLocation);
       };
     }
 
-    permissions
-      .query({ name: "geolocation" as PermissionName })
-      .then((permission) => {
-        if (cancelled || permission.state !== "granted") {
-          return;
-        }
+    const permissions = navigator.permissions;
+    if (!permissions?.query) {
+      useCurrentLocation();
+    } else {
+      permissions
+        .query({ name: "geolocation" as PermissionName })
+        .then((permission) => {
+          if (cancelled || permission.state === "denied") {
+            return;
+          }
 
-        useCurrentLocation();
-      })
-      .catch(() => undefined);
+          useCurrentLocation();
+        })
+        .catch(() => {
+          if (!cancelled) {
+            useCurrentLocation();
+          }
+        });
+    }
 
     return () => {
       cancelled = true;
       window.removeEventListener(USE_CURRENT_LOCATION_EVENT, useCurrentLocation);
     };
   }, []);
+
+  useEffect(() => {
+    if (country.source !== "user" || !navigator.geolocation?.watchPosition) {
+      return;
+    }
+
+    const watchId = navigator.geolocation.watchPosition(
+      (position) => {
+        setCountry(focusFromPosition(position));
+      },
+      () => undefined,
+      { enableHighAccuracy: true, maximumAge: 60_000, timeout: 10_000 }
+    );
+
+    return () => navigator.geolocation.clearWatch(watchId);
+  }, [country.source]);
 
   useEffect(() => {
     document.documentElement.dataset.waylineHomeLaunchPhase = reduceMotion ? "done" : launchPhase;
@@ -328,7 +351,7 @@ export function Photorealistic3DHomeHero({ className }: Photorealistic3DHomeHero
       data-testid="photorealistic-3d-home-hero"
       style={{
         "--wayline-pin-x": `${focus.pinX}%`,
-        "--wayline-pin-y": `${focus.pinY - HERO_EARTH_Y_NUDGE_PERCENT}%`
+        "--wayline-pin-y": `${focus.source === "user" ? focus.pinY : focus.pinY - HERO_EARTH_Y_NUDGE_PERCENT}%`
       } as CSSProperties}
     >
       <div className="absolute inset-0" data-testid="earth-only-visual">
@@ -403,8 +426,8 @@ function focusFromPosition(position: GeolocationPosition): CountryFocus {
     lat: latitude,
     lng: longitude,
     name: "Your location",
-    pinX: 58,
-    pinY: 36,
+    pinX: 50,
+    pinY: 50,
     source: "user"
   };
 }
@@ -499,8 +522,8 @@ function getStartCamera(country: CountryFocus): MapCameraFrame {
     return {
       altitude: country.altitude + 2_200_000,
       heading: 238,
-      lat: clamp(country.lat + 16, -85, 85),
-      lng: normalizeLongitude(country.lng - 76),
+      lat: country.lat,
+      lng: country.lng,
       range: 8_800_000,
       tilt: 12
     };
@@ -521,8 +544,8 @@ function getSettledCamera(country: CountryFocus): MapCameraFrame {
     return {
       altitude: country.altitude + 360_000,
       heading: 318,
-      lat: clamp(country.lat + 0.55, -85, 85),
-      lng: normalizeLongitude(country.lng - 1.15),
+      lat: country.lat,
+      lng: country.lng,
       range: 1_150_000,
       tilt: 50
     };
@@ -543,8 +566,8 @@ function getApproachCamera(country: CountryFocus): MapCameraFrame {
     return {
       altitude: country.altitude + 260_000,
       heading: 356,
-      lat: clamp(country.lat + 1.35, -85, 85),
-      lng: normalizeLongitude(country.lng - 3.6),
+      lat: country.lat,
+      lng: country.lng,
       range: 780_000,
       tilt: 64
     };
@@ -565,8 +588,8 @@ function getSpinCamera(country: CountryFocus): MapCameraFrame {
     return {
       altitude: country.altitude + 420_000,
       heading: 438,
-      lat: clamp(country.lat + 1.6, -85, 85),
-      lng: normalizeLongitude(country.lng - 1.6),
+      lat: country.lat,
+      lng: country.lng,
       range: 1_350_000,
       tilt: 58
     };

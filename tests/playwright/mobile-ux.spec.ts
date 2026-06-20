@@ -1040,8 +1040,8 @@ test.describe("mobile soft-launch UX", () => {
       range: element.getAttribute("range") ?? ""
     }));
     const [cameraLatitude, cameraLongitude] = camera.center.split(",").map(Number);
-    expect(Math.abs(cameraLatitude - 25.7617), "3D map centers near the granted browser latitude").toBeLessThan(2);
-    expect(Math.abs(cameraLongitude - -80.1918), "3D map centers near the granted browser longitude").toBeLessThan(2);
+    expect(Math.abs(cameraLatitude - 25.7617), "3D map centers on the granted browser latitude").toBeLessThan(0.01);
+    expect(Math.abs(cameraLongitude - -80.1918), "3D map centers on the granted browser longitude").toBeLessThan(0.01);
     expect(Number(camera.range), "user location is more tightly focused than country view").toBeLessThan(2_000_000);
   });
 
