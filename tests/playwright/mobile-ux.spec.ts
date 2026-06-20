@@ -1033,7 +1033,7 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByTestId("mobile-home-country-pin")).toHaveAttribute("data-location-source", "user");
     await expect(page.getByTestId("mobile-home-country-pin")).toHaveAttribute("data-user-latitude", "25.76170");
     await expect(page.getByTestId("mobile-home-country-pin")).toHaveAttribute("data-user-longitude", "-80.19180");
-    await expect(page.getByTestId("mobile-home-country-name")).toHaveText("Your location");
+    await expect(page.getByTestId("mobile-home-country-name")).toHaveText("United States");
 
     const camera = await page.getByTestId("home-3d-map").evaluate((element) => ({
       center: element.getAttribute("center") ?? "",

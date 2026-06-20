@@ -368,7 +368,7 @@ export function Photorealistic3DHomeHero({ className }: Photorealistic3DHomeHero
             top: "var(--wayline-pin-y)"
           }}
         >
-          <div className="mx-auto grid h-11 w-11 place-items-center rounded-full border-2 border-white/88 bg-slate-50 text-2xl shadow-[0_14px_36px_rgba(0,0,0,0.5),0_0_30px_rgba(251,146,60,0.34)]">
+          <div className="mx-auto grid h-12 w-12 place-items-center overflow-hidden rounded-full text-[2.35rem] leading-none shadow-[0_14px_36px_rgba(0,0,0,0.5),0_0_30px_rgba(251,146,60,0.34)]">
             <span aria-hidden="true">{focus.flag}</span>
           </div>
           <div className="mx-auto h-4 w-0.5 bg-orange-300/90 shadow-[0_0_18px_rgba(251,146,60,0.9)]" />
@@ -410,10 +410,10 @@ function focusFromPosition(position: GeolocationPosition): CountryFocus {
     ...approximateCountry,
     altitude: 850_000,
     code: approximateCountry.code,
-    flag: "📍",
+    flag: approximateCountry.flag,
     lat: latitude,
     lng: longitude,
-    name: "Your location",
+    name: approximateCountry.name,
     pinX: 50,
     pinY: 50,
     source: "user"
