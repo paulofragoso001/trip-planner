@@ -53,6 +53,7 @@ export function MobileHomeWallet({
           primaryHref={primaryHref}
           primaryLabel={primaryLabel}
           primaryMeta={primaryMeta}
+          recentTrips={recentTrips}
         />
       </section>
     </section>

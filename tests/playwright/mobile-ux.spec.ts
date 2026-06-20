@@ -586,7 +586,7 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByTestId("earth-only-visual")).toBeVisible();
     await expect(page.getByTestId("mobile-home-earth-photorealistic")).toHaveCount(0);
     await expect(page.getByTestId("mobile-home-earth-image")).toHaveCount(0);
-    await expect(page.getByRole("heading", { name: "Travel Wallet" })).toHaveCount(1);
+    await expect(page.getByRole("heading", { name: "My Trips" })).toHaveCount(1);
     const home3DHero = page.getByTestId("mobile-home-3d-hero");
     await expect(home3DHero.getByText("Wayline", { exact: true })).toHaveCount(0);
     await expect(home3DHero.getByText("Travel wallet")).toHaveCount(0);
@@ -834,10 +834,12 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByTestId("mobile-home-actions")).toBeVisible();
     await expect(page.getByTestId("mobile-home-compact-actions")).toBeVisible();
     await expect(page.getByTestId("ios-launch-sheet-expanded")).toBeHidden();
-    await expect(launchSheet.getByRole("heading", { name: "Travel Wallet" })).toBeVisible();
+    await expect(launchSheet.getByRole("heading", { name: "My Trips" })).toBeVisible();
+    await expect(launchSheet.getByRole("button", { name: "Open settings" })).toBeVisible();
     await expect(launchSheet.getByRole("link", { name: /Continue trip|Create trip/ })).toBeVisible();
     await expect(launchSheet.getByRole("link", { name: /Search/ })).toBeVisible();
-    await expect(launchSheet.getByRole("link", { name: /Travel Book/ })).toBeVisible();
+    await expect(launchSheet.getByRole("link", { name: /Add/ })).toBeVisible();
+    await expect(launchSheet.getByRole("link", { name: /Travel Book/ })).toBeHidden();
     await expect(launchSheet.getByRole("link", { name: /Add idea/ })).toBeHidden();
     await expect(launchSheet.getByRole("link", { name: /Open map/ })).toBeHidden();
     await page.evaluate(() => window.scrollTo(0, 0));
@@ -871,25 +873,22 @@ test.describe("mobile soft-launch UX", () => {
     await page.getByTestId("ios-launch-sheet-handle").click();
     await expect(launchSheet).toHaveAttribute("data-sheet-state", "expanded");
     await expect(page.getByTestId("ios-launch-sheet-expanded")).toBeVisible();
-    await expect(launchSheet.getByRole("heading", { name: "Main" })).toBeVisible();
-    await expect(launchSheet.getByRole("heading", { name: "Resources" })).toBeVisible();
-    await expect(launchSheet.getByRole("heading", { name: "Account" })).toBeVisible();
-    await expect(launchSheet.getByRole("link", { name: /Add idea/ })).toBeVisible();
-    await expect(launchSheet.getByRole("link", { name: /Open map/ })).toBeVisible();
-    await expect(launchSheet.getByRole("link", { name: /My Trips/ })).toBeVisible();
-    await expect(launchSheet.getByRole("link", { name: /Profile/ })).toBeVisible();
-    await expect(launchSheet.getByRole("link", { name: /Settings/ })).toBeVisible();
+    await expect(launchSheet.getByRole("heading", { name: "My Trips" })).toBeVisible();
+    await expect(launchSheet.getByText("Upcoming")).toBeVisible();
+    await expect(page.getByTestId("mobile-home-featured-trip")).toBeVisible();
+    await expect(launchSheet.getByText("Explore all the Pro features")).toBeVisible();
+    await expect(launchSheet.getByRole("button", { name: "Accept 15 Days Free" })).toBeVisible();
+    await expect(launchSheet.getByText("Add Reservations via Email")).toBeVisible();
+    await expect(launchSheet.getByRole("link", { name: "Forward Your Reservation" })).toBeVisible();
+    await expect(launchSheet.getByRole("link", { name: /Travel Book/ })).toBeVisible();
 
     const actionNames = [
       /Continue trip|Create trip/,
-      /Add idea/,
       /Search/,
       /Travel Book/,
       /Review places/,
-      /Open map/,
-      /My Trips/,
-      /Profile/,
-      /Settings/
+      /Forward Your Reservation/,
+      /Add/
     ];
     for (const actionName of actionNames) {
       const action = launchSheet.getByRole("link", { name: actionName }).first();
@@ -923,8 +922,8 @@ test.describe("mobile soft-launch UX", () => {
         `mobile home action ${actionName} keeps tap clearance above bottom nav`
       ).toBeGreaterThanOrEqual(12);
     }
-    await launchSheet.getByRole("link", { name: /Open map/ }).scrollIntoViewIfNeeded();
-    const finalActionScrollCushion = await launchSheet.getByRole("link", { name: /Open map/ }).evaluate((element) => {
+    await launchSheet.getByRole("link", { name: /Forward Your Reservation/ }).scrollIntoViewIfNeeded();
+    const finalActionScrollCushion = await launchSheet.getByRole("link", { name: /Forward Your Reservation/ }).evaluate((element) => {
       const nav = document.querySelector('[data-testid="app-shell-mobile-bottom-nav"]');
       const navRect = nav?.getBoundingClientRect();
       const actionRect = element.getBoundingClientRect();
@@ -935,8 +934,18 @@ test.describe("mobile soft-launch UX", () => {
     });
     expect(
       finalActionScrollCushion.clearance,
-      "Open map can scroll clear of the fixed bottom nav"
+      "Forward reservation can scroll clear of the fixed bottom nav"
     ).toBeGreaterThanOrEqual(12);
+    await launchSheet.getByRole("button", { name: "Open settings" }).click();
+    await expect(launchSheet).toHaveAttribute("data-sheet-state", "settings");
+    await expect(page.getByTestId("mobile-home-settings")).toBeVisible();
+    await expect(launchSheet.getByRole("heading", { name: "Settings" })).toBeVisible();
+    await expect(launchSheet.getByText("Redeem 7 Days Free")).toBeVisible();
+    await expect(launchSheet.getByText("Add Reservations via Email")).toBeVisible();
+    await expect(launchSheet.getByText("Currency")).toBeVisible();
+    await expect(launchSheet.getByText("Need help?")).toBeVisible();
+    await expect(launchSheet.getByText("Privacy Policy")).toBeVisible();
+    await expect(launchSheet.getByText("Force Sync")).toBeVisible();
     for (const width of [360, 390, 430]) {
       await page.setViewportSize({ height: 900, width });
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
@@ -1144,7 +1153,7 @@ test.describe("mobile soft-launch UX", () => {
     );
     await expect(page.getByTestId("home-3d-fallback-image")).toBeVisible();
     await expect(page.getByTestId("mobile-home-country-pin")).toBeVisible({ timeout: 5_000 });
-    await expect(page.getByRole("heading", { name: "Travel Wallet" })).toHaveCount(1);
+    await expect(page.getByRole("heading", { name: "My Trips" })).toHaveCount(1);
   });
 
   test("demo map exposes ordered route cards on mobile", async ({ page }) => {
