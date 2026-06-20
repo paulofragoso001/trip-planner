@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { slugify } from "@/lib/slug";
 import { authorizeDashboardApi } from "@/lib/server/dashboard-test-auth";
+import { parseMutationPayload, tripMutationPayloadSchema } from "@/lib/server/mutation-schemas";
 import {
   isMissingTripDestinationMetadataColumn,
   mapTripRecord,
@@ -45,7 +46,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: body.error }, { status: 400 });
   }
 
-  const trip = normalizeTripInput(body.value);
+  const payload = parseMutationPayload(tripMutationPayloadSchema, body.value);
+  if (!payload.ok) {
+    return NextResponse.json({ error: payload.error }, { status: 400 });
+  }
+
+  const trip = normalizeTripInput(payload.value);
 
   if (!trip.name || !trip.destination) {
     return NextResponse.json(

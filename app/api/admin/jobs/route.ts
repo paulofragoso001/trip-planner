@@ -1,4 +1,5 @@
 import { apiCanonicalSuccess, apiFailure, handleApiError, validationFailure } from "@/lib/api/errors";
+import { adminJobsPayloadSchema, parseMutationPayload } from "@/lib/server/mutation-schemas";
 import { requireAdmin } from "@/lib/server/admin-auth";
 
 export const dynamic = "force-dynamic";
@@ -31,8 +32,12 @@ export async function POST(request: Request) {
       return validationFailure(payload.error);
     }
 
-    const action =
-      typeof payload.value.action === "string" ? payload.value.action : "status";
+    const parsedPayload = parseMutationPayload(adminJobsPayloadSchema, payload.value);
+    if (!parsedPayload.ok) {
+      return validationFailure(parsedPayload.error);
+    }
+
+    const { action } = parsedPayload.value;
 
     if (action === "status") {
       return GET();

@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import { authorizeDashboardApi } from "@/lib/server/dashboard-test-auth";
 import {
+  parseMutationPayload,
+  parseRouteId,
+  tripMutationPayloadSchema
+} from "@/lib/server/mutation-schemas";
+import {
   isMissingTripDestinationMetadataColumn,
   mapTripRecord,
   normalizeTripInput,
@@ -14,8 +19,9 @@ type RouteContext = {
 
 export async function GET(_request: Request, context: RouteContext) {
   const { id } = await context.params;
-  if (!isValidRouteId(id)) {
-    return NextResponse.json({ error: "Invalid trip id." }, { status: 400 });
+  const routeId = parseRouteId(id, "Trip id");
+  if (!routeId.ok) {
+    return NextResponse.json({ error: routeId.error }, { status: 400 });
   }
 
   const auth = await authorizeDashboardApi();
@@ -27,7 +33,7 @@ export async function GET(_request: Request, context: RouteContext) {
   const { data, error } = await auth.supabase
     .from("trips")
     .select("*")
-    .eq("id", id)
+    .eq("id", routeId.value)
     .eq("user_id", auth.userId)
     .single();
 
@@ -40,8 +46,9 @@ export async function GET(_request: Request, context: RouteContext) {
 
 export async function PATCH(request: Request, context: RouteContext) {
   const { id } = await context.params;
-  if (!isValidRouteId(id)) {
-    return NextResponse.json({ error: "Invalid trip id." }, { status: 400 });
+  const routeId = parseRouteId(id, "Trip id");
+  if (!routeId.ok) {
+    return NextResponse.json({ error: routeId.error }, { status: 400 });
   }
 
   const auth = await authorizeDashboardApi();
@@ -55,7 +62,12 @@ export async function PATCH(request: Request, context: RouteContext) {
     return NextResponse.json({ error: body.error }, { status: 400 });
   }
 
-  const trip = normalizeTripInput(body.value);
+  const payload = parseMutationPayload(tripMutationPayloadSchema, body.value);
+  if (!payload.ok) {
+    return NextResponse.json({ error: payload.error }, { status: 400 });
+  }
+
+  const trip = normalizeTripInput(payload.value);
 
   if (!trip.name || !trip.destination) {
     return NextResponse.json(
@@ -67,7 +79,7 @@ export async function PATCH(request: Request, context: RouteContext) {
   let { data, error } = await auth.supabase
     .from("trips")
     .update(toTripWritePayload(trip))
-    .eq("id", id)
+    .eq("id", routeId.value)
     .eq("user_id", auth.userId)
     .select("*")
     .single();
@@ -82,7 +94,7 @@ export async function PATCH(request: Request, context: RouteContext) {
     const retry = await auth.supabase
       .from("trips")
       .update(legacyPayload)
-      .eq("id", id)
+      .eq("id", routeId.value)
       .eq("user_id", auth.userId)
       .select("*")
       .single();
@@ -104,8 +116,9 @@ export async function PATCH(request: Request, context: RouteContext) {
 
 export async function DELETE(_request: Request, context: RouteContext) {
   const { id } = await context.params;
-  if (!isValidRouteId(id)) {
-    return NextResponse.json({ error: "Invalid trip id." }, { status: 400 });
+  const routeId = parseRouteId(id, "Trip id");
+  if (!routeId.ok) {
+    return NextResponse.json({ error: routeId.error }, { status: 400 });
   }
 
   const auth = await authorizeDashboardApi();
@@ -117,7 +130,7 @@ export async function DELETE(_request: Request, context: RouteContext) {
   const { data, error } = await auth.supabase
     .from("trips")
     .delete()
-    .eq("id", id)
+    .eq("id", routeId.value)
     .eq("user_id", auth.userId)
     .select("id")
     .maybeSingle();
@@ -135,10 +148,6 @@ export async function DELETE(_request: Request, context: RouteContext) {
 
 function isMissingTravelStyleColumn(message: string) {
   return /travel_style/i.test(message) && /column|schema cache|could not find/i.test(message);
-}
-
-function isValidRouteId(value: string) {
-  return /^[a-zA-Z0-9_-]{1,160}$/.test(value);
 }
 
 async function readJsonObject(request: Request) {

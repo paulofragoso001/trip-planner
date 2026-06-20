@@ -5,6 +5,7 @@ import {
   validationFailure
 } from "@/lib/api/errors";
 import { requireAdmin } from "@/lib/server/admin-auth";
+import { adminSyncPayloadSchema, parseMutationPayload } from "@/lib/server/mutation-schemas";
 import { getFlightRefreshHealth } from "@/workers/monitor.worker";
 
 export const dynamic = "force-dynamic";
@@ -58,8 +59,12 @@ export async function POST(request: Request) {
       return validationFailure(payload.error);
     }
 
-    const action =
-      typeof payload.value.action === "string" ? payload.value.action : "health";
+    const parsedPayload = parseMutationPayload(adminSyncPayloadSchema, payload.value);
+    if (!parsedPayload.ok) {
+      return validationFailure(parsedPayload.error);
+    }
+
+    const { action } = parsedPayload.value;
 
     if (action === "health") {
       return GET();
