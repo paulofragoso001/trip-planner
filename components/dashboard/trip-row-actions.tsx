@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { Loader2 } from "lucide-react";
 import type { FormEvent } from "react";
 import { useState } from "react";
 import GoogleMapsProvider from "@/components/GoogleMapsProvider";
@@ -44,9 +45,15 @@ export function TripRowActions({
   const [nextTravelStyle, setNextTravelStyle] =
     useState<TripTravelStyle>(travelStyle);
   const { isPending, run, state } = useWaylineAction();
+  const [optimisticDelete, setOptimisticDelete] = useState(false);
+  const [pendingIntent, setPendingIntent] = useState<"delete" | "save" | null>(null);
 
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const wasEditing = editing;
+    setPendingIntent("save");
+    setEditing(false);
+
     const result = await run({
       body: {
         destination: nextDestination,
@@ -67,12 +74,18 @@ export function TripRowActions({
     });
 
     if (result.status === "success") {
-      setEditing(false);
       router.refresh();
+    } else {
+      setEditing(wasEditing);
     }
+
+    setPendingIntent(null);
   }
 
   async function deleteTrip() {
+    setPendingIntent("delete");
+    setOptimisticDelete(true);
+
     const result = await run({
       method: "DELETE",
       timeoutMs: 5000,
@@ -81,7 +94,30 @@ export function TripRowActions({
 
     if (result.status === "success") {
       router.refresh();
+    } else {
+      setOptimisticDelete(false);
     }
+
+    setPendingIntent(null);
+  }
+
+  if (optimisticDelete) {
+    return (
+      <div className={compact ? "grid gap-2" : "mt-3 grid gap-2"}>
+        <div
+          aria-live="polite"
+          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-slate-100 px-3 text-xs font-bold text-slate-700"
+        >
+          <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" />
+          Deleting trip...
+        </div>
+        {state.status === "error" || state.status === "timeout" ? (
+          <p className="rounded-xl bg-red-50 px-3 py-2 text-xs font-semibold text-red-700">
+            {state.message}
+          </p>
+        ) : null}
+      </div>
+    );
   }
 
   return (
@@ -93,6 +129,8 @@ export function TripRowActions({
               ? "inline-flex min-h-11 items-center justify-center rounded-full bg-slate-100 px-4 text-xs font-black text-slate-700 transition hover:bg-slate-200"
               : "min-h-11 rounded-xl bg-slate-100 px-3 text-xs font-bold text-slate-700"
           }
+          aria-busy={isPending && pendingIntent === "save"}
+          disabled={isPending}
           onClick={() => setEditing((current) => !current)}
           type="button"
         >
@@ -100,15 +138,25 @@ export function TripRowActions({
         </button>
         {!compact ? (
           <button
+            aria-busy={isPending && pendingIntent === "delete"}
             className="min-h-11 rounded-xl bg-red-50 px-3 text-xs font-bold text-red-700 disabled:opacity-60"
             disabled={isPending}
             onClick={deleteTrip}
             type="button"
           >
-            {isPending ? "Working..." : "Delete"}
+            {isPending && pendingIntent === "delete" ? "Deleting..." : "Delete"}
           </button>
         ) : null}
       </div>
+      {isPending && pendingIntent === "save" && !editing ? (
+        <p
+          aria-live="polite"
+          className="inline-flex items-center gap-2 rounded-xl bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700"
+        >
+          <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" />
+          Saving changes...
+        </p>
+      ) : null}
       {editing ? (
         <form className="grid gap-2 rounded-2xl bg-slate-50 p-3" onSubmit={save}>
           <input
@@ -167,26 +215,31 @@ export function TripRowActions({
             ))}
           </select>
           <button
+            aria-busy={isPending && pendingIntent === "save"}
             className="min-h-11 rounded-xl bg-blue-600 px-3 text-xs font-bold text-white disabled:opacity-60"
             disabled={isPending}
             type="submit"
           >
-            {isPending ? "Saving..." : "Save changes"}
+            {isPending && pendingIntent === "save" ? "Saving..." : "Save changes"}
           </button>
           {compact ? (
             <button
+              aria-busy={isPending && pendingIntent === "delete"}
               className="min-h-11 rounded-xl bg-red-50 px-3 text-xs font-bold text-red-700 disabled:opacity-60"
               disabled={isPending}
               onClick={deleteTrip}
               type="button"
             >
-              {isPending ? "Working..." : "Delete trip"}
+              {isPending && pendingIntent === "delete" ? "Deleting..." : "Delete trip"}
             </button>
           ) : null}
         </form>
       ) : null}
-      {state.status === "error" ? (
-        <p className="rounded-xl bg-red-50 px-3 py-2 text-xs font-semibold text-red-700">
+      {state.status === "error" || state.status === "timeout" ? (
+        <p
+          aria-live="polite"
+          className="rounded-xl bg-red-50 px-3 py-2 text-xs font-semibold text-red-700"
+        >
           {state.message}
         </p>
       ) : null}

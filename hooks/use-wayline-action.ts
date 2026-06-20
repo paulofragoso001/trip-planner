@@ -83,10 +83,8 @@ export function useWaylineAction<T = unknown>() {
       } catch (error) {
         const timedOut = error instanceof DOMException && error.name === "AbortError";
         const message = timedOut
-          ? "Timed out. Try again."
-          : error instanceof Error
-            ? error.message
-            : "Something went wrong.";
+          ? "This is taking longer than expected. Please try again."
+          : "Network connection failed. Please try again.";
         const next = {
           data: null,
           error: message,
@@ -114,21 +112,43 @@ export function useWaylineAction<T = unknown>() {
 }
 
 function normalizeErrorMessage(payload: unknown, status: number) {
+  if (status === 401) {
+    return "Please sign in to continue.";
+  }
+
+  if (status === 403) {
+    return "You do not have permission to do that.";
+  }
+
+  if (status >= 500) {
+    return "Something went wrong. Please try again.";
+  }
+
   if (isRecord(payload)) {
     if (typeof payload.error === "string") {
-      return payload.error;
+      return normalizeUserMessage(payload.error);
     }
 
     if (isRecord(payload.error) && typeof payload.error.message === "string") {
-      return payload.error.message;
+      return normalizeUserMessage(payload.error.message);
     }
 
     if (typeof payload.message === "string") {
-      return payload.message;
+      return normalizeUserMessage(payload.message);
     }
   }
 
-  return `Request failed (${status})`;
+  return "We could not complete that action. Please check the form and try again.";
+}
+
+function normalizeUserMessage(message: string) {
+  const trimmed = message.trim();
+
+  if (!trimmed || trimmed.length > 180 || /stack|trace|syntax|database|supabase|prisma/i.test(trimmed)) {
+    return "We could not complete that action. Please check the form and try again.";
+  }
+
+  return trimmed;
 }
 
 function readData(payload: unknown) {

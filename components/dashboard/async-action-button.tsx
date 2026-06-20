@@ -46,6 +46,7 @@ export function AsyncActionButton({
   return (
     <div className="grid gap-2">
       <button
+        aria-busy={isPending}
         className="rounded-2xl bg-slate-100 px-4 py-3 text-left font-semibold transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-60"
         disabled={isPending}
         onClick={runAction}

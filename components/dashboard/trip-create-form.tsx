@@ -119,6 +119,7 @@ export function TripCreateForm({
             }
             rightAction={
               <button
+                aria-busy={isPending}
                 className={mobilePrimaryActionClassName}
                 disabled={!canCreate}
                 type="submit"
@@ -223,7 +224,10 @@ export function TripCreateForm({
 
           {state.status !== "idle" && message ? (
             <div className="px-4 pb-4">
-              <p className={`rounded-2xl px-4 py-3 text-sm font-semibold ring-1 ${messageTone}`}>
+              <p
+                aria-live="polite"
+                className={`rounded-2xl px-4 py-3 text-sm font-semibold ring-1 ${messageTone}`}
+              >
                 {message}
               </p>
             </div>
@@ -327,6 +331,7 @@ export function TripCreateForm({
         </select>
       </label>
       <button
+        aria-busy={isPending}
         className="min-h-12 rounded-2xl bg-blue-600 px-4 font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
         disabled={isPending}
         type="submit"
@@ -334,7 +339,10 @@ export function TripCreateForm({
         {isPending ? "Saving..." : mobilePassMode ? "Create Trip" : "Save trip"}
       </button>
       {state.status !== "idle" && message ? (
-        <p className="rounded-2xl bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-600">
+        <p
+          aria-live="polite"
+          className="rounded-2xl bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-600"
+        >
           {message}
         </p>
       ) : null}
