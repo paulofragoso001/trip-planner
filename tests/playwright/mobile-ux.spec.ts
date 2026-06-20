@@ -880,10 +880,21 @@ test.describe("mobile soft-launch UX", () => {
         return Math.round(rect.height - window.innerHeight);
       });
     }, { message: "expanded trips sheet fills the viewport" }).toBeGreaterThanOrEqual(-2);
-    const expandedSheetTop = await page.getByTestId("ios-launch-sheet").evaluate((element) => {
-      return element.getBoundingClientRect().top;
+    const expandedSheetFrame = await page.getByTestId("ios-launch-sheet").evaluate((element) => {
+      const rect = element.getBoundingClientRect();
+
+      return {
+        left: rect.left,
+        right: rect.right,
+        top: rect.top,
+        viewportWidth: window.innerWidth
+      };
     });
-    expect(expandedSheetTop, "expanded trips sheet starts at the top of the viewport").toBeLessThanOrEqual(1);
+    expect(expandedSheetFrame.top, "expanded trips sheet starts at the top of the viewport").toBeLessThanOrEqual(1);
+    expect(expandedSheetFrame.left, "expanded trips sheet touches the left viewport edge").toBeLessThanOrEqual(1);
+    expect(expandedSheetFrame.right, "expanded trips sheet touches the right viewport edge").toBeGreaterThanOrEqual(
+      expandedSheetFrame.viewportWidth - 1
+    );
     await expect(launchSheet.getByRole("heading", { name: "My Trips" })).toBeVisible();
     await expect(launchSheet.getByText("Upcoming")).toBeVisible();
     await expect(page.getByTestId("mobile-home-featured-trip")).toBeVisible();

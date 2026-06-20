@@ -109,7 +109,7 @@ export function MobileHomeContent({
           "mx-auto overflow-hidden bg-white text-slate-950 shadow-[0_-24px_70px_rgba(0,0,0,0.34)] transition-[height,max-height,border-radius] duration-300 ease-out",
           isCollapsed
             ? "max-h-[11.25rem] max-w-[28rem] rounded-[2rem] min-[390px]:rounded-[2.2rem]"
-            : "h-[100dvh] min-h-[100dvh] max-h-[100dvh] w-full max-w-[28rem] rounded-t-[2rem] min-[390px]:rounded-t-[2.25rem]"
+            : "-mx-3 h-[100dvh] min-h-[100dvh] max-h-[100dvh] w-[calc(100%+1.5rem)] max-w-none rounded-t-[2rem] min-[390px]:-mx-4 min-[390px]:w-[calc(100%+2rem)] min-[390px]:rounded-t-[2.25rem]"
         )}
         data-testid="ios-launch-sheet"
       >
