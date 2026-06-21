@@ -9,6 +9,7 @@ export type ImportSourceType = (typeof importSourceTypes)[number];
 
 export type ImportSourcePatchInput = {
   connected: boolean;
+  confirmDisconnect: boolean;
   lastError: string | null;
   sourceLabel: string | null;
   sourceType: ImportSourceType;
@@ -27,7 +28,11 @@ export function validateImportSourcePatch(value: unknown): ValidationResult<Impo
   }
 
   const details: Record<string, string> = {};
-  rejectUnknownFields(value, ["connected", "lastError", "sourceLabel", "sourceType"], details);
+  rejectUnknownFields(
+    value,
+    ["connected", "confirmDisconnect", "lastError", "sourceLabel", "sourceType"],
+    details
+  );
   const sourceType = normalizeSourceType(value.sourceType);
 
   if (!sourceType) {
@@ -36,6 +41,17 @@ export function validateImportSourcePatch(value: unknown): ValidationResult<Impo
 
   if (value.connected != null && typeof value.connected !== "boolean") {
     details.connected = "Expected a boolean.";
+  }
+
+  if (
+    value.confirmDisconnect != null &&
+    typeof value.confirmDisconnect !== "boolean"
+  ) {
+    details.confirmDisconnect = "Expected a boolean.";
+  }
+
+  if (value.connected === false && value.confirmDisconnect !== true) {
+    details.confirmDisconnect = "Disconnecting an import source requires confirmation.";
   }
 
   const sourceLabel = readOptionalString(value.sourceLabel, "sourceLabel", details, 120);
@@ -49,6 +65,7 @@ export function validateImportSourcePatch(value: unknown): ValidationResult<Impo
     ok: true,
     value: {
       connected: value.connected === true,
+      confirmDisconnect: value.confirmDisconnect === true,
       lastError,
       sourceLabel,
       sourceType

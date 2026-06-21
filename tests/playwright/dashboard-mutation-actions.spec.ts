@@ -243,10 +243,11 @@ test.describe("dashboard authenticated mutation actions", () => {
       );
 
       await request.patch(`${baseUrl}/api/import-sources`, {
-        data: {
-          connected: false,
-          lastError: null,
-          sourceLabel: "Outlook inbox sync",
+      data: {
+        connected: false,
+        confirmDisconnect: true,
+        lastError: null,
+        sourceLabel: "Outlook inbox sync",
           sourceType: "outlook"
         },
         headers: dashboardHeaders

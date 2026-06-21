@@ -47,6 +47,7 @@ export function TripRowActions({
   const { isPending, run, state } = useWaylineAction();
   const [optimisticDelete, setOptimisticDelete] = useState(false);
   const [pendingIntent, setPendingIntent] = useState<"delete" | "save" | null>(null);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -93,6 +94,7 @@ export function TripRowActions({
     });
 
     if (result.status === "success") {
+      setConfirmingDelete(false);
       router.refresh();
     } else {
       setOptimisticDelete(false);
@@ -137,15 +139,39 @@ export function TripRowActions({
           {editing ? "Close edit" : "Edit"}
         </button>
         {!compact ? (
-          <button
-            aria-busy={isPending && pendingIntent === "delete"}
-            className="min-h-11 rounded-xl bg-red-50 px-3 text-xs font-bold text-red-700 disabled:opacity-60"
-            disabled={isPending}
-            onClick={deleteTrip}
-            type="button"
-          >
-            {isPending && pendingIntent === "delete" ? "Deleting..." : "Delete"}
-          </button>
+          confirmingDelete ? (
+            <div className="grid gap-2 rounded-xl bg-red-50 p-2 text-xs font-semibold text-red-800">
+              <p>Delete this trip and its itinerary?</p>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  className="min-h-11 rounded-xl bg-white px-3 font-bold text-slate-700 ring-1 ring-red-100 disabled:opacity-60"
+                  disabled={isPending}
+                  onClick={() => setConfirmingDelete(false)}
+                  type="button"
+                >
+                  Cancel
+                </button>
+                <button
+                  aria-busy={isPending && pendingIntent === "delete"}
+                  className="min-h-11 rounded-xl bg-red-600 px-3 font-bold text-white disabled:opacity-60"
+                  disabled={isPending}
+                  onClick={deleteTrip}
+                  type="button"
+                >
+                  {isPending && pendingIntent === "delete" ? "Deleting..." : "Confirm delete"}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              className="min-h-11 rounded-xl bg-red-50 px-3 text-xs font-bold text-red-700 disabled:opacity-60"
+              disabled={isPending}
+              onClick={() => setConfirmingDelete(true)}
+              type="button"
+            >
+              Delete
+            </button>
+          )
         ) : null}
       </div>
       {isPending && pendingIntent === "save" && !editing ? (
@@ -223,15 +249,39 @@ export function TripRowActions({
             {isPending && pendingIntent === "save" ? "Saving..." : "Save changes"}
           </button>
           {compact ? (
-            <button
-              aria-busy={isPending && pendingIntent === "delete"}
-              className="min-h-11 rounded-xl bg-red-50 px-3 text-xs font-bold text-red-700 disabled:opacity-60"
-              disabled={isPending}
-              onClick={deleteTrip}
-              type="button"
-            >
-              {isPending && pendingIntent === "delete" ? "Deleting..." : "Delete trip"}
-            </button>
+            confirmingDelete ? (
+              <div className="grid gap-2 rounded-xl bg-red-50 p-2 text-xs font-semibold text-red-800">
+                <p>Delete this trip and its itinerary?</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    className="min-h-11 rounded-xl bg-white px-3 font-bold text-slate-700 ring-1 ring-red-100 disabled:opacity-60"
+                    disabled={isPending}
+                    onClick={() => setConfirmingDelete(false)}
+                    type="button"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    aria-busy={isPending && pendingIntent === "delete"}
+                    className="min-h-11 rounded-xl bg-red-600 px-3 font-bold text-white disabled:opacity-60"
+                    disabled={isPending}
+                    onClick={deleteTrip}
+                    type="button"
+                  >
+                    {isPending && pendingIntent === "delete" ? "Deleting..." : "Confirm delete"}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                className="min-h-11 rounded-xl bg-red-50 px-3 text-xs font-bold text-red-700 disabled:opacity-60"
+                disabled={isPending}
+                onClick={() => setConfirmingDelete(true)}
+                type="button"
+              >
+                Delete trip
+              </button>
+            )
           ) : null}
         </form>
       ) : null}

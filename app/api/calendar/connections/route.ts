@@ -5,6 +5,7 @@ import {
   validationFailure
 } from "@/lib/api/errors";
 import { authorizeDashboardApi } from "@/lib/server/dashboard-test-auth";
+import { validateSessionMutationRequest } from "@/lib/server/request-protection";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { normalizeCalendarProvider } from "@/lib/validators/calendar-sync";
 
@@ -33,8 +34,19 @@ export async function GET() {
 
 export async function DELETE(request: Request) {
   try {
-    const { admin, userId } = await authorizeCalendarConnectionRequest();
+    const csrfError = validateSessionMutationRequest(request);
+    if (csrfError) {
+      return csrfError;
+    }
+
     const body = await readJson(request);
+    const validation = validateCalendarDisconnectBody(body);
+
+    if (!validation.ok) {
+      return validationFailure("Invalid calendar disconnect payload.", validation.details);
+    }
+
+    const { admin, userId } = await authorizeCalendarConnectionRequest();
     const provider = normalizeCalendarProvider(body?.provider);
 
     if (!provider) {
@@ -76,6 +88,42 @@ export async function DELETE(request: Request) {
   } catch (error) {
     return handleApiError(error, "calendar/connections");
   }
+}
+
+function validateCalendarDisconnectBody(value: unknown) {
+  if (!isRecord(value)) {
+    return {
+      details: { body: "Expected a JSON object." },
+      ok: false as const
+    };
+  }
+
+  const details: Record<string, string> = {};
+  const unknown = Object.keys(value).filter(
+    (key) => key !== "confirmDisconnect" && key !== "provider"
+  );
+
+  if (unknown.length) {
+    details.body = `Unknown field${unknown.length === 1 ? "" : "s"}: ${unknown.join(", ")}.`;
+  }
+
+  if (value.confirmDisconnect !== true) {
+    details.confirmDisconnect = "Disconnecting a calendar requires confirmation.";
+  }
+
+  if (!normalizeCalendarProvider(value.provider)) {
+    details.provider = "Expected google or outlook.";
+  }
+
+  if (Object.keys(details).length) {
+    return { details, ok: false as const };
+  }
+
+  return { ok: true as const };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 async function authorizeCalendarConnectionRead() {

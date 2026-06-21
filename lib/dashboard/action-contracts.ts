@@ -369,8 +369,34 @@ export const dashboardActionContracts = [
     target: { type: "api", value: "DELETE /api/trips/:id" },
     requiredAuth: "dashboard-session-or-test-bypass",
     requiredPermissions: ["trip-owner"],
-    expectedSuccessUi: "Page refreshes and deleted trip is removed from lists.",
-    expectedFailureUi: "Inline error message is shown; trip remains visible."
+    expectedSuccessUi: "After inline confirmation, page refreshes and deleted trip is removed from lists.",
+    expectedFailureUi: "Confirmation can be canceled; failed deletes roll back the optimistic removal and show an inline error."
+  },
+  {
+    id: "trip-segment-delete",
+    label: "Delete / Confirm delete",
+    kind: "authenticated-mutation",
+    surface: "Trip itinerary item actions",
+    selectorHint: 'role=button[name="Delete"] then role=button[name="Confirm delete"]',
+    intendedFunction: "Delete an itinerary item owned through the current user's trip.",
+    target: { type: "api", value: "DELETE /api/trip-segments/:id" },
+    requiredAuth: "dashboard-session-or-test-bypass",
+    requiredPermissions: ["trip-owner"],
+    expectedSuccessUi: "After inline confirmation, the itinerary item is removed on refresh.",
+    expectedFailureUi: "Confirmation can be canceled; failed deletes keep the item visible and show an inline error."
+  },
+  {
+    id: "budget-record-delete",
+    label: "Delete budget record",
+    kind: "authenticated-mutation",
+    surface: "Budget record actions",
+    selectorHint: "Budget record delete control",
+    intendedFunction: "Delete a user-owned budget record.",
+    target: { type: "api", value: "DELETE /api/budget-records/:id" },
+    requiredAuth: "dashboard-session-or-test-bypass",
+    requiredPermissions: ["signed-in-user"],
+    expectedSuccessUi: "After confirmation, the budget record is removed from the budget list.",
+    expectedFailureUi: "Failed deletes keep the record visible and show a user-safe error."
   },
   {
     id: "dashboard-sign-out",
@@ -573,12 +599,38 @@ export const dashboardActionContracts = [
     kind: "authenticated-mutation",
     surface: "Imports advanced sources",
     selectorHint: "AsyncActionButton in imports source rows",
-    intendedFunction: "Connect or disconnect an inbox/calendar/import source preference.",
+    intendedFunction: "Connect or disconnect an inbox/calendar/import source preference; disconnect requires explicit confirmation.",
     target: { type: "api", value: "PATCH /api/import-sources" },
     requiredAuth: "dashboard-session-or-test-bypass",
     requiredPermissions: ["signed-in-user"],
-    expectedSuccessUi: "Source status refreshes and a success message is announced.",
-    expectedFailureUi: "Inline user-safe error is announced and the previous source state remains visible."
+    expectedSuccessUi: "Connect runs immediately; disconnect asks for confirmation, then refreshes source status and announces success.",
+    expectedFailureUi: "Confirmation can be canceled; failed disconnects keep the previous source state visible and announce a user-safe error."
+  },
+  {
+    id: "calendar-disconnect",
+    label: "Disconnect / Confirm disconnect",
+    kind: "authenticated-mutation",
+    surface: "Trip calendar sync panel",
+    selectorHint: 'role=button[name="Disconnect"] then role=button[name="Confirm disconnect"]',
+    intendedFunction: "Disconnect a connected calendar provider for the signed-in user.",
+    target: { type: "api", value: "DELETE /api/calendar/connections" },
+    requiredAuth: "dashboard-session-or-test-bypass",
+    requiredPermissions: ["signed-in-user"],
+    expectedSuccessUi: "After inline confirmation, provider status refreshes to disconnected.",
+    expectedFailureUi: "Confirmation can be canceled; failed disconnects keep the provider connected and show a user-safe error."
+  },
+  {
+    id: "unfiled-item-delete",
+    label: "Delete review item",
+    kind: "authenticated-mutation",
+    surface: "Plan review queue item actions",
+    selectorHint: "Review queue item delete control",
+    intendedFunction: "Delete an unfiled import/review item owned by the current user.",
+    target: { type: "api", value: "DELETE /api/unfiled-items/:id" },
+    requiredAuth: "dashboard-session-or-test-bypass",
+    requiredPermissions: ["signed-in-user"],
+    expectedSuccessUi: "After confirmation, the review item is removed from the queue.",
+    expectedFailureUi: "Failed deletes keep the item visible and show a user-safe error."
   },
   {
     id: "plan-promote-review-place",
@@ -631,6 +683,19 @@ export const dashboardActionContracts = [
     requiredPermissions: ["signed-in-user"],
     expectedSuccessUi: "Trial availability sheet opens with an Open account settings action.",
     expectedFailureUi: "No network failure path; user remains on settings if the sheet is dismissed."
+  },
+  {
+    id: "account-deletion-request",
+    label: "Request account deletion",
+    kind: "authenticated-mutation",
+    surface: "Dashboard account deletion form",
+    selectorHint: 'role=button[name=/Request|Requested/]',
+    intendedFunction: "Submit an auditable account deletion request after explicit checkbox confirmation.",
+    target: { type: "api", value: "POST /api/account/deletion-request" },
+    requiredAuth: "dashboard-session",
+    requiredPermissions: ["signed-in-user"],
+    expectedSuccessUi: "Request status appears and the submit button changes to Requested.",
+    expectedFailureUi: "Missing confirmation disables submit; server validation or auth errors show a user-safe message."
   },
   {
     id: "expanded-pro-accept-trial",
@@ -777,7 +842,8 @@ export const dashboardActionDomains = {
     "mobile-launch-forward-reservation",
     "email-automation-dismiss",
     "imports-review-idea",
-    "imports-source-toggle"
+    "imports-source-toggle",
+    "unfiled-item-delete"
   ],
   plan: [
     "desktop-home-start-planning",
@@ -797,7 +863,9 @@ export const dashboardActionDomains = {
     "expanded-pro-accept-trial",
     "settings-force-sync",
     "settings-routed-row-actions",
-    "settings-unavailable-row-actions"
+    "settings-unavailable-row-actions",
+    "calendar-disconnect",
+    "account-deletion-request"
   ],
   trips: [
     "desktop-home-primary-cta",
@@ -807,6 +875,8 @@ export const dashboardActionDomains = {
     "dashboard-create-trip",
     "dashboard-edit-trip",
     "dashboard-delete-trip",
+    "trip-segment-delete",
+    "budget-record-delete",
     "mobile-launch-continue-trip",
     "mobile-launch-add",
     "mobile-launch-travel-book",
@@ -882,7 +952,13 @@ export const dashboardActionRolloutSlices = {
     "settings-unavailable-row-actions"
   ],
   destructiveConfirmFlows: [
-    "dashboard-delete-trip"
+    "dashboard-delete-trip",
+    "trip-segment-delete",
+    "budget-record-delete",
+    "unfiled-item-delete",
+    "imports-source-toggle",
+    "calendar-disconnect",
+    "account-deletion-request"
   ]
 } as const satisfies Record<string, readonly DashboardActionId[]>;
 

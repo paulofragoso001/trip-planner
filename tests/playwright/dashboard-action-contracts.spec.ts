@@ -119,6 +119,23 @@ test("settings preferences sync rollout slice is routed, disabled, or server-bou
   }
 });
 
+test("destructive rollout slice requires confirmations and server boundaries", () => {
+  const contractIds = new Set(dashboardActionContracts.map((contract) => contract.id));
+
+  for (const actionId of dashboardActionRolloutSlices.destructiveConfirmFlows) {
+    expect(contractIds.has(actionId), `destructive action ${actionId} exists`).toBe(true);
+    const contract = dashboardActionContracts.find((item) => item.id === actionId);
+
+    expect(contract?.kind, `${actionId} is an authenticated mutation`).toBe("authenticated-mutation");
+    expect(contract?.requiredAuth, `${actionId} requires auth`).toMatch(/^dashboard-session/);
+    expect(contract?.target.type, `${actionId} uses a server boundary`).toMatch(/^(api|server-action)$/);
+    expect(
+      `${contract?.expectedSuccessUi} ${contract?.expectedFailureUi}`.toLowerCase(),
+      `${actionId} documents confirmation/cancel behavior`
+    ).toMatch(/confirm|confirmation|cancel/);
+  }
+});
+
 test("dashboard mutation schemas reject drift and normalize server inputs", () => {
   const validTripPayload = {
     budget: "1200",

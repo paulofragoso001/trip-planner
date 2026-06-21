@@ -4,12 +4,25 @@ import {
   handleApiError,
   unauthorized
 } from "@/lib/api/errors";
+import { validationFailure } from "@/lib/api/errors";
+import { validateSessionMutationRequest } from "@/lib/server/request-protection";
 import { createClient } from "@/lib/supabase/server";
 
 const routeName = "account/deletion-request";
 
 export async function POST(request: Request) {
   try {
+    const csrfError = validateSessionMutationRequest(request);
+    if (csrfError) {
+      return csrfError;
+    }
+
+    const validation = validateDeletionRequestBody(await readJson(request));
+
+    if (!validation.ok) {
+      return validationFailure("Invalid account deletion request payload.", validation.details);
+    }
+
     const supabase = await createClient();
     const {
       data: { user },
@@ -19,12 +32,6 @@ export async function POST(request: Request) {
     if (userError || !user) {
       return unauthorized();
     }
-
-    const body = await readJson(request);
-    const reason =
-      isRecord(body) && typeof body.reason === "string"
-        ? body.reason.trim().slice(0, 1000) || null
-        : null;
 
     const { data: existingRequest, error: existingError } = await supabase
       .from("account_deletion_requests")
@@ -55,7 +62,7 @@ export async function POST(request: Request) {
       .from("account_deletion_requests")
       .insert({
         email: user.email ?? null,
-        reason,
+        reason: validation.value.reason,
         user_id: user.id
       })
       .select("id,status,requested_at")
@@ -80,6 +87,49 @@ export async function POST(request: Request) {
   } catch (error) {
     return handleApiError(error, routeName);
   }
+}
+
+function validateDeletionRequestBody(value: unknown) {
+  if (!isRecord(value)) {
+    return {
+      details: { body: "Expected a JSON object." },
+      ok: false as const
+    };
+  }
+
+  const details: Record<string, string> = {};
+  const unknown = Object.keys(value).filter(
+    (key) => key !== "confirmDeletion" && key !== "reason"
+  );
+
+  if (unknown.length) {
+    details.body = `Unknown field${unknown.length === 1 ? "" : "s"}: ${unknown.join(", ")}.`;
+  }
+
+  if (value.confirmDeletion !== true) {
+    details.confirmDeletion = "Account deletion requests require confirmation.";
+  }
+
+  let reason: string | null = null;
+
+  if (value.reason != null) {
+    if (typeof value.reason !== "string") {
+      details.reason = "Expected a string.";
+    } else {
+      const trimmed = value.reason.trim();
+      if (trimmed.length > 1000) {
+        details.reason = "Expected 1000 characters or fewer.";
+      } else {
+        reason = trimmed || null;
+      }
+    }
+  }
+
+  if (Object.keys(details).length) {
+    return { details, ok: false as const };
+  }
+
+  return { ok: true as const, value: { reason } };
 }
 
 async function readJson(request: Request) {

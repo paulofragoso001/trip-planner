@@ -2,11 +2,14 @@
 
 import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
+import { useState } from "react";
 import { useWaylineAction } from "@/hooks/use-wayline-action";
 
 type AsyncActionButtonProps = {
   body?: unknown;
   children: ReactNode;
+  confirmDescription?: string;
+  confirmLabel?: string;
   endpoint: string;
   method?: "GET" | "PATCH" | "POST";
   successMessage?: string;
@@ -15,14 +18,22 @@ type AsyncActionButtonProps = {
 export function AsyncActionButton({
   body,
   children,
+  confirmDescription,
+  confirmLabel,
   endpoint,
   method = "POST",
   successMessage = "Action completed."
 }: AsyncActionButtonProps) {
   const router = useRouter();
   const { isPending, run, state } = useWaylineAction();
+  const [confirming, setConfirming] = useState(false);
 
   async function runAction() {
+    if (confirmLabel && !confirming) {
+      setConfirming(true);
+      return;
+    }
+
     const result = await run({
       body: method === "GET" ? undefined : body ?? {},
       method,
@@ -31,6 +42,7 @@ export function AsyncActionButton({
     });
 
     if (result.status === "success") {
+      setConfirming(false);
       router.refresh();
     }
   }
@@ -52,8 +64,20 @@ export function AsyncActionButton({
         onClick={runAction}
         type="button"
       >
-        {isPending ? "Working..." : children}
+        {isPending ? "Working..." : confirming && confirmLabel ? confirmLabel : children}
       </button>
+      {confirming && !isPending ? (
+        <div className="grid gap-2 rounded-2xl bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-900">
+          {confirmDescription ? <p>{confirmDescription}</p> : null}
+          <button
+            className="justify-self-start rounded-xl bg-white px-3 py-2 font-bold text-slate-700 ring-1 ring-amber-200 transition hover:bg-amber-100"
+            onClick={() => setConfirming(false)}
+            type="button"
+          >
+            Cancel
+          </button>
+        </div>
+      ) : null}
       {state.status !== "idle" && message ? (
         <p
           aria-live="polite"

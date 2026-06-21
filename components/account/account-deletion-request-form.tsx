@@ -30,6 +30,7 @@ export function AccountDeletionRequestForm({
   existingRequest
 }: AccountDeletionRequestFormProps) {
   const [reason, setReason] = useState("");
+  const [confirmedDeletion, setConfirmedDeletion] = useState(false);
   const { isPending, run, state } = useWaylineAction<DeletionRequestResponse>();
 
   const currentRequest = useMemo(
@@ -41,7 +42,7 @@ export function AccountDeletionRequestForm({
     event.preventDefault();
 
     await run({
-      body: { reason },
+      body: { confirmDeletion: true, reason },
       method: "POST",
       url: "/api/account/deletion-request"
     });
@@ -50,11 +51,11 @@ export function AccountDeletionRequestForm({
   return (
     <form className="grid gap-4" onSubmit={onSubmit}>
       <MobileFormShell>
-        <MobileFormHeader
+          <MobileFormHeader
           rightAction={
             <button
               className={`${mobilePrimaryActionClassName} bg-red-600 hover:bg-red-500`}
-              disabled={isPending || Boolean(currentRequest)}
+              disabled={isPending || Boolean(currentRequest) || !confirmedDeletion}
               type="submit"
             >
               {isPending ? "Submitting..." : currentRequest ? "Requested" : "Request"}
@@ -74,6 +75,18 @@ export function AccountDeletionRequestForm({
               value={reason}
             />
           </MobileField>
+          <label className="flex items-start gap-3 rounded-2xl bg-red-50 px-4 py-3 text-sm font-semibold text-red-800">
+            <input
+              checked={confirmedDeletion}
+              className="mt-1 h-4 w-4 accent-red-600"
+              disabled={Boolean(currentRequest)}
+              onChange={(event) => setConfirmedDeletion(event.target.checked)}
+              type="checkbox"
+            />
+            <span>
+              I understand this requests permanent deletion of my account data after operator review.
+            </span>
+          </label>
         </MobileFormSection>
       </MobileFormShell>
 

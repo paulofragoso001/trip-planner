@@ -41,16 +41,16 @@ export async function PATCH(request: Request) {
       return csrfError;
     }
 
-    const auth = await authorizeDashboardApi<ImportSourcesClient>();
-
-    if (!auth) {
-      return unauthorized();
-    }
-
     const validation = validateImportSourcePatch(await readJson(request));
 
     if (!validation.ok) {
       return validationFailure("Invalid import source payload.", validation.details);
+    }
+
+    const auth = await authorizeDashboardApi<ImportSourcesClient>();
+
+    if (!auth) {
+      return unauthorized();
     }
 
     const source = await upsertImportSource(

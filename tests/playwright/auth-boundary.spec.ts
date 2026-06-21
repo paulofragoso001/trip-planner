@@ -7,7 +7,8 @@ test("dashboard write APIs reject unauthenticated requests", async ({ request })
     data: {
       destination: "Miami",
       name: "Unauthorized trip"
-    }
+    },
+    headers: { "sec-fetch-site": "same-origin" }
   });
   expect(tripCreate.status()).toBe(401);
 
@@ -16,7 +17,8 @@ test("dashboard write APIs reject unauthenticated requests", async ({ request })
       calendarId: "primary",
       provider: "google",
       tripId: "demo"
-    }
+    },
+    headers: { "sec-fetch-site": "same-origin" }
   });
   expect(calendarSync.status()).toBe(401);
 
@@ -25,7 +27,8 @@ test("dashboard write APIs reject unauthenticated requests", async ({ request })
       connected: true,
       sourceLabel: "Unauthorized source",
       sourceType: "email"
-    }
+    },
+    headers: { "sec-fetch-site": "same-origin" }
   });
   expect(imports.status()).toBe(401);
 });

@@ -158,10 +158,17 @@ export default function ImportsPage({
                 <AsyncActionButton
                   body={{
                     connected: !connected,
+                    confirmDisconnect: connected ? true : undefined,
                     lastError: null,
                     sourceLabel: label,
                     sourceType
                   }}
+                  confirmDescription={
+                    connected
+                      ? "Disconnect this import source? Wayline will stop using it for future imports."
+                      : undefined
+                  }
+                  confirmLabel={connected ? "Confirm disconnect" : undefined}
                   endpoint="/api/import-sources"
                   method="PATCH"
                   successMessage={`${label} updated.`}

@@ -31,6 +31,7 @@ test("imports page can connect a source and add an item to the review queue", as
     await request.patch(`${baseUrl}/api/import-sources`, {
       data: {
         connected: false,
+        confirmDisconnect: true,
         lastError: null,
         sourceLabel: "Outlook inbox sync",
         sourceType: "outlook"
@@ -187,6 +188,7 @@ test("imports page can connect a source and add an item to the review queue", as
     await request.patch(`${baseUrl}/api/import-sources`, {
       data: {
         connected: false,
+        confirmDisconnect: true,
         lastError: null,
         sourceLabel: "Outlook inbox sync",
         sourceType: "outlook"

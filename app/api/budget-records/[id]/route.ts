@@ -6,14 +6,20 @@ import {
   validationFailure
 } from "@/lib/api/errors";
 import { authorizeDashboardApi } from "@/lib/server/dashboard-test-auth";
+import { validateSessionMutationRequest } from "@/lib/server/request-protection";
 
 const routeName = "budget-records/:id";
 
 export async function DELETE(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const csrfError = validateSessionMutationRequest(request);
+    if (csrfError) {
+      return csrfError;
+    }
+
     const { id } = await params;
 
     if (!id.trim()) {

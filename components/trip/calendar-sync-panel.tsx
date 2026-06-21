@@ -43,6 +43,8 @@ export function CalendarSyncPanel({ tripId }: { tripId: string }) {
     useState<ConnectionMessageTone>("info");
   const [connectProvider, setConnectProvider] = useState<CalendarProvider | null>(null);
   const [disconnectProvider, setDisconnectProvider] = useState<CalendarProvider | null>(null);
+  const [confirmDisconnectProvider, setConfirmDisconnectProvider] =
+    useState<CalendarProvider | null>(null);
   const { isPending: syncPending, run: runSync, state: syncState } =
     useWaylineAction();
 
@@ -126,10 +128,11 @@ export function CalendarSyncPanel({ tripId }: { tripId: string }) {
 
     try {
       await fetchCanonical("/api/calendar/connections", {
-        body: { provider },
+        body: { confirmDisconnect: true, provider },
         method: "DELETE"
       });
       await refreshConnections();
+      setConfirmDisconnectProvider(null);
       setConnectionMessage(
         `${providerLabel(provider)} Calendar disconnected.`
       );
@@ -227,14 +230,38 @@ export function CalendarSyncPanel({ tripId }: { tripId: string }) {
                     {syncPending ? "Syncing..." : "Sync trip"}
                   </button>
                   {connected ? (
-                    <button
-                      className="rounded-xl bg-white px-3 py-2 text-xs font-bold text-slate-600 ring-1 ring-slate-200 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
-                      disabled={actionPending}
-                      onClick={() => disconnect(provider)}
-                      type="button"
-                    >
-                      {disconnectProvider === provider ? "Disconnecting..." : "Disconnect"}
-                    </button>
+                    confirmDisconnectProvider === provider ? (
+                      <div className="grid gap-2 rounded-xl bg-amber-50 p-2 text-xs font-semibold text-amber-900">
+                        <span>Disconnect {shortLabel} Calendar?</span>
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            className="rounded-xl bg-white px-3 py-2 font-bold text-slate-700 ring-1 ring-amber-200 transition hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-60"
+                            disabled={actionPending}
+                            onClick={() => setConfirmDisconnectProvider(null)}
+                            type="button"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            className="rounded-xl bg-red-600 px-3 py-2 font-bold text-white transition hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-60"
+                            disabled={actionPending}
+                            onClick={() => disconnect(provider)}
+                            type="button"
+                          >
+                            {disconnectProvider === provider ? "Disconnecting..." : "Confirm disconnect"}
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        className="rounded-xl bg-white px-3 py-2 text-xs font-bold text-slate-600 ring-1 ring-slate-200 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                        disabled={actionPending}
+                        onClick={() => setConfirmDisconnectProvider(provider)}
+                        type="button"
+                      >
+                        Disconnect
+                      </button>
+                    )
                   ) : null}
                 </div>
               </div>
