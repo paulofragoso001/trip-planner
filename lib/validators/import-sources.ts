@@ -27,6 +27,7 @@ export function validateImportSourcePatch(value: unknown): ValidationResult<Impo
   }
 
   const details: Record<string, string> = {};
+  rejectUnknownFields(value, ["connected", "lastError", "sourceLabel", "sourceType"], details);
   const sourceType = normalizeSourceType(value.sourceType);
 
   if (!sourceType) {
@@ -53,6 +54,18 @@ export function validateImportSourcePatch(value: unknown): ValidationResult<Impo
       sourceType
     }
   };
+}
+
+function rejectUnknownFields(
+  value: Record<string, unknown>,
+  allowedFields: readonly string[],
+  details: Record<string, string>
+) {
+  const allowed = new Set(allowedFields);
+  const unknown = Object.keys(value).filter((key) => !allowed.has(key));
+  if (unknown.length) {
+    details.body = `Unknown field${unknown.length === 1 ? "" : "s"}: ${unknown.join(", ")}.`;
+  }
 }
 
 export function normalizeSourceType(value: unknown): ImportSourceType | null {

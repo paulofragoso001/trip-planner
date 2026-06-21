@@ -386,6 +386,32 @@ export const dashboardActionContracts = [
     expectedFailureUi: "Server action failure should keep user in place or show framework error boundary."
   },
   {
+    id: "settings-notification-preferences",
+    label: "Notification preferences",
+    kind: "authenticated-mutation",
+    surface: "Account notification settings",
+    selectorHint: "NotificationSettings checkbox inputs",
+    intendedFunction: "Update email and in-app notification preferences for the signed-in user.",
+    target: { type: "api", value: "POST /api/preferences" },
+    requiredAuth: "dashboard-session-or-test-bypass",
+    requiredPermissions: ["signed-in-user"],
+    expectedSuccessUi: "Toggle remains in the selected state after the preference save succeeds.",
+    expectedFailureUi: "Toggle rolls back, button state re-enables, and a user-safe error is shown."
+  },
+  {
+    id: "settings-notifications-read",
+    label: "Notifications / mark read",
+    kind: "authenticated-mutation",
+    surface: "Dashboard notification bell",
+    selectorHint: 'role=button[name="Notifications"]',
+    intendedFunction: "Open the notification panel and mark current user notifications as read.",
+    target: { type: "api", value: "POST /api/notifications/read or PATCH /api/notifications" },
+    requiredAuth: "dashboard-session-or-test-bypass",
+    requiredPermissions: ["signed-in-user"],
+    expectedSuccessUi: "Notification panel opens and unread badges clear.",
+    expectedFailureUi: "Optimistic read state rolls back while the panel remains usable."
+  },
+  {
     id: "dashboard-refresh",
     label: "Refresh",
     kind: "client-ui-state",
@@ -765,6 +791,8 @@ export const dashboardActionDomains = {
   ],
   settings: [
     "dashboard-account-settings",
+    "settings-notification-preferences",
+    "settings-notifications-read",
     "settings-pro-redeem-trial",
     "expanded-pro-accept-trial",
     "settings-force-sync",
@@ -787,8 +815,80 @@ export const dashboardActionDomains = {
   ]
 } as const;
 
+export const dashboardActionRolloutSlices = {
+  navigationClientState: [
+    "dashboard-shell-primary-nav",
+    "dashboard-account-settings",
+    "account-legal-links",
+    "first-run-try-sample",
+    "first-run-add-own-idea",
+    "first-run-skip",
+    "desktop-home-primary-cta",
+    "desktop-home-start-planning",
+    "desktop-home-add-idea",
+    "desktop-latest-trip-links",
+    "desktop-view-all-trips",
+    "desktop-create-trip-anchor",
+    "trip-edit-toggle",
+    "mobile-launch-search",
+    "mobile-launch-continue-trip",
+    "mobile-launch-add",
+    "mobile-globe-open-map",
+    "mobile-globe-use-current-location",
+    "mobile-launch-expand-collapse",
+    "mobile-launch-settings-open-close",
+    "mobile-launch-review-places",
+    "mobile-launch-travel-book",
+    "mobile-launch-forward-reservation",
+    "dashboard-refresh",
+    "mobile-trips-map-list-toggle",
+    "mobile-trips-create-panel-toggle",
+    "mobile-trips-map-sheet-toggle",
+    "mobile-trips-settings",
+    "mobile-trips-open-stats",
+    "mobile-country-trip-links",
+    "trip-documents-navigation",
+    "travel-stats-navigation",
+    "travel-stats-detail-links",
+    "admin-import-event-back",
+    "settings-pro-redeem-trial",
+    "expanded-pro-accept-trial",
+    "expanded-pro-dismiss",
+    "email-automation-dismiss",
+    "settings-force-sync",
+    "settings-routed-row-actions",
+    "settings-unavailable-row-actions",
+    "travel-stats-share",
+    "documents-more-options",
+    "documents-add-document"
+  ],
+  tripImportMutations: [
+    "dashboard-create-trip",
+    "dashboard-edit-trip",
+    "imports-review-idea",
+    "imports-source-toggle",
+    "plan-promote-review-place",
+    "plan-create-trip-plan",
+    "dashboard-generic-async-action"
+  ],
+  settingsPreferencesSync: [
+    "dashboard-sign-out",
+    "settings-notification-preferences",
+    "settings-notifications-read",
+    "settings-pro-redeem-trial",
+    "expanded-pro-accept-trial",
+    "settings-force-sync",
+    "settings-routed-row-actions",
+    "settings-unavailable-row-actions"
+  ],
+  destructiveConfirmFlows: [
+    "dashboard-delete-trip"
+  ]
+} as const satisfies Record<string, readonly DashboardActionId[]>;
+
 export type DashboardActionId = (typeof dashboardActionContracts)[number]["id"];
 export type DashboardActionDomain = keyof typeof dashboardActionDomains;
+export type DashboardActionRolloutSlice = keyof typeof dashboardActionRolloutSlices;
 
 export function getDashboardActionContract(id: DashboardActionId) {
   return dashboardActionContracts.find((contract) => contract.id === id);

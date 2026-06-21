@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import {
   dashboardActionDomains,
+  dashboardActionRolloutSlices,
   dashboardActionContracts,
   unwiredDashboardActionContracts
 } from "../fixtures/dashboard-action-contracts";
@@ -50,6 +51,70 @@ test("dashboard action domains reference real wired contracts", () => {
       expect(contractIds.has(actionId), `${domain} action ${actionId} exists`).toBe(true);
       const contract = dashboardActionContracts.find((item) => item.id === actionId);
       expect(contract?.target.type, `${domain} action ${actionId} is wired`).not.toBe("none");
+    }
+  }
+});
+
+test("navigation and client-state rollout slice has no server writes", () => {
+  const contractIds = new Set(dashboardActionContracts.map((contract) => contract.id));
+
+  for (const actionId of dashboardActionRolloutSlices.navigationClientState) {
+    expect(contractIds.has(actionId), `first-slice action ${actionId} exists`).toBe(true);
+    const contract = dashboardActionContracts.find((item) => item.id === actionId);
+    expect(contract?.kind, `${actionId} stays safe for slice one`).toMatch(/^(navigation-only|client-ui-state)$/);
+    expect(contract?.target.type, `${actionId} does not write through a server boundary`).not.toMatch(
+      /^(api|server-action)$/
+    );
+  }
+
+  for (const contract of dashboardActionContracts) {
+    if (contract.kind === "authenticated-mutation") {
+      expect(
+        dashboardActionRolloutSlices.navigationClientState.includes(contract.id),
+        `${contract.id} should not be in the navigation/client-state slice`
+      ).toBe(false);
+    }
+  }
+});
+
+test("trip and import mutation rollout slice uses authenticated server boundaries", () => {
+  const contractIds = new Set(dashboardActionContracts.map((contract) => contract.id));
+
+  for (const actionId of dashboardActionRolloutSlices.tripImportMutations) {
+    expect(contractIds.has(actionId), `mutation-slice action ${actionId} exists`).toBe(true);
+    const contract = dashboardActionContracts.find((item) => item.id === actionId);
+    expect(contract?.kind, `${actionId} is an authenticated mutation`).toBe("authenticated-mutation");
+    expect(contract?.requiredAuth, `${actionId} requires auth`).toMatch(/^dashboard-session/);
+    expect(contract?.target.type, `${actionId} uses a server boundary`).toMatch(/^(api|server-action)$/);
+  }
+
+  expect(
+    dashboardActionRolloutSlices.tripImportMutations.includes("dashboard-delete-trip"),
+    "destructive delete remains in the confirm-flow slice"
+  ).toBe(false);
+});
+
+test("settings preferences sync rollout slice is routed, disabled, or server-bound", () => {
+  const contractIds = new Set(dashboardActionContracts.map((contract) => contract.id));
+
+  for (const actionId of dashboardActionRolloutSlices.settingsPreferencesSync) {
+    expect(contractIds.has(actionId), `settings-slice action ${actionId} exists`).toBe(true);
+    const contract = dashboardActionContracts.find((item) => item.id === actionId);
+    expect(contract?.requiredAuth, `${actionId} requires an account/session boundary`).toMatch(/^dashboard-session/);
+    expect(
+      ["authenticated-mutation", "client-ui-state", "navigation-only"].includes(contract?.kind || ""),
+      `${actionId} is either routed, disabled/client state, or a server mutation`
+    ).toBe(true);
+
+    if (contract?.kind === "authenticated-mutation") {
+      expect(contract.target.type, `${actionId} mutates through a server boundary`).toMatch(/^(api|server-action)$/);
+    }
+
+    if (contract?.kind === "client-ui-state") {
+      expect(
+        contract.target.value,
+        `${actionId} is explicit local UI state, not an inert action`
+      ).toMatch(/disabled unavailable state|TrialAvailabilitySheet|show[A-Za-z]+=false/);
     }
   }
 });

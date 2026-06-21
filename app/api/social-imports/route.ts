@@ -5,6 +5,7 @@ import {
   validationFailure
 } from "@/lib/api/errors";
 import { authorizeDashboardApi } from "@/lib/server/dashboard-test-auth";
+import { validateSessionMutationRequest } from "@/lib/server/request-protection";
 import {
   createSocialImport,
   listSocialImportWorkspace
@@ -30,6 +31,11 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    const csrfError = validateSessionMutationRequest(request);
+    if (csrfError) {
+      return csrfError;
+    }
+
     const contentType = request.headers.get("content-type") || "";
     const parsed = contentType.includes("multipart/form-data")
       ? await readFormData(request)
@@ -70,6 +76,16 @@ async function readJson(request: Request) {
 async function readFormData(request: Request) {
   const formData = await request.formData();
   const fileValue = formData.get("file");
+  const allowedFields = new Set([
+    "file",
+    "processNow",
+    "rawText",
+    "sourceCaption",
+    "sourcePlatform",
+    "sourceTitle",
+    "sourceUrl",
+    "tripId"
+  ]);
   const value = {
     hasFile: fileValue instanceof File && fileValue.size > 0,
     processNow: formData.get("processNow") !== "false",
@@ -82,7 +98,13 @@ async function readFormData(request: Request) {
     sourceTitle: readFormString(formData, "sourceTitle"),
     sourceUrl: readFormString(formData, "sourceUrl"),
     tripId: readFormString(formData, "tripId")
-  };
+  } as Record<string, unknown>;
+
+  for (const key of formData.keys()) {
+    if (!allowedFields.has(key)) {
+      value[key] = formData.get(key);
+    }
+  }
 
   return {
     file: fileValue instanceof File && fileValue.size > 0 ? fileValue : null,

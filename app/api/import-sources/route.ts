@@ -10,6 +10,7 @@ import {
   type ImportSourcesClient
 } from "@/lib/server/import-sources";
 import { authorizeDashboardApi } from "@/lib/server/dashboard-test-auth";
+import { validateSessionMutationRequest } from "@/lib/server/request-protection";
 import { validateImportSourcePatch } from "@/lib/validators/import-sources";
 
 const routeName = "import-sources";
@@ -35,6 +36,11 @@ export async function GET() {
 
 export async function PATCH(request: Request) {
   try {
+    const csrfError = validateSessionMutationRequest(request);
+    if (csrfError) {
+      return csrfError;
+    }
+
     const auth = await authorizeDashboardApi<ImportSourcesClient>();
 
     if (!auth) {

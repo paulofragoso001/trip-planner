@@ -5,15 +5,21 @@ import {
   validationFailure
 } from "@/lib/api/errors";
 import { authorizeDashboardApi } from "@/lib/server/dashboard-test-auth";
+import { validateSessionMutationRequest } from "@/lib/server/request-protection";
 import { processSocialImport } from "@/lib/server/social-imports";
 
 const routeName = "social-imports/:id/process";
 
 export async function POST(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const csrfError = validateSessionMutationRequest(request);
+    if (csrfError) {
+      return csrfError;
+    }
+
     const { id } = await params;
 
     if (!id.trim()) {

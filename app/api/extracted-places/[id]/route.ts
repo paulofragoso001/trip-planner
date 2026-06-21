@@ -5,6 +5,7 @@ import {
   validationFailure
 } from "@/lib/api/errors";
 import { authorizeDashboardApi } from "@/lib/server/dashboard-test-auth";
+import { validateSessionMutationRequest } from "@/lib/server/request-protection";
 import { updateExtractedPlace } from "@/lib/server/social-imports";
 import { validateUpdateExtractedPlace } from "@/lib/validators/social-imports";
 
@@ -15,6 +16,11 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const csrfError = validateSessionMutationRequest(request);
+    if (csrfError) {
+      return csrfError;
+    }
+
     const { id } = await params;
 
     if (!id.trim()) {

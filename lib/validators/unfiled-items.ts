@@ -77,6 +77,21 @@ export function validateCreateUnfiledItem(
   }
 
   const details: Record<string, string> = {};
+  rejectUnknownFields(
+    value,
+    [
+      "dateTime",
+      "location",
+      "notes",
+      "rawText",
+      "segmentType",
+      "sourceLabel",
+      "sourceType",
+      "title",
+      "tripId"
+    ],
+    details
+  );
   const rawText = readOptionalString(value.rawText, "rawText", details, 5000) || "";
   const title = readOptionalString(value.title, "title", details, 200);
 
@@ -120,6 +135,20 @@ export function validateUpdateUnfiledItem(
   }
 
   const details: Record<string, string> = {};
+  rejectUnknownFields(
+    value,
+    [
+      "dateTime",
+      "location",
+      "notes",
+      "parseStatus",
+      "promotedTripSegmentId",
+      "segmentType",
+      "title",
+      "tripId"
+    ],
+    details
+  );
   const update: UpdateUnfiledItemInput = {};
 
   if ("tripId" in value) update.tripId = readNullableString(value.tripId, "tripId", details, 120);
@@ -209,4 +238,16 @@ function readNullableString(
   }
 
   return trimmed || null;
+}
+
+function rejectUnknownFields(
+  value: Record<string, unknown>,
+  allowedFields: readonly string[],
+  details: Record<string, string>
+) {
+  const allowed = new Set(allowedFields);
+  const unknown = Object.keys(value).filter((key) => !allowed.has(key));
+  if (unknown.length) {
+    details.body = `Unknown field${unknown.length === 1 ? "" : "s"}: ${unknown.join(", ")}.`;
+  }
 }

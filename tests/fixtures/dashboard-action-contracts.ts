@@ -1,6 +1,7 @@
 export {
   dashboardActionContracts,
   dashboardActionDomains,
+  dashboardActionRolloutSlices,
   dashboardActionRoutes,
   getDashboardActionContract,
   unwiredDashboardActionContracts
@@ -8,6 +9,7 @@ export {
 export type {
   DashboardActionAuth,
   DashboardActionContract,
+  DashboardActionRolloutSlice,
   DashboardActionKind,
   DashboardActionPermission
 } from "../../lib/dashboard/action-contracts";

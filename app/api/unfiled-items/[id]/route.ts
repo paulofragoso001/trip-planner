@@ -10,6 +10,7 @@ import {
   type UnfiledItemsClient
 } from "@/lib/server/unfiled-items";
 import { authorizeDashboardApi } from "@/lib/server/dashboard-test-auth";
+import { validateSessionMutationRequest } from "@/lib/server/request-protection";
 import { validateUpdateUnfiledItem } from "@/lib/validators/unfiled-items";
 
 const routeName = "unfiled-items/:id";
@@ -19,6 +20,11 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const csrfError = validateSessionMutationRequest(request);
+    if (csrfError) {
+      return csrfError;
+    }
+
     const { id } = await params;
 
     if (!id.trim()) {
@@ -51,10 +57,15 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const csrfError = validateSessionMutationRequest(request);
+    if (csrfError) {
+      return csrfError;
+    }
+
     const { id } = await params;
 
     if (!id.trim()) {

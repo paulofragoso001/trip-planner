@@ -23,6 +23,7 @@ export function NotificationBell({ userId }: NotificationBellProps) {
   const supabase = useMemo(() => createClient(), []);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [open, setOpen] = useState(false);
+  const [markingRead, setMarkingRead] = useState(false);
   const panelRef = useRef<HTMLDivElement | null>(null);
 
   const unread = useMemo(
@@ -78,8 +79,10 @@ export function NotificationBell({ userId }: NotificationBellProps) {
   };
 
   const markAllRead = async () => {
-    if (!unread) return;
+    if (!unread || markingRead) return;
 
+    const previous = notifications;
+    setMarkingRead(true);
     setNotifications((current) =>
       current.map((notification) => ({
         ...notification,
@@ -87,11 +90,21 @@ export function NotificationBell({ userId }: NotificationBellProps) {
       }))
     );
 
-    await fetch("/api/notifications/read", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId })
-    });
+    try {
+      const response = await fetch("/api/notifications/read", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId })
+      });
+
+      if (!response.ok) {
+        setNotifications(previous);
+      }
+    } catch {
+      setNotifications(previous);
+    } finally {
+      setMarkingRead(false);
+    }
   };
 
   return (
@@ -99,6 +112,7 @@ export function NotificationBell({ userId }: NotificationBellProps) {
       <button
         aria-label="Notifications"
         className="relative flex h-11 w-11 items-center justify-center rounded-xl border border-white/10 bg-white/10 text-lg text-white shadow-sm backdrop-blur transition hover:bg-white/15 focus:outline-none focus:ring-4 focus:ring-blue-400/20"
+        disabled={markingRead}
         onClick={() => {
           setOpen((current) => !current);
           void markAllRead();

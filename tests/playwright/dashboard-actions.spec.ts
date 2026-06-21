@@ -1,13 +1,9 @@
-import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { dashboardActionRoutes } from "../../lib/dashboard/action-routes";
 
 const baseUrl = "http://127.0.0.1:3000";
-const dashboardHeaders = {
-  "sec-fetch-site": "same-origin",
-  "x-cypress-dashboard": "true"
-};
 
-test.describe("dashboard action wiring", () => {
+test.describe("dashboard navigation and client-state actions", () => {
   test.beforeEach(async ({ page }) => {
     await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
   });
@@ -63,6 +59,15 @@ test.describe("dashboard action wiring", () => {
     await page.getByRole("button", { name: "Expand trips sheet" }).click();
     await expect(sheet).toHaveAttribute("data-sheet-state", "expanded");
 
+    await page.getByRole("button", { name: "Accept 15 Days Free" }).click();
+    await expect(page.getByRole("dialog")).toContainText("Trial activation coming soon");
+    await page.getByRole("button", { name: "Close trial availability" }).click();
+
+    await page.getByRole("button", { name: "Dismiss pro card" }).click();
+    await expect(page.getByRole("button", { name: "Dismiss pro card" })).toHaveCount(0);
+    await page.getByRole("button", { name: "Dismiss email automation card" }).click();
+    await expect(page.getByTestId("mobile-home-email-card")).toHaveCount(0);
+
     await page.getByRole("button", { name: "Open settings" }).click();
     await expect(sheet).toHaveAttribute("data-sheet-state", "settings");
     await page.getByRole("button", { name: "Redeem 15 Days Free" }).click();
@@ -73,6 +78,22 @@ test.describe("dashboard action wiring", () => {
 
     await page.getByRole("button", { name: "Use current location" }).click();
     await expect(page.getByTestId("mobile-home-globe-controls")).toBeVisible();
+  });
+
+  test("mobile globe map control routes without writing data", async ({ page }) => {
+    await page.addInitScript(() => {
+      window.google = {
+        maps: {
+          importLibrary: async () => ({})
+        }
+      };
+    });
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.setViewportSize({ width: 390, height: 900 });
+
+    await openDashboardRoute(page, "/dashboard");
+    await page.getByRole("link", { name: "Open map" }).click();
+    await expect(page).toHaveURL(/\/dashboard\/(map|trips\/[^/]+\/map)(?:$|\?)/);
   });
 
   test("plan action buttons are clickable and surface validation feedback", async ({ page }) => {
@@ -123,89 +144,6 @@ test.describe("dashboard action wiring", () => {
   });
 });
 
-test.describe("dashboard API/server action boundaries", () => {
-  test("trip APIs reject unauthorized and non-owned IDs while allowing a valid owned lifecycle", async ({ request }) => {
-    const runId = Date.now().toString(36);
-    const createPayload = {
-      budget: 0,
-      destination: "Miami, FL",
-      destination_lat: 25.7617,
-      destination_lng: -80.1918,
-      destination_status: "resolved",
-      end_date: "2026-07-05",
-      name: `Action Test ${runId}`,
-      start_date: "2026-07-01",
-      status: "Planning",
-      travel_style: "balanced"
-    };
-    let tripId: string | null = null;
-
-    const unauthorizedList = await request.get(`${baseUrl}/api/trips`);
-    expect(unauthorizedList.status()).toBe(401);
-
-    const unauthorizedCreate = await request.post(`${baseUrl}/api/trips`, {
-      data: createPayload,
-      headers: { "sec-fetch-site": "same-origin" }
-    });
-    expect(unauthorizedCreate.status()).toBe(401);
-
-    const crossSiteCreate = await request.post(`${baseUrl}/api/trips`, {
-      data: createPayload,
-      headers: {
-        origin: "https://evil.example"
-      }
-    });
-    expect(crossSiteCreate.status()).toBe(403);
-
-    const nonOwnedId = "00000000-0000-4000-8000-000000000001";
-    const nonOwnedGet = await request.get(`${baseUrl}/api/trips/${nonOwnedId}`, {
-      headers: dashboardHeaders
-    });
-    expect(nonOwnedGet.status()).toBe(404);
-
-    const nonOwnedPatch = await request.patch(`${baseUrl}/api/trips/${nonOwnedId}`, {
-      data: { ...createPayload, name: `Wrong Owner ${runId}` },
-      headers: dashboardHeaders
-    });
-    expect(nonOwnedPatch.status()).toBe(404);
-
-    try {
-      const created = await request.post(`${baseUrl}/api/trips`, {
-        data: createPayload,
-        headers: dashboardHeaders
-      });
-      expect(created.status()).toBe(201);
-      const createdBody = await created.json();
-      tripId = readTripId(createdBody);
-      expect(tripId).toBeTruthy();
-
-      const fetched = await request.get(`${baseUrl}/api/trips/${tripId}`, {
-        headers: dashboardHeaders
-      });
-      expect(fetched.status()).toBe(200);
-
-      const patched = await request.patch(`${baseUrl}/api/trips/${tripId}`, {
-        data: { ...createPayload, name: `Action Test Updated ${runId}` },
-        headers: dashboardHeaders
-      });
-      expect(patched.status()).toBe(200);
-      await expectTripName(patched, `Action Test Updated ${runId}`);
-
-      const deleted = await request.delete(`${baseUrl}/api/trips/${tripId}`, {
-        headers: dashboardHeaders
-      });
-      expect(deleted.status()).toBe(200);
-      tripId = null;
-    } finally {
-      if (tripId) {
-        await request.delete(`${baseUrl}/api/trips/${tripId}`, {
-          headers: dashboardHeaders
-        });
-      }
-    }
-  });
-});
-
 async function openDashboardRoute(page: Page, path: string) {
   await page.goto(`${baseUrl}${path}`, { waitUntil: "commit" });
   await expect(page.getByTestId("app-shell-root")).toBeVisible({ timeout: 30_000 });
@@ -251,17 +189,4 @@ async function findUnsupportedVisibleButtons(page: Page, route: string, allowedL
       return [];
     });
   }, { allowedLabels: [...allowedLabels], route });
-}
-
-function readTripId(body: unknown) {
-  if (!body || typeof body !== "object" || !("trip" in body)) {
-    return null;
-  }
-  const trip = (body as { trip?: { id?: unknown } }).trip;
-  return typeof trip?.id === "string" ? trip.id : null;
-}
-
-async function expectTripName(response: Awaited<ReturnType<APIRequestContext["patch"]>>, name: string) {
-  const body = await response.json();
-  expect(body?.trip?.name).toBe(name);
 }

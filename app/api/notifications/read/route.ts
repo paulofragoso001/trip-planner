@@ -1,12 +1,34 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { authorizeDashboardApi } from "@/lib/server/dashboard-test-auth";
+import { validateSessionMutationRequest } from "@/lib/server/request-protection";
 
 type NotificationsClient = {
   from: (table: "notifications") => any;
 };
 
+const notificationReadSchema = z
+  .object({
+    userId: z.string().trim().min(1).max(160).optional()
+  })
+  .strict();
+
 export async function POST(req: Request) {
-  const { userId } = (await req.json()) as { userId?: string };
+  const csrfError = validateSessionMutationRequest(req);
+  if (csrfError) {
+    return csrfError;
+  }
+
+  const validation = notificationReadSchema.safeParse(await readJson(req));
+
+  if (!validation.success) {
+    return NextResponse.json(
+      { error: formatZodError(validation.error) },
+      { status: 400 }
+    );
+  }
+
+  const { userId } = validation.data as { userId?: string };
   const auth = await authorizeDashboardApi<NotificationsClient>();
 
   if (!auth) {
@@ -33,6 +55,22 @@ export async function POST(req: Request) {
   return NextResponse.json({ success: true });
 }
 
+async function readJson(request: Request) {
+  try {
+    return await request.json();
+  } catch {
+    return null;
+  }
+}
+
 function isMissingNotificationsTable(message: string) {
   return /notifications.*schema cache|relation .*notifications.* does not exist/i.test(message);
+}
+
+function formatZodError(error: z.ZodError) {
+  const issue = error.issues[0];
+  if (!issue) return "Invalid notification payload.";
+
+  const path = issue.path.join(".");
+  return path ? `${path}: ${issue.message}` : issue.message;
 }

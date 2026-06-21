@@ -63,6 +63,26 @@ export function validateCreateSocialImport(
   }
 
   const details: Record<string, string> = {};
+  rejectUnknownFields(
+    value,
+    [
+      "hasFile",
+      "processNow",
+      "rawText",
+      "raw_text",
+      "sourceCaption",
+      "source_caption",
+      "sourcePlatform",
+      "source_platform",
+      "sourceTitle",
+      "source_title",
+      "sourceUrl",
+      "source_url",
+      "tripId",
+      "trip_id"
+    ],
+    details
+  );
   const sourceUrl = readNullableString(value.sourceUrl ?? value.source_url, 2000);
   const rawText = readNullableString(value.rawText ?? value.raw_text, 10000);
   const sourceCaption = readNullableString(
@@ -109,6 +129,22 @@ export function validateUpdateExtractedPlace(
   }
 
   const details: Record<string, string> = {};
+  rejectUnknownFields(
+    value,
+    [
+      "category",
+      "confirmDestinationMismatch",
+      "confirm_destination_mismatch",
+      "name",
+      "priority",
+      "status",
+      "travelNote",
+      "travel_note",
+      "tripId",
+      "trip_id"
+    ],
+    details
+  );
   const update: UpdateExtractedPlaceInput = {};
 
   if ("name" in value) {
@@ -164,21 +200,24 @@ export function validateMergeExtractedPlace(
     return { details: { body: "Expected a JSON object." }, ok: false };
   }
 
+  const details: Record<string, string> = {};
+  rejectUnknownFields(value, ["targetPlaceId", "target_place_id"], details);
   const targetPlaceId = readNullableString(
     value.targetPlaceId ?? value.target_place_id,
     120
   );
 
   if (!targetPlaceId) {
-    return {
-      details: { targetPlaceId: "Choose a duplicate target." },
-      ok: false
-    };
+    details.targetPlaceId = "Choose a duplicate target.";
+  }
+
+  if (Object.keys(details).length) {
+    return { details, ok: false };
   }
 
   return {
     ok: true,
-    value: { targetPlaceId }
+    value: { targetPlaceId: targetPlaceId as string }
   };
 }
 
@@ -200,6 +239,18 @@ export function normalizeSourcePlatform(
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function rejectUnknownFields(
+  value: Record<string, unknown>,
+  allowedFields: readonly string[],
+  details: Record<string, string>
+) {
+  const allowed = new Set(allowedFields);
+  const unknown = Object.keys(value).filter((key) => !allowed.has(key));
+  if (unknown.length) {
+    details.body = `Unknown field${unknown.length === 1 ? "" : "s"}: ${unknown.join(", ")}.`;
+  }
 }
 
 function readNullableString(value: unknown, maxLength: number) {

@@ -10,6 +10,7 @@ import {
   type UnfiledItemsClient
 } from "@/lib/server/unfiled-items";
 import { authorizeDashboardApi } from "@/lib/server/dashboard-test-auth";
+import { validateSessionMutationRequest } from "@/lib/server/request-protection";
 import {
   validateCreateUnfiledItem,
   validateUnfiledItemsQuery
@@ -46,6 +47,11 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const csrfError = validateSessionMutationRequest(request);
+    if (csrfError) {
+      return csrfError;
+    }
+
     const validation = validateCreateUnfiledItem(await readJson(request));
 
     if (!validation.ok) {
