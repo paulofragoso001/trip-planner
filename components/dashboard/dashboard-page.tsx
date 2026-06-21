@@ -13,6 +13,7 @@ import { MobileHomeWallet } from "@/components/dashboard/mobile-home-wallet";
 import { tripUi } from "@/components/trip-ui";
 import { WalletActionLink, WalletCard } from "@/components/wallet/wallet-card";
 import { WalletPageShell } from "@/components/wallet/wallet-page-shell";
+import { dashboardActionRoutes } from "@/lib/dashboard/action-routes";
 
 type DashboardPageProps = DashboardData & {
   view?: string;
@@ -40,7 +41,7 @@ export default function DashboardPage({
   const ideasWaitingCount = Number.parseInt(importsWaiting.replace(/[^\d]/g, ""), 10) || 0;
   const latestTrip = recentTrips[0] || null;
   const remainingTrips = recentTrips.slice(1, 4);
-  const primaryHeroHref = latestTrip ? latestTrip.href : "/dashboard/trips#new-trip";
+  const primaryHeroHref = latestTrip ? latestTrip.href : dashboardActionRoutes.trips.create;
   const primaryHeroLabel = latestTrip ? "Continue trip" : "Create your first trip";
   const heroImageUrl = heroImage.imageUrl || null;
   const heroImageAlt = heroImage.imageAlt || "Wayline travel pass background";
@@ -83,7 +84,7 @@ export default function DashboardPage({
             </Link>
             <Link
               className="inline-flex min-h-11 items-center justify-center rounded-full border border-white/18 bg-white/10 px-4 text-sm font-black text-white backdrop-blur transition hover:bg-white/16 focus:outline-none focus:ring-4 focus:ring-white/20"
-              href="/dashboard/plan"
+              href={dashboardActionRoutes.plan.addIdea}
             >
               Start planning
             </Link>
@@ -133,7 +134,7 @@ export default function DashboardPage({
         ) : (
           <HomeRow
             cta="Create trip"
-            href="/dashboard/trips#new-trip"
+            href={dashboardActionRoutes.trips.create}
             icon={<MapPin aria-hidden="true" className="h-5 w-5" />}
             label="Create your first trip"
             meta="Choose a destination and start building your travel pass."
@@ -143,7 +144,7 @@ export default function DashboardPage({
 
         <HomeRow
           cta="Add idea"
-          href="/dashboard/plan"
+          href={dashboardActionRoutes.plan.addIdea}
           icon={<Sparkles aria-hidden="true" className="h-5 w-5" />}
           label="Start with an idea"
           meta="Paste a note, link, or screenshot. Wayline will find places for you to review."
@@ -152,7 +153,7 @@ export default function DashboardPage({
         {ideasWaitingCount > 0 ? (
           <HomeRow
             cta="Review places"
-            href="/dashboard/plan#ai-review"
+            href={dashboardActionRoutes.plan.reviewPlaces}
             icon={<Sparkles aria-hidden="true" className="h-5 w-5" />}
             label="Ready for review"
             meta={`${ideasWaitingCount} idea${ideasWaitingCount === 1 ? "" : "s"} waiting to become places.`}
@@ -163,7 +164,7 @@ export default function DashboardPage({
           <section className="rounded-[1.75rem] border border-white/70 bg-white/94 p-4 shadow-[0_18px_50px_rgba(15,23,42,0.08)] ring-1 ring-slate-950/5 sm:p-5">
             <div className="flex items-center justify-between gap-3">
               <h2 className="text-base font-black text-slate-950">Recent trips</h2>
-              <Link className="text-sm font-black text-blue-700" href="/dashboard/trips">
+              <Link className="text-sm font-black text-blue-700" href={dashboardActionRoutes.trips.list}>
                 View all trips
               </Link>
             </div>

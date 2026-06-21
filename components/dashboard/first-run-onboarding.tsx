@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
+import { dashboardActionRoutes } from "@/lib/dashboard/action-routes";
 import type { FirstRunState } from "@/lib/wayline-onboarding";
 
 type FirstRunOnboardingProps = {
@@ -45,13 +46,13 @@ export function FirstRunOnboarding({ firstRun }: FirstRunOnboardingProps) {
         <div className="grid gap-2 sm:flex sm:flex-wrap sm:justify-end">
           <Link
             className="inline-flex min-h-11 items-center justify-center rounded-2xl bg-blue-600 px-4 text-sm font-black text-white transition hover:bg-blue-700"
-            href="/dashboard/plan?sample=miami#saved-inspiration"
+            href={dashboardActionRoutes.plan.sampleMiami}
           >
             Try sample
           </Link>
           <Link
             className="inline-flex min-h-11 items-center justify-center rounded-2xl bg-white px-4 text-sm font-black text-slate-800 ring-1 ring-slate-200 transition hover:bg-slate-50"
-            href="/dashboard/plan#saved-inspiration"
+            href={dashboardActionRoutes.plan.addIdea}
           >
             Add my own idea
           </Link>

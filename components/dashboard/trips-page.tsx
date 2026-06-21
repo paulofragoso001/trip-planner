@@ -7,6 +7,7 @@ import type { TripsData } from "@/app/dashboard/trips/loader";
 import { PlacePhoto } from "@/components/place-photo";
 import { WalletActionLink, WalletCard } from "@/components/wallet/wallet-card";
 import { WalletPageShell } from "@/components/wallet/wallet-page-shell";
+import { dashboardActionRoutes } from "@/lib/dashboard/action-routes";
 
 type TripsPageProps = TripsData;
 
@@ -19,7 +20,7 @@ export default function TripsPage({ error, heroImage, trips }: TripsPageProps) {
           actions={
             <>
               <WalletActionLink href="#new-trip">Create trip</WalletActionLink>
-              <WalletActionLink className="bg-white text-slate-950 hover:bg-slate-100" href="/dashboard/plan">
+              <WalletActionLink className="bg-white text-slate-950 hover:bg-slate-100" href={dashboardActionRoutes.plan.addIdea}>
                 Start planning
               </WalletActionLink>
             </>

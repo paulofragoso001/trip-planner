@@ -34,6 +34,7 @@ import { useEffect, useRef, useState } from "react";
 import type { PointerEvent, ReactNode } from "react";
 import type { DashboardRecentTripView } from "@/app/dashboard/loader";
 import { cn } from "@/components/trip-ui";
+import { dashboardActionRoutes } from "@/lib/dashboard/action-routes";
 
 type SheetState = "collapsed" | "expanded" | "settings";
 
@@ -231,7 +232,7 @@ function CollapsedLauncher({
             <span className="block truncate text-[0.72rem] font-bold text-slate-500">{primaryMeta}</span>
           </span>
         </Link>
-        <CircleAction href="/dashboard/trips#new-trip" icon={<Plus />} label="Add" primary />
+        <CircleAction href={dashboardActionRoutes.trips.create} icon={<Plus />} label="Add" primary />
       </div>
     </div>
   );
@@ -285,7 +286,7 @@ function ExpandedTrips({
       {ideasWaitingCount > 0 ? (
         <Link
           className="mt-5 grid min-h-[4.5rem] grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-[1.5rem] bg-orange-50 px-4 text-slate-950 ring-1 ring-orange-100"
-          href="/dashboard/plan#ai-review"
+          href={dashboardActionRoutes.plan.reviewPlaces}
         >
           <Sparkles className="h-6 w-6 text-orange-500" aria-hidden="true" />
           <span className="min-w-0">
@@ -301,12 +302,12 @@ function ExpandedTrips({
         <CircleAction href="/dashboard/search" icon={<Search />} label="Search" />
         <Link
           className="grid h-12 min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-2 rounded-full bg-white px-4 font-black text-slate-950 shadow-[0_18px_44px_rgba(15,23,42,0.08)] ring-1 ring-slate-100 transition hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-orange-300/20"
-          href="/dashboard/profile/stats"
+          href={dashboardActionRoutes.trips.stats}
         >
           <Globe2 className="h-5 w-5 shrink-0 text-slate-950" aria-hidden="true" />
           <span className="truncate">Travel Book</span>
         </Link>
-        <CircleAction href="/dashboard/trips#new-trip" icon={<Plus />} label="Add" primary />
+        <CircleAction href={dashboardActionRoutes.trips.create} icon={<Plus />} label="Add" primary />
       </div>
     </div>
   );
@@ -337,7 +338,7 @@ function SettingsPanel({
       <SettingsGroup>
         <SettingsRow
           accentMeta
-          href="/dashboard/account"
+          href={dashboardActionRoutes.settings.account}
           icon={<Cloud />}
           label="Save your trips"
           meta="Login or create an account"
@@ -346,37 +347,37 @@ function SettingsPanel({
       </SettingsGroup>
 
       <SettingsSection title="Automations">
-        <SettingsRow href="/dashboard/imports" icon={<Send />} label="Add Reservations via Email" pro />
+        <SettingsRow href={dashboardActionRoutes.imports.forwardReservation} icon={<Send />} label="Add Reservations via Email" pro />
         <SettingsRow icon={<CalendarDays />} label="Calendar Feed" pro unavailableLabel="Pro soon" />
         <SettingsRow icon={<PackageOpen />} label="Connect with Claude / MCP" unavailableLabel="Soon" />
         <SettingsRow icon={<Briefcase />} label="Shortcuts" unavailableLabel="Soon" />
-        <SettingsRow href="/dashboard/imports" icon={<Upload />} label="TripIt Importer" pro />
+        <SettingsRow href={dashboardActionRoutes.imports.importSources} icon={<Upload />} label="TripIt Importer" pro />
       </SettingsSection>
 
       <SettingsSection title="Customize">
         <SettingsRow icon={<RefreshCw />} label="Currency" value="US Dollar" picker unavailableLabel="Soon" />
         <SettingsRow icon={<SlidersHorizontal />} label="Distance Unit" value="Miles" picker unavailableLabel="Soon" />
         <SettingsRow icon={<Languages />} label="Language" value="English" picker unavailableLabel="Soon" />
-        <SettingsRow href="/dashboard/trips" icon={<Wallet />} label="Trips Timeline" />
+        <SettingsRow href={dashboardActionRoutes.trips.list} icon={<Wallet />} label="Trips Timeline" />
         <SettingsRow icon={<BookOpen />} label="App Icon" unavailableLabel="Soon" />
-        <SettingsRow href="/dashboard/profile/stats" icon={<Globe2 />} label="My Wayline Book" />
+        <SettingsRow href={dashboardActionRoutes.trips.stats} icon={<Globe2 />} label="My Wayline Book" />
         <SettingsRow icon={<Bell />} label="Notifications" unavailableLabel="Soon" />
         <SettingsRow icon={<CreditCard />} label="Widgets" unavailableLabel="Soon" />
         <SettingsRow icon={<PackageOpen />} label="Storage and Data" unavailableLabel="Soon" />
       </SettingsSection>
 
       <SettingsSection title="Help Center">
-        <SettingsRow href="/dashboard/account" icon={<LifeBuoy />} label="Need help?" />
-        <SettingsRow href="mailto:support@wayline.app" icon={<Mail />} label="Talk to us" />
+        <SettingsRow href={dashboardActionRoutes.settings.help} icon={<LifeBuoy />} label="Need help?" />
+        <SettingsRow href={dashboardActionRoutes.settings.talkToUs} icon={<Mail />} label="Talk to us" />
         <SettingsRow icon={<Star />} label="Review the App" unavailableLabel="Soon" />
         <SettingsRow icon={<Sparkles />} label="App Updates" unavailableLabel="Soon" />
-        <SettingsRow href="/dashboard/account" icon={<Star />} label="Your Membership" />
+        <SettingsRow href={dashboardActionRoutes.settings.membership} icon={<Star />} label="Your Membership" />
       </SettingsSection>
 
       <SettingsSection title="About">
-        <SettingsRow href="/dashboard/profile" icon={<Briefcase />} label="About Wayline" />
-        <SettingsRow href="/terms" icon={<MessageSquare />} label="Terms of Service" />
-        <SettingsRow href="/privacy" icon={<Shield />} label="Privacy Policy" />
+        <SettingsRow href={dashboardActionRoutes.settings.about} icon={<Briefcase />} label="About Wayline" />
+        <SettingsRow href={dashboardActionRoutes.settings.terms} icon={<MessageSquare />} label="Terms of Service" />
+        <SettingsRow href={dashboardActionRoutes.settings.privacy} icon={<Shield />} label="Privacy Policy" />
         <SettingsRow icon={<Upload />} label="Share to a Friend" unavailableLabel="Soon" />
       </SettingsSection>
 
@@ -480,7 +481,7 @@ function EmailAutomationCard({ onDismiss }: { onDismiss: () => void }) {
       </p>
       <Link
         className="mt-5 grid h-14 place-items-center rounded-full bg-orange-50 text-lg font-black text-orange-500"
-        href="/dashboard/imports"
+        href={dashboardActionRoutes.imports.forwardReservation}
       >
         Forward Your Reservation
       </Link>
@@ -632,7 +633,7 @@ function TrialAvailabilitySheet({
       </div>
       <Link
         className="mt-4 grid min-h-12 place-items-center rounded-full bg-slate-950 px-5 text-sm font-black text-white"
-        href="/dashboard/account"
+        href={dashboardActionRoutes.settings.account}
       >
         Open account settings
       </Link>

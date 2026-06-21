@@ -3,6 +3,7 @@ import { Map, Plane, Sparkles } from "lucide-react";
 import { authorizeDashboardApi } from "@/lib/server/dashboard-test-auth";
 import { WalletActionLink, WalletCard } from "@/components/wallet/wallet-card";
 import { WalletPageShell } from "@/components/wallet/wallet-page-shell";
+import { dashboardActionRoutes } from "@/lib/dashboard/action-routes";
 
 type TripIdRow = {
   id: string;
@@ -41,8 +42,8 @@ export default async function DashboardMapPage() {
     <WalletPageShell
       actions={
         <>
-          <WalletActionLink href="/dashboard/trips#new-trip">Create trip</WalletActionLink>
-          <WalletActionLink className="bg-white text-slate-950 hover:bg-slate-100" href="/dashboard/plan">
+          <WalletActionLink href={dashboardActionRoutes.trips.create}>Create trip</WalletActionLink>
+          <WalletActionLink className="bg-white text-slate-950 hover:bg-slate-100" href={dashboardActionRoutes.plan.addIdea}>
             Start planning
           </WalletActionLink>
         </>
@@ -70,11 +71,11 @@ export default async function DashboardMapPage() {
             Create a trip, add places, and Wayline will turn confirmed locations into a route map.
           </p>
           <div className="mt-4 grid gap-2 sm:grid-cols-2">
-            <WalletActionLink href="/dashboard/trips#new-trip">
+            <WalletActionLink href={dashboardActionRoutes.trips.create}>
               <Plane className="mr-2 h-4 w-4" aria-hidden="true" />
               Create trip
             </WalletActionLink>
-            <WalletActionLink className="bg-blue-50 text-blue-700 hover:bg-blue-100" href="/dashboard/plan">
+            <WalletActionLink className="bg-blue-50 text-blue-700 hover:bg-blue-100" href={dashboardActionRoutes.plan.addIdea}>
               <Sparkles className="mr-2 h-4 w-4" aria-hidden="true" />
               Add ideas
             </WalletActionLink>

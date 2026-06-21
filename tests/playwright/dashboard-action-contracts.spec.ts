@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import {
+  dashboardActionDomains,
   dashboardActionContracts,
   unwiredDashboardActionContracts
 } from "../fixtures/dashboard-action-contracts";
@@ -37,6 +38,20 @@ test("dashboard action contracts stay well-formed", () => {
   }
 
   expect(unwiredDashboardActionContracts, "no dashboard action should drift back to a no-op target").toHaveLength(0);
+});
+
+test("dashboard action domains reference real wired contracts", () => {
+  const contractIds = new Set(dashboardActionContracts.map((contract) => contract.id));
+
+  for (const [domain, actionIds] of Object.entries(dashboardActionDomains)) {
+    expect(actionIds.length, `${domain} has actions`).toBeGreaterThan(0);
+
+    for (const actionId of actionIds) {
+      expect(contractIds.has(actionId), `${domain} action ${actionId} exists`).toBe(true);
+      const contract = dashboardActionContracts.find((item) => item.id === actionId);
+      expect(contract?.target.type, `${domain} action ${actionId} is wired`).not.toBe("none");
+    }
+  }
 });
 
 test("dashboard mutation schemas reject drift and normalize server inputs", () => {

@@ -16,6 +16,7 @@ import type {
   TravelStatsTransportCard
 } from "@/app/dashboard/profile/stats/loader";
 import { cn } from "@/components/trip-ui";
+import { dashboardActionRoutes } from "@/lib/dashboard/action-routes";
 
 const WORLD_COUNTRY_TOTAL = 246;
 
@@ -153,7 +154,7 @@ function CountriesDetailView({
           <ArrowLeft className="h-5 w-5" aria-hidden="true" />
         </Link>
         <Link
-          href="/dashboard/trips"
+          href={dashboardActionRoutes.trips.list}
           aria-label="Close countries stats"
           className="grid h-10 w-10 place-items-center rounded-full bg-white/10 text-white/85 ring-1 ring-white/12 transition hover:bg-white/15 focus:outline-none focus:ring-4 focus:ring-orange-400/20"
         >
@@ -222,7 +223,7 @@ function StatsTopBar({ closeHref }: { closeHref: string }) {
   return (
     <div className="relative z-10 flex items-center justify-between">
       <Link
-        href="/dashboard/trips"
+        href={dashboardActionRoutes.trips.list}
         aria-label="Back to trips"
         className="grid h-10 w-10 place-items-center rounded-full bg-black/38 text-white ring-1 ring-white/12 backdrop-blur-xl transition hover:bg-black/50 focus:outline-none focus:ring-4 focus:ring-orange-400/20"
       >

@@ -9,6 +9,7 @@ import { cn } from "@/components/trip-ui";
 import { EmptyState, StatusBadge, tripUi } from "@/components/trip-ui";
 import { WalletActionLink, WalletCard } from "@/components/wallet/wallet-card";
 import { WalletPageShell } from "@/components/wallet/wallet-page-shell";
+import { dashboardActionRoutes } from "@/lib/dashboard/action-routes";
 import type { WaylineSampleKey } from "@/lib/wayline-onboarding";
 import { waylineCopy } from "@/lib/copy/wayline-copy";
 
@@ -55,6 +56,7 @@ export default function ImportsPage({
         <section className="grid gap-5">
           <WorkflowStepRow />
 
+          <div id="social-imports" />
           <section
             className="rounded-[1.65rem] border border-white/10 bg-[#050505] p-4 text-white shadow-[0_22px_70px_rgba(0,0,0,0.38)] ring-1 ring-white/10 lg:rounded-[2rem] lg:border-slate-200 lg:bg-white lg:p-5 lg:text-slate-950 lg:shadow-[0_18px_60px_rgba(15,23,42,0.08)] lg:ring-0"
             id="saved-inspiration"
@@ -126,7 +128,10 @@ export default function ImportsPage({
           </div>
         </details>
 
-        <details className="hidden rounded-[2rem] border border-slate-200/80 bg-white/95 p-4 shadow-sm backdrop-blur sm:p-5 lg:block">
+        <details
+          className="hidden rounded-[2rem] border border-slate-200/80 bg-white/95 p-4 shadow-sm backdrop-blur sm:p-5 lg:block"
+          id="reservation-forwarding"
+        >
           <summary className="cursor-pointer text-lg font-black text-slate-950">
             Advanced sources
           </summary>
@@ -204,7 +209,7 @@ export default function ImportsPage({
                 action={
                   <a
                     className={tripUi.button.primaryCompact}
-                    href="/dashboard/plan?sample=miami#saved-inspiration"
+                    href={dashboardActionRoutes.plan.sampleMiami}
                   >
                     Try sample inspiration
                   </a>
@@ -314,7 +319,7 @@ function MobileTripContext({ hasTrips }: { hasTrips: boolean }) {
         </div>
         <a
           className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-full bg-white px-4 text-sm font-black text-slate-950"
-          href="/dashboard/trips"
+          href={dashboardActionRoutes.trips.list}
         >
           {hasTrips ? "Trips" : "Create"}
         </a>

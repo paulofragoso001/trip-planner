@@ -6,6 +6,7 @@ import type { DashboardData } from "@/app/dashboard/loader";
 import { MobileHomeContent } from "@/components/dashboard/mobile-home-content";
 import { Photorealistic3DHomeHero } from "@/components/dashboard/photorealistic-3d-home-hero";
 import { cn } from "@/components/trip-ui";
+import { dashboardActionRoutes } from "@/lib/dashboard/action-routes";
 
 type MobileHomeWalletProps = Pick<DashboardData, "metrics" | "recentTrips"> & {
   className?: string;
@@ -74,7 +75,7 @@ function FloatingGlobeControls() {
       <Link
         aria-label="Open map"
         className="grid h-11 w-11 place-items-center rounded-full text-white transition hover:bg-white/10 focus:outline-none focus:ring-4 focus:ring-orange-300/20"
-        href="/dashboard/map"
+        href={dashboardActionRoutes.globe.openMap}
       >
         <Map aria-hidden="true" className="h-5 w-5" />
       </Link>
@@ -83,7 +84,7 @@ function FloatingGlobeControls() {
         aria-label="Use current location"
         className="grid h-11 w-11 place-items-center rounded-full text-white transition hover:bg-white/10 focus:outline-none focus:ring-4 focus:ring-orange-300/20"
         onClick={() => {
-          window.dispatchEvent(new CustomEvent("wayline:home-use-current-location"));
+          window.dispatchEvent(new CustomEvent(dashboardActionRoutes.globe.locateUserEvent));
         }}
         type="button"
       >

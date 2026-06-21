@@ -9,6 +9,7 @@ import GoogleMapsProvider from "@/components/GoogleMapsProvider";
 import { TripCreateForm } from "@/components/dashboard/trip-create-form";
 import { cn } from "@/components/trip-ui";
 import type { TripsData } from "@/app/dashboard/trips/loader";
+import { dashboardActionRoutes } from "@/lib/dashboard/action-routes";
 
 type MobileTripsWalletProps = Pick<TripsData, "error" | "trips">;
 type Trip = TripsData["trips"][number];
@@ -86,7 +87,7 @@ export function MobileTripsWallet({ error, trips }: MobileTripsWalletProps) {
             <Link
               aria-label="Trip settings"
               className="grid h-11 w-11 place-items-center rounded-full bg-orange-500/[0.14] text-orange-400 ring-1 ring-orange-400/[0.12] transition hover:bg-orange-500/20 focus:outline-none focus:ring-4 focus:ring-orange-400/20"
-              href="/dashboard/profile/stats"
+              href={dashboardActionRoutes.settings.account}
             >
               <Settings className="h-5 w-5" aria-hidden="true" />
             </Link>
@@ -98,7 +99,7 @@ export function MobileTripsWallet({ error, trips }: MobileTripsWalletProps) {
                 aria-label="Open travel stats"
                 className="grid h-11 w-11 place-items-center rounded-full bg-orange-500/[0.14] text-orange-400 ring-1 ring-orange-400/[0.12] transition hover:bg-orange-500/20 focus:outline-none focus:ring-4 focus:ring-orange-400/20"
                 data-testid="mobile-trips-stats-link"
-                href="/dashboard/profile/stats"
+                href={dashboardActionRoutes.trips.stats}
               >
                 <BarChart3 className="h-5 w-5" aria-hidden="true" />
               </Link>
@@ -254,7 +255,7 @@ function MobileTripsCountriesMap({
         <Link
           aria-label="Show trip cards"
           className="grid h-12 w-12 place-items-center border-b border-white/10 transition hover:bg-white/10 focus:outline-none focus:ring-4 focus:ring-orange-400/20"
-          href="/dashboard/trips?view=list"
+          href={`${dashboardActionRoutes.trips.list}?view=list`}
         >
           <MapIcon className="h-5 w-5" aria-hidden="true" />
         </Link>
@@ -289,7 +290,7 @@ function MobileTripsCountriesMap({
             <Link
               aria-label="Trip settings"
               className="grid h-11 w-11 place-items-center rounded-full bg-orange-500/[0.14] text-orange-400 ring-1 ring-orange-400/[0.12] transition hover:bg-orange-500/20 focus:outline-none focus:ring-4 focus:ring-orange-400/20"
-              href="/dashboard/profile/stats"
+              href={dashboardActionRoutes.settings.account}
             >
               <Settings className="h-5 w-5" aria-hidden="true" />
             </Link>
@@ -301,7 +302,7 @@ function MobileTripsCountriesMap({
                 aria-label="Open travel stats"
                 className="grid h-11 w-11 place-items-center rounded-full bg-orange-500/[0.14] text-orange-400 ring-1 ring-orange-400/[0.12] transition hover:bg-orange-500/20 focus:outline-none focus:ring-4 focus:ring-orange-400/20"
                 data-testid="mobile-trips-stats-link"
-                href="/dashboard/profile/stats"
+                href={dashboardActionRoutes.trips.stats}
               >
                 <BarChart3 className="h-5 w-5" aria-hidden="true" />
               </Link>

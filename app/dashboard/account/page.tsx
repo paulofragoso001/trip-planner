@@ -41,7 +41,7 @@ export default async function AccountPage() {
 
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
-      <section className="rounded-2xl border border-line bg-white p-5 shadow-panel">
+      <section className="rounded-2xl border border-line bg-white p-5 shadow-panel" id="preferences">
         <p className="text-xs font-bold uppercase tracking-[0.12em] text-slate-500">
           Account
         </p>
@@ -79,6 +79,39 @@ export default async function AccountPage() {
           <AccountDeletionRequestForm existingRequest={deletionRequest} />
         </div>
       </aside>
+
+      <section className="rounded-2xl border border-line bg-white p-5 shadow-panel" id="sync">
+        <p className="text-xs font-bold uppercase tracking-[0.12em] text-slate-500">
+          Sync
+        </p>
+        <h2 className="mt-2 text-xl font-black tracking-tight">Connected services</h2>
+        <p className="mt-2 text-sm leading-6 text-slate-600">
+          Calendar, email, and reservation sync controls will appear here after
+          a provider is connected from Imports or a trip timeline.
+        </p>
+      </section>
+
+      <section className="rounded-2xl border border-line bg-white p-5 shadow-panel" id="membership">
+        <p className="text-xs font-bold uppercase tracking-[0.12em] text-slate-500">
+          Membership
+        </p>
+        <h2 className="mt-2 text-xl font-black tracking-tight">Wayline Pro</h2>
+        <p className="mt-2 text-sm leading-6 text-slate-600">
+          Pro trial activation and billing controls are not available yet. The
+          dashboard keeps these actions visible but unavailable until billing is wired.
+        </p>
+      </section>
+
+      <section className="rounded-2xl border border-line bg-white p-5 shadow-panel" id="help">
+        <p className="text-xs font-bold uppercase tracking-[0.12em] text-slate-500">
+          Help
+        </p>
+        <h2 className="mt-2 text-xl font-black tracking-tight">Support</h2>
+        <p className="mt-2 text-sm leading-6 text-slate-600">
+          Need help with a trip, import, or account control? Email support from
+          the mobile settings panel or review the legal and data controls above.
+        </p>
+      </section>
     </div>
   );
 }

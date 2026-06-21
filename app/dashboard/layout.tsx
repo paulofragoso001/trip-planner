@@ -5,6 +5,7 @@ import { signOut } from "@/app/actions";
 import { AppShell } from "@/components/app-shell";
 import { NotificationBell } from "@/components/NotificationBell";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
+import { dashboardActionRoutes } from "@/lib/dashboard/action-routes";
 import { ensureProfile } from "@/lib/profile";
 import {
   allowsDashboardTestBypass,
@@ -70,7 +71,7 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
           />
           <Link
             className="min-h-11 rounded-xl border border-white/10 bg-white/10 px-4 py-2 text-center text-sm font-bold text-white transition hover:bg-white/15 focus:outline-none focus:ring-4 focus:ring-blue-400/20"
-            href="/dashboard/account"
+            href={dashboardActionRoutes.settings.account}
           >
             Account settings
           </Link>
@@ -104,7 +105,7 @@ function TestUserMenu() {
       <p className="mt-1 text-slate-400">Authenticated test shell</p>
       <Link
         className="rounded-xl border border-white/10 bg-white/10 px-3 py-2 text-center font-bold text-white transition hover:bg-white/15"
-        href="/dashboard/account"
+        href={dashboardActionRoutes.settings.account}
       >
         Account settings
       </Link>
