@@ -49,7 +49,7 @@ test("loads dashboard summary and route-split pages", async ({ page }) => {
   ).toBeVisible();
   await expect(
     dashboardContent.getByRole("link", { exact: true, name: "Start planning" }).first()
-  ).toHaveAttribute("href", "/dashboard/plan");
+  ).toHaveAttribute("href", "/dashboard/plan#saved-inspiration");
   await expect(dashboardContent.getByText("Start with an idea")).toBeVisible();
   await expect(page.getByTestId("app-shell-nav").getByRole("link", { name: "Saved Inspiration" })).toHaveCount(0);
   await expect(page.getByTestId("app-shell-nav").getByRole("link", { name: "Flight Status" })).toHaveCount(0);

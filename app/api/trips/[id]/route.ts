@@ -88,7 +88,7 @@ export async function PATCH(request: Request, context: RouteContext) {
     .eq("id", routeId.value)
     .eq("user_id", auth.userId)
     .select("*")
-    .single();
+    .maybeSingle();
 
   if (
     error &&
@@ -103,7 +103,7 @@ export async function PATCH(request: Request, context: RouteContext) {
       .eq("id", routeId.value)
       .eq("user_id", auth.userId)
       .select("*")
-      .single();
+      .maybeSingle();
 
     data = retry.data;
     error = retry.error;
@@ -115,6 +115,10 @@ export async function PATCH(request: Request, context: RouteContext) {
       { error: status === 404 ? "Trip not found." : error.message },
       { status },
     );
+  }
+
+  if (!data) {
+    return NextResponse.json({ error: "Trip not found." }, { status: 404 });
   }
 
   return NextResponse.json({ trip: mapTripRecord(data as Record<string, unknown>) });
@@ -175,5 +179,5 @@ async function readJsonObject(request: Request) {
 }
 
 function isMissingOrUnauthorizedTripError(message: string) {
-  return /no rows|multiple rows|not found|406/i.test(message);
+  return /no rows|0 rows|multiple rows|not found|JSON object requested|406/i.test(message);
 }
