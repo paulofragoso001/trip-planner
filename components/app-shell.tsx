@@ -4,7 +4,7 @@ import { MessageSquare, Menu, Moon, Search, Sun, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { type ReactNode, useEffect, useMemo, useState } from "react";
-import { mobileNavItems, navSections, resolveNavTitle } from "@/components/sidebar/nav-data";
+import { navSections, resolveNavTitle } from "@/components/sidebar/nav-data";
 import { SidebarNav } from "@/components/sidebar/sidebar-nav";
 import { cn } from "@/components/trip-ui";
 
@@ -36,7 +36,6 @@ export function AppShell({
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
   const [density, setDensity] = useState<ShellDensity>("comfortable");
-  const [hash, setHash] = useState("");
 
   const page = useMemo(
     () => ({ title: resolveNavTitle(pathname, view) }),
@@ -73,14 +72,6 @@ export function AppShell({
   useEffect(() => {
     setMobileOpen(false);
   }, [pathname, view]);
-
-  useEffect(() => {
-    const syncHash = () => setHash(window.location.hash);
-
-    syncHash();
-    window.addEventListener("hashchange", syncHash);
-    return () => window.removeEventListener("hashchange", syncHash);
-  }, [pathname]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -274,7 +265,7 @@ export function AppShell({
                 ? "pb-0"
                 : isDashboardLaunch
                   ? "pb-0"
-                : "pb-[calc(5.75rem+env(safe-area-inset-bottom))] sm:pb-[calc(6rem+env(safe-area-inset-bottom))]",
+                : "pb-[calc(1rem+env(safe-area-inset-bottom))] sm:pb-[calc(1.5rem+env(safe-area-inset-bottom))]",
               fullBleedContent ? "lg:px-6" : "lg:px-8",
               density === "compact" ? "lg:py-4" : "lg:py-6"
             )}
@@ -291,14 +282,6 @@ export function AppShell({
               {children}
             </div>
           </main>
-          {!tripWorkspaceContent && !isDashboardLaunch ? (
-            <MobileBottomNav
-              hash={hash}
-              onHashChange={setHash}
-              pathname={pathname}
-              view={view}
-            />
-          ) : null}
         </div>
       </div>
     </div>
@@ -411,87 +394,4 @@ function initials(value: string) {
     .map((part) => part[0]?.toUpperCase());
 
   return `${first}${second}`.slice(0, 2);
-}
-
-function MobileBottomNav({
-  hash,
-  onHashChange,
-  pathname,
-  view
-}: {
-  hash: string;
-  onHashChange: (hash: string) => void;
-  pathname: string;
-  view: string | null;
-}) {
-  return (
-    <nav
-      aria-label="Primary mobile navigation"
-      className="fixed bottom-[calc(0.5rem+env(safe-area-inset-bottom))] left-1/2 z-40 w-[calc(100vw-1rem)] max-w-[520px] -translate-x-1/2 rounded-[1.25rem] border border-white/12 bg-slate-950/88 p-1.5 text-white shadow-[0_24px_80px_rgba(2,6,23,0.42)] backdrop-blur-2xl sm:bottom-[calc(0.75rem+env(safe-area-inset-bottom))] sm:w-[calc(100vw-1.5rem)] sm:rounded-[1.4rem] sm:p-2 lg:hidden"
-      data-testid="app-shell-mobile-bottom-nav"
-    >
-      <div className="grid grid-cols-4 gap-1">
-        {mobileNavItems.map((item) => {
-          const href = item.getHref?.(pathname) || item.href;
-          const active = isMobileNavActive(item.label, pathname, view, hash);
-          const Icon = item.icon;
-
-          return (
-            <Link
-              aria-current={active ? "page" : undefined}
-              className={cn(
-                "grid min-h-14 place-items-center rounded-2xl px-1 py-2 text-[0.68rem] font-black text-slate-400 transition focus:outline-none focus:ring-4 focus:ring-blue-400/20",
-                active
-                  ? "bg-white text-slate-950 shadow-sm"
-                  : "hover:bg-white/10 hover:text-white"
-              )}
-              href={href}
-              key={item.label}
-              onClick={() => {
-                const nextUrl = new URL(href, window.location.href);
-                onHashChange(nextUrl.hash);
-              }}
-            >
-              <Icon className="h-4 w-4" aria-hidden="true" />
-              <span className="mt-1 max-w-full truncate">{item.label}</span>
-            </Link>
-          );
-        })}
-      </div>
-    </nav>
-  );
-}
-
-function isMobileNavActive(
-  label: string,
-  pathname: string,
-  view: string | null,
-  hash: string
-) {
-  switch (label) {
-    case "Home":
-      return pathname === "/dashboard" && !view;
-    case "Plan":
-      return (
-        pathname.startsWith("/dashboard/plan") ||
-        pathname.startsWith("/dashboard/imports") ||
-        (pathname === "/dashboard" && view === "imports")
-      );
-    case "Trips":
-      return (
-        pathname === "/dashboard/trips" ||
-        /^\/dashboard\/trips\/[^/]+(?:\/timeline)?$/.test(pathname) ||
-        (pathname === "/dashboard" && view === "trips")
-      );
-    case "Map":
-      return pathname.includes("/map") || (pathname === "/dashboard" && view === "map");
-    case "Profile":
-      return (
-        pathname.startsWith("/dashboard/profile") ||
-        pathname === "/dashboard/account" ||
-        (pathname === "/dashboard" && view === "account")
-      );
-    default:
-      return Boolean(mobileNavItems.find((item) => item.label === label)?.match?.(pathname, view, hash));
-  }
 }

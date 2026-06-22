@@ -151,6 +151,7 @@ export function MobileHomeContent({
               <button
                 type="button"
                 aria-expanded={!isCollapsed}
+                aria-label={isCollapsed ? "Open My Trips" : "Collapse My Trips"}
                 className="min-w-0 flex-1 text-left focus:outline-none focus:ring-4 focus:ring-orange-300/20"
                 onClick={isCollapsed ? expandTrips : collapseSheet}
               >
@@ -274,6 +275,7 @@ function ExpandedTrips({
         dateRange={featuredTrip?.dateRange || primaryMeta}
         status={featuredTrip?.status || ""}
       />
+      <PlanActionsGrid ideasWaitingCount={ideasWaitingCount} />
       {showProFeature ? (
         <ProFeatureCard
           onDismiss={() => setShowProFeature(false)}
@@ -282,21 +284,6 @@ function ExpandedTrips({
       ) : null}
       {showEmailAutomation ? (
         <EmailAutomationCard onDismiss={() => setShowEmailAutomation(false)} />
-      ) : null}
-      {ideasWaitingCount > 0 ? (
-        <Link
-          className="mt-5 grid min-h-[4.5rem] grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-[1.5rem] bg-orange-50 px-4 text-slate-950 ring-1 ring-orange-100"
-          href={dashboardActionRoutes.plan.reviewPlaces}
-        >
-          <Sparkles className="h-6 w-6 text-orange-500" aria-hidden="true" />
-          <span className="min-w-0">
-            <span className="block text-base font-black">Review places</span>
-            <span className="block truncate text-sm font-semibold text-slate-500">
-              {ideasWaitingCount} item{ideasWaitingCount === 1 ? "" : "s"} waiting
-            </span>
-          </span>
-          <ChevronRight className="h-5 w-5 text-slate-400" aria-hidden="true" />
-        </Link>
       ) : null}
       <div className="mt-5 grid grid-cols-[3.8rem_minmax(0,1fr)_3.8rem] items-center gap-3">
         <CircleAction href="/dashboard/search" icon={<Search />} label="Search" />
@@ -310,6 +297,57 @@ function ExpandedTrips({
         <CircleAction href={dashboardActionRoutes.trips.create} icon={<Plus />} label="Add" primary />
       </div>
     </div>
+  );
+}
+
+function PlanActionsGrid({ ideasWaitingCount }: { ideasWaitingCount: number }) {
+  return (
+    <div className="mt-5 grid grid-cols-2 gap-3" data-testid="mobile-home-plan-actions">
+      <SheetActionLink
+        href={dashboardActionRoutes.plan.addIdea}
+        icon={<Plus />}
+        label="Add idea"
+        meta="Save a note, link, or place"
+      />
+      <SheetActionLink
+        href={dashboardActionRoutes.plan.reviewPlaces}
+        icon={<Sparkles />}
+        label="Review places"
+        meta={
+          ideasWaitingCount > 0
+            ? `${ideasWaitingCount} item${ideasWaitingCount === 1 ? "" : "s"} waiting`
+            : "Promote saved ideas"
+        }
+      />
+    </div>
+  );
+}
+
+function SheetActionLink({
+  href,
+  icon,
+  label,
+  meta
+}: {
+  href: string;
+  icon: ReactNode;
+  label: string;
+  meta: string;
+}) {
+  return (
+    <Link
+      className="grid min-h-[5.5rem] grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-[1.45rem] bg-slate-50 px-4 text-left text-slate-950 ring-1 ring-slate-200 transition hover:bg-orange-50 hover:ring-orange-100 focus:outline-none focus:ring-4 focus:ring-orange-300/20"
+      href={href}
+    >
+      <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-white text-orange-500 shadow-sm [&_svg]:h-6 [&_svg]:w-6" aria-hidden="true">
+        {icon}
+      </span>
+      <span className="min-w-0">
+        <span className="block truncate text-lg font-black">{label}</span>
+        <span className="block truncate text-sm font-bold text-slate-500">{meta}</span>
+      </span>
+      <ChevronRight className="h-5 w-5 text-slate-400" aria-hidden="true" />
+    </Link>
   );
 }
 
@@ -332,6 +370,12 @@ function SettingsPanel({
           <X className="h-7 w-7" aria-hidden="true" />
         </button>
         <h2 className="pt-14 text-[2.6rem] font-black leading-none tracking-normal text-black">Settings</h2>
+        <Link
+          className="mt-5 inline-flex min-h-11 items-center rounded-full bg-white px-4 text-base font-black text-slate-950 shadow-sm ring-1 ring-slate-200"
+          href={dashboardActionRoutes.settings.account}
+        >
+          Account settings
+        </Link>
       </header>
 
       <ProSettingsCard onOpenTrial={onOpenTrial} />

@@ -51,7 +51,7 @@ export const dashboardActionContracts = [
     id: "dashboard-account-settings",
     label: "Account settings",
     kind: "navigation-only",
-    surface: "Dashboard user menu and test user menu",
+    surface: "Dashboard user menu, test user menu, and mobile launch settings",
     selectorHint: 'role=link[name="Account settings"]',
     intendedFunction: "Open account trust, legal, and deletion controls.",
     target: { type: "route", value: "/dashboard/account" },
@@ -305,6 +305,19 @@ export const dashboardActionContracts = [
     requiredAuth: "dashboard-session",
     requiredPermissions: ["signed-in-user"],
     expectedSuccessUi: "Plan page opens at the AI review/saved inspiration area.",
+    expectedFailureUi: "Dashboard auth boundary redirects unauthenticated users."
+  },
+  {
+    id: "mobile-launch-add-idea",
+    label: "Add idea",
+    kind: "navigation-only",
+    surface: "Mobile dashboard launch expanded sheet",
+    selectorHint: 'role=link[name="Add idea"]',
+    intendedFunction: "Open the planning capture area for a note, link, screenshot, or place idea.",
+    target: { type: "route", value: "/dashboard/plan#saved-inspiration" },
+    requiredAuth: "dashboard-session",
+    requiredPermissions: ["signed-in-user"],
+    expectedSuccessUi: "Plan page opens at the saved inspiration capture area.",
     expectedFailureUi: "Dashboard auth boundary redirects unauthenticated users."
   },
   {

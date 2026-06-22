@@ -80,31 +80,25 @@ test.describe("mobile soft-launch UX", () => {
     });
   }
 
-  test("mobile bottom navigation stays off launch and exposes soft-launch destinations on child routes", async ({ page }) => {
+  test("mobile dashboard shell does not render global bottom navigation", async ({ page }) => {
     await page.setViewportSize({ height: 900, width: 390 });
     await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
-    await page.goto(`${baseUrl}/dashboard`, { waitUntil: "commit" });
 
     const nav = page.getByRole("navigation", { name: "Primary mobile navigation" });
-    await expect(nav).toHaveCount(0);
+    const routesWithoutGlobalNav = [
+      "/dashboard",
+      "/dashboard/trips",
+      "/dashboard/plan",
+      "/dashboard/map",
+      "/dashboard/profile/stats"
+    ];
 
-    await page.goto(`${baseUrl}/dashboard/trips`, { waitUntil: "commit" });
-    await expect(nav).toBeVisible();
-    await expect(nav.getByRole("link", { name: /Trips/ })).toBeVisible();
-    await expect(nav.getByRole("link", { name: /Trips/ })).toHaveAttribute("href", "/dashboard?view=trips");
-    await expect(nav.getByRole("link", { name: /Plan/ })).toBeVisible();
-    await expect(nav.getByRole("link", { name: /Plan/ })).toHaveAttribute("href", "/dashboard/plan");
-    await expect(nav.getByRole("link", { name: /Map/ })).toBeVisible();
-    await expect(nav.getByRole("link", { name: /Profile/ })).toBeVisible();
-    await expect(nav.getByRole("link")).toHaveCount(4);
-    await expect(nav.getByRole("link").nth(0)).toHaveText(/Trips/);
-    await expect(nav.getByRole("link").nth(1)).toHaveText(/Plan/);
-    await expect(nav.getByRole("link").nth(2)).toHaveText(/Map/);
-    await expect(nav.getByRole("link").nth(3)).toHaveText(/Profile/);
-    await expect(nav.getByRole("link", { name: /Home/ })).toHaveCount(0);
-    await expect(nav.getByRole("link", { name: /Saved/ })).toHaveCount(0);
-    await expect(nav.getByRole("link", { name: /Plan with AI/ })).toHaveCount(0);
-    await expect(nav.getByRole("link", { name: /My Trips/ })).toHaveCount(0);
+    for (const route of routesWithoutGlobalNav) {
+      await page.goto(`${baseUrl}${route}`, { waitUntil: "commit" });
+      await expect(page.getByTestId("app-shell-root")).toBeVisible({ timeout: 20_000 });
+      await expect(nav).toHaveCount(0);
+      await expect(page.getByTestId("app-shell-mobile-bottom-nav")).toHaveCount(0);
+    }
 
     await page.goto(`${baseUrl}/dashboard?view=trips`, { waitUntil: "commit" });
     await expect(nav).toHaveCount(0);
@@ -439,23 +433,21 @@ test.describe("mobile soft-launch UX", () => {
     }
   });
 
-  test("bottom nav does not cover the scrollable content area", async ({ page }) => {
+  test("dashboard child routes do not reserve space for the removed bottom nav", async ({ page }) => {
     await page.setViewportSize({ height: 900, width: 390 });
     await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
     await page.goto(`${baseUrl}/dashboard/plan`, { waitUntil: "commit" });
     await expect(page.getByTestId("app-shell-main")).toBeVisible();
-    await expect(page.getByTestId("app-shell-mobile-bottom-nav")).toBeVisible();
+    await expect(page.getByTestId("app-shell-mobile-bottom-nav")).toHaveCount(0);
     await expect(page.getByTestId("imports-route")).toBeVisible({ timeout: 15_000 });
 
     const spacing = await page.evaluate(() => {
       const main = document.querySelector('[data-testid="app-shell-main"]');
-      const nav = document.querySelector('[data-testid="app-shell-mobile-bottom-nav"]');
       const mainPaddingBottom = main ? Number.parseFloat(getComputedStyle(main).paddingBottom) : 0;
-      const navHeight = nav?.getBoundingClientRect().height || 0;
-      return { mainPaddingBottom, navHeight };
+      return { mainPaddingBottom };
     });
 
-    expect(spacing.mainPaddingBottom).toBeGreaterThanOrEqual(spacing.navHeight + 20);
+    expect(spacing.mainPaddingBottom).toBeLessThan(48);
   });
 
   test("mobile search renders compact dark activity and route results", async ({ page, request }) => {
@@ -852,6 +844,7 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByTestId("mobile-home-compact-actions")).toBeVisible();
     await expect(page.getByTestId("ios-launch-sheet-expanded")).toBeHidden();
     await expect(launchSheet.getByRole("heading", { name: "My Trips" })).toBeVisible();
+    await expect(launchSheet.getByRole("button", { name: "Open My Trips" })).toBeVisible();
     await expect(launchSheet.getByRole("button", { name: "Open settings" })).toBeVisible();
     await expect(launchSheet.getByRole("link", { name: /Continue trip|Create trip/ })).toBeVisible();
     await expect(launchSheet.getByRole("link", { name: /Search/ })).toBeVisible();
@@ -859,6 +852,10 @@ test.describe("mobile soft-launch UX", () => {
     await expect(launchSheet.getByRole("link", { name: /Travel Book/ })).toBeHidden();
     await expect(launchSheet.getByRole("link", { name: /Add idea/ })).toBeHidden();
     await expect(launchSheet.getByRole("link", { name: /Open map/ })).toBeHidden();
+    await expect(page.getByTestId("mobile-home-globe-controls").getByRole("link", { name: "Open map" })).toHaveAttribute(
+      "href",
+      "/dashboard/map"
+    );
     await page.evaluate(() => window.scrollTo(0, 0));
     const initialHomeActionClearance = await page.evaluate(() => {
       const nav = document.querySelector('[data-testid="app-shell-mobile-bottom-nav"]');
@@ -930,11 +927,21 @@ test.describe("mobile soft-launch UX", () => {
     await expect(launchSheet.getByText("Add Reservations via Email")).toBeVisible();
     await expect(launchSheet.getByRole("link", { name: "Forward Your Reservation" })).toBeVisible();
     await expect(launchSheet.getByRole("link", { name: /Travel Book/ })).toBeVisible();
+    await expect(page.getByTestId("mobile-home-plan-actions")).toBeVisible();
+    await expect(launchSheet.getByRole("link", { name: /Add idea/ })).toHaveAttribute(
+      "href",
+      "/dashboard/plan#saved-inspiration"
+    );
+    await expect(launchSheet.getByRole("link", { name: /Review places/ })).toHaveAttribute(
+      "href",
+      "/dashboard/plan#ai-review"
+    );
 
     const actionNames = [
       /Continue trip|Create trip/,
       /Search/,
       /Travel Book/,
+      /Add idea/,
       /Review places/,
       /Forward Your Reservation/,
       /Add/
@@ -991,13 +998,17 @@ test.describe("mobile soft-launch UX", () => {
     await expect(launchSheet).toHaveAttribute("data-sheet-state", "settings");
     await expect(page.getByTestId("mobile-home-settings")).toBeVisible();
     await expect(launchSheet.getByRole("heading", { name: "Settings" })).toBeVisible();
+    await expect(launchSheet.getByRole("link", { name: "Account settings" })).toHaveAttribute(
+      "href",
+      "/dashboard/account"
+    );
     await expect(launchSheet.getByText("Redeem 15 Days Free")).toBeVisible();
     await launchSheet.getByRole("button", { name: "Redeem 15 Days Free" }).click();
     await expect(page.getByRole("dialog").getByText("Trial activation coming soon")).toBeVisible();
     await page.getByRole("button", { name: "Close trial availability" }).click();
     await expect(launchSheet.getByRole("link", { name: "Add Reservations via Email" })).toHaveAttribute(
       "href",
-      "/dashboard/imports"
+      "/dashboard/imports#reservation-forwarding"
     );
     await expect(launchSheet.getByText("Currency")).toBeVisible();
     await expect(launchSheet.getByText("Need help?")).toBeVisible();
