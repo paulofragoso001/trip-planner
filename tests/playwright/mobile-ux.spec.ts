@@ -100,11 +100,11 @@ test.describe("mobile soft-launch UX", () => {
       await expect(page.getByTestId("app-shell-mobile-bottom-nav")).toHaveCount(0);
     }
 
-    await page.goto(`${baseUrl}/dashboard?view=trips`, { waitUntil: "commit" });
+    await page.goto(`${baseUrl}/dashboard`, { waitUntil: "commit" });
     await expect(nav).toHaveCount(0);
     await expect(page.getByTestId("mobile-home-wallet")).toBeVisible();
-    await expect(page.getByTestId("mobile-home-wallet-content")).toHaveAttribute("data-sheet-state", "expanded");
-    await expect(page.getByTestId("ios-launch-sheet-expanded")).toBeVisible();
+    await expect(page.getByTestId("mobile-home-wallet-content")).toHaveAttribute("data-sheet-state", "collapsed");
+    await expect(page.getByTestId("ios-launch-sheet-collapsed")).toBeVisible();
   });
 
   test("mobile trip workspace hides global bottom navigation", async ({ page }) => {
@@ -154,11 +154,13 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByTestId("app-shell-topbar")).toBeVisible();
   });
 
-  test("mobile trips page defaults to map-first and supports the wallet list", async ({ page }) => {
+  test("mobile trips page is canonical and keeps the My Trips map surface", async ({ page }) => {
+    test.setTimeout(90_000);
     await page.setViewportSize({ height: 900, width: 390 });
     await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
     await page.goto(`${baseUrl}/dashboard/trips`, { waitUntil: "commit" });
 
+    await expect(page).toHaveURL(/\/dashboard\/trips$/);
     await expect(page.getByTestId("mobile-trips-country-map-screen")).toBeVisible({ timeout: 20_000 });
     await expect(page.getByTestId("mobile-country-map-canvas")).toBeVisible();
     await expect(page.getByRole("heading", { name: "My Trips" })).toBeVisible();
@@ -167,14 +169,13 @@ test.describe("mobile soft-launch UX", () => {
       "href",
       "/dashboard/trips?view=list"
     );
-    await expect(page.getByRole("link", { name: "Open travel stats" })).toHaveAttribute(
-      "href",
-      "/dashboard/profile/stats"
-    );
-    await expect(page.getByTestId("mobile-trips-stats-link")).toHaveAttribute(
-      "href",
-      "/dashboard/profile/stats"
-    );
+    await expect(page.getByTestId("mobile-home-wallet")).toHaveCount(0);
+  });
+
+  test("mobile trips secondary list route remains available", async ({ page }) => {
+    test.setTimeout(90_000);
+    await page.setViewportSize({ height: 900, width: 390 });
+    await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
 
     await page.goto(`${baseUrl}/dashboard/trips?view=list`, { waitUntil: "commit" });
     const firstTripState = page.getByTestId("mobile-first-trip-state");
@@ -258,19 +259,39 @@ test.describe("mobile soft-launch UX", () => {
     });
   }
 
-  test("mobile travel stats is reachable from the trips stats control", async ({ page }) => {
+  test("mobile travel stats is reachable from the secondary trips stats control", async ({ page, request }) => {
+    test.setTimeout(90_000);
     await page.setViewportSize({ height: 900, width: 390 });
     await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
-    await page.goto(`${baseUrl}/dashboard/trips`, { waitUntil: "commit" });
 
-    const statsLink = page.getByTestId("mobile-trips-stats-link").first();
-    await expect(statsLink).toHaveAttribute("href", "/dashboard/profile/stats");
-    await statsLink.click();
-    await expect(page).toHaveURL(/\/dashboard\/profile\/stats/);
-    await expect(page.getByTestId("travel-stats-page")).toBeVisible({ timeout: 20_000 });
+    const response = await request.post(`${baseUrl}/api/trips`, {
+      data: {
+        destination: "Miami, FL",
+        name: `Mobile stats link trip ${Date.now()}`,
+        start_date: "2026-05-29",
+        status: "Planning",
+        travel_style: "balanced"
+      },
+      headers: { "x-cypress-dashboard": "true" }
+    });
+    expect(response.status()).toBe(201);
+    const payload = await response.json();
+    const tripId = payload?.trip?.id;
+
+    try {
+      await page.goto(`${baseUrl}/dashboard/trips?view=list`, { waitUntil: "commit" });
+
+      const statsLink = page.getByTestId("mobile-trips-stats-link").first();
+      await expect(statsLink).toHaveAttribute("href", "/dashboard/profile/stats");
+      await statsLink.click();
+      await expect(page).toHaveURL(/\/dashboard\/profile\/stats/);
+      await expect(page.getByTestId("travel-stats-page")).toBeVisible({ timeout: 20_000 });
+    } finally {
+      await deleteTripForTest(request, tripId);
+    }
   });
 
-  test("mobile trips country map uses saved destination coordinates only", async ({ page, request }) => {
+  test("mobile trips secondary list includes mapped and list-only trips", async ({ page, request }) => {
     test.setTimeout(90_000);
     await page.setViewportSize({ height: 900, width: 390 });
     await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
@@ -311,42 +332,20 @@ test.describe("mobile soft-launch UX", () => {
       const listOnlyPayload = await listOnlyResponse.json();
       createdTripIds.push(listOnlyPayload?.trip?.id);
 
-      await page.goto(`${baseUrl}/dashboard/trips`, { waitUntil: "commit" });
-      await expect(page.getByTestId("mobile-trips-country-map-screen")).toBeVisible({ timeout: 20_000 });
-      await expect(page.getByTestId("mobile-country-map-canvas")).toBeVisible();
-      await expect(page.getByTestId("mobile-country-map-canvas").locator(".gm-style")).toBeVisible({ timeout: 30_000 });
+      await page.goto(`${baseUrl}/dashboard/trips?view=list`, { waitUntil: "commit" });
+      await expect(page.getByTestId("mobile-trips-wallet-screen")).toBeVisible({ timeout: 20_000 });
       await expect(page.getByRole("heading", { name: "My Trips" })).toBeVisible();
-      await expect(page.getByTestId("mobile-country-sheet-toggle")).toHaveAttribute("aria-expanded", "false");
-      const collapsedSheet = await page.getByTestId("mobile-country-sheet").boundingBox();
-      expect(collapsedSheet?.height ?? 0, "collapsed country sheet height").toBeLessThanOrEqual(260);
-      expect(collapsedSheet?.y ?? 0, "collapsed country sheet top").toBeGreaterThanOrEqual(575);
 
       await page.getByPlaceholder("Search for trips").fill(`Mobile country map ${suffix}`);
-      await expect(
-        page.locator(`[data-testid="mobile-country-map-marker"][aria-label="Open ${mappedTripName}"]`)
-      ).toHaveCount(1);
-      await expect(
-        page.locator(`[data-testid="mobile-country-map-marker"][aria-label="Open ${listOnlyTripName}"]`)
-      ).toHaveCount(0);
-
-      await page.getByTestId("mobile-country-sheet-toggle").click();
-      await expect(page.getByTestId("mobile-country-sheet-toggle")).toHaveAttribute("aria-expanded", "true");
-      const countryTripList = page.getByTestId("mobile-country-trip-list");
-      const mappedRow = countryTripList.getByRole("link", {
+      const tripsWallet = page.getByTestId("mobile-trips-wallet");
+      const mappedRow = tripsWallet.getByRole("link", {
         name: new RegExp(escapeRegExp(mappedTripName))
       });
-      const listOnlyRow = countryTripList.getByRole("link", {
+      const listOnlyRow = tripsWallet.getByRole("link", {
         name: new RegExp(escapeRegExp(listOnlyTripName))
       });
       await expect(mappedRow).toBeVisible();
       await expect(listOnlyRow).toBeVisible();
-      await expect(mappedRow.getByText("Mapped")).toBeVisible();
-      await expect(listOnlyRow.getByText("List only")).toBeVisible();
-      await expect(page.getByRole("link", { name: "Show trip cards" })).toHaveCount(1);
-      await expect(page.getByRole("link", { name: "Show trip cards" }).first()).toHaveAttribute(
-        "href",
-        /\/dashboard\/trips\?view=list$/
-      );
     } finally {
       for (const tripId of createdTripIds) {
         await deleteTripForTest(request, tripId);

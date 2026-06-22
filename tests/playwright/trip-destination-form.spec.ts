@@ -23,7 +23,7 @@ test("trip destination supports manual entry and resolved Google metadata", asyn
 
   try {
     await page.setExtraHTTPHeaders(dashboardHeaders);
-    await page.goto(`${baseUrl}/dashboard/trips#new-trip`);
+    await page.goto(`${baseUrl}/dashboard/trips?view=list#new-trip`);
 
     await expect(page.getByRole("heading", { name: "My Trips" })).toBeVisible();
     await page.getByLabel("Trip name").fill(manualTripName);

@@ -25,7 +25,7 @@ export function MobileHomeWallet({
     metrics.find((metric) => metric.label === "Imports waiting")?.value ??
     "0";
   const ideasWaitingCount = Number.parseInt(importsWaiting.replace(/[^\d]/g, ""), 10) || 0;
-  const primaryHref = latestTrip ? latestTrip.href : "/dashboard/trips#new-trip";
+  const primaryHref = latestTrip ? latestTrip.href : "/dashboard/trips?view=list#new-trip";
   const primaryLabel = latestTrip ? "Continue trip" : "Create trip";
   const primaryMeta = latestTrip
     ? `${latestTrip.name} · ${latestTrip.destination}`

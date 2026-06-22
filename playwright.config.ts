@@ -11,12 +11,13 @@ export default defineConfig({
     baseURL
   },
   webServer: {
-    command: `npm run dev -- -H 127.0.0.1 -p ${port}`,
+    command: `PATH="/Users/fragoso/.nvm/versions/node/v20.20.2/bin:$PATH" ./node_modules/.bin/next dev --webpack -H 127.0.0.1 -p ${port}`,
     env: {
+      ALLOW_LOCAL_DASHBOARD_BYPASS: "true",
       ALLOW_TEST_DASHBOARD_BYPASS: "true",
       SOCIAL_IMPORT_WORKER_SECRET: socialImportWorkerSecret
     },
-    reuseExistingServer: false,
+    reuseExistingServer: process.env.PLAYWRIGHT_REUSE_EXISTING_SERVER === "true",
     timeout: 120_000,
     url: baseURL
   }

@@ -217,23 +217,25 @@ function CollapsedLauncher({
   primaryMeta: string;
 }) {
   return (
-    <div className="mt-5" data-testid="mobile-home-actions">
-      <div className="grid grid-cols-[3.8rem_minmax(0,1fr)_3.8rem] items-center gap-3" data-testid="mobile-home-compact-actions">
-        <CircleAction href="/dashboard/search" icon={<Search />} label="Search" />
-        <Link
-          aria-label={primaryLabel}
-          className="grid h-14 min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-3 rounded-full bg-white px-4 text-left text-slate-950 shadow-[0_18px_44px_rgba(15,23,42,0.08)] ring-1 ring-slate-100 transition hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-orange-300/20"
-          href={primaryHref}
-        >
-          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-orange-50 text-orange-500 shadow-sm">
-            <Plane className="h-5 w-5" aria-hidden="true" />
-          </span>
-          <span className="min-w-0">
-            <span className="block truncate text-[0.95rem] font-black">{primaryLabel}</span>
-            <span className="block truncate text-[0.72rem] font-bold text-slate-500">{primaryMeta}</span>
-          </span>
-        </Link>
-        <CircleAction href={dashboardActionRoutes.trips.create} icon={<Plus />} label="Add" primary />
+    <div className="mt-5" data-testid="ios-launch-sheet-collapsed">
+      <div data-testid="mobile-home-actions">
+        <div className="grid grid-cols-[3.8rem_minmax(0,1fr)_3.8rem] items-center gap-3" data-testid="mobile-home-compact-actions">
+          <CircleAction href="/dashboard/search" icon={<Search />} label="Search" />
+          <Link
+            aria-label={primaryLabel}
+            className="grid h-14 min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-3 rounded-full bg-white px-4 text-left text-slate-950 shadow-[0_18px_44px_rgba(15,23,42,0.08)] ring-1 ring-slate-100 transition hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-orange-300/20"
+            href={primaryHref}
+          >
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-orange-50 text-orange-500 shadow-sm">
+              <Plane className="h-5 w-5" aria-hidden="true" />
+            </span>
+            <span className="min-w-0">
+              <span className="block truncate text-[0.95rem] font-black">{primaryLabel}</span>
+              <span className="block truncate text-[0.72rem] font-bold text-slate-500">{primaryMeta}</span>
+            </span>
+          </Link>
+          <CircleAction href={dashboardActionRoutes.trips.create} icon={<Plus />} label="Add" primary />
+        </div>
       </div>
     </div>
   );

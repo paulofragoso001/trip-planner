@@ -59,7 +59,7 @@ export const navSections: NavSection[] = [
           (pathname === "/dashboard" && view === "imports")
       },
       {
-        href: "/dashboard?view=trips",
+        href: "/dashboard/trips",
         icon: Plane,
         label: "Trips",
         match: (pathname, view) =>

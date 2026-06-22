@@ -29,7 +29,7 @@ test.describe("dashboard navigation and client-state actions", () => {
     await openDashboardRoute(page, "/dashboard");
     await expect(dashboardContent.getByTestId("home-primary-cta")).toHaveAttribute(
       "href",
-      /\/dashboard\/trips\/[^/]+|\/dashboard\/trips#new-trip/
+      /\/dashboard\/trips\/[^/]+|\/dashboard\/trips\?view=list#new-trip/
     );
   });
 
@@ -113,7 +113,7 @@ test.describe("dashboard navigation and client-state actions", () => {
   });
 
   test("visible enabled dashboard button controls have an affordance or explicit contract", async ({ page }) => {
-    const routes = ["/dashboard", "/dashboard?view=trips", "/dashboard/plan", "/dashboard/trips", "/dashboard/account"];
+    const routes = ["/dashboard", "/dashboard/plan", "/dashboard/trips", "/dashboard/account"];
     const allowedLabels = new Set([
       "Accept 15 Days Free",
       "Collapse sidebar",

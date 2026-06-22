@@ -27,7 +27,7 @@ export const dashboardActionRoutes = {
     terms: "/terms"
   },
   trips: {
-    create: "/dashboard/trips#new-trip",
+    create: "/dashboard/trips?view=list#new-trip",
     list: "/dashboard/trips",
     map: "/dashboard/map",
     stats: "/dashboard/profile/stats"
