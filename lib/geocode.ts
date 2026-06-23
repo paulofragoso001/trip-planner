@@ -1,34 +1,31 @@
-type GeocodeResponse = {
-  results?: Array<{
-    geometry?: {
-      location?: {
+type GeocodeApiResponse = {
+  data?: {
+    result?: {
+      coordinate?: {
         lat: number;
         lng: number;
-      };
-    };
-  }>;
-  status?: string;
+      } | null;
+    } | null;
+  } | null;
 };
 
 export async function geocodeAddress(address: string) {
-  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+  const normalizedAddress = address.trim();
 
-  if (!apiKey || !address.trim()) {
-    return null;
-  }
+  if (!normalizedAddress) return null;
 
-  const response = await fetch(
-    `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(
-      address
-    )}&key=${apiKey}`
-  );
+  const response = await fetch("/api/travel-data/geocode", {
+    body: JSON.stringify({ address: normalizedAddress }),
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json"
+    },
+    method: "POST"
+  });
 
-  if (!response.ok) {
-    return null;
-  }
+  if (!response.ok) return null;
 
-  const data = (await response.json()) as GeocodeResponse;
-  const location = data.results?.[0]?.geometry?.location;
+  const payload = (await response.json().catch(() => null)) as GeocodeApiResponse | null;
 
-  return location ? { lat: location.lat, lng: location.lng } : null;
+  return payload?.data?.result?.coordinate ?? null;
 }

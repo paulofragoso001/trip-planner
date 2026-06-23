@@ -1,6 +1,7 @@
 import "server-only";
 
 import { ApiError } from "@/lib/api/errors";
+import { summarizeRouteWithGoogleDistanceMatrix } from "@/lib/google/data-services";
 
 type SupabaseLike = {
   from: (table: "trip_segments" | "trips") => any;
@@ -332,50 +333,28 @@ async function summarizeWithGoogleDistanceMatrix(
   day: string,
   daySegments: RouteSegment[]
 ): Promise<RouteSummary | null> {
-  const apiKey =
-    process.env.GOOGLE_ROUTES_API_KEY ||
-    process.env.GOOGLE_PLACES_API_KEY ||
-    process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
   const geoSegments = daySegments.filter(hasCoordinates);
 
-  if (!apiKey || geoSegments.length < 2) return null;
-
-  const origins = geoSegments.slice(0, -1).map(formatLatLng).join("|");
-  const destinations = geoSegments.slice(1).map(formatLatLng).join("|");
-  const url = new URL("https://maps.googleapis.com/maps/api/distancematrix/json");
-  url.searchParams.set("origins", origins);
-  url.searchParams.set("destinations", destinations);
-  url.searchParams.set("mode", process.env.GOOGLE_ROUTE_MODE || "driving");
-  url.searchParams.set("units", "metric");
-  url.searchParams.set("key", apiKey);
+  if (geoSegments.length < 2) return null;
 
   try {
-    const response = await fetch(url, { cache: "no-store" });
-    if (!response.ok) return null;
-
-    const payload = await response.json();
-    if (payload.status !== "OK" || !Array.isArray(payload.rows)) return null;
-
-    let distanceMeters = 0;
-    let durationSeconds = 0;
-
-    for (let index = 0; index < geoSegments.length - 1; index += 1) {
-      const element = payload.rows[index]?.elements?.[index];
-      if (element?.status !== "OK") return null;
-      distanceMeters += Number(element.distance?.value || 0);
-      durationSeconds += Number(element.duration?.value || 0);
-    }
-
-    const estimatedDurationMinutes = Math.round(durationSeconds / 60);
+    const summary = await summarizeRouteWithGoogleDistanceMatrix(
+      geoSegments.map((segment) => ({ lat: segment.lat!, lng: segment.lng! }))
+    );
+    if (!summary) return null;
 
     return {
       day,
-      estimatedDurationMinutes,
+      estimatedDurationMinutes: Math.round(summary.durationSeconds / 60),
       itemCount: daySegments.length,
       orderedItemIds: daySegments.map((segment) => segment.id),
-      provider: "google_distance_matrix",
-      totalDistanceMeters: Math.round(distanceMeters),
-      warnings: buildRouteWarnings(daySegments.length, distanceMeters, estimatedDurationMinutes)
+      provider: summary.provider,
+      totalDistanceMeters: summary.distanceMeters,
+      warnings: buildRouteWarnings(
+        daySegments.length,
+        summary.distanceMeters,
+        Math.round(summary.durationSeconds / 60)
+      )
     };
   } catch {
     return null;
@@ -437,10 +416,6 @@ function distanceBetween(a: RouteSegment, b: RouteSegment) {
 
 function hasCoordinates(segment: RouteSegment) {
   return typeof segment.lat === "number" && typeof segment.lng === "number";
-}
-
-function formatLatLng(segment: RouteSegment) {
-  return `${segment.lat},${segment.lng}`;
 }
 
 function toRadians(value: number) {

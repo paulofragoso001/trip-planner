@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getGoogleDataServiceConfig } from "@/lib/google/data-services";
 import { validateEnv } from "@/lib/server/env";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getGooglePlaceResolutionConfig } from "@/lib/travel-data/providers/google-places";
@@ -86,10 +87,12 @@ async function checkFlightRefreshQueue() {
 }
 
 async function checkTravelProviders() {
+  const googleDataServices = getGoogleDataServiceConfig();
   const googlePlaces = getGooglePlaceResolutionConfig();
 
   if (!googlePlaces.configured) {
     return {
+      googleDataServices,
       googlePlaces: {
         configured: false,
         serverKeyConfigured: false
@@ -100,6 +103,7 @@ async function checkTravelProviders() {
   }
 
   return {
+    googleDataServices,
     googlePlaces,
     ok: true
   };
