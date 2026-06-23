@@ -3,8 +3,8 @@
 import { LocateFixed, Map } from "lucide-react";
 import Link from "next/link";
 import type { DashboardData } from "@/app/dashboard/loader";
-import { MobileHomeContent } from "@/components/dashboard/mobile-home-content";
 import { Photorealistic3DHomeHero } from "@/components/dashboard/photorealistic-3d-home-hero";
+import { TravelWalletSheet } from "@/components/dashboard/travel-wallet-sheet";
 import { cn } from "@/components/trip-ui";
 import { dashboardActionRoutes } from "@/lib/dashboard/action-routes";
 
@@ -51,7 +51,7 @@ export function MobileHomeWallet({
         className="launch-bottom-sheet pointer-events-none absolute inset-x-0 bottom-0 z-30"
         data-testid="mobile-home-wallet-stage"
       >
-        <MobileHomeContent
+        <TravelWalletSheet
           ideasWaitingCount={ideasWaitingCount}
           primaryHref={primaryHref}
           primaryLabel={primaryLabel}

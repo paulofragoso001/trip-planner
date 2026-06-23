@@ -4,10 +4,12 @@ import { BarChart3, ChevronDown, LocateFixed, Map as MapIcon, Plus, Search, Sett
 import { GoogleMap, OverlayView } from "@react-google-maps/api";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { type RefObject, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import GoogleMapsProvider from "@/components/GoogleMapsProvider";
 import { TripCreateForm } from "@/components/dashboard/trip-create-form";
+import { TravelWalletSheet } from "@/components/dashboard/travel-wallet-sheet";
 import { cn } from "@/components/trip-ui";
+import type { DashboardRecentTripView } from "@/app/dashboard/loader";
 import type { TripsData } from "@/app/dashboard/trips/loader";
 import { dashboardActionRoutes } from "@/lib/dashboard/action-routes";
 
@@ -58,18 +60,8 @@ export function MobileTripsWallet({ error, trips }: MobileTripsWalletProps) {
   if (!isListView) {
     return (
       <MobileTripsCountriesMap
-        activeYear={activeYear}
         activeYearTrips={countryMapTrips}
-        createOpen={createOpen}
-        createRef={createRef}
-        error={error}
         hydrated={hydrated}
-        onCreate={openCreateFlow}
-        query={query}
-        setCreateOpen={setCreateOpen}
-        setQuery={setQuery}
-        setSelectedYear={setSelectedYear}
-        years={years}
       />
     );
   }
@@ -210,42 +202,26 @@ export function MobileTripsWallet({ error, trips }: MobileTripsWalletProps) {
 }
 
 type MobileTripsCountriesMapProps = {
-  activeYear: string;
   activeYearTrips: Trip[];
-  createOpen: boolean;
-  createRef: RefObject<HTMLDivElement | null>;
-  error: string | null;
   hydrated: boolean;
-  onCreate: () => void;
-  query: string;
-  setCreateOpen: (value: boolean | ((current: boolean) => boolean)) => void;
-  setQuery: (value: string) => void;
-  setSelectedYear: (value: string) => void;
-  years: string[];
 };
 
 function MobileTripsCountriesMap({
-  activeYear,
   activeYearTrips,
-  createOpen,
-  createRef,
-  error,
-  hydrated,
-  onCreate,
-  query,
-  setCreateOpen,
-  setQuery,
-  setSelectedYear,
-  years
+  hydrated
 }: MobileTripsCountriesMapProps) {
   const markerTrips = activeYearTrips.filter(hasTripCoordinates);
-  const hasSearchQuery = query.trim().length > 0;
-  const visibleTripRows = hasSearchQuery ? activeYearTrips : activeYearTrips.slice(0, 5);
-  const [expanded, setExpanded] = useState(false);
+  const recentTrips = activeYearTrips.map(mapTripToWalletTrip);
+  const latestTrip = recentTrips[0] || null;
+  const primaryHref = latestTrip?.href || dashboardActionRoutes.trips.create;
+  const primaryLabel = latestTrip ? "Continue trip" : "Create trip";
+  const primaryMeta = latestTrip
+    ? `${latestTrip.name} · ${latestTrip.destination}`
+    : "Start a new travel wallet.";
 
   return (
     <section
-      className="relative isolate -mx-3 -mt-4 min-h-[calc(100dvh-3.5rem)] overflow-hidden bg-black text-white sm:-mx-6 sm:-mt-6 lg:hidden"
+      className="relative isolate -mx-3 -mt-4 min-h-[100dvh] overflow-hidden bg-black text-white sm:-mx-6 sm:-mt-6 lg:hidden"
       data-hydrated={hydrated ? "true" : "false"}
       data-testid="mobile-trips-country-map-screen"
     >
@@ -260,163 +236,26 @@ function MobileTripsCountriesMap({
           <MapIcon className="h-5 w-5" aria-hidden="true" />
         </Link>
         <button
-          aria-label={expanded ? "Collapse trip sheet" : "Locate trips"}
+          aria-label="Locate trips"
           className="grid h-12 w-12 place-items-center transition hover:bg-white/10 focus:outline-none focus:ring-4 focus:ring-orange-400/20"
-          onClick={() => setExpanded((current) => !current)}
+          onClick={() => {
+            window.dispatchEvent(new CustomEvent(dashboardActionRoutes.globe.locateUserEvent));
+          }}
           type="button"
         >
           <LocateFixed className="h-5 w-5" aria-hidden="true" />
         </button>
       </div>
 
-      <div className="absolute inset-x-0 bottom-0 z-20 pb-[calc(3.25rem+env(safe-area-inset-bottom))]">
-        <div
-          className={cn(
-            "mx-auto w-full overflow-y-auto rounded-t-[2rem] bg-black p-4 shadow-[0_-26px_80px_rgba(0,0,0,0.58)] ring-1 ring-white/10 transition-[max-height,border-radius] duration-300",
-            expanded ? "max-h-[72dvh] max-w-[31rem] border border-white/10 backdrop-blur-2xl" : "max-h-[13.75rem] max-w-none"
-          )}
-          data-testid="mobile-country-sheet"
-        >
-          <button
-            aria-expanded={expanded}
-            aria-label={expanded ? "Collapse trips map sheet" : "Expand trips map sheet"}
-            className="mx-auto mb-4 block h-1.5 w-14 rounded-full bg-white/45 transition hover:bg-white/70 focus:outline-none focus:ring-4 focus:ring-orange-400/20"
-            data-testid="mobile-country-sheet-toggle"
-            onClick={() => setExpanded((current) => !current)}
-            type="button"
-          />
-
-          <div className="flex min-h-11 items-center justify-between gap-3">
-            <Link
-              aria-label="Trip settings"
-              className="grid h-11 w-11 place-items-center rounded-full bg-orange-500/[0.14] text-orange-400 ring-1 ring-orange-400/[0.12] transition hover:bg-orange-500/20 focus:outline-none focus:ring-4 focus:ring-orange-400/20"
-              href={dashboardActionRoutes.settings.account}
-            >
-              <Settings className="h-5 w-5" aria-hidden="true" />
-            </Link>
-            <h1 className="text-center text-2xl font-black tracking-tight text-white sm:text-3xl">
-              My Trips
-            </h1>
-            <div className="flex items-center gap-2">
-              <Link
-                aria-label="Open travel stats"
-                className="grid h-11 w-11 place-items-center rounded-full bg-orange-500/[0.14] text-orange-400 ring-1 ring-orange-400/[0.12] transition hover:bg-orange-500/20 focus:outline-none focus:ring-4 focus:ring-orange-400/20"
-                data-testid="mobile-trips-stats-link"
-                href={dashboardActionRoutes.trips.stats}
-              >
-                <BarChart3 className="h-5 w-5" aria-hidden="true" />
-              </Link>
-              <button
-                aria-label="Create trip"
-                className="grid h-11 w-11 place-items-center rounded-full bg-orange-500/[0.14] text-orange-400 ring-1 ring-orange-400/[0.12] transition hover:bg-orange-500/20 focus:outline-none focus:ring-4 focus:ring-orange-400/20 disabled:cursor-wait disabled:opacity-60"
-                disabled={!hydrated}
-                onClick={() => {
-                  setExpanded(true);
-                  onCreate();
-                }}
-                type="button"
-              >
-                <Plus className="h-6 w-6" aria-hidden="true" />
-              </button>
-            </div>
-          </div>
-
-          <div className="mt-4 grid gap-3">
-            <label className="relative block">
-              <span className="sr-only">Search for trips</span>
-              <Search
-                className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-white/[0.42]"
-                aria-hidden="true"
-              />
-              <input
-                className="h-11 w-full rounded-full border border-white/[0.08] bg-white/[0.09] pl-12 pr-4 text-base font-semibold text-white shadow-inner shadow-black/30 outline-none placeholder:text-white/[0.42] focus:border-orange-300/50 focus:ring-4 focus:ring-orange-400/15"
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="Search for trips"
-                type="search"
-                value={query}
-              />
-            </label>
-
-            <label className="relative inline-flex w-fit items-center">
-              <span className="sr-only">Trip year</span>
-              <select
-                className="h-11 appearance-none rounded-full border border-transparent bg-transparent py-0 pl-0 pr-9 text-4xl font-black leading-none tracking-tight text-orange-500 outline-none focus:ring-4 focus:ring-orange-400/20"
-                onChange={(event) => setSelectedYear(event.target.value)}
-                value={activeYear}
-              >
-                {(years.length ? years : [activeYear]).map((year) => (
-                  <option className="bg-black text-white" key={year} value={year}>
-                    {year}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="pointer-events-none ml-[-2rem] h-6 w-6 text-orange-500" aria-hidden="true" />
-            </label>
-          </div>
-
-          {error ? (
-            <div className="mt-4 rounded-[1.5rem] border border-red-300/20 bg-red-950/50 p-4 text-sm font-bold text-red-100">
-              {error}
-            </div>
-          ) : null}
-
-          <div className={cn("grid transition", expanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]")}>
-            <div className="min-h-0 overflow-hidden">
-              <div className="mt-4 grid gap-3" data-testid="mobile-country-trip-list">
-                {activeYearTrips.length ? (
-                  visibleTripRows.map((trip) => (
-                    <MobileCountryTripRow key={trip.id} trip={trip} />
-                  ))
-                ) : (
-                  <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.08] p-4 text-sm font-bold text-white/70">
-                    No matching trips.
-                  </div>
-                )}
-              </div>
-
-              {!hasSearchQuery && activeYearTrips.length > 5 ? (
-                <Link
-                  className="mt-3 inline-flex min-h-11 items-center justify-center rounded-full bg-white/10 px-4 text-sm font-black text-white transition hover:bg-white/15 focus:outline-none focus:ring-4 focus:ring-orange-400/20"
-                  href="/dashboard/trips?view=list"
-                >
-                  View all trip cards
-                </Link>
-              ) : null}
-
-              {markerTrips.length === 0 && activeYearTrips.length > 0 ? (
-                <div className="mt-4 rounded-[1.5rem] border border-orange-300/15 bg-orange-500/[0.1] p-4 text-xs font-bold leading-5 text-orange-100">
-                  Trips without saved destination coordinates stay in this list and are not shown on the map.
-                </div>
-              ) : null}
-
-              <section
-                className={cn(
-                  "mt-4 grid gap-3 rounded-[1.75rem] border border-white/10 bg-white/[0.06] p-3",
-                  createOpen ? "shadow-[0_26px_70px_rgba(0,0,0,0.34)]" : "p-2"
-                )}
-                id="mobile-new-trip"
-                ref={createRef}
-              >
-                <button
-                  className="flex min-h-12 w-full items-center justify-between gap-3 rounded-[1.35rem] px-3 text-left text-sm font-black text-white transition hover:bg-white/[0.08] focus:outline-none focus:ring-4 focus:ring-orange-400/15"
-                  disabled={!hydrated}
-                  onClick={() => setCreateOpen((current) => !current)}
-                  type="button"
-                >
-                  <span>{createOpen ? "Close trip setup" : "Create trip"}</span>
-                  <span className="grid h-9 w-9 place-items-center rounded-full bg-orange-500/[0.18] text-orange-300">
-                    <Plus className={cn("h-5 w-5 transition", createOpen && "rotate-45")} aria-hidden="true" />
-                  </span>
-                </button>
-                {createOpen ? (
-                  <div className="rounded-[1.5rem] bg-white p-3 text-slate-950 shadow-2xl">
-                    <TripCreateForm mode="mobile-pass" redirectOnSuccess />
-                  </div>
-                ) : null}
-              </section>
-            </div>
-          </div>
-        </div>
+      <div className="absolute inset-x-0 bottom-0 z-20" data-testid="mobile-country-sheet">
+        <TravelWalletSheet
+          ideasWaitingCount={0}
+          initialSheetState="collapsed"
+          primaryHref={primaryHref}
+          primaryLabel={primaryLabel}
+          primaryMeta={primaryMeta}
+          recentTrips={recentTrips}
+        />
       </div>
     </section>
   );
@@ -547,42 +386,6 @@ function fitCountryMap(map: google.maps.Map | null, trips: Trip[]) {
   map.fitBounds(bounds, { bottom: 260, left: 64, right: 64, top: 96 });
 }
 
-function MobileCountryTripRow({ trip }: { trip: Trip }) {
-  const hasCoordinates = hasTripCoordinates(trip);
-
-  return (
-    <Link
-      className="grid min-h-[4.75rem] grid-cols-[3.5rem_minmax(0,1fr)] items-center gap-3 rounded-[1.35rem] border border-white/10 bg-white/[0.06] p-2 text-white transition hover:bg-white/[0.1] focus:outline-none focus:ring-4 focus:ring-orange-400/20"
-      href={trip.href}
-    >
-      <div className="relative h-14 w-14 overflow-hidden rounded-2xl bg-white/10">
-        {trip.imageUrl ? (
-          <img alt="" className="h-full w-full object-cover" src={trip.imageUrl} />
-        ) : (
-          <div className="grid h-full w-full place-items-center text-xl">
-            {destinationFlag(trip.destination)}
-          </div>
-        )}
-      </div>
-      <div className="min-w-0">
-        <div className="flex min-w-0 items-center justify-between gap-2">
-          <p className="truncate text-sm font-black text-white">{trip.name}</p>
-          <span className={cn(
-            "shrink-0 rounded-full px-2 py-1 text-[0.65rem] font-black",
-            hasCoordinates ? "bg-emerald-400/15 text-emerald-200" : "bg-white/10 text-white/[0.58]"
-          )}>
-            {hasCoordinates ? "Mapped" : "List only"}
-          </span>
-        </div>
-        <p className="mt-1 truncate text-xs font-semibold text-white/[0.58]">{trip.destination}</p>
-        <p className="mt-1 truncate text-xs font-semibold text-orange-300/80">
-          {tripStatusLabel(trip)} · {trip.dateRange}
-        </p>
-      </div>
-    </Link>
-  );
-}
-
 function normalizeTripSearch(value: string) {
   return value
     .toLowerCase()
@@ -701,6 +504,17 @@ function hasTripCoordinates(trip: Trip) {
     typeof trip.destinationLng === "number" &&
     Number.isFinite(trip.destinationLng)
   );
+}
+
+function mapTripToWalletTrip(trip: Trip): DashboardRecentTripView {
+  return {
+    dateRange: trip.dateRange,
+    destination: trip.destination,
+    href: trip.href,
+    id: trip.id,
+    name: trip.name,
+    status: tripStatusLabel(trip)
+  };
 }
 
 function destinationMapLabel(trip: Trip) {

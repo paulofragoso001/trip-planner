@@ -182,13 +182,16 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page).toHaveURL(/\/dashboard\/trips$/);
     await expect(page.getByTestId("mobile-trips-country-map-screen")).toBeVisible({ timeout: 20_000 });
     await expect(page.getByTestId("mobile-country-map-canvas")).toBeVisible();
+    await expect(page.getByTestId("mobile-home-wallet-content")).toBeVisible();
+    await expect(page.getByTestId("mobile-home-wallet-content")).toHaveAttribute("data-sheet-state", "collapsed");
+    await expect(page.getByTestId("ios-launch-sheet-collapsed")).toBeVisible();
     await expect(page.getByRole("heading", { name: "My Trips" })).toBeVisible();
-    await expect(page.getByPlaceholder("Search for trips")).toBeVisible();
     await expect(page.getByRole("link", { name: "Show trip cards" })).toHaveAttribute(
       "href",
       "/dashboard/trips?view=list"
     );
     await expect(page.getByTestId("mobile-home-wallet")).toHaveCount(0);
+    await expect(page.getByTestId("mobile-country-sheet").getByTestId("mobile-home-wallet-content")).toHaveCount(1);
   });
 
   test("mobile trips secondary list route remains available", async ({ page }) => {

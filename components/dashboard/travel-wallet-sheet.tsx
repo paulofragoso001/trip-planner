@@ -1,0 +1,719 @@
+"use client";
+
+import {
+  Bell,
+  BookOpen,
+  Briefcase,
+  CalendarDays,
+  ChevronDown,
+  ChevronRight,
+  Cloud,
+  CreditCard,
+  Globe2,
+  Languages,
+  LifeBuoy,
+  Mail,
+  MessageSquare,
+  PackageOpen,
+  Plane,
+  Plus,
+  RefreshCw,
+  Search,
+  Send,
+  Settings,
+  Shield,
+  SlidersHorizontal,
+  Sparkles,
+  Star,
+  Upload,
+  Wallet,
+  X
+} from "lucide-react";
+import Link from "next/link";
+import { useEffect, useRef, useState } from "react";
+import type { PointerEvent, ReactNode } from "react";
+import type { DashboardRecentTripView } from "@/app/dashboard/loader";
+import { cn } from "@/components/trip-ui";
+import { dashboardActionRoutes } from "@/lib/dashboard/action-routes";
+
+type SheetState = "collapsed" | "expanded" | "settings";
+
+export function TravelWalletSheet({
+  ideasWaitingCount,
+  initialSheetState = "collapsed",
+  primaryHref,
+  primaryLabel,
+  primaryMeta,
+  recentTrips
+}: {
+  ideasWaitingCount: number;
+  initialSheetState?: SheetState;
+  primaryHref: string;
+  primaryLabel: string;
+  primaryMeta: string;
+  recentTrips: DashboardRecentTripView[];
+}) {
+  const [sheetState, setSheetState] = useState<SheetState>(initialSheetState);
+  const [trialSheetCopy, setTrialSheetCopy] = useState<string | null>(null);
+  const dragStartY = useRef<number | null>(null);
+  const ignoreNextHandleClick = useRef(false);
+  const isCollapsed = sheetState === "collapsed";
+  const isExpanded = sheetState === "expanded";
+  const isSettings = sheetState === "settings";
+  const currentYear = new Date().getFullYear();
+
+  useEffect(() => {
+    setSheetState(initialSheetState);
+  }, [initialSheetState]);
+
+  function expandTrips() {
+    setSheetState("expanded");
+  }
+
+  function collapseSheet() {
+    setSheetState("collapsed");
+  }
+
+  function handlePointerDown(event: PointerEvent<HTMLButtonElement>) {
+    dragStartY.current = event.clientY;
+  }
+
+  function handlePointerUp(event: PointerEvent<HTMLButtonElement>) {
+    const startY = dragStartY.current;
+    dragStartY.current = null;
+
+    if (startY === null) {
+      return;
+    }
+
+    const deltaY = event.clientY - startY;
+    if (Math.abs(deltaY) < 18) {
+      setSheetState((current) => (current === "collapsed" ? "expanded" : "collapsed"));
+      ignoreNextHandleClick.current = true;
+      return;
+    }
+
+    setSheetState(deltaY < 0 ? "expanded" : "collapsed");
+    ignoreNextHandleClick.current = true;
+  }
+
+  function handleHandleClick() {
+    if (ignoreNextHandleClick.current) {
+      ignoreNextHandleClick.current = false;
+      return;
+    }
+
+    setSheetState((current) => (current === "collapsed" ? "expanded" : "collapsed"));
+  }
+
+  return (
+    <section
+      className="wayline-home-content-reveal pointer-events-auto relative z-10"
+      data-sheet-state={sheetState}
+      data-testid="mobile-home-wallet-content"
+    >
+      <div
+        className={cn(
+          "mx-auto overflow-hidden bg-white text-slate-950 shadow-[0_-24px_70px_rgba(0,0,0,0.34)] transition-[height,max-height,border-radius] duration-300 ease-out",
+          isCollapsed
+            ? "max-h-[11.25rem] w-full max-w-none rounded-t-[2rem] min-[390px]:rounded-t-[2.2rem]"
+            : "h-[100dvh] min-h-[100dvh] max-h-[100dvh] w-full max-w-none rounded-t-[2rem] min-[390px]:rounded-t-[2.25rem]"
+        )}
+        data-testid="ios-launch-sheet"
+      >
+        <button
+          type="button"
+          aria-expanded={!isCollapsed}
+          aria-controls="mobile-launch-expanded-menu"
+          aria-label={isCollapsed ? "Expand trips sheet" : "Collapse trips sheet"}
+          className="mx-auto grid h-7 w-24 place-items-center rounded-full focus:outline-none focus:ring-4 focus:ring-orange-300/20"
+          data-testid="ios-launch-sheet-handle"
+          onClick={handleHandleClick}
+          onPointerDown={handlePointerDown}
+          onPointerUp={handlePointerUp}
+        >
+          <span className="h-1 w-10 rounded-full bg-slate-300" aria-hidden="true" />
+        </button>
+
+        {isSettings ? (
+          <SettingsPanel
+            onClose={collapseSheet}
+            onOpenTrial={() =>
+              setTrialSheetCopy("Your 15 day Wayline Pro trial will be available from billing settings soon.")
+            }
+          />
+        ) : (
+          <div
+            id="mobile-launch-expanded-menu"
+            className={cn("px-4 pb-4 min-[390px]:px-5", isCollapsed ? "pt-0" : "pt-0")}
+          >
+            <header className="flex items-start justify-between gap-3">
+              <button
+                type="button"
+                aria-expanded={!isCollapsed}
+                aria-label={isCollapsed ? "Open My Trips" : "Collapse My Trips"}
+                className="min-w-0 flex-1 text-left focus:outline-none focus:ring-4 focus:ring-orange-300/20"
+                onClick={isCollapsed ? expandTrips : collapseSheet}
+              >
+                <span className="flex min-w-0 items-center gap-2">
+                  <h1 className="truncate text-[clamp(2.45rem,12vw,3.35rem)] font-black leading-none tracking-normal text-slate-950">
+                    My Trips
+                  </h1>
+                  <ChevronDown
+                    aria-hidden="true"
+                    className={cn("mt-2 h-6 w-6 shrink-0 text-slate-400 transition-transform", isExpanded && "rotate-180")}
+                  />
+                </span>
+              </button>
+              <button
+                type="button"
+                aria-label="Open settings"
+                className="grid h-[3.25rem] w-[3.25rem] shrink-0 place-items-center rounded-full bg-orange-50 text-orange-500 transition hover:bg-orange-100 focus:outline-none focus:ring-4 focus:ring-orange-300/20"
+                onClick={() => setSheetState("settings")}
+              >
+                <Settings className="h-6 w-6" aria-hidden="true" />
+              </button>
+            </header>
+
+            {isCollapsed ? (
+              <CollapsedLauncher
+                primaryHref={primaryHref}
+                primaryLabel={primaryLabel}
+                primaryMeta={primaryMeta}
+              />
+            ) : (
+              <ExpandedTrips
+                currentYear={currentYear}
+                ideasWaitingCount={ideasWaitingCount}
+                primaryHref={primaryHref}
+                primaryLabel={primaryLabel}
+                primaryMeta={primaryMeta}
+                recentTrips={recentTrips}
+                onOpenTrial={() =>
+                  setTrialSheetCopy("Your 15 day Wayline Pro trial will be available from billing settings soon.")
+                }
+              />
+            )}
+          </div>
+        )}
+      </div>
+      {trialSheetCopy ? (
+        <TrialAvailabilitySheet
+          message={trialSheetCopy}
+          onClose={() => setTrialSheetCopy(null)}
+        />
+      ) : null}
+    </section>
+  );
+}
+
+function CollapsedLauncher({
+  primaryHref,
+  primaryLabel,
+  primaryMeta
+}: {
+  primaryHref: string;
+  primaryLabel: string;
+  primaryMeta: string;
+}) {
+  return (
+    <div className="mt-5" data-testid="ios-launch-sheet-collapsed">
+      <div data-testid="mobile-home-actions">
+        <div className="grid grid-cols-[3.8rem_minmax(0,1fr)_3.8rem] items-center gap-3" data-testid="mobile-home-compact-actions">
+          <CircleAction href="/dashboard/search" icon={<Search />} label="Search" />
+          <Link
+            aria-label={primaryLabel}
+            className="grid h-14 min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-3 rounded-full bg-white px-4 text-left text-slate-950 shadow-[0_18px_44px_rgba(15,23,42,0.08)] ring-1 ring-slate-100 transition hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-orange-300/20"
+            href={primaryHref}
+          >
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-orange-50 text-orange-500 shadow-sm">
+              <Plane className="h-5 w-5" aria-hidden="true" />
+            </span>
+            <span className="min-w-0">
+              <span className="block truncate text-[0.95rem] font-black">{primaryLabel}</span>
+              <span className="block truncate text-[0.72rem] font-bold text-slate-500">{primaryMeta}</span>
+            </span>
+          </Link>
+          <CircleAction href={dashboardActionRoutes.trips.create} icon={<Plus />} label="Add" primary />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ExpandedTrips({
+  currentYear,
+  ideasWaitingCount,
+  primaryHref,
+  primaryLabel,
+  primaryMeta,
+  recentTrips,
+  onOpenTrial
+}: {
+  currentYear: number;
+  ideasWaitingCount: number;
+  onOpenTrial: () => void;
+  primaryHref: string;
+  primaryLabel: string;
+  primaryMeta: string;
+  recentTrips: DashboardRecentTripView[];
+}) {
+  const featuredTrip = recentTrips[0] || null;
+  const [showEmailAutomation, setShowEmailAutomation] = useState(true);
+  const [showProFeature, setShowProFeature] = useState(true);
+
+  return (
+    <div className="mt-5 h-[calc(100dvh-6.75rem)] overflow-y-auto pb-[calc(7rem+env(safe-area-inset-bottom))]" data-testid="ios-launch-sheet-expanded">
+      <div className="inline-flex rounded-full bg-orange-50 px-4 py-2 text-xl font-black text-orange-500">
+        {currentYear}
+      </div>
+      <div className="mt-8 flex items-center gap-3 text-xl text-slate-400">
+        <span>Upcoming</span>
+        <span className="h-px flex-1 bg-slate-300" aria-hidden="true" />
+      </div>
+      <TripFeatureCard
+        href={featuredTrip?.href || primaryHref}
+        name={featuredTrip?.destination || featuredTrip?.name || stripPrimaryLabel(primaryMeta) || primaryLabel}
+        dateRange={featuredTrip?.dateRange || primaryMeta}
+        status={featuredTrip?.status || ""}
+      />
+      <PlanActionsGrid ideasWaitingCount={ideasWaitingCount} />
+      {showProFeature ? (
+        <ProFeatureCard
+          onDismiss={() => setShowProFeature(false)}
+          onOpenTrial={onOpenTrial}
+        />
+      ) : null}
+      {showEmailAutomation ? (
+        <EmailAutomationCard onDismiss={() => setShowEmailAutomation(false)} />
+      ) : null}
+      <div className="mt-5 grid grid-cols-[3.8rem_minmax(0,1fr)_3.8rem] items-center gap-3">
+        <CircleAction href="/dashboard/search" icon={<Search />} label="Search" />
+        <Link
+          className="grid h-12 min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-2 rounded-full bg-white px-4 font-black text-slate-950 shadow-[0_18px_44px_rgba(15,23,42,0.08)] ring-1 ring-slate-100 transition hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-orange-300/20"
+          href={dashboardActionRoutes.trips.stats}
+        >
+          <Globe2 className="h-5 w-5 shrink-0 text-slate-950" aria-hidden="true" />
+          <span className="truncate">Travel Book</span>
+        </Link>
+        <CircleAction href={dashboardActionRoutes.trips.create} icon={<Plus />} label="Add" primary />
+      </div>
+    </div>
+  );
+}
+
+function PlanActionsGrid({ ideasWaitingCount }: { ideasWaitingCount: number }) {
+  return (
+    <div className="mt-5 grid grid-cols-2 gap-3" data-testid="mobile-home-plan-actions">
+      <SheetActionLink
+        href={dashboardActionRoutes.plan.addIdea}
+        icon={<Plus />}
+        label="Add idea"
+        meta="Save a note, link, or place"
+      />
+      <SheetActionLink
+        href={dashboardActionRoutes.plan.reviewPlaces}
+        icon={<Sparkles />}
+        label="Review places"
+        meta={
+          ideasWaitingCount > 0
+            ? `${ideasWaitingCount} item${ideasWaitingCount === 1 ? "" : "s"} waiting`
+            : "Promote saved ideas"
+        }
+      />
+    </div>
+  );
+}
+
+function SheetActionLink({
+  href,
+  icon,
+  label,
+  meta
+}: {
+  href: string;
+  icon: ReactNode;
+  label: string;
+  meta: string;
+}) {
+  return (
+    <Link
+      className="grid min-h-[5.5rem] grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-[1.45rem] bg-slate-50 px-4 text-left text-slate-950 ring-1 ring-slate-200 transition hover:bg-orange-50 hover:ring-orange-100 focus:outline-none focus:ring-4 focus:ring-orange-300/20"
+      href={href}
+    >
+      <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-white text-orange-500 shadow-sm [&_svg]:h-6 [&_svg]:w-6" aria-hidden="true">
+        {icon}
+      </span>
+      <span className="min-w-0">
+        <span className="block truncate text-lg font-black">{label}</span>
+        <span className="block truncate text-sm font-bold text-slate-500">{meta}</span>
+      </span>
+      <ChevronRight className="h-5 w-5 text-slate-400" aria-hidden="true" />
+    </Link>
+  );
+}
+
+function SettingsPanel({
+  onClose,
+  onOpenTrial
+}: {
+  onClose: () => void;
+  onOpenTrial: () => void;
+}) {
+  return (
+    <div className="h-[100dvh] overflow-y-auto bg-slate-100 px-5 pb-10 pt-3" data-testid="mobile-home-settings">
+      <header className="relative min-h-24">
+        <button
+          type="button"
+          aria-label="Close settings"
+          className="absolute right-0 top-0 grid h-12 w-12 place-items-center rounded-full bg-white text-slate-950 shadow-sm focus:outline-none focus:ring-4 focus:ring-orange-300/20"
+          onClick={onClose}
+        >
+          <X className="h-7 w-7" aria-hidden="true" />
+        </button>
+        <h2 className="pt-14 text-[2.6rem] font-black leading-none tracking-normal text-black">Settings</h2>
+        <Link
+          className="mt-5 inline-flex min-h-11 items-center rounded-full bg-white px-4 text-base font-black text-slate-950 shadow-sm ring-1 ring-slate-200"
+          href={dashboardActionRoutes.settings.account}
+        >
+          Account settings
+        </Link>
+      </header>
+
+      <ProSettingsCard onOpenTrial={onOpenTrial} />
+      <SettingsGroup>
+        <SettingsRow
+          accentMeta
+          href={dashboardActionRoutes.settings.account}
+          icon={<Cloud />}
+          label="Save your trips"
+          meta="Login or create an account"
+        />
+        <SettingsRow icon={<SlidersHorizontal />} label="Custom Categories" unavailableLabel="Soon" />
+      </SettingsGroup>
+
+      <SettingsSection title="Automations">
+        <SettingsRow href={dashboardActionRoutes.imports.forwardReservation} icon={<Send />} label="Add Reservations via Email" pro />
+        <SettingsRow icon={<CalendarDays />} label="Calendar Feed" pro unavailableLabel="Pro soon" />
+        <SettingsRow icon={<PackageOpen />} label="Connect with Claude / MCP" unavailableLabel="Soon" />
+        <SettingsRow icon={<Briefcase />} label="Shortcuts" unavailableLabel="Soon" />
+        <SettingsRow href={dashboardActionRoutes.imports.importSources} icon={<Upload />} label="TripIt Importer" pro />
+      </SettingsSection>
+
+      <SettingsSection title="Customize">
+        <SettingsRow icon={<RefreshCw />} label="Currency" value="US Dollar" picker unavailableLabel="Soon" />
+        <SettingsRow icon={<SlidersHorizontal />} label="Distance Unit" value="Miles" picker unavailableLabel="Soon" />
+        <SettingsRow icon={<Languages />} label="Language" value="English" picker unavailableLabel="Soon" />
+        <SettingsRow href={dashboardActionRoutes.trips.list} icon={<Wallet />} label="Trips Timeline" />
+        <SettingsRow icon={<BookOpen />} label="App Icon" unavailableLabel="Soon" />
+        <SettingsRow href={dashboardActionRoutes.trips.stats} icon={<Globe2 />} label="My Wayline Book" />
+        <SettingsRow icon={<Bell />} label="Notifications" unavailableLabel="Soon" />
+        <SettingsRow icon={<CreditCard />} label="Widgets" unavailableLabel="Soon" />
+        <SettingsRow icon={<PackageOpen />} label="Storage and Data" unavailableLabel="Soon" />
+      </SettingsSection>
+
+      <SettingsSection title="Help Center">
+        <SettingsRow href={dashboardActionRoutes.settings.help} icon={<LifeBuoy />} label="Need help?" />
+        <SettingsRow href={dashboardActionRoutes.settings.talkToUs} icon={<Mail />} label="Talk to us" />
+        <SettingsRow icon={<Star />} label="Review the App" unavailableLabel="Soon" />
+        <SettingsRow icon={<Sparkles />} label="App Updates" unavailableLabel="Soon" />
+        <SettingsRow href={dashboardActionRoutes.settings.membership} icon={<Star />} label="Your Membership" />
+      </SettingsSection>
+
+      <SettingsSection title="About">
+        <SettingsRow href={dashboardActionRoutes.settings.about} icon={<Briefcase />} label="About Wayline" />
+        <SettingsRow href={dashboardActionRoutes.settings.terms} icon={<MessageSquare />} label="Terms of Service" />
+        <SettingsRow href={dashboardActionRoutes.settings.privacy} icon={<Shield />} label="Privacy Policy" />
+        <SettingsRow icon={<Upload />} label="Share to a Friend" unavailableLabel="Soon" />
+      </SettingsSection>
+
+      <div className="mt-14 pb-4 text-center text-slate-400">
+        <p className="text-2xl font-medium">Version: 1.0.0</p>
+        <p className="mt-1 text-base font-medium">Last Sync: Never</p>
+        <button
+          aria-disabled="true"
+          className="mt-4 cursor-not-allowed text-lg font-black text-slate-400"
+          disabled
+          type="button"
+        >
+          Force Sync
+        </button>
+        <p className="mt-1 text-sm font-bold text-slate-400">Sync is unavailable until connected services are enabled.</p>
+      </div>
+    </div>
+  );
+}
+
+function TripFeatureCard({
+  dateRange,
+  href,
+  name,
+  status
+}: {
+  dateRange: string;
+  href: string;
+  name: string;
+  status: string;
+}) {
+  return (
+    <Link
+      className="relative mt-6 block min-h-[20rem] overflow-hidden rounded-[1.75rem] bg-[linear-gradient(135deg,#0891b2,#0f766e_45%,#1e293b)] p-6 text-white shadow-[0_22px_60px_rgba(15,23,42,0.18)]"
+      href={href}
+      data-testid="mobile-home-featured-trip"
+    >
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_35%_12%,rgba(255,255,255,0.45),transparent_18%),radial-gradient(circle_at_80%_22%,rgba(14,165,233,0.48),transparent_28%),linear-gradient(180deg,transparent_26%,rgba(15,23,42,0.72)_100%)]" />
+      <div className="absolute inset-x-0 bottom-0 p-6">
+        <h3 className="text-[2.35rem] font-black leading-none tracking-normal">{name}</h3>
+        <p className="mt-3 text-xl font-medium text-white/86">{dateRange}</p>
+        {status ? <p className="text-lg font-medium text-white/72">{status}</p> : null}
+      </div>
+    </Link>
+  );
+}
+
+function ProFeatureCard({
+  onDismiss,
+  onOpenTrial
+}: {
+  onDismiss: () => void;
+  onOpenTrial: () => void;
+}) {
+  return (
+    <section className="relative mt-6 overflow-hidden rounded-[1.75rem] bg-[linear-gradient(135deg,#9f3d16,#7e255f_48%,#3510b7)] p-6 text-white">
+      <button
+        type="button"
+        aria-label="Dismiss pro card"
+        className="absolute right-5 top-5 text-white/45"
+        onClick={onDismiss}
+      >
+        <X className="h-7 w-7" aria-hidden="true" />
+      </button>
+      <span className="inline-flex rounded-lg bg-white/70 px-2.5 py-1 text-sm font-black text-orange-900">PRO</span>
+      <h3 className="mt-5 text-[1.55rem] font-black">Explore all the Pro features</h3>
+      <p className="mt-3 text-[1.6rem] font-black leading-tight text-pink-300/70">
+        Get flight update alerts, manage expenses, forward reservations and much
+      </p>
+      <button
+        type="button"
+        className="mt-6 h-14 w-full rounded-full bg-white/70 text-xl font-black text-black ring-2 ring-white/50"
+        onClick={onOpenTrial}
+      >
+        Accept 15 Days Free
+      </button>
+    </section>
+  );
+}
+
+function EmailAutomationCard({ onDismiss }: { onDismiss: () => void }) {
+  return (
+    <section className="mt-6 rounded-[1.75rem] bg-white p-6 ring-1 ring-slate-200" data-testid="mobile-home-email-card">
+      <div className="flex justify-between gap-4">
+        <div className="grid h-14 w-14 place-items-center rounded-xl border-2 border-dashed border-orange-300 text-orange-500">
+          <Mail className="h-8 w-8" aria-hidden="true" />
+        </div>
+        <button
+          type="button"
+          aria-label="Dismiss email automation card"
+          className="self-start text-slate-400"
+          onClick={onDismiss}
+        >
+          <X className="h-7 w-7" aria-hidden="true" />
+        </button>
+      </div>
+      <p className="mt-5 text-sm font-black uppercase tracking-normal text-orange-500">Automation</p>
+      <h3 className="mt-2 text-[1.55rem] font-black leading-tight">Add Reservations via Email</h3>
+      <p className="mt-3 text-lg font-medium leading-snug text-slate-500">
+        Let Wayline automatically create an itinerary based on your flight or hotel reservation.
+      </p>
+      <Link
+        className="mt-5 grid h-14 place-items-center rounded-full bg-orange-50 text-lg font-black text-orange-500"
+        href={dashboardActionRoutes.imports.forwardReservation}
+      >
+        Forward Your Reservation
+      </Link>
+    </section>
+  );
+}
+
+function ProSettingsCard({ onOpenTrial }: { onOpenTrial: () => void }) {
+  return (
+    <section className="mt-7 rounded-[1.65rem] bg-white p-5">
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <h3 className="text-2xl font-black">
+            Wayline <span className="rounded-lg bg-orange-500 px-2 py-0.5 text-base text-white">PRO</span>
+          </h3>
+          <p className="mt-2 max-w-[15rem] text-xl leading-snug text-slate-400">
+            Receive alerts for any updates on your flights: schedules, gate changes and terminal
+          </p>
+          <button
+            type="button"
+            className="mt-2 text-xl font-black text-orange-500"
+            onClick={onOpenTrial}
+          >
+            Redeem 15 Days Free
+          </button>
+        </div>
+        <div className="grid h-20 w-20 place-items-center rounded-full bg-sky-400 text-white">
+          <Plane className="h-9 w-9" aria-hidden="true" />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function SettingsSection({ children, title }: { children: ReactNode; title: string }) {
+  return (
+    <section className="mt-8">
+      <h3 className="mb-3 px-5 text-xl font-medium uppercase tracking-normal text-slate-400">{title}</h3>
+      <SettingsGroup>{children}</SettingsGroup>
+    </section>
+  );
+}
+
+function SettingsGroup({ children }: { children: ReactNode }) {
+  return <div className="mt-5 overflow-hidden rounded-[1.65rem] bg-white">{children}</div>;
+}
+
+function SettingsRow({
+  accentMeta = false,
+  href,
+  icon,
+  label,
+  meta,
+  picker = false,
+  pro = false,
+  unavailableLabel,
+  value
+}: {
+  accentMeta?: boolean;
+  href?: string;
+  icon: ReactNode;
+  label: string;
+  meta?: string;
+  picker?: boolean;
+  pro?: boolean;
+  unavailableLabel?: string;
+  value?: string;
+}) {
+  const content = (
+    <>
+      <span className="text-orange-500 [&_svg]:h-6 [&_svg]:w-6" aria-hidden="true">
+        {icon}
+      </span>
+      <span className="min-w-0">
+        {meta ? (
+          <>
+            <span className={cn("block text-lg", accentMeta ? "text-orange-500" : "text-slate-400")}>{meta}</span>
+            <span className="block truncate text-xl font-medium text-black">{label}</span>
+          </>
+        ) : (
+          <span className="block truncate text-xl font-medium text-black">{label}</span>
+        )}
+      </span>
+      <span className="flex items-center gap-2 text-xl font-medium text-slate-400">
+        {pro ? <span className="rounded-md bg-slate-400 px-2 py-0.5 text-sm font-black text-white">PRO</span> : null}
+        {unavailableLabel ? (
+          <span className="rounded-md bg-slate-100 px-2 py-0.5 text-sm font-black text-slate-500">
+            {unavailableLabel}
+          </span>
+        ) : null}
+        {value ? <span>{value}</span> : null}
+        {picker && !unavailableLabel ? <ChevronDown className="h-5 w-5" aria-hidden="true" /> : null}
+        {!unavailableLabel ? <ChevronRight className="h-5 w-5" aria-hidden="true" /> : null}
+      </span>
+    </>
+  );
+  const className = cn(
+    "grid min-h-[4.35rem] w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4 border-b border-slate-200 px-5 text-left last:border-b-0",
+    unavailableLabel ? "cursor-not-allowed opacity-70" : "transition hover:bg-slate-50"
+  );
+
+  if (href && !unavailableLabel) {
+    return (
+      <Link className={className} href={href}>
+        {content}
+      </Link>
+    );
+  }
+
+  return (
+    <button
+      aria-disabled="true"
+      className={className}
+      disabled
+      type="button"
+    >
+      {content}
+    </button>
+  );
+}
+
+function TrialAvailabilitySheet({
+  message,
+  onClose
+}: {
+  message: string;
+  onClose: () => void;
+}) {
+  return (
+    <div
+      aria-modal="true"
+      className="fixed inset-x-4 bottom-[calc(1rem+env(safe-area-inset-bottom))] z-30 rounded-[1.75rem] bg-white p-5 text-slate-950 shadow-[0_24px_80px_rgba(15,23,42,0.3)] ring-1 ring-slate-200"
+      role="dialog"
+    >
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-sm font-black uppercase tracking-[0.18em] text-orange-500">Wayline Pro</p>
+          <h2 className="mt-2 text-2xl font-black">Trial activation coming soon</h2>
+          <p className="mt-2 text-sm font-semibold leading-6 text-slate-600">{message}</p>
+        </div>
+        <button
+          aria-label="Close trial availability"
+          className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-slate-100 text-slate-600"
+          onClick={onClose}
+          type="button"
+        >
+          <X className="h-5 w-5" aria-hidden="true" />
+        </button>
+      </div>
+      <Link
+        className="mt-4 grid min-h-12 place-items-center rounded-full bg-slate-950 px-5 text-sm font-black text-white"
+        href={dashboardActionRoutes.settings.account}
+      >
+        Open account settings
+      </Link>
+    </div>
+  );
+}
+
+function CircleAction({
+  href,
+  icon,
+  label,
+  primary = false
+}: {
+  href: string;
+  icon: ReactNode;
+  label: string;
+  primary?: boolean;
+}) {
+  return (
+    <Link
+      aria-label={label}
+      className={cn(
+        "grid h-14 w-14 place-items-center rounded-full shadow-[0_18px_44px_rgba(15,23,42,0.08)] transition focus:outline-none focus:ring-4 focus:ring-orange-300/20",
+        primary ? "bg-orange-500 text-white" : "bg-white text-slate-950 ring-1 ring-slate-100"
+      )}
+      href={href}
+    >
+      <span className="[&_svg]:h-7 [&_svg]:w-7" aria-hidden="true">
+        {icon}
+      </span>
+    </Link>
+  );
+}
+
+function stripPrimaryLabel(value: string) {
+  return value.split("·")[0]?.trim();
+}

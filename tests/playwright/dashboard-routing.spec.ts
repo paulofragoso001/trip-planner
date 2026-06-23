@@ -40,6 +40,11 @@ test.describe("dashboard route contract", () => {
     await expect(page.getByTestId("mobile-trips-country-map-screen")).toBeVisible({
       timeout: 20_000
     });
+    await expect(page.getByTestId("mobile-country-sheet").getByTestId("mobile-home-wallet-content")).toBeVisible();
+    await expect(page.getByTestId("mobile-home-wallet-content")).toHaveAttribute(
+      "data-sheet-state",
+      "collapsed"
+    );
     await expect(page.getByRole("heading", { name: "My Trips" })).toBeVisible();
     await expect(page.getByTestId("mobile-home-wallet")).toHaveCount(0);
   });
@@ -56,6 +61,7 @@ test.describe("dashboard route contract", () => {
     await expect(page.getByTestId("mobile-trips-country-map-screen")).toBeVisible({
       timeout: 20_000
     });
+    await expect(page.getByTestId("mobile-country-sheet").getByTestId("mobile-home-wallet-content")).toBeVisible();
     await expect(page.getByTestId("mobile-home-wallet")).toHaveCount(0);
   });
 });
