@@ -15,6 +15,7 @@ export default defineConfig({
     env: {
       ALLOW_LOCAL_DASHBOARD_BYPASS: "true",
       ALLOW_TEST_DASHBOARD_BYPASS: "true",
+      NEXT_PUBLIC_UNIFIED_MAP_SURFACE: "true",
       SOCIAL_IMPORT_WORKER_SECRET: socialImportWorkerSecret
     },
     reuseExistingServer: process.env.PLAYWRIGHT_REUSE_EXISTING_SERVER === "true",

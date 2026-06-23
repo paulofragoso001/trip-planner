@@ -13,6 +13,7 @@ import { cn } from "@/components/trip-ui";
 import type { DashboardRecentTripView } from "@/app/dashboard/loader";
 import type { TripsData } from "@/app/dashboard/trips/loader";
 import { dashboardActionRoutes } from "@/lib/dashboard/action-routes";
+import { unifiedMapSurfaceEnabled } from "@/lib/map/feature-flags";
 import {
   UnifiedMapProvider,
   useOptionalUnifiedMap
@@ -64,7 +65,7 @@ export function MobileTripsWallet({ error, trips }: MobileTripsWalletProps) {
     });
   }
 
-  if (!isListView) {
+  if (unifiedMapSurfaceEnabled && !isListView) {
     return (
       <UnifiedMapProvider autoLocate initialMode="country-map">
         <MobileTripsCountriesMap
@@ -80,6 +81,7 @@ export function MobileTripsWallet({ error, trips }: MobileTripsWalletProps) {
       className="relative isolate -mx-3 -mt-4 min-h-[calc(100dvh-3.5rem)] overflow-hidden bg-black text-white sm:-mx-6 sm:-mt-6 lg:hidden"
       data-hydrated={hydrated ? "true" : "false"}
       data-testid="mobile-trips-wallet-screen"
+      data-unified-map-surface={unifiedMapSurfaceEnabled ? "enabled" : "disabled"}
     >
       <MobileTripsBackground />
       <div className="relative z-10 mx-auto grid w-full max-w-[31rem] gap-5 px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-5">
