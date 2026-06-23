@@ -3,39 +3,20 @@ import "server-only";
 import { unstable_noStore as noStore } from "next/cache";
 import { authorizeDashboardApi } from "@/lib/server/dashboard-test-auth";
 import {
-  TRIP_TRAVEL_STYLE_LABELS,
-  normalizeTravelStyle,
-  type TripTravelStyle
-} from "@/lib/trips";
-import {
   compareHeroSegments,
   fallbackGradientForDestination,
   getFallbackHeroImage,
   imageFromProviderMetadata,
   type WalletHeroImage
 } from "@/lib/wallet/hero-image";
+import {
+  mapWalletTripPass,
+  summarizeWalletTripSegments,
+  type WalletTripPassModel,
+  type WalletTripSegmentCounts
+} from "@/lib/wallet/trip-view-models";
 
-export type TripListItemView = {
-  dateRange: string;
-  destination: string;
-  destinationLat: number | null;
-  destinationLng: number | null;
-  imageAlt: string;
-  imageAttribution: string | null;
-  imageUrl: string | null;
-  href: string;
-  id: string;
-  mappedStops: number;
-  name: string;
-  nearbyIdeasCount: number;
-  needsLocationStops: number;
-  endDate: string | null;
-  startDate: string | null;
-  status: string;
-  stopCount: number;
-  travelStyle: TripTravelStyle;
-  travelStyleLabel: string;
-};
+export type TripListItemView = WalletTripPassModel;
 
 export type TripsData = {
   error: string | null;
@@ -227,11 +208,7 @@ function isMissingDestinationCoordinateColumn(message: string) {
   return /destination_lat|destination_lng/i.test(message) && /column|schema cache|could not find/i.test(message);
 }
 
-type SegmentCounts = {
-  mappedStops: number;
-  needsLocationStops: number;
-  stopCount: number;
-};
+type SegmentCounts = WalletTripSegmentCounts;
 
 async function loadTripSegmentSummaries(
   supabase: any,
@@ -263,23 +240,7 @@ async function loadTripSegmentSummaries(
     return new Map();
   }
 
-  const summaries = new Map<string, SegmentCounts>();
-  for (const row of (data || []) as TripSegmentSummary[]) {
-    const current = summaries.get(row.trip_id) || {
-      mappedStops: 0,
-      needsLocationStops: 0,
-      stopCount: 0
-    };
-    const lat = row.lat ?? row.latitude;
-    const lng = row.lng ?? row.longitude;
-    const mapped = typeof lat === "number" && typeof lng === "number";
-    current.stopCount += 1;
-    current.mappedStops += mapped ? 1 : 0;
-    current.needsLocationStops += !mapped || row.location_status === "needs_location_confirmation" ? 1 : 0;
-    summaries.set(row.trip_id, current);
-  }
-
-  return summaries;
+  return summarizeWalletTripSegments((data || []) as TripSegmentSummary[]);
 }
 
 function isMissingLatLngColumns(message: string) {
@@ -405,57 +366,9 @@ function mapTrip(
   nearbyIdeasCount = 0,
   passImage?: TripPassImage
 ): TripListItemView {
-  const travelStyle = normalizeTravelStyle(row.travel_style);
-
-  return {
-    dateRange: formatDateRange(row.start_date, row.end_date),
-    destination: row.destination || "No destination set",
-    destinationLat: normalizeNullableNumber(row.destination_lat),
-    destinationLng: normalizeNullableNumber(row.destination_lng),
-    imageAlt: passImage?.imageAlt || (row.destination ? `Photo of ${row.destination}` : `Trip image for ${row.name}`),
-    imageAttribution: passImage?.imageAttribution || null,
-    imageUrl: passImage?.imageUrl || null,
-    href: `/dashboard/trips/${row.id}`,
-    id: row.id,
-    mappedStops: counts?.mappedStops || 0,
-    name: row.name,
+  return mapWalletTripPass(row, {
+    counts,
     nearbyIdeasCount,
-    needsLocationStops: counts?.needsLocationStops || 0,
-    endDate: row.end_date,
-    startDate: row.start_date,
-    status: row.status || "Planning",
-    stopCount: counts?.stopCount || 0,
-    travelStyle,
-    travelStyleLabel: TRIP_TRAVEL_STYLE_LABELS[travelStyle]
-  };
-}
-
-function normalizeNullableNumber(value: number | string | null | undefined) {
-  if (value === null || value === undefined || value === "") return null;
-  const numeric = typeof value === "number" ? value : Number(value);
-  return Number.isFinite(numeric) ? numeric : null;
-}
-
-function formatDateRange(startDate: string | null, endDate: string | null) {
-  if (!startDate && !endDate) {
-    return "Dates not set";
-  }
-
-  if (startDate && !endDate) {
-    return formatDate(startDate);
-  }
-
-  if (!startDate && endDate) {
-    return formatDate(endDate);
-  }
-
-  return `${formatDate(startDate!)} - ${formatDate(endDate!)}`;
-}
-
-function formatDate(value: string) {
-  return new Intl.DateTimeFormat("en", {
-    day: "2-digit",
-    month: "short",
-    timeZone: "UTC"
-  }).format(new Date(`${value}T00:00:00.000Z`));
+    visual: passImage
+  });
 }

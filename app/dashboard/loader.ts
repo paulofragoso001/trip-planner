@@ -7,20 +7,17 @@ import {
   getTripHeroImage,
   type WalletHeroImage
 } from "@/lib/wallet/hero-image";
+import {
+  mapWalletTripSummary,
+  type WalletTripSummaryModel
+} from "@/lib/wallet/trip-view-models";
 
 export type DashboardMetricView = {
   label: string;
   value: string;
 };
 
-export type DashboardRecentTripView = {
-  dateRange: string;
-  destination: string;
-  href: string;
-  id: string;
-  name: string;
-  status: string;
-};
+export type DashboardRecentTripView = WalletTripSummaryModel;
 
 export type DashboardData = {
   error: string | null;
@@ -130,7 +127,9 @@ export async function loadDashboardData(): Promise<DashboardData> {
     unfiledItems: importsResult.error
   });
 
-  const recentTrips = tripsResult.error ? [] : ((tripsResult.data || []) as TripRow[]).map(mapRecentTrip);
+  const recentTrips = tripsResult.error
+    ? []
+    : ((tripsResult.data || []) as TripRow[]).map(mapWalletTripSummary);
   const tripCount = safeCount(tripCountResult);
   const segmentCount = safeCount(segmentsResult);
   const mappedSegmentCount = safeCount(mappedSegmentsResult);
@@ -253,39 +252,4 @@ function emptyFirstRunState(): FirstRunState {
     segmentCount: 0,
     tripCount: 0
   });
-}
-
-function mapRecentTrip(row: TripRow): DashboardRecentTripView {
-  return {
-    dateRange: formatDateRange(row.start_date, row.end_date),
-    destination: row.destination || "Destination not set",
-    href: `/dashboard/trips/${row.id}`,
-    id: row.id,
-    name: row.name || row.title || "Untitled trip",
-    status: row.status || "Planning"
-  };
-}
-
-function formatDateRange(startDate: string | null, endDate: string | null) {
-  if (!startDate && !endDate) {
-    return "Dates not set";
-  }
-
-  if (startDate && !endDate) {
-    return formatDate(startDate);
-  }
-
-  if (!startDate && endDate) {
-    return formatDate(endDate);
-  }
-
-  return `${formatDate(startDate!)} - ${formatDate(endDate!)}`;
-}
-
-function formatDate(value: string) {
-  return new Intl.DateTimeFormat("en", {
-    day: "2-digit",
-    month: "short",
-    timeZone: "UTC"
-  }).format(new Date(`${value}T00:00:00.000Z`));
 }
