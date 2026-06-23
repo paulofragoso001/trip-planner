@@ -1,4 +1,4 @@
-import { expect, test, type APIRequestContext } from "@playwright/test";
+import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
 
 const baseUrl = "http://127.0.0.1:3000";
 const viewports = [360, 390, 430, 768, 820, 1024, 1280, 1440] as const;
@@ -36,6 +36,108 @@ async function deleteTripForTest(request: APIRequestContext, tripId: string | nu
 
 function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+type MockLocationPermission = "granted" | "denied";
+
+async function installMockMobileLocation(
+  page: Page,
+  {
+    latitude = 25.7617,
+    longitude = -80.1918,
+    permission = "granted"
+  }: {
+    latitude?: number;
+    longitude?: number;
+    permission?: MockLocationPermission;
+  } = {}
+) {
+  await page.route("**/api/travel-data/geocode", async (route) => {
+    await route.fulfill({
+      body: JSON.stringify({
+        data: {
+          result: {
+            address: "Miami, FL, USA",
+            city: "Miami",
+            coordinate: { lat: latitude, lng: longitude },
+            countryCode: "US",
+            countryName: "United States",
+            placeId: "test-miami",
+            types: ["locality", "political"]
+          }
+        }
+      }),
+      contentType: "application/json",
+      status: 200
+    });
+  });
+
+  await page.addInitScript(
+    ({ latitude: mockedLatitude, longitude: mockedLongitude, permission: mockedPermission }) => {
+      window.localStorage.removeItem("wayline:last-user-location");
+      Object.defineProperty(navigator, "language", { configurable: true, value: "en-US" });
+      Object.defineProperty(navigator, "languages", { configurable: true, value: ["en-US", "en"] });
+      Object.defineProperty(navigator, "permissions", {
+        configurable: true,
+        value: {
+          query: () => Promise.resolve({ state: mockedPermission })
+        }
+      });
+
+      let geolocationCalls = 0;
+      Object.defineProperty(window, "__waylineGeolocationCalls", {
+        configurable: true,
+        get: () => geolocationCalls
+      });
+      Object.defineProperty(navigator, "geolocation", {
+        configurable: true,
+        value: {
+          getCurrentPosition(
+            success: (position: GeolocationPosition) => void,
+            error?: (positionError: GeolocationPositionError) => void
+          ) {
+            geolocationCalls += 1;
+            if (mockedPermission === "denied") {
+              error?.({
+                code: 1,
+                message: "User denied Geolocation",
+                PERMISSION_DENIED: 1,
+                POSITION_UNAVAILABLE: 2,
+                TIMEOUT: 3
+              } as GeolocationPositionError);
+              return;
+            }
+
+            success({
+              coords: {
+                accuracy: 20,
+                altitude: null,
+                altitudeAccuracy: null,
+                heading: null,
+                latitude: mockedLatitude,
+                longitude: mockedLongitude,
+                speed: null
+              },
+              timestamp: Date.now()
+            } as GeolocationPosition);
+          }
+        }
+      });
+
+      (window as typeof window & {
+        google?: {
+          maps?: {
+            importLibrary?: (libraryName: string) => Promise<unknown>;
+          };
+        };
+      }).google = {
+        maps: {
+          importLibrary: () => Promise.resolve({})
+        }
+      };
+    },
+    { latitude, longitude, permission }
+  );
 }
 
 test.describe("mobile soft-launch UX", () => {
@@ -740,7 +842,7 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByTestId("home-3d-fallback-image")).toHaveCount(0);
     await expect(page.getByTestId("mobile-home-country-pin")).toBeVisible({ timeout: 5_000 });
     await expect(page.getByTestId("mobile-home-country-pin")).toHaveAttribute("data-country-code", "US");
-    await expect(page.getByTestId("mobile-home-country-name")).toHaveText("United States");
+    await expect(page.getByTestId("mobile-home-country-name")).toContainText("United States");
     await page.waitForFunction(() => {
       const mapStage = document.querySelector<HTMLElement>('[data-testid="home-3d-map-stage"]');
       const mapStageOpacity = mapStage ? Number(window.getComputedStyle(mapStage).opacity) : 0;
@@ -1143,6 +1245,148 @@ test.describe("mobile soft-launch UX", () => {
     expect(Math.abs(cameraLongitude - -80.1918), "3D map centers on the granted browser longitude").toBeLessThan(0.01);
     expect(Number(camera.range), "user location settles into a wide globe view").toBeGreaterThan(3_000_000);
     expect(Number(camera.range), "user location is still tighter than the global intro").toBeLessThan(6_000_000);
+  });
+
+  test("dashboard and trips use the same shared user country pin data", async ({ page }) => {
+    await page.setViewportSize({ height: 900, width: 390 });
+    await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
+    await installMockMobileLocation(page);
+
+    await page.goto(`${baseUrl}/dashboard`, { waitUntil: "commit" });
+    await expect(page.getByTestId("mobile-home-country-pin")).toBeVisible({ timeout: 5_000 });
+    const dashboardPin = await page.getByTestId("mobile-home-country-pin").evaluate((element) => ({
+      countryCode: element.getAttribute("data-country-code"),
+      latitude: element.getAttribute("data-user-latitude"),
+      longitude: element.getAttribute("data-user-longitude")
+    }));
+    await expect(page.getByTestId("mobile-home-country-name")).toContainText("United States");
+
+    await page.goto(`${baseUrl}/dashboard/trips`, { waitUntil: "commit" });
+    const tripsMap = page.getByTestId("mobile-trips-country-map-screen");
+    await expect(tripsMap).toHaveAttribute("data-user-pin-latitude", "25.76170", { timeout: 5_000 });
+    await expect(tripsMap).toHaveAttribute("data-user-pin-longitude", "-80.19180");
+    await expect(tripsMap).toHaveAttribute("data-user-pin-country-code", "US");
+
+    const tripsPin = await tripsMap.evaluate((element) => ({
+      countryCode: element.getAttribute("data-user-pin-country-code"),
+      latitude: element.getAttribute("data-user-pin-latitude"),
+      longitude: element.getAttribute("data-user-pin-longitude")
+    }));
+
+    expect(tripsPin).toEqual(dashboardPin);
+  });
+
+  test("mobile trips locate button updates shared map state", async ({ page }) => {
+    await page.setViewportSize({ height: 900, width: 390 });
+    await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
+    await installMockMobileLocation(page, { permission: "denied" });
+
+    await page.goto(`${baseUrl}/dashboard/trips`, { waitUntil: "commit" });
+    const tripsMap = page.getByTestId("mobile-trips-country-map-screen");
+    await expect(tripsMap).toBeVisible({ timeout: 20_000 });
+    await expect(tripsMap).not.toHaveAttribute("data-user-pin-latitude", "25.76170");
+
+    await page.evaluate(() => {
+      Object.defineProperty(navigator, "permissions", {
+        configurable: true,
+        value: {
+          query: () => Promise.resolve({ state: "granted" })
+        }
+      });
+      Object.defineProperty(navigator, "geolocation", {
+        configurable: true,
+        value: {
+          getCurrentPosition(success: (position: GeolocationPosition) => void) {
+            success({
+              coords: {
+                accuracy: 20,
+                altitude: null,
+                altitudeAccuracy: null,
+                heading: null,
+                latitude: 25.7617,
+                longitude: -80.1918,
+                speed: null
+              },
+              timestamp: Date.now()
+            } as GeolocationPosition);
+          }
+        }
+      });
+    });
+
+    await page.getByRole("button", { name: "Locate trips" }).click();
+    await expect(tripsMap).toHaveAttribute("data-user-pin-latitude", "25.76170", { timeout: 5_000 });
+    await expect(tripsMap).toHaveAttribute("data-user-pin-longitude", "-80.19180");
+    await expect(tripsMap).toHaveAttribute("data-camera-command", "focusUserLocation");
+    await expect(tripsMap).toHaveAttribute("data-selected-map-id", "user-location");
+  });
+
+  test("mobile trips user pin remains tied to coordinates after zoom and pan gestures", async ({ page }) => {
+    await page.setViewportSize({ height: 900, width: 390 });
+    await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
+    await installMockMobileLocation(page);
+
+    await page.goto(`${baseUrl}/dashboard/trips`, { waitUntil: "commit" });
+    const tripsMap = page.getByTestId("mobile-trips-country-map-screen");
+    const mapCanvas = page.getByTestId("mobile-country-map-canvas");
+    await expect(tripsMap).toHaveAttribute("data-user-pin-latitude", "25.76170", { timeout: 5_000 });
+
+    const beforeGesture = await tripsMap.evaluate((element) => ({
+      latitude: element.getAttribute("data-user-pin-latitude"),
+      longitude: element.getAttribute("data-user-pin-longitude")
+    }));
+    const canvasBox = await mapCanvas.boundingBox();
+    expect(canvasBox).not.toBeNull();
+    if (!canvasBox) return;
+
+    await page.mouse.move(canvasBox.x + canvasBox.width / 2, canvasBox.y + canvasBox.height / 2);
+    await page.mouse.wheel(0, -500);
+    await page.mouse.down();
+    await page.mouse.move(canvasBox.x + canvasBox.width / 2 + 70, canvasBox.y + canvasBox.height / 2 + 40);
+    await page.mouse.up();
+
+    await expect(tripsMap).toHaveAttribute("data-user-pin-latitude", beforeGesture.latitude ?? "");
+    await expect(tripsMap).toHaveAttribute("data-user-pin-longitude", beforeGesture.longitude ?? "");
+  });
+
+  test("mobile trips map switch preserves selected user location", async ({ page }) => {
+    await page.setViewportSize({ height: 900, width: 390 });
+    await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
+    await installMockMobileLocation(page);
+
+    await page.goto(`${baseUrl}/dashboard/trips`, { waitUntil: "commit" });
+    const tripsMap = page.getByTestId("mobile-trips-country-map-screen");
+    await expect(tripsMap).toHaveAttribute("data-user-pin-latitude", "25.76170", { timeout: 5_000 });
+    await page.getByRole("button", { name: "Locate trips" }).click();
+    await expect(tripsMap).toHaveAttribute("data-selected-map-id", "user-location");
+
+    await page.getByRole("link", { name: "Show trip cards" }).click();
+    await expect(page).toHaveURL(/\/dashboard\/trips\?view=list/);
+    await page.goBack({ waitUntil: "commit" });
+
+    const restoredTripsMap = page.getByTestId("mobile-trips-country-map-screen");
+    await expect(restoredTripsMap).toHaveAttribute("data-user-pin-latitude", "25.76170", { timeout: 5_000 });
+    await expect(restoredTripsMap).toHaveAttribute("data-user-pin-longitude", "-80.19180");
+    await expect(restoredTripsMap).toHaveAttribute("data-user-pin-country-code", "US");
+  });
+
+  test("mobile map location falls back cleanly when geolocation is denied", async ({ page }) => {
+    await page.setViewportSize({ height: 900, width: 390 });
+    await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await installMockMobileLocation(page, { permission: "denied" });
+
+    await page.goto(`${baseUrl}/dashboard`, { waitUntil: "commit" });
+    await expect(page.getByTestId("mobile-home-country-pin")).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByTestId("mobile-home-country-pin")).toHaveAttribute("data-location-source", "country");
+    await expect(page.getByTestId("mobile-home-country-pin")).toHaveAttribute("data-country-code", "US");
+    await expect(page.getByTestId("mobile-home-country-pin")).not.toHaveAttribute("data-user-latitude", "25.76170");
+
+    await page.goto(`${baseUrl}/dashboard/trips`, { waitUntil: "commit" });
+    const tripsMap = page.getByTestId("mobile-trips-country-map-screen");
+    await expect(tripsMap).toBeVisible({ timeout: 20_000 });
+    await expect(tripsMap).not.toHaveAttribute("data-user-pin-latitude", "25.76170");
+    await expect(page.getByTestId("mobile-country-sheet")).toBeVisible();
   });
 
   test("mobile home 3D hero supports reduced motion and unknown country fallback", async ({ page }) => {

@@ -27,6 +27,14 @@ export function WaylineGoogleMapPinMarker({
 }: WaylineGoogleMapPinMarkerProps) {
   const label = pinDisplayLabel(pin);
   const glyph = pinGlyph(pin);
+  const markerDataAttributes = {
+    "data-pin-country-code": pin.countryCode ?? undefined,
+    "data-pin-id": pin.id,
+    "data-pin-kind": pin.kind,
+    "data-pin-label": label,
+    "data-pin-latitude": pin.coordinate.lat.toFixed(5),
+    "data-pin-longitude": pin.coordinate.lng.toFixed(5)
+  };
   const markerClassName = [
     "group grid -translate-x-1/2 justify-items-center focus:outline-none",
     variant === "flag-label" ? "-translate-y-full" : "-translate-y-1/2",
@@ -70,6 +78,7 @@ export function WaylineGoogleMapPinMarker({
       <Link
         aria-label={`Open ${pin.label}`}
         className={markerClassName}
+        {...markerDataAttributes}
         data-testid={testId}
         href={href}
         title={pin.label}
@@ -83,6 +92,7 @@ export function WaylineGoogleMapPinMarker({
     <button
       aria-label={`Select ${pin.label}`}
       className={markerClassName}
+      {...markerDataAttributes}
       data-testid={testId}
       onClick={() => onSelect?.(pin.id)}
       title={pin.label}

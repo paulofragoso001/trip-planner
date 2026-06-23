@@ -229,6 +229,8 @@ function MobileTripsCountriesMap({
   const primaryMeta = latestTrip
     ? `${latestTrip.name} · ${latestTrip.destination}`
     : "Start a new travel wallet.";
+  const userLocationPin = unifiedMap?.surfaceState.pins.find((pin) => pin.kind === "user-location") ?? null;
+  const selectedPin = unifiedMap?.surfaceState.pins.find((pin) => pin.id === unifiedMap.surfaceState.selectedId) ?? null;
 
   useEffect(() => {
     unifiedMap?.setPins(tripPins);
@@ -237,8 +239,18 @@ function MobileTripsCountriesMap({
   return (
     <section
       className="relative isolate -mx-3 -mt-4 min-h-[100dvh] overflow-hidden bg-black text-white sm:-mx-6 sm:-mt-6 lg:hidden"
+      data-camera-command={unifiedMap?.surfaceState.cameraCommand?.type ?? undefined}
       data-hydrated={hydrated ? "true" : "false"}
+      data-map-mode={unifiedMap?.surfaceState.mode}
+      data-selected-map-id={unifiedMap?.surfaceState.selectedId ?? undefined}
+      data-selected-pin-country-code={selectedPin?.countryCode ?? undefined}
+      data-selected-pin-label={selectedPin?.label ?? undefined}
       data-testid="mobile-trips-country-map-screen"
+      data-user-pin-country-code={userLocationPin?.countryCode ?? undefined}
+      data-user-pin-label={userLocationPin?.label ?? undefined}
+      data-user-pin-latitude={userLocationPin ? userLocationPin.coordinate.lat.toFixed(5) : undefined}
+      data-user-pin-longitude={userLocationPin ? userLocationPin.coordinate.lng.toFixed(5) : undefined}
+      data-user-pin-source={unifiedMap?.surfaceState.location.coordinate ? unifiedMap.surfaceState.location.source : undefined}
     >
       <MobileCountryMapCanvas trips={markerTrips} />
 
