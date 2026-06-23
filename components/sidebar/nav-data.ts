@@ -10,6 +10,7 @@ import {
   Users
 } from "lucide-react";
 import type { ComponentType, SVGProps } from "react";
+import { dashboardCompatibilityViews, dashboardRoutes } from "@/lib/dashboard/route-contracts";
 
 export type NavIcon = ComponentType<SVGProps<SVGSVGElement>>;
 
@@ -33,7 +34,7 @@ function currentTripHref(pathname: string, suffix = "", fallbackTripId?: string 
   const tripId = match?.[1] || fallbackTripId;
 
   if (!tripId) {
-    return "/dashboard/trips";
+    return dashboardRoutes.trips;
   }
 
   return `/dashboard/trips/${tripId}${suffix}`;
@@ -44,7 +45,7 @@ export const navSections: NavSection[] = [
     title: "Wayline",
     items: [
       {
-        href: "/dashboard",
+        href: dashboardRoutes.home,
         icon: LayoutDashboard,
         label: "Home",
         match: (pathname, view) => pathname === "/dashboard" && !view
@@ -59,11 +60,12 @@ export const navSections: NavSection[] = [
           (pathname === "/dashboard" && view === "imports")
       },
       {
-        href: "/dashboard/trips",
+        href: dashboardRoutes.trips,
         icon: Plane,
         label: "Trips",
         match: (pathname, view) =>
-          pathname === "/dashboard/trips" || (pathname === "/dashboard" && view === "trips")
+          pathname === dashboardRoutes.trips ||
+          (pathname === dashboardRoutes.home && view === dashboardCompatibilityViews.trips)
       },
       {
         href: "/dashboard/map",
@@ -91,7 +93,7 @@ export const navSections: NavSection[] = [
     title: "Trip Workspace",
     items: [
       {
-        href: "/dashboard/trips",
+        href: dashboardRoutes.trips,
         icon: CalendarDays,
         label: "Itinerary",
         getHref: (pathname, tripId) => currentTripHref(pathname, "/timeline", tripId),
@@ -100,7 +102,7 @@ export const navSections: NavSection[] = [
           (pathname === "/dashboard" && view === "itinerary")
       },
       {
-        href: "/dashboard/trips",
+        href: dashboardRoutes.trips,
         icon: Map,
         label: "Map",
         getHref: (pathname, tripId) => currentTripHref(pathname, "/map", tripId),
@@ -109,7 +111,7 @@ export const navSections: NavSection[] = [
           (pathname === "/dashboard" && view === "map")
       },
       {
-        href: "/dashboard/trips",
+        href: dashboardRoutes.trips,
         icon: Sparkles,
         label: "Ideas",
         getHref: (pathname, tripId) => currentTripHref(pathname, "/ideas", tripId),
@@ -118,7 +120,7 @@ export const navSections: NavSection[] = [
           (pathname === "/dashboard" && view === "ideas")
       },
       {
-        href: "/dashboard/trips",
+        href: dashboardRoutes.trips,
         icon: CircleDollarSign,
         label: "Expenses",
         getHref: (pathname, tripId) => currentTripHref(pathname, "/budget", tripId),
@@ -127,7 +129,7 @@ export const navSections: NavSection[] = [
           (pathname === "/dashboard" && view === "budget")
       },
       {
-        href: "/dashboard/trips",
+        href: dashboardRoutes.trips,
         icon: Users,
         label: "Share",
         getHref: (pathname, tripId) => currentTripHref(pathname, "/share", tripId),

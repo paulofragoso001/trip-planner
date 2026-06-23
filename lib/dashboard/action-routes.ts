@@ -1,3 +1,5 @@
+import { dashboardRoutes } from "@/lib/dashboard/route-contracts";
+
 export const dashboardActionRoutes = {
   globe: {
     locateUserEvent: "wayline:home-use-current-location",
@@ -27,8 +29,8 @@ export const dashboardActionRoutes = {
     terms: "/terms"
   },
   trips: {
-    create: "/dashboard/trips?view=list#new-trip",
-    list: "/dashboard/trips",
+    create: `${dashboardRoutes.tripsList}#new-trip`,
+    list: dashboardRoutes.trips,
     map: "/dashboard/map",
     stats: "/dashboard/profile/stats"
   }

@@ -1,4 +1,5 @@
 import DashboardPage from "@/components/dashboard/dashboard-page";
+import { resolveDashboardCompatibilityRedirect } from "@/lib/dashboard/route-contracts";
 import { redirect } from "next/navigation";
 import { loadDashboardData } from "./loader";
 
@@ -8,8 +9,9 @@ export default async function Page({
   searchParams?: Promise<{ view?: string }>;
 }) {
   const params = searchParams ? await searchParams : {};
-  if (params.view === "trips") {
-    redirect("/dashboard/trips");
+  const compatibilityRedirect = resolveDashboardCompatibilityRedirect(params.view);
+  if (compatibilityRedirect) {
+    redirect(compatibilityRedirect);
   }
 
   const data = await loadDashboardData();
