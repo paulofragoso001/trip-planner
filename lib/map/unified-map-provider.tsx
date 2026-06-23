@@ -12,6 +12,14 @@ import {
 } from "react";
 import { reverseGeocodeCoordinate } from "@/lib/geocode";
 import {
+  buildFocusCountryCommand,
+  buildFocusRouteCommand,
+  buildFocusTripCommand,
+  buildFocusUserLocationCommand,
+  buildOpenFlatMapCommand,
+  buildZoomToWorldCommand
+} from "@/lib/map/wayline-map-camera";
+import {
   USER_LOCATION_PIN_ID,
   buildUserLocationPin,
   mergeUserLocationPin
@@ -20,6 +28,7 @@ import type {
   WaylineCoordinate,
   WaylineLocationState,
   WaylineMapCamera,
+  WaylineMapCameraCommand,
   WaylineMapMode,
   WaylineMapPin,
   WaylineMapRoute,
@@ -59,15 +68,19 @@ export type UnifiedMapContextValue = {
   selected: WaylineMapSelection;
   surfaceState: WaylineMapSurfaceState;
   clearSelection: () => void;
+  focusCountry: (country: FocusTarget) => void;
   focusPlace: (place: FocusTarget) => void;
+  focusRoute: (routeId: string) => void;
   focusTrip: (trip: FocusTarget) => void;
   locateUser: () => Promise<WaylineLocationState>;
+  openFlatMap: (mode?: WaylineMapMode) => void;
   openMap: (mode?: WaylineMapMode) => void;
   selectPin: (pinId: string | null) => void;
   setCamera: (camera: WaylineMapCamera) => void;
   setMode: (mode: WaylineMapMode) => void;
   setPins: (pins: WaylineMapPin[]) => void;
   setRoutes: (routes: WaylineMapRoute[]) => void;
+  zoomToWorld: () => void;
 };
 
 const DEFAULT_CAMERA: WaylineMapCamera = {
@@ -112,6 +125,7 @@ export function UnifiedMapProvider({
   const [mode, setMode] = useState<WaylineMapMode>(initialMode);
   const [pins, setPins] = useState<WaylineMapPin[]>(initialPins);
   const [routes, setRoutes] = useState<WaylineMapRoute[]>(initialRoutes);
+  const [cameraCommand, setCameraCommand] = useState<WaylineMapCameraCommand | null>(null);
   const [selected, setSelected] = useState<WaylineMapSelection>(DEFAULT_SELECTION);
   const locationRequestRef = useRef<Promise<WaylineLocationState> | null>(null);
   const locationRef = useRef(location);
@@ -136,9 +150,70 @@ export function UnifiedMapProvider({
     setLocationError(null);
   }, [initialLocation]);
 
-  const setCamera = useCallback((nextCamera: WaylineMapCamera) => {
-    updateCamera(nextCamera);
+  const applyCameraCommand = useCallback((command: WaylineMapCameraCommand) => {
+    updateCamera(command.camera);
+    setCameraCommand(command);
+    if (command.mode) {
+      setMode(command.mode);
+    }
   }, []);
+
+  const setCamera = useCallback((nextCamera: WaylineMapCamera) => {
+    const command: WaylineMapCameraCommand = {
+      camera: nextCamera,
+      id: `manual:${Date.now().toString(36)}`,
+      type: nextCamera.intent === "world" ? "zoomToWorld" : "openFlatMap"
+    };
+    applyCameraCommand(command);
+  }, [applyCameraCommand]);
+
+  const focusCountry = useCallback((country: FocusTarget) => {
+    const command = buildFocusCountryCommand(country);
+    setSelected({
+      pinId: country.id ?? null,
+      placeId: country.placeId ?? null,
+      tripId: country.tripId ?? null
+    });
+    applyCameraCommand(command);
+  }, [applyCameraCommand]);
+
+  const zoomToWorld = useCallback(() => {
+    clearPinSelection(setPins);
+    setSelected(DEFAULT_SELECTION);
+    applyCameraCommand(buildZoomToWorldCommand());
+  }, [applyCameraCommand]);
+
+  const openFlatMap = useCallback((nextMode: WaylineMapMode = "map") => {
+    applyCameraCommand(buildOpenFlatMapCommand(nextMode, camera));
+  }, [applyCameraCommand, camera]);
+
+  const focusRoute = useCallback((routeId: string) => {
+    const route = routes.find((candidate) => candidate.id === routeId);
+    if (!route) {
+      return;
+    }
+
+    setSelected({
+      pinId: null,
+      placeId: null,
+      tripId: route.tripId ?? null
+    });
+    applyCameraCommand(buildFocusRouteCommand(route));
+  }, [applyCameraCommand, routes]);
+
+  const focusUserLocation = useCallback((nextLocation: WaylineLocationState) => {
+    const command = buildFocusUserLocationCommand(nextLocation);
+    if (!command) {
+      return;
+    }
+
+    applyCameraCommand(command);
+    setSelected({
+      pinId: USER_LOCATION_PIN_ID,
+      placeId: null,
+      tripId: null
+    });
+  }, [applyCameraCommand]);
 
   const locationPin = useMemo(
     () => buildUserLocationPin(location, selected.pinId === USER_LOCATION_PIN_ID),
@@ -167,27 +242,18 @@ export function UnifiedMapProvider({
 
   const clearSelection = useCallback(() => {
     setSelected(DEFAULT_SELECTION);
-    setPins((currentPins) =>
-      currentPins.map((pin) => ({
-        ...pin,
-        selected: false
-      }))
-    );
+    clearPinSelection(setPins);
   }, []);
 
   const focusTrip = useCallback((trip: FocusTarget) => {
+    const command = buildFocusTripCommand(trip);
     setSelected({
       pinId: trip.id ?? null,
       placeId: trip.placeId ?? null,
       tripId: trip.tripId ?? trip.id ?? null
     });
-    updateCamera({
-      center: trip.coordinate,
-      intent: "trip",
-      selectedId: trip.tripId ?? trip.id ?? null,
-      zoom: trip.zoom ?? 8
-    });
-  }, []);
+    applyCameraCommand(command);
+  }, [applyCameraCommand]);
 
   const focusPlace = useCallback((place: FocusTarget) => {
     setSelected({
@@ -195,31 +261,32 @@ export function UnifiedMapProvider({
       placeId: place.placeId ?? place.id ?? null,
       tripId: place.tripId ?? null
     });
-    updateCamera({
-      center: place.coordinate,
-      intent: "place",
-      selectedId: place.placeId ?? place.id ?? null,
-      zoom: place.zoom ?? 14
+    applyCameraCommand({
+      camera: {
+        center: place.coordinate,
+        intent: "place",
+        selectedId: place.placeId ?? place.id ?? null,
+        zoom: place.zoom ?? 14
+      },
+      coordinates: [place.coordinate],
+      id: `focusPlace:${Date.now().toString(36)}`,
+      label: place.label ?? null,
+      pinId: place.id ?? null,
+      tripId: place.tripId ?? null,
+      type: "openFlatMap"
     });
-  }, []);
+  }, [applyCameraCommand]);
 
   const openMap = useCallback((nextMode: WaylineMapMode = "map") => {
-    setMode(nextMode);
-  }, []);
+    openFlatMap(nextMode);
+  }, [openFlatMap]);
 
   const locateUser = useCallback(async () => {
     const currentLocation = locationRef.current;
     if (currentLocation.source === "browser" && currentLocation.coordinate) {
       setLocationStatus("ready");
       setLocationError(null);
-      updateCamera({
-        center: currentLocation.coordinate,
-        intent: "user-location",
-        rangeMeters: 4_500_000,
-        selectedId: USER_LOCATION_PIN_ID,
-        tilt: 35,
-        zoom: 8
-      });
+      focusUserLocation(currentLocation);
       return currentLocation;
     }
 
@@ -278,19 +345,7 @@ export function UnifiedMapProvider({
 
     if (nextLocation.coordinate) {
       persistLastKnownLocation(nextLocation);
-      updateCamera({
-        center: nextLocation.coordinate,
-        intent: "user-location",
-        rangeMeters: 4_500_000,
-        selectedId: USER_LOCATION_PIN_ID,
-        tilt: 35,
-        zoom: 8
-      });
-      setSelected({
-        pinId: USER_LOCATION_PIN_ID,
-        placeId: null,
-        tripId: null
-      });
+      focusUserLocation(nextLocation);
       setLocationStatus("ready");
       setLocationError(null);
       return nextLocation;
@@ -299,7 +354,7 @@ export function UnifiedMapProvider({
     setLocationStatus("error");
     setLocationError(nextLocation.error ?? "Location is unavailable.");
     return nextLocation;
-  }, []);
+  }, [focusUserLocation]);
 
   useEffect(() => {
     if (!autoLocate) {
@@ -345,6 +400,7 @@ export function UnifiedMapProvider({
   const surfaceState = useMemo<WaylineMapSurfaceState>(
     () => ({
       camera,
+      cameraCommand,
       location,
       mode,
       pins: surfacePins,
@@ -352,7 +408,7 @@ export function UnifiedMapProvider({
       routes,
       selectedId: selected.pinId ?? selected.placeId ?? selected.tripId
     }),
-    [camera, location, mode, routes, selected, surfacePins]
+    [camera, cameraCommand, location, mode, routes, selected, surfacePins]
   );
 
   const value = useMemo<UnifiedMapContextValue>(
@@ -367,33 +423,41 @@ export function UnifiedMapProvider({
       selected,
       surfaceState,
       clearSelection,
+      focusCountry,
       focusPlace,
+      focusRoute,
       focusTrip,
       locateUser,
+      openFlatMap,
       openMap,
       selectPin,
       setCamera,
       setMode,
       setPins,
-      setRoutes
+      setRoutes,
+      zoomToWorld
     }),
     [
       camera,
       clearSelection,
+      focusCountry,
       focusPlace,
+      focusRoute,
       focusTrip,
       locateUser,
       location,
       locationError,
       locationStatus,
       mode,
+      openFlatMap,
       openMap,
       routes,
       selectPin,
       selected,
       setCamera,
       surfacePins,
-      surfaceState
+      surfaceState,
+      zoomToWorld
     ]
   );
 
@@ -494,6 +558,15 @@ function persistLastKnownLocation(location: WaylineLocationState) {
   } catch {
     // Storage can be unavailable in private contexts. Location still works in memory.
   }
+}
+
+function clearPinSelection(setPins: (updater: (currentPins: WaylineMapPin[]) => WaylineMapPin[]) => void) {
+  setPins((currentPins) =>
+    currentPins.map((pin) => ({
+      ...pin,
+      selected: false
+    }))
+  );
 }
 
 function locationLabel(city?: string | null, countryName?: string | null) {

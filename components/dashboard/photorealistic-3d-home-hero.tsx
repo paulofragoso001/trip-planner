@@ -4,9 +4,14 @@ import Image from "next/image";
 import type { CSSProperties } from "react";
 import { useEffect, useRef, useState } from "react";
 import { countryCodeToFlag } from "@/lib/map/wayline-map-pins";
-import type { WaylineLocationState, WaylineMapPin } from "@/lib/map/wayline-map-models";
+import type {
+  WaylineLocationState,
+  WaylineMapCameraCommand,
+  WaylineMapPin
+} from "@/lib/map/wayline-map-models";
 
 type Photorealistic3DHomeHeroProps = {
+  cameraCommand?: WaylineMapCameraCommand | null;
   className?: string;
   location?: WaylineLocationState;
   onLocateUser?: () => Promise<WaylineLocationState> | void;
@@ -127,6 +132,7 @@ let googleMapsScriptPromise: Promise<void> | null = null;
 const EMPTY_PINS: WaylineMapPin[] = [];
 
 export function Photorealistic3DHomeHero({
+  cameraCommand,
   className,
   location,
   onLocateUser,
@@ -178,11 +184,14 @@ export function Photorealistic3DHomeHero({
   }, [onLocateUser]);
 
   useEffect(() => {
-    const nextFocus = focusFromPins(pins) ?? focusFromLocationState(location);
+    const nextFocus =
+      focusFromCameraCommand(cameraCommand, pins) ??
+      focusFromPins(pins) ??
+      focusFromLocationState(location);
     if (nextFocus) {
       setLocationFocus(nextFocus);
     }
-  }, [location, pins]);
+  }, [cameraCommand, location, pins]);
 
   useEffect(() => {
     document.documentElement.dataset.waylineHomeLaunchPhase = reduceMotion ? "done" : launchPhase;
@@ -463,6 +472,37 @@ function focusFromPins(pins: WaylineMapPin[]): CountryFocus | null {
     pinX: isUserPin ? 50 : countryFocus.pinX,
     pinY: isUserPin ? 50 : countryFocus.pinY,
     source: isUserPin ? "user" : "country"
+  };
+}
+
+function focusFromCameraCommand(
+  command: WaylineMapCameraCommand | null | undefined,
+  pins: WaylineMapPin[]
+): CountryFocus | null {
+  if (!command || command.type === "openFlatMap") {
+    return null;
+  }
+
+  if (command.type === "zoomToWorld") {
+    return DEFAULT_COUNTRY;
+  }
+
+  const commandPin = command.pinId ? pins.find((pin) => pin.id === command.pinId) : null;
+  const latitude = clamp(command.camera.center.lat, -85, 85);
+  const longitude = normalizeLongitude(command.camera.center.lng);
+  const countryFocus = countryFromApproximateCoordinates(latitude, longitude) ?? DEFAULT_COUNTRY;
+  const isUserCommand = command.type === "focusUserLocation";
+
+  return {
+    ...countryFocus,
+    altitude: isUserCommand ? 850_000 : command.camera.altitudeMeters ?? countryFocus.altitude,
+    flag: commandPin?.flag || countryFocus.flag,
+    lat: latitude,
+    lng: longitude,
+    name: userFacingLocationLabel(command.label) || countryFocus.name,
+    pinX: isUserCommand ? 50 : countryFocus.pinX,
+    pinY: isUserCommand ? 50 : countryFocus.pinY,
+    source: isUserCommand ? "user" : "country"
   };
 }
 

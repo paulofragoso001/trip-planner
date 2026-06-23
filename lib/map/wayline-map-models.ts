@@ -39,6 +39,36 @@ export type WaylineMapCamera = {
   zoom?: number | null;
 };
 
+export type WaylineMapCameraCommandType =
+  | "focusUserLocation"
+  | "focusCountry"
+  | "focusTrip"
+  | "focusRoute"
+  | "zoomToWorld"
+  | "openFlatMap";
+
+export type WaylineMapCameraPadding = {
+  bottom?: number;
+  left?: number;
+  right?: number;
+  top?: number;
+};
+
+export type WaylineMapCameraCommand = {
+  camera: WaylineMapCamera;
+  id: string;
+  type: WaylineMapCameraCommandType;
+  bounds?: WaylineMapBounds | null;
+  coordinates?: WaylineCoordinate[];
+  durationMs?: number | null;
+  label?: string | null;
+  mode?: WaylineMapMode | null;
+  padding?: WaylineMapCameraPadding | null;
+  pinId?: string | null;
+  routeId?: string | null;
+  tripId?: string | null;
+};
+
 export type WaylineMapBounds = {
   east: number;
   north: number;
@@ -157,6 +187,7 @@ export type WaylineMapSurfaceState = {
   pins: WaylineMapPin[];
   renderer: WaylineMapRenderer;
   routes: WaylineMapRoute[];
+  cameraCommand?: WaylineMapCameraCommand | null;
   distanceRings?: WaylineMapDistanceRing[];
   selectedId?: string | null;
 };

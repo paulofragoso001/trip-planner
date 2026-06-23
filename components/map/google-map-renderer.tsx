@@ -11,6 +11,7 @@ import { WaylineGoogleMapPinMarker } from "@/components/map/wayline-google-map-p
 import { useOptionalUnifiedMap } from "@/lib/map/unified-map-provider";
 import type {
   WaylineCoordinate,
+  WaylineMapCameraCommand,
   WaylineMapRoute,
   WaylineMapSurfaceState
 } from "@/lib/map/wayline-map-models";
@@ -45,6 +46,7 @@ function LoadedGoogleMapRenderer({
   const unifiedMap = useOptionalUnifiedMap();
   const activeSurface = surfaceState ?? unifiedMap?.surfaceState;
   const mapRef = useRef<google.maps.Map | null>(null);
+  const lastCameraCommandIdRef = useRef<string | null>(null);
   const pins = activeSurface?.pins ?? [];
   const routes = activeSurface?.routes ?? [];
   const routePaths = useMemo(() => routes.map(routePathForRoute).filter(hasRoutePath), [routes]);
@@ -66,6 +68,12 @@ function LoadedGoogleMapRenderer({
       return;
     }
 
+    if (activeSurface?.cameraCommand) {
+      applyGoogleCameraCommand(map, activeSurface.cameraCommand);
+      lastCameraCommandIdRef.current = activeSurface.cameraCommand.id;
+      return;
+    }
+
     const bounds = new window.google.maps.LatLngBounds();
     let pointCount = 0;
 
@@ -84,15 +92,24 @@ function LoadedGoogleMapRenderer({
       map.panTo(center);
       map.setZoom(activeSurface?.camera.zoom ?? 10);
     }
-  }, [activeSurface?.camera.zoom, center, mapReady, pins, routePaths]);
+  }, [activeSurface?.camera.zoom, activeSurface?.cameraCommand, center, mapReady, pins, routePaths]);
 
   useEffect(() => {
     if (!mapRef.current) {
       return;
     }
 
+    if (
+      activeSurface?.cameraCommand &&
+      activeSurface.cameraCommand.id !== lastCameraCommandIdRef.current
+    ) {
+      applyGoogleCameraCommand(mapRef.current, activeSurface.cameraCommand);
+      lastCameraCommandIdRef.current = activeSurface.cameraCommand.id;
+      return;
+    }
+
     syncMapCamera(mapRef.current);
-  }, [syncMapCamera]);
+  }, [activeSurface?.cameraCommand, syncMapCamera]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -191,6 +208,38 @@ function routePathForRoute(route: WaylineMapRoute) {
 
 function hasRoutePath(path: WaylineCoordinate[]): path is [WaylineCoordinate, WaylineCoordinate, ...WaylineCoordinate[]] {
   return path.length > 1;
+}
+
+function applyGoogleCameraCommand(map: google.maps.Map, command: WaylineMapCameraCommand) {
+  const googleMaps = window.google?.maps;
+  const coordinates = command.coordinates ?? [];
+
+  if (
+    command.type === "focusRoute" ||
+    command.type === "zoomToWorld" ||
+    coordinates.length > 1
+  ) {
+    const bounds = googleMaps?.LatLngBounds ? new googleMaps.LatLngBounds() : null;
+    coordinates.forEach((coordinate) => bounds?.extend(coordinate));
+
+    if (bounds && coordinates.length > 1) {
+      map.fitBounds(bounds, command.padding ?? { bottom: 120, left: 64, right: 64, top: 96 });
+    } else {
+      map.panTo(command.camera.center);
+      map.setZoom(command.camera.zoom ?? (command.type === "zoomToWorld" ? 2 : 10));
+    }
+  } else {
+    map.panTo(command.camera.center);
+    map.setZoom(command.camera.zoom ?? 10);
+  }
+
+  if (typeof command.camera.tilt === "number") {
+    map.setTilt(command.camera.tilt);
+  }
+
+  if (typeof command.camera.heading === "number") {
+    map.setHeading(command.camera.heading);
+  }
 }
 
 function MapUnavailable({

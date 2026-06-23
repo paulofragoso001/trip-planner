@@ -25,6 +25,7 @@ export function CustomGlobeRenderer({
     >
       <Photorealistic3DHomeHero
         className={className}
+        cameraCommand={activeSurface?.cameraCommand}
         location={activeSurface?.location}
         onLocateUser={unifiedMap?.locateUser}
         pins={activeSurface?.pins}
