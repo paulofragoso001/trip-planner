@@ -19,9 +19,9 @@ import type {
   WaylineMapSurfaceState
 } from "@/lib/map/wayline-map-models";
 
-type LocationRequestState = "idle" | "loading" | "ready" | "error";
+export type LocationRequestState = "idle" | "loading" | "ready" | "error";
 
-type FocusTarget = {
+export type FocusTarget = {
   coordinate: WaylineCoordinate;
   id?: string | null;
   label?: string | null;
@@ -30,7 +30,7 @@ type FocusTarget = {
   zoom?: number | null;
 };
 
-type UnifiedMapProviderProps = {
+export type UnifiedMapProviderProps = {
   children: ReactNode;
   initialCamera?: WaylineMapCamera;
   initialLocation?: WaylineLocationState;
@@ -39,7 +39,7 @@ type UnifiedMapProviderProps = {
   initialRoutes?: WaylineMapRoute[];
 };
 
-type UnifiedMapContextValue = {
+export type UnifiedMapContextValue = {
   camera: WaylineMapCamera;
   location: WaylineLocationState;
   locationError: string | null;
@@ -297,6 +297,10 @@ export function useUnifiedMap() {
   }
 
   return context;
+}
+
+export function useOptionalUnifiedMap() {
+  return useContext(UnifiedMapContext);
 }
 
 function clampLatitude(latitude: number) {

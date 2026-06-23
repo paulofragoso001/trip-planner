@@ -2,8 +2,10 @@
 
 import Link from "next/link";
 import { MapIcon, Navigation } from "lucide-react";
-import GoogleMapsProvider from "@/components/GoogleMapsProvider";
-import TripMap, { type TripMapItem } from "@/components/TripMap";
+import { useMemo } from "react";
+import { GoogleMapRenderer } from "@/components/map/google-map-renderer";
+import type { TripMapItem } from "@/components/TripMap";
+import type { WaylineMapSurfaceState } from "@/lib/map/wayline-map-models";
 
 type MobileMapPreviewProps = {
   ctaHref?: string;
@@ -22,6 +24,8 @@ export function MobileMapPreview({
   label,
   title
 }: MobileMapPreviewProps) {
+  const mapSurface = useMemo(() => tripItemsToMapSurface(items), [items]);
+
   return (
     <section
       aria-label={title}
@@ -31,15 +35,11 @@ export function MobileMapPreview({
       style={{ minHeight: height }}
     >
       {items.length ? (
-        <GoogleMapsProvider>
-          <TripMap
-            height={height}
-            items={items}
-            mapTheme="dark"
-            selectedId={items[0]?.id ?? null}
-            showRouteDetails={false}
-          />
-        </GoogleMapsProvider>
+        <GoogleMapRenderer
+          height={height}
+          mapTheme="dark"
+          surfaceState={mapSurface}
+        />
       ) : (
         <div
           aria-hidden="true"
@@ -81,4 +81,42 @@ export function MobileMapPreview({
       </div>
     </section>
   );
+}
+
+function tripItemsToMapSurface(items: TripMapItem[]): WaylineMapSurfaceState {
+  const firstItem = items[0];
+  const center = firstItem ? { lat: firstItem.lat, lng: firstItem.lng } : { lat: 25.7617, lng: -80.1918 };
+
+  return {
+    camera: {
+      center,
+      intent: "trip",
+      selectedId: firstItem?.id ?? null,
+      zoom: items.length > 1 ? 11 : 14
+    },
+    location: {
+      coordinate: null,
+      permission: "unknown",
+      source: "fallback"
+    },
+    mode: "route",
+    pins: items.map((item, index) => ({
+      coordinate: { lat: item.lat, lng: item.lng },
+      id: item.id,
+      imageAlt: item.imageAlt,
+      imageAttribution: item.imageAttribution,
+      imageUrl: item.imageUrl,
+      kind: "place",
+      label: item.title,
+      order: item.routeOrder ?? index + 1,
+      provider: item.provider,
+      providerPlaceId: item.providerPlaceId,
+      selected: item.id === firstItem?.id,
+      subtitle: item.category,
+      tone: item.id === firstItem?.id ? "orange" : "blue"
+    })),
+    renderer: "google-2d",
+    routes: [],
+    selectedId: firstItem?.id ?? null
+  };
 }

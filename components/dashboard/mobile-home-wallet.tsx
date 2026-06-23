@@ -3,7 +3,7 @@
 import { LocateFixed, Map } from "lucide-react";
 import Link from "next/link";
 import type { DashboardData } from "@/app/dashboard/loader";
-import { Photorealistic3DHomeHero } from "@/components/dashboard/photorealistic-3d-home-hero";
+import { CustomGlobeRenderer } from "@/components/map/custom-globe-renderer";
 import { TravelWalletSheet } from "@/components/dashboard/travel-wallet-sheet";
 import { cn } from "@/components/trip-ui";
 import { dashboardActionRoutes } from "@/lib/dashboard/action-routes";
@@ -43,7 +43,7 @@ export function MobileHomeWallet({
         className="globe-layer absolute inset-0 overflow-hidden bg-black"
         data-testid="mobile-home-3d-hero"
       >
-        <Photorealistic3DHomeHero />
+        <CustomGlobeRenderer />
         <FloatingGlobeControls />
       </section>
 

@@ -13,8 +13,10 @@ import {
   X
 } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import TripMap, { type TripMapItem } from "@/components/TripMap";
+import { GoogleMapRenderer } from "@/components/map/google-map-renderer";
+import type { TripMapItem } from "@/components/TripMap";
 import { DisplayAddressSheet } from "@/components/trip/display-address-sheet";
+import type { WaylineMapSurfaceState } from "@/lib/map/wayline-map-models";
 import {
   hasResolvedRoute,
   routeEndpointLabel,
@@ -102,6 +104,7 @@ export function ActivityDetailSheet({
   const [moreOpen, setMoreOpen] = useState(false);
   const detail = useMemo(() => (target ? getDetailView(target) : null), [target]);
   const mapItem = useMemo(() => (detail ? getDetailMapItem(detail) : null), [detail]);
+  const mapSurface = useMemo(() => (mapItem ? tripItemToMapSurface(mapItem) : null), [mapItem]);
   const displayAddress = useMemo(() => (detail ? getDisplayAddress(detail) : null), [detail]);
 
   useEffect(() => {
@@ -161,14 +164,11 @@ export function ActivityDetailSheet({
         className="relative h-[42svh] min-h-[280px] overflow-hidden bg-[#07182b]"
         data-testid="activity-detail-map"
       >
-        {mapItem ? (
-          <TripMap
+        {mapSurface ? (
+          <GoogleMapRenderer
             height="42svh"
-            items={[mapItem]}
             mapTheme="dark"
-            selectedId={mapItem.id}
-            showRouteDetails={false}
-            travelMode="WALKING"
+            surfaceState={mapSurface}
           />
         ) : detail.imageUrl ? (
           <img
@@ -307,6 +307,46 @@ export function ActivityDetailSheet({
       ) : null}
     </div>
   );
+}
+
+function tripItemToMapSurface(item: TripMapItem): WaylineMapSurfaceState {
+  const coordinate = { lat: item.lat, lng: item.lng };
+
+  return {
+    camera: {
+      center: coordinate,
+      intent: "place",
+      selectedId: item.id,
+      zoom: 14
+    },
+    location: {
+      coordinate: null,
+      permission: "unknown",
+      source: "fallback"
+    },
+    mode: "map",
+    pins: [
+      {
+        address: item.address,
+        coordinate,
+        id: item.id,
+        imageAlt: item.imageAlt,
+        imageAttribution: item.imageAttribution,
+        imageUrl: item.imageUrl,
+        kind: item.kind === "transport" ? "transport" : "place",
+        label: item.title,
+        order: item.routeOrder,
+        provider: item.provider,
+        providerPlaceId: item.providerPlaceId,
+        selected: true,
+        subtitle: item.category,
+        tone: "orange"
+      }
+    ],
+    renderer: "google-2d",
+    routes: [],
+    selectedId: item.id
+  };
 }
 
 function SegmentDetailBody({
