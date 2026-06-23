@@ -41,7 +41,7 @@ function useIsDesktopDashboardShell() {
   const [isDesktop, setIsDesktop] = useState(false);
 
   useEffect(() => {
-    const query = window.matchMedia("(min-width: 1024px)");
+    const query = window.matchMedia("(min-width: 768px)");
     const sync = () => setIsDesktop(query.matches);
 
     sync();
