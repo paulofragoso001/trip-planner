@@ -3,9 +3,12 @@
 import Image from "next/image";
 import type { CSSProperties } from "react";
 import { useEffect, useRef, useState } from "react";
+import type { WaylineLocationState } from "@/lib/map/wayline-map-models";
 
 type Photorealistic3DHomeHeroProps = {
   className?: string;
+  location?: WaylineLocationState;
+  onLocateUser?: () => Promise<WaylineLocationState> | void;
 };
 
 type HeroState = "loading" | "ready3d" | "3d-static" | "fallback" | "error";
@@ -111,7 +114,11 @@ const COUNTRY_BY_TIME_ZONE_PREFIX: Array<[string, CountryFocus]> = [
 
 let googleMapsScriptPromise: Promise<void> | null = null;
 
-export function Photorealistic3DHomeHero({ className }: Photorealistic3DHomeHeroProps) {
+export function Photorealistic3DHomeHero({
+  className,
+  location,
+  onLocateUser
+}: Photorealistic3DHomeHeroProps) {
   const mapHostRef = useRef<HTMLDivElement | null>(null);
   const introTimerRef = useRef<number | null>(null);
   const [country, setCountry] = useState<CountryFocus>(DEFAULT_COUNTRY);
@@ -146,50 +153,23 @@ export function Photorealistic3DHomeHero({ className }: Photorealistic3DHomeHero
 
     setCountry(localeCountry || timezoneCountry || DEFAULT_COUNTRY);
 
-    let cancelled = false;
-
     const useCurrentLocation = () => {
-      requestCurrentLocation((nextCountry) => {
-        if (!cancelled) {
-          setLocationFocus(nextCountry);
-        }
-      });
+      void onLocateUser?.();
     };
 
     window.addEventListener(USE_CURRENT_LOCATION_EVENT, useCurrentLocation);
 
-    if (!navigator.geolocation) {
-      return () => {
-        cancelled = true;
-        window.removeEventListener(USE_CURRENT_LOCATION_EVENT, useCurrentLocation);
-      };
-    }
-
-    const permissions = navigator.permissions;
-    if (!permissions?.query) {
-      useCurrentLocation();
-    } else {
-      permissions
-        .query({ name: "geolocation" as PermissionName })
-        .then((permission) => {
-          if (cancelled || permission.state === "denied") {
-            return;
-          }
-
-          useCurrentLocation();
-        })
-        .catch(() => {
-          if (!cancelled) {
-            useCurrentLocation();
-          }
-        });
-    }
-
     return () => {
-      cancelled = true;
       window.removeEventListener(USE_CURRENT_LOCATION_EVENT, useCurrentLocation);
     };
-  }, []);
+  }, [onLocateUser]);
+
+  useEffect(() => {
+    const nextFocus = focusFromLocationState(location);
+    if (nextFocus) {
+      setLocationFocus(nextFocus);
+    }
+  }, [location]);
 
   useEffect(() => {
     document.documentElement.dataset.waylineHomeLaunchPhase = reduceMotion ? "done" : launchPhase;
@@ -270,9 +250,16 @@ export function Photorealistic3DHomeHero({ className }: Photorealistic3DHomeHero
         mapElement.className = "absolute inset-x-0 -top-10 -bottom-10 h-[calc(100%+5rem)] w-full";
         mapElement.setAttribute("data-testid", "home-3d-map");
         mapElement.setAttribute("mode", "hybrid");
-        setMapCamera(mapElement, reduceMotion ? getSettledCamera(focus) : getStartCamera(focus));
+        const shouldSettleImmediately = reduceMotion || focus.source === "user";
+        setMapCamera(mapElement, shouldSettleImmediately ? getSettledCamera(focus) : getStartCamera(focus));
         host.replaceChildren(mapElement);
         setHeroState("ready3d");
+
+        if (shouldSettleImmediately) {
+          setLaunchPhase("done");
+          setIntroComplete(true);
+          return;
+        }
 
         if (!reduceMotion) {
           if (typeof window.requestAnimationFrame === "function") {
@@ -318,8 +305,9 @@ export function Photorealistic3DHomeHero({ className }: Photorealistic3DHomeHero
   }, [country, reduceMotion]);
 
   const focus = country;
+  const hasUserFocus = focus.source === "user";
   const showPin =
-    (heroState === "ready3d" && (reduceMotion || shouldShowPinForPhase(launchPhase))) ||
+    (heroState === "ready3d" && (hasUserFocus || reduceMotion || shouldShowPinForPhase(launchPhase))) ||
     heroState === "3d-static" ||
     (heroState === "fallback" && (introComplete || reduceMotion));
 
@@ -387,39 +375,6 @@ export function Photorealistic3DHomeHero({ className }: Photorealistic3DHomeHero
   );
 }
 
-function requestCurrentLocation(onLocation: (country: CountryFocus) => void) {
-  if (!navigator.geolocation) {
-    return;
-  }
-
-  navigator.geolocation.getCurrentPosition(
-    (position) => {
-      onLocation(focusFromPosition(position));
-    },
-    () => undefined,
-    { enableHighAccuracy: true, maximumAge: 300_000, timeout: 6_000 }
-  );
-}
-
-function focusFromPosition(position: GeolocationPosition): CountryFocus {
-  const latitude = clamp(position.coords.latitude, -85, 85);
-  const longitude = normalizeLongitude(position.coords.longitude);
-  const approximateCountry = countryFromApproximateCoordinates(latitude, longitude) ?? DEFAULT_COUNTRY;
-
-  return {
-    ...approximateCountry,
-    altitude: 850_000,
-    code: approximateCountry.code,
-    flag: approximateCountry.flag,
-    lat: latitude,
-    lng: longitude,
-    name: approximateCountry.name,
-    pinX: 50,
-    pinY: 50,
-    source: "user"
-  };
-}
-
 function shouldUpdateFocus(currentCountry: CountryFocus, nextCountry: CountryFocus) {
   if (currentCountry.source !== nextCountry.source || currentCountry.code !== nextCountry.code) {
     return true;
@@ -435,6 +390,46 @@ function shouldUpdateFocus(currentCountry: CountryFocus, nextCountry: CountryFoc
     nextCountry.lat,
     nextCountry.lng
   ) > 0.25;
+}
+
+function focusFromLocationState(location: WaylineLocationState | undefined): CountryFocus | null {
+  if (!location?.coordinate) {
+    return null;
+  }
+
+  const latitude = clamp(location.coordinate.lat, -85, 85);
+  const longitude = normalizeLongitude(location.coordinate.lng);
+  const countryCode = location.countryCode?.toUpperCase() ?? null;
+  const countryFocus =
+    (countryCode ? COUNTRY_BY_CODE[countryCode] : null) ??
+    countryFromApproximateCoordinates(latitude, longitude) ??
+    DEFAULT_COUNTRY;
+
+  return {
+    ...countryFocus,
+    altitude: 850_000,
+    code: countryCode || countryFocus.code,
+    flag: countryFlag(countryCode) || countryFocus.flag,
+    lat: latitude,
+    lng: longitude,
+    name: location.city || location.countryName || userFacingLocationLabel(location.label) || countryFocus.name,
+    pinX: 50,
+    pinY: 50,
+    source: "user"
+  };
+}
+
+function userFacingLocationLabel(label: string | null | undefined) {
+  return label && label !== "Current location" ? label : null;
+}
+
+function countryFlag(countryCode: string | null) {
+  if (!countryCode || countryCode.length !== 2) {
+    return null;
+  }
+
+  const codePoints = [...countryCode].map((char) => 127397 + char.charCodeAt(0));
+  return String.fromCodePoint(...codePoints);
 }
 
 function distanceBetweenCoordinates(

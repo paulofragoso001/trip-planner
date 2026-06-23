@@ -7,6 +7,7 @@ import { CustomGlobeRenderer } from "@/components/map/custom-globe-renderer";
 import { TravelWalletSheet } from "@/components/dashboard/travel-wallet-sheet";
 import { cn } from "@/components/trip-ui";
 import { dashboardActionRoutes } from "@/lib/dashboard/action-routes";
+import { UnifiedMapProvider } from "@/lib/map/unified-map-provider";
 
 type MobileHomeWalletProps = Pick<DashboardData, "metrics" | "recentTrips"> & {
   className?: string;
@@ -32,35 +33,37 @@ export function MobileHomeWallet({
     : "Start a new travel wallet.";
 
   return (
-    <section
-      className={cn(
-        "mobile-launch-globe relative isolate h-[100dvh] overflow-hidden bg-black text-white lg:hidden",
-        className
-      )}
-      data-testid="mobile-home-wallet"
-    >
+    <UnifiedMapProvider autoLocate initialMode="globe">
       <section
-        className="globe-layer absolute inset-0 overflow-hidden bg-black"
-        data-testid="mobile-home-3d-hero"
+        className={cn(
+          "mobile-launch-globe relative isolate h-[100dvh] overflow-hidden bg-black text-white lg:hidden",
+          className
+        )}
+        data-testid="mobile-home-wallet"
       >
-        <CustomGlobeRenderer />
-        <FloatingGlobeControls />
-      </section>
+        <section
+          className="globe-layer absolute inset-0 overflow-hidden bg-black"
+          data-testid="mobile-home-3d-hero"
+        >
+          <CustomGlobeRenderer />
+          <FloatingGlobeControls />
+        </section>
 
-      <section
-        className="launch-bottom-sheet pointer-events-none absolute inset-x-0 bottom-0 z-30"
-        data-testid="mobile-home-wallet-stage"
-      >
-        <TravelWalletSheet
-          ideasWaitingCount={ideasWaitingCount}
-          primaryHref={primaryHref}
-          primaryLabel={primaryLabel}
-          primaryMeta={primaryMeta}
-          recentTrips={recentTrips}
-          initialSheetState={initialSheetState}
-        />
+        <section
+          className="launch-bottom-sheet pointer-events-none absolute inset-x-0 bottom-0 z-30"
+          data-testid="mobile-home-wallet-stage"
+        >
+          <TravelWalletSheet
+            ideasWaitingCount={ideasWaitingCount}
+            primaryHref={primaryHref}
+            primaryLabel={primaryLabel}
+            primaryMeta={primaryMeta}
+            recentTrips={recentTrips}
+            initialSheetState={initialSheetState}
+          />
+        </section>
       </section>
-    </section>
+    </UnifiedMapProvider>
   );
 }
 

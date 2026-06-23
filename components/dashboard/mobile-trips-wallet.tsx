@@ -12,6 +12,10 @@ import { cn } from "@/components/trip-ui";
 import type { DashboardRecentTripView } from "@/app/dashboard/loader";
 import type { TripsData } from "@/app/dashboard/trips/loader";
 import { dashboardActionRoutes } from "@/lib/dashboard/action-routes";
+import {
+  UnifiedMapProvider,
+  useOptionalUnifiedMap
+} from "@/lib/map/unified-map-provider";
 
 type MobileTripsWalletProps = Pick<TripsData, "error" | "trips">;
 type Trip = TripsData["trips"][number];
@@ -59,10 +63,12 @@ export function MobileTripsWallet({ error, trips }: MobileTripsWalletProps) {
 
   if (!isListView) {
     return (
-      <MobileTripsCountriesMap
-        activeYearTrips={countryMapTrips}
-        hydrated={hydrated}
-      />
+      <UnifiedMapProvider autoLocate initialMode="country-map">
+        <MobileTripsCountriesMap
+          activeYearTrips={countryMapTrips}
+          hydrated={hydrated}
+        />
+      </UnifiedMapProvider>
     );
   }
 
@@ -210,6 +216,7 @@ function MobileTripsCountriesMap({
   activeYearTrips,
   hydrated
 }: MobileTripsCountriesMapProps) {
+  const unifiedMap = useOptionalUnifiedMap();
   const markerTrips = activeYearTrips.filter(hasTripCoordinates);
   const recentTrips = activeYearTrips.map(mapTripToWalletTrip);
   const latestTrip = recentTrips[0] || null;
@@ -239,7 +246,7 @@ function MobileTripsCountriesMap({
           aria-label="Locate trips"
           className="grid h-12 w-12 place-items-center transition hover:bg-white/10 focus:outline-none focus:ring-4 focus:ring-orange-400/20"
           onClick={() => {
-            window.dispatchEvent(new CustomEvent(dashboardActionRoutes.globe.locateUserEvent));
+            void unifiedMap?.locateUser();
           }}
           type="button"
         >
@@ -262,7 +269,10 @@ function MobileTripsCountriesMap({
 }
 
 function MobileCountryMapCanvas({ trips }: { trips: Trip[] }) {
-  if (!trips.length) {
+  const unifiedMap = useOptionalUnifiedMap();
+  const hasUserLocation = Boolean(unifiedMap?.location.coordinate);
+
+  if (!trips.length && !hasUserLocation) {
     return (
       <div
         className="absolute inset-0 z-0 overflow-hidden bg-slate-950"
@@ -282,12 +292,15 @@ function MobileCountryMapCanvas({ trips }: { trips: Trip[] }) {
 }
 
 function LoadedMobileCountryMap({ trips }: { trips: Trip[] }) {
+  const unifiedMap = useOptionalUnifiedMap();
   const mapRef = useRef<google.maps.Map | null>(null);
   const mapReady = typeof window !== "undefined" && typeof window.google?.maps?.Map === "function";
+  const userLocation = unifiedMap?.location.coordinate ? unifiedMap.location : null;
+  const mapCenter = userLocation?.coordinate ?? countryMapCenter(trips);
 
   useEffect(() => {
-    fitCountryMap(mapRef.current, trips);
-  }, [trips, mapReady]);
+    fitCountryMap(mapRef.current, trips, userLocation?.coordinate ?? null);
+  }, [trips, mapReady, userLocation?.coordinate]);
 
   return (
     <div
@@ -296,11 +309,11 @@ function LoadedMobileCountryMap({ trips }: { trips: Trip[] }) {
     >
       {mapReady ? (
         <GoogleMap
-          center={countryMapCenter(trips)}
+          center={mapCenter}
           mapContainerStyle={{ height: "100dvh", width: "100%" }}
           onLoad={(map) => {
             mapRef.current = map;
-            fitCountryMap(map, trips);
+            fitCountryMap(map, trips, userLocation?.coordinate ?? null);
           }}
           options={{
             clickableIcons: false,
@@ -343,6 +356,24 @@ function LoadedMobileCountryMap({ trips }: { trips: Trip[] }) {
               </Link>
             </OverlayView>
           ))}
+          {userLocation?.coordinate ? (
+            <OverlayView
+              mapPaneName={OverlayView.OVERLAY_MOUSE_TARGET}
+              position={userLocation.coordinate}
+            >
+              <div
+                className="grid -translate-x-1/2 -translate-y-full justify-items-center"
+                data-testid="mobile-country-map-user-marker"
+              >
+                <span className="text-[2.4rem] leading-none drop-shadow-[0_8px_18px_rgba(0,0,0,0.72)]">
+                  {countryFlag(userLocation.countryCode) || "📍"}
+                </span>
+                <span className="-mt-1 max-w-32 truncate whitespace-nowrap text-center text-sm font-black text-white [text-shadow:0_2px_5px_rgba(0,0,0,0.95)]">
+                  {userLocation.countryName || userLocation.city || userLocation.label || "Your location"}
+                </span>
+              </div>
+            </OverlayView>
+          ) : null}
         </GoogleMap>
       ) : (
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_19%_18%,rgba(20,184,166,0.32),transparent_27%),radial-gradient(circle_at_62%_28%,rgba(37,99,235,0.38),transparent_32%),linear-gradient(180deg,#0b1d2d,#06101d_58%,#020617)]" />
@@ -369,10 +400,14 @@ function countryMapCenter(trips: Trip[]) {
   };
 }
 
-function fitCountryMap(map: google.maps.Map | null, trips: Trip[]) {
+function fitCountryMap(
+  map: google.maps.Map | null,
+  trips: Trip[],
+  userCoordinate: { lat: number; lng: number } | null
+) {
   if (
     !map ||
-    !trips.length ||
+    (!trips.length && !userCoordinate) ||
     typeof window === "undefined" ||
     typeof window.google?.maps?.LatLngBounds !== "function"
   ) {
@@ -383,6 +418,9 @@ function fitCountryMap(map: google.maps.Map | null, trips: Trip[]) {
   trips.forEach((trip) => {
     bounds.extend({ lat: trip.destinationLat!, lng: trip.destinationLng! });
   });
+  if (userCoordinate) {
+    bounds.extend(userCoordinate);
+  }
   map.fitBounds(bounds, { bottom: 260, left: 64, right: 64, top: 96 });
 }
 
@@ -535,6 +573,15 @@ function destinationFlag(destination: string) {
   if (/(aruba)/.test(value)) return "🇦🇼";
   if (/(united states|usa|miami|new york|los angeles|san francisco|houston|beverly hills|newark)/.test(value)) return "🇺🇸";
   return "•";
+}
+
+function countryFlag(countryCode?: string | null) {
+  if (!countryCode || countryCode.length !== 2) {
+    return null;
+  }
+
+  const codePoints = [...countryCode.toUpperCase()].map((char) => 127397 + char.charCodeAt(0));
+  return String.fromCodePoint(...codePoints);
 }
 
 function tripYear(trip: Trip) {

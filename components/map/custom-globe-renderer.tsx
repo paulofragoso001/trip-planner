@@ -23,7 +23,11 @@ export function CustomGlobeRenderer({
       data-map-renderer="custom-globe"
       data-selected-map-id={activeSurface?.selectedId ?? undefined}
     >
-      <Photorealistic3DHomeHero className={className} />
+      <Photorealistic3DHomeHero
+        className={className}
+        location={activeSurface?.location}
+        onLocateUser={unifiedMap?.locateUser}
+      />
     </div>
   );
 }

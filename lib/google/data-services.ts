@@ -12,6 +12,9 @@ export type GoogleGeocodeResult = {
   coordinate: GoogleCoordinate;
   placeId: string | null;
   types: string[];
+  city?: string | null;
+  countryCode?: string | null;
+  countryName?: string | null;
 };
 
 export type GooglePlaceDetailsResult = {
@@ -42,6 +45,13 @@ const googleServiceOwners = {
 const googleGeocodePayloadSchema = z.object({
   results: z.array(
     z.object({
+      address_components: z.array(
+        z.object({
+          long_name: z.string().optional(),
+          short_name: z.string().optional(),
+          types: z.array(z.string()).optional()
+        })
+      ).optional(),
       formatted_address: z.string().optional(),
       geometry: z.object({
         location: z.object({
@@ -116,6 +126,7 @@ export async function geocodeAddressWithGoogle(address: string) {
       lat: location.lat,
       lng: location.lng
     },
+    ...locationLabelsFromAddressComponents(firstResult.address_components || []),
     placeId: firstResult.place_id || null,
     types: firstResult.types || []
   } satisfies GoogleGeocodeResult;
@@ -142,6 +153,7 @@ export async function reverseGeocodeWithGoogle(coordinate: GoogleCoordinate) {
       lat: location.lat,
       lng: location.lng
     },
+    ...locationLabelsFromAddressComponents(firstResult.address_components || []),
     placeId: firstResult.place_id || null,
     types: firstResult.types || []
   } satisfies GoogleGeocodeResult;
@@ -257,4 +269,35 @@ function isFiniteCoordinate(coordinate: GoogleCoordinate) {
     Math.abs(coordinate.lat) <= 90 &&
     Math.abs(coordinate.lng) <= 180
   );
+}
+
+function locationLabelsFromAddressComponents(
+  components: Array<{
+    long_name?: string;
+    short_name?: string;
+    types?: string[];
+  }>
+) {
+  const city =
+    componentName(components, "locality") ||
+    componentName(components, "postal_town") ||
+    componentName(components, "administrative_area_level_2") ||
+    componentName(components, "administrative_area_level_1");
+  const countryComponent = components.find((component) => component.types?.includes("country"));
+
+  return {
+    city: city || null,
+    countryCode: countryComponent?.short_name?.toUpperCase() || null,
+    countryName: countryComponent?.long_name || null
+  };
+}
+
+function componentName(
+  components: Array<{
+    long_name?: string;
+    types?: string[];
+  }>,
+  type: string
+) {
+  return components.find((component) => component.types?.includes(type))?.long_name ?? null;
 }

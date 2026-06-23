@@ -3,11 +3,12 @@
 import { Delete, Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import type { FormEvent } from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useWaylineAction } from "@/hooks/use-wayline-action";
 
 export function BudgetRecordForm({ tripId }: { tripId: string }) {
   const router = useRouter();
+  const [hydrated, setHydrated] = useState(false);
   const [open, setOpen] = useState(false);
   const [amount, setAmount] = useState("");
   const [category, setCategory] = useState("restaurant");
@@ -70,11 +71,16 @@ export function BudgetRecordForm({ tripId }: { tripId: string }) {
   }).format(numericAmount || 0);
   const keypad = ["1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "0"];
 
+  useEffect(() => {
+    setHydrated(true);
+  }, []);
+
   return (
     <>
       <button
         className="mt-4 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-orange-500 px-5 text-sm font-black text-white shadow-[0_18px_38px_rgba(249,115,22,0.22)] lg:hidden"
         data-testid="mobile-add-expense-button"
+        disabled={!hydrated}
         onClick={() => setOpen(true)}
         type="button"
       >
