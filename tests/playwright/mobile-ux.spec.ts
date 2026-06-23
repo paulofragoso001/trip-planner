@@ -107,6 +107,25 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByTestId("ios-launch-sheet-collapsed")).toBeVisible();
   });
 
+  test("dashboard shell renders separate mobile and desktop structures", async ({ page }) => {
+    await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
+
+    await page.setViewportSize({ height: 900, width: 390 });
+    await page.goto(`${baseUrl}/dashboard`, { waitUntil: "commit" });
+    await expect(page.getByTestId("app-shell-root")).toHaveAttribute("data-shell-variant", "mobile");
+    await expect(page.getByTestId("app-shell-sidebar")).toHaveCount(0);
+    await expect(page.getByTestId("app-shell-topbar")).toHaveCount(0);
+    await expect(page.getByTestId("app-shell-mobile-drawer")).toHaveCount(0);
+    await expect(page.getByTestId("mobile-home-wallet")).toBeVisible();
+
+    await page.setViewportSize({ height: 900, width: 1024 });
+    await page.goto(`${baseUrl}/dashboard`, { waitUntil: "commit" });
+    await expect(page.getByTestId("app-shell-root")).toHaveAttribute("data-shell-variant", "desktop");
+    await expect(page.getByTestId("app-shell-sidebar")).toBeVisible();
+    await expect(page.getByTestId("app-shell-topbar")).toBeVisible();
+    await expect(page.getByTestId("app-shell-nav")).toBeVisible();
+  });
+
   test("mobile trip workspace hides global bottom navigation", async ({ page }) => {
     await page.setViewportSize({ height: 900, width: 390 });
     await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
