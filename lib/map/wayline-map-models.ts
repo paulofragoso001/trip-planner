@@ -72,6 +72,7 @@ export type WaylineMapPinKind =
   | "trip"
   | "place"
   | "route-endpoint"
+  | "route-waypoint"
   | "transport"
   | "idea";
 

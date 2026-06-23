@@ -3,12 +3,14 @@
 import Image from "next/image";
 import type { CSSProperties } from "react";
 import { useEffect, useRef, useState } from "react";
-import type { WaylineLocationState } from "@/lib/map/wayline-map-models";
+import { countryCodeToFlag } from "@/lib/map/wayline-map-pins";
+import type { WaylineLocationState, WaylineMapPin } from "@/lib/map/wayline-map-models";
 
 type Photorealistic3DHomeHeroProps = {
   className?: string;
   location?: WaylineLocationState;
   onLocateUser?: () => Promise<WaylineLocationState> | void;
+  pins?: WaylineMapPin[];
 };
 
 type HeroState = "loading" | "ready3d" | "3d-static" | "fallback" | "error";
@@ -112,12 +114,23 @@ const COUNTRY_BY_TIME_ZONE_PREFIX: Array<[string, CountryFocus]> = [
   ["Brazil/", COUNTRY_BY_CODE.BR]
 ];
 
+const focusablePinKinds = new Set<WaylineMapPin["kind"]>([
+  "country",
+  "place",
+  "route-endpoint",
+  "route-waypoint",
+  "trip",
+  "user-location"
+]);
+
 let googleMapsScriptPromise: Promise<void> | null = null;
+const EMPTY_PINS: WaylineMapPin[] = [];
 
 export function Photorealistic3DHomeHero({
   className,
   location,
-  onLocateUser
+  onLocateUser,
+  pins = EMPTY_PINS
 }: Photorealistic3DHomeHeroProps) {
   const mapHostRef = useRef<HTMLDivElement | null>(null);
   const introTimerRef = useRef<number | null>(null);
@@ -165,11 +178,11 @@ export function Photorealistic3DHomeHero({
   }, [onLocateUser]);
 
   useEffect(() => {
-    const nextFocus = focusFromLocationState(location);
+    const nextFocus = focusFromPins(pins) ?? focusFromLocationState(location);
     if (nextFocus) {
       setLocationFocus(nextFocus);
     }
-  }, [location]);
+  }, [location, pins]);
 
   useEffect(() => {
     document.documentElement.dataset.waylineHomeLaunchPhase = reduceMotion ? "done" : launchPhase;
@@ -409,7 +422,7 @@ function focusFromLocationState(location: WaylineLocationState | undefined): Cou
     ...countryFocus,
     altitude: 850_000,
     code: countryCode || countryFocus.code,
-    flag: countryFlag(countryCode) || countryFocus.flag,
+    flag: countryCodeToFlag(countryCode) || countryFocus.flag,
     lat: latitude,
     lng: longitude,
     name: location.city || location.countryName || userFacingLocationLabel(location.label) || countryFocus.name,
@@ -419,17 +432,42 @@ function focusFromLocationState(location: WaylineLocationState | undefined): Cou
   };
 }
 
-function userFacingLocationLabel(label: string | null | undefined) {
-  return label && label !== "Current location" ? label : null;
-}
+function focusFromPins(pins: WaylineMapPin[]): CountryFocus | null {
+  const pin =
+    pins.find((candidate) => candidate.selected && candidate.kind === "user-location") ??
+    pins.find((candidate) => candidate.selected && focusablePinKinds.has(candidate.kind)) ??
+    pins.find((candidate) => candidate.kind === "user-location") ??
+    pins.find((candidate) => focusablePinKinds.has(candidate.kind));
 
-function countryFlag(countryCode: string | null) {
-  if (!countryCode || countryCode.length !== 2) {
+  if (!pin) {
     return null;
   }
 
-  const codePoints = [...countryCode].map((char) => 127397 + char.charCodeAt(0));
-  return String.fromCodePoint(...codePoints);
+  const latitude = clamp(pin.coordinate.lat, -85, 85);
+  const longitude = normalizeLongitude(pin.coordinate.lng);
+  const countryCode = pin.countryCode?.toUpperCase() ?? null;
+  const countryFocus =
+    (countryCode ? COUNTRY_BY_CODE[countryCode] : null) ??
+    countryFromApproximateCoordinates(latitude, longitude) ??
+    DEFAULT_COUNTRY;
+  const isUserPin = pin.kind === "user-location";
+
+  return {
+    ...countryFocus,
+    altitude: isUserPin ? 850_000 : countryFocus.altitude,
+    code: countryCode || countryFocus.code,
+    flag: pin.flag || countryCodeToFlag(countryCode) || countryFocus.flag,
+    lat: latitude,
+    lng: longitude,
+    name: userFacingLocationLabel(pin.label) || pin.subtitle || countryFocus.name,
+    pinX: isUserPin ? 50 : countryFocus.pinX,
+    pinY: isUserPin ? 50 : countryFocus.pinY,
+    source: isUserPin ? "user" : "country"
+  };
+}
+
+function userFacingLocationLabel(label: string | null | undefined) {
+  return label && label !== "Current location" ? label : null;
 }
 
 function distanceBetweenCoordinates(

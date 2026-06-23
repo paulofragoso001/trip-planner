@@ -27,6 +27,7 @@ export function CustomGlobeRenderer({
         className={className}
         location={activeSurface?.location}
         onLocateUser={unifiedMap?.locateUser}
+        pins={activeSurface?.pins}
       />
     </div>
   );

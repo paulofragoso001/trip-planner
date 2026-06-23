@@ -11,6 +11,11 @@ import {
   type ReactNode
 } from "react";
 import { reverseGeocodeCoordinate } from "@/lib/geocode";
+import {
+  USER_LOCATION_PIN_ID,
+  buildUserLocationPin,
+  mergeUserLocationPin
+} from "@/lib/map/wayline-map-pins";
 import type {
   WaylineCoordinate,
   WaylineLocationState,
@@ -86,7 +91,6 @@ const DEFAULT_SELECTION: WaylineMapSelection = {
 };
 
 const LAST_USER_LOCATION_KEY = "wayline:last-user-location";
-const USER_LOCATION_PIN_ID = "user-location";
 
 const UnifiedMapContext = createContext<UnifiedMapContextValue | null>(null);
 
@@ -137,7 +141,7 @@ export function UnifiedMapProvider({
   }, []);
 
   const locationPin = useMemo(
-    () => userLocationPin(location, selected.pinId === USER_LOCATION_PIN_ID),
+    () => buildUserLocationPin(location, selected.pinId === USER_LOCATION_PIN_ID),
     [location, selected.pinId]
   );
 
@@ -439,32 +443,6 @@ function fallbackLocation(
   } satisfies WaylineLocationState;
 }
 
-function userLocationPin(
-  location: WaylineLocationState,
-  selected: boolean
-): WaylineMapPin | null {
-  if (!location.coordinate) {
-    return null;
-  }
-
-  return {
-    coordinate: location.coordinate,
-    countryCode: location.countryCode ?? null,
-    flag: countryFlag(location.countryCode),
-    id: USER_LOCATION_PIN_ID,
-    kind: "user-location",
-    label: location.label || location.city || location.countryName || "Current location",
-    selected,
-    subtitle: location.countryName ?? null,
-    tone: "orange"
-  };
-}
-
-function mergeUserLocationPin(pins: WaylineMapPin[], locationPin: WaylineMapPin | null) {
-  const appPins = pins.filter((pin) => pin.id !== USER_LOCATION_PIN_ID);
-  return locationPin ? [locationPin, ...appPins] : appPins;
-}
-
 function readLastKnownLocation() {
   if (typeof window === "undefined") {
     return null;
@@ -521,15 +499,6 @@ function persistLastKnownLocation(location: WaylineLocationState) {
 function locationLabel(city?: string | null, countryName?: string | null) {
   if (city && countryName) return `${city}, ${countryName}`;
   return city || countryName || "Current location";
-}
-
-function countryFlag(countryCode?: string | null) {
-  if (!countryCode || countryCode.length !== 2) {
-    return null;
-  }
-
-  const codePoints = [...countryCode.toUpperCase()].map((char) => 127397 + char.charCodeAt(0));
-  return String.fromCodePoint(...codePoints);
 }
 
 function clampLatitude(latitude: number) {

@@ -8,6 +8,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import GoogleMapsProvider from "@/components/GoogleMapsProvider";
 import { TripCreateForm } from "@/components/dashboard/trip-create-form";
 import { TravelWalletSheet } from "@/components/dashboard/travel-wallet-sheet";
+import { WaylineGoogleMapPinMarker } from "@/components/map/wayline-google-map-pin-marker";
 import { cn } from "@/components/trip-ui";
 import type { DashboardRecentTripView } from "@/app/dashboard/loader";
 import type { TripsData } from "@/app/dashboard/trips/loader";
@@ -16,6 +17,8 @@ import {
   UnifiedMapProvider,
   useOptionalUnifiedMap
 } from "@/lib/map/unified-map-provider";
+import { buildTripPin } from "@/lib/map/wayline-map-pins";
+import type { WaylineCoordinate, WaylineMapPin } from "@/lib/map/wayline-map-models";
 
 type MobileTripsWalletProps = Pick<TripsData, "error" | "trips">;
 type Trip = TripsData["trips"][number];
@@ -217,7 +220,8 @@ function MobileTripsCountriesMap({
   hydrated
 }: MobileTripsCountriesMapProps) {
   const unifiedMap = useOptionalUnifiedMap();
-  const markerTrips = activeYearTrips.filter(hasTripCoordinates);
+  const markerTrips = useMemo(() => activeYearTrips.filter(hasTripCoordinates), [activeYearTrips]);
+  const tripPins = useMemo(() => markerTrips.map(tripToMapPin), [markerTrips]);
   const recentTrips = activeYearTrips.map(mapTripToWalletTrip);
   const latestTrip = recentTrips[0] || null;
   const primaryHref = latestTrip?.href || dashboardActionRoutes.trips.create;
@@ -225,6 +229,10 @@ function MobileTripsCountriesMap({
   const primaryMeta = latestTrip
     ? `${latestTrip.name} · ${latestTrip.destination}`
     : "Start a new travel wallet.";
+
+  useEffect(() => {
+    unifiedMap?.setPins(tripPins);
+  }, [tripPins, unifiedMap?.setPins]);
 
   return (
     <section
@@ -295,12 +303,14 @@ function LoadedMobileCountryMap({ trips }: { trips: Trip[] }) {
   const unifiedMap = useOptionalUnifiedMap();
   const mapRef = useRef<google.maps.Map | null>(null);
   const mapReady = typeof window !== "undefined" && typeof window.google?.maps?.Map === "function";
-  const userLocation = unifiedMap?.location.coordinate ? unifiedMap.location : null;
-  const mapCenter = userLocation?.coordinate ?? countryMapCenter(trips);
+  const tripPins = useMemo(() => trips.map(tripToMapPin), [trips]);
+  const pins = unifiedMap?.surfaceState.pins.length ? unifiedMap.surfaceState.pins : tripPins;
+  const coordinates = useMemo(() => pins.map((pin) => pin.coordinate), [pins]);
+  const mapCenter = unifiedMap?.location.coordinate ?? coordinateCenter(coordinates);
 
   useEffect(() => {
-    fitCountryMap(mapRef.current, trips, userLocation?.coordinate ?? null);
-  }, [trips, mapReady, userLocation?.coordinate]);
+    fitCountryMap(mapRef.current, coordinates);
+  }, [coordinates, mapReady]);
 
   return (
     <div
@@ -313,7 +323,7 @@ function LoadedMobileCountryMap({ trips }: { trips: Trip[] }) {
           mapContainerStyle={{ height: "100dvh", width: "100%" }}
           onLoad={(map) => {
             mapRef.current = map;
-            fitCountryMap(map, trips, userLocation?.coordinate ?? null);
+            fitCountryMap(map, coordinates);
           }}
           options={{
             clickableIcons: false,
@@ -335,45 +345,22 @@ function LoadedMobileCountryMap({ trips }: { trips: Trip[] }) {
           }}
           zoom={3}
         >
-          {trips.map((trip) => (
+          {pins.map((pin) => (
             <OverlayView
-              key={trip.id}
+              key={pin.id}
               mapPaneName={OverlayView.OVERLAY_MOUSE_TARGET}
-              position={{ lat: trip.destinationLat!, lng: trip.destinationLng! }}
+              position={pin.coordinate}
             >
-              <Link
-                aria-label={`Open ${trip.name}`}
-                className="group grid -translate-x-1/2 -translate-y-1/2 justify-items-center focus:outline-none"
-                data-testid="mobile-country-map-marker"
-                href={trip.href}
-              >
-                <span className="grid h-12 w-12 place-items-center rounded-full border-2 border-black bg-white text-2xl shadow-[0_10px_26px_rgba(0,0,0,0.55)] transition group-hover:scale-105 group-focus:ring-4 group-focus:ring-orange-400/30">
-                  {destinationFlag(trip.destination)}
-                </span>
-                <span className="mt-0.5 max-w-28 truncate whitespace-nowrap text-center text-sm font-black text-white [text-shadow:0_2px_5px_rgba(0,0,0,0.95)]">
-                  {destinationMapLabel(trip)}
-                </span>
-              </Link>
+              <WaylineGoogleMapPinMarker
+                href={pin.href}
+                onSelect={unifiedMap?.selectPin}
+                pin={pin}
+                showLabel
+                testId={pin.kind === "user-location" ? "mobile-country-map-user-marker" : "mobile-country-map-marker"}
+                variant={pin.kind === "user-location" ? "flag-label" : "compact"}
+              />
             </OverlayView>
           ))}
-          {userLocation?.coordinate ? (
-            <OverlayView
-              mapPaneName={OverlayView.OVERLAY_MOUSE_TARGET}
-              position={userLocation.coordinate}
-            >
-              <div
-                className="grid -translate-x-1/2 -translate-y-full justify-items-center"
-                data-testid="mobile-country-map-user-marker"
-              >
-                <span className="text-[2.4rem] leading-none drop-shadow-[0_8px_18px_rgba(0,0,0,0.72)]">
-                  {countryFlag(userLocation.countryCode) || "📍"}
-                </span>
-                <span className="-mt-1 max-w-32 truncate whitespace-nowrap text-center text-sm font-black text-white [text-shadow:0_2px_5px_rgba(0,0,0,0.95)]">
-                  {userLocation.countryName || userLocation.city || userLocation.label || "Your location"}
-                </span>
-              </div>
-            </OverlayView>
-          ) : null}
         </GoogleMap>
       ) : (
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_19%_18%,rgba(20,184,166,0.32),transparent_27%),radial-gradient(circle_at_62%_28%,rgba(37,99,235,0.38),transparent_32%),linear-gradient(180deg,#0b1d2d,#06101d_58%,#020617)]" />
@@ -383,31 +370,30 @@ function LoadedMobileCountryMap({ trips }: { trips: Trip[] }) {
   );
 }
 
-function countryMapCenter(trips: Trip[]) {
-  if (!trips.length) return { lat: 12, lng: -82 };
+function coordinateCenter(coordinates: WaylineCoordinate[]) {
+  if (!coordinates.length) return { lat: 12, lng: -82 };
 
-  const totals = trips.reduce(
-    (accumulator, trip) => ({
-      lat: accumulator.lat + (trip.destinationLat || 0),
-      lng: accumulator.lng + (trip.destinationLng || 0)
+  const totals = coordinates.reduce(
+    (accumulator, coordinate) => ({
+      lat: accumulator.lat + coordinate.lat,
+      lng: accumulator.lng + coordinate.lng
     }),
     { lat: 0, lng: 0 }
   );
 
   return {
-    lat: totals.lat / trips.length,
-    lng: totals.lng / trips.length
+    lat: totals.lat / coordinates.length,
+    lng: totals.lng / coordinates.length
   };
 }
 
 function fitCountryMap(
   map: google.maps.Map | null,
-  trips: Trip[],
-  userCoordinate: { lat: number; lng: number } | null
+  coordinates: WaylineCoordinate[]
 ) {
   if (
     !map ||
-    (!trips.length && !userCoordinate) ||
+    !coordinates.length ||
     typeof window === "undefined" ||
     typeof window.google?.maps?.LatLngBounds !== "function"
   ) {
@@ -415,12 +401,7 @@ function fitCountryMap(
   }
 
   const bounds = new window.google.maps.LatLngBounds();
-  trips.forEach((trip) => {
-    bounds.extend({ lat: trip.destinationLat!, lng: trip.destinationLng! });
-  });
-  if (userCoordinate) {
-    bounds.extend(userCoordinate);
-  }
+  coordinates.forEach((coordinate) => bounds.extend(coordinate));
   map.fitBounds(bounds, { bottom: 260, left: 64, right: 64, top: 96 });
 }
 
@@ -560,28 +541,19 @@ function destinationMapLabel(trip: Trip) {
   return destination.split(",")[0]?.trim() || trip.name;
 }
 
-function destinationFlag(destination: string) {
-  const value = destination.toLowerCase();
-  if (/(canada|vancouver|toronto|montreal)/.test(value)) return "🇨🇦";
-  if (/(japan|tokyo|osaka|kyoto)/.test(value)) return "🇯🇵";
-  if (/(spain|barcelona|madrid)/.test(value)) return "🇪🇸";
-  if (/(france|paris)/.test(value)) return "🇫🇷";
-  if (/(brazil|rio|sao paulo|são paulo)/.test(value)) return "🇧🇷";
-  if (/(colombia|bogota|bogotá|cartagena)/.test(value)) return "🇨🇴";
-  if (/(panama)/.test(value)) return "🇵🇦";
-  if (/(chile|santiago)/.test(value)) return "🇨🇱";
-  if (/(aruba)/.test(value)) return "🇦🇼";
-  if (/(united states|usa|miami|new york|los angeles|san francisco|houston|beverly hills|newark)/.test(value)) return "🇺🇸";
-  return "•";
-}
-
-function countryFlag(countryCode?: string | null) {
-  if (!countryCode || countryCode.length !== 2) {
-    return null;
-  }
-
-  const codePoints = [...countryCode.toUpperCase()].map((char) => 127397 + char.charCodeAt(0));
-  return String.fromCodePoint(...codePoints);
+function tripToMapPin(trip: Trip): WaylineMapPin {
+  return buildTripPin({
+    coordinate: { lat: trip.destinationLat!, lng: trip.destinationLng! },
+    destination: trip.destination,
+    href: trip.href,
+    id: `trip-${trip.id}`,
+    imageAlt: trip.imageAlt,
+    imageAttribution: trip.imageAttribution,
+    imageUrl: trip.imageUrl,
+    label: destinationMapLabel(trip),
+    subtitle: trip.name,
+    tripId: trip.id
+  });
 }
 
 function tripYear(trip: Trip) {

@@ -7,10 +7,10 @@ import {
 } from "@react-google-maps/api";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import GoogleMapsProvider from "@/components/GoogleMapsProvider";
+import { WaylineGoogleMapPinMarker } from "@/components/map/wayline-google-map-pin-marker";
 import { useOptionalUnifiedMap } from "@/lib/map/unified-map-provider";
 import type {
   WaylineCoordinate,
-  WaylineMapPin,
   WaylineMapRoute,
   WaylineMapSurfaceState
 } from "@/lib/map/wayline-map-models";
@@ -167,22 +167,13 @@ function LoadedGoogleMapRenderer({
             mapPaneName={OverlayView.OVERLAY_MOUSE_TARGET}
             position={pin.coordinate}
           >
-            <button
-              aria-label={`Select ${pin.label}`}
-              className={[
-                "grid -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border-2 border-white text-sm font-black text-white shadow-lg transition",
-                pin.selected ? "h-11 min-w-11 px-3 ring-4 ring-orange-200" : "h-9 min-w-9 px-2 hover:scale-105"
-              ].join(" ")}
-              onClick={() => {
-                unifiedMap?.selectPin(pin.id);
-                onPinSelect?.(pin.id);
+            <WaylineGoogleMapPinMarker
+              onSelect={(pinId) => {
+                unifiedMap?.selectPin(pinId);
+                onPinSelect?.(pinId);
               }}
-              style={{ backgroundColor: markerColor(pin) }}
-              title={pin.label}
-              type="button"
-            >
-              {pin.flag ?? pin.order ?? pin.label.slice(0, 1)}
-            </button>
+              pin={pin}
+            />
           </OverlayView>
         ))}
       </GoogleMap>
@@ -200,15 +191,6 @@ function routePathForRoute(route: WaylineMapRoute) {
 
 function hasRoutePath(path: WaylineCoordinate[]): path is [WaylineCoordinate, WaylineCoordinate, ...WaylineCoordinate[]] {
   return path.length > 1;
-}
-
-function markerColor(pin: WaylineMapPin) {
-  if (pin.tone === "emerald") return "#059669";
-  if (pin.tone === "purple") return "#7c3aed";
-  if (pin.tone === "blue") return "#2563eb";
-  if (pin.tone === "slate") return "#0f172a";
-  if (pin.tone === "white") return "#ffffff";
-  return "#f97316";
 }
 
 function MapUnavailable({
