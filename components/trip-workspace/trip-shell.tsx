@@ -41,17 +41,7 @@ type TripShellProps = {
   header?: ReactNode;
   tabs?: ReactNode;
   testId?: string;
-  trip?: TripShellTrip;
-};
-
-const demoTrip: TripShellTrip = {
-  actualSpend: 3870,
-  destination: "Barcelona, Spain",
-  endDate: "Jun 17, 2026",
-  id: "trip_1",
-  name: "Barcelona Work Trip",
-  plannedBudget: 4200,
-  startDate: "Jun 11, 2026"
+  trip: TripShellTrip;
 };
 
 export function useTripShell() {
@@ -70,7 +60,7 @@ export function TripShell({
   header,
   tabs,
   testId = "trip-shell",
-  trip = demoTrip
+  trip
 }: TripShellProps) {
   const [activeTab, setActiveTab] = useState<TripShellTab>("overview");
   const contextValue = useMemo(

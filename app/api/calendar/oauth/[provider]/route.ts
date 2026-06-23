@@ -25,9 +25,9 @@ export async function GET(
   }
 
   const url = new URL(request.url);
-  const redirectPath = url.searchParams.get("redirect") || "/dashboard/trips/demo/timeline";
+  const redirectPath = url.searchParams.get("redirect") || "/dashboard";
   const safeRedirect = isSafeInternalPath(redirectPath);
-  const redirectTo = safeRedirect ? redirectPath : "/dashboard/trips/demo/timeline";
+  const redirectTo = safeRedirect ? redirectPath : "/dashboard";
   const state = createCalendarOAuthState(redirectTo);
   const authUrl = buildAuthorizationUrl(provider, state.encodedState);
 

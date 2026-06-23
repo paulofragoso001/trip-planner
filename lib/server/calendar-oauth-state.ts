@@ -1,6 +1,6 @@
 import "server-only";
 
-const fallbackRedirectPath = "/dashboard/trips/demo/timeline";
+const fallbackRedirectPath = "/dashboard";
 const maxStateAgeMs = 10 * 60 * 1000;
 const stateCookieName = "wayline_calendar_oauth_state";
 

@@ -5,6 +5,7 @@ import {
   addDefaultDuration,
   mapSegmentToCalendarEvent
 } from "@/lib/calendar/event-mapping";
+import { isDemoTripId } from "@/lib/server/trip-id";
 import type { CalendarProvider, CalendarSyncInput } from "@/lib/validators/calendar-sync";
 
 export type CalendarSyncClient = {
@@ -136,8 +137,12 @@ async function listCalendarSourceSegments(
   userId: string,
   input: CalendarSyncInput
 ) {
-  if (!isUuid(input.tripId)) {
+  if (isDemoTripId(input.tripId)) {
     return demoCalendarSegments(input.tripId);
+  }
+
+  if (!isUuid(input.tripId)) {
+    return [];
   }
 
   const tripSegments = await listTripCalendarSegments(supabase, userId, input);
