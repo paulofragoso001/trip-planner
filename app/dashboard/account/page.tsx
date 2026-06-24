@@ -95,7 +95,7 @@ export default async function AccountPage() {
         <p className="text-xs font-bold uppercase tracking-[0.12em] text-slate-500">
           Membership
         </p>
-        <h2 className="mt-2 text-xl font-black tracking-tight">Wayline Pro</h2>
+        <h2 className="mt-2 text-xl font-black tracking-tight">Almidy Pro</h2>
         <p className="mt-2 text-sm leading-6 text-slate-600">
           Pro trial activation and billing controls are not available yet. The
           dashboard keeps these actions visible but unavailable until billing is wired.

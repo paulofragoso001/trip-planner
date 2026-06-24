@@ -42,7 +42,7 @@ function currentTripHref(pathname: string, suffix = "", fallbackTripId?: string 
 
 export const navSections: NavSection[] = [
   {
-    title: "Wayline",
+    title: "Almidy",
     items: [
       {
         href: dashboardRoutes.home,

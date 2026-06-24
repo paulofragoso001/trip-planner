@@ -11,12 +11,12 @@ import {
   mobilePrimaryActionClassName,
   mobileSelectClassName
 } from "@/components/ui/mobile-form";
-import { useWaylineAction } from "@/hooks/use-wayline-action";
+import { useAlmidyAction } from "@/hooks/use-wayline-action";
 
 export function InviteCollaboratorForm({ tripId }: { tripId: string }) {
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("Editor");
-  const { isPending, run, state } = useWaylineAction();
+  const { isPending, run, state } = useAlmidyAction();
 
   async function invite(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

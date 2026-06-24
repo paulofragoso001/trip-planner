@@ -136,7 +136,7 @@ function PrivateTripState({ signedIn }: { signedIn: boolean }) {
           This trip is not shared yet
         </h1>
         <p className="mt-3 text-sm leading-6 text-slate-600">
-          Ask the trip owner to copy a share link from Wayline
+          Ask the trip owner to copy a share link from Almidy
           {signedIn
             ? ", or switch to the owner account to view private itinerary details."
             : ", or sign in with the owner account to view private itinerary details."}

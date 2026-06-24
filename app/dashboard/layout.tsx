@@ -31,7 +31,7 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
       <AppShell
         userEmail={isCypressDashboard ? "cypress@wayline.test" : "local@wayline.test"}
         userMenu={<TestUserMenu />}
-        workspaceName="Wayline"
+        workspaceName="Almidy"
       >
         {children}
       </AppShell>
@@ -82,7 +82,7 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
           </form>
         </div>
       }
-      workspaceName="Wayline"
+      workspaceName="Almidy"
     >
       {children}
     </AppShell>

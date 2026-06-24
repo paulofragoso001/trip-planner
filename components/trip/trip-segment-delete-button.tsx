@@ -2,11 +2,11 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { useWaylineAction } from "@/hooks/use-wayline-action";
+import { useAlmidyAction } from "@/hooks/use-wayline-action";
 
 export function TripSegmentDeleteButton({ segmentId }: { segmentId: string }) {
   const router = useRouter();
-  const { isPending, run, state } = useWaylineAction();
+  const { isPending, run, state } = useAlmidyAction();
   const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   async function deleteSegment() {

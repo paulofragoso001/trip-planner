@@ -17,7 +17,7 @@ export function AppShell({
   notifications,
   userEmail,
   userMenu,
-  workspaceName = "Wayline"
+  workspaceName = "Almidy"
 }: AppShellProps) {
   const isDesktop = useIsDesktopDashboardShell();
 

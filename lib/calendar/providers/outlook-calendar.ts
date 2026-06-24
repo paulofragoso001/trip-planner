@@ -125,7 +125,7 @@ export class OutlookCalendarProvider implements CalendarProviderAdapter {
     calendarId: string,
     payload: Record<string, unknown>
   ): CalendarProviderEvent {
-    const metadata = readWaylineExtension(payload);
+    const metadata = readAlmidyExtension(payload);
 
     return {
       ...this.toExternalRef(calendarId, payload),
@@ -147,7 +147,7 @@ function readString(value: unknown) {
   return typeof value === "string" ? value : "";
 }
 
-function readWaylineExtension(payload: Record<string, unknown>) {
+function readAlmidyExtension(payload: Record<string, unknown>) {
   const extensions = payload.extensions;
   if (!Array.isArray(extensions)) {
     return null;

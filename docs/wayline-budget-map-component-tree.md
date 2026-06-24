@@ -1,4 +1,4 @@
-# Wayline Budget + Collaborative Map Component Tree
+# Almidy Budget + Collaborative Map Component Tree
 
 ## App routes
 - `/dashboard/trips`

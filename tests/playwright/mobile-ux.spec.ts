@@ -610,7 +610,7 @@ test.describe("mobile soft-launch UX", () => {
           location: "Mobile search route",
           providerMetadata: {
             route: {
-              carrier: "Wayline Air",
+              carrier: "Almidy Air",
               departAt: "2026-09-09T11:18:00.000Z",
               destination: {
                 label: `Search JFK ${suffix}`,
@@ -662,7 +662,7 @@ test.describe("mobile soft-launch UX", () => {
           name: new RegExp(`Search LAX ${suffix}.*Search JFK ${suffix}`)
         })
       ).toBeVisible();
-      await expect(activityGroup.getByText("Wayline Air")).toBeVisible();
+      await expect(activityGroup.getByText("Almidy Air")).toBeVisible();
       await expect(activityGroup.getByText(flightNumber)).toBeVisible();
       await expect(page.getByText("Terminal")).toHaveCount(0);
       await expect(page.getByText("Baggage")).toHaveCount(0);
@@ -718,7 +718,7 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByTestId("mobile-home-earth-image")).toHaveCount(0);
     await expect(page.getByRole("heading", { name: "My Trips" })).toHaveCount(1);
     const home3DHero = page.getByTestId("mobile-home-3d-hero");
-    await expect(home3DHero.getByText("Wayline", { exact: true })).toHaveCount(0);
+    await expect(home3DHero.getByText("Almidy", { exact: true })).toHaveCount(0);
     await expect(home3DHero.getByText("Travel wallet")).toHaveCount(0);
     await expect(home3DHero.getByText("Continue trip")).toHaveCount(0);
     await expect(home3DHero.getByText("Create trip")).toHaveCount(0);
@@ -1802,7 +1802,7 @@ test.describe("mobile soft-launch UX", () => {
           location: "2516 NW 2nd Ave, Miami, FL 33127",
           providerMetadata: {
             imageAlt: "Photo of Wynwood Walls",
-            imageAttribution: "Wayline test photo",
+            imageAttribution: "Almidy test photo",
             primaryPhotoReference: "A".repeat(32)
           },
           title: "Wynwood Walls",

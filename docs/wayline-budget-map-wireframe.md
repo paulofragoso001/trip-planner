@@ -1,4 +1,4 @@
-# Wayline Budget + Collaborative Map UI Wireframe
+# Almidy Budget + Collaborative Map UI Wireframe
 
 ## Page shell
 
@@ -17,7 +17,7 @@
 ## Desktop wireframe
 
 ```text
-Wayline | Trip title - Destination - Dates | Share | +Expense | +Plan
+Almidy | Trip title - Destination - Dates | Share | +Expense | +Plan
 Sidebar | Timeline                         | Budget summary
 Overview| [Flight]                         | Planned: $4,200
 Trips   | [Hotel]                          | Actual: $3,870

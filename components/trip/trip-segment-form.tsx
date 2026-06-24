@@ -14,7 +14,7 @@ import {
   mobileSelectClassName,
   mobileTextareaClassName
 } from "@/components/ui/mobile-form";
-import { useWaylineAction } from "@/hooks/use-wayline-action";
+import { useAlmidyAction } from "@/hooks/use-wayline-action";
 import {
   isRouteKind,
   normalizeRouteMode,
@@ -105,7 +105,7 @@ export function TripSegmentForm({
   const [timeZone] = useState(() => Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC");
   const [title, setTitle] = useState(defaultTitle);
   const [hydrated, setHydrated] = useState(false);
-  const { isPending, run, state } = useWaylineAction();
+  const { isPending, run, state } = useAlmidyAction();
   const formType = formTypeForKind(kind);
   const copy = formCopyForType(formType);
   const isRouteSegment = formType === "flight" || formType === "transport";
@@ -408,7 +408,7 @@ export function TripSegmentForm({
                   onInputChange={(value) => handleRouteEndpointInputChange("origin", value)}
                   onSelect={(selection) => handleRouteEndpointSelect("origin", selection)}
                   placeholder="Barcelona, Spain or BCN"
-                  resolveErrorMessage="Wayline could not map that origin. Try another location."
+                  resolveErrorMessage="Almidy could not map that origin. Try another location."
                   unresolvedMessage="Select a mapped origin."
                   value={routeOriginInput}
                 />
@@ -425,7 +425,7 @@ export function TripSegmentForm({
                   onInputChange={(value) => handleRouteEndpointInputChange("destination", value)}
                   onSelect={(selection) => handleRouteEndpointSelect("destination", selection)}
                   placeholder="Miami, FL or MIA"
-                  resolveErrorMessage="Wayline could not map that destination. Try another location."
+                  resolveErrorMessage="Almidy could not map that destination. Try another location."
                   unresolvedMessage="Select a mapped destination."
                   value={routeDestinationInput}
                 />
@@ -453,7 +453,7 @@ export function TripSegmentForm({
                 onInputChange={handleLocationInputChange}
                 onSelect={handleLocationSelect}
                 placeholder={copy.locationPlaceholder}
-                resolveErrorMessage="Wayline could not map that Google result. Try another location."
+                resolveErrorMessage="Almidy could not map that Google result. Try another location."
                 unresolvedMessage="Select a suggested place with a mapped location."
                 value={location}
               />

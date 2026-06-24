@@ -8,7 +8,7 @@ import GoogleMapsProvider from "@/components/GoogleMapsProvider";
 import LocationAutocomplete, {
   type LocationSelection
 } from "@/components/LocationAutocomplete";
-import { useWaylineAction } from "@/hooks/use-wayline-action";
+import { useAlmidyAction } from "@/hooks/use-wayline-action";
 import {
   TRIP_TRAVEL_STYLES,
   TRIP_TRAVEL_STYLE_LABELS,
@@ -44,7 +44,7 @@ export function TripRowActions({
   const [nextStartDate, setNextStartDate] = useState(startDate || "");
   const [nextTravelStyle, setNextTravelStyle] =
     useState<TripTravelStyle>(travelStyle);
-  const { isPending, run, state } = useWaylineAction();
+  const { isPending, run, state } = useAlmidyAction();
   const [optimisticDelete, setOptimisticDelete] = useState(false);
   const [pendingIntent, setPendingIntent] = useState<"delete" | "save" | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);

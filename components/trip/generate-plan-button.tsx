@@ -3,7 +3,7 @@
 import { Route } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { useWaylineAction } from "@/hooks/use-wayline-action";
+import { useAlmidyAction } from "@/hooks/use-wayline-action";
 
 type GeneratePlanResponse = {
   itinerary?: {
@@ -22,7 +22,7 @@ type GeneratePlanButtonProps = {
 
 export function GeneratePlanButton({ context, tripId }: GeneratePlanButtonProps) {
   const router = useRouter();
-  const { isPending, run, state } = useWaylineAction<GeneratePlanResponse>();
+  const { isPending, run, state } = useAlmidyAction<GeneratePlanResponse>();
   const storageKey = `wayline:generate-plan:${context}:${tripId}`;
   const [persistedFeedback, setPersistedFeedback] = useState("");
   const liveFeedback = buildFeedback(state.data, state.message, state.status, context);

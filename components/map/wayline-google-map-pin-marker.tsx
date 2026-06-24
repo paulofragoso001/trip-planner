@@ -2,10 +2,10 @@
 
 import Link from "next/link";
 import { pinDisplayLabel, pinGlyph } from "@/lib/map/wayline-map-pins";
-import type { WaylineMapPin } from "@/lib/map/wayline-map-models";
+import type { AlmidyMapPin } from "@/lib/map/wayline-map-models";
 
-type WaylineGoogleMapPinMarkerProps = {
-  pin: WaylineMapPin;
+type AlmidyGoogleMapPinMarkerProps = {
+  pin: AlmidyMapPin;
   className?: string;
   href?: string | null;
   labelClassName?: string;
@@ -15,7 +15,7 @@ type WaylineGoogleMapPinMarkerProps = {
   variant?: "compact" | "flag-label";
 };
 
-export function WaylineGoogleMapPinMarker({
+export function AlmidyGoogleMapPinMarker({
   className,
   href,
   labelClassName,
@@ -24,7 +24,7 @@ export function WaylineGoogleMapPinMarker({
   showLabel = false,
   testId,
   variant = "compact"
-}: WaylineGoogleMapPinMarkerProps) {
+}: AlmidyGoogleMapPinMarkerProps) {
   const label = pinDisplayLabel(pin);
   const glyph = pinGlyph(pin);
   const markerDataAttributes = {
@@ -103,7 +103,7 @@ export function WaylineGoogleMapPinMarker({
   );
 }
 
-function markerColor(pin: WaylineMapPin) {
+function markerColor(pin: AlmidyMapPin) {
   if (pin.tone === "emerald") return "#059669";
   if (pin.tone === "purple") return "#7c3aed";
   if (pin.tone === "blue") return "#2563eb";

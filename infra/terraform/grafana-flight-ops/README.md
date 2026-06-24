@@ -1,6 +1,6 @@
 # Grafana Flight Ops Service Account
 
-This module provisions the Grafana resources Wayline needs for server-mediated alert-rule automation.
+This module provisions the Grafana resources Almidy needs for server-mediated alert-rule automation.
 
 ## What It Creates
 
@@ -35,7 +35,7 @@ GRAFANA_PROMETHEUS_DATASOURCE_UID=prometheus
 
 ## Runtime Flow
 
-The React control panel calls Wayline only:
+The React control panel calls Almidy only:
 
 ```text
 React UI -> /api/grafana/alert-rules -> Grafana Provisioning API

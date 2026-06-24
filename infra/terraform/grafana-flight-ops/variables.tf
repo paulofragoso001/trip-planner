@@ -17,7 +17,7 @@ variable "folder_title" {
 
 variable "folder_uid" {
   default     = "flight-ops"
-  description = "Stable Grafana folder UID used by the Wayline alert control panel."
+  description = "Stable Grafana folder UID used by the Almidy alert control panel."
   type        = string
 }
 
@@ -40,7 +40,7 @@ variable "service_account_role" {
 
 variable "service_account_token_name" {
   default     = "flight-ops-control-panel-token"
-  description = "Grafana service account token name for Wayline API automation."
+  description = "Grafana service account token name for Almidy API automation."
   type        = string
 }
 

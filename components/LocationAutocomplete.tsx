@@ -51,7 +51,7 @@ export default function LocationAutocomplete({
   name,
   placeholder = "Search for a place (hotel, restaurant, attraction...)",
   required = false,
-  resolveErrorMessage = "Wayline could not resolve that Google result. Try another destination.",
+  resolveErrorMessage = "Almidy could not resolve that Google result. Try another destination.",
   unresolvedMessage = "Choose a destination with a mapped location.",
   value = "",
   onInputChange

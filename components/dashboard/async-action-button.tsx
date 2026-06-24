@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import { useState } from "react";
-import { useWaylineAction } from "@/hooks/use-wayline-action";
+import { useAlmidyAction } from "@/hooks/use-wayline-action";
 
 type AsyncActionButtonProps = {
   body?: unknown;
@@ -25,7 +25,7 @@ export function AsyncActionButton({
   successMessage = "Action completed."
 }: AsyncActionButtonProps) {
   const router = useRouter();
-  const { isPending, run, state } = useWaylineAction();
+  const { isPending, run, state } = useAlmidyAction();
   const [confirming, setConfirming] = useState(false);
 
   async function runAction() {

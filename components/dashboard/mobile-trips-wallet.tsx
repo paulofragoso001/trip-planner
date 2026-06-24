@@ -8,7 +8,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import GoogleMapsProvider from "@/components/GoogleMapsProvider";
 import { TripCreateForm } from "@/components/dashboard/trip-create-form";
 import { TravelWalletSheet } from "@/components/dashboard/travel-wallet-sheet";
-import { WaylineGoogleMapPinMarker } from "@/components/map/wayline-google-map-pin-marker";
+import { AlmidyGoogleMapPinMarker } from "@/components/map/wayline-google-map-pin-marker";
 import { cn } from "@/components/trip-ui";
 import type { DashboardRecentTripView } from "@/app/dashboard/loader";
 import type { TripsData } from "@/app/dashboard/trips/loader";
@@ -19,7 +19,7 @@ import {
   useOptionalUnifiedMap
 } from "@/lib/map/unified-map-provider";
 import { buildTripPin } from "@/lib/map/wayline-map-pins";
-import type { WaylineCoordinate, WaylineMapPin } from "@/lib/map/wayline-map-models";
+import type { AlmidyCoordinate, AlmidyMapPin } from "@/lib/map/wayline-map-models";
 
 type MobileTripsWalletProps = Pick<TripsData, "error" | "trips">;
 type Trip = TripsData["trips"][number];
@@ -365,7 +365,7 @@ function LoadedMobileCountryMap({ trips }: { trips: Trip[] }) {
               mapPaneName={OverlayView.OVERLAY_MOUSE_TARGET}
               position={pin.coordinate}
             >
-              <WaylineGoogleMapPinMarker
+              <AlmidyGoogleMapPinMarker
                 href={pin.href}
                 onSelect={unifiedMap?.selectPin}
                 pin={pin}
@@ -384,7 +384,7 @@ function LoadedMobileCountryMap({ trips }: { trips: Trip[] }) {
   );
 }
 
-function coordinateCenter(coordinates: WaylineCoordinate[]) {
+function coordinateCenter(coordinates: AlmidyCoordinate[]) {
   if (!coordinates.length) return { lat: 12, lng: -82 };
 
   const totals = coordinates.reduce(
@@ -403,7 +403,7 @@ function coordinateCenter(coordinates: WaylineCoordinate[]) {
 
 function fitCountryMap(
   map: google.maps.Map | null,
-  coordinates: WaylineCoordinate[]
+  coordinates: AlmidyCoordinate[]
 ) {
   if (
     !map ||
@@ -470,7 +470,7 @@ function NoTripsCard({ disabled, onCreate }: { disabled: boolean; onCreate: () =
           Create your first trip
         </h2>
               <p className="mt-3 max-w-sm text-sm font-semibold leading-6 text-white/[0.72]">
-          Choose a destination and Wayline will open it as a visual Trip Pass.
+          Choose a destination and Almidy will open it as a visual Trip Pass.
         </p>
         <button
           className="mt-5 inline-flex min-h-12 w-fit items-center justify-center rounded-full bg-white px-5 text-sm font-black text-slate-950 shadow-xl transition hover:bg-slate-100 focus:outline-none focus:ring-4 focus:ring-white/20 disabled:cursor-wait disabled:opacity-60"
@@ -555,7 +555,7 @@ function destinationMapLabel(trip: Trip) {
   return destination.split(",")[0]?.trim() || trip.name;
 }
 
-function tripToMapPin(trip: Trip): WaylineMapPin {
+function tripToMapPin(trip: Trip): AlmidyMapPin {
   return buildTripPin({
     coordinate: { lat: trip.destinationLat!, lng: trip.destinationLng! },
     destination: trip.destination,

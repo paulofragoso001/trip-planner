@@ -139,7 +139,7 @@ export function TravelWalletSheet({
           <SettingsPanel
             onClose={collapseSheet}
             onOpenTrial={() =>
-              setTrialSheetCopy("Your 15 day Wayline Pro trial will be available from billing settings soon.")
+              setTrialSheetCopy("Your 15 day Almidy Pro trial will be available from billing settings soon.")
             }
           />
         ) : (
@@ -190,7 +190,7 @@ export function TravelWalletSheet({
                 primaryMeta={primaryMeta}
                 recentTrips={recentTrips}
                 onOpenTrial={() =>
-                  setTrialSheetCopy("Your 15 day Wayline Pro trial will be available from billing settings soon.")
+                  setTrialSheetCopy("Your 15 day Almidy Pro trial will be available from billing settings soon.")
                 }
               />
             )}
@@ -406,7 +406,7 @@ function SettingsPanel({
         <SettingsRow icon={<Languages />} label="Language" value="English" picker unavailableLabel="Soon" />
         <SettingsRow href={dashboardActionRoutes.trips.list} icon={<Wallet />} label="Trips Timeline" />
         <SettingsRow icon={<BookOpen />} label="App Icon" unavailableLabel="Soon" />
-        <SettingsRow href={dashboardActionRoutes.trips.stats} icon={<Globe2 />} label="My Wayline Book" />
+        <SettingsRow href={dashboardActionRoutes.trips.stats} icon={<Globe2 />} label="My Almidy Book" />
         <SettingsRow icon={<Bell />} label="Notifications" unavailableLabel="Soon" />
         <SettingsRow icon={<CreditCard />} label="Widgets" unavailableLabel="Soon" />
         <SettingsRow icon={<PackageOpen />} label="Storage and Data" unavailableLabel="Soon" />
@@ -421,7 +421,7 @@ function SettingsPanel({
       </SettingsSection>
 
       <SettingsSection title="About">
-        <SettingsRow href={dashboardActionRoutes.settings.about} icon={<Briefcase />} label="About Wayline" />
+        <SettingsRow href={dashboardActionRoutes.settings.about} icon={<Briefcase />} label="About Almidy" />
         <SettingsRow href={dashboardActionRoutes.settings.terms} icon={<MessageSquare />} label="Terms of Service" />
         <SettingsRow href={dashboardActionRoutes.settings.privacy} icon={<Shield />} label="Privacy Policy" />
         <SettingsRow icon={<Upload />} label="Share to a Friend" unavailableLabel="Soon" />
@@ -523,7 +523,7 @@ function EmailAutomationCard({ onDismiss }: { onDismiss: () => void }) {
       <p className="mt-5 text-sm font-black uppercase tracking-normal text-orange-500">Automation</p>
       <h3 className="mt-2 text-[1.55rem] font-black leading-tight">Add Reservations via Email</h3>
       <p className="mt-3 text-lg font-medium leading-snug text-slate-500">
-        Let Wayline automatically create an itinerary based on your flight or hotel reservation.
+        Let Almidy automatically create an itinerary based on your flight or hotel reservation.
       </p>
       <Link
         className="mt-5 grid h-14 place-items-center rounded-full bg-orange-50 text-lg font-black text-orange-500"
@@ -541,7 +541,7 @@ function ProSettingsCard({ onOpenTrial }: { onOpenTrial: () => void }) {
       <div className="flex items-center justify-between gap-4">
         <div>
           <h3 className="text-2xl font-black">
-            Wayline <span className="rounded-lg bg-orange-500 px-2 py-0.5 text-base text-white">PRO</span>
+            Almidy <span className="rounded-lg bg-orange-500 px-2 py-0.5 text-base text-white">PRO</span>
           </h3>
           <p className="mt-2 max-w-[15rem] text-xl leading-snug text-slate-400">
             Receive alerts for any updates on your flights: schedules, gate changes and terminal
@@ -664,7 +664,7 @@ function TrialAvailabilitySheet({
     >
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-sm font-black uppercase tracking-[0.18em] text-orange-500">Wayline Pro</p>
+          <p className="text-sm font-black uppercase tracking-[0.18em] text-orange-500">Almidy Pro</p>
           <h2 className="mt-2 text-2xl font-black">Trial activation coming soon</h2>
           <p className="mt-2 text-sm font-semibold leading-6 text-slate-600">{message}</p>
         </div>

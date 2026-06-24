@@ -4,7 +4,7 @@ import { Delete, Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import type { FormEvent } from "react";
 import { useEffect, useState } from "react";
-import { useWaylineAction } from "@/hooks/use-wayline-action";
+import { useAlmidyAction } from "@/hooks/use-wayline-action";
 
 export function BudgetRecordForm({ tripId }: { tripId: string }) {
   const router = useRouter();
@@ -14,7 +14,7 @@ export function BudgetRecordForm({ tripId }: { tripId: string }) {
   const [category, setCategory] = useState("restaurant");
   const [label, setLabel] = useState("");
   const [recordType, setRecordType] = useState("actual");
-  const { isPending, run, state } = useWaylineAction();
+  const { isPending, run, state } = useAlmidyAction();
   const numericAmount = Number(amount || 0);
   const canSave = Boolean(label.trim()) && Number.isFinite(numericAmount) && numericAmount > 0 && !isPending;
 

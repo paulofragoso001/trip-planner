@@ -147,7 +147,7 @@ export async function loadDashboardData(): Promise<DashboardData> {
     }),
     heroImage: recentTrips.length
       ? getTripHeroImage(tripsResult.error ? {} : ((tripsResult.data || [])[0] as TripRow), [], [])
-      : getFallbackHeroImage("Wayline travel wallet", "Wayline travel wallet background"),
+      : getFallbackHeroImage("Almidy travel wallet", "Almidy travel wallet background"),
     metrics: [
       { label: "Trips saved", value: String(tripCount) },
       { label: "Active plans", value: String(safeCount(activeTripsResult)) },
@@ -163,7 +163,7 @@ function emptyDashboardData(error: string): DashboardData {
   return {
     error,
     firstRun: emptyFirstRunState(),
-    heroImage: getFallbackHeroImage("Wayline travel wallet", "Wayline travel wallet background"),
+    heroImage: getFallbackHeroImage("Almidy travel wallet", "Almidy travel wallet background"),
     metrics: [
       { label: "Trips saved", value: "0" },
       { label: "Active plans", value: "0" },

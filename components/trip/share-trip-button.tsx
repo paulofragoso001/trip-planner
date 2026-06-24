@@ -1,11 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { useWaylineAction } from "@/hooks/use-wayline-action";
+import { useAlmidyAction } from "@/hooks/use-wayline-action";
 
 export function ShareTripButton({ tripId }: { tripId: string }) {
   const [clipboardMessage, setClipboardMessage] = useState("");
-  const { isPending, run, state } = useWaylineAction();
+  const { isPending, run, state } = useAlmidyAction();
 
   async function shareTrip() {
     setClipboardMessage("");

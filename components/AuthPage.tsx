@@ -111,7 +111,7 @@ export default function AuthPage({ message }: AuthPageProps) {
       <section className="animate-fade-in w-full max-w-md rounded-2xl border border-gray-200 bg-white/80 p-6 shadow-xl backdrop-blur-xl sm:p-8">
         <div className="mb-6 text-center">
           <div className="text-2xl font-semibold tracking-tight text-ink">
-            Wayline
+            Almidy
           </div>
           <p className="mt-1 text-sm text-gray-500">
             Turn saved travel ideas into real trip plans.
@@ -193,7 +193,7 @@ export default function AuthPage({ message }: AuthPageProps) {
         </p>
 
         <p className="mt-4 text-center text-sm text-slate-600">
-          New to Wayline?{" "}
+          New to Almidy?{" "}
           <Link className="font-bold text-brand hover:underline" href="/signup">
             Create an account
           </Link>

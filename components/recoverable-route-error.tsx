@@ -31,7 +31,7 @@ export function RecoverableRouteError({
     }
   }, [isChunkLoadError]);
 
-  const heading = isChunkLoadError ? "Wayline was updated" : title;
+  const heading = isChunkLoadError ? "Almidy was updated" : title;
   const message = isChunkLoadError
     ? "Refresh to load the latest version. Your trip data is safe."
     : "This page is temporarily unavailable. Try again in a moment.";
@@ -55,7 +55,7 @@ export function RecoverableRouteError({
         }}
         type="button"
       >
-        {refreshing ? "Refreshing..." : isChunkLoadError ? "Refresh Wayline" : "Retry"}
+        {refreshing ? "Refreshing..." : isChunkLoadError ? "Refresh Almidy" : "Retry"}
       </button>
       {!isChunkLoadError && error.digest ? (
         <p className="mt-3 font-mono text-xs text-amber-800/70">{error.digest}</p>

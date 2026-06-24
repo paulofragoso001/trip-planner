@@ -81,10 +81,10 @@ const fixtures = [
       "Destination: Miami",
       "Travel style: balanced",
       "OpenAI generated planner brief",
-      "Wayline AI trip planner"
+      "Almidy AI trip planner"
     ],
     input:
-      "Saved Inspiration\nReview candidates before promoting them into the itinerary\nDestination: Miami\nTravel style: balanced\nOpenAI generated planner brief\nWayline AI trip planner\nWynwood Walls\nKomodo",
+      "Saved Inspiration\nReview candidates before promoting them into the itinerary\nDestination: Miami\nTravel style: balanced\nOpenAI generated planner brief\nAlmidy AI trip planner\nWynwood Walls\nKomodo",
     name: "metadata UI contamination",
     required: ["Wynwood Walls", "Komodo"]
   },

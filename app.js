@@ -276,7 +276,7 @@ const builderApps = [
     id: "packing",
     name: "Packing list",
     category: "Prepare",
-    partner: "Wayline",
+    partner: "Almidy",
     status: "Checklist",
     description: "Generate essentials from destination, weather, bookings, and documents.",
     url: (trip) => `https://www.google.com/search?q=${encodeURIComponent(`packing list for ${trip.destination}`)}`,
@@ -329,7 +329,7 @@ const builderApps = [
     partner: "Email / WhatsApp",
     status: "Share",
     description: "Prepare a concise trip summary for family, coworkers, or travel companions.",
-    url: (trip) => `mailto:?subject=${encodeURIComponent(trip.name)}&body=${encodeURIComponent(`${trip.name}\n${formatDateRange(trip.start, trip.end)}\n${trip.items.length} plans saved in Wayline.`)}`,
+    url: (trip) => `mailto:?subject=${encodeURIComponent(trip.name)}&body=${encodeURIComponent(`${trip.name}\n${formatDateRange(trip.start, trip.end)}\n${trip.items.length} plans saved in Almidy.`)}`,
     document: ["Shared summary", "Ready to send"]
   }
 ];
@@ -822,7 +822,7 @@ function openShareDialog() {
   const trip = getActiveTrip();
   $("#shareLinkInput").value = link;
   $("#shareLinkInput").setAttribute("value", link);
-  $("#emailShareLink").href = `mailto:?subject=${encodeURIComponent(`Wayline trip: ${trip.name}`)}&body=${encodeURIComponent(link)}`;
+  $("#emailShareLink").href = `mailto:?subject=${encodeURIComponent(`Almidy trip: ${trip.name}`)}&body=${encodeURIComponent(link)}`;
   $("#shareDialog").showModal();
 }
 
@@ -1530,7 +1530,7 @@ $("#pitchModeButton").addEventListener("click", () => {
 $("#copyPitchButton").addEventListener("click", async () => {
   const trip = getActiveTrip();
   const pitch = [
-    "Wayline Travel",
+    "Almidy Travel",
     "AI travel command center for modern trip planning.",
     "",
     "Problem: Travel planning is fragmented across email, booking sites, maps, calendars, documents, wallets, and spreadsheets.",
@@ -1582,7 +1582,7 @@ $("#nativeShareButton").addEventListener("click", async (event) => {
   const trip = getActiveTrip();
   const url = $("#shareLinkInput").value;
   if (navigator.share) {
-    await navigator.share({ title: trip.name, text: "Open this Wayline trip itinerary.", url });
+    await navigator.share({ title: trip.name, text: "Open this Almidy trip itinerary.", url });
   } else {
     await navigator.clipboard.writeText(url);
   }

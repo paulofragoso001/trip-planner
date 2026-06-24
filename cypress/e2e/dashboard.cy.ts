@@ -1,6 +1,6 @@
 /// <reference types="cypress" />
 
-describe("Wayline live dashboard with mocked data", () => {
+describe("Almidy live dashboard with mocked data", () => {
   beforeEach(() => {
     cy.intercept("GET", "**/api/trips", {
       fixture: "trips/dashboard-trips.json"

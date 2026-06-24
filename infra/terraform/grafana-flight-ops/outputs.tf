@@ -4,7 +4,7 @@ output "flight_ops_folder_uid" {
 }
 
 output "flight_ops_service_account_id" {
-  description = "Grafana service account ID used by the Wayline control panel."
+  description = "Grafana service account ID used by the Almidy control panel."
   value       = grafana_service_account.flight_ops.id
 }
 

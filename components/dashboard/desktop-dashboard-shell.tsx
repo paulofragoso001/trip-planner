@@ -248,7 +248,7 @@ function SidebarContent({
             collapsed && "justify-center px-0"
           )}
           data-testid="app-shell-workspace-switcher"
-          href="mailto:feedback@wayline.app?subject=Wayline%20feedback"
+          href="mailto:feedback@almidy.app?subject=Almidy%20feedback"
           aria-label={collapsed ? "Send feedback" : undefined}
           title={collapsed ? "Send feedback" : undefined}
         >

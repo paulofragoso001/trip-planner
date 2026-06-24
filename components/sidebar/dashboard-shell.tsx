@@ -58,7 +58,7 @@ export function DashboardShell({ children }: DashboardShellProps) {
         >
           =
         </button>
-        <span className="font-black">Wayline</span>
+        <span className="font-black">Almidy</span>
         <div className="w-10" />
       </header>
 
@@ -72,7 +72,7 @@ export function DashboardShell({ children }: DashboardShellProps) {
         >
           <div className="mb-6 flex items-center justify-between gap-3">
             <span className={collapsed ? "sr-only" : "text-lg font-black"}>
-              Wayline
+              Almidy
             </span>
             <button
               aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
@@ -100,7 +100,7 @@ export function DashboardShell({ children }: DashboardShellProps) {
           />
           <aside className="fixed inset-y-0 left-0 z-50 w-80 max-w-[85vw] border-r border-slate-200 bg-white px-4 py-5 shadow-2xl lg:hidden">
             <div className="mb-6 flex items-center justify-between gap-3">
-              <span className="text-lg font-black">Wayline</span>
+              <span className="text-lg font-black">Almidy</span>
               <button
                 aria-label="Close navigation"
                 className="inline-flex h-9 w-9 items-center justify-center rounded-xl hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"

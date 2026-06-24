@@ -1290,7 +1290,7 @@ async function loadSocialUrlMetadata(sourceUrl: string | null) {
       headers: {
         Accept: "text/html,application/xhtml+xml",
         "User-Agent":
-          "WaylineBot/1.0 (+https://wayline.app; travel planning metadata fetcher)"
+          "AlmidyBot/1.0 (+https://almidy.app; travel planning metadata fetcher)"
       },
       signal: controller.signal
     }).finally(() => clearTimeout(timeout));
@@ -1469,7 +1469,7 @@ async function extractWithOpenAi(input: {
         "Allowed candidates: named restaurants, cafes, attractions, landmarks, neighborhoods, tours, activities, hotels, events, parks, shopping places, nightlife venues, and relevant transportation hubs.\n" +
         "If the user describes travel between two places, such as \"fly from Barcelona to Miami\" or \"Barcelona to Miami\", return one transportation candidate with that exact route name. Do not downgrade it into one endpoint place.\n" +
         "Vague requests such as cute sushi spot in Brickell, rooftop drinks, or waterfront brunch are not named venues. Return them only as restaurant_intent or activity_idea with needs_provider_search=true, low confidence, and no address.\n" +
-        "Reject candidates that are UI labels, app names, product names, generic itinerary ideas, sentence fragments, instructions, marketing copy, or system/planner text. Never return OpenAI, Wayline, AI trip planner, Saved Inspiration, Review candidates, or text about promoting items.\n" +
+        "Reject candidates that are UI labels, app names, product names, generic itinerary ideas, sentence fragments, instructions, marketing copy, or system/planner text. Never return OpenAI, Almidy, AI trip planner, Saved Inspiration, Review candidates, or text about promoting items.\n" +
         "Trip metadata belongs in trip_context, not in place_candidates. Do not return metadata such as Destination: Miami, Travel style: balanced, budget, dates, number of travelers, pace, planning notes, or itinerary labels as place candidates.\n" +
         "Split compound text into separate candidates. Example: \"visit Wynwood Walls, dinner at Komodo, walk Brickell City Centre\" returns three places.\n" +
         "Each candidate must include name, category, location_hint, city, country if known, an evidence quote copied from the user content, and confidence. Do not invent prices, booking URLs, or availability.\n" +
@@ -2050,7 +2050,7 @@ function isBlockedExtractionTerm(normalized: string) {
 
 const blockedExtractionTerms = [
   "OpenAI",
-  "Wayline",
+  "Almidy",
   "AI trip planner",
   "Test production inspiration",
   "Review candidates",

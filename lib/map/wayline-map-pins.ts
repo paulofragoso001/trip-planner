@@ -1,13 +1,13 @@
 import type {
-  WaylineCoordinate,
-  WaylineLocationState,
-  WaylineMapPin
+  AlmidyCoordinate,
+  AlmidyLocationState,
+  AlmidyMapPin
 } from "@/lib/map/wayline-map-models";
 
 export const USER_LOCATION_PIN_ID = "user-location";
 
 type PinBuilderInput = {
-  coordinate: WaylineCoordinate;
+  coordinate: AlmidyCoordinate;
   id: string;
   label: string;
   address?: string | null;
@@ -29,9 +29,9 @@ type TripPinInput = PinBuilderInput & {
 };
 
 export function buildUserLocationPin(
-  location: WaylineLocationState,
+  location: AlmidyLocationState,
   selected = false
-): WaylineMapPin | null {
+): AlmidyMapPin | null {
   if (!location.coordinate) {
     return null;
   }
@@ -57,7 +57,7 @@ export function buildCountryFlagPin({
   label,
   selected = false,
   subtitle
-}: PinBuilderInput): WaylineMapPin {
+}: PinBuilderInput): AlmidyMapPin {
   const normalizedCountryCode = normalizeCountryCode(countryCode);
 
   return {
@@ -87,7 +87,7 @@ export function buildTripPin({
   selected = false,
   subtitle,
   tripId
-}: TripPinInput): WaylineMapPin {
+}: TripPinInput): AlmidyMapPin {
   const normalizedCountryCode = normalizeCountryCode(countryCode) ?? countryCodeFromDestination(destination);
 
   return {
@@ -120,7 +120,7 @@ export function buildPlacePin({
   selected = false,
   subtitle,
   tripId
-}: PinBuilderInput): WaylineMapPin {
+}: PinBuilderInput): AlmidyMapPin {
   return {
     address: address ?? null,
     coordinate: normalizeCoordinate(coordinate),
@@ -148,7 +148,7 @@ export function buildRouteWaypointPin({
   selected = false,
   subtitle,
   tripId
-}: PinBuilderInput): WaylineMapPin {
+}: PinBuilderInput): AlmidyMapPin {
   return {
     coordinate: normalizeCoordinate(coordinate),
     countryCode: normalizeCountryCode(countryCode),
@@ -165,18 +165,18 @@ export function buildRouteWaypointPin({
 }
 
 export function mergeUserLocationPin(
-  pins: WaylineMapPin[],
-  locationPin: WaylineMapPin | null
+  pins: AlmidyMapPin[],
+  locationPin: AlmidyMapPin | null
 ) {
   const appPins = pins.filter((pin) => pin.id !== USER_LOCATION_PIN_ID);
   return locationPin ? [locationPin, ...appPins] : appPins;
 }
 
-export function pinGlyph(pin: WaylineMapPin) {
+export function pinGlyph(pin: AlmidyMapPin) {
   return pin.flag ?? pin.order ?? pin.label.slice(0, 1).toUpperCase();
 }
 
-export function pinDisplayLabel(pin: WaylineMapPin) {
+export function pinDisplayLabel(pin: AlmidyMapPin) {
   return pin.kind === "user-location" ? pin.subtitle || pin.label : pin.label;
 }
 
@@ -194,14 +194,14 @@ export function countryFlagFromDestinationText(destination?: string | null) {
   return countryCodeToFlag(countryCodeFromDestination(destination));
 }
 
-export function normalizeCoordinate(coordinate: WaylineCoordinate): WaylineCoordinate {
+export function normalizeCoordinate(coordinate: AlmidyCoordinate): AlmidyCoordinate {
   return {
     lat: clampLatitude(coordinate.lat),
     lng: normalizeLongitude(coordinate.lng)
   };
 }
 
-function locationLabel(location: WaylineLocationState) {
+function locationLabel(location: AlmidyLocationState) {
   return location.label || location.city || location.countryName || "Current location";
 }
 

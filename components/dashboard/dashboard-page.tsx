@@ -44,7 +44,7 @@ export default function DashboardPage({
   const primaryHeroHref = latestTrip ? latestTrip.href : dashboardActionRoutes.trips.create;
   const primaryHeroLabel = latestTrip ? "Continue trip" : "Create your first trip";
   const heroImageUrl = heroImage.imageUrl || null;
-  const heroImageAlt = heroImage.imageAlt || "Wayline travel pass background";
+  const heroImageAlt = heroImage.imageAlt || "Almidy travel pass background";
 
   return (
     <>
@@ -73,7 +73,7 @@ export default function DashboardPage({
         )}
         <div className="absolute inset-0 -z-10 rounded-[inherit] bg-[radial-gradient(circle_at_16%_4%,rgba(255,255,255,0.22),transparent_28%),linear-gradient(135deg,rgba(2,6,23,0.38),rgba(2,6,23,0.91)_62%,rgba(2,6,23,0.96))]" />
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="text-xs font-black uppercase tracking-[0.26em] text-white/64">Wayline</p>
+          <p className="text-xs font-black uppercase tracking-[0.26em] text-white/64">Almidy</p>
           <div className="flex flex-wrap gap-2">
             <Link
               className="inline-flex min-h-11 items-center justify-center rounded-full bg-white px-4 text-sm font-black text-slate-950 transition hover:bg-slate-100 focus:outline-none focus:ring-4 focus:ring-white/30"
@@ -147,7 +147,7 @@ export default function DashboardPage({
           href={dashboardActionRoutes.plan.addIdea}
           icon={<Sparkles aria-hidden="true" className="h-5 w-5" />}
           label="Start with an idea"
-          meta="Paste a note, link, or screenshot. Wayline will find places for you to review."
+          meta="Paste a note, link, or screenshot. Almidy will find places for you to review."
         />
 
         {ideasWaitingCount > 0 ? (
@@ -338,7 +338,7 @@ function NotificationsDashboard({
           </p>
         ) : null}
         <WalletCard
-          eyebrow="Wayline"
+          eyebrow="Almidy"
           icon={<Bell aria-hidden="true" className="h-5 w-5" />}
           title="No notifications yet"
           variant="utility"

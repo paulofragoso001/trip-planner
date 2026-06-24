@@ -17,7 +17,7 @@ import {
   mobileSecondaryActionClassName,
   mobileSelectClassName
 } from "@/components/ui/mobile-form";
-import { useWaylineAction } from "@/hooks/use-wayline-action";
+import { useAlmidyAction } from "@/hooks/use-wayline-action";
 import {
   TRIP_TRAVEL_STYLES,
   TRIP_TRAVEL_STYLE_LABELS,
@@ -43,7 +43,7 @@ export function TripCreateForm({
   const [name, setName] = useState("");
   const [startDate, setStartDate] = useState("");
   const [travelStyle, setTravelStyle] = useState<TripTravelStyle>("balanced");
-  const { isPending, run, state } = useWaylineAction<{ trip?: { id: string } }>();
+  const { isPending, run, state } = useAlmidyAction<{ trip?: { id: string } }>();
   const mobilePassMode = mode === "mobile-pass";
   const previewDates = formatPreviewDates(startDate, endDate);
   const canCreate = Boolean(name.trim() && destination.trim() && !isPending);
@@ -282,7 +282,7 @@ export function TripCreateForm({
       ) : null}
       {destinationSelection ? (
         <p className="rounded-2xl bg-emerald-50 px-4 py-3 text-xs font-black text-emerald-800">
-          Location matched. Wayline can use this destination for AI review and map planning.
+          Location matched. Almidy can use this destination for AI review and map planning.
         </p>
       ) : null}
       <div className="grid gap-3 sm:grid-cols-2">

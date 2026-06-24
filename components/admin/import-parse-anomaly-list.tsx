@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import type { ImportParseAnomaly } from "@/lib/server/import-parse-report";
-import { useWaylineAction } from "@/hooks/use-wayline-action";
+import { useAlmidyAction } from "@/hooks/use-wayline-action";
 
 type FilterKind = "all" | "parser" | "segment" | "severity";
 
@@ -19,7 +19,7 @@ export function ImportParseAnomalyList({
   anomalies: ImportParseAnomaly[];
 }) {
   const router = useRouter();
-  const { isPending, run, state } = useWaylineAction();
+  const { isPending, run, state } = useAlmidyAction();
   const [activeFilter, setActiveFilter] = useState<ActiveFilter>({
     kind: "all",
     value: "all"

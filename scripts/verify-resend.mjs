@@ -72,10 +72,10 @@ if (resendTestTo) {
     body: JSON.stringify({
       from: resendFromEmail,
       html: [
-        "<p>This is a Wayline invite email delivery verification.</p>",
+        "<p>This is an Almidy invite email delivery verification.</p>",
         "<p>If you received this, Resend delivery is working for the configured sender.</p>"
       ].join(""),
-      subject: "Wayline invite email verification",
+      subject: "Almidy invite email verification",
       to: resendTestTo
     }),
     headers: {

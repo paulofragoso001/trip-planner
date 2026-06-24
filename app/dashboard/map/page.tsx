@@ -68,7 +68,7 @@ export default async function DashboardMapPage() {
           variant="utility"
         >
           <p className="text-sm font-semibold leading-6 text-slate-600">
-            Create a trip, add places, and Wayline will turn confirmed locations into a route map.
+            Create a trip, add places, and Almidy will turn confirmed locations into a route map.
           </p>
           <div className="mt-4 grid gap-2 sm:grid-cols-2">
             <WalletActionLink href={dashboardActionRoutes.trips.create}>

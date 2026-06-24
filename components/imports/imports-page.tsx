@@ -10,12 +10,12 @@ import { EmptyState, StatusBadge, tripUi } from "@/components/trip-ui";
 import { WalletActionLink, WalletCard } from "@/components/wallet/wallet-card";
 import { WalletPageShell } from "@/components/wallet/wallet-page-shell";
 import { dashboardActionRoutes } from "@/lib/dashboard/action-routes";
-import type { WaylineSampleKey } from "@/lib/wayline-onboarding";
+import type { AlmidySampleKey } from "@/lib/wayline-onboarding";
 import { waylineCopy } from "@/lib/copy/wayline-copy";
 
 type ImportsPageProps = ImportsData & {
   sampleInspiration?: {
-    key: WaylineSampleKey;
+    key: AlmidySampleKey;
     text: string;
   } | null;
 };
@@ -44,7 +44,7 @@ export default function ImportsPage({
       fallbackGradient={heroImage.fallbackGradient}
       heroClassName="min-h-[11.5rem] rounded-[2rem] sm:min-h-[15rem]"
       heroImage={heroImage}
-      subtitle="Paste a link, note, or screenshot. Wayline finds places for you to review."
+      subtitle="Paste a link, note, or screenshot. Almidy finds places for you to review."
       subtitleClassName="mt-2 text-[0.9rem] leading-5 text-white/82 sm:mt-4 sm:text-base"
       title="Capture travel ideas"
       titleClassName="text-[2.35rem] sm:text-6xl"
@@ -89,7 +89,7 @@ export default function ImportsPage({
               variant="primary"
             >
               <p className="text-sm font-semibold leading-6 text-white/68 lg:text-slate-600">
-                Review places Wayline found before adding them to a trip.
+                Review places Almidy found before adding them to a trip.
               </p>
               <a
                 className="mt-4 inline-flex min-h-11 items-center justify-center rounded-full bg-white px-4 text-sm font-black text-slate-950 lg:bg-slate-950 lg:text-white"
@@ -121,7 +121,7 @@ export default function ImportsPage({
             Optional trip context
           </summary>
           <p className="mt-2 text-sm text-slate-600">
-            Add destination, style, and interests when you want Wayline to suggest places from trip details.
+            Add destination, style, and interests when you want Almidy to suggest places from trip details.
           </p>
           <div className="mt-4">
             <AiTravelPlannerForm trips={trips} />
@@ -136,7 +136,7 @@ export default function ImportsPage({
             Advanced sources
           </summary>
           <p className="mt-2 text-sm text-slate-600">
-            Optional inbox, calendar, and source connections that can feed Wayline later.
+            Optional inbox, calendar, and source connections that can feed Almidy later.
           </p>
           {error ? (
             <p className="mt-4 rounded-2xl bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
@@ -165,7 +165,7 @@ export default function ImportsPage({
                   }}
                   confirmDescription={
                     connected
-                      ? "Disconnect this import source? Wayline will stop using it for future imports."
+                      ? "Disconnect this import source? Almidy will stop using it for future imports."
                       : undefined
                   }
                   confirmLabel={connected ? "Confirm disconnect" : undefined}
@@ -320,7 +320,7 @@ function MobileTripContext({ hasTrips }: { hasTrips: boolean }) {
           </h2>
           <p className="mt-1 text-sm font-semibold leading-5 text-white/68">
             {hasTrips
-              ? "Choose a trip after Wayline finds places."
+              ? "Choose a trip after Almidy finds places."
               : "Create a trip when your idea is ready."}
           </p>
         </div>

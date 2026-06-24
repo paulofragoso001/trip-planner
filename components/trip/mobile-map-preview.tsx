@@ -5,7 +5,7 @@ import { MapIcon, Navigation } from "lucide-react";
 import { useMemo } from "react";
 import { GoogleMapRenderer } from "@/components/map/google-map-renderer";
 import type { TripMapItem } from "@/components/TripMap";
-import type { WaylineMapSurfaceState } from "@/lib/map/wayline-map-models";
+import type { AlmidyMapSurfaceState } from "@/lib/map/wayline-map-models";
 
 type MobileMapPreviewProps = {
   ctaHref?: string;
@@ -83,7 +83,7 @@ export function MobileMapPreview({
   );
 }
 
-function tripItemsToMapSurface(items: TripMapItem[]): WaylineMapSurfaceState {
+function tripItemsToMapSurface(items: TripMapItem[]): AlmidyMapSurfaceState {
   const firstItem = items[0];
   const center = firstItem ? { lat: firstItem.lat, lng: firstItem.lng } : { lat: 25.7617, lng: -80.1918 };
 

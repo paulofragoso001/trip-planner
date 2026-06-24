@@ -81,7 +81,7 @@ export async function POST(request: Request, context: RouteContext) {
 
     try {
       const result = await sendTripInviteEmail({
-        inviterName: "Wayline",
+        inviterName: "Almidy",
         role,
         to: email,
         tripTitle: readTripTitle(trip),
@@ -210,5 +210,5 @@ function buildTripUrl(tripId: string) {
 }
 
 function readTripTitle(trip: Record<string, unknown>) {
-  return String(trip.name || trip.title || "Wayline trip");
+  return String(trip.name || trip.title || "Almidy trip");
 }

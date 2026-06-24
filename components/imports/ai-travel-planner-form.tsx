@@ -84,8 +84,8 @@ export function AiTravelPlannerForm({ trips }: AiTravelPlannerFormProps) {
       const count = countExtractedPlaces(payload);
       setMessage(
         count
-          ? `Wayline found ${count} place${count === 1 ? "" : "s"} to review.`
-          : "Wayline finished scanning. No confident places were found yet."
+          ? `Almidy found ${count} place${count === 1 ? "" : "s"} to review.`
+          : "Almidy finished scanning. No confident places were found yet."
       );
       router.refresh();
     } catch (error) {

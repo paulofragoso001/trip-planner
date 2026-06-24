@@ -35,7 +35,7 @@ export function getTripHeroImage(
   segments: WalletHeroSegment[] = [],
   recommendations: WalletHeroRecommendation[] = []
 ): WalletHeroImage {
-  const destination = trip.destination || trip.name || "Wayline trip";
+  const destination = trip.destination || trip.name || "Almidy trip";
   const fallbackGradient = fallbackGradientForDestination(destination);
   const destinationPhoto = imageFromProviderMetadata(
     trip.destination_provider_metadata,

@@ -35,7 +35,7 @@ export function FirstRunOnboarding({ firstRun }: FirstRunOnboardingProps) {
           </span>
           <div className="min-w-0">
             <h2 className="text-base font-black tracking-tight text-slate-950">
-              New to Wayline?
+              New to Almidy?
             </h2>
             <p className="mt-1 text-sm leading-6 text-slate-600">
               Try a sample travel note or add your own.

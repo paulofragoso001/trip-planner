@@ -5,17 +5,17 @@ import type { CSSProperties } from "react";
 import { useEffect, useRef, useState } from "react";
 import { countryCodeToFlag } from "@/lib/map/wayline-map-pins";
 import type {
-  WaylineLocationState,
-  WaylineMapCameraCommand,
-  WaylineMapPin
+  AlmidyLocationState,
+  AlmidyMapCameraCommand,
+  AlmidyMapPin
 } from "@/lib/map/wayline-map-models";
 
 type Photorealistic3DHomeHeroProps = {
-  cameraCommand?: WaylineMapCameraCommand | null;
+  cameraCommand?: AlmidyMapCameraCommand | null;
   className?: string;
-  location?: WaylineLocationState;
-  onLocateUser?: () => Promise<WaylineLocationState> | void;
-  pins?: WaylineMapPin[];
+  location?: AlmidyLocationState;
+  onLocateUser?: () => Promise<AlmidyLocationState> | void;
+  pins?: AlmidyMapPin[];
 };
 
 type HeroState = "loading" | "ready3d" | "3d-static" | "fallback" | "error";
@@ -119,7 +119,7 @@ const COUNTRY_BY_TIME_ZONE_PREFIX: Array<[string, CountryFocus]> = [
   ["Brazil/", COUNTRY_BY_CODE.BR]
 ];
 
-const focusablePinKinds = new Set<WaylineMapPin["kind"]>([
+const focusablePinKinds = new Set<AlmidyMapPin["kind"]>([
   "country",
   "place",
   "route-endpoint",
@@ -129,7 +129,7 @@ const focusablePinKinds = new Set<WaylineMapPin["kind"]>([
 ]);
 
 let googleMapsScriptPromise: Promise<void> | null = null;
-const EMPTY_PINS: WaylineMapPin[] = [];
+const EMPTY_PINS: AlmidyMapPin[] = [];
 
 export function Photorealistic3DHomeHero({
   cameraCommand,
@@ -414,7 +414,7 @@ function shouldUpdateFocus(currentCountry: CountryFocus, nextCountry: CountryFoc
   ) > 0.25;
 }
 
-function focusFromLocationState(location: WaylineLocationState | undefined): CountryFocus | null {
+function focusFromLocationState(location: AlmidyLocationState | undefined): CountryFocus | null {
   if (!location?.coordinate) {
     return null;
   }
@@ -441,7 +441,7 @@ function focusFromLocationState(location: WaylineLocationState | undefined): Cou
   };
 }
 
-function focusFromPins(pins: WaylineMapPin[]): CountryFocus | null {
+function focusFromPins(pins: AlmidyMapPin[]): CountryFocus | null {
   const pin =
     pins.find((candidate) => candidate.selected && candidate.kind === "user-location") ??
     pins.find((candidate) => candidate.selected && focusablePinKinds.has(candidate.kind)) ??
@@ -476,8 +476,8 @@ function focusFromPins(pins: WaylineMapPin[]): CountryFocus | null {
 }
 
 function focusFromCameraCommand(
-  command: WaylineMapCameraCommand | null | undefined,
-  pins: WaylineMapPin[]
+  command: AlmidyMapCameraCommand | null | undefined,
+  pins: AlmidyMapPin[]
 ): CountryFocus | null {
   if (!command || command.type === "openFlatMap") {
     return null;

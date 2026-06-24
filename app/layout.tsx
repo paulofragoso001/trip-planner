@@ -5,7 +5,7 @@ import "./globals.css";
 validateEnv();
 
 export const metadata: Metadata = {
-  title: "Wayline — AI Travel Companion",
+  title: "Almidy — AI Travel Companion",
   description:
     "Plan with AI, organize your itinerary, map your route, save documents, track expenses, and share your trip from one travel pass."
 };

@@ -19,7 +19,7 @@ export default async function SignupPage({
               Start planning
             </p>
             <h1 className="mt-3 max-w-sm text-3xl font-black tracking-tight sm:text-4xl">
-              Create your Wayline account
+              Create your Almidy account
             </h1>
             <p className="mt-4 max-w-md text-sm leading-6 text-slate-200">
               Save trips, map routes, import itinerary items, and keep travelers
@@ -46,7 +46,7 @@ export default async function SignupPage({
               Create account
             </p>
             <h2 className="mt-2 text-2xl font-black tracking-tight sm:text-3xl">
-              Join Wayline
+              Join Almidy
             </h2>
             <p className="mt-3 text-sm leading-6 text-slate-600">
               Use a magic link for the fastest setup, or create an account with

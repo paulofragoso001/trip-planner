@@ -1,14 +1,14 @@
-# Wayline Application Architecture Plan
+# Almidy Application Architecture Plan
 
 Last updated: 2026-06-21
 
 ## Product Direction
 
-Wayline should feel like a premium mobile travel wallet, not a desktop dashboard or a bundle of disconnected feature pages.
+Almidy should feel like a premium mobile travel wallet, not a desktop dashboard or a bundle of disconnected feature pages.
 
 Core product sentence:
 
-> Wayline helps users collect travel ideas, turn them into trip plans, and organize everything into a visual itinerary, map, and travel wallet.
+> Almidy helps users collect travel ideas, turn them into trip plans, and organize everything into a visual itinerary, map, and travel wallet.
 
 Architecture principle:
 
@@ -96,7 +96,7 @@ Target navigation rules:
 
 ```mermaid
 flowchart TD
-  A["Open Wayline"] --> B["Create trip"]
+  A["Open Almidy"] --> B["Create trip"]
   B --> C["Add idea"]
   C --> D["Review places"]
   D --> E["Add to trip"]
@@ -114,7 +114,7 @@ Product expectation:
 
 ```mermaid
 flowchart TD
-  A["Open Wayline"] --> B["Continue trip"]
+  A["Open Almidy"] --> B["Continue trip"]
   B --> C["Trip Overview"]
   C --> D["Itinerary"]
   C --> E["Map"]
@@ -445,7 +445,7 @@ Candidate issues:
 - Hide `/dashboard/layout-simulator`.
 - Hide `/dashboard/api-transition`.
 - Hide `/travel-dashboard`.
-- Hide `/flight-ops` from consumer Wayline.
+- Hide `/flight-ops` from consumer Almidy.
 - Hide `/dashboard/admin` unless user is admin.
 
 ### Merge

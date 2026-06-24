@@ -13,7 +13,7 @@ import { createClient } from "@/lib/supabase/server";
 
 const features = [
   {
-    description: "Paste notes, links, or screenshots. Wayline finds places and helps you review them.",
+    description: "Paste notes, links, or screenshots. Almidy finds places and helps you review them.",
     icon: Sparkles,
     title: "Plan with AI"
   },
@@ -53,7 +53,7 @@ export default async function HomePage() {
       <section className="mx-auto grid max-w-7xl gap-12 py-10 sm:py-14 lg:min-h-[calc(100vh-8rem)] lg:content-center">
         <div className="mx-auto max-w-4xl text-center">
           <p className="text-xs font-black uppercase tracking-[0.28em] text-blue-600">
-            Wayline
+            Almidy
           </p>
           <h1 className="mt-5 text-5xl font-black leading-[0.95] tracking-tight text-slate-950 sm:text-6xl lg:text-8xl">
             All your trip details. Finally, in one place.
@@ -72,7 +72,7 @@ export default async function HomePage() {
               className="inline-flex min-h-12 w-full items-center justify-center rounded-full border border-slate-200 bg-white px-7 py-3 text-sm font-black text-slate-950 shadow-sm transition hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-blue-100 sm:w-auto"
               href={user ? "/dashboard" : "/login"}
             >
-              {user ? "Open Wayline" : "Log in"}
+              {user ? "Open Almidy" : "Log in"}
             </Link>
             {user ? (
               <form action={signOut} className="w-full sm:w-auto">
@@ -204,10 +204,10 @@ export default async function HomePage() {
         <Link className="hover:text-slate-950" href="/terms">
           Terms
         </Link>
-        <a className="hover:text-slate-950" href="mailto:hello@wayline.app">
+        <a className="hover:text-slate-950" href="mailto:hello@almidy.app">
           Contact
         </a>
-        <a className="hover:text-slate-950" href="mailto:feedback@wayline.app">
+        <a className="hover:text-slate-950" href="mailto:feedback@almidy.app">
           Feedback
         </a>
       </footer>

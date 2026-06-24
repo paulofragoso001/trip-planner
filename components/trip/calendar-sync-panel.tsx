@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useWaylineAction } from "@/hooks/use-wayline-action";
+import { useAlmidyAction } from "@/hooks/use-wayline-action";
 
 type CalendarProvider = "google" | "outlook";
 type ConnectionMessageTone = "error" | "info" | "success";
@@ -46,7 +46,7 @@ export function CalendarSyncPanel({ tripId }: { tripId: string }) {
   const [confirmDisconnectProvider, setConfirmDisconnectProvider] =
     useState<CalendarProvider | null>(null);
   const { isPending: syncPending, run: runSync, state: syncState } =
-    useWaylineAction();
+    useAlmidyAction();
 
   const connectionByProvider = useMemo(() => {
     return new Map(connections.map((connection) => [connection.provider, connection]));

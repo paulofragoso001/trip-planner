@@ -35,10 +35,10 @@ export type CalendarEventInput = {
   status?: "confirmed" | "cancelled" | "tentative";
   timeZone?: string | null;
   title: string;
-  wayline: CalendarEventWaylineMetadata;
+  wayline: CalendarEventAlmidyMetadata;
 };
 
-export type CalendarEventWaylineMetadata = {
+export type CalendarEventAlmidyMetadata = {
   source: "wayline";
   syncVersion: string;
   tripId: string;
@@ -54,7 +54,7 @@ export type ExternalEventRef = {
 };
 
 export type CalendarProviderEvent = ExternalEventRef & {
-  metadata?: Partial<CalendarEventWaylineMetadata> & {
+  metadata?: Partial<CalendarEventAlmidyMetadata> & {
     segmentId?: string;
     sourceId?: string;
   };
@@ -70,7 +70,7 @@ export type CalendarProviderAdapter = {
   deleteEvent(calendarId: string, externalEventId: string): Promise<void>;
   findEventByMetadata?(
     calendarId: string,
-    metadata: Pick<CalendarEventWaylineMetadata, "tripId"> & { segmentId: string }
+    metadata: Pick<CalendarEventAlmidyMetadata, "tripId"> & { segmentId: string }
   ): Promise<CalendarProviderEvent | null>;
   getEvent?(calendarId: string, externalEventId: string): Promise<CalendarProviderEvent | null>;
   listCalendars(): Promise<CalendarSummary[]>;

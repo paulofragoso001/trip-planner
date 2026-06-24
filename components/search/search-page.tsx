@@ -75,7 +75,7 @@ export function SearchPage({
         <div className="sticky top-0 z-20 border-b border-white/10 bg-[#1f1f1f]/95 px-4 pb-3 pt-[calc(14px+env(safe-area-inset-top))] backdrop-blur-xl sm:px-6 lg:static lg:rounded-t-[2rem]">
           <div className="flex items-center gap-3">
             <label className="relative min-w-0 flex-1">
-              <span className="sr-only">Search Wayline</span>
+              <span className="sr-only">Search Almidy</span>
               <Search
                 aria-hidden="true"
                 className="pointer-events-none absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-[#9b9ba1]"

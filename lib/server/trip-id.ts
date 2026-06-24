@@ -16,7 +16,7 @@ export function isDemoDataEnabled() {
     return true;
   }
 
-  return process.env.WAYLINE_ENABLE_DEMO_DATA === "true" && process.env.VERCEL_ENV !== "production";
+  return process.env.ALMIDY_ENABLE_DEMO_DATA === "true" && process.env.VERCEL_ENV !== "production";
 }
 
 export function isUuid(value: string) {

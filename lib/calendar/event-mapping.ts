@@ -35,7 +35,7 @@ export function mapSegmentToCalendarEvent(
     title: segment.title,
     wayline: {
       source: "wayline",
-      syncVersion: buildWaylineSyncVersion(segment),
+      syncVersion: buildAlmidySyncVersion(segment),
       tripId: segment.tripId,
       updatedAt: segment.updatedAt ?? new Date().toISOString()
     }
@@ -77,7 +77,7 @@ export function toGoogleCalendarEvent(input: CalendarEventInput) {
       : undefined,
     source: input.externalUrl
       ? {
-          title: "Wayline",
+          title: "Almidy",
           url: input.externalUrl
         }
       : undefined,
@@ -162,10 +162,10 @@ function defaultRemindersForSegment(type: string) {
 }
 
 function buildDefaultDescription(segment: CalendarSourceSegment) {
-  return `Synced from Wayline ${segment.sourceType.replace("_", " ")} ${segment.sourceId}.`;
+  return `Synced from Almidy ${segment.sourceType.replace("_", " ")} ${segment.sourceId}.`;
 }
 
-function buildWaylineSyncVersion(segment: CalendarSourceSegment) {
+function buildAlmidySyncVersion(segment: CalendarSourceSegment) {
   return [
     segment.sourceType,
     segment.sourceId,

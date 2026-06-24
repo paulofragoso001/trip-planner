@@ -10,11 +10,11 @@ type DashboardLoadingStateProps = {
 
 const variantCopy = {
   globe: {
-    eyebrow: "Wayline",
+    eyebrow: "Almidy",
     title: "Preparing your travel wallet"
   },
   panel: {
-    eyebrow: "Wayline",
+    eyebrow: "Almidy",
     title: "Loading workspace"
   },
   trips: {

@@ -8,7 +8,7 @@ import GoogleMapsProvider from "@/components/GoogleMapsProvider";
 import LocationAutocomplete, {
   type LocationSelection
 } from "@/components/LocationAutocomplete";
-import { useWaylineAction } from "@/hooks/use-wayline-action";
+import { useAlmidyAction } from "@/hooks/use-wayline-action";
 import { dashboardActionRoutes } from "@/lib/dashboard/action-routes";
 
 type CreateTripResponse = {
@@ -19,7 +19,7 @@ export function HomeSmartStart() {
   const [destination, setDestination] = useState("");
   const [destinationSelection, setDestinationSelection] =
     useState<LocationSelection | null>(null);
-  const { isPending, run, state } = useWaylineAction<CreateTripResponse>();
+  const { isPending, run, state } = useAlmidyAction<CreateTripResponse>();
   const canCreate = destination.trim().length > 1 && !isPending;
   const createLabel = isPending ? "Creating..." : "Create trip";
 

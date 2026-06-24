@@ -1,6 +1,6 @@
 -- Retired legacy itinerary_items bootstrap.
 --
--- Wayline's launch data model now uses public.trip_segments as the canonical
+-- Almidy's launch data model now uses public.trip_segments as the canonical
 -- trip workspace item table. Keep this migration file as a no-op so migration
 -- history remains stable without recreating retired itinerary_items tables on
 -- fresh database replays.

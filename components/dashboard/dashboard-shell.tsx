@@ -10,7 +10,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 lg:px-6">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-              Wayline
+              Almidy
             </p>
             <h1 className="text-lg font-black">Trip operations</h1>
           </div>

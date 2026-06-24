@@ -71,7 +71,7 @@ export async function loadTripsData(): Promise<TripsData> {
   if (!auth) {
     return {
       error: "Sign in to load your trips.",
-      heroImage: getFallbackHeroImage("Wayline trips", "Wayline trips background"),
+      heroImage: getFallbackHeroImage("Almidy trips", "Almidy trips background"),
       trips: []
     };
   }
@@ -90,7 +90,7 @@ export async function loadTripsData(): Promise<TripsData> {
 
     return {
       error: "Could not load trips right now.",
-      heroImage: getFallbackHeroImage("Wayline trips", "Wayline trips background"),
+      heroImage: getFallbackHeroImage("Almidy trips", "Almidy trips background"),
       trips: []
     };
   }
@@ -348,9 +348,9 @@ function buildTripsHeroImage(
   trip: TripRow | undefined,
   passImage: TripPassImage | undefined
 ): WalletHeroImage {
-  if (!trip) return getFallbackHeroImage("Wayline trips", "Wayline trips background");
+  if (!trip) return getFallbackHeroImage("Almidy trips", "Almidy trips background");
 
-  const destination = trip.destination || trip.name || "Wayline trip";
+  const destination = trip.destination || trip.name || "Almidy trip";
   return {
     fallbackGradient: fallbackGradientForDestination(destination),
     imageAlt: passImage?.imageAlt || `${destination} trip pass background`,

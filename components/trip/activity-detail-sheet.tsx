@@ -16,7 +16,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { GoogleMapRenderer } from "@/components/map/google-map-renderer";
 import type { TripMapItem } from "@/components/TripMap";
 import { DisplayAddressSheet } from "@/components/trip/display-address-sheet";
-import type { WaylineMapSurfaceState } from "@/lib/map/wayline-map-models";
+import type { AlmidyMapSurfaceState } from "@/lib/map/wayline-map-models";
 import {
   hasResolvedRoute,
   routeEndpointLabel,
@@ -309,7 +309,7 @@ export function ActivityDetailSheet({
   );
 }
 
-function tripItemToMapSurface(item: TripMapItem): WaylineMapSurfaceState {
+function tripItemToMapSurface(item: TripMapItem): AlmidyMapSurfaceState {
   const coordinate = { lat: item.lat, lng: item.lng };
 
   return {

@@ -1,7 +1,7 @@
 export const waylineCopy = {
   productPromise: "Turn saved travel ideas into mapped trip plans.",
   productDescription:
-    "Paste travel notes, links, or screenshots. Wayline finds the places, builds your trip, maps your places, and suggests what to do nearby.",
+    "Paste travel notes, links, or screenshots. Almidy finds the places, builds your trip, maps your places, and suggests what to do nearby.",
   onboardingSteps: [
     { description: "Add one note, link, or screenshot.", label: "Add" },
     { description: "Approve the places that belong.", label: "Review" },
@@ -22,7 +22,7 @@ export const waylineCopy = {
       needsLocation: "This place needs a confirmed location before it can appear on the map.",
     providerFailed: "Location matching is temporarily unavailable. Try again.",
     wrongCity:
-      "Wayline found a place with this name, but it was outside your trip destination."
+      "Almidy found a place with this name, but it was outside your trip destination."
   },
   suggestions: {
     intro: "Nearby ideas based on this route.",

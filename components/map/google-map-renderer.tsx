@@ -7,13 +7,13 @@ import {
 } from "@react-google-maps/api";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import GoogleMapsProvider from "@/components/GoogleMapsProvider";
-import { WaylineGoogleMapPinMarker } from "@/components/map/wayline-google-map-pin-marker";
+import { AlmidyGoogleMapPinMarker } from "@/components/map/wayline-google-map-pin-marker";
 import { useOptionalUnifiedMap } from "@/lib/map/unified-map-provider";
 import type {
-  WaylineCoordinate,
-  WaylineMapCameraCommand,
-  WaylineMapRoute,
-  WaylineMapSurfaceState
+  AlmidyCoordinate,
+  AlmidyMapCameraCommand,
+  AlmidyMapRoute,
+  AlmidyMapSurfaceState
 } from "@/lib/map/wayline-map-models";
 
 type GoogleMapRendererProps = {
@@ -21,10 +21,10 @@ type GoogleMapRendererProps = {
   height?: number | string;
   mapTheme?: "default" | "dark";
   onPinSelect?: (pinId: string) => void;
-  surfaceState?: WaylineMapSurfaceState;
+  surfaceState?: AlmidyMapSurfaceState;
 };
 
-const fallbackCenter: WaylineCoordinate = { lat: 25.7617, lng: -80.1918 };
+const fallbackCenter: AlmidyCoordinate = { lat: 25.7617, lng: -80.1918 };
 const mapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 const mapsConfigured = Boolean(mapsApiKey && !mapsApiKey.startsWith("YOUR_"));
 
@@ -184,7 +184,7 @@ function LoadedGoogleMapRenderer({
             mapPaneName={OverlayView.OVERLAY_MOUSE_TARGET}
             position={pin.coordinate}
           >
-            <WaylineGoogleMapPinMarker
+            <AlmidyGoogleMapPinMarker
               onSelect={(pinId) => {
                 unifiedMap?.selectPin(pinId);
                 onPinSelect?.(pinId);
@@ -198,7 +198,7 @@ function LoadedGoogleMapRenderer({
   );
 }
 
-function routePathForRoute(route: WaylineMapRoute) {
+function routePathForRoute(route: AlmidyMapRoute) {
   if (route.path?.length) {
     return route.path;
   }
@@ -206,11 +206,11 @@ function routePathForRoute(route: WaylineMapRoute) {
   return [route.origin.coordinate, route.destination.coordinate];
 }
 
-function hasRoutePath(path: WaylineCoordinate[]): path is [WaylineCoordinate, WaylineCoordinate, ...WaylineCoordinate[]] {
+function hasRoutePath(path: AlmidyCoordinate[]): path is [AlmidyCoordinate, AlmidyCoordinate, ...AlmidyCoordinate[]] {
   return path.length > 1;
 }
 
-function applyGoogleCameraCommand(map: google.maps.Map, command: WaylineMapCameraCommand) {
+function applyGoogleCameraCommand(map: google.maps.Map, command: AlmidyMapCameraCommand) {
   const googleMaps = window.google?.maps;
   const coordinates = command.coordinates ?? [];
 

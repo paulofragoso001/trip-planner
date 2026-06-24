@@ -25,21 +25,21 @@ import {
   mergeUserLocationPin
 } from "@/lib/map/wayline-map-pins";
 import type {
-  WaylineCoordinate,
-  WaylineLocationState,
-  WaylineMapCamera,
-  WaylineMapCameraCommand,
-  WaylineMapMode,
-  WaylineMapPin,
-  WaylineMapRoute,
-  WaylineMapSelection,
-  WaylineMapSurfaceState
+  AlmidyCoordinate,
+  AlmidyLocationState,
+  AlmidyMapCamera,
+  AlmidyMapCameraCommand,
+  AlmidyMapMode,
+  AlmidyMapPin,
+  AlmidyMapRoute,
+  AlmidyMapSelection,
+  AlmidyMapSurfaceState
 } from "@/lib/map/wayline-map-models";
 
 export type LocationRequestState = "idle" | "loading" | "ready" | "error";
 
 export type FocusTarget = {
-  coordinate: WaylineCoordinate;
+  coordinate: AlmidyCoordinate;
   id?: string | null;
   label?: string | null;
   placeId?: string | null;
@@ -50,40 +50,40 @@ export type FocusTarget = {
 export type UnifiedMapProviderProps = {
   children: ReactNode;
   autoLocate?: boolean;
-  initialCamera?: WaylineMapCamera;
-  initialLocation?: WaylineLocationState;
-  initialMode?: WaylineMapMode;
-  initialPins?: WaylineMapPin[];
-  initialRoutes?: WaylineMapRoute[];
+  initialCamera?: AlmidyMapCamera;
+  initialLocation?: AlmidyLocationState;
+  initialMode?: AlmidyMapMode;
+  initialPins?: AlmidyMapPin[];
+  initialRoutes?: AlmidyMapRoute[];
 };
 
 export type UnifiedMapContextValue = {
-  camera: WaylineMapCamera;
-  location: WaylineLocationState;
+  camera: AlmidyMapCamera;
+  location: AlmidyLocationState;
   locationError: string | null;
   locationStatus: LocationRequestState;
-  mode: WaylineMapMode;
-  pins: WaylineMapPin[];
-  routes: WaylineMapRoute[];
-  selected: WaylineMapSelection;
-  surfaceState: WaylineMapSurfaceState;
+  mode: AlmidyMapMode;
+  pins: AlmidyMapPin[];
+  routes: AlmidyMapRoute[];
+  selected: AlmidyMapSelection;
+  surfaceState: AlmidyMapSurfaceState;
   clearSelection: () => void;
   focusCountry: (country: FocusTarget) => void;
   focusPlace: (place: FocusTarget) => void;
   focusRoute: (routeId: string) => void;
   focusTrip: (trip: FocusTarget) => void;
-  locateUser: () => Promise<WaylineLocationState>;
-  openFlatMap: (mode?: WaylineMapMode) => void;
-  openMap: (mode?: WaylineMapMode) => void;
+  locateUser: () => Promise<AlmidyLocationState>;
+  openFlatMap: (mode?: AlmidyMapMode) => void;
+  openMap: (mode?: AlmidyMapMode) => void;
   selectPin: (pinId: string | null) => void;
-  setCamera: (camera: WaylineMapCamera) => void;
-  setMode: (mode: WaylineMapMode) => void;
-  setPins: (pins: WaylineMapPin[]) => void;
-  setRoutes: (routes: WaylineMapRoute[]) => void;
+  setCamera: (camera: AlmidyMapCamera) => void;
+  setMode: (mode: AlmidyMapMode) => void;
+  setPins: (pins: AlmidyMapPin[]) => void;
+  setRoutes: (routes: AlmidyMapRoute[]) => void;
   zoomToWorld: () => void;
 };
 
-const DEFAULT_CAMERA: WaylineMapCamera = {
+const DEFAULT_CAMERA: AlmidyMapCamera = {
   center: { lat: 25.7617, lng: -80.1918 },
   intent: "world",
   rangeMeters: 5_000_000,
@@ -91,13 +91,13 @@ const DEFAULT_CAMERA: WaylineMapCamera = {
   zoom: 3
 };
 
-const DEFAULT_LOCATION: WaylineLocationState = {
+const DEFAULT_LOCATION: AlmidyLocationState = {
   coordinate: null,
   permission: "unknown",
   source: "fallback"
 };
 
-const DEFAULT_SELECTION: WaylineMapSelection = {
+const DEFAULT_SELECTION: AlmidyMapSelection = {
   pinId: null,
   placeId: null,
   tripId: null
@@ -116,18 +116,18 @@ export function UnifiedMapProvider({
   initialPins = [],
   initialRoutes = []
 }: UnifiedMapProviderProps) {
-  const [camera, updateCamera] = useState<WaylineMapCamera>(initialCamera);
-  const [location, updateLocation] = useState<WaylineLocationState>(initialLocation);
+  const [camera, updateCamera] = useState<AlmidyMapCamera>(initialCamera);
+  const [location, updateLocation] = useState<AlmidyLocationState>(initialLocation);
   const [locationError, setLocationError] = useState<string | null>(initialLocation.error ?? null);
   const [locationStatus, setLocationStatus] = useState<LocationRequestState>(
     initialLocation.coordinate ? "ready" : "idle"
   );
-  const [mode, setMode] = useState<WaylineMapMode>(initialMode);
-  const [pins, setPins] = useState<WaylineMapPin[]>(initialPins);
-  const [routes, setRoutes] = useState<WaylineMapRoute[]>(initialRoutes);
-  const [cameraCommand, setCameraCommand] = useState<WaylineMapCameraCommand | null>(null);
-  const [selected, setSelected] = useState<WaylineMapSelection>(DEFAULT_SELECTION);
-  const locationRequestRef = useRef<Promise<WaylineLocationState> | null>(null);
+  const [mode, setMode] = useState<AlmidyMapMode>(initialMode);
+  const [pins, setPins] = useState<AlmidyMapPin[]>(initialPins);
+  const [routes, setRoutes] = useState<AlmidyMapRoute[]>(initialRoutes);
+  const [cameraCommand, setCameraCommand] = useState<AlmidyMapCameraCommand | null>(null);
+  const [selected, setSelected] = useState<AlmidyMapSelection>(DEFAULT_SELECTION);
+  const locationRequestRef = useRef<Promise<AlmidyLocationState> | null>(null);
   const locationRef = useRef(location);
 
   useEffect(() => {
@@ -150,7 +150,7 @@ export function UnifiedMapProvider({
     setLocationError(null);
   }, [initialLocation]);
 
-  const applyCameraCommand = useCallback((command: WaylineMapCameraCommand) => {
+  const applyCameraCommand = useCallback((command: AlmidyMapCameraCommand) => {
     updateCamera(command.camera);
     setCameraCommand(command);
     if (command.mode) {
@@ -158,8 +158,8 @@ export function UnifiedMapProvider({
     }
   }, []);
 
-  const setCamera = useCallback((nextCamera: WaylineMapCamera) => {
-    const command: WaylineMapCameraCommand = {
+  const setCamera = useCallback((nextCamera: AlmidyMapCamera) => {
+    const command: AlmidyMapCameraCommand = {
       camera: nextCamera,
       id: `manual:${Date.now().toString(36)}`,
       type: nextCamera.intent === "world" ? "zoomToWorld" : "openFlatMap"
@@ -183,7 +183,7 @@ export function UnifiedMapProvider({
     applyCameraCommand(buildZoomToWorldCommand());
   }, [applyCameraCommand]);
 
-  const openFlatMap = useCallback((nextMode: WaylineMapMode = "map") => {
+  const openFlatMap = useCallback((nextMode: AlmidyMapMode = "map") => {
     applyCameraCommand(buildOpenFlatMapCommand(nextMode, camera));
   }, [applyCameraCommand, camera]);
 
@@ -201,7 +201,7 @@ export function UnifiedMapProvider({
     applyCameraCommand(buildFocusRouteCommand(route));
   }, [applyCameraCommand, routes]);
 
-  const focusUserLocation = useCallback((nextLocation: WaylineLocationState) => {
+  const focusUserLocation = useCallback((nextLocation: AlmidyLocationState) => {
     const command = buildFocusUserLocationCommand(nextLocation);
     if (!command) {
       return;
@@ -277,7 +277,7 @@ export function UnifiedMapProvider({
     });
   }, [applyCameraCommand]);
 
-  const openMap = useCallback((nextMode: WaylineMapMode = "map") => {
+  const openMap = useCallback((nextMode: AlmidyMapMode = "map") => {
     openFlatMap(nextMode);
   }, [openFlatMap]);
 
@@ -305,7 +305,7 @@ export function UnifiedMapProvider({
       return nextLocation;
     }
 
-    locationRequestRef.current = new Promise<WaylineLocationState>((resolve) => {
+    locationRequestRef.current = new Promise<AlmidyLocationState>((resolve) => {
       navigator.geolocation.getCurrentPosition(
         async (position) => {
           const coordinate = {
@@ -313,7 +313,7 @@ export function UnifiedMapProvider({
             lng: normalizeLongitude(position.coords.longitude)
           };
           const googleLocation = await reverseGeocodeCoordinate(coordinate).catch(() => null);
-          const nextLocation: WaylineLocationState = {
+          const nextLocation: AlmidyLocationState = {
             accuracyMeters: position.coords.accuracy,
             city: googleLocation?.city ?? null,
             coordinate,
@@ -397,7 +397,7 @@ export function UnifiedMapProvider({
     };
   }, [autoLocate, locateUser]);
 
-  const surfaceState = useMemo<WaylineMapSurfaceState>(
+  const surfaceState = useMemo<AlmidyMapSurfaceState>(
     () => ({
       camera,
       cameraCommand,
@@ -484,8 +484,8 @@ export function useOptionalUnifiedMap() {
 
 function fallbackLocation(
   error: string,
-  permission: WaylineLocationState["permission"],
-  currentLocation: WaylineLocationState
+  permission: AlmidyLocationState["permission"],
+  currentLocation: AlmidyLocationState
 ) {
   const storedLocation = readLastKnownLocation();
   const fallback = currentLocation.coordinate ? currentLocation : storedLocation;
@@ -496,7 +496,7 @@ function fallbackLocation(
       error,
       permission,
       source: fallback.source === "browser" ? "fallback" : fallback.source
-    } satisfies WaylineLocationState;
+    } satisfies AlmidyLocationState;
   }
 
   return {
@@ -504,7 +504,7 @@ function fallbackLocation(
     error,
     permission,
     source: "fallback"
-  } satisfies WaylineLocationState;
+  } satisfies AlmidyLocationState;
 }
 
 function readLastKnownLocation() {
@@ -515,9 +515,9 @@ function readLastKnownLocation() {
   try {
     const rawValue = window.localStorage.getItem(LAST_USER_LOCATION_KEY);
     if (!rawValue) return null;
-    const parsed = JSON.parse(rawValue) as Partial<WaylineLocationState> | null;
+    const parsed = JSON.parse(rawValue) as Partial<AlmidyLocationState> | null;
     if (!parsed?.coordinate) return null;
-    const coordinate = parsed.coordinate as Partial<WaylineCoordinate>;
+    const coordinate = parsed.coordinate as Partial<AlmidyCoordinate>;
     const latitude = coordinate.lat;
     const longitude = coordinate.lng;
     if (
@@ -542,13 +542,13 @@ function readLastKnownLocation() {
       locatedAt: typeof parsed.locatedAt === "string" ? parsed.locatedAt : null,
       permission: parsed.permission === "denied" ? "denied" : "granted",
       source: "fallback"
-    } satisfies WaylineLocationState;
+    } satisfies AlmidyLocationState;
   } catch {
     return null;
   }
 }
 
-function persistLastKnownLocation(location: WaylineLocationState) {
+function persistLastKnownLocation(location: AlmidyLocationState) {
   if (typeof window === "undefined" || !location.coordinate) {
     return;
   }
@@ -560,7 +560,7 @@ function persistLastKnownLocation(location: WaylineLocationState) {
   }
 }
 
-function clearPinSelection(setPins: (updater: (currentPins: WaylineMapPin[]) => WaylineMapPin[]) => void) {
+function clearPinSelection(setPins: (updater: (currentPins: AlmidyMapPin[]) => AlmidyMapPin[]) => void) {
   setPins((currentPins) =>
     currentPins.map((pin) => ({
       ...pin,

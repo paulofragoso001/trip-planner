@@ -1,6 +1,6 @@
-# Wayline Next.js Auth App
+# Almidy Next.js Auth App
 
-This is a Next.js App Router scaffold for Wayline with:
+This is a Next.js App Router scaffold for Almidy with:
 
 - Supabase Auth
 - Cookie-based SSR helpers via `@supabase/ssr`
@@ -32,7 +32,7 @@ OPENAI_API_KEY=your-openai-server-api-key
 OPENAI_OCR_MODEL=gpt-4.1-mini
 OPENAI_TRAVEL_IMPORT_MODEL=gpt-4.1-mini
 RESEND_API_KEY=your-resend-server-api-key
-RESEND_FROM_EMAIL="Wayline <updates@your-verified-domain.com>"
+RESEND_FROM_EMAIL="Almidy <updates@your-verified-domain.com>"
 CIRIUM_APP_ID=your-cirium-app-id
 CIRIUM_APP_KEY=your-cirium-app-key
 SUPABASE_SERVICE_ROLE_KEY=your-server-only-service-role-key

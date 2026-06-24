@@ -1,10 +1,10 @@
-# Wayline Social Inspiration Itinerary MVP
+# Almidy Social Inspiration Itinerary MVP
 
 ## Product Summary
 
-Wayline turns saved travel inspiration into an executable trip plan. Users paste social links, upload screenshots, or add notes; Wayline extracts places with AI, resolves them to real map locations, asks the user to approve them, then promotes approved places into the existing trip timeline, map, route plan, budget, and sharing workflows.
+Almidy turns saved travel inspiration into an executable trip plan. Users paste social links, upload screenshots, or add notes; Almidy extracts places with AI, resolves them to real map locations, asks the user to approve them, then promotes approved places into the existing trip timeline, map, route plan, budget, and sharing workflows.
 
-The product position is not "notes plus a map." Wayline is a planning assistant that converts scattered inspiration into a day-by-day route users can edit, save, and share.
+The product position is not "notes plus a map." Almidy is a planning assistant that converts scattered inspiration into a day-by-day route users can edit, save, and share.
 
 ## MVP Promise
 
@@ -15,7 +15,7 @@ Save travel idea -> AI finds place -> user confirms -> place appears on timeline
 1. User signs in.
 2. User creates a trip with destination, dates, budget, and travel style.
 3. User imports a copied link, screenshot, caption, or manual note.
-4. Wayline stores the import as `imported_social_posts`.
+4. Almidy stores the import as `imported_social_posts`.
 5. Worker extracts raw text with OCR when needed.
 6. AI extracts candidate places into `extracted_places`.
 7. Google Places resolves candidates to `place_id`, address, latitude, and longitude.

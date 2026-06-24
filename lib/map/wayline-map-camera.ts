@@ -1,17 +1,17 @@
 import type {
-  WaylineCoordinate,
-  WaylineLocationState,
-  WaylineMapBounds,
-  WaylineMapCamera,
-  WaylineMapCameraCommand,
-  WaylineMapCameraCommandType,
-  WaylineMapMode,
-  WaylineMapRoute
+  AlmidyCoordinate,
+  AlmidyLocationState,
+  AlmidyMapBounds,
+  AlmidyMapCamera,
+  AlmidyMapCameraCommand,
+  AlmidyMapCameraCommandType,
+  AlmidyMapMode,
+  AlmidyMapRoute
 } from "@/lib/map/wayline-map-models";
 import { USER_LOCATION_PIN_ID, normalizeCoordinate } from "@/lib/map/wayline-map-pins";
 
 type CameraTarget = {
-  coordinate: WaylineCoordinate;
+  coordinate: AlmidyCoordinate;
   id?: string | null;
   label?: string | null;
   tripId?: string | null;
@@ -22,7 +22,7 @@ type CountryCameraTarget = CameraTarget & {
   countryCode?: string | null;
 };
 
-const WORLD_CAMERA: WaylineMapCamera = {
+const WORLD_CAMERA: AlmidyMapCamera = {
   center: { lat: 20, lng: 0 },
   intent: "world",
   rangeMeters: 18_000_000,
@@ -31,8 +31,8 @@ const WORLD_CAMERA: WaylineMapCamera = {
 };
 
 export function buildFocusUserLocationCommand(
-  location: WaylineLocationState
-): WaylineMapCameraCommand | null {
+  location: AlmidyLocationState
+): AlmidyMapCameraCommand | null {
   if (!location.coordinate) {
     return null;
   }
@@ -54,7 +54,7 @@ export function buildFocusUserLocationCommand(
   });
 }
 
-export function buildFocusCountryCommand(target: CountryCameraTarget): WaylineMapCameraCommand {
+export function buildFocusCountryCommand(target: CountryCameraTarget): AlmidyMapCameraCommand {
   const coordinate = normalizeCoordinate(target.coordinate);
 
   return cameraCommand("focusCountry", {
@@ -72,7 +72,7 @@ export function buildFocusCountryCommand(target: CountryCameraTarget): WaylineMa
   });
 }
 
-export function buildFocusTripCommand(target: CameraTarget): WaylineMapCameraCommand {
+export function buildFocusTripCommand(target: CameraTarget): AlmidyMapCameraCommand {
   const coordinate = normalizeCoordinate(target.coordinate);
   const selectedId = target.tripId ?? target.id ?? null;
 
@@ -91,7 +91,7 @@ export function buildFocusTripCommand(target: CameraTarget): WaylineMapCameraCom
   });
 }
 
-export function buildFocusRouteCommand(route: WaylineMapRoute): WaylineMapCameraCommand {
+export function buildFocusRouteCommand(route: AlmidyMapRoute): AlmidyMapCameraCommand {
   const coordinates = route.path?.length
     ? route.path.map(normalizeCoordinate)
     : [route.origin.coordinate, route.destination.coordinate].map(normalizeCoordinate);
@@ -115,7 +115,7 @@ export function buildFocusRouteCommand(route: WaylineMapRoute): WaylineMapCamera
   });
 }
 
-export function buildZoomToWorldCommand(): WaylineMapCameraCommand {
+export function buildZoomToWorldCommand(): AlmidyMapCameraCommand {
   return cameraCommand("zoomToWorld", {
     camera: WORLD_CAMERA,
     coordinates: [],
@@ -124,9 +124,9 @@ export function buildZoomToWorldCommand(): WaylineMapCameraCommand {
 }
 
 export function buildOpenFlatMapCommand(
-  mode: WaylineMapMode = "map",
-  camera: WaylineMapCamera = WORLD_CAMERA
-): WaylineMapCameraCommand {
+  mode: AlmidyMapMode = "map",
+  camera: AlmidyMapCamera = WORLD_CAMERA
+): AlmidyMapCameraCommand {
   return cameraCommand("openFlatMap", {
     camera: {
       ...camera,
@@ -138,12 +138,12 @@ export function buildOpenFlatMapCommand(
   });
 }
 
-export function boundsFromCoordinates(coordinates: WaylineCoordinate[]): WaylineMapBounds | null {
+export function boundsFromCoordinates(coordinates: AlmidyCoordinate[]): AlmidyMapBounds | null {
   if (!coordinates.length) {
     return null;
   }
 
-  return coordinates.reduce<WaylineMapBounds>(
+  return coordinates.reduce<AlmidyMapBounds>(
     (bounds, coordinate) => {
       const normalizedCoordinate = normalizeCoordinate(coordinate);
       return {
@@ -162,7 +162,7 @@ export function boundsFromCoordinates(coordinates: WaylineCoordinate[]): Wayline
   );
 }
 
-export function centerFromCoordinates(coordinates: WaylineCoordinate[]): WaylineCoordinate {
+export function centerFromCoordinates(coordinates: AlmidyCoordinate[]): AlmidyCoordinate {
   if (!coordinates.length) {
     return WORLD_CAMERA.center;
   }
@@ -185,9 +185,9 @@ export function centerFromCoordinates(coordinates: WaylineCoordinate[]): Wayline
 }
 
 function cameraCommand(
-  type: WaylineMapCameraCommandType,
-  command: Omit<WaylineMapCameraCommand, "id" | "type">
-): WaylineMapCameraCommand {
+  type: AlmidyMapCameraCommandType,
+  command: Omit<AlmidyMapCameraCommand, "id" | "type">
+): AlmidyMapCameraCommand {
   return {
     ...command,
     id: `${type}:${Date.now().toString(36)}:${Math.random().toString(36).slice(2, 8)}`,

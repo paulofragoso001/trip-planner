@@ -112,7 +112,7 @@ type CalendarSyncItemRow = {
   wayline_sync_version: string | null;
 };
 
-export class WaylineCalendarSyncManager implements SyncManager {
+export class AlmidyCalendarSyncManager implements SyncManager {
   constructor(
     private readonly client: CalendarSyncManagerClient,
     private readonly adapters: Partial<Record<CalendarProvider, CalendarProviderAdapter>>

@@ -18,7 +18,7 @@ type SendTripInviteEmailInput = {
   tripUrl: string;
 };
 
-const fallbackFromEmail = "Wayline <onboarding@resend.dev>";
+const fallbackFromEmail = "Almidy <onboarding@resend.dev>";
 
 function createResendClient() {
   const apiKey = process.env.RESEND_API_KEY;
@@ -64,7 +64,7 @@ export async function sendCommentEmail({
 }
 
 export async function sendTripInviteEmail({
-  inviterName = "A Wayline user",
+  inviterName = "An Almidy user",
   role,
   to,
   tripTitle,
@@ -84,7 +84,7 @@ export async function sendTripInviteEmail({
     subject: `${inviterName} invited you to ${tripTitle}`,
     html: `
       <div style="font-family:sans-serif;padding:20px">
-        <h2 style="margin-bottom:8px">You were invited to a Wayline trip</h2>
+        <h2 style="margin-bottom:8px">You were invited to an Almidy trip</h2>
         <p><strong>${escapeHtml(inviterName)}</strong> invited you as ${articleFor(roleLabel)} <strong>${escapeHtml(roleLabel)}</strong>.</p>
         <p style="font-size:16px">${escapeHtml(tripTitle)}</p>
         <a

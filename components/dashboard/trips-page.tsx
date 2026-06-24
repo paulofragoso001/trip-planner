@@ -45,9 +45,9 @@ function TripsWalletExperience({ error, trips }: Pick<TripsPageProps, "error" | 
   if (!error && trips.length === 0) {
     return (
       <div className="grid gap-4" data-testid="desktop-first-trip-state">
-        <WalletCard eyebrow="Wayline Trip Pass" title="Create your first trip" variant="utility">
+        <WalletCard eyebrow="Almidy Trip Pass" title="Create your first trip" variant="utility">
           <p className="text-sm font-semibold leading-6 text-slate-600">
-            Choose a destination and Wayline will turn it into a visual trip wallet.
+            Choose a destination and Almidy will turn it into a visual trip wallet.
           </p>
           <div className="mt-4">
             <TripCreateForm mode="mobile-pass" redirectOnSuccess />

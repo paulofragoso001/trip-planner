@@ -25,7 +25,7 @@ export const dashboardActionRoutes = {
     preferences: "/dashboard/account#preferences",
     privacy: "/privacy",
     sync: "/dashboard/account#sync",
-    talkToUs: "mailto:support@wayline.app",
+    talkToUs: "mailto:support@almidy.app",
     terms: "/terms"
   },
   trips: {

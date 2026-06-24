@@ -7,7 +7,7 @@ export default function PrivacyPage() {
     <main className="min-h-screen bg-[#f4f7fb] px-6 py-10 text-ink">
       <article className="mx-auto max-w-3xl rounded-2xl border border-line bg-white p-6 shadow-panel sm:p-8">
         <p className="text-xs font-bold uppercase tracking-[0.12em] text-slate-500">
-          Wayline legal
+          Almidy legal
         </p>
         <h1 className="mt-3 text-3xl font-black tracking-tight">Privacy Policy</h1>
         <p className="mt-2 text-sm text-slate-500">Last updated: {lastUpdated}</p>
@@ -16,7 +16,7 @@ export default function PrivacyPage() {
           <section>
             <h2 className="text-lg font-black text-ink">Overview</h2>
             <p className="mt-2">
-              Wayline helps users organize trips, itinerary segments, imports,
+              Almidy helps users organize trips, itinerary segments, imports,
               budgets, sharing, and calendar sync. This policy describes the data
               we collect, why we collect it, and the choices available to users.
             </p>
@@ -47,8 +47,8 @@ export default function PrivacyPage() {
           <section>
             <h2 className="text-lg font-black text-ink">Calendar Access</h2>
             <p className="mt-2">
-              If you connect Google Calendar or Outlook Calendar, Wayline uses
-              calendar event permissions to create, update, and delete Wayline
+              If you connect Google Calendar or Outlook Calendar, Almidy uses
+              calendar event permissions to create, update, and delete Almidy
               trip events that you choose to sync. Provider tokens are stored
               server-side and encrypted at rest. We do not expose provider tokens
               to browser clients.
@@ -58,7 +58,7 @@ export default function PrivacyPage() {
           <section>
             <h2 className="text-lg font-black text-ink">Service Providers</h2>
             <p className="mt-2">
-              Wayline may use infrastructure and integration providers including
+              Almidy may use infrastructure and integration providers including
               Supabase, Resend, Google APIs, Microsoft Graph, Google Maps, and
               flight-status data providers. These providers process data only as
               needed to deliver the app features they support.
@@ -80,7 +80,7 @@ export default function PrivacyPage() {
             <h2 className="text-lg font-black text-ink">Contact</h2>
             <p className="mt-2">
               For privacy questions or deletion requests, use the in-app Account
-              page or contact the Wayline operator for this deployment.
+              page or contact the Almidy operator for this deployment.
             </p>
           </section>
         </div>

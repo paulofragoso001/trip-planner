@@ -4,11 +4,11 @@ import { Clipboard, FileText, Upload, WandSparkles } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@/components/trip-ui";
-import type { WaylineSampleKey } from "@/lib/wayline-onboarding";
+import type { AlmidySampleKey } from "@/lib/wayline-onboarding";
 
 type SocialImportFormProps = {
   defaultRawText?: string;
-  sampleKey?: WaylineSampleKey;
+  sampleKey?: AlmidySampleKey;
   trips: Array<{ id: string; name: string }>;
 };
 
@@ -74,9 +74,9 @@ export function SocialImportForm({
         const partialCount = countExtractedPlaces(payload);
         if (partialCount) {
           setMessage(
-            `Wayline found ${partialCount} place${
+            `Almidy found ${partialCount} place${
               partialCount === 1 ? "" : "s"
-            }, but Wayline returned a warning: ${readError(payload, response.status)}`
+            }, but Almidy returned a warning: ${readError(payload, response.status)}`
           );
           router.refresh();
           return;
@@ -88,7 +88,7 @@ export function SocialImportForm({
       const count = countExtractedPlaces(payload);
       setMessage(
         count
-          ? `Wayline found ${count} place${count === 1 ? "" : "s"} to review.`
+          ? `Almidy found ${count} place${count === 1 ? "" : "s"} to review.`
           : "Review finished. Add more detail if no places appeared."
       );
       router.refresh();

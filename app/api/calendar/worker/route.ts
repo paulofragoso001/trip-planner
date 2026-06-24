@@ -1,5 +1,5 @@
 import { ApiError, apiCanonicalSuccess, handleApiError } from "@/lib/api/errors";
-import { WaylineCalendarSyncManager } from "@/lib/calendar/sync-manager";
+import { AlmidyCalendarSyncManager } from "@/lib/calendar/sync-manager";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
@@ -18,7 +18,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const manager = new WaylineCalendarSyncManager(admin, {});
+    const manager = new AlmidyCalendarSyncManager(admin, {});
     const result = await manager.runNextBatch();
 
     return apiCanonicalSuccess({

@@ -2,7 +2,7 @@
 
 Last updated: May 26, 2026
 
-Wayline currently uses OAuth for Google Calendar and Microsoft Calendar connection flows. Before opening Google Calendar sync beyond internal or test users, complete the provider verification work below.
+Almidy currently uses OAuth for Google Calendar and Microsoft Calendar connection flows. Before opening Google Calendar sync beyond internal or test users, complete the provider verification work below.
 
 ## Google
 
@@ -15,12 +15,12 @@ Current expected Google scopes:
 
 Verification checklist:
 
-- Configure the OAuth consent screen with the production Wayline app name, support email, developer contact, and authorized domain.
+- Configure the OAuth consent screen with the production Almidy app name, support email, developer contact, and authorized domain.
 - Publish production Privacy Policy and Terms URLs.
 - Register production HTTPS redirect URI: `https://<production-domain>/api/calendar/oauth/google/callback`.
 - Keep localhost redirect URI only for local development credentials.
 - Add test users while the app is in testing mode.
-- Prepare the scope justification for `calendar.events`: Wayline creates, updates, and deletes user-approved trip calendar events.
+- Prepare the scope justification for `calendar.events`: Almidy creates, updates, and deletes user-approved trip calendar events.
 - If Google marks the scope or app as requiring verification, submit the OAuth verification package before broad public rollout.
 
 ## Microsoft

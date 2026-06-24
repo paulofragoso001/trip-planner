@@ -326,7 +326,7 @@ export function ExtractedPlaceCard({ mergeTargets = [], place, trips }: Extracte
           {place.evidence.length ? (
             <details className="rounded-2xl bg-slate-50 px-4 py-3">
               <summary className="cursor-pointer text-xs font-black uppercase tracking-[0.16em] text-slate-500">
-                Why Wayline suggested this
+                Why Almidy suggested this
               </summary>
               <ul className="grid gap-1 text-sm text-slate-600">
                 {place.evidence.map((item) => (
@@ -343,8 +343,8 @@ export function ExtractedPlaceCard({ mergeTargets = [], place, trips }: Extracte
           {place.reviewReason === "needs_location" ? (
             <InlineAlert tone={isActivityIdea ? "blue" : "red"}>
               {isActivityIdea
-                ? "Wayline found this as an activity idea. Add a meeting point or provider before it can appear on the map."
-                : "Wayline could not map this place yet. Edit the name or add more location detail before creating the trip plan."}
+                ? "Almidy found this as an activity idea. Add a meeting point or provider before it can appear on the map."
+                : "Almidy could not map this place yet. Edit the name or add more location detail before creating the trip plan."}
             </InlineAlert>
           ) : null}
           {destinationMissing ? (

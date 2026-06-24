@@ -1,4 +1,4 @@
-# Wayline Dashboard App Router Map
+# Almidy Dashboard App Router Map
 
 This document describes the implemented dashboard route split and the remaining
 cleanup direction. Keep route entries thin, keep reusable feature UI in
@@ -173,7 +173,7 @@ Calendar persistence:
 | `calendar_connection_tokens` | Versioned encrypted access/refresh token rows with one current token per connection, rotation lineage, revocation, and reuse detection timestamps. |
 | `calendar_connection_calendars` | Optional selectable calendar inventory for each provider connection. |
 | `calendar_sync_jobs` | Idempotent worker queue with `queued`, `running`, `succeeded`, `failed`, `retry_wait`, and `blocked` states plus lock/backoff/result fields. |
-| `calendar_sync_items` | Per Wayline itinerary item or trip segment mapping to one provider event. |
+| `calendar_sync_items` | Per Almidy itinerary item or trip segment mapping to one provider event. |
 
 Token columns are server-only. Authenticated users can read their own connection
 and sync status rows through RLS, while mutation paths should run from Route
@@ -202,7 +202,7 @@ Calendar token handling:
 
 Calendar event mapping:
 
-| Wayline field | Google Calendar | Microsoft Graph |
+| Almidy field | Google Calendar | Microsoft Graph |
 | --- | --- | --- |
 | `title` | `summary` | `subject` |
 | `location` | `location` | `location.displayName` |
@@ -212,34 +212,34 @@ Calendar event mapping:
 | `timeZone` | `start.timeZone`, `end.timeZone` | `start.timeZone`, `end.timeZone` |
 | `sourceId` / `sourceType` | `extendedProperties.private` | open extension payload |
 
-Wayline identity metadata:
+Almidy identity metadata:
 
 | Field | Purpose |
 | --- | --- |
-| `waylineTripId` | Scopes external events to a Wayline trip. |
-| `waylineSegmentId` | Deterministic external lookup key for the Wayline segment. |
-| `waylineSyncVersion` | Last Wayline content version written to the provider. |
-| `waylineSource` | Identifies Wayline-owned metadata. |
+| `waylineTripId` | Scopes external events to an Almidy trip. |
+| `waylineSegmentId` | Deterministic external lookup key for the Almidy segment. |
+| `waylineSyncVersion` | Last Almidy content version written to the provider. |
+| `waylineSource` | Identifies Almidy-owned metadata. |
 | `waylineUpdatedAt` | Timestamp used for conflict review and stale-write decisions. |
 
 Google Calendar stores these values in `extendedProperties.private` and can
 resolve events by `waylineTripId` + `waylineSegmentId`. Outlook stores the same
-Wayline values in an open extension payload, while lookup-by-extension remains
+Almidy values in an open extension payload, while lookup-by-extension remains
 optional until Graph extension querying is wired.
 
 Calendar update rules:
 
-- Create one provider event per Wayline segment.
+- Create one provider event per Almidy segment.
 - Persist `connection_id`, `provider_calendar_id`, `provider_event_id`,
 -  `provider_event_etag`, `source_type`, `source_id`, `wayline_sync_version`,
   and `wayline_updated_at`.
-- Update the same provider event when the Wayline segment changes.
+- Update the same provider event when the Almidy segment changes.
 - Delete the matching provider event only for synced segments and only when the
   user has calendar sync enabled.
 - Mark local sync rows `pending`, `stale`, or `error` when provider calls cannot
   complete.
 - Mark a local row stale when provider metadata is missing, the provider event
-  disappeared, or the provider event changed after the last Wayline sync.
+  disappeared, or the provider event changed after the last Almidy sync.
 - Keep two-way edits out of scope until one-way create/update/delete is stable.
 
 ## Cleanup priority

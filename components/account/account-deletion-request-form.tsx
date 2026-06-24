@@ -9,7 +9,7 @@ import {
   mobilePrimaryActionClassName,
   mobileTextareaClassName
 } from "@/components/ui/mobile-form";
-import { useWaylineAction } from "@/hooks/use-wayline-action";
+import { useAlmidyAction } from "@/hooks/use-wayline-action";
 
 type ExistingRequest = {
   id: string;
@@ -31,7 +31,7 @@ export function AccountDeletionRequestForm({
 }: AccountDeletionRequestFormProps) {
   const [reason, setReason] = useState("");
   const [confirmedDeletion, setConfirmedDeletion] = useState(false);
-  const { isPending, run, state } = useWaylineAction<DeletionRequestResponse>();
+  const { isPending, run, state } = useAlmidyAction<DeletionRequestResponse>();
 
   const currentRequest = useMemo(
     () => state.data?.request ?? existingRequest,

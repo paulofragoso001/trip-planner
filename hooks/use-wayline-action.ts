@@ -27,7 +27,7 @@ function createInitialState<T>(): ActionState<T> {
   };
 }
 
-export function useWaylineAction<T = unknown>() {
+export function useAlmidyAction<T = unknown>() {
   const [state, setState] = useState<ActionState<T>>(() => createInitialState<T>());
   const [isTransitionPending, startTransition] = useTransition();
 

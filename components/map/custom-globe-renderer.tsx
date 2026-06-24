@@ -2,11 +2,11 @@
 
 import { Photorealistic3DHomeHero } from "@/components/dashboard/photorealistic-3d-home-hero";
 import { useOptionalUnifiedMap } from "@/lib/map/unified-map-provider";
-import type { WaylineMapSurfaceState } from "@/lib/map/wayline-map-models";
+import type { AlmidyMapSurfaceState } from "@/lib/map/wayline-map-models";
 
 type CustomGlobeRendererProps = {
   className?: string;
-  surfaceState?: WaylineMapSurfaceState;
+  surfaceState?: AlmidyMapSurfaceState;
 };
 
 export function CustomGlobeRenderer({

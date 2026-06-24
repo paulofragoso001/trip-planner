@@ -302,7 +302,7 @@ test("Miami social inspiration extraction returns only real travel candidates", 
       "Destination: Miami",
       "Travel style: balanced",
       "OpenAI",
-      "Wayline",
+      "Almidy",
       "AI trip planner",
       "Review candidates before promoting them into the itinerary"
     ]) {
@@ -599,7 +599,7 @@ test("AI review requires a real trip destination before approval", async ({
     await page.goto(`${baseUrl}/dashboard/imports`);
 
     const card = page.getByTestId(`ai-review-card-${placeId}`);
-    await expect(card.getByText("Wayline found this as an activity idea.")).toBeVisible();
+    await expect(card.getByText("Almidy found this as an activity idea.")).toBeVisible();
     await page.locator(`#trip-${placeId}`).selectOption(placeholderTripId);
     await expect(
       card.getByText("This trip does not have a destination yet. Set a destination before approving AI candidates.")

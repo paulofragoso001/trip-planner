@@ -1,11 +1,11 @@
-export const WAYLINE_SAMPLE_INSPIRATION = {
+export const ALMIDY_SAMPLE_INSPIRATION = {
   barcelona:
     "Planning a Barcelona weekend trip. I want coffee at Nomad Coffee, visit Sagrada Familia, see sunset from Park Guell, and have tapas at El Xampanyet.",
   miami:
     "Planning a Miami weekend trip. I want to visit Wynwood Walls, have dinner at Komodo, walk around Brickell City Centre, go to South Pointe Park, and maybe do a Biscayne Bay boat tour."
 } as const;
 
-export type WaylineSampleKey = keyof typeof WAYLINE_SAMPLE_INSPIRATION;
+export type AlmidySampleKey = keyof typeof ALMIDY_SAMPLE_INSPIRATION;
 
 export type FirstRunStep =
   | "add_inspiration"
@@ -24,16 +24,16 @@ export type FirstRunState = {
 
 export function readSampleInspiration(value: string | string[] | null | undefined) {
   const key = Array.isArray(value) ? value[0] : value;
-  if (isWaylineSampleKey(key)) {
+  if (isAlmidySampleKey(key)) {
     return {
       key,
-      text: WAYLINE_SAMPLE_INSPIRATION[key]
+      text: ALMIDY_SAMPLE_INSPIRATION[key]
     };
   }
 
   return null;
 }
 
-function isWaylineSampleKey(value: unknown): value is WaylineSampleKey {
+function isAlmidySampleKey(value: unknown): value is AlmidySampleKey {
   return value === "barcelona" || value === "miami";
 }

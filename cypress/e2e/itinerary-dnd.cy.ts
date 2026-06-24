@@ -1,6 +1,6 @@
 /// <reference types="cypress" />
 
-describe("Wayline itinerary drag and drop", () => {
+describe("Almidy itinerary drag and drop", () => {
   beforeEach(() => {
     cy.intercept("GET", "**/api/trips", {
       fixture: "trips/dashboard-trips.json"
