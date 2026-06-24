@@ -2,6 +2,7 @@
 
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { getAuthCallbackUrl } from "@/lib/auth/auth-redirect-url";
 import { createClient } from "@/lib/supabase/server";
 
 export async function signup(formData: FormData) {
@@ -14,7 +15,7 @@ export async function signup(formData: FormData) {
     email,
     password,
     options: {
-      emailRedirectTo: `${origin}/auth/callback`
+      emailRedirectTo: getAuthCallbackUrl(origin)
     }
   });
 

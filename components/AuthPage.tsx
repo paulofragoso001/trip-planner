@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import { getAuthCallbackUrl } from "@/lib/auth/auth-redirect-url";
 import { createClient } from "@/lib/supabase/client";
 
 type AuthPageProps = {
@@ -20,7 +21,7 @@ export default function AuthPage({ message }: AuthPageProps) {
 
   const redirectTo =
     typeof window !== "undefined"
-      ? `${window.location.origin}/auth/callback`
+      ? getAuthCallbackUrl(window.location.origin)
       : undefined;
 
   useEffect(() => {

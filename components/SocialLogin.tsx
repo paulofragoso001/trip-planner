@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { getAuthCallbackUrl } from "@/lib/auth/auth-redirect-url";
 import { createClient } from "@/lib/supabase/client";
 
 type Provider = "google" | "github" | "facebook";
@@ -50,7 +51,7 @@ export function SocialLogin() {
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`
+        redirectTo: getAuthCallbackUrl(window.location.origin)
       }
     });
 

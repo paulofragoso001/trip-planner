@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getCanonicalAppUrl } from "@/lib/auth/auth-redirect-url";
 import { createClient } from "@/lib/supabase/server";
 
 export async function GET(request: Request) {
@@ -28,5 +29,5 @@ export async function GET(request: Request) {
     }
   }
 
-  return NextResponse.redirect(new URL("/dashboard", request.url));
+  return NextResponse.redirect(getCanonicalAppUrl("/dashboard", request.url));
 }

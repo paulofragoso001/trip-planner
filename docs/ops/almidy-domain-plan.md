@@ -42,6 +42,12 @@ curl -I https://www.almidy.app
 - Confirm invite/share emails generate `almidy.app` URLs after the redeploy.
 - Confirm `https://www.almidy.app` serves the app or redirects to `https://almidy.app`, depending on the chosen canonical host policy.
 - Update OAuth authorized domains/origins to include `almidy.app`.
+- In Supabase Auth > URL Configuration, set:
+  - Site URL: `https://almidy.app`
+  - Redirect URL: `https://almidy.app/auth/callback`
+  - Optional temporary transition Redirect URL: `https://trip-planner-swart-sigma.vercel.app/auth/callback`
+- Remove the temporary Vercel alias redirect URL after production login has been verified on `almidy.app`.
+- For Supabase Google login, keep Google Cloud pointed at the Supabase provider callback URI, for example `https://<supabase-project-ref>.supabase.co/auth/v1/callback`.
 - Update Resend sender domain from `onboarding@resend.dev` to an authenticated Almidy sender.
 - Update external docs, app store metadata, and analytics dashboards.
 
