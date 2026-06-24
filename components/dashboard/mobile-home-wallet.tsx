@@ -43,12 +43,16 @@ export function MobileHomeWallet({
       data-unified-map-surface={unifiedMapSurfaceEnabled ? "enabled" : "disabled"}
     >
       <section
-        className="globe-layer absolute inset-0 overflow-hidden bg-black"
+        className="globe-layer absolute inset-x-0 bottom-0 top-0 overflow-hidden bg-black"
         data-testid="mobile-home-3d-hero"
       >
         <CustomGlobeRenderer />
         <FloatingGlobeControls />
       </section>
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 bottom-0 z-20 h-[42dvh] bg-[linear-gradient(180deg,rgba(0,0,0,0)_0%,rgba(2,6,23,0.14)_34%,rgba(2,6,23,0.78)_100%)]"
+      />
 
       <section
         className="launch-bottom-sheet pointer-events-none absolute inset-x-0 bottom-0 z-30"

@@ -108,16 +108,16 @@ export function TravelWalletSheet({
 
   return (
     <section
-      className="wayline-home-content-reveal pointer-events-auto relative z-10"
+      className="wayline-home-content-reveal pointer-events-auto relative z-10 w-full"
       data-sheet-state={sheetState}
       data-testid="mobile-home-wallet-content"
     >
       <div
         className={cn(
-          "mx-auto overflow-hidden bg-white text-slate-950 shadow-[0_-24px_70px_rgba(0,0,0,0.34)] transition-[height,max-height,border-radius] duration-300 ease-out",
+          "mx-0 w-full overflow-hidden bg-white text-slate-950 shadow-[0_-24px_70px_rgba(0,0,0,0.34)] transition-[height,max-height,border-radius] duration-300 ease-out",
           isCollapsed
-            ? "max-h-[11.25rem] w-full max-w-none rounded-t-[2rem] min-[390px]:rounded-t-[2.2rem]"
-            : "h-[100dvh] min-h-[100dvh] max-h-[100dvh] w-full max-w-none rounded-t-[2rem] min-[390px]:rounded-t-[2.25rem]"
+            ? "h-[clamp(10.6rem,21dvh,12.1rem)] max-h-[clamp(10.6rem,21dvh,12.1rem)] rounded-t-[2rem] min-[390px]:rounded-t-[2.2rem]"
+            : "h-[100dvh] min-h-[100dvh] max-h-[100dvh] rounded-t-[2rem] min-[390px]:rounded-t-[2.25rem]"
         )}
         data-testid="ios-launch-sheet"
       >
@@ -143,10 +143,7 @@ export function TravelWalletSheet({
             }
           />
         ) : (
-          <div
-            id="mobile-launch-expanded-menu"
-            className={cn("px-4 pb-4 min-[390px]:px-5", isCollapsed ? "pt-0" : "pt-0")}
-          >
+          <div id="mobile-launch-expanded-menu" className="px-4 pb-4 min-[390px]:px-5">
             <header className="flex items-start justify-between gap-3">
               <button
                 type="button"
@@ -156,7 +153,7 @@ export function TravelWalletSheet({
                 onClick={isCollapsed ? expandTrips : collapseSheet}
               >
                 <span className="flex min-w-0 items-center gap-2">
-                  <h1 className="truncate text-[clamp(2.45rem,12vw,3.35rem)] font-black leading-none tracking-normal text-slate-950">
+                  <h1 className="truncate text-[clamp(2.35rem,11.5vw,3.35rem)] font-black leading-none tracking-normal text-slate-950">
                     My Trips
                   </h1>
                   <ChevronDown
@@ -217,7 +214,7 @@ function CollapsedLauncher({
   primaryMeta: string;
 }) {
   return (
-    <div className="mt-5" data-testid="ios-launch-sheet-collapsed">
+    <div className="mt-4" data-testid="ios-launch-sheet-collapsed">
       <div data-testid="mobile-home-actions">
         <div className="grid grid-cols-[3.8rem_minmax(0,1fr)_3.8rem] items-center gap-3" data-testid="mobile-home-compact-actions">
           <CircleAction href="/dashboard/search" icon={<Search />} label="Search" />
@@ -263,7 +260,7 @@ function ExpandedTrips({
   const [showProFeature, setShowProFeature] = useState(true);
 
   return (
-    <div className="mt-5 h-[calc(100dvh-6.75rem)] overflow-y-auto pb-[calc(7rem+env(safe-area-inset-bottom))]" data-testid="ios-launch-sheet-expanded">
+    <div className="mt-5 h-[calc(100dvh-6.25rem)] overflow-y-auto pb-[calc(6.5rem+env(safe-area-inset-bottom))]" data-testid="ios-launch-sheet-expanded">
       <div className="inline-flex rounded-full bg-orange-50 px-4 py-2 text-xl font-black text-orange-500">
         {currentYear}
       </div>

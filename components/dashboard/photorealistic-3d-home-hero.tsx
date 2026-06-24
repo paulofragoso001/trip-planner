@@ -68,6 +68,8 @@ const THREE_D_PIN_REVEAL_MS = 3_200;
 const THREE_D_CONTENT_REVEAL_MS = 3_600;
 const THREE_D_LOAD_TIMEOUT_MS = 4_500;
 const HERO_EARTH_Y_NUDGE_PERCENT = 4;
+const USER_PIN_SCREEN_X = 50;
+const USER_PIN_SCREEN_Y = 44;
 const USE_CURRENT_LOCATION_EVENT = "wayline:home-use-current-location";
 
 const DEFAULT_COUNTRY: CountryFocus = {
@@ -372,6 +374,7 @@ export function Photorealistic3DHomeHero({
           data-location-source={focus.source ?? "country"}
           data-user-latitude={focus.source === "user" ? focus.lat.toFixed(5) : undefined}
           data-user-longitude={focus.source === "user" ? focus.lng.toFixed(5) : undefined}
+          data-pin-coordinate={`${focus.lat.toFixed(5)},${focus.lng.toFixed(5)}`}
           data-testid="mobile-home-country-pin"
           style={{
             left: "var(--wayline-pin-x)",
@@ -429,14 +432,14 @@ function focusFromLocationState(location: AlmidyLocationState | undefined): Coun
 
   return {
     ...countryFocus,
-    altitude: 850_000,
+    altitude: 1_150_000,
     code: countryCode || countryFocus.code,
     flag: countryCodeToFlag(countryCode) || countryFocus.flag,
     lat: latitude,
     lng: longitude,
-    name: location.city || location.countryName || userFacingLocationLabel(location.label) || countryFocus.name,
-    pinX: 50,
-    pinY: 50,
+    name: location.countryName || countryFocus.name || location.city || userFacingLocationLabel(location.label) || DEFAULT_COUNTRY.name,
+    pinX: USER_PIN_SCREEN_X,
+    pinY: USER_PIN_SCREEN_Y,
     source: "user"
   };
 }
@@ -463,14 +466,16 @@ function focusFromPins(pins: AlmidyMapPin[]): CountryFocus | null {
 
   return {
     ...countryFocus,
-    altitude: isUserPin ? 850_000 : countryFocus.altitude,
+    altitude: isUserPin ? 1_150_000 : countryFocus.altitude,
     code: countryCode || countryFocus.code,
     flag: pin.flag || countryCodeToFlag(countryCode) || countryFocus.flag,
     lat: latitude,
     lng: longitude,
-    name: userFacingLocationLabel(pin.label) || pin.subtitle || countryFocus.name,
-    pinX: isUserPin ? 50 : countryFocus.pinX,
-    pinY: isUserPin ? 50 : countryFocus.pinY,
+    name: isUserPin
+      ? pin.subtitle || countryFocus.name || userFacingLocationLabel(pin.label) || DEFAULT_COUNTRY.name
+      : userFacingLocationLabel(pin.label) || pin.subtitle || countryFocus.name,
+    pinX: isUserPin ? USER_PIN_SCREEN_X : countryFocus.pinX,
+    pinY: isUserPin ? USER_PIN_SCREEN_Y : countryFocus.pinY,
     source: isUserPin ? "user" : "country"
   };
 }
@@ -495,13 +500,15 @@ function focusFromCameraCommand(
 
   return {
     ...countryFocus,
-    altitude: isUserCommand ? 850_000 : command.camera.altitudeMeters ?? countryFocus.altitude,
+    altitude: isUserCommand ? 1_150_000 : command.camera.altitudeMeters ?? countryFocus.altitude,
     flag: commandPin?.flag || countryFocus.flag,
     lat: latitude,
     lng: longitude,
-    name: userFacingLocationLabel(command.label) || countryFocus.name,
-    pinX: isUserCommand ? 50 : countryFocus.pinX,
-    pinY: isUserCommand ? 50 : countryFocus.pinY,
+    name: isUserCommand
+      ? countryFocus.name || userFacingLocationLabel(command.label) || DEFAULT_COUNTRY.name
+      : userFacingLocationLabel(command.label) || countryFocus.name,
+    pinX: isUserCommand ? USER_PIN_SCREEN_X : countryFocus.pinX,
+    pinY: isUserCommand ? USER_PIN_SCREEN_Y : countryFocus.pinY,
     source: isUserCommand ? "user" : "country"
   };
 }
@@ -646,8 +653,8 @@ function getSettledCamera(country: CountryFocus): MapCameraFrame {
       heading: 336,
       lat: country.lat,
       lng: country.lng,
-      range: 4_650_000,
-      tilt: 34
+      range: 5_800_000,
+      tilt: 32
     };
   }
 
@@ -668,8 +675,8 @@ function getApproachCamera(country: CountryFocus): MapCameraFrame {
       heading: 356,
       lat: country.lat,
       lng: country.lng,
-      range: 3_950_000,
-      tilt: 46
+      range: 5_500_000,
+      tilt: 40
     };
   }
 
@@ -690,8 +697,8 @@ function getSpinCamera(country: CountryFocus): MapCameraFrame {
       heading: 438,
       lat: country.lat,
       lng: country.lng,
-      range: 5_300_000,
-      tilt: 40
+      range: 6_200_000,
+      tilt: 34
     };
   }
 
