@@ -1,5 +1,10 @@
 import "server-only";
 
+import {
+  buildCalendarCallbackUrl,
+  calendarCallbackPath
+} from "@/lib/server/calendar-redirect-uri";
+
 const productionRequiredEnv = [
   "NEXT_PUBLIC_SUPABASE_URL",
   "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
@@ -94,11 +99,19 @@ function assertSecretIsNotPublic(secretName: string) {
 
 function assertProductionUrls() {
   const appUrl = requireHttpsUrl("NEXT_PUBLIC_APP_URL");
-  const googleRedirect = requireHttpsUrl("GOOGLE_CALENDAR_REDIRECT_URI");
-  const microsoftRedirect = requireHttpsUrl("MICROSOFT_CALENDAR_REDIRECT_URI");
+  requireHttpsUrl("GOOGLE_CALENDAR_REDIRECT_URI");
+  requireHttpsUrl("MICROSOFT_CALENDAR_REDIRECT_URI");
 
-  assertCallbackUrl(appUrl, googleRedirect, "/api/calendar/oauth/google/callback");
-  assertCallbackUrl(appUrl, microsoftRedirect, "/api/calendar/oauth/outlook/callback");
+  assertCallbackUrl(
+    appUrl,
+    new URL(buildCalendarCallbackUrl(appUrl.href, "google")),
+    calendarCallbackPath("google")
+  );
+  assertCallbackUrl(
+    appUrl,
+    new URL(buildCalendarCallbackUrl(appUrl.href, "outlook")),
+    calendarCallbackPath("outlook")
+  );
 }
 
 function requireHttpsUrl(name: string) {

@@ -35,6 +35,11 @@ const bypassFlags = [
   "ALLOW_TEST_DASHBOARD_BYPASS"
 ];
 
+const calendarCallbackPaths = {
+  google: "/api/calendar/oauth/google/callback",
+  outlook: "/api/calendar/oauth/outlook/callback"
+};
+
 function main() {
   const errors = [
     ...findEnabledBypassFlags(),
@@ -79,23 +84,20 @@ function findMissingProviderEnv() {
 function findInvalidProductionUrls() {
   const errors = [];
   const appUrl = readHttpsUrl("NEXT_PUBLIC_APP_URL", errors);
-  const googleRedirect = readHttpsUrl("GOOGLE_CALENDAR_REDIRECT_URI", errors);
-  const microsoftRedirect = readHttpsUrl("MICROSOFT_CALENDAR_REDIRECT_URI", errors);
+  readHttpsUrl("GOOGLE_CALENDAR_REDIRECT_URI", errors);
+  readHttpsUrl("MICROSOFT_CALENDAR_REDIRECT_URI", errors);
 
-  if (appUrl && googleRedirect) {
+  if (appUrl) {
     assertCallbackUrl(
       appUrl,
-      googleRedirect,
-      "/api/calendar/oauth/google/callback",
+      buildCalendarCallbackUrl(appUrl, "google"),
+      calendarCallbackPaths.google,
       errors
     );
-  }
-
-  if (appUrl && microsoftRedirect) {
     assertCallbackUrl(
       appUrl,
-      microsoftRedirect,
-      "/api/calendar/oauth/outlook/callback",
+      buildCalendarCallbackUrl(appUrl, "outlook"),
+      calendarCallbackPaths.outlook,
       errors
     );
   }
@@ -119,6 +121,10 @@ function readHttpsUrl(name, errors) {
     errors.push(`${name} must be a valid URL.`);
     return null;
   }
+}
+
+function buildCalendarCallbackUrl(appUrl, provider) {
+  return new URL(`${appUrl.origin}${calendarCallbackPaths[provider]}`);
 }
 
 function assertCallbackUrl(appUrl, callbackUrl, expectedPath, errors) {

@@ -2,6 +2,10 @@ import "server-only";
 
 import { ApiError } from "@/lib/api/errors";
 import {
+  calendarRedirectEnvName,
+  resolveCalendarRedirectUri
+} from "@/lib/server/calendar-redirect-uri";
+import {
   encryptCalendarToken,
   encryptCalendarTokenRecord
 } from "@/lib/server/calendar-token-encryption";
@@ -135,7 +139,7 @@ async function exchangeCodeForToken(provider: CalendarProvider, code: string) {
       client_secret: readEnv("GOOGLE_CALENDAR_CLIENT_SECRET"),
       code,
       grant_type: "authorization_code",
-      redirect_uri: readEnv("GOOGLE_CALENDAR_REDIRECT_URI")
+      redirect_uri: readRedirectUri("google")
     });
   }
 
@@ -145,7 +149,7 @@ async function exchangeCodeForToken(provider: CalendarProvider, code: string) {
     client_secret: readEnv("MICROSOFT_CALENDAR_CLIENT_SECRET"),
     code,
     grant_type: "authorization_code",
-    redirect_uri: readEnv("MICROSOFT_CALENDAR_REDIRECT_URI")
+    redirect_uri: readRedirectUri("outlook")
   });
 }
 
@@ -218,6 +222,19 @@ function readEnv(name: string) {
   if (!value) {
     throw new ApiError("not_implemented", `${name} is not configured.`, 501, {
       requiredEnv: name
+    });
+  }
+
+  return value;
+}
+
+function readRedirectUri(provider: CalendarProvider) {
+  const value = resolveCalendarRedirectUri(provider);
+
+  if (!value) {
+    const requiredEnv = calendarRedirectEnvName(provider);
+    throw new ApiError("not_implemented", `${requiredEnv} is not configured.`, 501, {
+      requiredEnv
     });
   }
 

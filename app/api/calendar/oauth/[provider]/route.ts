@@ -1,6 +1,7 @@
 import { apiCanonicalSuccess, validationFailure } from "@/lib/api/errors";
 import { recordCalendarOAuthEvent } from "@/lib/server/calendar-oauth-events";
 import { createCalendarOAuthState, isSafeInternalPath } from "@/lib/server/calendar-oauth-state";
+import { resolveCalendarRedirectUri } from "@/lib/server/calendar-redirect-uri";
 import { normalizeCalendarProvider } from "@/lib/validators/calendar-sync";
 
 const googleScopes = [
@@ -94,7 +95,7 @@ function buildAuthorizationUrl(provider: "google" | "outlook", encodedState: str
   if (provider === "google") {
     const clientId = process.env.GOOGLE_CALENDAR_CLIENT_ID;
     const clientSecret = process.env.GOOGLE_CALENDAR_CLIENT_SECRET;
-    const redirectUri = process.env.GOOGLE_CALENDAR_REDIRECT_URI;
+    const redirectUri = resolveCalendarRedirectUri("google");
 
     if (!clientId || !clientSecret || !redirectUri) {
       return null;
@@ -114,7 +115,7 @@ function buildAuthorizationUrl(provider: "google" | "outlook", encodedState: str
 
   const clientId = process.env.MICROSOFT_CALENDAR_CLIENT_ID;
   const clientSecret = process.env.MICROSOFT_CALENDAR_CLIENT_SECRET;
-  const redirectUri = process.env.MICROSOFT_CALENDAR_REDIRECT_URI;
+  const redirectUri = resolveCalendarRedirectUri("outlook");
   const tenant = process.env.MICROSOFT_CALENDAR_TENANT_ID || "common";
 
   if (!clientId || !clientSecret || !redirectUri) {
