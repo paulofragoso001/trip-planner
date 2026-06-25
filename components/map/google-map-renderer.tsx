@@ -6,7 +6,7 @@ import {
   Polyline
 } from "@react-google-maps/api";
 import { useCallback, useEffect, useMemo, useRef } from "react";
-import GoogleMapsProvider from "@/components/GoogleMapsProvider";
+import GoogleMapsProvider, { GoogleMapsSurfaceFallback } from "@/components/GoogleMapsProvider";
 import { AlmidyGoogleMapPinMarker } from "@/components/map/wayline-google-map-pin-marker";
 import {
   ALMIDY_MAP_SYSTEM_ID,
@@ -35,7 +35,15 @@ const mapsConfigured = Boolean(mapsApiKey && !mapsApiKey.startsWith("YOUR_"));
 
 export function GoogleMapRenderer(props: GoogleMapRendererProps) {
   return (
-    <GoogleMapsProvider>
+    <GoogleMapsProvider
+      blockChildrenOnError
+      fallback={
+        <GoogleMapsSurfaceFallback
+          height={props.height ?? "100%"}
+          message="Maps are temporarily unavailable. Your saved trip details are still available."
+        />
+      }
+    >
       <LoadedGoogleMapRenderer {...props} />
     </GoogleMapsProvider>
   );

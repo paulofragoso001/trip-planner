@@ -27,7 +27,7 @@ import type {
   TripRecommendationView,
   UnmappedMapSegment
 } from "@/app/dashboard/trips/[tripId]/map/loader";
-import GoogleMapsProvider from "@/components/GoogleMapsProvider";
+import GoogleMapsProvider, { GoogleMapsSurfaceFallback } from "@/components/GoogleMapsProvider";
 import { PlacePhoto } from "@/components/place-photo";
 import TripMap, { type TripMapDistanceRing, type TripMapItem } from "@/components/TripMap";
 import {
@@ -557,7 +557,15 @@ function MobileActivitiesView({
           data-testid="mobile-activity-map"
         >
           {mapItems.length ? (
-            <GoogleMapsProvider>
+            <GoogleMapsProvider
+              blockChildrenOnError
+              fallback={
+                <GoogleMapsSurfaceFallback
+                  height="48svh"
+                  message="Maps are temporarily unavailable. Nearby ideas are still available below."
+                />
+              }
+            >
               <TripMap
                 distanceRings={distanceRings}
                 height="48svh"

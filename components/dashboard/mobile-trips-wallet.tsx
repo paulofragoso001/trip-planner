@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import GoogleMapsProvider from "@/components/GoogleMapsProvider";
+import GoogleMapsProvider, { GoogleMapsSurfaceFallback } from "@/components/GoogleMapsProvider";
 import { TripCreateForm } from "@/components/dashboard/trip-create-form";
 import { TravelWalletSheet } from "@/components/dashboard/travel-wallet-sheet";
 import { AlmidyGoogleMapPinMarker } from "@/components/map/wayline-google-map-pin-marker";
@@ -314,7 +314,15 @@ function MobileCountryMapCanvas({ trips }: { trips: Trip[] }) {
   }
 
   return (
-    <GoogleMapsProvider>
+    <GoogleMapsProvider
+      blockChildrenOnError
+      fallback={
+        <GoogleMapsSurfaceFallback
+          height="100dvh"
+          message="Maps are temporarily unavailable. Your trips are still ready below."
+        />
+      }
+    >
       <LoadedMobileCountryMap trips={trips} />
     </GoogleMapsProvider>
   );

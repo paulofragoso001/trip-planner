@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import GoogleMapsProvider from "@/components/GoogleMapsProvider";
+import GoogleMapsProvider, { GoogleMapsSurfaceFallback } from "@/components/GoogleMapsProvider";
 import { PlacePhoto } from "@/components/place-photo";
 import TripMap, { type TripMapItem } from "@/components/TripMap";
 import type { UnmappedMapSegment } from "@/app/dashboard/trips/[tripId]/map/loader";
@@ -116,7 +116,15 @@ export function ConnectedTripMap({
       {items.length ? (
         <div className="relative min-h-[100dvh] lg:grid lg:min-h-0 lg:gap-3">
           <div className="relative overflow-hidden rounded-none border-0 bg-slate-950 shadow-none lg:rounded-[1.75rem] lg:border lg:border-slate-800 lg:shadow-sm">
-            <GoogleMapsProvider>
+            <GoogleMapsProvider
+              blockChildrenOnError
+              fallback={
+                <GoogleMapsSurfaceFallback
+                  height="clamp(520px, calc(100dvh - 5rem), 840px)"
+                  message="Maps are temporarily unavailable. Your route cards are still available below."
+                />
+              }
+            >
               <TripMap
                 height="clamp(520px, calc(100dvh - 5rem), 840px)"
                 items={visibleItems}

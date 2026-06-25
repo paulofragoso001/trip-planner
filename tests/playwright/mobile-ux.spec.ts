@@ -1489,6 +1489,39 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByTestId("activity-detail-sheet")).toHaveCount(0);
   });
 
+  test("mobile map route uses Almidy fallback when Google Maps auth fails", async ({ page }) => {
+    await page.setViewportSize({ height: 900, width: 390 });
+    await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
+    await page.addInitScript(() => {
+      Object.defineProperty(navigator, "language", { configurable: true, value: "en-US" });
+      Object.defineProperty(navigator, "languages", { configurable: true, value: ["en-US", "en"] });
+    });
+
+    await page.goto(`${baseUrl}/dashboard/trips/demo/map`, { waitUntil: "commit" });
+    await expect(page.getByTestId("connected-trip-map")).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByTestId("map-route-panel")).toBeVisible();
+
+    if (await page.getByTestId("google-maps-runtime-fallback").count() === 0) {
+      await page.waitForFunction(
+        () => typeof (window as typeof window & { gm_authFailure?: () => void }).gm_authFailure === "function",
+        undefined,
+        { timeout: 15_000 }
+      );
+      await page.evaluate(() => {
+        (window as typeof window & { gm_authFailure?: () => void }).gm_authFailure?.();
+      });
+    }
+
+    await expect(page.getByTestId("google-maps-runtime-fallback")).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText("Maps are temporarily unavailable. Your route cards are still available below.")).toBeVisible();
+    await expect(page.getByText("1 of 4")).toBeVisible();
+
+    const bodyText = await page.locator("body").innerText();
+    expect(bodyText).not.toContain("Oops! Something went wrong.");
+    expect(bodyText).not.toContain("This page didn't load Google Maps correctly.");
+    expect(bodyText).not.toContain("This page didn\u2019t load Google Maps correctly.");
+  });
+
   test("mobile map keeps day filters inside the route sheet", async ({ page, request }) => {
     test.setTimeout(90_000);
     await page.setViewportSize({ height: 900, width: 390 });
