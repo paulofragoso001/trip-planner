@@ -121,7 +121,8 @@ export function ConnectedTripMap({
               fallback={
                 <GoogleMapsSurfaceFallback
                   height="clamp(520px, calc(100dvh - 5rem), 840px)"
-                  message="Maps are temporarily unavailable. Your route cards are still available below."
+                  message="Maps are temporarily unavailable. Your itinerary is still available below."
+                  placement="above-sheet"
                 />
               }
             >

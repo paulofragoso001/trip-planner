@@ -1394,6 +1394,7 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByTestId("connected-trip-map")).toBeVisible();
     await expect(page.locator('[data-map-bottom-sheet="true"]')).toBeVisible();
     await expect(page.getByText("1 of 4")).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByTestId("google-maps-runtime-fallback")).toHaveCount(0);
     await expect(page.getByRole("button", { name: /1 Barcelona-El Prat Airport/ })).toBeVisible();
     await expect(page.getByRole("button", { name: /4 Fira Barcelona meeting/ })).toBeVisible();
     await expect(page.getByLabel("Map categories")).toHaveCount(0);
@@ -1513,8 +1514,15 @@ test.describe("mobile soft-launch UX", () => {
     }
 
     await expect(page.getByTestId("google-maps-runtime-fallback")).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByText("Maps are temporarily unavailable. Your route cards are still available below.")).toBeVisible();
+    await expect(page.getByText("Maps are temporarily unavailable. Your itinerary is still available below.")).toBeVisible();
     await expect(page.getByText("1 of 4")).toBeVisible();
+    const fallbackMessageBottom = await page.getByTestId("google-maps-runtime-message").evaluate((node) => {
+      return node.getBoundingClientRect().bottom;
+    });
+    const routeSheetTop = await page.getByTestId("map-route-panel").evaluate((node) => {
+      return node.getBoundingClientRect().top;
+    });
+    expect(fallbackMessageBottom, "map fallback copy should stay above the route sheet").toBeLessThan(routeSheetTop);
 
     const bodyText = await page.locator("body").innerText();
     expect(bodyText).not.toContain("Oops! Something went wrong.");

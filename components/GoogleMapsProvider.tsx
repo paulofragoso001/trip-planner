@@ -17,8 +17,14 @@ type GoogleMapsLoaderProps = GoogleMapsProviderProps & {
 };
 
 type GoogleMapsWindow = Window & {
-  gm_authFailure?: () => void;
+  gm_authFailure?: GoogleMapsAuthFailureHandler;
 };
+
+type GoogleMapsAuthFailureHandler = (() => void) & {
+  __almidyGoogleMapsAuthFailure?: boolean;
+};
+
+const GOOGLE_MAPS_AUTH_FAILURE_EVENT = "almidy:google-maps-auth-failure";
 
 function GoogleMapsLoader({
   apiKey,
@@ -37,15 +43,22 @@ function GoogleMapsLoader({
   useEffect(() => {
     const googleWindow = window as GoogleMapsWindow;
     const previousAuthFailure = googleWindow.gm_authFailure;
+    const handleRuntimeAuthFailure = () => setRuntimeAuthFailed(true);
 
-    const handleAuthFailure = () => {
-      setRuntimeAuthFailed(true);
-      previousAuthFailure?.();
-    };
+    window.addEventListener(GOOGLE_MAPS_AUTH_FAILURE_EVENT, handleRuntimeAuthFailure);
 
+    const handleAuthFailure = (() => {
+      window.dispatchEvent(new Event(GOOGLE_MAPS_AUTH_FAILURE_EVENT));
+      if (!previousAuthFailure?.__almidyGoogleMapsAuthFailure) {
+        previousAuthFailure?.();
+      }
+    }) as GoogleMapsAuthFailureHandler;
+
+    handleAuthFailure.__almidyGoogleMapsAuthFailure = true;
     googleWindow.gm_authFailure = handleAuthFailure;
 
     return () => {
+      window.removeEventListener(GOOGLE_MAPS_AUTH_FAILURE_EVENT, handleRuntimeAuthFailure);
       if (googleWindow.gm_authFailure === handleAuthFailure) {
         googleWindow.gm_authFailure = previousAuthFailure;
       }
@@ -95,14 +108,21 @@ function MapWarning({ children }: { children: ReactNode }) {
 
 export function GoogleMapsSurfaceFallback({
   height = "100%",
-  message = "Maps are temporarily unavailable. Your trip details are still available below."
+  message = "Maps are temporarily unavailable. Your trip details are still available below.",
+  placement = "center"
 }: {
   height?: number | string;
   message?: string;
+  placement?: "center" | "above-sheet";
 }) {
   return (
     <div
-      className="relative grid place-items-center overflow-hidden bg-slate-950 p-6 text-center text-sm font-black text-white/78"
+      className={[
+        "relative grid overflow-hidden bg-slate-950 p-6 text-center text-sm font-black text-white/78",
+        placement === "above-sheet"
+          ? "items-start justify-items-center pt-[min(28svh,18rem)] pb-[58svh]"
+          : "place-items-center"
+      ].join(" ")}
       data-map-renderer="google-map"
       data-map-runtime="unavailable"
       data-map-system={ALMIDY_MAP_SYSTEM_ID}
@@ -111,7 +131,10 @@ export function GoogleMapsSurfaceFallback({
     >
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_24%_20%,rgba(37,99,235,0.42),transparent_31%),radial-gradient(circle_at_72%_36%,rgba(20,184,166,0.28),transparent_28%),linear-gradient(180deg,#0b1d2d,#06101d_58%,#020617)]" />
       <div className="absolute inset-0 opacity-25 [background-image:linear-gradient(rgba(255,255,255,.08)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.08)_1px,transparent_1px)] [background-size:46px_46px]" />
-      <div className="relative max-w-xs rounded-3xl border border-white/12 bg-slate-950/72 px-5 py-4 shadow-2xl backdrop-blur-xl">
+      <div
+        className="relative max-w-xs rounded-3xl border border-white/18 bg-slate-950/82 px-5 py-4 shadow-2xl backdrop-blur-xl"
+        data-testid="google-maps-runtime-message"
+      >
         {message}
       </div>
     </div>
