@@ -45,6 +45,11 @@ test.describe("dashboard route contract", () => {
       "data-sheet-state",
       "collapsed"
     );
+    await expect(page.getByTestId("mobile-home-wallet-content")).toHaveAttribute(
+      "data-sheet-surface",
+      "trips"
+    );
+    await expect(page.getByTestId("mobile-trips-sheet-content")).toBeVisible();
     await expect(page.getByRole("heading", { name: "My Trips" })).toBeVisible();
     await expect(page.getByTestId("mobile-home-wallet")).toHaveCount(0);
   });
@@ -62,6 +67,10 @@ test.describe("dashboard route contract", () => {
       timeout: 20_000
     });
     await expect(page.getByTestId("mobile-country-sheet").getByTestId("mobile-home-wallet-content")).toBeVisible();
+    await expect(page.getByTestId("mobile-home-wallet-content")).toHaveAttribute(
+      "data-sheet-surface",
+      "trips"
+    );
     await expect(page.getByTestId("mobile-home-wallet")).toHaveCount(0);
   });
 });

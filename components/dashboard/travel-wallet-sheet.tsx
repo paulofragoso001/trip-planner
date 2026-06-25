@@ -9,6 +9,7 @@ import {
   ChevronRight,
   Cloud,
   CreditCard,
+  List,
   Globe2,
   Languages,
   LifeBuoy,
@@ -37,6 +38,7 @@ import { cn } from "@/components/trip-ui";
 import { dashboardActionRoutes } from "@/lib/dashboard/action-routes";
 
 type SheetState = "collapsed" | "expanded" | "settings";
+type TravelWalletSurface = "home" | "trips";
 
 export function TravelWalletSheet({
   ideasWaitingCount,
@@ -44,7 +46,8 @@ export function TravelWalletSheet({
   primaryHref,
   primaryLabel,
   primaryMeta,
-  recentTrips
+  recentTrips,
+  surface = "home"
 }: {
   ideasWaitingCount: number;
   initialSheetState?: SheetState;
@@ -52,6 +55,7 @@ export function TravelWalletSheet({
   primaryLabel: string;
   primaryMeta: string;
   recentTrips: DashboardRecentTripView[];
+  surface?: TravelWalletSurface;
 }) {
   const [sheetState, setSheetState] = useState<SheetState>(initialSheetState);
   const [trialSheetCopy, setTrialSheetCopy] = useState<string | null>(null);
@@ -61,6 +65,14 @@ export function TravelWalletSheet({
   const isExpanded = sheetState === "expanded";
   const isSettings = sheetState === "settings";
   const currentYear = new Date().getFullYear();
+  const isTripsSurface = surface === "trips";
+  const sheetHandleLabel = isTripsSurface
+    ? isCollapsed
+      ? "Expand My Trips sheet"
+      : "Collapse My Trips sheet"
+    : isCollapsed
+      ? "Expand trips sheet"
+      : "Collapse trips sheet";
 
   useEffect(() => {
     setSheetState(initialSheetState);
@@ -109,9 +121,11 @@ export function TravelWalletSheet({
   return (
     <section
       className="wayline-home-content-reveal pointer-events-auto relative z-10 w-full"
+      data-sheet-surface={surface}
       data-sheet-state={sheetState}
       data-testid="mobile-home-wallet-content"
     >
+      {isTripsSurface ? <span className="sr-only" data-testid="mobile-trips-sheet-content">My Trips sheet</span> : null}
       <div
         className={cn(
           "mx-0 w-full overflow-hidden bg-white text-slate-950 shadow-[0_-24px_70px_rgba(0,0,0,0.34)] transition-[height,max-height,border-radius] duration-300 ease-out",
@@ -125,7 +139,7 @@ export function TravelWalletSheet({
           type="button"
           aria-expanded={!isCollapsed}
           aria-controls="mobile-launch-expanded-menu"
-          aria-label={isCollapsed ? "Expand trips sheet" : "Collapse trips sheet"}
+          aria-label={sheetHandleLabel}
           className="mx-auto grid h-7 w-24 place-items-center rounded-full focus:outline-none focus:ring-4 focus:ring-orange-300/20"
           data-testid="ios-launch-sheet-handle"
           onClick={handleHandleClick}
@@ -177,6 +191,14 @@ export function TravelWalletSheet({
                 primaryHref={primaryHref}
                 primaryLabel={primaryLabel}
                 primaryMeta={primaryMeta}
+                surface={surface}
+              />
+            ) : isTripsSurface ? (
+              <ExpandedTripsNative
+                primaryHref={primaryHref}
+                primaryLabel={primaryLabel}
+                primaryMeta={primaryMeta}
+                recentTrips={recentTrips}
               />
             ) : (
               <ExpandedTrips
@@ -207,17 +229,22 @@ export function TravelWalletSheet({
 function CollapsedLauncher({
   primaryHref,
   primaryLabel,
-  primaryMeta
+  primaryMeta,
+  surface
 }: {
   primaryHref: string;
   primaryLabel: string;
   primaryMeta: string;
+  surface: TravelWalletSurface;
 }) {
+  const searchHref = surface === "trips" ? `${dashboardActionRoutes.trips.list}?view=list` : "/dashboard/search";
+  const searchLabel = surface === "trips" ? "List" : "Search";
+
   return (
     <div className="mt-4" data-testid="ios-launch-sheet-collapsed">
       <div data-testid="mobile-home-actions">
         <div className="grid grid-cols-[3.8rem_minmax(0,1fr)_3.8rem] items-center gap-3" data-testid="mobile-home-compact-actions">
-          <CircleAction href="/dashboard/search" icon={<Search />} label="Search" />
+          <CircleAction href={searchHref} icon={surface === "trips" ? <List /> : <Search />} label={searchLabel} />
           <Link
             aria-label={primaryLabel}
             className="grid h-14 min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-3 rounded-full bg-white px-4 text-left text-slate-950 shadow-[0_18px_44px_rgba(15,23,42,0.08)] ring-1 ring-slate-100 transition hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-orange-300/20"
@@ -234,6 +261,93 @@ function CollapsedLauncher({
           <CircleAction href={dashboardActionRoutes.trips.create} icon={<Plus />} label="Add" primary />
         </div>
       </div>
+    </div>
+  );
+}
+
+function ExpandedTripsNative({
+  primaryHref,
+  primaryLabel,
+  primaryMeta,
+  recentTrips
+}: {
+  primaryHref: string;
+  primaryLabel: string;
+  primaryMeta: string;
+  recentTrips: DashboardRecentTripView[];
+}) {
+  const featuredTrip = recentTrips[0] || null;
+  const secondaryTrips = recentTrips.slice(1, 4);
+
+  return (
+    <div
+      className="mt-5 h-[calc(100dvh-6.25rem)] overflow-y-auto pb-[calc(6.5rem+env(safe-area-inset-bottom))]"
+      data-testid="mobile-trips-sheet-expanded"
+    >
+      <div className="inline-flex rounded-full bg-orange-50 px-4 py-2 text-xl font-black text-orange-500">
+        Trip Passes
+      </div>
+      <div className="mt-8 flex items-center gap-3 text-xl text-slate-400">
+        <span>Ready to open</span>
+        <span className="h-px flex-1 bg-slate-300" aria-hidden="true" />
+      </div>
+      <TripFeatureCard
+        href={featuredTrip?.href || primaryHref}
+        name={featuredTrip?.destination || featuredTrip?.name || stripPrimaryLabel(primaryMeta) || primaryLabel}
+        dateRange={featuredTrip?.dateRange || primaryMeta}
+        status={featuredTrip?.status || ""}
+      />
+      <TripsNativeActions />
+      {secondaryTrips.length ? (
+        <section className="mt-5 grid gap-3" aria-label="Recent trips">
+          {secondaryTrips.map((trip) => (
+            <Link
+              className="grid min-h-20 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-[1.45rem] bg-slate-50 px-4 text-slate-950 ring-1 ring-slate-200 transition hover:bg-orange-50 hover:ring-orange-100 focus:outline-none focus:ring-4 focus:ring-orange-300/20"
+              href={trip.href}
+              key={trip.id}
+            >
+              <span className="min-w-0">
+                <span className="block truncate text-lg font-black">{trip.name}</span>
+                <span className="mt-1 block truncate text-sm font-bold text-slate-500">
+                  {trip.destination} · {trip.dateRange}
+                </span>
+              </span>
+              <ChevronRight className="h-5 w-5 text-slate-400" aria-hidden="true" />
+            </Link>
+          ))}
+        </section>
+      ) : null}
+    </div>
+  );
+}
+
+function TripsNativeActions() {
+  return (
+    <div className="mt-5 grid grid-cols-2 gap-3" data-testid="mobile-trips-native-actions">
+      <SheetActionLink
+        href={dashboardActionRoutes.trips.create}
+        icon={<Plus />}
+        label="Create trip"
+        meta="Start a new pass"
+      />
+      <SheetActionLink
+        href={dashboardActionRoutes.trips.stats}
+        icon={<Globe2 />}
+        label="Travel Book"
+        meta="Stats and countries"
+      />
+      <SheetActionLink
+        href={`${dashboardActionRoutes.trips.list}?view=list`}
+        icon={<Wallet />}
+        label="Trip list"
+        meta="Search and manage"
+      />
+      <SheetActionLink
+        href={dashboardActionRoutes.plan.addIdea}
+        icon={<Sparkles />}
+        label="Add idea"
+        meta="Save a place"
+      />
     </div>
   );
 }

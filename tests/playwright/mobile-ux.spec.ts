@@ -314,14 +314,19 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByTestId("mobile-country-map-canvas")).toBeVisible();
     await expect(page.getByTestId("mobile-home-wallet-content")).toBeVisible();
     await expect(page.getByTestId("mobile-home-wallet-content")).toHaveAttribute("data-sheet-state", "collapsed");
+    await expect(page.getByTestId("mobile-home-wallet-content")).toHaveAttribute("data-sheet-surface", "trips");
+    await expect(page.getByTestId("mobile-trips-sheet-content")).toBeVisible();
     await expect(page.getByTestId("ios-launch-sheet-collapsed")).toBeVisible();
     await expect(page.getByRole("heading", { name: "My Trips" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Show trip cards" })).toHaveAttribute(
+    await expect(page.getByRole("link", { name: "Open trip list" })).toHaveAttribute(
       "href",
       "/dashboard/trips?view=list"
     );
     await expect(page.getByTestId("mobile-home-wallet")).toHaveCount(0);
     await expect(page.getByTestId("mobile-country-sheet").getByTestId("mobile-home-wallet-content")).toHaveCount(1);
+    await page.getByRole("button", { name: "Open My Trips" }).click();
+    await expect(page.getByTestId("mobile-trips-sheet-expanded")).toBeVisible();
+    await expect(page.getByTestId("mobile-trips-native-actions")).toBeVisible();
   });
 
   test("mobile trips secondary list route remains available", async ({ page }) => {
@@ -1226,7 +1231,7 @@ test.describe("mobile soft-launch UX", () => {
     await page.getByRole("button", { name: "Locate trips" }).click();
     await expect(tripsMap).toHaveAttribute("data-selected-map-id", "user-location");
 
-    await page.getByRole("link", { name: "Show trip cards" }).click();
+    await page.getByRole("link", { name: "Open trip list" }).click();
     await expect(page).toHaveURL(/\/dashboard\/trips\?view=list/);
     await page.goBack({ waitUntil: "commit" });
 

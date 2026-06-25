@@ -1,6 +1,6 @@
 "use client";
 
-import { BarChart3, ChevronDown, LocateFixed, Map as MapIcon, Plus, Search, Settings } from "lucide-react";
+import { BarChart3, ChevronDown, List, LocateFixed, Plus, Search, Settings } from "lucide-react";
 import { GoogleMap, OverlayView } from "@react-google-maps/api";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -258,11 +258,11 @@ function MobileTripsCountriesMap({
 
       <div className="absolute right-4 top-10 z-20 overflow-hidden rounded-full border border-white/10 bg-black/86 text-orange-400 shadow-[0_18px_50px_rgba(0,0,0,0.45)] backdrop-blur-xl">
         <Link
-          aria-label="Show trip cards"
+          aria-label="Open trip list"
           className="grid h-12 w-12 place-items-center border-b border-white/10 transition hover:bg-white/10 focus:outline-none focus:ring-4 focus:ring-orange-400/20"
           href={`${dashboardActionRoutes.trips.list}?view=list`}
         >
-          <MapIcon className="h-5 w-5" aria-hidden="true" />
+          <List className="h-5 w-5" aria-hidden="true" />
         </Link>
         <button
           aria-label="Locate trips"
@@ -284,6 +284,7 @@ function MobileTripsCountriesMap({
           primaryLabel={primaryLabel}
           primaryMeta={primaryMeta}
           recentTrips={recentTrips}
+          surface="trips"
         />
       </div>
     </section>

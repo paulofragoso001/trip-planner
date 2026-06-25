@@ -14,11 +14,15 @@ async function openAuthenticatedMobileRoute(page: Page, path: string) {
   await expect(page.getByTestId("app-shell-mobile-bottom-nav")).toHaveCount(0);
 }
 
-async function expectCollapsedWalletSheet(page: Page) {
+async function expectCollapsedWalletSheet(page: Page, surface = "home") {
   await expect(page.getByTestId("mobile-home-wallet-content")).toBeVisible({ timeout: 20_000 });
   await expect(page.getByTestId("mobile-home-wallet-content")).toHaveAttribute(
     "data-sheet-state",
     "collapsed"
+  );
+  await expect(page.getByTestId("mobile-home-wallet-content")).toHaveAttribute(
+    "data-sheet-surface",
+    surface
   );
   await expect(page.getByTestId("ios-launch-sheet-collapsed")).toBeVisible();
 }
@@ -42,9 +46,18 @@ test.describe("authenticated mobile dashboard smoke", () => {
     });
     await expect(page.getByTestId("mobile-country-sheet")).toBeVisible();
     await expect(page.getByTestId("mobile-country-sheet").getByTestId("mobile-home-wallet-content")).toBeVisible();
-    await expectCollapsedWalletSheet(page);
+    await expectCollapsedWalletSheet(page, "trips");
+    await expect(page.getByTestId("mobile-trips-sheet-content")).toBeVisible();
     await expect(page.getByRole("heading", { name: "My Trips" })).toBeVisible();
     await expect(page.getByTestId("mobile-home-wallet")).toHaveCount(0);
+
+    await page.getByRole("button", { name: "Open My Trips" }).click();
+    await expect(page.getByTestId("mobile-trips-sheet-expanded")).toBeVisible();
+    await expect(page.getByTestId("mobile-trips-native-actions")).toBeVisible();
+    await expect(page.getByRole("link", { name: "Trip list Search and manage" })).toHaveAttribute(
+      "href",
+      "/dashboard/trips?view=list"
+    );
   });
 
   test("/dashboard/trips?view=list renders the secondary list/create flow", async ({ page }) => {
