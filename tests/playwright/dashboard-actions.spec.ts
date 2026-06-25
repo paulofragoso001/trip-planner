@@ -112,6 +112,29 @@ test.describe("dashboard navigation and client-state actions", () => {
     await expect(reviewIdea).toBeEnabled();
   });
 
+  test("account settings route presents the Almidy-native settings surface", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 900 });
+    await openDashboardRoute(page, "/dashboard/account");
+
+    const accountSurface = page.getByTestId("account-settings-page");
+    await expect(accountSurface).toBeVisible();
+    await expect(accountSurface.getByRole("heading", { name: "Account & settings" })).toBeVisible();
+    await expect(accountSurface.getByRole("link", { name: "Preferences" })).toHaveAttribute("href", "#preferences");
+    await expect(accountSurface.getByRole("link", { name: "Privacy Policy" })).toHaveAttribute("href", "/privacy");
+    await expect(accountSurface.getByRole("link", { name: "Terms of Service" })).toHaveAttribute("href", "/terms");
+    await expect(accountSurface.getByRole("link", { name: "Add Reservations via Email" })).toHaveAttribute(
+      "href",
+      dashboardActionRoutes.imports.forwardReservation
+    );
+    await expect(accountSurface.getByText("Redeem 15 Days Free")).toBeVisible();
+    await expect(accountSurface.getByText("Billing", { exact: true })).toBeVisible();
+    await expect(accountSurface.getByRole("link", { name: "Need help?" })).toHaveAttribute(
+      "href",
+      dashboardActionRoutes.settings.talkToUs
+    );
+    await expect(accountSurface.getByRole("heading", { name: "Account deletion" })).toBeVisible();
+  });
+
   test("visible enabled dashboard button controls have an affordance or explicit contract", async ({ page }) => {
     const routes = ["/dashboard", "/dashboard/plan", "/dashboard/trips", "/dashboard/account"];
     const allowedLabels = new Set([
