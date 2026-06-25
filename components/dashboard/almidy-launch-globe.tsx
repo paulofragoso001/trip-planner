@@ -10,7 +10,7 @@ import type {
   AlmidyMapPin
 } from "@/lib/map/wayline-map-models";
 
-type Photorealistic3DHomeHeroProps = {
+type AlmidyLaunchGlobeProps = {
   cameraCommand?: AlmidyMapCameraCommand | null;
   className?: string;
   location?: AlmidyLocationState;
@@ -98,13 +98,13 @@ const focusablePinKinds = new Set<AlmidyMapPin["kind"]>([
 
 const EMPTY_PINS: AlmidyMapPin[] = [];
 
-export function Photorealistic3DHomeHero({
+export function AlmidyLaunchGlobe({
   cameraCommand,
   className,
   location,
   onLocateUser,
   pins = EMPTY_PINS
-}: Photorealistic3DHomeHeroProps) {
+}: AlmidyLaunchGlobeProps) {
   const [country, setCountry] = useState<CountryFocus>(DEFAULT_COUNTRY);
   const [reduceMotion, setReduceMotion] = useState(false);
   const heroState: HeroState = "custom-globe";
@@ -171,11 +171,10 @@ export function Photorealistic3DHomeHero({
       ]
         .filter(Boolean)
         .join(" ")}
-      data-3d-enabled="false"
-      data-home-hero-mode={`home-hero-mode: ${reduceMotion ? "reduced-motion" : "almidy-owned"}`}
+            data-home-hero-mode={`home-hero-mode: ${reduceMotion ? "reduced-motion" : "almidy-owned"}`}
       data-hero-mode={heroState}
       data-launch-phase={launchPhase}
-      data-testid="photorealistic-3d-home-hero"
+      data-testid="almidy-launch-globe"
       style={{
         "--wayline-pin-x": `${focus.pinX}%`,
         "--wayline-pin-y": `${focus.source === "user" ? focus.pinY : focus.pinY - HERO_EARTH_Y_NUDGE_PERCENT}%`
@@ -183,7 +182,6 @@ export function Photorealistic3DHomeHero({
     >
       <div className="absolute inset-0" data-testid="earth-only-visual">
         <HomeHeroCustomGlobe reduceMotion={reduceMotion} />
-        <div className="hidden" data-testid="home-3d-map-stage" />
       </div>
       <div className="pointer-events-none absolute inset-0 z-10 bg-[radial-gradient(circle_at_var(--wayline-pin-x)_var(--wayline-pin-y),rgba(251,191,36,0.28),transparent_7%),radial-gradient(ellipse_at_50%_0%,rgba(125,194,255,0.22),transparent_33%),linear-gradient(180deg,rgba(2,9,22,0.44)_0%,rgba(2,9,22,0)_18%,rgba(2,8,20,0.1)_56%,rgba(2,8,20,0.68)_100%)]" />
       {showPin ? (

@@ -1,6 +1,6 @@
 "use client";
 
-import { Photorealistic3DHomeHero } from "@/components/dashboard/photorealistic-3d-home-hero";
+import { AlmidyLaunchGlobe } from "@/components/dashboard/almidy-launch-globe";
 import { ALMIDY_MAP_SYSTEM_ID } from "@/lib/map/almidy-map-visuals";
 import { useOptionalUnifiedMap } from "@/lib/map/unified-map-provider";
 import type { AlmidyMapSurfaceState } from "@/lib/map/wayline-map-models";
@@ -25,7 +25,7 @@ export function CustomGlobeRenderer({
       data-map-system={ALMIDY_MAP_SYSTEM_ID}
       data-selected-map-id={activeSurface?.selectedId ?? undefined}
     >
-      <Photorealistic3DHomeHero
+      <AlmidyLaunchGlobe
         className={className}
         cameraCommand={activeSurface?.cameraCommand}
         location={activeSurface?.location}

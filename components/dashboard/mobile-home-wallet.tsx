@@ -44,7 +44,7 @@ export function MobileHomeWallet({
     >
       <section
         className="globe-layer absolute inset-x-0 bottom-0 top-0 overflow-hidden bg-black"
-        data-testid="mobile-home-3d-hero"
+        data-testid="mobile-home-launch-globe"
       >
         <CustomGlobeRenderer />
         <FloatingGlobeControls />

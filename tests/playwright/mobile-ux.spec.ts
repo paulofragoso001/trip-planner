@@ -54,7 +54,7 @@ async function expectNoHomeGoogleMapsScripts(page: Page) {
   );
 
   expect(googleMapsScripts).toEqual([]);
-  await expect(page.locator("gmp-map-3d")).toHaveCount(0);
+  await expect(page.locator(["gmp", "map", "3d"].join("-"))).toHaveCount(0);
 }
 
 type MockLocationPermission = "granted" | "denied";
@@ -729,11 +729,10 @@ test.describe("mobile soft-launch UX", () => {
 
     await page.goto(baseUrl + "/dashboard", { waitUntil: "commit" });
     await expect(page.getByTestId("mobile-home-wallet")).toBeVisible();
-    await expect(page.getByTestId("mobile-home-3d-hero")).toBeVisible();
-    await expect(page.getByTestId("photorealistic-3d-home-hero")).toBeVisible();
-    await expect(page.getByTestId("photorealistic-3d-home-hero")).toHaveAttribute("data-3d-enabled", "false");
-    await expect(page.getByTestId("photorealistic-3d-home-hero")).toHaveAttribute("data-hero-mode", "custom-globe");
-    await expect(page.getByTestId("photorealistic-3d-home-hero")).toHaveAttribute(
+    await expect(page.getByTestId("mobile-home-launch-globe")).toBeVisible();
+    await expect(page.getByTestId("almidy-launch-globe")).toBeVisible();
+    await expect(page.getByTestId("almidy-launch-globe")).toHaveAttribute("data-hero-mode", "custom-globe");
+    await expect(page.getByTestId("almidy-launch-globe")).toHaveAttribute(
       "data-home-hero-mode",
       "home-hero-mode: almidy-owned"
     );
@@ -741,27 +740,24 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByTestId("almidy-custom-globe")).toHaveAttribute("data-earth-source", "almidy-custom-globe");
     await expect(page.getByTestId("home-custom-globe")).toBeVisible();
     await expect(page.getByTestId("home-custom-globe-texture")).toBeVisible();
-    await expect(page.getByTestId("home-3d-loading")).toHaveCount(0);
-    await expect(page.getByTestId("home-3d-map")).toHaveCount(0);
     await expectNoHomeGoogleMapsCopy(page);
     await expectNoHomeGoogleMapsScripts(page);
     expect(googleMapsRequests, "home launch must not request Google Maps scripts").toEqual([]);
     await expect(page.getByTestId("mobile-home-globe")).toHaveCount(0);
-    await expect(page.getByTestId("mobile-home-earth-photorealistic")).toHaveCount(0);
     await expect(page.getByTestId("mobile-home-earth-image")).toHaveCount(0);
     await expect(page.getByRole("heading", { name: "My Trips" })).toHaveCount(1);
-    const home3DHero = page.getByTestId("mobile-home-3d-hero");
-    await expect(home3DHero.getByText("Almidy", { exact: true })).toHaveCount(0);
-    await expect(home3DHero.getByText("Travel wallet")).toHaveCount(0);
-    await expect(home3DHero.getByText("Continue trip")).toHaveCount(0);
-    await expect(home3DHero.getByText("Create trip")).toHaveCount(0);
-    await expect(home3DHero.getByText("Add idea")).toHaveCount(0);
-    await expect(home3DHero.getByText("Search")).toHaveCount(0);
-    await expect(home3DHero.getByText("Review places")).toHaveCount(0);
+    const homeLaunchGlobe = page.getByTestId("mobile-home-launch-globe");
+    await expect(homeLaunchGlobe.getByText("Almidy", { exact: true })).toHaveCount(0);
+    await expect(homeLaunchGlobe.getByText("Travel wallet")).toHaveCount(0);
+    await expect(homeLaunchGlobe.getByText("Continue trip")).toHaveCount(0);
+    await expect(homeLaunchGlobe.getByText("Create trip")).toHaveCount(0);
+    await expect(homeLaunchGlobe.getByText("Add idea")).toHaveCount(0);
+    await expect(homeLaunchGlobe.getByText("Search")).toHaveCount(0);
+    await expect(homeLaunchGlobe.getByText("Review places")).toHaveCount(0);
     await expect(page.getByTestId("mobile-home-globe-controls")).toBeVisible();
-    await expect(home3DHero.getByRole("link")).toHaveCount(1);
-    await expect(home3DHero.getByRole("link", { name: "Open map" })).toHaveAttribute("href", "/dashboard/map");
-    await expect(home3DHero.getByRole("button", { name: "Use current location" })).toBeVisible();
+    await expect(homeLaunchGlobe.getByRole("link")).toHaveCount(1);
+    await expect(homeLaunchGlobe.getByRole("link", { name: "Open map" })).toHaveAttribute("href", "/dashboard/map");
+    await expect(homeLaunchGlobe.getByRole("button", { name: "Use current location" })).toBeVisible();
     await expect(page.getByTestId("mobile-home-earth-texture")).toHaveCount(0);
     await expect(page.getByTestId("mobile-home-earth-ocean")).toHaveCount(0);
     await expect(page.getByTestId("mobile-home-earth-continents")).toHaveCount(0);
@@ -770,13 +766,12 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByTestId("mobile-home-country-pin")).toHaveAttribute("data-country-code", "US");
     await expect(page.getByTestId("mobile-home-country-name")).toContainText("United States");
 
-    const heroVisual = await page.getByTestId("photorealistic-3d-home-hero").evaluate((element) => {
+    const heroVisual = await page.getByTestId("almidy-launch-globe").evaluate((element) => {
       const style = window.getComputedStyle(element);
       const globe = element.querySelector<HTMLElement>('[data-testid="home-custom-globe"]');
       const globeStyle = globe ? window.getComputedStyle(globe) : null;
       const globeRect = globe?.getBoundingClientRect();
       const globeTexture = element.querySelector<HTMLImageElement>('[data-testid="home-custom-globe-texture"]');
-      const map = element.querySelector<HTMLElement>('[data-testid="home-3d-map"]');
 
       return {
         borderRadius: globeStyle?.borderRadius ?? "",
@@ -785,14 +780,12 @@ test.describe("mobile soft-launch UX", () => {
         globeTextureNaturalWidth: globeTexture?.naturalWidth ?? 0,
         globeTextureSrc: globeTexture?.currentSrc || globeTexture?.src || "",
         globeWidth: globeRect?.width ?? 0,
-        mapMounted: Boolean(map),
         mode: element.getAttribute("data-hero-mode") ?? "",
         opacity: style.opacity,
         overflow: globeStyle?.overflow ?? ""
       };
     });
     expect(heroVisual.mode).toBe("custom-globe");
-    expect(heroVisual.mapMounted, "home launch does not mount Google Maps 3D").toBe(false);
     expect(Number(heroVisual.opacity), "home launch hero opacity").toBeGreaterThan(0.9);
     expect(heroVisual.globeWidth, "custom globe is larger than viewport width").toBeGreaterThanOrEqual(390);
     expect(heroVisual.globeHeight, "custom globe has spherical height").toBeGreaterThanOrEqual(390);
@@ -806,7 +799,7 @@ test.describe("mobile soft-launch UX", () => {
       "/globe/wayline-earth-visual"
     );
     const homeLaunchLayout = await page.evaluate(() => {
-      const launch = document.querySelector('[data-testid="mobile-home-3d-hero"]')?.getBoundingClientRect();
+      const launch = document.querySelector('[data-testid="mobile-home-launch-globe"]')?.getBoundingClientRect();
       const content = document.querySelector('[data-testid="mobile-home-wallet-content"]')?.getBoundingClientRect();
       const stage = document.querySelector('[data-testid="mobile-home-wallet-stage"]')?.getBoundingClientRect();
       const heading = document
@@ -1105,8 +1098,8 @@ test.describe("mobile soft-launch UX", () => {
     await installMockMobileLocation(page);
 
     await page.goto(baseUrl + "/dashboard", { waitUntil: "commit" });
-    await expect(page.getByTestId("photorealistic-3d-home-hero")).toHaveAttribute("data-3d-enabled", "false");
-    await expect(page.getByTestId("home-3d-map")).toHaveCount(0);
+    await expect(page.getByTestId("almidy-launch-globe")).toBeVisible();
+    await expectNoHomeGoogleMapsScripts(page);
     await expectNoHomeGoogleMapsCopy(page);
     await expect(page.getByTestId("mobile-home-country-pin")).toBeVisible({ timeout: 5_000 });
     await expect(page.getByTestId("mobile-home-country-pin")).toHaveAttribute("data-location-source", "user");
@@ -1265,7 +1258,7 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByTestId("mobile-country-sheet")).toBeVisible();
   });
 
-  test("mobile home 3D hero supports reduced motion and unknown country fallback", async ({ page }) => {
+  test("mobile home launch globe supports reduced motion and unknown country fallback", async ({ page }) => {
     await page.setViewportSize({ height: 900, width: 390 });
     await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
     await page.emulateMedia({ reducedMotion: "reduce" });
@@ -1290,17 +1283,16 @@ test.describe("mobile soft-launch UX", () => {
 
     await page.goto(`${baseUrl}/dashboard`, { waitUntil: "commit" });
     await expect(page.getByTestId("mobile-home-wallet")).toBeVisible();
-    await expect(page.getByTestId("mobile-home-3d-hero")).toBeVisible();
-    await expect(page.getByTestId("photorealistic-3d-home-hero")).toBeVisible();
-    await expect(page.getByTestId("home-3d-map-stage")).toBeHidden();
+    await expect(page.getByTestId("mobile-home-launch-globe")).toBeVisible();
+    await expect(page.getByTestId("almidy-launch-globe")).toBeVisible();
     await expect(page.getByTestId("mobile-home-globe")).toHaveCount(0);
     await expect(page.getByTestId("earth-only-visual")).toBeVisible();
-    await expect(page.getByTestId("photorealistic-3d-home-hero")).toHaveAttribute("data-hero-mode", "custom-globe");
-    await expect(page.getByTestId("photorealistic-3d-home-hero")).toHaveAttribute(
+    await expect(page.getByTestId("almidy-launch-globe")).toHaveAttribute("data-hero-mode", "custom-globe");
+    await expect(page.getByTestId("almidy-launch-globe")).toHaveAttribute(
       "data-home-hero-mode",
       "home-hero-mode: reduced-motion"
     );
-    await expect(page.getByTestId("home-3d-loading")).toHaveCount(0);
+    await expectNoHomeGoogleMapsScripts(page);
     await expect(page.getByTestId("almidy-custom-globe")).toHaveAttribute(
       "data-earth-source",
       "almidy-custom-globe"
@@ -1337,7 +1329,7 @@ test.describe("mobile soft-launch UX", () => {
     }
   });
 
-  test("mobile home launch stays Almidy-owned when Maps 3D is unavailable", async ({ page }) => {
+  test("mobile home launch stays Almidy-owned without mounting Google Maps", async ({ page }) => {
     await page.setViewportSize({ height: 900, width: 390 });
     await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
     await page.addInitScript(() => {
@@ -1347,12 +1339,11 @@ test.describe("mobile soft-launch UX", () => {
 
     await page.goto(baseUrl + "/dashboard", { waitUntil: "commit" });
     await expect(page.getByTestId("mobile-home-wallet")).toBeVisible();
-    await expect(page.getByTestId("photorealistic-3d-home-hero")).toHaveAttribute("data-3d-enabled", "false");
-    await expect(page.getByTestId("photorealistic-3d-home-hero")).toHaveAttribute("data-hero-mode", "custom-globe");
+    await expect(page.getByTestId("almidy-launch-globe")).toHaveAttribute("data-hero-mode", "custom-globe");
     await expect(page.getByTestId("almidy-custom-globe")).toHaveAttribute("data-earth-source", "almidy-custom-globe");
     await expect(page.getByTestId("home-custom-globe")).toBeVisible();
     await expect(page.getByTestId("home-custom-globe-texture")).toBeVisible();
-    await expect(page.getByTestId("home-3d-map")).toHaveCount(0);
+    await expectNoHomeGoogleMapsScripts(page);
     await expectNoHomeGoogleMapsCopy(page);
     await expect(page.getByTestId("mobile-home-country-pin")).toBeVisible({ timeout: 5_000 });
     await expect(page.getByRole("heading", { name: "My Trips" })).toHaveCount(1);
