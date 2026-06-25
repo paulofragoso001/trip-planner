@@ -8,6 +8,11 @@ import {
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import GoogleMapsProvider from "@/components/GoogleMapsProvider";
 import { AlmidyGoogleMapPinMarker } from "@/components/map/wayline-google-map-pin-marker";
+import {
+  ALMIDY_MAP_SYSTEM_ID,
+  almidyGoogleMapDarkStyles,
+  almidyMapColors
+} from "@/lib/map/almidy-map-visuals";
 import { useOptionalUnifiedMap } from "@/lib/map/unified-map-provider";
 import type {
   AlmidyCoordinate,
@@ -141,6 +146,7 @@ function LoadedGoogleMapRenderer({
       className={className}
       data-map-mode={activeSurface.mode}
       data-map-renderer="google-map"
+      data-map-system={ALMIDY_MAP_SYSTEM_ID}
       data-map-theme={mapTheme}
       data-selected-map-id={activeSurface.selectedId ?? undefined}
     >
@@ -160,7 +166,7 @@ function LoadedGoogleMapRenderer({
           gestureHandling: "greedy",
           mapTypeId: activeSurface.mode === "satellite" ? "satellite" : undefined,
           streetViewControl: false,
-          styles: mapTheme === "dark" ? darkMapStyles : undefined,
+          styles: mapTheme === "dark" ? almidyGoogleMapDarkStyles : undefined,
           zoomControl: false
         }}
         zoom={activeSurface.camera.zoom ?? 10}
@@ -171,7 +177,7 @@ function LoadedGoogleMapRenderer({
             path={path}
             options={{
               geodesic: true,
-              strokeColor: routes[index]?.selected ? "#f97316" : "#2563eb",
+              strokeColor: routes[index]?.selected ? almidyMapColors.route : almidyMapColors.routeMuted,
               strokeOpacity: routes[index]?.selected ? 0.92 : 0.78,
               strokeWeight: routes[index]?.selected ? 5 : 4
             }}
@@ -253,21 +259,10 @@ function MapUnavailable({
     <div
       className="grid place-items-center rounded-3xl bg-slate-950 p-6 text-center text-sm font-bold text-white/70"
       data-map-renderer="google-map"
+      data-map-system={ALMIDY_MAP_SYSTEM_ID}
       style={{ height: typeof height === "number" ? `${height}px` : height }}
     >
       {message}
     </div>
   );
 }
-
-const darkMapStyles: google.maps.MapTypeStyle[] = [
-  { elementType: "geometry", stylers: [{ color: "#172033" }] },
-  { elementType: "labels.text.fill", stylers: [{ color: "#e2e8f0" }] },
-  { elementType: "labels.text.stroke", stylers: [{ color: "#020617" }] },
-  { featureType: "administrative", elementType: "geometry", stylers: [{ color: "#334155" }] },
-  { featureType: "poi", stylers: [{ visibility: "off" }] },
-  { featureType: "road", elementType: "geometry", stylers: [{ color: "#1f2937" }] },
-  { featureType: "road", elementType: "labels.icon", stylers: [{ visibility: "off" }] },
-  { featureType: "transit", stylers: [{ visibility: "off" }] },
-  { featureType: "water", elementType: "geometry", stylers: [{ color: "#082f49" }] }
-];

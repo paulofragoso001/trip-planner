@@ -33,6 +33,10 @@ test.describe("authenticated mobile dashboard smoke", () => {
 
     await expect(page).toHaveURL(`${baseUrl}/dashboard`);
     await expect(page.getByTestId("mobile-home-wallet")).toBeVisible();
+    await expect(page.locator('[data-map-renderer="custom-globe"]')).toHaveAttribute(
+      "data-map-system",
+      "almidy-map-system"
+    );
     await expectCollapsedWalletSheet(page);
     await expect(page.getByTestId("mobile-trips-country-map-screen")).toHaveCount(0);
   });
@@ -44,6 +48,10 @@ test.describe("authenticated mobile dashboard smoke", () => {
     await expect(page.getByTestId("mobile-trips-country-map-screen")).toBeVisible({
       timeout: 20_000
     });
+    await expect(page.getByTestId("mobile-country-map-canvas")).toHaveAttribute(
+      "data-map-system",
+      "almidy-map-system"
+    );
     await expect(page.getByTestId("mobile-country-sheet")).toBeVisible();
     await expect(page.getByTestId("mobile-country-sheet").getByTestId("mobile-home-wallet-content")).toBeVisible();
     await expectCollapsedWalletSheet(page, "trips");

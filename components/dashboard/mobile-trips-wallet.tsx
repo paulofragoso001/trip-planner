@@ -13,6 +13,10 @@ import { cn } from "@/components/trip-ui";
 import type { DashboardRecentTripView } from "@/app/dashboard/loader";
 import type { TripsData } from "@/app/dashboard/trips/loader";
 import { dashboardActionRoutes } from "@/lib/dashboard/action-routes";
+import {
+  ALMIDY_MAP_SYSTEM_ID,
+  almidyGoogleCountryMapStyles
+} from "@/lib/map/almidy-map-visuals";
 import { unifiedMapSurfaceEnabled } from "@/lib/map/feature-flags";
 import {
   UnifiedMapProvider,
@@ -299,6 +303,7 @@ function MobileCountryMapCanvas({ trips }: { trips: Trip[] }) {
     return (
       <div
         className="absolute inset-0 z-0 overflow-hidden bg-slate-950"
+        data-map-system={ALMIDY_MAP_SYSTEM_ID}
         data-testid="mobile-country-map-canvas"
       >
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_19%_18%,rgba(20,184,166,0.32),transparent_27%),radial-gradient(circle_at_62%_28%,rgba(37,99,235,0.38),transparent_32%),linear-gradient(180deg,#0b1d2d,#06101d_58%,#020617)]" />
@@ -330,6 +335,7 @@ function LoadedMobileCountryMap({ trips }: { trips: Trip[] }) {
   return (
     <div
       className="absolute inset-0 z-0 overflow-hidden bg-slate-950"
+      data-map-system={ALMIDY_MAP_SYSTEM_ID}
       data-testid="mobile-country-map-canvas"
     >
       {mapReady ? (
@@ -355,7 +361,7 @@ function LoadedMobileCountryMap({ trips }: { trips: Trip[] }) {
               },
               strictBounds: false
             },
-            styles: darkCountryMapStyles,
+            styles: almidyGoogleCountryMapStyles,
             zoomControl: false
           }}
           zoom={3}
@@ -602,18 +608,3 @@ function startOfDayUtc(value: string) {
   const date = new Date(`${value}T00:00:00.000Z`);
   return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
 }
-
-const darkCountryMapStyles: google.maps.MapTypeStyle[] = [
-  { elementType: "geometry", stylers: [{ color: "#07162d" }] },
-  { elementType: "labels.text.fill", stylers: [{ color: "#cbd5e1" }] },
-  { elementType: "labels.text.stroke", stylers: [{ color: "#020617" }, { weight: 4 }] },
-  { featureType: "administrative.country", elementType: "geometry.stroke", stylers: [{ color: "#334155" }] },
-  { featureType: "administrative.land_parcel", stylers: [{ visibility: "off" }] },
-  { featureType: "landscape", elementType: "geometry", stylers: [{ color: "#123f45" }] },
-  { featureType: "landscape.natural", elementType: "geometry", stylers: [{ color: "#0f4c4f" }] },
-  { featureType: "poi", stylers: [{ visibility: "off" }] },
-  { featureType: "road", stylers: [{ visibility: "off" }] },
-  { featureType: "transit", stylers: [{ visibility: "off" }] },
-  { featureType: "water", elementType: "geometry", stylers: [{ color: "#061331" }] },
-  { featureType: "water", elementType: "labels.text.fill", stylers: [{ color: "#2f5aa8" }] }
-];

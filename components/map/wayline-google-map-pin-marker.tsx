@@ -1,6 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import {
+  ALMIDY_MAP_SYSTEM_ID,
+  almidyMapPinColor
+} from "@/lib/map/almidy-map-visuals";
 import { pinDisplayLabel, pinGlyph } from "@/lib/map/wayline-map-pins";
 import type { AlmidyMapPin } from "@/lib/map/wayline-map-models";
 
@@ -79,6 +83,7 @@ export function AlmidyGoogleMapPinMarker({
         aria-label={`Open ${pin.label}`}
         className={markerClassName}
         {...markerDataAttributes}
+        data-map-system={ALMIDY_MAP_SYSTEM_ID}
         data-testid={testId}
         href={href}
         title={pin.label}
@@ -93,6 +98,7 @@ export function AlmidyGoogleMapPinMarker({
       aria-label={`Select ${pin.label}`}
       className={markerClassName}
       {...markerDataAttributes}
+      data-map-system={ALMIDY_MAP_SYSTEM_ID}
       data-testid={testId}
       onClick={() => onSelect?.(pin.id)}
       title={pin.label}
@@ -104,10 +110,5 @@ export function AlmidyGoogleMapPinMarker({
 }
 
 function markerColor(pin: AlmidyMapPin) {
-  if (pin.tone === "emerald") return "#059669";
-  if (pin.tone === "purple") return "#7c3aed";
-  if (pin.tone === "blue") return "#2563eb";
-  if (pin.tone === "slate") return "#0f172a";
-  if (pin.tone === "white") return "#ffffff";
-  return "#f97316";
+  return almidyMapPinColor(pin.tone);
 }

@@ -13,6 +13,12 @@ import {
   type TripRouteEndpoint,
   type TripSegmentRouteMetadata
 } from "@/lib/trip-segment-route";
+import {
+  ALMIDY_MAP_SYSTEM_ID,
+  almidyGoogleMapDarkStyles,
+  almidyMapColors,
+  almidyMapPinColor
+} from "@/lib/map/almidy-map-visuals";
 
 export type TripMapItem = {
   address?: string | null;
@@ -171,7 +177,7 @@ export default function TripMap({
   const googleMaps = window.google.maps;
 
   return (
-    <div data-map-theme={mapTheme} data-testid="trip-map-canvas">
+    <div data-map-system={ALMIDY_MAP_SYSTEM_ID} data-map-theme={mapTheme} data-testid="trip-map-canvas">
       <GoogleMap
         center={center}
         mapContainerStyle={containerStyle}
@@ -179,14 +185,14 @@ export default function TripMap({
           mapRef.current = map;
         }}
         options={{
-          backgroundColor: mapTheme === "dark" ? "#07182b" : undefined,
+          backgroundColor: mapTheme === "dark" ? almidyMapColors.background : undefined,
           colorScheme: mapTheme === "dark" ? googleMaps.ColorScheme?.DARK : undefined,
           clickableIcons: true,
           fullscreenControl: false,
           gestureHandling: "greedy",
           mapTypeControl: false,
           streetViewControl: false,
-          styles: mapTheme === "dark" ? darkMapStyles : undefined,
+          styles: mapTheme === "dark" ? almidyGoogleMapDarkStyles : undefined,
           zoomControl: mapTheme === "dark" ? false : undefined
         }}
         zoom={12}
@@ -225,7 +231,7 @@ export default function TripMap({
             path={routePath}
             options={{
               geodesic: true,
-              strokeColor: "#2563eb",
+              strokeColor: almidyMapColors.routeMuted,
               strokeOpacity: 0.82,
               strokeWeight: 5
             }}
@@ -249,7 +255,7 @@ export default function TripMap({
                 path={[originPosition, destinationPosition]}
                 options={{
                   geodesic: true,
-                  strokeColor: active ? "#059669" : "#0f172a",
+                  strokeColor: active ? almidyMapColors.routeResolvedActive : almidyMapColors.routeResolved,
                   strokeOpacity: active ? 0.88 : 0.62,
                   strokeWeight: active ? 5 : 4
                 }}
@@ -292,9 +298,10 @@ export default function TripMap({
                 "grid place-items-center rounded-full border-2 border-white text-sm font-black text-white shadow-lg transition",
                 active ? "h-11 w-11 ring-4 ring-green-200" : "h-9 w-9 hover:scale-105"
               ].join(" ")}
+              data-map-system={ALMIDY_MAP_SYSTEM_ID}
               onClick={() => onSelect?.(item.id)}
               style={{
-                backgroundColor: active ? "#16a34a" : colorForMarker(item),
+                backgroundColor: active ? almidyMapColors.pinEmerald : colorForMarker(item),
                 transform: "translate(-50%, -50%)"
               }}
               title={`${order}. ${item.title}`}
@@ -366,9 +373,10 @@ function EndpointMarker({
           "grid place-items-center rounded-full border-2 border-white text-[11px] font-black text-white shadow-lg transition",
           active ? "h-11 min-w-11 px-2 ring-4 ring-emerald-200" : "h-9 min-w-9 px-2 hover:scale-105"
         ].join(" ")}
+        data-map-system={ALMIDY_MAP_SYSTEM_ID}
         onClick={() => onSelect?.(item.id)}
         style={{
-          backgroundColor: active ? "#059669" : "#0f172a",
+          backgroundColor: active ? almidyMapColors.routeResolvedActive : almidyMapColors.routeResolved,
           transform: "translate(-50%, -50%)"
         }}
         title={`${label}: ${title}`}
@@ -382,19 +390,20 @@ function EndpointMarker({
 
 function colorForMarker(item: TripMapItem) {
   const text = `${item.category || ""} ${item.status || ""}`.toLowerCase();
-  if (hasResolvedRoute(item.route)) return "#0f172a";
-  if (text.includes("restaurant") || text.includes("dinner") || text.includes("food")) return "#7c3aed";
-  if (text.includes("park") || text.includes("garden")) return "#059669";
+  if (hasResolvedRoute(item.route)) return almidyMapColors.routeResolved;
+  if (text.includes("restaurant") || text.includes("dinner") || text.includes("food")) return almidyMapPinColor("purple");
+  if (text.includes("park") || text.includes("garden")) return almidyMapPinColor("emerald");
   if (text.includes("shopping")) return "#db2777";
-  if (text.includes("tour") || text.includes("activity")) return "#2563eb";
+  if (text.includes("tour") || text.includes("activity")) return almidyMapPinColor("blue");
   if (text.includes("unscheduled")) return "#64748b";
-  return "#2563eb";
+  return almidyMapPinColor("blue");
 }
 
 function MapUnavailable({ height, message }: { height: number | string; message: string }) {
   return (
     <div
       className="grid place-items-center bg-slate-100 p-6 text-center text-sm font-bold text-slate-600"
+      data-map-system={ALMIDY_MAP_SYSTEM_ID}
       style={{ height: typeof height === "number" ? `${height}px` : height }}
     >
       <p className="max-w-sm">{message}</p>
@@ -515,65 +524,3 @@ function formatDistance(meters: number) {
     maximumFractionDigits: miles >= 10 ? 0 : 1
   }).format(miles) + " mi";
 }
-
-const darkMapStyles: google.maps.MapTypeStyle[] = [
-  { elementType: "geometry", stylers: [{ color: "#172238" }] },
-  { elementType: "labels.icon", stylers: [{ visibility: "off" }] },
-  { elementType: "labels.text.fill", stylers: [{ color: "#cbd5e1" }] },
-  { elementType: "labels.text.stroke", stylers: [{ color: "#07111f" }, { weight: 3 }] },
-  {
-    featureType: "administrative",
-    elementType: "geometry.stroke",
-    stylers: [{ color: "#334155" }]
-  },
-  {
-    featureType: "landscape.natural",
-    elementType: "geometry",
-    stylers: [{ color: "#123138" }]
-  },
-  {
-    featureType: "poi",
-    elementType: "geometry",
-    stylers: [{ color: "#16323a" }]
-  },
-  {
-    featureType: "poi",
-    elementType: "labels.text.fill",
-    stylers: [{ color: "#f59e0b" }]
-  },
-  {
-    featureType: "poi.park",
-    elementType: "geometry",
-    stylers: [{ color: "#0f3b35" }]
-  },
-  {
-    featureType: "road",
-    elementType: "geometry",
-    stylers: [{ color: "#2b3a55" }]
-  },
-  {
-    featureType: "road",
-    elementType: "geometry.stroke",
-    stylers: [{ color: "#0f172a" }]
-  },
-  {
-    featureType: "road",
-    elementType: "labels.text.fill",
-    stylers: [{ color: "#94a3b8" }]
-  },
-  {
-    featureType: "transit",
-    elementType: "geometry",
-    stylers: [{ color: "#1e293b" }]
-  },
-  {
-    featureType: "water",
-    elementType: "geometry",
-    stylers: [{ color: "#071331" }]
-  },
-  {
-    featureType: "water",
-    elementType: "labels.text.fill",
-    stylers: [{ color: "#60a5fa" }]
-  }
-];

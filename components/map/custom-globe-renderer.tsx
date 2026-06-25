@@ -1,6 +1,7 @@
 "use client";
 
 import { Photorealistic3DHomeHero } from "@/components/dashboard/photorealistic-3d-home-hero";
+import { ALMIDY_MAP_SYSTEM_ID } from "@/lib/map/almidy-map-visuals";
 import { useOptionalUnifiedMap } from "@/lib/map/unified-map-provider";
 import type { AlmidyMapSurfaceState } from "@/lib/map/wayline-map-models";
 
@@ -21,6 +22,7 @@ export function CustomGlobeRenderer({
       className="absolute inset-0"
       data-map-mode={activeSurface?.mode ?? "globe"}
       data-map-renderer="custom-globe"
+      data-map-system={ALMIDY_MAP_SYSTEM_ID}
       data-selected-map-id={activeSurface?.selectedId ?? undefined}
     >
       <Photorealistic3DHomeHero
