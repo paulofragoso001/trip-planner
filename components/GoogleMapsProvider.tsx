@@ -8,8 +8,10 @@ import { ALMIDY_MAP_SYSTEM_ID } from "@/lib/map/almidy-map-visuals";
 
 type GoogleMapsProviderProps = {
   blockChildrenOnError?: boolean;
+  blockChildrenUntilLoaded?: boolean;
   children: ReactNode;
   fallback?: ReactNode;
+  loadingFallback?: ReactNode;
 };
 
 type GoogleMapsLoaderProps = GoogleMapsProviderProps & {
@@ -29,8 +31,10 @@ const GOOGLE_MAPS_AUTH_FAILURE_EVENT = "almidy:google-maps-auth-failure";
 function GoogleMapsLoader({
   apiKey,
   blockChildrenOnError = false,
+  blockChildrenUntilLoaded = false,
   children,
-  fallback
+  fallback,
+  loadingFallback
 }: GoogleMapsLoaderProps) {
   const [runtimeAuthFailed, setRuntimeAuthFailed] = useState(false);
   const { isLoaded, loadError } = useJsApiLoader({
@@ -81,6 +85,10 @@ function GoogleMapsLoader({
   }
 
   if (!isLoaded) {
+    if (blockChildrenUntilLoaded) {
+      return loadingFallback ?? fallback ?? <GoogleMapsSurfaceFallback />;
+    }
+
     return (
       <>
         <MapWarning>
@@ -143,8 +151,10 @@ export function GoogleMapsSurfaceFallback({
 
 export default function GoogleMapsProvider({
   blockChildrenOnError = false,
+  blockChildrenUntilLoaded = false,
   children,
-  fallback
+  fallback,
+  loadingFallback
 }: GoogleMapsProviderProps) {
   const pathname = usePathname();
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
@@ -173,7 +183,9 @@ export default function GoogleMapsProvider({
     <GoogleMapsLoader
       apiKey={apiKey!}
       blockChildrenOnError={blockChildrenOnError}
+      blockChildrenUntilLoaded={blockChildrenUntilLoaded}
       fallback={fallback}
+      loadingFallback={loadingFallback}
     >
       {children}
     </GoogleMapsLoader>

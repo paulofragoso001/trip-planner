@@ -1,8 +1,14 @@
 "use client";
 
+import {
+  GoogleMap,
+  OverlayView
+} from "@react-google-maps/api";
 import Image from "next/image";
-import type { CSSProperties } from "react";
-import { useEffect, useState } from "react";
+import type { CSSProperties, ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import GoogleMapsProvider from "@/components/GoogleMapsProvider";
+import { ALMIDY_MAP_SYSTEM_ID } from "@/lib/map/almidy-map-visuals";
 import { countryCodeToFlag } from "@/lib/map/wayline-map-pins";
 import type {
   AlmidyLocationState,
@@ -18,8 +24,8 @@ type AlmidyLaunchGlobeProps = {
   pins?: AlmidyMapPin[];
 };
 
-type HeroState = "custom-globe";
-type LaunchPhase = "custom-globe";
+type HeroState = "custom-globe" | "google-launch-globe";
+type LaunchPhase = "custom-globe" | "google-launch-globe";
 
 type CountryFocus = {
   altitude: number;
@@ -130,8 +136,11 @@ export function AlmidyLaunchGlobe({
 }: AlmidyLaunchGlobeProps) {
   const [country, setCountry] = useState<CountryFocus>(DEFAULT_COUNTRY);
   const [reduceMotion, setReduceMotion] = useState(false);
-  const heroState: HeroState = "custom-globe";
-  const launchPhase: LaunchPhase = "custom-globe";
+  const focus = country;
+  const showPin = true;
+  const googleFocus = focus.source === "user" ? focus : null;
+  const heroState: HeroState = googleFocus ? "google-launch-globe" : "custom-globe";
+  const launchPhase: LaunchPhase = googleFocus ? "google-launch-globe" : "custom-globe";
 
   function setLocationFocus(nextCountry: CountryFocus) {
     setCountry((currentCountry) => (shouldUpdateFocus(currentCountry, nextCountry) ? nextCountry : currentCountry));
@@ -182,26 +191,62 @@ export function AlmidyLaunchGlobe({
     };
   }, [launchPhase, reduceMotion]);
 
-  const focus = country;
-  const showPin = true;
+  const fallbackGlobe = (
+    <AlmidyLaunchGlobeFallback
+      className={className}
+      focus={focus}
+      heroState="custom-globe"
+      launchPhase="custom-globe"
+      reduceMotion={reduceMotion}
+      showPin={showPin}
+    />
+  );
+
+  if (!googleFocus) {
+    return fallbackGlobe;
+  }
 
   return (
-    <div
-      aria-hidden="true"
-      className={[
-        "absolute inset-0 overflow-hidden bg-black",
-        className
-      ]
-        .filter(Boolean)
-        .join(" ")}
-      data-home-hero-mode={`home-hero-mode: ${reduceMotion ? "reduced-motion" : "almidy-owned"}`}
-      data-hero-mode={heroState}
-      data-launch-phase={launchPhase}
-      data-testid="almidy-launch-globe"
-      style={{
-        "--wayline-pin-x": `${focus.pinX}%`,
-        "--wayline-pin-y": `${focus.source === "user" ? focus.pinY : focus.pinY - HERO_EARTH_Y_NUDGE_PERCENT}%`
-      } as CSSProperties}
+    <GoogleMapsProvider
+      blockChildrenOnError
+      blockChildrenUntilLoaded
+      fallback={fallbackGlobe}
+      loadingFallback={fallbackGlobe}
+    >
+      <GoogleBackedLaunchGlobe
+        className={className}
+        fallback={fallbackGlobe}
+        focus={googleFocus}
+        heroState={heroState}
+        launchPhase={launchPhase}
+        reduceMotion={reduceMotion}
+      />
+    </GoogleMapsProvider>
+  );
+}
+
+function AlmidyLaunchGlobeFallback({
+  className,
+  focus,
+  heroState,
+  launchPhase,
+  reduceMotion,
+  showPin
+}: {
+  className?: string;
+  focus: CountryFocus;
+  heroState: HeroState;
+  launchPhase: LaunchPhase;
+  reduceMotion: boolean;
+  showPin: boolean;
+}) {
+  return (
+    <LaunchGlobeShell
+      className={className}
+      focus={focus}
+      heroState={heroState}
+      launchPhase={launchPhase}
+      reduceMotion={reduceMotion}
     >
       <div className="absolute inset-0" data-testid="earth-only-visual">
         <HomeHeroCustomGlobe reduceMotion={reduceMotion} />
@@ -233,6 +278,158 @@ export function AlmidyLaunchGlobe({
       ) : null}
       <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-32 bg-[linear-gradient(180deg,rgba(0,0,0,0.86),rgba(0,0,0,0.38)_42%,transparent)]" />
       <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-[30%] bg-[linear-gradient(180deg,transparent,rgba(0,0,0,0.36)_58%,rgba(0,0,0,0.74)_100%)]" />
+    </LaunchGlobeShell>
+  );
+}
+
+function GoogleBackedLaunchGlobe({
+  className,
+  fallback,
+  focus,
+  heroState,
+  launchPhase,
+  reduceMotion
+}: {
+  className?: string;
+  fallback: ReactNode;
+  focus: CountryFocus;
+  heroState: HeroState;
+  launchPhase: LaunchPhase;
+  reduceMotion: boolean;
+}) {
+  const mapRef = useRef<google.maps.Map | null>(null);
+  const center = useMemo(() => ({ lat: focus.lat, lng: focus.lng }), [focus.lat, focus.lng]);
+  const mapReady =
+    typeof window !== "undefined" &&
+    typeof window.google?.maps?.Map === "function";
+  const containerStyle = useMemo(() => ({ height: "100%", width: "100%" }), []);
+
+  const syncCamera = useCallback((map: google.maps.Map) => {
+    map.panTo(center);
+    map.setZoom(3);
+    if (typeof map.setTilt === "function") {
+      map.setTilt(45);
+    }
+  }, [center]);
+
+  useEffect(() => {
+    if (mapRef.current) {
+      syncCamera(mapRef.current);
+    }
+  }, [syncCamera]);
+
+  if (!mapReady) {
+    return fallback;
+  }
+
+  return (
+    <LaunchGlobeShell
+      className={className}
+      focus={focus}
+      heroState={heroState}
+      launchPhase={launchPhase}
+      reduceMotion={reduceMotion}
+    >
+      <div
+        className="absolute inset-0 z-[1] overflow-hidden bg-black"
+        data-map-renderer="google-map"
+        data-map-system="almidy-launch-google-globe"
+        data-testid="almidy-launch-google-globe"
+      >
+        <GoogleMap
+          center={center}
+          mapContainerStyle={containerStyle}
+          onLoad={(map) => {
+            mapRef.current = map;
+            syncCamera(map);
+          }}
+          options={{
+            backgroundColor: "#000000",
+            clickableIcons: false,
+            disableDefaultUI: true,
+            fullscreenControl: false,
+            gestureHandling: "greedy",
+            heading: 0,
+            keyboardShortcuts: false,
+            mapTypeControl: false,
+            mapTypeId: "hybrid",
+            rotateControl: false,
+            scaleControl: false,
+            streetViewControl: false,
+            tilt: 45,
+            zoomControl: false
+          }}
+          zoom={3}
+        >
+          <OverlayView mapPaneName={OverlayView.OVERLAY_MOUSE_TARGET} position={center}>
+            <LaunchLocationMarker focus={focus} />
+          </OverlayView>
+        </GoogleMap>
+      </div>
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 z-10 bg-[linear-gradient(180deg,rgba(0,0,0,0.72)_0%,rgba(0,0,0,0.08)_19%,rgba(0,0,0,0)_58%,rgba(0,0,0,0.46)_100%)]"
+      />
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-32 bg-[linear-gradient(180deg,rgba(0,0,0,0.9),rgba(0,0,0,0.32)_48%,transparent)]" />
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-[24%] bg-[linear-gradient(180deg,transparent,rgba(0,0,0,0.36)_58%,rgba(0,0,0,0.72)_100%)]" />
+    </LaunchGlobeShell>
+  );
+}
+
+function LaunchGlobeShell({
+  children,
+  className,
+  focus,
+  heroState,
+  launchPhase,
+  reduceMotion
+}: {
+  children: ReactNode;
+  className?: string;
+  focus: CountryFocus;
+  heroState: HeroState;
+  launchPhase: LaunchPhase;
+  reduceMotion: boolean;
+}) {
+  return (
+    <div
+      aria-hidden="true"
+      className={[
+        "absolute inset-0 overflow-hidden bg-black",
+        className
+      ]
+        .filter(Boolean)
+        .join(" ")}
+      data-home-hero-mode={`home-hero-mode: ${reduceMotion ? "reduced-motion" : "almidy-owned"}`}
+      data-hero-mode={heroState}
+      data-launch-phase={launchPhase}
+      data-map-system={heroState === "google-launch-globe" ? "almidy-launch-google-globe" : ALMIDY_MAP_SYSTEM_ID}
+      data-testid="almidy-launch-globe"
+      style={{
+        "--wayline-pin-x": `${focus.pinX}%`,
+        "--wayline-pin-y": `${focus.source === "user" ? focus.pinY : focus.pinY - HERO_EARTH_Y_NUDGE_PERCENT}%`
+      } as CSSProperties}
+    >
+      {children}
+    </div>
+  );
+}
+
+function LaunchLocationMarker({ focus }: { focus: CountryFocus }) {
+  return (
+    <div
+      className="wayline-country-pin pointer-events-none -translate-x-1/2 -translate-y-1/2 text-center"
+      data-country-code={focus.code}
+      data-location-source={focus.source ?? "country"}
+      data-user-latitude={focus.source === "user" ? focus.lat.toFixed(5) : undefined}
+      data-user-longitude={focus.source === "user" ? focus.lng.toFixed(5) : undefined}
+      data-pin-coordinate={`${focus.lat.toFixed(5)},${focus.lng.toFixed(5)}`}
+      data-testid="mobile-home-country-pin"
+    >
+      <div className="mx-auto h-6 w-6 rounded-full border-[3px] border-white bg-orange-500 shadow-[0_4px_14px_rgba(0,0,0,0.48),0_0_18px_rgba(255,114,42,0.62)]" />
+      <div className="sr-only" data-testid="mobile-home-country-name">
+        {focus.name}
+      </div>
     </div>
   );
 }

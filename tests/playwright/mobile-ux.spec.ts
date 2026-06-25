@@ -1092,14 +1092,13 @@ test.describe("mobile soft-launch UX", () => {
     expect(planCardStyle.color).toBe("rgb(255, 255, 255)");
   });
 
-  test("mobile home Almidy-owned globe uses granted browser location for pin", async ({ page }) => {
+  test("mobile home launch globe uses granted browser location for pin", async ({ page }) => {
     await page.setViewportSize({ height: 900, width: 390 });
     await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
     await installMockMobileLocation(page);
 
     await page.goto(baseUrl + "/dashboard", { waitUntil: "commit" });
     await expect(page.getByTestId("almidy-launch-globe")).toBeVisible();
-    await expectNoHomeGoogleMapsScripts(page);
     await expectNoHomeGoogleMapsCopy(page);
     await expect(page.getByTestId("mobile-home-country-pin")).toBeVisible({ timeout: 5_000 });
     await expect(page.getByTestId("mobile-home-country-pin")).toHaveAttribute("data-location-source", "user");
@@ -1107,6 +1106,49 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByTestId("mobile-home-country-pin")).toHaveAttribute("data-user-longitude", "-80.19180");
     await expect(page.getByTestId("mobile-home-country-pin")).toHaveAttribute("data-pin-coordinate", "25.76170,-80.19180");
     await expect(page.getByTestId("mobile-home-country-name")).toHaveText("United States");
+
+    const launchMode = await page.getByTestId("almidy-launch-globe").getAttribute("data-hero-mode");
+    if (await page.getByTestId("almidy-launch-google-globe").count()) {
+      expect(launchMode).toBe("google-launch-globe");
+      await expect(page.getByTestId("almidy-launch-google-globe")).toHaveAttribute(
+        "data-map-system",
+        "almidy-launch-google-globe"
+      );
+    } else {
+      expect(launchMode).toBe("custom-globe");
+      await expect(page.getByTestId("almidy-custom-globe")).toBeVisible();
+    }
+  });
+
+  test("mobile launch globe falls back when Google Maps auth fails", async ({ page }) => {
+    await page.setViewportSize({ height: 900, width: 390 });
+    await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
+    await installMockMobileLocation(page);
+
+    await page.goto(baseUrl + "/dashboard", { waitUntil: "commit" });
+    await expect(page.getByTestId("mobile-home-wallet")).toBeVisible();
+    await expect(page.getByTestId("mobile-home-country-pin")).toHaveAttribute("data-location-source", "user", {
+      timeout: 10_000
+    });
+
+    if (await page.getByTestId("almidy-custom-globe").count() === 0) {
+      await page.waitForFunction(
+        () => typeof (window as typeof window & { gm_authFailure?: () => void }).gm_authFailure === "function",
+        undefined,
+        { timeout: 15_000 }
+      );
+      await page.evaluate(() => {
+        (window as typeof window & { gm_authFailure?: () => void }).gm_authFailure?.();
+      });
+    }
+
+    await expect(page.getByTestId("almidy-custom-globe")).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByTestId("home-custom-globe")).toBeVisible();
+    await expectNoHomeGoogleMapsCopy(page);
+    const bodyText = await page.locator("body").innerText();
+    expect(bodyText).not.toContain("Oops! Something went wrong.");
+    expect(bodyText).not.toContain("This page didn't load Google Maps correctly.");
+    expect(bodyText).not.toContain("This page didn\u2019t load Google Maps correctly.");
   });
 
   test("dashboard and trips use the same shared user country pin data", async ({ page }) => {
