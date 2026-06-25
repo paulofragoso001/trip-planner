@@ -19,9 +19,12 @@ export function HomeSmartStart() {
   const [destination, setDestination] = useState("");
   const [destinationSelection, setDestinationSelection] =
     useState<LocationSelection | null>(null);
+  const [placesEnabled, setPlacesEnabled] = useState(false);
   const { isPending, run, state } = useAlmidyAction<CreateTripResponse>();
   const canCreate = destination.trim().length > 1 && !isPending;
   const createLabel = isPending ? "Creating..." : "Create trip";
+  const destinationInputClassName =
+    "w-full min-h-12 rounded-2xl border-0 bg-slate-50 px-4 py-3 text-base font-black text-slate-950 outline-none ring-1 ring-slate-200 transition placeholder:text-slate-400 focus:bg-white focus:ring-4 focus:ring-blue-100";
 
   async function createTrip(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -70,25 +73,42 @@ export function HomeSmartStart() {
             <MapPin aria-hidden="true" className="h-3.5 w-3.5 text-blue-600" />
             Where are you headed?
           </span>
-          <GoogleMapsProvider>
-            <LocationAutocomplete
-              ariaLabel="Where are you headed?"
-              inputClassName="w-full min-h-12 rounded-2xl border-0 bg-slate-50 px-4 py-3 text-base font-black text-slate-950 outline-none ring-1 ring-slate-200 transition placeholder:text-slate-400 focus:bg-white focus:ring-4 focus:ring-blue-100"
-              loadingMessage="Places are loading. You can still type a destination."
-              manualWarning="You can create the trip now, or select a suggested place for better maps."
+          {placesEnabled ? (
+            <GoogleMapsProvider>
+              <LocationAutocomplete
+                ariaLabel="Where are you headed?"
+                inputClassName={destinationInputClassName}
+                loadingMessage="Places are loading. You can still type a destination."
+                manualWarning="You can create the trip now, or select a suggested place for better maps."
+                name="home-destination"
+                onInputChange={(value) => {
+                  setDestination(value);
+                  setDestinationSelection(null);
+                }}
+                onSelect={(location) => {
+                  setDestination(location.address);
+                  setDestinationSelection(location);
+                }}
+                placeholder="Search Miami, Tokyo, San Francisco..."
+                value={destination}
+              />
+            </GoogleMapsProvider>
+          ) : (
+            <input
+              aria-label="Where are you headed?"
+              className={destinationInputClassName}
               name="home-destination"
-              onInputChange={(value) => {
-                setDestination(value);
+              onChange={(event) => {
+                setDestination(event.target.value);
                 setDestinationSelection(null);
               }}
-              onSelect={(location) => {
-                setDestination(location.address);
-                setDestinationSelection(location);
-              }}
+              onFocus={() => setPlacesEnabled(true)}
+              onPointerDown={() => setPlacesEnabled(true)}
               placeholder="Search Miami, Tokyo, San Francisco..."
+              type="text"
               value={destination}
             />
-          </GoogleMapsProvider>
+          )}
         </label>
 
         <button

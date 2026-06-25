@@ -46,6 +46,17 @@ async function expectNoHomeGoogleMapsCopy(page: Page) {
   expect(bodyText).not.toContain("Google Maps");
 }
 
+async function expectNoHomeGoogleMapsScripts(page: Page) {
+  const googleMapsScripts = await page.evaluate(() =>
+    Array.from(document.scripts)
+      .map((script) => script.src)
+      .filter((src) => src.includes("maps.googleapis.com") || src.includes("maps.gstatic.com"))
+  );
+
+  expect(googleMapsScripts).toEqual([]);
+  await expect(page.locator("gmp-map-3d")).toHaveCount(0);
+}
+
 type MockLocationPermission = "granted" | "denied";
 
 async function installMockMobileLocation(
@@ -321,12 +332,13 @@ test.describe("mobile soft-launch UX", () => {
     await page.goto(`${baseUrl}/dashboard/trips?view=list`, { waitUntil: "commit" });
     const firstTripState = page.getByTestId("mobile-first-trip-state");
     const tripWallet = page.getByTestId("mobile-trips-wallet");
-    await expect(page.getByRole("heading", { name: "My Trips" })).toBeVisible();
-    await expect(page.getByPlaceholder("Search for trips")).toBeVisible();
-    await expect(page.getByTestId("mobile-trips-wallet-background").locator("img")).toHaveCount(0);
+    await expect(page.getByTestId("app-shell-root")).toBeVisible({ timeout: 20_000 });
     await expect(
       page.locator('[data-testid="mobile-first-trip-state"], [data-testid="mobile-trips-wallet"]').first()
     ).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByRole("heading", { name: "My Trips" })).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByPlaceholder("Search for trips")).toBeVisible();
+    await expect(page.getByTestId("mobile-trips-wallet-background").locator("img")).toHaveCount(0);
 
     if (await firstTripState.isVisible()) {
       await expect(firstTripState.getByRole("heading", { name: "Create your first trip" })).toBeVisible();
@@ -697,6 +709,13 @@ test.describe("mobile soft-launch UX", () => {
   test("home launch uses Almidy-owned globe before wallet actions", async ({ page }) => {
     await page.setViewportSize({ height: 900, width: 390 });
     await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
+    const googleMapsRequests: string[] = [];
+    page.on("request", (request) => {
+      const url = request.url();
+      if (url.includes("maps.googleapis.com") || url.includes("maps.gstatic.com")) {
+        googleMapsRequests.push(url);
+      }
+    });
     await page.addInitScript(() => {
       Object.defineProperty(navigator, "language", { configurable: true, value: "en-US" });
       Object.defineProperty(navigator, "languages", { configurable: true, value: ["en-US", "en"] });
@@ -718,6 +737,8 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByTestId("home-3d-loading")).toHaveCount(0);
     await expect(page.getByTestId("home-3d-map")).toHaveCount(0);
     await expectNoHomeGoogleMapsCopy(page);
+    await expectNoHomeGoogleMapsScripts(page);
+    expect(googleMapsRequests, "home launch must not request Google Maps scripts").toEqual([]);
     await expect(page.getByTestId("mobile-home-globe")).toHaveCount(0);
     await expect(page.getByTestId("mobile-home-earth-photorealistic")).toHaveCount(0);
     await expect(page.getByTestId("mobile-home-earth-image")).toHaveCount(0);
