@@ -18,8 +18,8 @@ type Photorealistic3DHomeHeroProps = {
   pins?: AlmidyMapPin[];
 };
 
-type HeroState = "fallback";
-type LaunchPhase = "fallback";
+type HeroState = "custom-globe";
+type LaunchPhase = "custom-globe";
 
 type CountryFocus = {
   altitude: number;
@@ -107,8 +107,8 @@ export function Photorealistic3DHomeHero({
 }: Photorealistic3DHomeHeroProps) {
   const [country, setCountry] = useState<CountryFocus>(DEFAULT_COUNTRY);
   const [reduceMotion, setReduceMotion] = useState(false);
-  const heroState: HeroState = "fallback";
-  const launchPhase: LaunchPhase = "fallback";
+  const heroState: HeroState = "custom-globe";
+  const launchPhase: LaunchPhase = "custom-globe";
 
   function setLocationFocus(nextCountry: CountryFocus) {
     setCountry((currentCountry) => (shouldUpdateFocus(currentCountry, nextCountry) ? nextCountry : currentCountry));
@@ -182,7 +182,7 @@ export function Photorealistic3DHomeHero({
       } as CSSProperties}
     >
       <div className="absolute inset-0" data-testid="earth-only-visual">
-        <HomeHeroFallback reduceMotion={reduceMotion} />
+        <HomeHeroCustomGlobe reduceMotion={reduceMotion} />
         <div className="hidden" data-testid="home-3d-map-stage" />
       </div>
       <div className="pointer-events-none absolute inset-0 z-10 bg-[radial-gradient(circle_at_var(--wayline-pin-x)_var(--wayline-pin-y),rgba(251,191,36,0.28),transparent_7%),radial-gradient(ellipse_at_50%_0%,rgba(125,194,255,0.22),transparent_33%),linear-gradient(180deg,rgba(2,9,22,0.44)_0%,rgba(2,9,22,0)_18%,rgba(2,8,20,0.1)_56%,rgba(2,8,20,0.68)_100%)]" />
@@ -358,28 +358,47 @@ function degreesToRadians(value: number) {
   return (value * Math.PI) / 180;
 }
 
-function HomeHeroFallback({ reduceMotion }: { reduceMotion: boolean }) {
+function HomeHeroCustomGlobe({ reduceMotion }: { reduceMotion: boolean }) {
   return (
     <div
-      className="absolute inset-0 z-[1] overflow-hidden bg-[radial-gradient(circle_at_50%_0%,rgba(96,165,250,0.22),transparent_25%),radial-gradient(circle_at_14%_14%,rgba(255,255,255,0.18),transparent_1px),radial-gradient(circle_at_82%_18%,rgba(255,255,255,0.16),transparent_1px),radial-gradient(circle_at_22%_32%,rgba(255,255,255,0.12),transparent_1px),radial-gradient(circle_at_74%_5%,rgba(255,255,255,0.18),transparent_1px),#020916]"
-      data-earth-source="almidy-owned-globe"
-      data-testid="earth-static-fallback"
+      className="absolute inset-0 z-[1] overflow-hidden bg-[radial-gradient(circle_at_50%_0%,rgba(96,165,250,0.2),transparent_27%),radial-gradient(circle_at_14%_14%,rgba(255,255,255,0.18),transparent_1px),radial-gradient(circle_at_82%_18%,rgba(255,255,255,0.16),transparent_1px),radial-gradient(circle_at_22%_32%,rgba(255,255,255,0.12),transparent_1px),radial-gradient(circle_at_74%_5%,rgba(255,255,255,0.18),transparent_1px),#020916]"
+      data-earth-source="almidy-custom-globe"
+      data-testid="almidy-custom-globe"
     >
-      <Image
-        alt=""
+      <div className="absolute inset-x-0 top-0 h-36 bg-[linear-gradient(180deg,rgba(2,9,22,0.78),rgba(2,9,22,0))]" />
+      <div
         className={[
-          "absolute left-1/2 top-[8%] h-auto w-[174vw] max-w-[54rem] -translate-x-1/2 opacity-100 brightness-[0.88] contrast-[1.22] saturate-[1.1] drop-shadow-[0_0_46px_rgba(96,165,250,0.34)]",
-          reduceMotion ? "" : "wayline-home-3d-fallback-intro"
+          "absolute left-1/2 top-[5%] aspect-square w-[132vw] max-w-[58rem] -translate-x-1/2 overflow-hidden rounded-full border border-white/10 bg-[#041124] shadow-[inset_-38px_-52px_72px_rgba(0,0,0,0.74),inset_24px_22px_58px_rgba(255,255,255,0.12),0_0_66px_rgba(96,165,250,0.34)]",
+          reduceMotion ? "" : "wayline-home-custom-globe-intro"
         ]
           .filter(Boolean)
           .join(" ")}
-        data-testid="home-3d-fallback-image"
-        height={820}
-        priority
-        sizes="(max-width: 1023px) 112vw, 1px"
-        src="/globe/wayline-earth-3d-fallback.png"
-        width={1200}
-      />
+        data-testid="home-custom-globe"
+      >
+        <Image
+          alt=""
+          className={[
+            "absolute -inset-x-[10%] -inset-y-[4%] h-[112%] w-[124%] object-cover opacity-100 brightness-[0.92] contrast-[1.3] saturate-[1.18]",
+            reduceMotion ? "" : "wayline-home-custom-globe-texture"
+          ]
+            .filter(Boolean)
+            .join(" ")}
+          data-testid="home-custom-globe-texture"
+          height={820}
+          priority
+          sizes="(max-width: 1023px) 132vw, 1px"
+          src="/globe/wayline-earth-3d-fallback.png"
+          width={1200}
+        />
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 rounded-full opacity-22 [background-image:linear-gradient(rgba(255,255,255,.22)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.2)_1px,transparent_1px)] [background-size:12.5%_12.5%]"
+          data-testid="home-custom-globe-grid"
+        />
+        <div className="absolute inset-0 rounded-full bg-[radial-gradient(circle_at_35%_24%,rgba(255,255,255,0.18),transparent_20%),radial-gradient(circle_at_54%_40%,rgba(251,191,36,0.16),transparent_19%),linear-gradient(112deg,rgba(2,9,22,0)_0%,rgba(2,9,22,0.06)_43%,rgba(2,9,22,0.72)_100%)]" />
+        <div className="absolute inset-0 rounded-full ring-1 ring-inset ring-white/18" />
+      </div>
+      <div className="pointer-events-none absolute left-1/2 top-[4%] aspect-square w-[136vw] max-w-[60rem] -translate-x-1/2 rounded-full border border-sky-200/12 bg-[radial-gradient(circle_at_42%_24%,rgba(255,255,255,0.12),transparent_22%),radial-gradient(circle,transparent_56%,rgba(5,12,28,0.62)_75%,rgba(2,9,22,0.9)_100%)] shadow-[0_0_84px_rgba(96,165,250,0.22)]" />
     </div>
   );
 }

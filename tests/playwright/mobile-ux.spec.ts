@@ -732,14 +732,15 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByTestId("mobile-home-3d-hero")).toBeVisible();
     await expect(page.getByTestId("photorealistic-3d-home-hero")).toBeVisible();
     await expect(page.getByTestId("photorealistic-3d-home-hero")).toHaveAttribute("data-3d-enabled", "false");
-    await expect(page.getByTestId("photorealistic-3d-home-hero")).toHaveAttribute("data-hero-mode", "fallback");
+    await expect(page.getByTestId("photorealistic-3d-home-hero")).toHaveAttribute("data-hero-mode", "custom-globe");
     await expect(page.getByTestId("photorealistic-3d-home-hero")).toHaveAttribute(
       "data-home-hero-mode",
       "home-hero-mode: almidy-owned"
     );
     await expect(page.getByTestId("earth-only-visual")).toBeVisible();
-    await expect(page.getByTestId("earth-static-fallback")).toHaveAttribute("data-earth-source", "almidy-owned-globe");
-    await expect(page.getByTestId("home-3d-fallback-image")).toBeVisible();
+    await expect(page.getByTestId("almidy-custom-globe")).toHaveAttribute("data-earth-source", "almidy-custom-globe");
+    await expect(page.getByTestId("home-custom-globe")).toBeVisible();
+    await expect(page.getByTestId("home-custom-globe-texture")).toBeVisible();
     await expect(page.getByTestId("home-3d-loading")).toHaveCount(0);
     await expect(page.getByTestId("home-3d-map")).toHaveCount(0);
     await expectNoHomeGoogleMapsCopy(page);
@@ -771,34 +772,37 @@ test.describe("mobile soft-launch UX", () => {
 
     const heroVisual = await page.getByTestId("photorealistic-3d-home-hero").evaluate((element) => {
       const style = window.getComputedStyle(element);
-      const fallback = element.querySelector<HTMLImageElement>('[data-testid="home-3d-fallback-image"]');
-      const fallbackStyle = fallback ? window.getComputedStyle(fallback) : null;
-      const fallbackRect = fallback?.getBoundingClientRect();
+      const globe = element.querySelector<HTMLElement>('[data-testid="home-custom-globe"]');
+      const globeStyle = globe ? window.getComputedStyle(globe) : null;
+      const globeRect = globe?.getBoundingClientRect();
+      const globeTexture = element.querySelector<HTMLImageElement>('[data-testid="home-custom-globe-texture"]');
       const map = element.querySelector<HTMLElement>('[data-testid="home-3d-map"]');
 
       return {
-        fallbackHeight: fallbackRect?.height ?? 0,
-        fallbackNaturalHeight: fallback?.naturalHeight ?? 0,
-        fallbackNaturalWidth: fallback?.naturalWidth ?? 0,
-        fallbackOpacity: fallbackStyle?.opacity ?? "0",
-        fallbackSrc: fallback?.currentSrc || fallback?.src || "",
+        borderRadius: globeStyle?.borderRadius ?? "",
+        globeHeight: globeRect?.height ?? 0,
+        globeTextureNaturalHeight: globeTexture?.naturalHeight ?? 0,
+        globeTextureNaturalWidth: globeTexture?.naturalWidth ?? 0,
+        globeTextureSrc: globeTexture?.currentSrc || globeTexture?.src || "",
+        globeWidth: globeRect?.width ?? 0,
         mapMounted: Boolean(map),
         mode: element.getAttribute("data-hero-mode") ?? "",
         opacity: style.opacity,
-        width: fallbackRect?.width ?? 0
+        overflow: globeStyle?.overflow ?? ""
       };
     });
-    expect(heroVisual.mode).toBe("fallback");
+    expect(heroVisual.mode).toBe("custom-globe");
     expect(heroVisual.mapMounted, "home launch does not mount Google Maps 3D").toBe(false);
     expect(Number(heroVisual.opacity), "home launch hero opacity").toBeGreaterThan(0.9);
-    expect(heroVisual.width, "home launch visual covers viewport width").toBeGreaterThanOrEqual(390);
-    expect(heroVisual.fallbackHeight, "owned globe covers the launch area").toBeGreaterThanOrEqual(250);
-    expect(heroVisual.fallbackNaturalWidth, "owned globe asset is loaded").toBeGreaterThan(0);
-    expect(Number(heroVisual.fallbackOpacity), "owned globe is visible").toBeGreaterThan(0.9);
-    expect(decodeURIComponent(heroVisual.fallbackSrc), "old baked home hero asset is not used").not.toContain(
+    expect(heroVisual.globeWidth, "custom globe is larger than viewport width").toBeGreaterThanOrEqual(390);
+    expect(heroVisual.globeHeight, "custom globe has spherical height").toBeGreaterThanOrEqual(390);
+    expect(heroVisual.globeTextureNaturalWidth, "custom globe texture is loaded").toBeGreaterThan(0);
+    expect(heroVisual.overflow, "custom globe clips texture to sphere").toBe("hidden");
+    expect(heroVisual.borderRadius, "custom globe is circular").not.toBe("0px");
+    expect(decodeURIComponent(heroVisual.globeTextureSrc), "old baked home hero asset is not used").not.toContain(
       "/globe/wayline-earth-hero"
     );
-    expect(decodeURIComponent(heroVisual.fallbackSrc), "old cropped home earth asset is not used").not.toContain(
+    expect(decodeURIComponent(heroVisual.globeTextureSrc), "old cropped home earth asset is not used").not.toContain(
       "/globe/wayline-earth-visual"
     );
     const homeLaunchLayout = await page.evaluate(() => {
@@ -1291,17 +1295,18 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByTestId("home-3d-map-stage")).toBeHidden();
     await expect(page.getByTestId("mobile-home-globe")).toHaveCount(0);
     await expect(page.getByTestId("earth-only-visual")).toBeVisible();
-    await expect(page.getByTestId("photorealistic-3d-home-hero")).toHaveAttribute("data-hero-mode", "fallback");
+    await expect(page.getByTestId("photorealistic-3d-home-hero")).toHaveAttribute("data-hero-mode", "custom-globe");
     await expect(page.getByTestId("photorealistic-3d-home-hero")).toHaveAttribute(
       "data-home-hero-mode",
       "home-hero-mode: reduced-motion"
     );
     await expect(page.getByTestId("home-3d-loading")).toHaveCount(0);
-    await expect(page.getByTestId("earth-static-fallback")).toHaveAttribute(
+    await expect(page.getByTestId("almidy-custom-globe")).toHaveAttribute(
       "data-earth-source",
-      "almidy-owned-globe"
+      "almidy-custom-globe"
     );
-    await expect(page.getByTestId("home-3d-fallback-image")).toBeVisible();
+    await expect(page.getByTestId("home-custom-globe")).toBeVisible();
+    await expect(page.getByTestId("home-custom-globe-texture")).toBeVisible();
     await expect(page.getByTestId("mobile-home-earth-image")).toHaveCount(0);
     await expect(page.getByTestId("mobile-home-earth-texture")).toHaveCount(0);
     await expect(page.getByTestId("mobile-home-earth-continents")).toHaveCount(0);
@@ -1343,9 +1348,10 @@ test.describe("mobile soft-launch UX", () => {
     await page.goto(baseUrl + "/dashboard", { waitUntil: "commit" });
     await expect(page.getByTestId("mobile-home-wallet")).toBeVisible();
     await expect(page.getByTestId("photorealistic-3d-home-hero")).toHaveAttribute("data-3d-enabled", "false");
-    await expect(page.getByTestId("photorealistic-3d-home-hero")).toHaveAttribute("data-hero-mode", "fallback");
-    await expect(page.getByTestId("earth-static-fallback")).toHaveAttribute("data-earth-source", "almidy-owned-globe");
-    await expect(page.getByTestId("home-3d-fallback-image")).toBeVisible();
+    await expect(page.getByTestId("photorealistic-3d-home-hero")).toHaveAttribute("data-hero-mode", "custom-globe");
+    await expect(page.getByTestId("almidy-custom-globe")).toHaveAttribute("data-earth-source", "almidy-custom-globe");
+    await expect(page.getByTestId("home-custom-globe")).toBeVisible();
+    await expect(page.getByTestId("home-custom-globe-texture")).toBeVisible();
     await expect(page.getByTestId("home-3d-map")).toHaveCount(0);
     await expectNoHomeGoogleMapsCopy(page);
     await expect(page.getByTestId("mobile-home-country-pin")).toBeVisible({ timeout: 5_000 });
