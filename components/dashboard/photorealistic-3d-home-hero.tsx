@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import type { CSSProperties } from "react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { countryCodeToFlag } from "@/lib/map/wayline-map-pins";
 import type {
   AlmidyLocationState,
@@ -18,16 +18,8 @@ type Photorealistic3DHomeHeroProps = {
   pins?: AlmidyMapPin[];
 };
 
-type HeroState = "loading" | "ready3d" | "3d-static" | "fallback" | "error";
-type LaunchPhase =
-  | "loading"
-  | "zooming-in"
-  | "spinning"
-  | "settling"
-  | "pin"
-  | "content"
-  | "done"
-  | "fallback";
+type HeroState = "fallback";
+type LaunchPhase = "fallback";
 
 type CountryFocus = {
   altitude: number;
@@ -41,32 +33,6 @@ type CountryFocus = {
   source?: "country" | "user";
 };
 
-type MapsImportLibrary = (libraryName: string) => Promise<unknown>;
-type MapCameraFrame = {
-  altitude: number;
-  heading: number;
-  lat: number;
-  lng: number;
-  range: number;
-  tilt: number;
-};
-
-declare global {
-  interface Window {
-    google?: {
-      maps?: {
-        importLibrary?: MapsImportLibrary;
-      };
-    };
-  }
-}
-
-const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? "";
-const ENABLE_3D_HOME_GLOBE = process.env.NEXT_PUBLIC_ENABLE_3D_HOME_GLOBE === "true";
-const THREE_D_CAMERA_INTRO_MS = 3_800;
-const THREE_D_PIN_REVEAL_MS = 3_200;
-const THREE_D_CONTENT_REVEAL_MS = 3_600;
-const THREE_D_LOAD_TIMEOUT_MS = 4_500;
 const HERO_EARTH_Y_NUDGE_PERCENT = 4;
 const USER_PIN_SCREEN_X = 50;
 const USER_PIN_SCREEN_Y = 44;
@@ -130,7 +96,6 @@ const focusablePinKinds = new Set<AlmidyMapPin["kind"]>([
   "user-location"
 ]);
 
-let googleMapsScriptPromise: Promise<void> | null = null;
 const EMPTY_PINS: AlmidyMapPin[] = [];
 
 export function Photorealistic3DHomeHero({
@@ -140,13 +105,10 @@ export function Photorealistic3DHomeHero({
   onLocateUser,
   pins = EMPTY_PINS
 }: Photorealistic3DHomeHeroProps) {
-  const mapHostRef = useRef<HTMLDivElement | null>(null);
-  const introTimerRef = useRef<number | null>(null);
   const [country, setCountry] = useState<CountryFocus>(DEFAULT_COUNTRY);
-  const [heroState, setHeroState] = useState<HeroState>(ENABLE_3D_HOME_GLOBE ? "loading" : "fallback");
-  const [launchPhase, setLaunchPhase] = useState<LaunchPhase>(ENABLE_3D_HOME_GLOBE ? "loading" : "fallback");
-  const [introComplete, setIntroComplete] = useState(false);
   const [reduceMotion, setReduceMotion] = useState(false);
+  const heroState: HeroState = "fallback";
+  const launchPhase: LaunchPhase = "fallback";
 
   function setLocationFocus(nextCountry: CountryFocus) {
     setCountry((currentCountry) => (shouldUpdateFocus(currentCountry, nextCountry) ? nextCountry : currentCountry));
@@ -154,13 +116,7 @@ export function Photorealistic3DHomeHero({
 
   useEffect(() => {
     const media = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const syncMotion = () => {
-      setReduceMotion(media.matches);
-      if (media.matches) {
-        setLaunchPhase("done");
-        setIntroComplete(true);
-      }
-    };
+    const syncMotion = () => setReduceMotion(media.matches);
 
     syncMotion();
     media.addEventListener("change", syncMotion);
@@ -203,137 +159,8 @@ export function Photorealistic3DHomeHero({
     };
   }, [launchPhase, reduceMotion]);
 
-  useEffect(() => {
-    if (reduceMotion) {
-      return;
-    }
-
-    introTimerRef.current = window.setTimeout(() => {
-      setIntroComplete(true);
-      setLaunchPhase((currentPhase) =>
-        currentPhase === "fallback" || currentPhase === "done" ? currentPhase : "content"
-      );
-    }, THREE_D_CONTENT_REVEAL_MS);
-
-    return () => {
-      if (introTimerRef.current !== null) {
-        window.clearTimeout(introTimerRef.current);
-      }
-    };
-  }, [reduceMotion]);
-
-  useEffect(() => {
-    if (reduceMotion || !ENABLE_3D_HOME_GLOBE || !GOOGLE_MAPS_API_KEY || !mapHostRef.current) {
-      mapHostRef.current?.replaceChildren();
-      setHeroState("fallback");
-      return;
-    }
-
-    let cancelled = false;
-    let loadTimeout: number | null = null;
-    let cancelCameraAnimation: (() => void) | null = null;
-    const host = mapHostRef.current;
-    const focus = country ?? DEFAULT_COUNTRY;
-    setHeroState("loading");
-    setLaunchPhase("loading");
-    setIntroComplete(false);
-    host.replaceChildren();
-
-    loadTimeout = window.setTimeout(() => {
-      if (cancelled) {
-        return;
-      }
-
-      host.replaceChildren();
-      setHeroState("fallback");
-      setLaunchPhase("fallback");
-      setIntroComplete(true);
-    }, THREE_D_LOAD_TIMEOUT_MS);
-
-    async function mount3DMap() {
-      try {
-        await ensureGoogleMaps3D(GOOGLE_MAPS_API_KEY);
-        const importLibrary = getMapsImportLibrary();
-
-        if (!importLibrary) {
-          throw new Error("Google Maps importLibrary unavailable");
-        }
-
-        await importLibrary("maps3d");
-
-        if (cancelled || !host) {
-          return;
-        }
-
-        if (loadTimeout !== null) {
-          window.clearTimeout(loadTimeout);
-          loadTimeout = null;
-        }
-
-        const mapElement = document.createElement("gmp-map-3d");
-        mapElement.className = "absolute inset-x-0 -top-10 -bottom-10 h-[calc(100%+5rem)] w-full";
-        mapElement.setAttribute("data-testid", "home-3d-map");
-        mapElement.setAttribute("mode", "hybrid");
-        const shouldSettleImmediately = reduceMotion || focus.source === "user";
-        setMapCamera(mapElement, shouldSettleImmediately ? getSettledCamera(focus) : getStartCamera(focus));
-        host.replaceChildren(mapElement);
-        setHeroState("ready3d");
-
-        if (shouldSettleImmediately) {
-          setLaunchPhase("done");
-          setIntroComplete(true);
-          return;
-        }
-
-        if (!reduceMotion) {
-          if (typeof window.requestAnimationFrame === "function") {
-            cancelCameraAnimation = animateMapCamera(mapElement, focus, setLaunchPhase, () => {
-              if (!cancelled) {
-                setHeroState("ready3d");
-                setLaunchPhase("done");
-              }
-            });
-          } else {
-            setMapCamera(mapElement, getSettledCamera(focus));
-            setHeroState("3d-static");
-            setLaunchPhase("done");
-            setIntroComplete(true);
-          }
-        }
-      } catch {
-        if (!cancelled) {
-          if (loadTimeout !== null) {
-            window.clearTimeout(loadTimeout);
-            loadTimeout = null;
-          }
-          host.replaceChildren();
-          setHeroState("fallback");
-          setLaunchPhase("fallback");
-          setIntroComplete(true);
-        }
-      }
-    }
-
-    mount3DMap();
-
-    return () => {
-      cancelled = true;
-      if (cancelCameraAnimation) {
-        cancelCameraAnimation();
-      }
-      if (loadTimeout !== null) {
-        window.clearTimeout(loadTimeout);
-      }
-      host.replaceChildren();
-    };
-  }, [country, reduceMotion]);
-
   const focus = country;
-  const hasUserFocus = focus.source === "user";
-  const showPin =
-    (heroState === "ready3d" && (hasUserFocus || reduceMotion || shouldShowPinForPhase(launchPhase))) ||
-    heroState === "3d-static" ||
-    (heroState === "fallback" && (introComplete || reduceMotion));
+  const showPin = true;
 
   return (
     <div
@@ -344,10 +171,10 @@ export function Photorealistic3DHomeHero({
       ]
         .filter(Boolean)
         .join(" ")}
-      data-3d-enabled={ENABLE_3D_HOME_GLOBE ? "true" : "false"}
-      data-home-hero-mode={`home-hero-mode: ${reduceMotion ? "reduced-motion" : heroState}`}
+      data-3d-enabled="false"
+      data-home-hero-mode={`home-hero-mode: ${reduceMotion ? "reduced-motion" : "almidy-owned"}`}
       data-hero-mode={heroState}
-      data-launch-phase={reduceMotion ? "done" : launchPhase}
+      data-launch-phase={launchPhase}
       data-testid="photorealistic-3d-home-hero"
       style={{
         "--wayline-pin-x": `${focus.pinX}%`,
@@ -355,16 +182,8 @@ export function Photorealistic3DHomeHero({
       } as CSSProperties}
     >
       <div className="absolute inset-0" data-testid="earth-only-visual">
-        {heroState === "loading" ? <HomeHeroLoading /> : null}
-        {heroState === "fallback" ? <HomeHeroFallback reduceMotion={reduceMotion} /> : null}
-        <div
-          className={[
-            "absolute inset-0 z-[2] overflow-hidden transition-opacity duration-700",
-            heroState === "ready3d" || heroState === "3d-static" ? "opacity-100" : "opacity-0"
-          ].join(" ")}
-          data-testid="home-3d-map-stage"
-          ref={mapHostRef}
-        />
+        <HomeHeroFallback reduceMotion={reduceMotion} />
+        <div className="hidden" data-testid="home-3d-map-stage" />
       </div>
       <div className="pointer-events-none absolute inset-0 z-10 bg-[radial-gradient(circle_at_var(--wayline-pin-x)_var(--wayline-pin-y),rgba(251,191,36,0.28),transparent_7%),radial-gradient(ellipse_at_50%_0%,rgba(125,194,255,0.22),transparent_33%),linear-gradient(180deg,rgba(2,9,22,0.44)_0%,rgba(2,9,22,0)_18%,rgba(2,8,20,0.1)_56%,rgba(2,8,20,0.68)_100%)]" />
       {showPin ? (
@@ -543,7 +362,7 @@ function HomeHeroFallback({ reduceMotion }: { reduceMotion: boolean }) {
   return (
     <div
       className="absolute inset-0 z-[1] overflow-hidden bg-[radial-gradient(circle_at_50%_0%,rgba(96,165,250,0.22),transparent_25%),radial-gradient(circle_at_14%_14%,rgba(255,255,255,0.18),transparent_1px),radial-gradient(circle_at_82%_18%,rgba(255,255,255,0.16),transparent_1px),radial-gradient(circle_at_22%_32%,rgba(255,255,255,0.12),transparent_1px),radial-gradient(circle_at_74%_5%,rgba(255,255,255,0.18),transparent_1px),#020916]"
-      data-earth-source="photorealistic-3d-fallback"
+      data-earth-source="almidy-owned-globe"
       data-testid="earth-static-fallback"
     >
       <Image
@@ -563,321 +382,6 @@ function HomeHeroFallback({ reduceMotion }: { reduceMotion: boolean }) {
       />
     </div>
   );
-}
-
-function HomeHeroLoading() {
-  return (
-    <div
-      className="absolute inset-0 z-[1] overflow-hidden bg-[#020916]"
-      data-testid="home-3d-loading"
-    >
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_0%,rgba(96,165,250,0.24),transparent_28%),radial-gradient(circle_at_14%_14%,rgba(255,255,255,0.16),transparent_1px),radial-gradient(circle_at_82%_18%,rgba(255,255,255,0.16),transparent_1px),radial-gradient(circle_at_22%_32%,rgba(255,255,255,0.1),transparent_1px),radial-gradient(circle_at_74%_5%,rgba(255,255,255,0.18),transparent_1px),linear-gradient(180deg,#041225_0%,#020916_74%,#020817_100%)]" />
-      <div className="wayline-home-3d-loading-glow absolute left-1/2 top-[10%] h-[42vw] min-h-[150px] w-[154vw] max-w-[760px] -translate-x-1/2 rounded-[50%] border-t border-sky-200/30 bg-[radial-gradient(ellipse_at_50%_0%,rgba(56,189,248,0.16),transparent_55%)] opacity-80 shadow-[0_0_64px_rgba(96,165,250,0.18)]" />
-      <div className="absolute inset-x-0 bottom-0 h-[60%] bg-[linear-gradient(180deg,transparent,rgba(2,9,22,0.54)_42%,#020817_100%)]" />
-    </div>
-  );
-}
-
-function animateMapCamera(
-  mapElement: HTMLElement,
-  country: CountryFocus,
-  onPhaseChange: (phase: LaunchPhase) => void,
-  onComplete: () => void
-) {
-  const startedAt = performance.now();
-  let animationFrame: number | null = null;
-  let cancelled = false;
-
-  const run = (now: number) => {
-    if (cancelled) {
-      return;
-    }
-
-    const progress = Math.min((now - startedAt) / THREE_D_CAMERA_INTRO_MS, 1);
-    onPhaseChange(getLaunchPhaseForProgress(progress));
-    setMapCamera(mapElement, getCameraForLaunchProgress(country, progress));
-    mapElement.setAttribute("data-camera-progress", progress.toFixed(3));
-
-    if (progress < 1) {
-      animationFrame = window.requestAnimationFrame(run);
-      return;
-    }
-
-    mapElement.setAttribute("data-camera-progress", "1");
-    onPhaseChange("pin");
-    onComplete();
-  };
-
-  animationFrame = window.requestAnimationFrame(run);
-  return () => {
-    cancelled = true;
-    if (animationFrame !== null) {
-      window.cancelAnimationFrame(animationFrame);
-    }
-  };
-}
-
-function setMapCamera(mapElement: HTMLElement, camera: MapCameraFrame) {
-  mapElement.setAttribute("center", `${camera.lat},${camera.lng},${camera.altitude}`);
-  mapElement.setAttribute("heading", camera.heading.toFixed(2));
-  mapElement.setAttribute("range", Math.round(camera.range).toString());
-  mapElement.setAttribute("tilt", camera.tilt.toFixed(2));
-}
-
-function getStartCamera(country: CountryFocus): MapCameraFrame {
-  if (country.source === "user") {
-    return {
-      altitude: country.altitude + 3_250_000,
-      heading: 238,
-      lat: country.lat,
-      lng: country.lng,
-      range: 9_600_000,
-      tilt: 8
-    };
-  }
-
-  return {
-    altitude: country.altitude + 2_650_000,
-    heading: 238,
-    lat: country.lat + 30,
-    lng: country.lng - 118,
-    range: 13_200_000,
-    tilt: 12
-  };
-}
-
-function getSettledCamera(country: CountryFocus): MapCameraFrame {
-  if (country.source === "user") {
-    return {
-      altitude: country.altitude + 1_650_000,
-      heading: 336,
-      lat: country.lat,
-      lng: country.lng,
-      range: 5_800_000,
-      tilt: 32
-    };
-  }
-
-  return {
-    altitude: country.altitude + 520_000,
-    heading: 318,
-    lat: country.lat + 2,
-    lng: country.lng - 8,
-    range: 4_700_000,
-    tilt: 38
-  };
-}
-
-function getApproachCamera(country: CountryFocus): MapCameraFrame {
-  if (country.source === "user") {
-    return {
-      altitude: country.altitude + 1_450_000,
-      heading: 356,
-      lat: country.lat,
-      lng: country.lng,
-      range: 5_500_000,
-      tilt: 40
-    };
-  }
-
-  return {
-    altitude: country.altitude + 360_000,
-    heading: 356,
-    lat: country.lat + 3.5,
-    lng: country.lng - 18,
-    range: 2_150_000,
-    tilt: 64
-  };
-}
-
-function getSpinCamera(country: CountryFocus): MapCameraFrame {
-  if (country.source === "user") {
-    return {
-      altitude: country.altitude + 1_900_000,
-      heading: 438,
-      lat: country.lat,
-      lng: country.lng,
-      range: 6_200_000,
-      tilt: 34
-    };
-  }
-
-  return {
-    altitude: country.altitude + 740_000,
-    heading: 438,
-    lat: country.lat + 5.5,
-    lng: country.lng - 6,
-    range: 3_050_000,
-    tilt: 58
-  };
-}
-
-function getCameraForLaunchProgress(country: CountryFocus, progress: number): MapCameraFrame {
-  const startCamera = getStartCamera(country);
-  const approachCamera = getApproachCamera(country);
-  const spinCamera = getSpinCamera(country);
-  const settledCamera = getSettledCamera(country);
-
-  if (progress < 0.4) {
-    return interpolateCamera(startCamera, approachCamera, easeInOutCubic(progress / 0.4));
-  }
-
-  if (progress < 0.7) {
-    return interpolateCamera(approachCamera, spinCamera, easeInOutCubic((progress - 0.4) / 0.3));
-  }
-
-  return interpolateCamera(spinCamera, settledCamera, easeOutCubic((progress - 0.7) / 0.3));
-}
-
-function getLaunchPhaseForProgress(progress: number): LaunchPhase {
-  if (progress < 0.16) return "loading";
-  if (progress < 0.4) return "zooming-in";
-  if (progress < 0.7) return "spinning";
-  if (progress < THREE_D_PIN_REVEAL_MS / THREE_D_CAMERA_INTRO_MS) return "settling";
-  if (progress < THREE_D_CONTENT_REVEAL_MS / THREE_D_CAMERA_INTRO_MS) return "pin";
-  return "content";
-}
-
-function shouldShowPinForPhase(phase: LaunchPhase) {
-  return phase === "pin" || phase === "content" || phase === "done" || phase === "fallback";
-}
-
-function interpolateCamera(start: MapCameraFrame, end: MapCameraFrame, progress: number): MapCameraFrame {
-  return {
-    altitude: interpolate(start.altitude, end.altitude, progress),
-    heading: interpolate(start.heading, end.heading, progress),
-    lat: interpolate(start.lat, end.lat, progress),
-    lng: interpolate(start.lng, end.lng, progress),
-    range: interpolate(start.range, end.range, progress),
-    tilt: interpolate(start.tilt, end.tilt, progress)
-  };
-}
-
-function interpolate(start: number, end: number, progress: number) {
-  return start + (end - start) * progress;
-}
-
-function easeOutCubic(progress: number) {
-  return 1 - Math.pow(1 - progress, 3);
-}
-
-function easeInOutCubic(progress: number) {
-  return progress < 0.5
-    ? 4 * progress * progress * progress
-    : 1 - Math.pow(-2 * progress + 2, 3) / 2;
-}
-
-async function ensureGoogleMaps3D(apiKey: string) {
-  if (typeof window === "undefined") {
-    return;
-  }
-
-  if (getMapsImportLibrary()) {
-    return;
-  }
-
-  if (googleMapsScriptPromise) {
-    return googleMapsScriptPromise;
-  }
-
-  googleMapsScriptPromise = new Promise<void>((resolve, reject) => {
-    const existingScript = document.querySelector<HTMLScriptElement>(
-      'script[src*="maps.googleapis.com/maps/api/js"]'
-    );
-
-    if (existingScript) {
-      waitForImportLibrary(resolve, reject);
-      return;
-    }
-
-    waitForExistingMapsScript(1_800)
-      .then((foundExistingScript) => {
-        if (foundExistingScript || getMapsImportLibrary()) {
-          waitForImportLibrary(resolve, reject);
-          return;
-        }
-
-        const callbackName = `__waylineHome3DMapsReady_${Date.now()}`;
-        const script = document.createElement("script");
-        const params = new URLSearchParams({
-          callback: callbackName,
-          key: apiKey,
-          libraries: "maps3d",
-          loading: "async",
-          v: "alpha"
-        });
-
-        (window as unknown as Record<string, () => void>)[callbackName] = () => {
-          delete (window as unknown as Record<string, unknown>)[callbackName];
-          waitForImportLibrary(resolve, reject);
-        };
-
-        script.async = true;
-        script.defer = true;
-        script.onerror = () => {
-          delete (window as unknown as Record<string, unknown>)[callbackName];
-          reject(new Error("Google Maps 3D script failed to load"));
-        };
-        script.src = `https://maps.googleapis.com/maps/api/js?${params.toString()}`;
-        document.head.appendChild(script);
-      })
-      .catch(reject);
-  });
-
-  return googleMapsScriptPromise;
-}
-
-function waitForExistingMapsScript(timeoutMs: number) {
-  return new Promise<boolean>((resolve) => {
-    const startedAt = Date.now();
-    const check = () => {
-      if (
-        getMapsImportLibrary() ||
-        document.querySelector<HTMLScriptElement>('script[src*="maps.googleapis.com/maps/api/js"]')
-      ) {
-        resolve(true);
-        return;
-      }
-
-      if (Date.now() - startedAt > timeoutMs) {
-        resolve(false);
-        return;
-      }
-
-      window.setTimeout(check, 80);
-    };
-
-    check();
-  });
-}
-
-function getMapsImportLibrary(): MapsImportLibrary | null {
-  const maybeGoogle = window.google as unknown as
-    | { maps?: { importLibrary?: unknown } }
-    | undefined;
-
-  return typeof maybeGoogle?.maps?.importLibrary === "function"
-    ? (maybeGoogle.maps.importLibrary as MapsImportLibrary)
-    : null;
-}
-
-function waitForImportLibrary(resolve: () => void, reject: (reason?: unknown) => void) {
-  const startedAt = Date.now();
-  const check = () => {
-    if (getMapsImportLibrary()) {
-      resolve();
-      return;
-    }
-
-    if (Date.now() - startedAt > 6_000) {
-      reject(new Error("Google Maps importLibrary unavailable"));
-      return;
-    }
-
-    window.setTimeout(check, 100);
-  };
-
-  check();
 }
 
 function countryFromLocale(locale: string | undefined) {

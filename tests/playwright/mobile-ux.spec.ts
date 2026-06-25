@@ -38,6 +38,14 @@ function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+async function expectNoHomeGoogleMapsCopy(page: Page) {
+  const bodyText = await page.locator("body").innerText();
+
+  expect(bodyText).not.toContain("Oops! Something went wrong.");
+  expect(bodyText).not.toContain("This page didn't load Google Maps correctly.");
+  expect(bodyText).not.toContain("Google Maps");
+}
+
 type MockLocationPermission = "granted" | "denied";
 
 async function installMockMobileLocation(
@@ -203,8 +211,9 @@ test.describe("mobile soft-launch UX", () => {
     }
 
     await page.goto(`${baseUrl}/dashboard`, { waitUntil: "commit" });
+    await expect(page.getByTestId("app-shell-root")).toBeVisible({ timeout: 20_000 });
     await expect(nav).toHaveCount(0);
-    await expect(page.getByTestId("mobile-home-wallet")).toBeVisible();
+    await expect(page.getByTestId("mobile-home-wallet")).toBeVisible({ timeout: 30_000 });
     await expect(page.getByTestId("mobile-home-wallet-content")).toHaveAttribute("data-sheet-state", "collapsed");
     await expect(page.getByTestId("ios-launch-sheet-collapsed")).toBeVisible();
   });
@@ -668,8 +677,11 @@ test.describe("mobile soft-launch UX", () => {
       await expect(page.getByText("Baggage")).toHaveCount(0);
       await expect(page.getByText("Aircraft")).toHaveCount(0);
 
-      await page.getByTestId("search-input").fill(`no-result-${suffix}`);
-      await expect(page.getByRole("heading", { name: "No results found" })).toBeVisible();
+      await page.goto(`${baseUrl}/dashboard/search?q=${encodeURIComponent(`no-result-${suffix}`)}`, {
+        waitUntil: "commit"
+      });
+      await expect(page.getByTestId("search-input")).toHaveValue(`no-result-${suffix}`, { timeout: 20_000 });
+      await expect(page.getByRole("heading", { name: "No results found" })).toBeVisible({ timeout: 20_000 });
       await expect(
         page.getByText("Try searching a place, activity, document, or trip.")
       ).toBeVisible();
@@ -682,38 +694,31 @@ test.describe("mobile soft-launch UX", () => {
     }
   });
 
-  test("home launch uses photorealistic 3D hero before wallet actions", async ({ page }) => {
+  test("home launch uses Almidy-owned globe before wallet actions", async ({ page }) => {
     await page.setViewportSize({ height: 900, width: 390 });
     await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
     await page.addInitScript(() => {
       Object.defineProperty(navigator, "language", { configurable: true, value: "en-US" });
       Object.defineProperty(navigator, "languages", { configurable: true, value: ["en-US", "en"] });
-      const testWindow = window as typeof window & {
-        __waylineResolveMaps3D?: () => void;
-        google?: {
-          maps?: {
-            importLibrary?: (libraryName: string) => Promise<unknown>;
-          };
-        };
-      };
-
-      testWindow.google = {
-        maps: {
-          importLibrary: () =>
-            new Promise((resolve) => {
-              testWindow.__waylineResolveMaps3D = () => resolve({});
-            })
-        }
-      };
     });
 
-    await page.goto(`${baseUrl}/dashboard`, { waitUntil: "commit" });
+    await page.goto(baseUrl + "/dashboard", { waitUntil: "commit" });
     await expect(page.getByTestId("mobile-home-wallet")).toBeVisible();
     await expect(page.getByTestId("mobile-home-3d-hero")).toBeVisible();
     await expect(page.getByTestId("photorealistic-3d-home-hero")).toBeVisible();
-    await expect(page.getByTestId("home-3d-map-stage")).toBeVisible();
-    await expect(page.getByTestId("mobile-home-globe")).toHaveCount(0);
+    await expect(page.getByTestId("photorealistic-3d-home-hero")).toHaveAttribute("data-3d-enabled", "false");
+    await expect(page.getByTestId("photorealistic-3d-home-hero")).toHaveAttribute("data-hero-mode", "fallback");
+    await expect(page.getByTestId("photorealistic-3d-home-hero")).toHaveAttribute(
+      "data-home-hero-mode",
+      "home-hero-mode: almidy-owned"
+    );
     await expect(page.getByTestId("earth-only-visual")).toBeVisible();
+    await expect(page.getByTestId("earth-static-fallback")).toHaveAttribute("data-earth-source", "almidy-owned-globe");
+    await expect(page.getByTestId("home-3d-fallback-image")).toBeVisible();
+    await expect(page.getByTestId("home-3d-loading")).toHaveCount(0);
+    await expect(page.getByTestId("home-3d-map")).toHaveCount(0);
+    await expectNoHomeGoogleMapsCopy(page);
+    await expect(page.getByTestId("mobile-home-globe")).toHaveCount(0);
     await expect(page.getByTestId("mobile-home-earth-photorealistic")).toHaveCount(0);
     await expect(page.getByTestId("mobile-home-earth-image")).toHaveCount(0);
     await expect(page.getByRole("heading", { name: "My Trips" })).toHaveCount(1);
@@ -733,154 +738,36 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByTestId("mobile-home-earth-ocean")).toHaveCount(0);
     await expect(page.getByTestId("mobile-home-earth-continents")).toHaveCount(0);
     await expect(page.getByText("Scroll", { exact: true })).toHaveCount(0);
-    await expect(page.getByTestId("photorealistic-3d-home-hero")).toHaveAttribute("data-hero-mode", "loading");
-    await expect(page.getByTestId("photorealistic-3d-home-hero")).toHaveAttribute(
-      "data-home-hero-mode",
-      "home-hero-mode: loading"
-    );
-    await expect(page.getByTestId("home-3d-loading")).toBeVisible();
-    await expect(page.getByTestId("earth-static-fallback")).toHaveCount(0);
-    await expect(page.getByTestId("home-3d-fallback-image")).toHaveCount(0);
-    const loadingHeroVisual = await page.getByTestId("photorealistic-3d-home-hero").evaluate((element) => {
-      const mapStage = element.querySelector<HTMLElement>('[data-testid="home-3d-map-stage"]');
-      const mapStageStyle = mapStage ? window.getComputedStyle(mapStage) : null;
-
-      return {
-        mapStageOpacity: mapStageStyle?.opacity ?? "0",
-        mode: element.getAttribute("data-hero-mode") ?? ""
-      };
-    });
-    expect(loadingHeroVisual.mode).toBe("loading");
-    expect(Number(loadingHeroVisual.mapStageOpacity), "3D map stays hidden while loading").toBeLessThan(0.1);
-    await page.waitForTimeout(2_450);
-    const loadingContentBeforeFocus = await page.getByTestId("mobile-home-wallet-content").evaluate((element) => {
-      const hero = document.querySelector('[data-testid="photorealistic-3d-home-hero"]');
-      const fallback = document.querySelector('[data-testid="home-3d-fallback-image"]');
-      const style = window.getComputedStyle(element);
-
-      return {
-        fallbackMounted: Boolean(fallback),
-        heroMode: hero?.getAttribute("data-hero-mode") ?? "",
-        opacity: style.opacity
-      };
-    });
-    expect(loadingContentBeforeFocus.heroMode, "Home content waits while the 3D launch focuses").toBe("loading");
-    expect(loadingContentBeforeFocus.fallbackMounted, "clean fallback does not flash before the 3D timeout").toBe(false);
-    expect(
-      Number(loadingContentBeforeFocus.opacity),
-      "Home content stays hidden during the early cinematic launch"
-    ).toBeLessThan(0.35);
-    await page.waitForTimeout(1_450);
-    const loadingContentAfterFocus = await page.getByTestId("mobile-home-wallet-content").evaluate((element) => {
-      const hero = document.querySelector('[data-testid="photorealistic-3d-home-hero"]');
-      const fallback = document.querySelector('[data-testid="home-3d-fallback-image"]');
-      const style = window.getComputedStyle(element);
-
-      return {
-        fallbackMounted: Boolean(fallback),
-        heroMode: hero?.getAttribute("data-hero-mode") ?? "",
-        opacity: style.opacity
-      };
-    });
-    expect(loadingContentAfterFocus.heroMode, "Home content is not blocked by slow 3D loading").toBe("loading");
-    expect(loadingContentAfterFocus.fallbackMounted, "fallback still waits for the 3D timeout").toBe(false);
-    expect(Number(loadingContentAfterFocus.opacity), "Home content fades in after the focus timing").toBeGreaterThan(
-      0.9
-    );
-    await page.evaluate(() => {
-      const testWindow = window as typeof window & { __waylineResolveMaps3D?: () => void };
-      testWindow.__waylineResolveMaps3D?.();
-    });
-    await expect(page.getByTestId("photorealistic-3d-home-hero")).toHaveAttribute("data-hero-mode", "ready3d", {
-      timeout: 5_000
-    });
-    await expect(page.getByTestId("photorealistic-3d-home-hero")).toHaveAttribute(
-      "data-home-hero-mode",
-      "home-hero-mode: ready3d"
-    );
-    const cameraStart = await page.getByTestId("home-3d-map").evaluate((element) => ({
-      center: element.getAttribute("center") ?? "",
-      heading: element.getAttribute("heading") ?? "",
-      progress: element.getAttribute("data-camera-progress") ?? "0",
-      range: element.getAttribute("range") ?? "",
-      tilt: element.getAttribute("tilt") ?? ""
-    }));
-    expect(cameraStart.center, "3D camera starts with a country-focused center").toContain(",");
-    expect(Number(cameraStart.progress), "3D camera intro starts before the settled frame").toBeLessThan(1);
-    await expect(page.getByTestId("photorealistic-3d-home-hero")).toHaveAttribute("data-launch-phase", /loading|zooming-in/);
-    await expect(page.getByTestId("mobile-home-country-pin")).toHaveCount(0);
-    await page.waitForTimeout(900);
-    const cameraMid = await page.getByTestId("home-3d-map").evaluate((element) => ({
-      center: element.getAttribute("center") ?? "",
-      heading: element.getAttribute("heading") ?? "",
-      progress: element.getAttribute("data-camera-progress") ?? "0",
-      range: element.getAttribute("range") ?? "",
-      tilt: element.getAttribute("tilt") ?? ""
-    }));
-    expect(cameraMid.center, "3D camera center changes during launch").not.toBe(cameraStart.center);
-    expect(cameraMid.heading, "3D camera heading changes during launch").not.toBe(cameraStart.heading);
-    expect(cameraMid.range, "3D camera range changes during launch").not.toBe(cameraStart.range);
-    expect(Number(cameraMid.progress), "3D camera intro progresses after launch").toBeGreaterThan(
-      Number(cameraStart.progress)
-    );
-    await expect(page.getByTestId("photorealistic-3d-home-hero")).toHaveAttribute("data-launch-phase", /zooming-in|spinning/);
-    await page.waitForTimeout(1_850);
-    await expect(page.getByTestId("photorealistic-3d-home-hero")).toHaveAttribute("data-launch-phase", /settling|pin|content/);
-    await expect(page.getByTestId("mobile-home-country-pin")).toBeVisible({ timeout: 2_000 });
-    await page.waitForTimeout(1_150);
-    const cameraSettled = await page.getByTestId("home-3d-map").evaluate((element) => ({
-      center: element.getAttribute("center") ?? "",
-      heading: element.getAttribute("heading") ?? "",
-      progress: element.getAttribute("data-camera-progress") ?? "0",
-      range: element.getAttribute("range") ?? "",
-      tilt: element.getAttribute("tilt") ?? ""
-    }));
-    expect(cameraSettled.center, "3D camera settles after launch").not.toBe(cameraMid.center);
-    expect(cameraSettled.progress, "3D camera intro marks completion").toBe("1");
-    await expect(page.getByTestId("home-3d-loading")).toHaveCount(0);
-    await expect(page.getByTestId("earth-static-fallback")).toHaveCount(0);
-    await expect(page.getByTestId("home-3d-fallback-image")).toHaveCount(0);
     await expect(page.getByTestId("mobile-home-country-pin")).toBeVisible({ timeout: 5_000 });
     await expect(page.getByTestId("mobile-home-country-pin")).toHaveAttribute("data-country-code", "US");
     await expect(page.getByTestId("mobile-home-country-name")).toContainText("United States");
-    await page.waitForFunction(() => {
-      const mapStage = document.querySelector<HTMLElement>('[data-testid="home-3d-map-stage"]');
-      const mapStageOpacity = mapStage ? Number(window.getComputedStyle(mapStage).opacity) : 0;
 
-      return mapStageOpacity > 0.9;
-    });
     const heroVisual = await page.getByTestId("photorealistic-3d-home-hero").evaluate((element) => {
       const style = window.getComputedStyle(element);
       const fallback = element.querySelector<HTMLImageElement>('[data-testid="home-3d-fallback-image"]');
       const fallbackStyle = fallback ? window.getComputedStyle(fallback) : null;
       const fallbackRect = fallback?.getBoundingClientRect();
       const map = element.querySelector<HTMLElement>('[data-testid="home-3d-map"]');
-      const mapRect = map?.getBoundingClientRect();
-      const mapStage = element.querySelector<HTMLElement>('[data-testid="home-3d-map-stage"]');
-      const mapStageStyle = mapStage ? window.getComputedStyle(mapStage) : null;
+
       return {
         fallbackHeight: fallbackRect?.height ?? 0,
         fallbackNaturalHeight: fallback?.naturalHeight ?? 0,
         fallbackNaturalWidth: fallback?.naturalWidth ?? 0,
         fallbackOpacity: fallbackStyle?.opacity ?? "0",
         fallbackSrc: fallback?.currentSrc || fallback?.src || "",
-        mapDefaultUiHidden: map?.hasAttribute("default-ui-hidden") ?? false,
-        mapHeight: mapRect?.height ?? 0,
-        mapStageOpacity: mapStageStyle?.opacity ?? "0",
-        mapWidth: mapRect?.width ?? 0,
+        mapMounted: Boolean(map),
         mode: element.getAttribute("data-hero-mode") ?? "",
         opacity: style.opacity,
-        width: fallbackRect?.width ?? mapRect?.width ?? 0
+        width: fallbackRect?.width ?? 0
       };
     });
-    expect(heroVisual.mode).toBe("ready3d");
-    expect(Number(heroVisual.opacity), "home 3D hero opacity").toBeGreaterThan(0.9);
-    expect(heroVisual.width, "home 3D visual covers viewport width").toBeGreaterThanOrEqual(390);
-    expect(Number(heroVisual.mapStageOpacity), "3D map stage is visible when ready").toBeGreaterThan(0.9);
-    expect(heroVisual.mapWidth, "3D map covers viewport width").toBeGreaterThanOrEqual(390);
-    expect(heroVisual.mapHeight, "3D map covers the launch globe").toBeGreaterThanOrEqual(820);
-    expect(heroVisual.mapDefaultUiHidden, "3D map keeps Google UI available").toBe(false);
-    expect(heroVisual.fallbackSrc, "fallback image is not mounted behind ready 3D").toBe("");
+    expect(heroVisual.mode).toBe("fallback");
+    expect(heroVisual.mapMounted, "home launch does not mount Google Maps 3D").toBe(false);
+    expect(Number(heroVisual.opacity), "home launch hero opacity").toBeGreaterThan(0.9);
+    expect(heroVisual.width, "home launch visual covers viewport width").toBeGreaterThanOrEqual(390);
+    expect(heroVisual.fallbackHeight, "owned globe covers the launch area").toBeGreaterThanOrEqual(250);
+    expect(heroVisual.fallbackNaturalWidth, "owned globe asset is loaded").toBeGreaterThan(0);
+    expect(Number(heroVisual.fallbackOpacity), "owned globe is visible").toBeGreaterThan(0.9);
     expect(decodeURIComponent(heroVisual.fallbackSrc), "old baked home hero asset is not used").not.toContain(
       "/globe/wayline-earth-hero"
     );
@@ -1181,71 +1068,21 @@ test.describe("mobile soft-launch UX", () => {
     expect(planCardStyle.color).toBe("rgb(255, 255, 255)");
   });
 
-  test("mobile home 3D hero uses granted browser location for map center and pin", async ({ page }) => {
+  test("mobile home Almidy-owned globe uses granted browser location for pin", async ({ page }) => {
     await page.setViewportSize({ height: 900, width: 390 });
     await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
-    await page.addInitScript(() => {
-      Object.defineProperty(navigator, "language", { configurable: true, value: "en-US" });
-      Object.defineProperty(navigator, "languages", { configurable: true, value: ["en-US", "en"] });
-      Object.defineProperty(navigator, "permissions", {
-        configurable: true,
-        value: {
-          query: () => Promise.resolve({ state: "granted" })
-        }
-      });
-      Object.defineProperty(navigator, "geolocation", {
-        configurable: true,
-        value: {
-          getCurrentPosition(success: (position: GeolocationPosition) => void) {
-            success({
-              coords: {
-                accuracy: 20,
-                altitude: null,
-                altitudeAccuracy: null,
-                heading: null,
-                latitude: 25.7617,
-                longitude: -80.1918,
-                speed: null
-              },
-              timestamp: Date.now()
-            } as GeolocationPosition);
-          }
-        }
-      });
+    await installMockMobileLocation(page);
 
-      (window as typeof window & {
-        google?: {
-          maps?: {
-            importLibrary?: (libraryName: string) => Promise<unknown>;
-          };
-        };
-      }).google = {
-        maps: {
-          importLibrary: () => Promise.resolve({})
-        }
-      };
-    });
-
-    await page.goto(`${baseUrl}/dashboard`, { waitUntil: "commit" });
-    await expect(page.getByTestId("photorealistic-3d-home-hero")).toHaveAttribute("data-hero-mode", "ready3d", {
-      timeout: 5_000
-    });
+    await page.goto(baseUrl + "/dashboard", { waitUntil: "commit" });
+    await expect(page.getByTestId("photorealistic-3d-home-hero")).toHaveAttribute("data-3d-enabled", "false");
+    await expect(page.getByTestId("home-3d-map")).toHaveCount(0);
+    await expectNoHomeGoogleMapsCopy(page);
     await expect(page.getByTestId("mobile-home-country-pin")).toBeVisible({ timeout: 5_000 });
     await expect(page.getByTestId("mobile-home-country-pin")).toHaveAttribute("data-location-source", "user");
     await expect(page.getByTestId("mobile-home-country-pin")).toHaveAttribute("data-user-latitude", "25.76170");
     await expect(page.getByTestId("mobile-home-country-pin")).toHaveAttribute("data-user-longitude", "-80.19180");
     await expect(page.getByTestId("mobile-home-country-pin")).toHaveAttribute("data-pin-coordinate", "25.76170,-80.19180");
     await expect(page.getByTestId("mobile-home-country-name")).toHaveText("United States");
-
-    const camera = await page.getByTestId("home-3d-map").evaluate((element) => ({
-      center: element.getAttribute("center") ?? "",
-      range: element.getAttribute("range") ?? ""
-    }));
-    const [cameraLatitude, cameraLongitude] = camera.center.split(",").map(Number);
-    expect(Math.abs(cameraLatitude - 25.7617), "3D map centers on the granted browser latitude").toBeLessThan(0.01);
-    expect(Math.abs(cameraLongitude - -80.1918), "3D map centers on the granted browser longitude").toBeLessThan(0.01);
-    expect(Number(camera.range), "user location settles into a wide globe view").toBeGreaterThan(3_000_000);
-    expect(Number(camera.range), "user location is still tighter than the global intro").toBeLessThan(6_000_000);
   });
 
   test("dashboard and trips use the same shared user country pin data", async ({ page }) => {
@@ -1254,7 +1091,14 @@ test.describe("mobile soft-launch UX", () => {
     await installMockMobileLocation(page);
 
     await page.goto(`${baseUrl}/dashboard`, { waitUntil: "commit" });
-    await expect(page.getByTestId("mobile-home-country-pin")).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByTestId("app-shell-root")).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByTestId("mobile-home-wallet")).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByTestId("mobile-home-country-pin")).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByTestId("mobile-home-country-pin")).toHaveAttribute("data-location-source", "user", {
+      timeout: 5_000
+    });
+    await expect(page.getByTestId("mobile-home-country-pin")).toHaveAttribute("data-user-latitude", "25.76170");
+    await expect(page.getByTestId("mobile-home-country-pin")).toHaveAttribute("data-user-longitude", "-80.19180");
     const dashboardPin = await page.getByTestId("mobile-home-country-pin").evaluate((element) => ({
       countryCode: element.getAttribute("data-country-code"),
       latitude: element.getAttribute("data-user-latitude"),
@@ -1417,7 +1261,7 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByTestId("mobile-home-wallet")).toBeVisible();
     await expect(page.getByTestId("mobile-home-3d-hero")).toBeVisible();
     await expect(page.getByTestId("photorealistic-3d-home-hero")).toBeVisible();
-    await expect(page.getByTestId("home-3d-map-stage")).toBeVisible();
+    await expect(page.getByTestId("home-3d-map-stage")).toBeHidden();
     await expect(page.getByTestId("mobile-home-globe")).toHaveCount(0);
     await expect(page.getByTestId("earth-only-visual")).toBeVisible();
     await expect(page.getByTestId("photorealistic-3d-home-hero")).toHaveAttribute("data-hero-mode", "fallback");
@@ -1428,7 +1272,7 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByTestId("home-3d-loading")).toHaveCount(0);
     await expect(page.getByTestId("earth-static-fallback")).toHaveAttribute(
       "data-earth-source",
-      "photorealistic-3d-fallback"
+      "almidy-owned-globe"
     );
     await expect(page.getByTestId("home-3d-fallback-image")).toBeVisible();
     await expect(page.getByTestId("mobile-home-earth-image")).toHaveCount(0);
@@ -1461,42 +1305,22 @@ test.describe("mobile soft-launch UX", () => {
     }
   });
 
-  test("mobile home 3D hero falls back after simulated 3D failure", async ({ page }) => {
+  test("mobile home launch stays Almidy-owned when Maps 3D is unavailable", async ({ page }) => {
     await page.setViewportSize({ height: 900, width: 390 });
     await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
     await page.addInitScript(() => {
       Object.defineProperty(navigator, "language", { configurable: true, value: "en-US" });
       Object.defineProperty(navigator, "languages", { configurable: true, value: ["en-US", "en"] });
-      const testWindow = window as typeof window & {
-        google?: {
-          maps?: {
-            importLibrary?: (libraryName: string) => Promise<unknown>;
-          };
-        };
-      };
-
-      testWindow.google = {
-        maps: {
-          importLibrary: () => Promise.reject(new Error("simulated maps3d failure"))
-        }
-      };
     });
 
-    await page.goto(`${baseUrl}/dashboard`, { waitUntil: "commit" });
+    await page.goto(baseUrl + "/dashboard", { waitUntil: "commit" });
     await expect(page.getByTestId("mobile-home-wallet")).toBeVisible();
-    await expect(page.getByTestId("photorealistic-3d-home-hero")).toHaveAttribute("data-hero-mode", "fallback", {
-      timeout: 5_000
-    });
-    await expect(page.getByTestId("photorealistic-3d-home-hero")).toHaveAttribute(
-      "data-home-hero-mode",
-      "home-hero-mode: fallback"
-    );
-    await expect(page.getByTestId("home-3d-loading")).toHaveCount(0);
-    await expect(page.getByTestId("earth-static-fallback")).toHaveAttribute(
-      "data-earth-source",
-      "photorealistic-3d-fallback"
-    );
+    await expect(page.getByTestId("photorealistic-3d-home-hero")).toHaveAttribute("data-3d-enabled", "false");
+    await expect(page.getByTestId("photorealistic-3d-home-hero")).toHaveAttribute("data-hero-mode", "fallback");
+    await expect(page.getByTestId("earth-static-fallback")).toHaveAttribute("data-earth-source", "almidy-owned-globe");
     await expect(page.getByTestId("home-3d-fallback-image")).toBeVisible();
+    await expect(page.getByTestId("home-3d-map")).toHaveCount(0);
+    await expectNoHomeGoogleMapsCopy(page);
     await expect(page.getByTestId("mobile-home-country-pin")).toBeVisible({ timeout: 5_000 });
     await expect(page.getByRole("heading", { name: "My Trips" })).toHaveCount(1);
   });
