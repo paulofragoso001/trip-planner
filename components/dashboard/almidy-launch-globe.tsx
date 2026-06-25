@@ -33,9 +33,9 @@ type CountryFocus = {
   source?: "country" | "user";
 };
 
-const HERO_EARTH_Y_NUDGE_PERCENT = 4;
-const USER_PIN_SCREEN_X = 50;
-const USER_PIN_SCREEN_Y = 44;
+const HERO_EARTH_Y_NUDGE_PERCENT = 0;
+const USER_PIN_SCREEN_X = 59;
+const USER_PIN_SCREEN_Y = 49;
 const USE_CURRENT_LOCATION_EVENT = "wayline:home-use-current-location";
 
 const DEFAULT_COUNTRY: CountryFocus = {
@@ -45,9 +45,32 @@ const DEFAULT_COUNTRY: CountryFocus = {
   lat: 39.8283,
   lng: -98.5795,
   name: "United States",
-  pinX: 58,
-  pinY: 36
+  pinX: 59,
+  pinY: 49
 };
+
+const LAUNCH_GLOBE_CITY_LABELS = [
+  { label: "Vancouver", x: 15, y: 34 },
+  { label: "San Francisco", x: 8, y: 40 },
+  { label: "Los Angeles", x: 11, y: 45 },
+  { label: "Chicago", x: 44, y: 38 },
+  { label: "Toronto", x: 64, y: 38 },
+  { label: "New York", x: 72, y: 40 },
+  { label: "Washington", x: 73, y: 44 },
+  { label: "Dallas", x: 45, y: 46 },
+  { label: "Houston", x: 48, y: 51 },
+  { label: "Mexico City", x: 42, y: 58 },
+  { label: "Bogotá", x: 72, y: 70 },
+  { label: "Lima", x: 64, y: 84 },
+  { label: "Santiago", x: 72, y: 96 }
+] as const;
+
+const LAUNCH_GLOBE_REGION_LABELS = [
+  { label: "NORTH", x: 43, y: 30 },
+  { label: "AMERICA", x: 45, y: 36 },
+  { label: "SOUTH", x: 86, y: 81 },
+  { label: "AMERICA", x: 88, y: 87 }
+] as const;
 
 const COUNTRY_BY_CODE: Record<string, CountryFocus> = {
   AR: { altitude: 1_900_000, code: "AR", flag: "🇦🇷", lat: -38.4161, lng: -63.6167, name: "Argentina", pinX: 57, pinY: 74 },
@@ -166,12 +189,12 @@ export function AlmidyLaunchGlobe({
     <div
       aria-hidden="true"
       className={[
-        "absolute inset-0 overflow-hidden bg-[#020916]",
+        "absolute inset-0 overflow-hidden bg-black",
         className
       ]
         .filter(Boolean)
         .join(" ")}
-            data-home-hero-mode={`home-hero-mode: ${reduceMotion ? "reduced-motion" : "almidy-owned"}`}
+      data-home-hero-mode={`home-hero-mode: ${reduceMotion ? "reduced-motion" : "almidy-owned"}`}
       data-hero-mode={heroState}
       data-launch-phase={launchPhase}
       data-testid="almidy-launch-globe"
@@ -183,7 +206,8 @@ export function AlmidyLaunchGlobe({
       <div className="absolute inset-0" data-testid="earth-only-visual">
         <HomeHeroCustomGlobe reduceMotion={reduceMotion} />
       </div>
-      <div className="pointer-events-none absolute inset-0 z-10 bg-[radial-gradient(circle_at_var(--wayline-pin-x)_var(--wayline-pin-y),rgba(251,191,36,0.28),transparent_7%),radial-gradient(ellipse_at_50%_0%,rgba(125,194,255,0.22),transparent_33%),linear-gradient(180deg,rgba(2,9,22,0.44)_0%,rgba(2,9,22,0)_18%,rgba(2,8,20,0.1)_56%,rgba(2,8,20,0.68)_100%)]" />
+      <div className="pointer-events-none absolute inset-0 z-10 bg-[radial-gradient(circle_at_var(--wayline-pin-x)_var(--wayline-pin-y),rgba(255,118,42,0.26),transparent_5.5%),linear-gradient(180deg,rgba(0,0,0,0.78)_0%,rgba(0,0,0,0.08)_24%,rgba(0,0,0,0)_57%,rgba(0,0,0,0.62)_100%)]" />
+      <LaunchGlobeLabels />
       {showPin ? (
         <div
           className="wayline-country-pin pointer-events-none absolute z-20 -translate-x-1/2 -translate-y-1/2 text-center"
@@ -198,21 +222,43 @@ export function AlmidyLaunchGlobe({
             top: "var(--wayline-pin-y)"
           }}
         >
-          <div className="mx-auto grid h-12 w-12 place-items-center overflow-hidden rounded-full text-[2.35rem] leading-none shadow-[0_14px_36px_rgba(0,0,0,0.5),0_0_30px_rgba(251,146,60,0.34)]">
-            <span aria-hidden="true">{focus.flag}</span>
-          </div>
-          <div className="mx-auto h-4 w-0.5 bg-orange-300/90 shadow-[0_0_18px_rgba(251,146,60,0.9)]" />
-          <div className="mx-auto -mt-1 h-3 w-3 rotate-45 rounded-[0.2rem] bg-orange-300 shadow-[0_0_20px_rgba(251,146,60,0.85)]" />
+          <div className="mx-auto h-6 w-6 rounded-full border-[3px] border-white bg-orange-500 shadow-[0_4px_14px_rgba(0,0,0,0.48),0_0_18px_rgba(255,114,42,0.62)]" />
           <div
-            className="mt-2 max-w-32 truncate text-[0.62rem] font-black uppercase tracking-[0.2em] text-white/90 drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]"
+            className="sr-only"
             data-testid="mobile-home-country-name"
           >
             {focus.name}
           </div>
         </div>
       ) : null}
-      <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-24 bg-[linear-gradient(180deg,rgba(2,9,22,0.48),transparent)]" />
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-[34%] bg-[linear-gradient(180deg,transparent,rgba(2,8,20,0.62)_72%,rgba(2,8,20,0.88)_100%)]" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-32 bg-[linear-gradient(180deg,rgba(0,0,0,0.86),rgba(0,0,0,0.38)_42%,transparent)]" />
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-[30%] bg-[linear-gradient(180deg,transparent,rgba(0,0,0,0.36)_58%,rgba(0,0,0,0.74)_100%)]" />
+    </div>
+  );
+}
+
+function LaunchGlobeLabels() {
+  return (
+    <div className="pointer-events-none absolute inset-0 z-[18]" data-testid="launch-globe-labels">
+      {LAUNCH_GLOBE_REGION_LABELS.map((label) => (
+        <span
+          className="absolute -translate-x-1/2 -translate-y-1/2 text-[1.48rem] font-black uppercase leading-none tracking-[0.24em] text-white/90 [text-shadow:0_2px_3px_rgba(0,0,0,0.92),0_0_2px_rgba(0,0,0,0.9)]"
+          key={`${label.label}-${label.x}`}
+          style={{ left: `${label.x}%`, top: `${label.y}%` }}
+        >
+          {label.label}
+        </span>
+      ))}
+      {LAUNCH_GLOBE_CITY_LABELS.map((label) => (
+        <span
+          className="absolute -translate-x-1/2 -translate-y-1/2 whitespace-nowrap text-[0.94rem] font-black leading-none text-white/90 [text-shadow:0_2px_3px_rgba(0,0,0,0.98),0_0_2px_rgba(0,0,0,0.9)]"
+          key={label.label}
+          style={{ left: `${label.x}%`, top: `${label.y}%` }}
+        >
+          {label.label}
+          <span className="ml-1 inline-block h-1.5 w-1.5 rounded-full border border-white/90 bg-black/50 align-middle" />
+        </span>
+      ))}
     </div>
   );
 }
@@ -359,14 +405,14 @@ function degreesToRadians(value: number) {
 function HomeHeroCustomGlobe({ reduceMotion }: { reduceMotion: boolean }) {
   return (
     <div
-      className="absolute inset-0 z-[1] overflow-hidden bg-[radial-gradient(circle_at_50%_0%,rgba(96,165,250,0.2),transparent_27%),radial-gradient(circle_at_14%_14%,rgba(255,255,255,0.18),transparent_1px),radial-gradient(circle_at_82%_18%,rgba(255,255,255,0.16),transparent_1px),radial-gradient(circle_at_22%_32%,rgba(255,255,255,0.12),transparent_1px),radial-gradient(circle_at_74%_5%,rgba(255,255,255,0.18),transparent_1px),#020916]"
+      className="absolute inset-0 z-[1] overflow-hidden bg-[radial-gradient(circle_at_52%_12%,rgba(255,255,255,0.36),transparent_1px),radial-gradient(circle_at_76%_7%,rgba(255,255,255,0.32),transparent_1px),radial-gradient(circle_at_24%_20%,rgba(255,255,255,0.32),transparent_1px),radial-gradient(circle_at_18%_34%,rgba(255,255,255,0.22),transparent_1px),radial-gradient(circle_at_70%_30%,rgba(255,255,255,0.34),transparent_1px),radial-gradient(circle_at_92%_24%,rgba(255,255,255,0.28),transparent_1px),#030303]"
       data-earth-source="almidy-custom-globe"
       data-testid="almidy-custom-globe"
     >
-      <div className="absolute inset-x-0 top-0 h-36 bg-[linear-gradient(180deg,rgba(2,9,22,0.78),rgba(2,9,22,0))]" />
+      <div className="absolute inset-x-0 top-0 h-40 bg-[linear-gradient(180deg,rgba(0,0,0,0.86),rgba(0,0,0,0))]" />
       <div
         className={[
-          "absolute left-1/2 top-[5%] aspect-square w-[132vw] max-w-[58rem] -translate-x-1/2 overflow-hidden rounded-full border border-white/10 bg-[#041124] shadow-[inset_-38px_-52px_72px_rgba(0,0,0,0.74),inset_24px_22px_58px_rgba(255,255,255,0.12),0_0_66px_rgba(96,165,250,0.34)]",
+          "absolute left-[50%] top-[14%] aspect-square w-[178vw] max-w-[62rem] -translate-x-1/2 overflow-hidden rounded-full border border-sky-100/16 bg-black shadow-[inset_-72px_-100px_110px_rgba(0,0,0,0.84),inset_34px_34px_60px_rgba(255,255,255,0.18),0_0_22px_rgba(186,230,253,0.26),0_0_90px_rgba(125,211,252,0.18)]",
           reduceMotion ? "" : "wayline-home-custom-globe-intro"
         ]
           .filter(Boolean)
@@ -376,7 +422,7 @@ function HomeHeroCustomGlobe({ reduceMotion }: { reduceMotion: boolean }) {
         <Image
           alt=""
           className={[
-            "absolute -inset-x-[10%] -inset-y-[4%] h-[112%] w-[124%] object-cover opacity-100 brightness-[0.92] contrast-[1.3] saturate-[1.18]",
+            "absolute inset-0 h-full w-full object-cover opacity-100 brightness-[1.08] contrast-[1.08] saturate-[1.1]",
             reduceMotion ? "" : "wayline-home-custom-globe-texture"
           ]
             .filter(Boolean)
@@ -388,15 +434,10 @@ function HomeHeroCustomGlobe({ reduceMotion }: { reduceMotion: boolean }) {
           src="/globe/wayline-earth-3d-fallback.png"
           width={1200}
         />
-        <div
-          aria-hidden="true"
-          className="absolute inset-0 rounded-full opacity-22 [background-image:linear-gradient(rgba(255,255,255,.22)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.2)_1px,transparent_1px)] [background-size:12.5%_12.5%]"
-          data-testid="home-custom-globe-grid"
-        />
-        <div className="absolute inset-0 rounded-full bg-[radial-gradient(circle_at_35%_24%,rgba(255,255,255,0.18),transparent_20%),radial-gradient(circle_at_54%_40%,rgba(251,191,36,0.16),transparent_19%),linear-gradient(112deg,rgba(2,9,22,0)_0%,rgba(2,9,22,0.06)_43%,rgba(2,9,22,0.72)_100%)]" />
-        <div className="absolute inset-0 rounded-full ring-1 ring-inset ring-white/18" />
+        <div className="absolute inset-0 rounded-full bg-[radial-gradient(circle_at_50%_8%,rgba(255,255,255,0.28),transparent_18%),linear-gradient(112deg,rgba(0,0,0,0.1)_0%,rgba(0,0,0,0)_45%,rgba(0,0,0,0.72)_100%)]" />
+        <div className="absolute inset-0 rounded-full ring-1 ring-inset ring-sky-100/24" />
       </div>
-      <div className="pointer-events-none absolute left-1/2 top-[4%] aspect-square w-[136vw] max-w-[60rem] -translate-x-1/2 rounded-full border border-sky-200/12 bg-[radial-gradient(circle_at_42%_24%,rgba(255,255,255,0.12),transparent_22%),radial-gradient(circle,transparent_56%,rgba(5,12,28,0.62)_75%,rgba(2,9,22,0.9)_100%)] shadow-[0_0_84px_rgba(96,165,250,0.22)]" />
+      <div className="pointer-events-none absolute left-[50%] top-[13%] aspect-square w-[182vw] max-w-[64rem] -translate-x-1/2 rounded-full border border-sky-100/12 bg-[radial-gradient(circle_at_42%_20%,rgba(255,255,255,0.16),transparent_18%),radial-gradient(circle,transparent_55%,rgba(0,0,0,0.18)_66%,rgba(0,0,0,0.84)_100%)] shadow-[0_0_80px_rgba(186,230,253,0.2)]" />
     </div>
   );
 }

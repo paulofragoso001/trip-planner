@@ -1,6 +1,6 @@
 "use client";
 
-import { LocateFixed, Map } from "lucide-react";
+import { Globe2, Navigation } from "lucide-react";
 import Link from "next/link";
 import type { DashboardData } from "@/app/dashboard/loader";
 import { CustomGlobeRenderer } from "@/components/map/custom-globe-renderer";
@@ -85,27 +85,27 @@ function FloatingGlobeControls() {
   return (
     <div
       aria-label="Globe controls"
-      className="absolute right-4 top-[calc(5.5rem+env(safe-area-inset-top))] z-30 overflow-hidden rounded-full border border-white/12 bg-black/68 p-1 text-white shadow-[0_18px_42px_rgba(0,0,0,0.38)] backdrop-blur-xl"
+      className="absolute right-4 top-[calc(7.25rem+env(safe-area-inset-top))] z-30 overflow-hidden rounded-full border border-white/10 bg-[#111]/82 p-1.5 text-white shadow-[0_18px_42px_rgba(0,0,0,0.42)] backdrop-blur-xl"
       data-testid="mobile-home-globe-controls"
       role="toolbar"
     >
       <Link
         aria-label="Open map"
-        className="grid h-11 w-11 place-items-center rounded-full text-white transition hover:bg-white/10 focus:outline-none focus:ring-4 focus:ring-orange-300/20"
+        className="grid h-12 w-12 place-items-center rounded-full text-white transition hover:bg-white/10 focus:outline-none focus:ring-4 focus:ring-orange-300/20"
         href={dashboardActionRoutes.globe.openMap}
       >
-        <Map aria-hidden="true" className="h-5 w-5" />
+        <Globe2 aria-hidden="true" className="h-6 w-6" />
       </Link>
-      <span className="mx-auto block h-px w-7 bg-white/18" />
+      <span className="mx-auto my-1 block h-px w-7 bg-white/18" />
       <button
         aria-label="Use current location"
-        className="grid h-11 w-11 place-items-center rounded-full text-white transition hover:bg-white/10 focus:outline-none focus:ring-4 focus:ring-orange-300/20"
+        className="grid h-12 w-12 place-items-center rounded-full text-white transition hover:bg-white/10 focus:outline-none focus:ring-4 focus:ring-orange-300/20"
         onClick={() => {
           window.dispatchEvent(new CustomEvent(dashboardActionRoutes.globe.locateUserEvent));
         }}
         type="button"
       >
-        <LocateFixed aria-hidden="true" className="h-5 w-5" />
+        <Navigation aria-hidden="true" className="h-6 w-6" />
       </button>
     </div>
   );
