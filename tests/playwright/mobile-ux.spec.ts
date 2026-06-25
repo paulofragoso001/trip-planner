@@ -346,6 +346,7 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByTestId("mobile-trips-wallet-background").locator("img")).toHaveCount(0);
 
     if (await firstTripState.isVisible()) {
+      await expect(firstTripState.getByTestId("mobile-premium-first-trip-card")).toBeVisible();
       await expect(firstTripState.getByRole("heading", { name: "Create your first trip" })).toBeVisible();
       await expect(firstTripState.getByRole("button", { name: "Create trip" })).toBeVisible();
       const createPanel = page.getByTestId("mobile-create-another-trip");

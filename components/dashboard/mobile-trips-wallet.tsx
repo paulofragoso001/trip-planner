@@ -1,10 +1,11 @@
 "use client";
 
-import { BarChart3, ChevronDown, List, LocateFixed, Plus, Search, Settings } from "lucide-react";
+import { BarChart3, CalendarDays, ChevronDown, List, LocateFixed, MapPinned, Plus, Search, Settings, Sparkles } from "lucide-react";
 import { GoogleMap, OverlayView } from "@react-google-maps/api";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
+import type { ReactNode } from "react";
 import GoogleMapsProvider from "@/components/GoogleMapsProvider";
 import { TripCreateForm } from "@/components/dashboard/trip-create-form";
 import { TravelWalletSheet } from "@/components/dashboard/travel-wallet-sheet";
@@ -185,8 +186,8 @@ export function MobileTripsWallet({ error, trips }: MobileTripsWalletProps) {
 
         <section
           className={cn(
-            "grid gap-3 rounded-[1.75rem] border border-white/10 bg-[#111113] p-3",
-            createOpen ? "shadow-[0_26px_70px_rgba(0,0,0,0.34)]" : "p-2"
+            "grid gap-3 rounded-[2rem] border border-white/10 bg-white/[0.08] p-3 shadow-[0_24px_70px_rgba(0,0,0,0.30)] backdrop-blur-xl",
+            createOpen ? "ring-1 ring-orange-300/16" : "p-2"
           )}
           data-testid="mobile-create-another-trip"
           id="mobile-new-trip"
@@ -206,7 +207,7 @@ export function MobileTripsWallet({ error, trips }: MobileTripsWalletProps) {
             </button>
           ) : null}
           {createOpen ? (
-            <div className="rounded-[1.5rem] bg-white p-3 text-slate-950 shadow-2xl">
+            <div className="overflow-hidden rounded-[1.65rem] bg-white text-slate-950 shadow-2xl ring-1 ring-white/70">
               <TripCreateForm mode="mobile-pass" redirectOnSuccess />
             </div>
           ) : null}
@@ -469,26 +470,60 @@ function MobileTripsBackground() {
 
 function NoTripsCard({ disabled, onCreate }: { disabled: boolean; onCreate: () => void }) {
   return (
-    <article className="relative isolate min-h-[24rem] overflow-hidden rounded-[2.1rem] bg-[radial-gradient(circle_at_22%_18%,rgba(255,255,255,0.22),transparent_28%),linear-gradient(135deg,#0f172a,#1d4ed8_48%,#0f766e)] p-5 text-white shadow-[0_28px_90px_rgba(0,0,0,0.46)]">
-      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(2,6,23,0.02),rgba(2,6,23,0.82))]" />
-      <div className="relative flex min-h-[21rem] flex-col justify-end">
-        <p className="text-sm font-bold text-white/70">Start here</p>
+    <article
+      className="relative isolate min-h-[26rem] overflow-hidden rounded-[2.25rem] bg-[radial-gradient(circle_at_18%_8%,rgba(255,255,255,0.30),transparent_24%),radial-gradient(circle_at_78%_12%,rgba(249,115,22,0.24),transparent_26%),linear-gradient(145deg,#020617,#172554_48%,#0f766e)] p-5 text-white shadow-[0_32px_100px_rgba(0,0,0,0.52)]"
+      data-testid="mobile-premium-first-trip-card"
+    >
+      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(2,6,23,0.02),rgba(2,6,23,0.28)_42%,rgba(2,6,23,0.88))]" />
+      <div className="absolute -right-12 top-10 h-44 w-44 rounded-full border border-white/12 bg-white/6 shadow-[0_0_70px_rgba(96,165,250,0.24)]" />
+      <div className="absolute left-5 top-5 flex items-center gap-2">
+        <span className="grid h-10 w-10 place-items-center rounded-full bg-white/16 text-orange-200 ring-1 ring-white/18 backdrop-blur">
+          <Sparkles className="h-5 w-5" aria-hidden="true" />
+        </span>
+        <span className="rounded-full bg-black/24 px-3 py-1 text-[0.68rem] font-black uppercase tracking-[0.16em] text-white/78 ring-1 ring-white/12 backdrop-blur">
+          First Trip Pass
+        </span>
+      </div>
+
+      <div className="relative flex min-h-[23rem] flex-col justify-end">
+        <div className="mb-5 grid gap-2">
+          <FirstTripStep icon={<MapPinned className="h-4 w-4" aria-hidden="true" />} label="Pick a destination" />
+          <FirstTripStep icon={<CalendarDays className="h-4 w-4" aria-hidden="true" />} label="Add dates when ready" />
+          <FirstTripStep icon={<Sparkles className="h-4 w-4" aria-hidden="true" />} label="Open a visual wallet" />
+        </div>
+        <p className="text-sm font-bold text-orange-200/90">Your Almidy starts here</p>
         <h2 className="mt-2 text-4xl font-black leading-none tracking-tight">
           Create your first trip
         </h2>
-              <p className="mt-3 max-w-sm text-sm font-semibold leading-6 text-white/[0.72]">
-          Choose a destination and Almidy will open it as a visual Trip Pass.
+        <p className="mt-3 max-w-sm text-sm font-semibold leading-6 text-white/[0.74]">
+          Start with a city and Almidy will shape it into a premium Trip Pass with map-ready details.
         </p>
-        <button
-          className="mt-5 inline-flex min-h-12 w-fit items-center justify-center rounded-full bg-white px-5 text-sm font-black text-slate-950 shadow-xl transition hover:bg-slate-100 focus:outline-none focus:ring-4 focus:ring-white/20 disabled:cursor-wait disabled:opacity-60"
-          disabled={disabled}
-          onClick={onCreate}
-          type="button"
-        >
-          Create trip
-        </button>
+        <div className="mt-5 flex flex-wrap items-center gap-3">
+          <button
+            className="inline-flex min-h-12 items-center justify-center rounded-full bg-white px-5 text-sm font-black text-slate-950 shadow-xl transition hover:bg-slate-100 focus:outline-none focus:ring-4 focus:ring-white/20 disabled:cursor-wait disabled:opacity-60"
+            disabled={disabled}
+            onClick={onCreate}
+            type="button"
+          >
+            Create trip
+          </button>
+          <span className="text-xs font-black uppercase tracking-[0.16em] text-white/50">
+            No setup required
+          </span>
+        </div>
       </div>
     </article>
+  );
+}
+
+function FirstTripStep({ icon, label }: { icon: ReactNode; label: string }) {
+  return (
+    <div className="flex w-fit items-center gap-2 rounded-full bg-white/[0.10] py-1 pl-1 pr-3 text-xs font-black text-white/82 ring-1 ring-white/12 backdrop-blur">
+      <span className="grid h-7 w-7 place-items-center rounded-full bg-white/14 text-orange-200">
+        {icon}
+      </span>
+      {label}
+    </div>
   );
 }
 

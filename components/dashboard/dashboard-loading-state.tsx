@@ -15,7 +15,7 @@ const variantCopy = {
   },
   panel: {
     eyebrow: "Almidy",
-    title: "Loading workspace"
+    title: "Preparing your wallet"
   },
   trips: {
     eyebrow: "My Trips",
@@ -118,13 +118,13 @@ export function DashboardLoadingState({
     <section
       aria-busy="true"
       aria-label={resolvedTitle}
-      className="relative isolate min-h-[38rem] overflow-hidden rounded-[2rem] bg-[#050816] p-4 text-white shadow-[0_28px_90px_rgba(2,6,23,0.24)] sm:p-5"
+      className="relative isolate min-h-[100dvh] overflow-hidden bg-[#050816] p-4 text-white shadow-[0_28px_90px_rgba(2,6,23,0.24)] sm:p-5 lg:min-h-[38rem] lg:rounded-[2rem]"
       data-testid="dashboard-loading-panel"
     >
       <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_18%_4%,rgba(255,255,255,0.16),transparent_24%),radial-gradient(circle_at_82%_18%,rgba(249,115,22,0.18),transparent_25%),linear-gradient(180deg,#020617,#08111f_62%,#030712)]" />
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_18rem]">
+      <div className="mx-auto grid w-full max-w-[31rem] gap-4 lg:max-w-none lg:grid-cols-[minmax(0,1fr)_18rem]">
         <div className="grid gap-4">
-          <div className="rounded-[1.75rem] border border-white/10 bg-white/[0.08] p-5 backdrop-blur">
+          <div className="rounded-[2rem] border border-white/10 bg-white/[0.08] p-5 shadow-[0_24px_80px_rgba(0,0,0,0.28)] backdrop-blur">
             <p className="text-xs font-black uppercase tracking-[0.26em] text-orange-300">
               {resolvedEyebrow}
             </p>
@@ -141,9 +141,9 @@ export function DashboardLoadingState({
             <ActionSkeleton icon={<Sparkles aria-hidden="true" className="h-5 w-5" />} />
             <ActionSkeleton icon={<Plane aria-hidden="true" className="h-5 w-5" />} />
           </div>
-          <SkeletonBlock className="h-[18rem] border-white/10 bg-white/[0.08]" />
+          <SkeletonBlock className="h-[18rem] rounded-[2rem] border-white/10 bg-white/[0.08]" />
         </div>
-        <div className="grid content-start gap-3">
+        <div className="grid content-start gap-3 lg:block lg:space-y-3">
           <SkeletonBlock className="h-36 border-white/10 bg-white/[0.08]" />
           <SkeletonBlock className="h-36 border-white/10 bg-white/[0.08]" />
           <SkeletonBlock className="h-36 border-white/10 bg-white/[0.08]" />
