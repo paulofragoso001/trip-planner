@@ -2,7 +2,9 @@
 
 import { Globe2, MapPin, Navigation } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useRouter } from "next/navigation";
+import type { MouseEvent } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { DashboardData } from "@/app/dashboard/loader";
 import { CustomGlobeRenderer } from "@/components/map/custom-globe-renderer";
 import { TravelWalletSheet } from "@/components/dashboard/travel-wallet-sheet";
@@ -88,8 +90,29 @@ export function MobileHomeWallet({
 }
 
 function LaunchFirstTripCard({ href }: { href: string }) {
+  const router = useRouter();
   const { location } = useUnifiedMap();
   const countryFlag = countryCodeToFlag(location.countryCode);
+  const navigationTimeoutRef = useRef<number | null>(null);
+  const [isSlidingOut, setIsSlidingOut] = useState(false);
+
+  useEffect(() => {
+    return () => {
+      if (navigationTimeoutRef.current) {
+        window.clearTimeout(navigationTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  function createTrip(event: MouseEvent<HTMLAnchorElement>) {
+    event.preventDefault();
+    if (isSlidingOut) return;
+
+    setIsSlidingOut(true);
+    navigationTimeoutRef.current = window.setTimeout(() => {
+      router.push(href);
+    }, 400);
+  }
 
   if (location.source !== "browser" || !countryFlag) {
     return null;
@@ -98,10 +121,21 @@ function LaunchFirstTripCard({ href }: { href: string }) {
   return (
     <section
       aria-label="Create your first trip"
-      className="pointer-events-none absolute inset-x-4 top-[calc(0.75rem+env(safe-area-inset-top))] z-30"
+      className={cn(
+        "trip-card-overlay absolute inset-x-4 top-[calc(0.75rem+env(safe-area-inset-top))] z-30 transform-gpu transition-[opacity,transform] duration-[400ms] ease-[cubic-bezier(0.25,1,0.5,1)]",
+        isSlidingOut
+          ? "slide-out-up pointer-events-none -translate-y-[130%] opacity-0"
+          : "pointer-events-none translate-y-0 opacity-100"
+      )}
       data-testid="launch-first-trip-card"
+      id="create-trip-card"
     >
-      <div className="pointer-events-auto grid min-h-[7.2rem] grid-cols-[3.25rem_minmax(0,1fr)] gap-3 rounded-[1.4rem] bg-white px-3.5 py-3.5 text-slate-950 shadow-[0_18px_46px_rgba(0,0,0,0.24)] ring-1 ring-black/5 min-[390px]:min-h-[7.75rem] min-[390px]:grid-cols-[3.5rem_minmax(0,1fr)] min-[390px]:rounded-[1.55rem] min-[390px]:px-4">
+      <div
+        className={cn(
+          "grid min-h-[7.2rem] grid-cols-[3.25rem_minmax(0,1fr)] gap-3 rounded-[1.4rem] bg-white px-3.5 py-3.5 text-slate-950 shadow-[0_18px_46px_rgba(0,0,0,0.24)] ring-1 ring-black/5 min-[390px]:min-h-[7.75rem] min-[390px]:grid-cols-[3.5rem_minmax(0,1fr)] min-[390px]:rounded-[1.55rem] min-[390px]:px-4",
+          isSlidingOut ? "pointer-events-none" : "pointer-events-auto"
+        )}
+      >
         <div
           aria-hidden="true"
           className="grid h-12 w-12 place-items-center rounded-full bg-slate-100 text-[1.95rem] shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] min-[390px]:h-[3.25rem] min-[390px]:w-[3.25rem] min-[390px]:text-[2.1rem]"
@@ -120,6 +154,8 @@ function LaunchFirstTripCard({ href }: { href: string }) {
             className="mt-2 inline-flex min-h-8 items-center rounded-full text-[0.98rem] font-black text-orange-500 transition hover:text-orange-600 focus:outline-none focus:ring-4 focus:ring-orange-300/20 min-[390px]:text-[1.05rem]"
             data-testid="launch-first-trip-create"
             href={href}
+            id="create-trip-btn"
+            onClick={createTrip}
           >
             Create Trip
           </Link>
