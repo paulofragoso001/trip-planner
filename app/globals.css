@@ -48,7 +48,7 @@ gmp-place-autocomplete {
   --gmp-input-font-size: 14px;
 }
 
-@keyframes wayline-home-custom-globe-intro {
+@keyframes wayline-home-photorealistic-globe-intro {
   0% {
     transform: translate3d(-52%, -3%, 0) scale(1.06);
     filter: saturate(1.2) contrast(1.16) brightness(0.82);
@@ -59,12 +59,12 @@ gmp-place-autocomplete {
   }
 }
 
-.wayline-home-custom-globe-intro {
-  animation: wayline-home-custom-globe-intro 2.8s cubic-bezier(0.2, 0.82, 0.17, 1) both;
+.wayline-home-photorealistic-globe-intro {
+  animation: wayline-home-photorealistic-globe-intro 2.8s cubic-bezier(0.2, 0.82, 0.17, 1) both;
   will-change: transform;
 }
 
-@keyframes wayline-home-custom-globe-texture {
+@keyframes wayline-home-photorealistic-globe-texture {
   0% {
     transform: translate3d(-1.5%, 0, 0) scale(1.02);
   }
@@ -73,13 +73,13 @@ gmp-place-autocomplete {
   }
 }
 
-.wayline-home-custom-globe-texture {
-  animation: wayline-home-custom-globe-texture 34s ease-in-out infinite alternate;
+.wayline-home-photorealistic-globe-texture {
+  animation: wayline-home-photorealistic-globe-texture 34s ease-in-out infinite alternate;
   transform-origin: 54% 38%;
   will-change: transform;
 }
 
-.wayline-home-custom-globe-intro {
+.wayline-home-photorealistic-globe-intro {
   transform-origin: 54% 36%;
 }
 
@@ -128,8 +128,8 @@ gmp-place-autocomplete {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .wayline-home-custom-globe-intro,
-  .wayline-home-custom-globe-texture,
+  .wayline-home-photorealistic-globe-intro,
+  .wayline-home-photorealistic-globe-texture,
   .wayline-home-content-reveal,
   .wayline-country-pin {
     animation: none;

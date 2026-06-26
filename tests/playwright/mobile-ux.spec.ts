@@ -1360,7 +1360,12 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByTestId("almidy-launch-globe")).toHaveAttribute("data-launch-globe-state", "missing-location");
     await expect(page.getByTestId("almidy-launch-globe-state")).toHaveAttribute("data-map-runtime", "missing-location");
     await expect(page.getByTestId("almidy-google-maps-3d-globe")).toHaveCount(0);
-    await expect(page.getByTestId("almidy-custom-globe")).toBeVisible();
+    await expect(page.getByTestId("almidy-photorealistic-globe")).toBeVisible();
+    await expect(page.getByTestId("home-photorealistic-globe")).toBeVisible();
+    await expect(page.getByTestId("home-photorealistic-globe-texture")).toBeVisible();
+    await expect(page.getByTestId("almidy-custom-globe")).toHaveCount(0);
+    await expect(page.getByTestId("home-custom-globe")).toHaveCount(0);
+    await expect(page.getByTestId("home-custom-globe-texture")).toHaveCount(0);
     await expect(page.getByTestId("mobile-home-country-pin")).toHaveCount(0);
     await expect(page.getByText("Globe runtime unavailable")).toHaveCount(0);
     await expectNoHomeGoogleMapsCopy(page);
@@ -1406,9 +1411,12 @@ test.describe("mobile soft-launch UX", () => {
       "data-home-hero-mode",
       "home-hero-mode: reduced-motion"
     );
-    await expect(page.getByTestId("almidy-custom-globe")).toBeVisible();
-    await expect(page.getByTestId("home-custom-globe")).toBeVisible();
-    await expect(page.getByTestId("home-custom-globe-texture")).toBeVisible();
+    await expect(page.getByTestId("almidy-photorealistic-globe")).toBeVisible();
+    await expect(page.getByTestId("home-photorealistic-globe")).toBeVisible();
+    await expect(page.getByTestId("home-photorealistic-globe-texture")).toBeVisible();
+    await expect(page.getByTestId("almidy-custom-globe")).toHaveCount(0);
+    await expect(page.getByTestId("home-custom-globe")).toHaveCount(0);
+    await expect(page.getByTestId("home-custom-globe-texture")).toHaveCount(0);
     await expect(page.getByTestId("mobile-home-earth-image")).toHaveCount(0);
     await expect(page.getByTestId("mobile-home-earth-texture")).toHaveCount(0);
     await expect(page.getByTestId("mobile-home-earth-continents")).toHaveCount(0);
@@ -1480,8 +1488,12 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByTestId("almidy-launch-globe")).toHaveAttribute("data-hero-mode", "google-maps-3d");
     await expect(page.getByTestId("almidy-launch-globe")).toHaveAttribute("data-launch-globe-state", "google-runtime-failed");
     await expect(page.getByTestId("almidy-launch-globe-state")).toHaveAttribute("data-map-runtime", "google-runtime-failed");
-    await expect(page.getByTestId("almidy-custom-globe")).toBeVisible();
-    await expect(page.getByTestId("home-custom-globe")).toBeVisible();
+    await expect(page.getByTestId("almidy-photorealistic-globe")).toBeVisible();
+    await expect(page.getByTestId("home-photorealistic-globe")).toBeVisible();
+    await expect(page.getByTestId("home-photorealistic-globe-texture")).toBeVisible();
+    await expect(page.getByTestId("almidy-custom-globe")).toHaveCount(0);
+    await expect(page.getByTestId("home-custom-globe")).toHaveCount(0);
+    await expect(page.getByTestId("home-custom-globe-texture")).toHaveCount(0);
     await expect(page.getByTestId("almidy-google-maps-3d-globe")).toHaveCount(0);
     await expect(page.getByText("Globe runtime unavailable")).toHaveCount(0);
     await expect(page.getByText("GOOGLE-RUNTIME-FAILED")).toHaveCount(0);

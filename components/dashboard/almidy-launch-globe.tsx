@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import type { CSSProperties, ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 import GoogleMapsProvider from "@/components/GoogleMapsProvider";
@@ -475,7 +474,7 @@ function AlmidyLaunchGlobeFallback({
       } as CSSProperties}
     >
       <div className="absolute inset-0" data-testid="earth-only-visual">
-        <HomeHeroCustomGlobe reduceMotion={reduceMotion} />
+        <HomeHeroPhotorealisticGlobe reduceMotion={reduceMotion} />
       </div>
       <div
         className="pointer-events-none absolute inset-0 z-10 bg-[radial-gradient(circle_at_var(--wayline-pin-x)_var(--wayline-pin-y),rgba(255,118,42,0.26),transparent_5.5%),linear-gradient(180deg,rgba(0,0,0,0.78)_0%,rgba(0,0,0,0.08)_24%,rgba(0,0,0,0)_57%,rgba(0,0,0,0.62)_100%)]"
@@ -670,39 +669,38 @@ function degreesToRadians(value: number) {
   return (value * Math.PI) / 180;
 }
 
-function HomeHeroCustomGlobe({ reduceMotion }: { reduceMotion: boolean }) {
+function HomeHeroPhotorealisticGlobe({ reduceMotion }: { reduceMotion: boolean }) {
   return (
     <div
-      className="absolute inset-0 z-[1] overflow-hidden bg-[radial-gradient(circle_at_52%_12%,rgba(255,255,255,0.36),transparent_1px),radial-gradient(circle_at_76%_7%,rgba(255,255,255,0.32),transparent_1px),radial-gradient(circle_at_24%_20%,rgba(255,255,255,0.32),transparent_1px),radial-gradient(circle_at_18%_34%,rgba(255,255,255,0.22),transparent_1px),radial-gradient(circle_at_70%_30%,rgba(255,255,255,0.34),transparent_1px),radial-gradient(circle_at_92%_24%,rgba(255,255,255,0.28),transparent_1px),#030303]"
-      data-earth-source="almidy-custom-globe"
-      data-testid="almidy-custom-globe"
+      className="absolute inset-0 z-[1] overflow-hidden bg-[radial-gradient(circle_at_52%_12%,rgba(255,255,255,0.36),transparent_1px),radial-gradient(circle_at_76%_7%,rgba(255,255,255,0.32),transparent_1px),radial-gradient(circle_at_24%_20%,rgba(255,255,255,0.32),transparent_1px),radial-gradient(circle_at_18%_34%,rgba(255,255,255,0.22),transparent_1px),radial-gradient(circle_at_70%_30%,rgba(255,255,255,0.34),transparent_1px),radial-gradient(circle_at_92%_24%,rgba(255,255,255,0.28),transparent_1px),linear-gradient(180deg,#020202_0%,#03070c_42%,#010205_100%)]"
+      data-earth-source="almidy-photorealistic-3d-globe"
+      data-testid="almidy-photorealistic-globe"
     >
       <div className="absolute inset-x-0 top-0 h-40 bg-[linear-gradient(180deg,rgba(0,0,0,0.86),rgba(0,0,0,0))]" />
       <div
         className={[
-          "absolute left-[50%] top-[14%] aspect-square w-[178vw] max-w-[62rem] -translate-x-1/2 overflow-hidden rounded-full border border-sky-100/16 bg-black shadow-[inset_-72px_-100px_110px_rgba(0,0,0,0.84),inset_34px_34px_60px_rgba(255,255,255,0.18),0_0_22px_rgba(186,230,253,0.26),0_0_90px_rgba(125,211,252,0.18)]",
-          reduceMotion ? "" : "wayline-home-custom-globe-intro"
+          "absolute left-[50%] top-[14%] aspect-square w-[178vw] max-w-[62rem] -translate-x-1/2 overflow-hidden rounded-full border border-sky-100/20 bg-[#061b2d] shadow-[inset_-88px_-118px_124px_rgba(0,0,0,0.88),inset_42px_30px_72px_rgba(255,255,255,0.2),0_0_22px_rgba(186,230,253,0.3),0_0_110px_rgba(125,211,252,0.22)]",
+          reduceMotion ? "" : "wayline-home-photorealistic-globe-intro"
         ]
           .filter(Boolean)
           .join(" ")}
-        data-testid="home-custom-globe"
+        data-testid="home-photorealistic-globe"
       >
-        <Image
-          alt=""
+        <div
           className={[
-            "absolute inset-0 h-full w-full object-cover opacity-100 brightness-[1.08] contrast-[1.08] saturate-[1.1]",
-            reduceMotion ? "" : "wayline-home-custom-globe-texture"
+            "absolute inset-[-6%] rounded-full opacity-95 blur-[0.2px]",
+            reduceMotion ? "" : "wayline-home-photorealistic-globe-texture"
           ]
             .filter(Boolean)
             .join(" ")}
-          data-testid="home-custom-globe-texture"
-          height={820}
-          priority
-          sizes="(max-width: 1023px) 132vw, 1px"
-          src="/globe/wayline-earth-3d-fallback.png"
-          width={1200}
-        />
-        <div className="absolute inset-0 rounded-full bg-[radial-gradient(circle_at_50%_8%,rgba(255,255,255,0.28),transparent_18%),linear-gradient(112deg,rgba(0,0,0,0.1)_0%,rgba(0,0,0,0)_45%,rgba(0,0,0,0.72)_100%)]" />
+          data-testid="home-photorealistic-globe-texture"
+        >
+          <div className="absolute inset-0 rounded-full bg-[radial-gradient(ellipse_at_29%_31%,rgba(202,190,132,0.9)_0_4%,transparent_11%),radial-gradient(ellipse_at_36%_42%,rgba(55,111,57,0.95)_0_18%,transparent_30%),radial-gradient(ellipse_at_46%_42%,rgba(175,160,96,0.88)_0_10%,transparent_23%),radial-gradient(ellipse_at_58%_43%,rgba(42,114,58,0.94)_0_22%,transparent_34%),radial-gradient(ellipse_at_68%_50%,rgba(72,121,55,0.92)_0_17%,transparent_28%),radial-gradient(ellipse_at_48%_60%,rgba(158,138,82,0.86)_0_18%,transparent_29%),radial-gradient(ellipse_at_63%_73%,rgba(33,102,55,0.9)_0_22%,transparent_36%),radial-gradient(ellipse_at_75%_83%,rgba(61,124,54,0.76)_0_18%,transparent_30%),linear-gradient(140deg,#041052_0%,#082a64_24%,#12618c_44%,#071956_68%,#020633_100%)]" />
+          <div className="absolute inset-0 rounded-full bg-[radial-gradient(circle_at_63%_48%,rgba(255,243,128,0.48),transparent_0.55%,transparent_1.6%),radial-gradient(circle_at_67%_47%,rgba(255,239,119,0.44),transparent_0.5%,transparent_1.6%),radial-gradient(circle_at_70%_43%,rgba(255,245,139,0.36),transparent_0.45%,transparent_1.5%),radial-gradient(circle_at_54%_50%,rgba(255,232,112,0.4),transparent_0.45%,transparent_1.5%),radial-gradient(circle_at_58%_55%,rgba(255,226,105,0.34),transparent_0.4%,transparent_1.5%),radial-gradient(circle_at_43%_36%,rgba(255,245,169,0.18),transparent_18%)] opacity-90" />
+          <div className="absolute inset-0 rounded-full bg-[repeating-linear-gradient(90deg,rgba(255,255,255,0.06)_0_1px,transparent_1px_7.5%),repeating-linear-gradient(0deg,rgba(255,255,255,0.035)_0_1px,transparent_1px_10px)] opacity-20 mix-blend-screen" />
+        </div>
+        <div className="absolute inset-0 rounded-full bg-[radial-gradient(circle_at_50%_8%,rgba(255,255,255,0.34),transparent_18%),linear-gradient(112deg,rgba(0,0,0,0.08)_0%,rgba(0,0,0,0)_44%,rgba(0,0,0,0.76)_100%)]" />
+        <div className="absolute inset-0 rounded-full bg-[linear-gradient(180deg,rgba(218,244,255,0.48)_0%,transparent_8%,transparent_78%,rgba(255,255,255,0.2)_100%)] opacity-70" />
         <div className="absolute inset-0 rounded-full ring-1 ring-inset ring-sky-100/24" />
       </div>
       <div className="pointer-events-none absolute left-[50%] top-[13%] aspect-square w-[182vw] max-w-[64rem] -translate-x-1/2 rounded-full border border-sky-100/12 bg-[radial-gradient(circle_at_42%_20%,rgba(255,255,255,0.16),transparent_18%),radial-gradient(circle,transparent_55%,rgba(0,0,0,0.18)_66%,rgba(0,0,0,0.84)_100%)] shadow-[0_0_80px_rgba(186,230,253,0.2)]" />
