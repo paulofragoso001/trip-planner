@@ -186,7 +186,6 @@ export function AlmidyLaunchGlobe({
     <GoogleMapsProvider
       blockChildrenOnError
       blockChildrenUntilLoaded
-      version="alpha"
       fallback={
         <LaunchGlobePreflight
           className={className}
