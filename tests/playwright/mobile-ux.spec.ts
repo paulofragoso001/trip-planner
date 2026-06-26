@@ -1152,6 +1152,9 @@ test.describe("mobile soft-launch UX", () => {
     await expectNoHomeGoogleMapsCopy(page);
     await expect(page.getByTestId("almidy-custom-globe")).toHaveCount(0);
     await expect(page.getByTestId("home-custom-globe")).toHaveCount(0);
+    await expect(page.getByTestId("almidy-photorealistic-globe")).toHaveCount(0);
+    await expect(page.getByTestId("home-photorealistic-globe")).toHaveCount(0);
+    await expect(page.getByTestId("home-photorealistic-globe-texture")).toHaveCount(0);
 
     const google3DGlobe = page.getByTestId("almidy-google-maps-3d-globe");
     await expect(google3DGlobe).toBeVisible();
@@ -1325,7 +1328,7 @@ test.describe("mobile soft-launch UX", () => {
     await expect(restoredTripsMap).toHaveAttribute("data-user-pin-country-code", "US");
   });
 
-  test("mobile map location falls back cleanly when geolocation is denied", async ({ page }) => {
+  test("mobile map location keeps launch fallback off when geolocation is denied", async ({ page }) => {
     await page.setViewportSize({ height: 900, width: 390 });
     await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
     await page.emulateMedia({ reducedMotion: "reduce" });
@@ -1336,9 +1339,10 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByTestId("almidy-launch-globe")).toHaveAttribute("data-launch-globe-state", "missing-location");
     await expect(page.getByTestId("almidy-launch-globe-state")).toHaveAttribute("data-map-runtime", "missing-location");
     await expect(page.getByTestId("almidy-google-maps-3d-globe")).toHaveCount(0);
-    await expect(page.getByTestId("almidy-photorealistic-globe")).toBeVisible();
-    await expect(page.getByTestId("home-photorealistic-globe")).toBeVisible();
-    await expect(page.getByTestId("home-photorealistic-globe-texture")).toBeVisible();
+    await expect(page.getByTestId("earth-only-visual")).toHaveCount(0);
+    await expect(page.getByTestId("almidy-photorealistic-globe")).toHaveCount(0);
+    await expect(page.getByTestId("home-photorealistic-globe")).toHaveCount(0);
+    await expect(page.getByTestId("home-photorealistic-globe-texture")).toHaveCount(0);
     await expect(page.getByTestId("almidy-custom-globe")).toHaveCount(0);
     await expect(page.getByTestId("home-custom-globe")).toHaveCount(0);
     await expect(page.getByTestId("home-custom-globe-texture")).toHaveCount(0);
@@ -1353,7 +1357,7 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByTestId("mobile-country-sheet")).toBeVisible();
   });
 
-  test("mobile home launch globe supports reduced motion and missing-location fallback", async ({ page }) => {
+  test("mobile home launch globe supports reduced motion without launch fallback", async ({ page }) => {
     await page.setViewportSize({ height: 900, width: 390 });
     await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
     await page.emulateMedia({ reducedMotion: "reduce" });
@@ -1381,15 +1385,15 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByTestId("mobile-home-launch-globe")).toBeVisible();
     await expect(page.getByTestId("almidy-launch-globe")).toBeVisible();
     await expect(page.getByTestId("mobile-home-globe")).toHaveCount(0);
-    await expect(page.getByTestId("earth-only-visual")).toBeVisible();
+    await expect(page.getByTestId("earth-only-visual")).toHaveCount(0);
     await expect(page.getByTestId("almidy-launch-globe")).toHaveAttribute("data-hero-mode", "google-maps-3d");
     await expect(page.getByTestId("almidy-launch-globe")).toHaveAttribute(
       "data-home-hero-mode",
       "home-hero-mode: reduced-motion"
     );
-    await expect(page.getByTestId("almidy-photorealistic-globe")).toBeVisible();
-    await expect(page.getByTestId("home-photorealistic-globe")).toBeVisible();
-    await expect(page.getByTestId("home-photorealistic-globe-texture")).toBeVisible();
+    await expect(page.getByTestId("almidy-photorealistic-globe")).toHaveCount(0);
+    await expect(page.getByTestId("home-photorealistic-globe")).toHaveCount(0);
+    await expect(page.getByTestId("home-photorealistic-globe-texture")).toHaveCount(0);
     await expect(page.getByTestId("almidy-custom-globe")).toHaveCount(0);
     await expect(page.getByTestId("home-custom-globe")).toHaveCount(0);
     await expect(page.getByTestId("home-custom-globe-texture")).toHaveCount(0);
@@ -1464,9 +1468,10 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByTestId("almidy-launch-globe")).toHaveAttribute("data-hero-mode", "google-maps-3d");
     await expect(page.getByTestId("almidy-launch-globe")).toHaveAttribute("data-launch-globe-state", "google-runtime-failed");
     await expect(page.getByTestId("almidy-launch-globe-state")).toHaveAttribute("data-map-runtime", "google-runtime-failed");
-    await expect(page.getByTestId("almidy-photorealistic-globe")).toBeVisible();
-    await expect(page.getByTestId("home-photorealistic-globe")).toBeVisible();
-    await expect(page.getByTestId("home-photorealistic-globe-texture")).toBeVisible();
+    await expect(page.getByTestId("earth-only-visual")).toHaveCount(0);
+    await expect(page.getByTestId("almidy-photorealistic-globe")).toHaveCount(0);
+    await expect(page.getByTestId("home-photorealistic-globe")).toHaveCount(0);
+    await expect(page.getByTestId("home-photorealistic-globe-texture")).toHaveCount(0);
     await expect(page.getByTestId("almidy-custom-globe")).toHaveCount(0);
     await expect(page.getByTestId("home-custom-globe")).toHaveCount(0);
     await expect(page.getByTestId("home-custom-globe-texture")).toHaveCount(0);
