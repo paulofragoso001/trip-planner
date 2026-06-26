@@ -1154,6 +1154,44 @@ test.describe("mobile soft-launch UX", () => {
     expect(planCardStyle.color).toBe("rgb(255, 255, 255)");
   });
 
+  test("mobile launch sheet tracks touch dragging and snaps open", async ({ page }) => {
+    await page.setViewportSize({ height: 900, width: 390 });
+    await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
+    await installMockMobileLocation(page);
+    await page.addInitScript(() => {
+      Object.defineProperty(navigator, "language", { configurable: true, value: "en-US" });
+      Object.defineProperty(navigator, "languages", { configurable: true, value: ["en-US", "en"] });
+    });
+
+    await page.goto(baseUrl + "/dashboard", { waitUntil: "commit" });
+
+    const launchSheet = page.getByTestId("mobile-home-wallet-content");
+    await expect(launchSheet).toBeVisible();
+    await expect(launchSheet).toHaveAttribute("data-sheet-state", "collapsed");
+
+    await launchSheet.dispatchEvent("touchstart", {
+      changedTouches: [{ clientY: 780, identifier: 1 }],
+      touches: [{ clientY: 780, identifier: 1 }]
+    });
+    await launchSheet.dispatchEvent("touchmove", {
+      changedTouches: [{ clientY: 360, identifier: 1 }],
+      touches: [{ clientY: 360, identifier: 1 }]
+    });
+
+    await expect(launchSheet).toHaveAttribute("data-touch-dragging", "true");
+    await expect(launchSheet).toHaveClass(/is-dragging/);
+    await expect.poll(async () => Number(await launchSheet.getAttribute("data-sheet-transform"))).toBeLessThan(35);
+
+    await launchSheet.dispatchEvent("touchend", {
+      changedTouches: [{ clientY: 360, identifier: 1 }],
+      touches: []
+    });
+
+    await expect(launchSheet).toHaveAttribute("data-sheet-state", "expanded");
+    await expect(launchSheet).not.toHaveClass(/is-dragging/);
+    await expect(launchSheet).not.toHaveAttribute("data-touch-dragging", "true");
+  });
+
   test("mobile home launch globe uses granted browser location for pin", async ({ page }) => {
     await page.setViewportSize({ height: 900, width: 390 });
     await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });

@@ -32,13 +32,20 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import type { PointerEvent, ReactNode } from "react";
+import type { CSSProperties, PointerEvent, ReactNode, TouchEvent } from "react";
 import type { DashboardRecentTripView } from "@/app/dashboard/loader";
 import { cn } from "@/components/trip-ui";
 import { dashboardActionRoutes } from "@/lib/dashboard/action-routes";
 
 type SheetState = "collapsed" | "expanded" | "settings";
 type TravelWalletSurface = "home" | "trips";
+
+const SHEET_RESTING_TRANSLATE = 60;
+const SHEET_EXPANDED_TRANSLATE = 15;
+const SHEET_DRAG_MIN_TRANSLATE = 10;
+const SHEET_DRAG_MAX_TRANSLATE = 85;
+const SHEET_SNAP_THRESHOLD = 35;
+const SHEET_TOUCH_DRAG_THRESHOLD = 6;
 
 export function TravelWalletSheet({
   forceExpanded = false,
@@ -61,8 +68,14 @@ export function TravelWalletSheet({
 }) {
   const [sheetState, setSheetState] = useState<SheetState>(initialSheetState);
   const [trialSheetCopy, setTrialSheetCopy] = useState<string | null>(null);
+  const [isTouchDragging, setIsTouchDragging] = useState(false);
+  const [touchTransform, setTouchTransform] = useState<number | null>(null);
   const dragStartY = useRef<number | null>(null);
   const ignoreNextHandleClick = useRef(false);
+  const touchStartY = useRef<number | null>(null);
+  const touchStartTransform = useRef(SHEET_RESTING_TRANSLATE);
+  const activeTouchTransform = useRef(SHEET_RESTING_TRANSLATE);
+  const hasActiveTouchDrag = useRef(false);
   const isCollapsed = sheetState === "collapsed";
   const isExpanded = sheetState === "expanded";
   const isSettings = sheetState === "settings";
@@ -126,16 +139,91 @@ export function TravelWalletSheet({
     setSheetState((current) => (current === "collapsed" ? "expanded" : "collapsed"));
   }
 
+  function handleTouchStart(event: TouchEvent<HTMLElement>) {
+    if (isSettings) {
+      return;
+    }
+
+    const touch = event.touches[0];
+    if (!touch) {
+      return;
+    }
+
+    const startingTransform = isExpanded || forceExpanded ? SHEET_EXPANDED_TRANSLATE : SHEET_RESTING_TRANSLATE;
+    touchStartY.current = touch.clientY;
+    touchStartTransform.current = startingTransform;
+    activeTouchTransform.current = startingTransform;
+    hasActiveTouchDrag.current = false;
+  }
+
+  function handleTouchMove(event: TouchEvent<HTMLElement>) {
+    const touch = event.touches[0];
+    const startY = touchStartY.current;
+    if (!touch || startY === null) {
+      return;
+    }
+
+    const deltaY = touch.clientY - startY;
+    if (!hasActiveTouchDrag.current && Math.abs(deltaY) < SHEET_TOUCH_DRAG_THRESHOLD) {
+      return;
+    }
+
+    event.preventDefault();
+
+    if (!hasActiveTouchDrag.current) {
+      hasActiveTouchDrag.current = true;
+      setIsTouchDragging(true);
+      setSheetState("expanded");
+    }
+
+    const viewportHeight = window.innerHeight || 1;
+    const deltaPercent = (deltaY / viewportHeight) * 100;
+    const nextTransform = Math.min(
+      SHEET_DRAG_MAX_TRANSLATE,
+      Math.max(SHEET_DRAG_MIN_TRANSLATE, touchStartTransform.current + deltaPercent)
+    );
+
+    activeTouchTransform.current = nextTransform;
+    setTouchTransform(nextTransform);
+  }
+
+  function handleTouchEnd() {
+    const shouldSnap = hasActiveTouchDrag.current;
+
+    touchStartY.current = null;
+    hasActiveTouchDrag.current = false;
+    setIsTouchDragging(false);
+    setTouchTransform(null);
+
+    if (!shouldSnap) {
+      return;
+    }
+
+    setSheetState(activeTouchTransform.current < SHEET_SNAP_THRESHOLD ? "expanded" : "collapsed");
+    ignoreNextHandleClick.current = true;
+  }
+
+  const sheetDragStyle: CSSProperties | undefined =
+    touchTransform === null ? undefined : { transform: `translateY(${touchTransform}%)` };
+
   return (
     <section
       className={cn(
-        "wayline-home-content-reveal bottom-sheet-container pointer-events-auto relative z-10 w-full transform-gpu transition-transform duration-500 ease-[cubic-bezier(0.25,1,0.5,1)]",
-        forceExpanded && "sheet-expand-up -translate-y-[15%]"
+        "wayline-home-content-reveal bottom-sheet-container pointer-events-auto relative z-10 w-full touch-none transform-gpu transition-transform duration-500 ease-[cubic-bezier(0.25,1,0.5,1)]",
+        forceExpanded && !isTouchDragging && "sheet-expand-up -translate-y-[15%]",
+        isTouchDragging && "is-dragging !transition-none"
       )}
       data-sheet-surface={surface}
       data-sheet-state={sheetState}
+      data-sheet-transform={touchTransform === null ? undefined : touchTransform.toFixed(2)}
+      data-touch-dragging={isTouchDragging ? "true" : undefined}
       data-testid="mobile-home-wallet-content"
       id={surface === "home" ? "my-trips-sheet" : undefined}
+      onTouchCancel={handleTouchEnd}
+      onTouchEnd={handleTouchEnd}
+      onTouchMove={handleTouchMove}
+      onTouchStart={handleTouchStart}
+      style={sheetDragStyle}
     >
       {isTripsSurface ? <span className="sr-only" data-testid="mobile-trips-sheet-content">My Trips sheet</span> : null}
       <div
