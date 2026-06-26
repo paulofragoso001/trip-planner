@@ -57,6 +57,56 @@ async function expectNoHomeGoogleMapsScripts(page: Page) {
   await expect(page.locator(["gmp", "map", "3d"].join("-"))).toHaveCount(0);
 }
 
+async function installMockGoogleMaps3D(page: Page) {
+  await page.addInitScript(() => {
+    class MockMap3DElement extends HTMLElement {
+      constructor(options?: Record<string, unknown>) {
+        super();
+        Object.assign(this, options);
+        window.setTimeout(() => this.dispatchEvent(new Event("gmp-steadychange")), 0);
+      }
+    }
+
+    class MockMarkerElement extends HTMLElement {
+      constructor(options?: Record<string, unknown>) {
+        super();
+        Object.assign(this, options);
+      }
+    }
+
+    if (!customElements.get("almidy-test-map-3d")) {
+      customElements.define("almidy-test-map-3d", MockMap3DElement);
+    }
+
+    if (!customElements.get("almidy-test-map-3d-marker")) {
+      customElements.define("almidy-test-map-3d-marker", MockMarkerElement);
+    }
+
+    (window as typeof window & {
+      google?: {
+        maps?: {
+          importLibrary?: (libraryName: string) => Promise<unknown>;
+        };
+      };
+    }).google = {
+      maps: {
+        importLibrary: async (libraryName: string) => {
+          if (libraryName === "maps3d") {
+            return {
+              GestureHandling: { GREEDY: "GREEDY" },
+              Map3DElement: MockMap3DElement,
+              MapMode: { HYBRID: "HYBRID" },
+              MarkerElement: MockMarkerElement
+            };
+          }
+
+          return {};
+        }
+      }
+    };
+  });
+}
+
 type MockLocationPermission = "granted" | "denied";
 
 async function installMockMobileLocation(
@@ -143,20 +193,11 @@ async function installMockMobileLocation(
         }
       });
 
-      (window as typeof window & {
-        google?: {
-          maps?: {
-            importLibrary?: (libraryName: string) => Promise<unknown>;
-          };
-        };
-      }).google = {
-        maps: {
-          importLibrary: () => Promise.resolve({})
-        }
-      };
     },
     { latitude, longitude, permission }
   );
+
+  await installMockGoogleMaps3D(page);
 }
 
 test.describe("mobile soft-launch UX", () => {
@@ -715,6 +756,7 @@ test.describe("mobile soft-launch UX", () => {
   test("home launch uses the Google 3D globe before wallet actions", async ({ page }) => {
     await page.setViewportSize({ height: 900, width: 390 });
     await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
+    await installMockGoogleMaps3D(page);
     await page.addInitScript(() => {
       Object.defineProperty(navigator, "language", { configurable: true, value: "en-US" });
       Object.defineProperty(navigator, "languages", { configurable: true, value: ["en-US", "en"] });
@@ -733,7 +775,8 @@ test.describe("mobile soft-launch UX", () => {
       "data-home-hero-mode",
       "home-hero-mode: almidy-owned"
     );
-    await expect(page.getByTestId("almidy-google-maps-3d-shell").or(page.getByTestId("almidy-google-maps-3d-globe")).first()).toBeVisible();
+    await expect(page.getByTestId("almidy-google-maps-3d-globe")).toBeVisible();
+    await expect(page.getByTestId("almidy-google-maps-3d-shell")).toHaveCount(0);
     await expect(page.getByTestId("earth-only-visual")).toHaveCount(0);
     await expect(page.getByTestId("almidy-custom-globe")).toHaveCount(0);
     await expect(page.getByTestId("home-custom-globe")).toHaveCount(0);
@@ -762,10 +805,9 @@ test.describe("mobile soft-launch UX", () => {
     const heroVisual = await page.getByTestId("almidy-launch-globe").evaluate((element) => {
       const style = window.getComputedStyle(element);
       const google3D = element.querySelector<HTMLElement>('[data-testid="almidy-google-maps-3d-globe"]');
-      const shell = element.querySelector<HTMLElement>('[data-testid="almidy-google-maps-3d-shell"]');
 
       return {
-        googleRenderer: google3D?.getAttribute("data-map-renderer") ?? shell?.getAttribute("data-map-renderer") ?? "",
+        googleRenderer: google3D?.getAttribute("data-map-renderer") ?? "",
         mapSystem: element.getAttribute("data-map-system") ?? "",
         mode: element.getAttribute("data-hero-mode") ?? "",
         opacity: style.opacity
@@ -1083,28 +1125,26 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByTestId("home-custom-globe")).toHaveCount(0);
 
     const google3DGlobe = page.getByTestId("almidy-google-maps-3d-globe");
-    if (await google3DGlobe.count()) {
-      await expect(page.getByTestId("almidy-launch-globe")).toHaveAttribute(
-        "data-map-system",
-        "almidy-google-maps-3d"
-      );
-      await expect(page.getByTestId("almidy-google-maps-3d-host")).toBeVisible();
-      await expect(google3DGlobe).toHaveAttribute(
-        "data-user-latitude",
-        "25.76170"
-      );
-      await expect(google3DGlobe).toHaveAttribute(
-        "data-user-longitude",
-        "-80.19180"
-      );
-      await expect(page.getByTestId("mobile-home-country-pin")).toHaveAttribute("data-location-source", "user");
-      await expect(page.getByTestId("mobile-home-country-pin")).toHaveAttribute("data-user-latitude", "25.76170");
-      await expect(page.getByTestId("mobile-home-country-pin")).toHaveAttribute("data-user-longitude", "-80.19180");
-      await expect(page.getByTestId("mobile-home-country-pin")).toHaveAttribute("data-pin-coordinate", "25.76170,-80.19180");
-      await expect(page.getByTestId("mobile-home-country-name")).toHaveText("United States");
-    } else {
-      await expect(page.getByTestId("almidy-google-maps-3d-shell")).toBeVisible();
-    }
+    await expect(google3DGlobe).toBeVisible();
+    await expect(page.getByTestId("almidy-google-maps-3d-shell")).toHaveCount(0);
+    await expect(page.getByTestId("almidy-launch-globe")).toHaveAttribute(
+      "data-map-system",
+      "almidy-google-maps-3d"
+    );
+    await expect(page.getByTestId("almidy-google-maps-3d-host")).toBeVisible();
+    await expect(google3DGlobe).toHaveAttribute(
+      "data-user-latitude",
+      "25.76170"
+    );
+    await expect(google3DGlobe).toHaveAttribute(
+      "data-user-longitude",
+      "-80.19180"
+    );
+    await expect(page.getByTestId("mobile-home-country-pin")).toHaveAttribute("data-location-source", "user");
+    await expect(page.getByTestId("mobile-home-country-pin")).toHaveAttribute("data-user-latitude", "25.76170");
+    await expect(page.getByTestId("mobile-home-country-pin")).toHaveAttribute("data-user-longitude", "-80.19180");
+    await expect(page.getByTestId("mobile-home-country-pin")).toHaveAttribute("data-pin-coordinate", "25.76170,-80.19180");
+    await expect(page.getByTestId("mobile-home-country-name")).toHaveText("United States");
   });
 
   test("mobile launch globe is draggable interactive 3D", async ({ page }) => {
@@ -1117,21 +1157,17 @@ test.describe("mobile soft-launch UX", () => {
     const launchGlobe = page.getByTestId("almidy-launch-globe");
     await expect(launchGlobe).toHaveAttribute("data-hero-mode", "google-maps-3d");
     const heroMode = await launchGlobe.getAttribute("data-hero-mode");
-    if (heroMode === "google-maps-3d") {
-      const google3DGlobe = page.getByTestId("almidy-google-maps-3d-globe");
-      if (await google3DGlobe.count()) {
-        await expect(google3DGlobe).toBeVisible({ timeout: 20_000 });
-        await expect(google3DGlobe).toHaveAttribute("gesture-handling", "greedy");
-        await expect(google3DGlobe).toHaveAttribute("mode", "hybrid");
-        await expect(google3DGlobe).toHaveAttribute("tilt", "67");
-        await expect(google3DGlobe).toHaveAttribute("min-altitude", "900000");
-        await expect(google3DGlobe).toHaveAttribute("max-altitude", "18000000");
-        await expect(google3DGlobe).toHaveAttribute("data-user-latitude", "25.76170");
-        await expect(google3DGlobe).toHaveAttribute("data-user-longitude", "-80.19180");
-      } else {
-        await expect(page.getByTestId("almidy-google-maps-3d-shell")).toBeVisible();
-      }
-    }
+    expect(heroMode).toBe("google-maps-3d");
+    const google3DGlobe = page.getByTestId("almidy-google-maps-3d-globe");
+    await expect(google3DGlobe).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByTestId("almidy-google-maps-3d-shell")).toHaveCount(0);
+    await expect(google3DGlobe).toHaveAttribute("gesture-handling", "greedy");
+    await expect(google3DGlobe).toHaveAttribute("mode", "hybrid");
+    await expect(google3DGlobe).toHaveAttribute("tilt", "67");
+    await expect(google3DGlobe).toHaveAttribute("min-altitude", "900000");
+    await expect(google3DGlobe).toHaveAttribute("max-altitude", "18000000");
+    await expect(google3DGlobe).toHaveAttribute("data-user-latitude", "25.76170");
+    await expect(google3DGlobe).toHaveAttribute("data-user-longitude", "-80.19180");
     await expect(page.getByTestId("home-custom-globe")).toHaveCount(0);
     await expectNoHomeGoogleMapsCopy(page);
   });
@@ -1283,6 +1319,7 @@ test.describe("mobile soft-launch UX", () => {
     await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
     await page.emulateMedia({ reducedMotion: "reduce" });
     await page.setViewportSize({ height: 900, width: 390 });
+    await installMockGoogleMaps3D(page);
     await page.addInitScript(() => {
       Object.defineProperty(navigator, "language", { configurable: true, value: "zz" });
       Object.defineProperty(navigator, "languages", { configurable: true, value: ["zz"] });
@@ -1318,7 +1355,8 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByTestId("mobile-home-earth-image")).toHaveCount(0);
     await expect(page.getByTestId("mobile-home-earth-texture")).toHaveCount(0);
     await expect(page.getByTestId("mobile-home-earth-continents")).toHaveCount(0);
-    await expect(page.getByTestId("almidy-google-maps-3d-shell").or(page.getByTestId("almidy-google-maps-3d-globe")).first()).toBeVisible();
+    await expect(page.getByTestId("almidy-google-maps-3d-globe")).toBeVisible();
+    await expect(page.getByTestId("almidy-google-maps-3d-shell")).toHaveCount(0);
     await expectNoHomeGoogleMapsCopy(page);
     const reducedMotionContentReveal = await page.getByTestId("mobile-home-wallet-content").evaluate((element) => {
       const style = window.getComputedStyle(element);
@@ -1347,6 +1385,7 @@ test.describe("mobile soft-launch UX", () => {
   test("mobile home launch stays 3D-only without custom globe fallback", async ({ page }) => {
     await page.setViewportSize({ height: 900, width: 390 });
     await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
+    await installMockGoogleMaps3D(page);
     await page.addInitScript(() => {
       Object.defineProperty(navigator, "language", { configurable: true, value: "en-US" });
       Object.defineProperty(navigator, "languages", { configurable: true, value: ["en-US", "en"] });
@@ -1360,7 +1399,8 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByTestId("home-custom-globe")).toHaveCount(0);
     await expect(page.getByTestId("home-custom-globe-texture")).toHaveCount(0);
     await expectNoHomeGoogleMapsCopy(page);
-    await expect(page.getByTestId("almidy-google-maps-3d-shell").or(page.getByTestId("almidy-google-maps-3d-globe")).first()).toBeVisible();
+    await expect(page.getByTestId("almidy-google-maps-3d-globe")).toBeVisible();
+    await expect(page.getByTestId("almidy-google-maps-3d-shell")).toHaveCount(0);
     await expect(page.getByRole("heading", { name: "My Trips" })).toHaveCount(1);
   });
 

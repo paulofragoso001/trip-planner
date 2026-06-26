@@ -7,11 +7,62 @@ async function openAuthenticatedMobileRoute(page: Page, path: string) {
   await page.setViewportSize(mobileViewport);
   await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
   await page.emulateMedia({ reducedMotion: "reduce" });
+  await installMockGoogleMaps3D(page);
   await page.goto(`${baseUrl}${path}`, { waitUntil: "commit" });
   await expect(page.getByTestId("app-shell-root")).toBeVisible({ timeout: 30_000 });
   await expect(page.getByTestId("app-shell-root")).toHaveAttribute("data-shell-variant", "mobile");
   await expect(page.getByRole("navigation", { name: "Primary mobile navigation" })).toHaveCount(0);
   await expect(page.getByTestId("app-shell-mobile-bottom-nav")).toHaveCount(0);
+}
+
+async function installMockGoogleMaps3D(page: Page) {
+  await page.addInitScript(() => {
+    class MockMap3DElement extends HTMLElement {
+      constructor(options?: Record<string, unknown>) {
+        super();
+        Object.assign(this, options);
+        window.setTimeout(() => this.dispatchEvent(new Event("gmp-steadychange")), 0);
+      }
+    }
+
+    class MockMarkerElement extends HTMLElement {
+      constructor(options?: Record<string, unknown>) {
+        super();
+        Object.assign(this, options);
+      }
+    }
+
+    if (!customElements.get("almidy-test-map-3d")) {
+      customElements.define("almidy-test-map-3d", MockMap3DElement);
+    }
+
+    if (!customElements.get("almidy-test-map-3d-marker")) {
+      customElements.define("almidy-test-map-3d-marker", MockMarkerElement);
+    }
+
+    (window as typeof window & {
+      google?: {
+        maps?: {
+          importLibrary?: (libraryName: string) => Promise<unknown>;
+        };
+      };
+    }).google = {
+      maps: {
+        importLibrary: async (libraryName: string) => {
+          if (libraryName === "maps3d") {
+            return {
+              GestureHandling: { GREEDY: "GREEDY" },
+              Map3DElement: MockMap3DElement,
+              MapMode: { HYBRID: "HYBRID" },
+              MarkerElement: MockMarkerElement
+            };
+          }
+
+          return {};
+        }
+      }
+    };
+  });
 }
 
 async function expectCollapsedWalletSheet(page: Page, surface = "home") {
@@ -34,6 +85,8 @@ test.describe("authenticated mobile dashboard smoke", () => {
     await expect(page).toHaveURL(`${baseUrl}/dashboard`);
     await expect(page.getByTestId("mobile-home-wallet")).toBeVisible();
     await expect(page.getByTestId("almidy-launch-globe")).toHaveAttribute("data-hero-mode", "google-maps-3d");
+    await expect(page.getByTestId("almidy-google-maps-3d-globe")).toBeVisible();
+    await expect(page.getByTestId("almidy-google-maps-3d-shell")).toHaveCount(0);
     await expect(page.locator('[data-map-renderer="google-maps-3d"]').first()).toHaveAttribute(
       "data-map-system",
       "almidy-google-maps-3d"
