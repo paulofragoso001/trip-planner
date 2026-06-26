@@ -32,6 +32,12 @@ type GoogleMaps3DLatLngAltitude = {
   lng: number;
 };
 
+type GoogleMaps3DStyle = {
+  elementType?: string;
+  featureType?: string;
+  stylers: Array<{ visibility: "off" }>;
+};
+
 type GoogleMaps3DMapElement = HTMLElement & {
   center?: GoogleMaps3DLatLngAltitude;
   defaultUIHidden?: boolean;
@@ -44,6 +50,7 @@ type GoogleMaps3DMapElement = HTMLElement & {
   minTilt?: number;
   mode?: string;
   range?: number;
+  styles?: GoogleMaps3DStyle[];
   tilt?: number;
 };
 
@@ -83,6 +90,29 @@ const LAUNCH_CAMERA_TARGET = { altitude: 6_500_000, lat: 35, lng: -97 };
 const LAUNCH_CAMERA_TILT = 0;
 const USER_LOCATION_CAMERA_ALTITUDE = 15_000;
 const USER_LOCATION_MARKER_TAG = "gmp-marker";
+const LAUNCH_GLOBE_STYLE_PROFILE = "minimalist-native-labels-hidden";
+const LAUNCH_GLOBE_MINIMALIST_STYLES: GoogleMaps3DStyle[] = [
+  {
+    featureType: "poi",
+    elementType: "all",
+    stylers: [{ visibility: "off" }]
+  },
+  {
+    featureType: "road",
+    elementType: "all",
+    stylers: [{ visibility: "off" }]
+  },
+  {
+    featureType: "transit",
+    elementType: "all",
+    stylers: [{ visibility: "off" }]
+  },
+  {
+    featureType: "administrative.locality",
+    elementType: "labels",
+    stylers: [{ visibility: "off" }]
+  }
+];
 
 const DEFAULT_COUNTRY: CountryFocus = {
   altitude: 1_850_000,
@@ -273,6 +303,13 @@ function GoogleMaps3DLaunchGlobe({
       });
     };
 
+    const applyMinimalistMapStyles = () => {
+      if (cancelled || failed || !mapElement) return;
+      mapElement.styles = LAUNCH_GLOBE_MINIMALIST_STYLES;
+      mapElement.setAttribute("data-style-profile", LAUNCH_GLOBE_STYLE_PROFILE);
+      mapElement.setAttribute("data-native-labels-hidden", "true");
+    };
+
     async function mountGoogle3D() {
       const container = containerRef.current;
       if (!container || !window.google?.maps?.importLibrary) {
@@ -311,6 +348,7 @@ function GoogleMaps3DLaunchGlobe({
           minTilt: LAUNCH_3D_MIN_TILT,
           mode: mapMode,
           range: LAUNCH_CAMERA_RANGE,
+          styles: LAUNCH_GLOBE_MINIMALIST_STYLES,
           tilt: LAUNCH_CAMERA_TILT
         });
         mapElement.className = "absolute inset-0 h-full w-full opacity-0";
@@ -319,6 +357,7 @@ function GoogleMaps3DLaunchGlobe({
         mapElement.setAttribute("aria-label", "Interactive 3D launch globe");
         mapElement.setAttribute("data-testid", "almidy-google-maps-3d-globe");
         mapElement.setAttribute("default-ui-hidden", "true");
+        applyMinimalistMapStyles();
         mapElement.setAttribute("data-camera-altitude", String(center.altitude));
         mapElement.setAttribute("data-camera-latitude", center.lat.toFixed(5));
         mapElement.setAttribute("data-camera-longitude", center.lng.toFixed(5));
@@ -344,6 +383,7 @@ function GoogleMaps3DLaunchGlobe({
         const handleSteady = () => revealWhenInitialized();
         mapElement.addEventListener("gmp-error", handleError, { once: true });
         mapElement.addEventListener("gmp-map-id-error", handleError, { once: true });
+        mapElement.addEventListener("gmp-animationend", applyMinimalistMapStyles);
         mapElement.addEventListener("gmp-steadychange", handleSteady, { once: true });
         observer = new MutationObserver(() => {
           if (hasNativeGoogleError()) {
@@ -379,6 +419,7 @@ function GoogleMaps3DLaunchGlobe({
         window.clearInterval(runtimeErrorPoll);
       }
       observer?.disconnect();
+      mapElement?.removeEventListener("gmp-animationend", applyMinimalistMapStyles);
       mapRef.current = null;
       mapElement?.remove();
     };

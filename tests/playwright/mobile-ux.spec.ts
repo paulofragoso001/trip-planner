@@ -1255,6 +1255,19 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByTestId("almidy-launch-globe-diagnostic")).toHaveCount(0);
     await expect(google3DGlobe).toHaveAttribute("gesture-handling", "greedy");
     await expect(google3DGlobe).toHaveAttribute("mode", "hybrid");
+    await expect(google3DGlobe).toHaveAttribute("data-style-profile", "minimalist-native-labels-hidden");
+    await expect(google3DGlobe).toHaveAttribute("data-native-labels-hidden", "true");
+    const cleanStylePayload = await google3DGlobe.evaluate((element) => {
+      return (element as HTMLElement & { styles?: Array<{ elementType?: string; featureType?: string }> }).styles?.map(
+        (style) => `${style.featureType}:${style.elementType}`
+      );
+    });
+    expect(cleanStylePayload).toEqual([
+      "poi:all",
+      "road:all",
+      "transit:all",
+      "administrative.locality:labels"
+    ]);
     await expect(google3DGlobe).toHaveAttribute("data-camera-intent", "user-location");
     await expect(google3DGlobe).toHaveAttribute("data-camera-altitude", "15000");
     await expect(google3DGlobe).toHaveAttribute("data-camera-latitude", "25.76170");
