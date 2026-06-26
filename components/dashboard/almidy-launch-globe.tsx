@@ -75,6 +75,11 @@ const USER_PIN_SCREEN_Y = 49;
 const USE_CURRENT_LOCATION_EVENT = "wayline:home-use-current-location";
 const LAUNCH_3D_MAX_ALTITUDE = 34_000_000;
 const LAUNCH_3D_MIN_ALTITUDE = 180_000;
+const LAUNCH_CAMERA_FOV = 42;
+const LAUNCH_CAMERA_HEADING = 0;
+const LAUNCH_CAMERA_RANGE = 9_200_000;
+const LAUNCH_CAMERA_TARGET = { altitude: 0, lat: 38, lng: -97 };
+const LAUNCH_CAMERA_TILT = 45;
 
 const DEFAULT_COUNTRY: CountryFocus = {
   altitude: 1_850_000,
@@ -286,24 +291,23 @@ function GoogleMaps3DLaunchGlobe({
           return;
         }
 
-        const center = { altitude: 0, lat: focus.lat, lng: focus.lng };
+        const center = LAUNCH_CAMERA_TARGET;
         const gestureHandling = maps3d.GestureHandling?.GREEDY ?? "GREEDY";
         const mapMode = maps3d.MapMode?.HYBRID ?? "HYBRID";
-        const launchRange = cinematicRangeForFocus(focus);
 
         mapElement = new maps3d.Map3DElement({
           center,
           defaultUIHidden: true,
-          fov: 38,
+          fov: LAUNCH_CAMERA_FOV,
           gestureHandling,
-          heading: -28,
+          heading: LAUNCH_CAMERA_HEADING,
           maxAltitude: LAUNCH_3D_MAX_ALTITUDE,
           maxTilt: 82,
           minAltitude: LAUNCH_3D_MIN_ALTITUDE,
           minTilt: 12,
           mode: mapMode,
-          range: launchRange,
-          tilt: 61
+          range: LAUNCH_CAMERA_RANGE,
+          tilt: LAUNCH_CAMERA_TILT
         });
         mapElement.className = "absolute inset-0 h-full w-full opacity-0";
         mapElement.dataset.mapRenderer = "google-maps-3d";
@@ -311,13 +315,16 @@ function GoogleMaps3DLaunchGlobe({
         mapElement.setAttribute("aria-label", "Interactive 3D launch globe");
         mapElement.setAttribute("data-testid", "almidy-google-maps-3d-globe");
         mapElement.setAttribute("default-ui-hidden", "true");
-        mapElement.setAttribute("fov", "38");
+        mapElement.setAttribute("data-camera-latitude", center.lat.toFixed(5));
+        mapElement.setAttribute("data-camera-longitude", center.lng.toFixed(5));
+        mapElement.setAttribute("fov", String(LAUNCH_CAMERA_FOV));
         mapElement.setAttribute("gesture-handling", gestureHandling.toLowerCase());
+        mapElement.setAttribute("heading", String(LAUNCH_CAMERA_HEADING));
         mapElement.setAttribute("max-altitude", String(LAUNCH_3D_MAX_ALTITUDE));
         mapElement.setAttribute("min-altitude", String(LAUNCH_3D_MIN_ALTITUDE));
         mapElement.setAttribute("mode", mapMode.toLowerCase());
-        mapElement.setAttribute("range", String(launchRange));
-        mapElement.setAttribute("tilt", "61");
+        mapElement.setAttribute("range", String(LAUNCH_CAMERA_RANGE));
+        mapElement.setAttribute("tilt", String(LAUNCH_CAMERA_TILT));
         mapElement.setAttribute("data-user-latitude", focus.lat.toFixed(5));
         mapElement.setAttribute("data-user-longitude", focus.lng.toFixed(5));
 
@@ -503,10 +510,6 @@ function LaunchGlobeShell({
       {children}
     </div>
   );
-}
-
-function cinematicRangeForFocus(focus: CountryFocus) {
-  return focus.source === "user" ? 8_900_000 : 11_200_000;
 }
 
 function shouldUpdateFocus(currentCountry: CountryFocus | null, nextCountry: CountryFocus) {
