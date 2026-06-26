@@ -1263,10 +1263,10 @@ test.describe("mobile soft-launch UX", () => {
       );
     });
     expect(cleanStylePayload).toEqual([
-      "poi:all",
-      "road:all",
-      "transit:all",
-      "administrative.locality:labels"
+      "poi:labels",
+      "road:labels",
+      "transit:labels",
+      "administrative:labels"
     ]);
     await expect(google3DGlobe).toHaveAttribute("data-camera-intent", "user-location");
     await expect(google3DGlobe).toHaveAttribute("data-camera-altitude", "15000");

@@ -94,21 +94,21 @@ const LAUNCH_GLOBE_STYLE_PROFILE = "minimalist-native-labels-hidden";
 const LAUNCH_GLOBE_MINIMALIST_STYLES: GoogleMaps3DStyle[] = [
   {
     featureType: "poi",
-    elementType: "all",
+    elementType: "labels",
     stylers: [{ visibility: "off" }]
   },
   {
     featureType: "road",
-    elementType: "all",
+    elementType: "labels",
     stylers: [{ visibility: "off" }]
   },
   {
     featureType: "transit",
-    elementType: "all",
+    elementType: "labels",
     stylers: [{ visibility: "off" }]
   },
   {
-    featureType: "administrative.locality",
+    featureType: "administrative",
     elementType: "labels",
     stylers: [{ visibility: "off" }]
   }
