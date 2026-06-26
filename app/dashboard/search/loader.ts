@@ -5,7 +5,14 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { authorizeDashboardApi } from "@/lib/server/dashboard-test-auth";
 import { buildPlacePhotoUrl } from "@/lib/travel-data/photo-url";
 import { readTripSegmentRoute, routeEndpointLabel } from "@/lib/trip-segment-route";
-import type { SearchData, SearchResultIcon, SearchResultView } from "./types";
+import type {
+  SearchData,
+  SearchResultIcon,
+  SearchResultView,
+  UnifiedSearchResponse,
+  UnifiedSearchResult,
+  UnifiedSearchResultType
+} from "./types";
 
 type TripRow = {
   destination: string | null;
@@ -53,26 +60,6 @@ type DocumentRow = {
   source_type: string | null;
   title: string | null;
   trip_id: string | null;
-};
-
-export type UnifiedSearchResultType = "activity" | "document" | "place" | "trip";
-
-export type UnifiedSearchResult = {
-  href: string;
-  id: string;
-  subtitle: string | null;
-  title: string;
-  type: UnifiedSearchResultType;
-  updated_at: string | null;
-};
-
-export type UnifiedSearchResponse = {
-  meta: {
-    processing_time_ms: number;
-    total_results: number;
-  };
-  query: string;
-  results: UnifiedSearchResult[];
 };
 
 export async function loadSearchData(initialQuery = ""): Promise<SearchData> {

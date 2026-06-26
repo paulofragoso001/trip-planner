@@ -995,6 +995,8 @@ function SearchOverlay({ onClose }: { onClose: () => void }) {
           <input
             autoComplete="off"
             autoFocus
+            aria-autocomplete="list"
+            aria-controls="mobile-sheet-search-autocomplete"
             className="h-12 w-full rounded-xl border border-orange-400/70 bg-[#1e1e22] pl-11 pr-3 text-[16px] font-semibold leading-none text-white outline-none placeholder:text-[#8e8e93] focus:border-orange-300 focus:ring-4 focus:ring-orange-400/15"
             data-testid="mobile-sheet-search-input"
             onChange={(event) => setQuery(event.target.value)}
@@ -1031,12 +1033,19 @@ function SearchOverlay({ onClose }: { onClose: () => void }) {
           </div>
         </div>
       ) : (
-        <div className="mt-4 min-h-0 flex-1 overflow-y-auto" data-testid="mobile-sheet-search-results">
+        <div
+          aria-label="Search autocomplete suggestions"
+          className="mt-4 min-h-0 flex-1 overflow-y-auto"
+          data-testid="mobile-sheet-search-results"
+          id="mobile-sheet-search-autocomplete"
+          role="listbox"
+        >
           {results.map((result) => (
             <a
               className="grid min-h-[4.75rem] grid-cols-[auto_minmax(0,1fr)] items-center gap-3 border-b border-white/10 py-3 text-left outline-none transition hover:bg-white/[0.04] focus:bg-white/[0.055] focus:ring-4 focus:ring-orange-400/15"
               href={result.href}
               key={result.id}
+              role="option"
             >
               <span className="grid h-11 w-11 place-items-center rounded-full bg-orange-400/15 text-orange-300">
                 {result.type === "document" ? (

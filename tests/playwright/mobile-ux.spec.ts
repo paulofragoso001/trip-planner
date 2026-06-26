@@ -782,6 +782,53 @@ test.describe("mobile soft-launch UX", () => {
     }
   });
 
+  test("mobile search page autocompletes through the unified search API", async ({ page }) => {
+    await page.setViewportSize({ height: 900, width: 390 });
+    await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
+
+    const searchRequests: string[] = [];
+    await page.route("**/api/v1/search**", async (route) => {
+      const url = new URL(route.request().url());
+      const query = url.searchParams.get("q") || "";
+      searchRequests.push(query);
+
+      await route.fulfill({
+        body: JSON.stringify({
+          meta: {
+            processing_time_ms: 9,
+            total_results: 1
+          },
+          query,
+          results: [
+            {
+              href: "/dashboard/trips/demo/documents",
+              id: "document-demo",
+              subtitle: "American Airlines - MIA",
+              title: "Flight Confirmation.pdf",
+              type: "document",
+              updated_at: "2026-06-20T18:22:00Z"
+            }
+          ]
+        }),
+        contentType: "application/json",
+        status: 200
+      });
+    });
+
+    await page.goto(`${baseUrl}/dashboard/search`, { waitUntil: "commit" });
+    const searchInput = page.getByTestId("search-input");
+    await expect(searchInput).toBeFocused();
+    await searchInput.fill("m");
+    await page.waitForTimeout(420);
+    expect(searchRequests, "one-character search page input stays below autocomplete threshold").toEqual([]);
+
+    await searchInput.fill("mia");
+    await expect.poll(() => searchRequests.length, { message: "search page autocomplete query fires" }).toBe(1);
+    expect(searchRequests).toEqual(["mia"]);
+    await expect(page.getByTestId("search-autocomplete-results")).toBeVisible();
+    await expect(page.getByRole("option", { name: /Flight Confirmation\.pdf/ })).toBeVisible();
+  });
+
   test("home launch uses the Google 3D globe before wallet actions", async ({ page }) => {
     await page.setViewportSize({ height: 900, width: 390 });
     await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
@@ -1294,7 +1341,7 @@ test.describe("mobile soft-launch UX", () => {
     await expect.poll(() => searchRequests.length, { message: "debounced search API request fires" }).toBe(1);
     expect(searchRequests).toEqual(["mi"]);
     await expect(page.getByTestId("mobile-sheet-search-results")).toBeVisible();
-    await expect(page.getByRole("link", { name: /Summer in Miami/ })).toBeVisible();
+    await expect(page.getByRole("option", { name: /Summer in Miami/ })).toBeVisible();
 
     await page.getByTestId("mobile-sheet-search-cancel").click();
     await expect(launchSheet).toHaveAttribute("data-sheet-state", "collapsed");

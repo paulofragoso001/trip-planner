@@ -29,3 +29,23 @@ export type SearchData = {
   savedIdeas: SearchResultView[];
   tripItems: SearchResultView[];
 };
+
+export type UnifiedSearchResultType = "activity" | "document" | "place" | "trip";
+
+export type UnifiedSearchResult = {
+  href: string;
+  id: string;
+  subtitle: string | null;
+  title: string;
+  type: UnifiedSearchResultType;
+  updated_at: string | null;
+};
+
+export type UnifiedSearchResponse = {
+  meta: {
+    processing_time_ms: number;
+    total_results: number;
+  };
+  query: string;
+  results: UnifiedSearchResult[];
+};

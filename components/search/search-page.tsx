@@ -14,8 +14,13 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
-import type { SearchData, SearchResultIcon, SearchResultView } from "@/app/dashboard/search/types";
+import { useEffect, useMemo, useState } from "react";
+import type {
+  SearchData,
+  SearchResultIcon,
+  SearchResultView,
+  UnifiedSearchResult
+} from "@/app/dashboard/search/types";
 import { cn } from "@/components/trip-ui";
 
 type SearchGroupProps = {
@@ -45,7 +50,12 @@ export function SearchPage({
 }: SearchData) {
   const router = useRouter();
   const [query, setQuery] = useState(initialQuery);
+  const [autocompleteResults, setAutocompleteResults] = useState<UnifiedSearchResult[]>([]);
+  const [isAutocompleteLoading, setIsAutocompleteLoading] = useState(false);
+  const [autocompleteError, setAutocompleteError] = useState<string | null>(null);
   const normalizedQuery = query.trim().toLowerCase();
+  const debouncedQuery = useDebouncedValue(query, 300);
+  const normalizedAutocompleteQuery = debouncedQuery.trim();
   const filteredTripItems = useMemo(
     () => filterResults(tripItems, normalizedQuery),
     [normalizedQuery, tripItems]
@@ -65,6 +75,46 @@ export function SearchPage({
   const hasResults =
     activityResults.length > 0 ||
     filteredDocuments.length > 0;
+
+  useEffect(() => {
+    if (normalizedAutocompleteQuery.length < 2) {
+      setAutocompleteResults([]);
+      setIsAutocompleteLoading(false);
+      setAutocompleteError(null);
+      return;
+    }
+
+    const controller = new AbortController();
+    setIsAutocompleteLoading(true);
+    setAutocompleteError(null);
+
+    fetch(`/api/v1/search?q=${encodeURIComponent(normalizedAutocompleteQuery)}`, {
+      signal: controller.signal
+    })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error("Autocomplete failed");
+        }
+        return response.json() as Promise<{ results?: UnifiedSearchResult[] }>;
+      })
+      .then((payload) => {
+        setAutocompleteResults(Array.isArray(payload.results) ? payload.results.slice(0, 6) : []);
+      })
+      .catch((searchError: unknown) => {
+        if (searchError instanceof DOMException && searchError.name === "AbortError") {
+          return;
+        }
+        setAutocompleteError("Autocomplete is unavailable right now.");
+        setAutocompleteResults([]);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) {
+          setIsAutocompleteLoading(false);
+        }
+      });
+
+    return () => controller.abort();
+  }, [normalizedAutocompleteQuery]);
 
   return (
     <main
@@ -105,6 +155,13 @@ export function SearchPage({
               Cancel
             </button>
           </div>
+          {normalizedQuery.length >= 2 ? (
+            <SearchAutocompletePanel
+              error={autocompleteError}
+              isLoading={isAutocompleteLoading}
+              results={autocompleteResults}
+            />
+          ) : null}
         </div>
 
         {error ? (
@@ -140,6 +197,79 @@ export function SearchPage({
         )}
       </div>
     </main>
+  );
+}
+
+function SearchAutocompletePanel({
+  error,
+  isLoading,
+  results
+}: {
+  error: string | null;
+  isLoading: boolean;
+  results: UnifiedSearchResult[];
+}) {
+  if (isLoading) {
+    return (
+      <div
+        className="mt-3 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-semibold text-slate-300"
+        data-testid="search-autocomplete-loading"
+      >
+        Searching...
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div
+        className="mt-3 rounded-2xl border border-orange-300/20 bg-orange-400/10 px-4 py-3 text-sm font-semibold text-orange-100"
+        data-testid="search-autocomplete-error"
+      >
+        {error}
+      </div>
+    );
+  }
+
+  if (!results.length) {
+    return null;
+  }
+
+  return (
+    <section
+      aria-label="Search autocomplete suggestions"
+      className="mt-3 overflow-hidden rounded-2xl border border-white/10 bg-[#2a292e] shadow-[0_18px_54px_rgba(0,0,0,0.24)]"
+      data-testid="search-autocomplete-results"
+      role="listbox"
+    >
+      {results.map((result) => (
+        <a
+          aria-label={`Open ${result.title}`}
+          className="grid min-h-16 grid-cols-[auto_minmax(0,1fr)] items-center gap-3 border-b border-white/10 px-3 py-2.5 text-left outline-none last:border-b-0 hover:bg-white/[0.045] focus:bg-white/[0.055] focus:ring-4 focus:ring-orange-400/15"
+          href={result.href}
+          key={result.id}
+          role="option"
+        >
+          <span className="grid h-10 w-10 place-items-center rounded-full bg-orange-500/15 text-orange-300">
+            {result.type === "document" ? (
+              <FileText className="h-5 w-5" aria-hidden="true" />
+            ) : result.type === "trip" ? (
+              <Luggage className="h-5 w-5" aria-hidden="true" />
+            ) : result.type === "place" ? (
+              <MapPin className="h-5 w-5" aria-hidden="true" />
+            ) : (
+              <Sparkles className="h-5 w-5" aria-hidden="true" />
+            )}
+          </span>
+          <span className="min-w-0">
+            <span className="block truncate text-[16px] font-black leading-tight text-white">{result.title}</span>
+            <span className="mt-1 block truncate text-sm font-semibold capitalize text-[#a7a6ad]">
+              {[result.type, result.subtitle].filter(Boolean).join(" · ")}
+            </span>
+          </span>
+        </a>
+      ))}
+    </section>
   );
 }
 
@@ -248,6 +378,17 @@ function dedupeResults(results: SearchResultView[]) {
     seen.add(key);
     return true;
   });
+}
+
+function useDebouncedValue(value: string, delayMs: number) {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => setDebouncedValue(value), delayMs);
+    return () => window.clearTimeout(timeout);
+  }, [delayMs, value]);
+
+  return debouncedValue;
 }
 
 function iconForResult(icon: SearchResultIcon) {
