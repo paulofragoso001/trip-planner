@@ -1323,6 +1323,7 @@ test.describe("mobile soft-launch UX", () => {
     await expect(google3DGlobe).toHaveAttribute("gesture-handling", "greedy");
     await expect(google3DGlobe).toHaveAttribute("mode", "hybrid");
     await expect(google3DGlobe).toHaveAttribute("available-layers", "");
+    await expect(google3DGlobe).toHaveAttribute("default-labels-disabled", "");
     await expect(google3DGlobe).toHaveAttribute("data-native-labels-hidden", "true");
     await expect(google3DGlobe).toHaveAttribute("data-camera-intent", "user-location");
     await expect(google3DGlobe).toHaveAttribute("data-camera-altitude", "15000");

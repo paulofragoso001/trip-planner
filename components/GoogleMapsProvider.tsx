@@ -12,6 +12,7 @@ type GoogleMapsProviderProps = {
   children: ReactNode;
   fallback?: ReactNode;
   loadingFallback?: ReactNode;
+  version?: "alpha" | "beta" | "weekly";
 };
 
 type GoogleMapsLoaderProps = GoogleMapsProviderProps & {
@@ -34,14 +35,15 @@ function GoogleMapsLoader({
   blockChildrenUntilLoaded = false,
   children,
   fallback,
-  loadingFallback
+  loadingFallback,
+  version = "beta"
 }: GoogleMapsLoaderProps) {
   const [runtimeAuthFailed, setRuntimeAuthFailed] = useState(false);
   const { isLoaded, loadError } = useJsApiLoader({
     id: "google-map-script",
     googleMapsApiKey: apiKey,
     libraries,
-    version: "beta"
+    version
   });
 
   useEffect(() => {
@@ -154,7 +156,8 @@ export default function GoogleMapsProvider({
   blockChildrenUntilLoaded = false,
   children,
   fallback,
-  loadingFallback
+  loadingFallback,
+  version = "beta"
 }: GoogleMapsProviderProps) {
   const pathname = usePathname();
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
@@ -186,6 +189,7 @@ export default function GoogleMapsProvider({
       blockChildrenUntilLoaded={blockChildrenUntilLoaded}
       fallback={fallback}
       loadingFallback={loadingFallback}
+      version={version}
     >
       {children}
     </GoogleMapsLoader>
