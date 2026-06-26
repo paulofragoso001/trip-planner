@@ -81,6 +81,8 @@ const LAUNCH_CAMERA_HEADING = 0;
 const LAUNCH_CAMERA_RANGE = 0;
 const LAUNCH_CAMERA_TARGET = { altitude: 6_500_000, lat: 35, lng: -97 };
 const LAUNCH_CAMERA_TILT = 0;
+const USER_LOCATION_CAMERA_ALTITUDE = 15_000;
+const USER_LOCATION_MARKER_TAG = "gmp-marker";
 
 const DEFAULT_COUNTRY: CountryFocus = {
   altitude: 1_850_000,
@@ -292,7 +294,8 @@ function GoogleMaps3DLaunchGlobe({
           return;
         }
 
-        const center = LAUNCH_CAMERA_TARGET;
+        const userLocationCenter = userCameraCenterForFocus(focus);
+        const center = userLocationCenter ?? LAUNCH_CAMERA_TARGET;
         const gestureHandling = maps3d.GestureHandling?.GREEDY ?? "GREEDY";
         const mapMode = maps3d.MapMode?.HYBRID ?? "HYBRID";
 
@@ -330,6 +333,12 @@ function GoogleMaps3DLaunchGlobe({
         mapElement.setAttribute("tilt", String(LAUNCH_CAMERA_TILT));
         mapElement.setAttribute("data-user-latitude", focus.lat.toFixed(5));
         mapElement.setAttribute("data-user-longitude", focus.lng.toFixed(5));
+        if (userLocationCenter) {
+          mapElement.setAttribute("data-camera-intent", "user-location");
+          mapElement.appendChild(createUserLocationMarker(focus));
+        } else {
+          mapElement.setAttribute("data-camera-intent", "launch");
+        }
 
         const handleError = () => failClosed("google-runtime-failed");
         const handleSteady = () => revealWhenInitialized();
@@ -513,6 +522,28 @@ function LaunchGlobeShell({
       {children}
     </div>
   );
+}
+
+function userCameraCenterForFocus(focus: CountryFocus): GoogleMaps3DLatLngAltitude | null {
+  if (focus.source !== "user") {
+    return null;
+  }
+
+  return {
+    altitude: USER_LOCATION_CAMERA_ALTITUDE,
+    lat: focus.lat,
+    lng: focus.lng
+  };
+}
+
+function createUserLocationMarker(focus: CountryFocus) {
+  const marker = document.createElement(USER_LOCATION_MARKER_TAG);
+  marker.setAttribute("altitude-mode", "clamp-to-ground");
+  marker.setAttribute("data-country-code", focus.code);
+  marker.setAttribute("data-testid", "almidy-google-maps-3d-user-marker");
+  marker.setAttribute("position", `${focus.lat.toFixed(5)}, ${focus.lng.toFixed(5)}`);
+  marker.textContent = focus.flag;
+  return marker;
 }
 
 function shouldUpdateFocus(currentCountry: CountryFocus | null, nextCountry: CountryFocus) {
