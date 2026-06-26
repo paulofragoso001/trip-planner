@@ -1209,13 +1209,15 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByTestId("almidy-launch-globe-diagnostic")).toHaveCount(0);
     await expect(google3DGlobe).toHaveAttribute("gesture-handling", "greedy");
     await expect(google3DGlobe).toHaveAttribute("mode", "hybrid");
-    await expect(google3DGlobe).toHaveAttribute("data-camera-latitude", "38.00000");
+    await expect(google3DGlobe).toHaveAttribute("data-camera-altitude", "6500000");
+    await expect(google3DGlobe).toHaveAttribute("data-camera-latitude", "35.00000");
     await expect(google3DGlobe).toHaveAttribute("data-camera-longitude", "-97.00000");
     await expect(google3DGlobe).toHaveAttribute("fov", "42");
     await expect(google3DGlobe).toHaveAttribute("heading", "0");
-    await expect(google3DGlobe).toHaveAttribute("range", "9200000");
-    await expect(google3DGlobe).toHaveAttribute("tilt", "45");
+    await expect(google3DGlobe).toHaveAttribute("range", "0");
+    await expect(google3DGlobe).toHaveAttribute("tilt", "0");
     await expect(google3DGlobe).toHaveAttribute("min-altitude", "180000");
+    await expect(google3DGlobe).toHaveAttribute("min-tilt", "0");
     await expect(google3DGlobe).toHaveAttribute("max-altitude", "34000000");
     await expect(google3DGlobe).toHaveAttribute("data-user-latitude", "25.76170");
     await expect(google3DGlobe).toHaveAttribute("data-user-longitude", "-80.19180");
