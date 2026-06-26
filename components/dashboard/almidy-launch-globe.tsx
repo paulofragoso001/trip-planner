@@ -79,9 +79,9 @@ const LAUNCH_3D_MIN_TILT = 0;
 const LAUNCH_CAMERA_FOV = 42;
 const LAUNCH_CAMERA_HEADING = 0;
 const LAUNCH_CAMERA_RANGE = 0;
-const LAUNCH_CAMERA_TARGET = { altitude: 6_500_000, lat: 28.5, lng: -81.5 };
+const LAUNCH_CAMERA_TARGET = { altitude: 6_500_000, lat: 35, lng: -97 };
 const LAUNCH_CAMERA_TILT = 0;
-const LAUNCH_CAMERA_ZOOM = 3.2;
+const USER_LOCATION_CAMERA_ALTITUDE = 15_000;
 const USER_LOCATION_MARKER_TAG = "gmp-marker";
 
 const DEFAULT_COUNTRY: CountryFocus = {
@@ -294,9 +294,10 @@ function GoogleMaps3DLaunchGlobe({
           return;
         }
 
-        const center = LAUNCH_CAMERA_TARGET;
+        const userLocationCenter = userCameraCenterForFocus(focus);
+        const center = userLocationCenter ?? LAUNCH_CAMERA_TARGET;
         const gestureHandling = maps3d.GestureHandling?.GREEDY ?? "GREEDY";
-        const mapMode = maps3d.MapMode?.SATELLITE ?? maps3d.MapMode?.HYBRID ?? "HYBRID";
+        const mapMode = maps3d.MapMode?.HYBRID ?? "HYBRID";
 
         mapElement = new maps3d.Map3DElement({
           center,
@@ -321,7 +322,6 @@ function GoogleMaps3DLaunchGlobe({
         mapElement.setAttribute("data-camera-altitude", String(center.altitude));
         mapElement.setAttribute("data-camera-latitude", center.lat.toFixed(5));
         mapElement.setAttribute("data-camera-longitude", center.lng.toFixed(5));
-        mapElement.setAttribute("data-camera-zoom", String(LAUNCH_CAMERA_ZOOM));
         mapElement.setAttribute("fov", String(LAUNCH_CAMERA_FOV));
         mapElement.setAttribute("gesture-handling", gestureHandling.toLowerCase());
         mapElement.setAttribute("heading", String(LAUNCH_CAMERA_HEADING));
@@ -333,8 +333,8 @@ function GoogleMaps3DLaunchGlobe({
         mapElement.setAttribute("tilt", String(LAUNCH_CAMERA_TILT));
         mapElement.setAttribute("data-user-latitude", focus.lat.toFixed(5));
         mapElement.setAttribute("data-user-longitude", focus.lng.toFixed(5));
-        if (focus.source === "user") {
-          mapElement.setAttribute("data-camera-intent", "configured-launch-with-user-marker");
+        if (userLocationCenter) {
+          mapElement.setAttribute("data-camera-intent", "user-location");
           mapElement.appendChild(createUserLocationMarker(focus));
         } else {
           mapElement.setAttribute("data-camera-intent", "launch");
@@ -522,6 +522,18 @@ function LaunchGlobeShell({
       {children}
     </div>
   );
+}
+
+function userCameraCenterForFocus(focus: CountryFocus): GoogleMaps3DLatLngAltitude | null {
+  if (focus.source !== "user") {
+    return null;
+  }
+
+  return {
+    altitude: USER_LOCATION_CAMERA_ALTITUDE,
+    lat: focus.lat,
+    lng: focus.lng
+  };
 }
 
 function createUserLocationMarker(focus: CountryFocus) {
