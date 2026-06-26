@@ -3,6 +3,7 @@
 import Image from "next/image";
 import type { CSSProperties, PointerEvent, ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
+import GoogleMapsProvider from "@/components/GoogleMapsProvider";
 import { countryCodeToFlag } from "@/lib/map/wayline-map-pins";
 import type {
   AlmidyLocationState,
@@ -18,8 +19,45 @@ type AlmidyLaunchGlobeProps = {
   pins?: AlmidyMapPin[];
 };
 
-type HeroState = "interactive-3d-globe";
-type LaunchPhase = "interactive-3d-globe";
+type HeroState = "custom-globe" | "google-maps-3d";
+type LaunchPhase = "custom-globe" | "google-maps-3d";
+
+type GoogleMaps3DLatLngAltitude = {
+  altitude?: number;
+  lat: number;
+  lng: number;
+};
+
+type GoogleMaps3DMapElement = HTMLElement & {
+  center?: GoogleMaps3DLatLngAltitude;
+  defaultUIHidden?: boolean;
+  fov?: number;
+  gestureHandling?: string;
+  heading?: number;
+  maxAltitude?: number;
+  maxTilt?: number;
+  minAltitude?: number;
+  minTilt?: number;
+  mode?: string;
+  range?: number;
+  tilt?: number;
+};
+
+type GoogleMaps3DMarkerElement = HTMLElement & {
+  position?: GoogleMaps3DLatLngAltitude;
+  title?: string;
+};
+
+type GoogleMaps3DLibrary = {
+  GestureHandling?: {
+    GREEDY: string;
+  };
+  Map3DElement: new (options?: Partial<GoogleMaps3DMapElement>) => GoogleMaps3DMapElement;
+  MapMode?: {
+    HYBRID: string;
+  };
+  MarkerElement: new (options?: Partial<GoogleMaps3DMarkerElement>) => GoogleMaps3DMarkerElement;
+};
 
 type CountryFocus = {
   altitude: number;
@@ -39,6 +77,8 @@ const USER_PIN_SCREEN_Y = 49;
 const USE_CURRENT_LOCATION_EVENT = "wayline:home-use-current-location";
 const MAX_GLOBE_DRAG_X = 72;
 const MAX_GLOBE_DRAG_Y = 28;
+const LAUNCH_3D_MAX_ALTITUDE = 18_000_000;
+const LAUNCH_3D_MIN_ALTITUDE = 900_000;
 
 const DEFAULT_COUNTRY: CountryFocus = {
   altitude: 1_850_000,
@@ -134,8 +174,9 @@ export function AlmidyLaunchGlobe({
   const [reduceMotion, setReduceMotion] = useState(false);
   const focus = country;
   const showPin = true;
-  const heroState: HeroState = "interactive-3d-globe";
-  const launchPhase: LaunchPhase = "interactive-3d-globe";
+  const googleFocus = focus.source === "user" ? focus : null;
+  const heroState: HeroState = googleFocus ? "google-maps-3d" : "custom-globe";
+  const launchPhase: LaunchPhase = googleFocus ? "google-maps-3d" : "custom-globe";
 
   function setLocationFocus(nextCountry: CountryFocus) {
     setCountry((currentCountry) => (shouldUpdateFocus(currentCountry, nextCountry) ? nextCountry : currentCountry));
@@ -186,15 +227,37 @@ export function AlmidyLaunchGlobe({
     };
   }, [launchPhase, reduceMotion]);
 
-  return (
+  const fallbackGlobe = (
     <AlmidyLaunchGlobeSurface
       className={className}
       focus={focus}
-      heroState={heroState}
-      launchPhase={launchPhase}
+      heroState="custom-globe"
+      launchPhase="custom-globe"
       reduceMotion={reduceMotion}
       showPin={showPin}
     />
+  );
+
+  if (!googleFocus) {
+    return fallbackGlobe;
+  }
+
+  return (
+    <GoogleMapsProvider
+      blockChildrenOnError
+      blockChildrenUntilLoaded
+      fallback={fallbackGlobe}
+      loadingFallback={fallbackGlobe}
+    >
+      <GoogleMaps3DLaunchGlobe
+        className={className}
+        fallback={fallbackGlobe}
+        focus={googleFocus}
+        heroState={heroState}
+        launchPhase={launchPhase}
+        reduceMotion={reduceMotion}
+      />
+    </GoogleMapsProvider>
   );
 }
 
@@ -255,6 +318,142 @@ function AlmidyLaunchGlobeSurface({
   );
 }
 
+function GoogleMaps3DLaunchGlobe({
+  className,
+  fallback,
+  focus,
+  heroState,
+  launchPhase,
+  reduceMotion
+}: {
+  className?: string;
+  fallback: ReactNode;
+  focus: CountryFocus;
+  heroState: HeroState;
+  launchPhase: LaunchPhase;
+  reduceMotion: boolean;
+}) {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const mapRef = useRef<GoogleMaps3DMapElement | null>(null);
+  const markerRef = useRef<GoogleMaps3DMarkerElement | null>(null);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    let mapElement: GoogleMaps3DMapElement | null = null;
+    let markerElement: GoogleMaps3DMarkerElement | null = null;
+
+    async function mountGoogle3D() {
+      const container = containerRef.current;
+      if (!container || !window.google?.maps?.importLibrary) {
+        setFailed(true);
+        return;
+      }
+
+      try {
+        const maps3d = await window.google.maps.importLibrary(
+          "maps3d" as Parameters<typeof window.google.maps.importLibrary>[0]
+        ) as unknown as GoogleMaps3DLibrary;
+        if (cancelled || !containerRef.current) {
+          return;
+        }
+
+        const center = { altitude: 0, lat: focus.lat, lng: focus.lng };
+        const gestureHandling = maps3d.GestureHandling?.GREEDY ?? "GREEDY";
+        const mapMode = maps3d.MapMode?.HYBRID ?? "HYBRID";
+
+        mapElement = new maps3d.Map3DElement({
+          center,
+          defaultUIHidden: true,
+          fov: 47,
+          gestureHandling,
+          heading: -18,
+          maxAltitude: LAUNCH_3D_MAX_ALTITUDE,
+          maxTilt: 78,
+          minAltitude: LAUNCH_3D_MIN_ALTITUDE,
+          minTilt: 28,
+          mode: mapMode,
+          range: cinematicRangeForFocus(focus),
+          tilt: 67
+        });
+        mapElement.className = "absolute inset-0 h-full w-full";
+        mapElement.dataset.mapRenderer = "google-maps-3d";
+        mapElement.dataset.mapSystem = "almidy-google-maps-3d";
+        mapElement.setAttribute("aria-label", "Interactive 3D launch globe");
+        mapElement.setAttribute("data-testid", "almidy-google-maps-3d-globe");
+        mapElement.setAttribute("default-ui-hidden", "true");
+        mapElement.setAttribute("fov", "47");
+        mapElement.setAttribute("gesture-handling", gestureHandling.toLowerCase());
+        mapElement.setAttribute("max-altitude", String(LAUNCH_3D_MAX_ALTITUDE));
+        mapElement.setAttribute("min-altitude", String(LAUNCH_3D_MIN_ALTITUDE));
+        mapElement.setAttribute("mode", mapMode.toLowerCase());
+        mapElement.setAttribute("range", String(cinematicRangeForFocus(focus)));
+        mapElement.setAttribute("tilt", "67");
+        mapElement.setAttribute("data-user-latitude", focus.lat.toFixed(5));
+        mapElement.setAttribute("data-user-longitude", focus.lng.toFixed(5));
+
+        markerElement = new maps3d.MarkerElement({
+          position: center,
+          title: focus.name
+        });
+        markerElement.dataset.testid = "mobile-home-country-pin";
+        markerElement.dataset.countryCode = focus.code;
+        markerElement.dataset.locationSource = focus.source ?? "country";
+        markerElement.dataset.pinCoordinate = `${focus.lat.toFixed(5)},${focus.lng.toFixed(5)}`;
+        markerElement.dataset.userLatitude = focus.lat.toFixed(5);
+        markerElement.dataset.userLongitude = focus.lng.toFixed(5);
+        markerElement.appendChild(render3DMarkerContent(focus));
+
+        const handleError = () => setFailed(true);
+        mapElement.addEventListener("gmp-error", handleError, { once: true });
+        mapElement.append(markerElement);
+        container.replaceChildren(mapElement);
+        mapRef.current = mapElement;
+        markerRef.current = markerElement;
+      } catch {
+        if (!cancelled) {
+          setFailed(true);
+        }
+      }
+    }
+
+    void mountGoogle3D();
+
+    return () => {
+      cancelled = true;
+      markerRef.current = null;
+      mapRef.current = null;
+      markerElement?.remove();
+      mapElement?.remove();
+    };
+  }, [focus]);
+
+  if (failed) {
+    return fallback;
+  }
+
+  return (
+    <LaunchGlobeShell
+      className={className}
+      focus={focus}
+      heroState={heroState}
+      launchPhase={launchPhase}
+      reduceMotion={reduceMotion}
+    >
+      <div
+        className="absolute inset-0 z-[1] overflow-hidden bg-black"
+        data-map-renderer="google-maps-3d"
+        data-map-system="almidy-google-maps-3d"
+        data-testid="almidy-google-maps-3d-host"
+        ref={containerRef}
+      />
+      <div className="pointer-events-none absolute inset-0 z-10 bg-[linear-gradient(180deg,rgba(0,0,0,0.78)_0%,rgba(0,0,0,0.08)_21%,rgba(0,0,0,0)_58%,rgba(0,0,0,0.42)_100%)]" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-32 bg-[linear-gradient(180deg,rgba(0,0,0,0.9),rgba(0,0,0,0.32)_48%,transparent)]" />
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-[24%] bg-[linear-gradient(180deg,transparent,rgba(0,0,0,0.36)_58%,rgba(0,0,0,0.72)_100%)]" />
+    </LaunchGlobeShell>
+  );
+}
+
 function LaunchGlobeShell({
   children,
   className,
@@ -282,7 +481,7 @@ function LaunchGlobeShell({
       data-home-hero-mode={`home-hero-mode: ${reduceMotion ? "reduced-motion" : "almidy-owned"}`}
       data-hero-mode={heroState}
       data-launch-phase={launchPhase}
-      data-map-system="almidy-interactive-3d-globe"
+      data-map-system={heroState === "google-maps-3d" ? "almidy-google-maps-3d" : "almidy-interactive-3d-globe"}
       data-testid="almidy-launch-globe"
       style={{
         "--wayline-pin-x": `${focus.pinX}%`,
@@ -292,6 +491,23 @@ function LaunchGlobeShell({
       {children}
     </div>
   );
+}
+
+function render3DMarkerContent(focus: CountryFocus) {
+  const marker = document.createElement("span");
+  marker.className = "grid h-6 w-6 place-items-center rounded-full border-[3px] border-white bg-orange-500 shadow-[0_4px_14px_rgba(0,0,0,0.48),0_0_18px_rgba(255,114,42,0.62)]";
+
+  const label = document.createElement("span");
+  label.className = "sr-only";
+  label.dataset.testid = "mobile-home-country-name";
+  label.textContent = focus.name;
+  marker.appendChild(label);
+
+  return marker;
+}
+
+function cinematicRangeForFocus(focus: CountryFocus) {
+  return focus.source === "user" ? 5_800_000 : 9_200_000;
 }
 
 function LaunchGlobeLabels() {
