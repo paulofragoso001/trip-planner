@@ -1,7 +1,6 @@
 "use client";
 
 import { AlmidyLaunchGlobe } from "@/components/dashboard/almidy-launch-globe";
-import { ALMIDY_MAP_SYSTEM_ID } from "@/lib/map/almidy-map-visuals";
 import { useOptionalUnifiedMap } from "@/lib/map/unified-map-provider";
 import type { AlmidyMapSurfaceState } from "@/lib/map/wayline-map-models";
 
@@ -21,8 +20,8 @@ export function CustomGlobeRenderer({
     <div
       className="absolute inset-0"
       data-map-mode={activeSurface?.mode ?? "globe"}
-      data-map-renderer="custom-globe"
-      data-map-system={ALMIDY_MAP_SYSTEM_ID}
+      data-map-renderer="google-maps-3d"
+      data-map-system="almidy-google-maps-3d"
       data-selected-map-id={activeSurface?.selectedId ?? undefined}
     >
       <AlmidyLaunchGlobe

@@ -33,10 +33,12 @@ test.describe("authenticated mobile dashboard smoke", () => {
 
     await expect(page).toHaveURL(`${baseUrl}/dashboard`);
     await expect(page.getByTestId("mobile-home-wallet")).toBeVisible();
-    await expect(page.locator('[data-map-renderer="custom-globe"]')).toHaveAttribute(
+    await expect(page.getByTestId("almidy-launch-globe")).toHaveAttribute("data-hero-mode", "google-maps-3d");
+    await expect(page.locator('[data-map-renderer="google-maps-3d"]').first()).toHaveAttribute(
       "data-map-system",
-      "almidy-map-system"
+      "almidy-google-maps-3d"
     );
+    await expect(page.locator('[data-map-renderer="custom-globe"]')).toHaveCount(0);
     await expectCollapsedWalletSheet(page);
     await expect(page.getByTestId("mobile-trips-country-map-screen")).toHaveCount(0);
   });
