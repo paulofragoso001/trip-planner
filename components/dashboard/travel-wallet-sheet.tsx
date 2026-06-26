@@ -41,6 +41,7 @@ type SheetState = "collapsed" | "expanded" | "settings";
 type TravelWalletSurface = "home" | "trips";
 
 export function TravelWalletSheet({
+  forceExpanded = false,
   ideasWaitingCount,
   initialSheetState = "collapsed",
   primaryHref,
@@ -49,6 +50,7 @@ export function TravelWalletSheet({
   recentTrips,
   surface = "home"
 }: {
+  forceExpanded?: boolean;
   ideasWaitingCount: number;
   initialSheetState?: SheetState;
   primaryHref: string;
@@ -77,6 +79,12 @@ export function TravelWalletSheet({
   useEffect(() => {
     setSheetState(initialSheetState);
   }, [initialSheetState]);
+
+  useEffect(() => {
+    if (forceExpanded) {
+      setSheetState("expanded");
+    }
+  }, [forceExpanded]);
 
   function expandTrips() {
     setSheetState("expanded");
@@ -120,10 +128,14 @@ export function TravelWalletSheet({
 
   return (
     <section
-      className="wayline-home-content-reveal pointer-events-auto relative z-10 w-full"
+      className={cn(
+        "wayline-home-content-reveal bottom-sheet-container pointer-events-auto relative z-10 w-full transform-gpu transition-transform duration-500 ease-[cubic-bezier(0.25,1,0.5,1)]",
+        forceExpanded && "sheet-expand-up -translate-y-[15%]"
+      )}
       data-sheet-surface={surface}
       data-sheet-state={sheetState}
       data-testid="mobile-home-wallet-content"
+      id={surface === "home" ? "my-trips-sheet" : undefined}
     >
       {isTripsSurface ? <span className="sr-only" data-testid="mobile-trips-sheet-content">My Trips sheet</span> : null}
       <div

@@ -26,6 +26,7 @@ export function MobileHomeWallet({
   recentTrips
 }: MobileHomeWalletProps) {
   const latestTrip = recentTrips[0] || null;
+  const [isCreatingFirstTrip, setIsCreatingFirstTrip] = useState(false);
   const importsWaiting =
     metrics.find((metric) => metric.label === "Ideas waiting")?.value ??
     metrics.find((metric) => metric.label === "Imports waiting")?.value ??
@@ -58,7 +59,10 @@ export function MobileHomeWallet({
         className="pointer-events-none absolute inset-x-0 bottom-0 z-20 h-[42dvh] bg-[linear-gradient(180deg,rgba(0,0,0,0)_0%,rgba(2,6,23,0.14)_34%,rgba(2,6,23,0.78)_100%)]"
       />
       {!latestTrip && unifiedMapSurfaceEnabled ? (
-        <LaunchFirstTripCard href={dashboardActionRoutes.trips.create} />
+        <LaunchFirstTripCard
+          href={dashboardActionRoutes.trips.create}
+          onCreateTripStart={() => setIsCreatingFirstTrip(true)}
+        />
       ) : null}
 
       <section
@@ -71,6 +75,7 @@ export function MobileHomeWallet({
           primaryLabel={primaryLabel}
           primaryMeta={primaryMeta}
           recentTrips={recentTrips}
+          forceExpanded={isCreatingFirstTrip}
           initialSheetState={initialSheetState}
         />
       </section>
@@ -89,7 +94,13 @@ export function MobileHomeWallet({
   );
 }
 
-function LaunchFirstTripCard({ href }: { href: string }) {
+function LaunchFirstTripCard({
+  href,
+  onCreateTripStart
+}: {
+  href: string;
+  onCreateTripStart: () => void;
+}) {
   const router = useRouter();
   const { location } = useUnifiedMap();
   const countryFlag = countryCodeToFlag(location.countryCode);
@@ -109,9 +120,10 @@ function LaunchFirstTripCard({ href }: { href: string }) {
     if (isSlidingOut) return;
 
     setIsSlidingOut(true);
+    onCreateTripStart();
     navigationTimeoutRef.current = window.setTimeout(() => {
       router.push(href);
-    }, 400);
+    }, 500);
   }
 
   if (location.source !== "browser" || !countryFlag) {
