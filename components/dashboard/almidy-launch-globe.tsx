@@ -336,17 +336,43 @@ function GoogleMaps3DLaunchGlobe({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<GoogleMaps3DMapElement | null>(null);
   const markerRef = useRef<GoogleMaps3DMarkerElement | null>(null);
+  const readyRef = useRef(false);
   const [failed, setFailed] = useState(false);
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     let mapElement: GoogleMaps3DMapElement | null = null;
     let markerElement: GoogleMaps3DMarkerElement | null = null;
+    let observer: MutationObserver | null = null;
+    let readyTimeout: number | null = null;
+    const authFailureEvent = "almidy:google-maps-auth-failure";
+
+    const failClosed = () => {
+      if (cancelled) return;
+      observer?.disconnect();
+      markerElement?.remove();
+      mapElement?.remove();
+      readyRef.current = false;
+      setReady(false);
+      setFailed(true);
+    };
+
+    const revealWhenInitialized = () => {
+      if (cancelled) return;
+      window.requestAnimationFrame(() => {
+        if (cancelled) return;
+        readyRef.current = true;
+        mapElement?.classList.remove("opacity-0");
+        mapElement?.classList.add("opacity-100");
+        setReady(true);
+      });
+    };
 
     async function mountGoogle3D() {
       const container = containerRef.current;
       if (!container || !window.google?.maps?.importLibrary) {
-        setFailed(true);
+        failClosed();
         return;
       }
 
@@ -376,7 +402,7 @@ function GoogleMaps3DLaunchGlobe({
           range: cinematicRangeForFocus(focus),
           tilt: 67
         });
-        mapElement.className = "absolute inset-0 h-full w-full";
+        mapElement.className = "absolute inset-0 h-full w-full opacity-0 transition-opacity duration-500";
         mapElement.dataset.mapRenderer = "google-maps-3d";
         mapElement.dataset.mapSystem = "almidy-google-maps-3d";
         mapElement.setAttribute("aria-label", "Interactive 3D launch globe");
@@ -404,23 +430,51 @@ function GoogleMaps3DLaunchGlobe({
         markerElement.dataset.userLongitude = focus.lng.toFixed(5);
         markerElement.appendChild(render3DMarkerContent(focus));
 
-        const handleError = () => setFailed(true);
+        const handleError = () => failClosed();
+        const handleSteady = () => revealWhenInitialized();
         mapElement.addEventListener("gmp-error", handleError, { once: true });
+        mapElement.addEventListener("gmp-map-id-error", handleError, { once: true });
+        mapElement.addEventListener("gmp-steadychange", handleSteady, { once: true });
+        observer = new MutationObserver(() => {
+          const text = mapElement?.textContent ?? "";
+          if (
+            text.includes("Oops! Something went wrong") ||
+            text.includes("This page didn't load Google Maps correctly") ||
+            text.includes("This page didn’t load Google Maps correctly")
+          ) {
+            failClosed();
+          }
+        });
+        observer.observe(mapElement, { childList: true, subtree: true });
         mapElement.append(markerElement);
         container.replaceChildren(mapElement);
         mapRef.current = mapElement;
         markerRef.current = markerElement;
+        readyTimeout = window.setTimeout(() => {
+          if (!readyRef.current) {
+            failClosed();
+          }
+        }, 8_000);
       } catch {
         if (!cancelled) {
-          setFailed(true);
+          failClosed();
         }
       }
     }
 
+    readyRef.current = false;
+    setFailed(false);
+    setReady(false);
+    window.addEventListener(authFailureEvent, failClosed);
     void mountGoogle3D();
 
     return () => {
       cancelled = true;
+      window.removeEventListener(authFailureEvent, failClosed);
+      if (readyTimeout) {
+        window.clearTimeout(readyTimeout);
+      }
+      observer?.disconnect();
       markerRef.current = null;
       mapRef.current = null;
       markerElement?.remove();
@@ -433,24 +487,31 @@ function GoogleMaps3DLaunchGlobe({
   }
 
   return (
-    <LaunchGlobeShell
-      className={className}
-      focus={focus}
-      heroState={heroState}
-      launchPhase={launchPhase}
-      reduceMotion={reduceMotion}
-    >
-      <div
-        className="absolute inset-0 z-[1] overflow-hidden bg-black"
-        data-map-renderer="google-maps-3d"
-        data-map-system="almidy-google-maps-3d"
-        data-testid="almidy-google-maps-3d-host"
-        ref={containerRef}
-      />
-      <div className="pointer-events-none absolute inset-0 z-10 bg-[linear-gradient(180deg,rgba(0,0,0,0.78)_0%,rgba(0,0,0,0.08)_21%,rgba(0,0,0,0)_58%,rgba(0,0,0,0.42)_100%)]" />
-      <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-32 bg-[linear-gradient(180deg,rgba(0,0,0,0.9),rgba(0,0,0,0.32)_48%,transparent)]" />
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-[24%] bg-[linear-gradient(180deg,transparent,rgba(0,0,0,0.36)_58%,rgba(0,0,0,0.72)_100%)]" />
-    </LaunchGlobeShell>
+    <>
+      {ready ? null : fallback}
+      <LaunchGlobeShell
+        className={[
+          className,
+          ready ? "" : "pointer-events-none opacity-0"
+        ].filter(Boolean).join(" ")}
+        focus={focus}
+        heroState={heroState}
+        launchPhase={launchPhase}
+        reduceMotion={reduceMotion}
+        testId={ready ? "almidy-launch-globe" : "almidy-google-maps-3d-preflight"}
+      >
+        <div
+          className="absolute inset-0 z-[1] overflow-hidden bg-black"
+          data-map-renderer="google-maps-3d"
+          data-map-system="almidy-google-maps-3d"
+          data-testid="almidy-google-maps-3d-host"
+          ref={containerRef}
+        />
+        <div className="pointer-events-none absolute inset-0 z-10 bg-[linear-gradient(180deg,rgba(0,0,0,0.78)_0%,rgba(0,0,0,0.08)_21%,rgba(0,0,0,0)_58%,rgba(0,0,0,0.42)_100%)]" />
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-32 bg-[linear-gradient(180deg,rgba(0,0,0,0.9),rgba(0,0,0,0.32)_48%,transparent)]" />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-[24%] bg-[linear-gradient(180deg,transparent,rgba(0,0,0,0.36)_58%,rgba(0,0,0,0.72)_100%)]" />
+      </LaunchGlobeShell>
+    </>
   );
 }
 
@@ -460,7 +521,8 @@ function LaunchGlobeShell({
   focus,
   heroState,
   launchPhase,
-  reduceMotion
+  reduceMotion,
+  testId = "almidy-launch-globe"
 }: {
   children: ReactNode;
   className?: string;
@@ -468,6 +530,7 @@ function LaunchGlobeShell({
   heroState: HeroState;
   launchPhase: LaunchPhase;
   reduceMotion: boolean;
+  testId?: string;
 }) {
   return (
     <div
@@ -482,7 +545,7 @@ function LaunchGlobeShell({
       data-hero-mode={heroState}
       data-launch-phase={launchPhase}
       data-map-system={heroState === "google-maps-3d" ? "almidy-google-maps-3d" : "almidy-interactive-3d-globe"}
-      data-testid="almidy-launch-globe"
+      data-testid={testId}
       style={{
         "--wayline-pin-x": `${focus.pinX}%`,
         "--wayline-pin-y": `${focus.source === "user" ? focus.pinY : focus.pinY - HERO_EARTH_Y_NUDGE_PERCENT}%`
