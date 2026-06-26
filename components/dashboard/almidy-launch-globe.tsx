@@ -305,7 +305,7 @@ function GoogleMaps3DLaunchGlobe({
           range: launchRange,
           tilt: 61
         });
-        mapElement.className = "absolute inset-0 h-full w-full opacity-0 transition-opacity duration-500";
+        mapElement.className = "absolute inset-0 h-full w-full opacity-0";
         mapElement.dataset.mapRenderer = "google-maps-3d";
         mapElement.dataset.mapSystem = "almidy-google-maps-3d";
         mapElement.setAttribute("aria-label", "Interactive 3D launch globe");

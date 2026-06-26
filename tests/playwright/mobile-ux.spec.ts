@@ -929,6 +929,20 @@ test.describe("mobile soft-launch UX", () => {
     const launchSheet = page.getByTestId("mobile-home-wallet-content");
     await launchSheet.scrollIntoViewIfNeeded();
     await expect(launchSheet).toBeVisible();
+    const contentReveal = await launchSheet.evaluate((element) => {
+      const style = window.getComputedStyle(element);
+
+      return {
+        animationDelay: style.animationDelay,
+        animationName: style.animationName,
+        opacity: style.opacity,
+        transform: style.transform
+      };
+    });
+    expect(contentReveal.animationDelay, "home wallet sheet has no delayed reveal").toBe("0s");
+    expect(contentReveal.animationName, "home wallet sheet has no reveal animation").toBe("none");
+    expect(Number(contentReveal.opacity), "home wallet sheet is immediately visible").toBeGreaterThan(0.9);
+    expect(contentReveal.transform, "home wallet sheet does not slide in after delay").toBe("none");
     await expect(launchSheet).toHaveAttribute("data-sheet-state", "collapsed");
     await expect(page.getByTestId("mobile-home-actions")).toBeVisible();
     await expect(page.getByTestId("mobile-home-compact-actions")).toBeVisible();
