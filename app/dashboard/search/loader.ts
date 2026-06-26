@@ -55,6 +55,26 @@ type DocumentRow = {
   trip_id: string | null;
 };
 
+export type UnifiedSearchResultType = "activity" | "document" | "place" | "trip";
+
+export type UnifiedSearchResult = {
+  href: string;
+  id: string;
+  subtitle: string | null;
+  title: string;
+  type: UnifiedSearchResultType;
+  updated_at: string | null;
+};
+
+export type UnifiedSearchResponse = {
+  meta: {
+    processing_time_ms: number;
+    total_results: number;
+  };
+  query: string;
+  results: UnifiedSearchResult[];
+};
+
 export async function loadSearchData(initialQuery = ""): Promise<SearchData> {
   noStore();
 
@@ -78,6 +98,41 @@ export async function loadSearchData(initialQuery = ""): Promise<SearchData> {
     initialQuery,
     savedIdeas: savedIdeas.map(mapSavedIdea),
     tripItems: [...trips.map(mapTrip), ...segments.map(mapTripSegment)]
+  };
+}
+
+export async function loadUnifiedSearchResults(query: string): Promise<UnifiedSearchResponse> {
+  const startedAt = Date.now();
+  const normalizedQuery = query.trim().toLowerCase().slice(0, 120);
+
+  if (normalizedQuery.length < 2) {
+    return {
+      meta: {
+        processing_time_ms: Date.now() - startedAt,
+        total_results: 0
+      },
+      query,
+      results: []
+    };
+  }
+
+  const data = await loadSearchData(normalizedQuery);
+  const results = dedupeSearchResults([
+    ...data.tripItems,
+    ...data.savedIdeas,
+    ...data.documents
+  ])
+    .filter((result) => resultMatchesQuery(result, normalizedQuery))
+    .slice(0, 24)
+    .map(mapUnifiedSearchResult);
+
+  return {
+    meta: {
+      processing_time_ms: Date.now() - startedAt,
+      total_results: results.length
+    },
+    query,
+    results
   };
 }
 
@@ -340,6 +395,50 @@ function formatDateTimeParts(value: string | null) {
 
 function buildSearchText(...parts: Array<string | null | undefined>) {
   return parts.filter(Boolean).join(" ").toLowerCase();
+}
+
+function resultMatchesQuery(result: SearchResultView, normalizedQuery: string) {
+  return [
+    result.searchText,
+    result.title,
+    result.subtitle,
+    result.meta,
+    result.metaPrimary,
+    result.metaSecondary
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase()
+    .includes(normalizedQuery);
+}
+
+function dedupeSearchResults(results: SearchResultView[]) {
+  const seen = new Set<string>();
+
+  return results.filter((result) => {
+    const key = `${result.href}-${result.title}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function mapUnifiedSearchResult(result: SearchResultView): UnifiedSearchResult {
+  return {
+    href: result.href,
+    id: result.id,
+    subtitle: result.subtitle,
+    title: result.title,
+    type: unifiedTypeForResult(result),
+    updated_at: result.metaPrimary || result.meta || null
+  };
+}
+
+function unifiedTypeForResult(result: SearchResultView): UnifiedSearchResultType {
+  if (result.id.startsWith("trip-")) return "trip";
+  if (result.id.startsWith("document-")) return "document";
+  if (result.id.startsWith("idea-") || result.icon === "place") return "place";
+  return "activity";
 }
 
 function labelize(value: string | null) {

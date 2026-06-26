@@ -9,11 +9,14 @@ import {
   ChevronRight,
   Cloud,
   CreditCard,
+  FileText,
   List,
   Globe2,
   Languages,
   LifeBuoy,
+  Luggage,
   Mail,
+  MapPin,
   MessageSquare,
   PackageOpen,
   Plane,
@@ -37,8 +40,17 @@ import type { DashboardRecentTripView } from "@/app/dashboard/loader";
 import { cn } from "@/components/trip-ui";
 import { dashboardActionRoutes } from "@/lib/dashboard/action-routes";
 
-type SheetState = "collapsed" | "expanded" | "settings";
+type SheetState = "collapsed" | "expanded" | "settings" | "search";
 type TravelWalletSurface = "home" | "trips";
+
+type OverlaySearchResult = {
+  href: string;
+  id: string;
+  subtitle: string | null;
+  title: string;
+  type: "activity" | "document" | "place" | "trip";
+  updated_at: string | null;
+};
 
 const SHEET_RESTING_TRANSLATE = 60;
 const SHEET_EXPANDED_TRANSLATE = 15;
@@ -70,6 +82,7 @@ export function TravelWalletSheet({
   const [trialSheetCopy, setTrialSheetCopy] = useState<string | null>(null);
   const [isTouchDragging, setIsTouchDragging] = useState(false);
   const [touchTransform, setTouchTransform] = useState<number | null>(null);
+  const [returnSheetState, setReturnSheetState] = useState<SheetState>(initialSheetState);
   const dragStartY = useRef<number | null>(null);
   const ignoreNextHandleClick = useRef(false);
   const touchStartY = useRef<number | null>(null);
@@ -79,6 +92,7 @@ export function TravelWalletSheet({
   const isCollapsed = sheetState === "collapsed";
   const isExpanded = sheetState === "expanded";
   const isSettings = sheetState === "settings";
+  const isSearch = sheetState === "search";
   const currentYear = new Date().getFullYear();
   const isTripsSurface = surface === "trips";
   const sheetHandleLabel = isTripsSurface
@@ -105,6 +119,15 @@ export function TravelWalletSheet({
 
   function collapseSheet() {
     setSheetState("collapsed");
+  }
+
+  function openSearch() {
+    setReturnSheetState(isSettings || isSearch ? "collapsed" : sheetState);
+    setSheetState("search");
+  }
+
+  function closeSearch() {
+    setSheetState(returnSheetState === "search" || returnSheetState === "settings" ? "collapsed" : returnSheetState);
   }
 
   function handlePointerDown(event: PointerEvent<HTMLButtonElement>) {
@@ -140,7 +163,7 @@ export function TravelWalletSheet({
   }
 
   function handleTouchStart(event: TouchEvent<HTMLElement>) {
-    if (isSettings) {
+    if (isSettings || isSearch) {
       return;
     }
 
@@ -256,6 +279,8 @@ export function TravelWalletSheet({
               setTrialSheetCopy("Your 15 day Almidy Pro trial will be available from billing settings soon.")
             }
           />
+        ) : isSearch ? (
+          <SearchOverlay onClose={closeSearch} />
         ) : (
           <div id="mobile-launch-expanded-menu" className="px-4 pb-4 min-[390px]:px-5">
             <header className="flex items-start justify-between gap-3">
@@ -288,6 +313,7 @@ export function TravelWalletSheet({
 
             {isCollapsed ? (
               <CollapsedLauncher
+                onOpenSearch={openSearch}
                 primaryHref={primaryHref}
                 primaryLabel={primaryLabel}
                 primaryMeta={primaryMeta}
@@ -327,11 +353,13 @@ export function TravelWalletSheet({
 }
 
 function CollapsedLauncher({
+  onOpenSearch,
   primaryHref,
   primaryLabel,
   primaryMeta,
   surface
 }: {
+  onOpenSearch: () => void;
   primaryHref: string;
   primaryLabel: string;
   primaryMeta: string;
@@ -344,7 +372,11 @@ function CollapsedLauncher({
     <div className="mt-4" data-testid="ios-launch-sheet-collapsed">
       <div data-testid="mobile-home-actions">
         <div className="grid grid-cols-[3.8rem_minmax(0,1fr)_3.8rem] items-center gap-3" data-testid="mobile-home-compact-actions">
-          <CircleAction href={searchHref} icon={surface === "trips" ? <List /> : <Search />} label={searchLabel} />
+          {surface === "trips" ? (
+            <CircleAction href={searchHref} icon={<List />} label={searchLabel} />
+          ) : (
+            <CircleActionButton icon={<Search />} label={searchLabel} onClick={onOpenSearch} />
+          )}
           <Link
             aria-label={primaryLabel}
             className="grid h-14 min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-3 rounded-full bg-white px-4 text-left text-slate-950 shadow-[0_18px_44px_rgba(15,23,42,0.08)] ring-1 ring-slate-100 transition hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-orange-300/20"
@@ -898,6 +930,153 @@ function TrialAvailabilitySheet({
   );
 }
 
+function SearchOverlay({ onClose }: { onClose: () => void }) {
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<OverlaySearchResult[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const debouncedQuery = useDebouncedValue(query, 300);
+  const normalizedQuery = debouncedQuery.trim();
+
+  useEffect(() => {
+    if (normalizedQuery.length < 2) {
+      setResults([]);
+      setIsLoading(false);
+      setError(null);
+      return;
+    }
+
+    const controller = new AbortController();
+    setIsLoading(true);
+    setError(null);
+
+    fetch(`/api/v1/search?q=${encodeURIComponent(normalizedQuery)}`, {
+      signal: controller.signal
+    })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error("Search failed");
+        }
+        return response.json() as Promise<{ results?: OverlaySearchResult[] }>;
+      })
+      .then((payload) => {
+        setResults(Array.isArray(payload.results) ? payload.results : []);
+      })
+      .catch((searchError: unknown) => {
+        if (searchError instanceof DOMException && searchError.name === "AbortError") {
+          return;
+        }
+        setError("Search is unavailable right now.");
+        setResults([]);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) {
+          setIsLoading(false);
+        }
+      });
+
+    return () => controller.abort();
+  }, [normalizedQuery]);
+
+  const showEmptyState = normalizedQuery.length < 2 || (!isLoading && results.length === 0);
+
+  return (
+    <section
+      className="flex h-[100dvh] flex-col bg-[#121214] px-4 pb-[calc(6.5rem+env(safe-area-inset-bottom))] pt-[calc(0.9rem+env(safe-area-inset-top))] text-white"
+      data-testid="mobile-sheet-search"
+    >
+      <div className="flex items-center gap-3">
+        <label className="relative min-w-0 flex-1">
+          <span className="sr-only">Search saved activities and documents</span>
+          <Search
+            aria-hidden="true"
+            className="pointer-events-none absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-[#8e8e93]"
+          />
+          <input
+            autoComplete="off"
+            autoFocus
+            className="h-12 w-full rounded-xl border border-orange-400/70 bg-[#1e1e22] pl-11 pr-3 text-[16px] font-semibold leading-none text-white outline-none placeholder:text-[#8e8e93] focus:border-orange-300 focus:ring-4 focus:ring-orange-400/15"
+            data-testid="mobile-sheet-search-input"
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search saved activities and documents"
+            type="search"
+            value={query}
+          />
+        </label>
+        <button
+          className="shrink-0 rounded-xl px-1 py-2.5 text-[16px] font-semibold text-orange-400 outline-none transition hover:text-orange-300 focus:ring-4 focus:ring-orange-400/15"
+          data-testid="mobile-sheet-search-cancel"
+          onClick={onClose}
+          type="button"
+        >
+          Cancel
+        </button>
+      </div>
+
+      {isLoading ? (
+        <div className="grid flex-1 place-items-center" data-testid="mobile-sheet-search-loading">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-orange-400 border-t-transparent" />
+        </div>
+      ) : showEmptyState ? (
+        <div className="grid flex-1 place-items-center px-8 text-center" data-testid="mobile-sheet-search-empty">
+          <div>
+            <div className="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-white/[0.06] text-orange-300">
+              <Search className="h-8 w-8" aria-hidden="true" />
+            </div>
+            <h2 className="mt-5 text-xl font-black text-white">No results found</h2>
+            <p className="mt-2 text-sm font-semibold leading-6 text-[#8e8e93]">
+              Try searching a place, activity, document, or trip.
+            </p>
+            {error ? <p className="mt-3 text-sm font-semibold text-orange-200">{error}</p> : null}
+          </div>
+        </div>
+      ) : (
+        <div className="mt-4 min-h-0 flex-1 overflow-y-auto" data-testid="mobile-sheet-search-results">
+          {results.map((result) => (
+            <a
+              className="grid min-h-[4.75rem] grid-cols-[auto_minmax(0,1fr)] items-center gap-3 border-b border-white/10 py-3 text-left outline-none transition hover:bg-white/[0.04] focus:bg-white/[0.055] focus:ring-4 focus:ring-orange-400/15"
+              href={result.href}
+              key={result.id}
+            >
+              <span className="grid h-11 w-11 place-items-center rounded-full bg-orange-400/15 text-orange-300">
+                {result.type === "document" ? (
+                  <FileText className="h-5 w-5" aria-hidden="true" />
+                ) : result.type === "trip" ? (
+                  <Luggage className="h-5 w-5" aria-hidden="true" />
+                ) : result.type === "place" ? (
+                  <MapPin className="h-5 w-5" aria-hidden="true" />
+                ) : (
+                  <Sparkles className="h-5 w-5" aria-hidden="true" />
+                )}
+              </span>
+              <span className="min-w-0">
+                <span className="text-[0.68rem] font-black uppercase tracking-[0.16em] text-orange-300">
+                  {result.type}
+                </span>
+                <span className="mt-0.5 block truncate text-[1rem] font-black text-white">{result.title}</span>
+                {result.subtitle ? (
+                  <span className="mt-1 block truncate text-sm font-semibold text-[#9c9ba2]">{result.subtitle}</span>
+                ) : null}
+              </span>
+            </a>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function useDebouncedValue(value: string, delayMs: number) {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => setDebouncedValue(value), delayMs);
+    return () => window.clearTimeout(timeout);
+  }, [delayMs, value]);
+
+  return debouncedValue;
+}
+
 function CircleAction({
   href,
   icon,
@@ -922,6 +1101,29 @@ function CircleAction({
         {icon}
       </span>
     </Link>
+  );
+}
+
+function CircleActionButton({
+  icon,
+  label,
+  onClick
+}: {
+  icon: ReactNode;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      aria-label={label}
+      className="grid h-14 w-14 place-items-center rounded-full bg-white text-slate-950 shadow-[0_18px_44px_rgba(15,23,42,0.08)] ring-1 ring-slate-100 transition focus:outline-none focus:ring-4 focus:ring-orange-300/20"
+      onClick={onClick}
+      type="button"
+    >
+      <span className="[&_svg]:h-7 [&_svg]:w-7" aria-hidden="true">
+        {icon}
+      </span>
+    </button>
   );
 }
 

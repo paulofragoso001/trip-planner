@@ -951,7 +951,7 @@ test.describe("mobile soft-launch UX", () => {
     await expect(launchSheet.getByRole("button", { name: "Open My Trips" })).toBeVisible();
     await expect(launchSheet.getByRole("button", { name: "Open settings" })).toBeVisible();
     await expect(launchSheet.getByRole("link", { name: /Continue trip|Create trip/ })).toBeVisible();
-    await expect(launchSheet.getByRole("link", { name: /Search/ })).toBeVisible();
+    await expect(launchSheet.getByRole("button", { name: /Search/ })).toBeVisible();
     await expect(launchSheet.getByRole("link", { name: /Add/ })).toBeVisible();
     await expect(launchSheet.getByRole("link", { name: /Travel Book/ })).toBeHidden();
     await expect(launchSheet.getByRole("link", { name: /Add idea/ })).toBeHidden();
@@ -1237,6 +1237,68 @@ test.describe("mobile soft-launch UX", () => {
     }, { message: "expanded launch sheet content scrolls internally" }).toBeGreaterThan(0);
     await expect(launchSheet).toHaveAttribute("data-sheet-state", "expanded");
     await expect(launchSheet).not.toHaveAttribute("data-touch-dragging", "true");
+  });
+
+  test("mobile launch sheet search opens in place and debounces API queries", async ({ page }) => {
+    await page.setViewportSize({ height: 900, width: 390 });
+    await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
+    await installMockMobileLocation(page);
+
+    const searchRequests: string[] = [];
+    await page.route("**/api/v1/search**", async (route) => {
+      const url = new URL(route.request().url());
+      const query = url.searchParams.get("q") || "";
+      searchRequests.push(query);
+
+      await route.fulfill({
+        body: JSON.stringify({
+          meta: {
+            processing_time_ms: 12,
+            total_results: 1
+          },
+          query,
+          results: [
+            {
+              href: "/dashboard/trips/demo",
+              id: "trip-demo",
+              subtitle: "Florida, United States",
+              title: "Summer in Miami",
+              type: "trip",
+              updated_at: "2026-06-25T14:30:00Z"
+            }
+          ]
+        }),
+        contentType: "application/json",
+        status: 200
+      });
+    });
+
+    await page.goto(baseUrl + "/dashboard", { waitUntil: "commit" });
+
+    const launchSheet = page.getByTestId("mobile-home-wallet-content");
+    await expect(launchSheet).toHaveAttribute("data-sheet-state", "collapsed");
+    await launchSheet.getByRole("button", { name: "Search" }).click();
+
+    await expect(launchSheet).toHaveAttribute("data-sheet-state", "search");
+    await expect(page.getByTestId("mobile-sheet-search")).toBeVisible();
+    const searchInput = page.getByTestId("mobile-sheet-search-input");
+    await expect(searchInput).toBeFocused();
+    await expect(searchInput).toHaveAttribute("placeholder", "Search saved activities and documents");
+    await expect(page.getByTestId("mobile-sheet-search-empty")).toBeVisible();
+
+    await searchInput.fill("m");
+    await page.waitForTimeout(420);
+    expect(searchRequests, "one-character queries stay below the API threshold").toEqual([]);
+
+    await searchInput.fill("mi");
+    await expect.poll(() => searchRequests.length, { message: "debounced search API request fires" }).toBe(1);
+    expect(searchRequests).toEqual(["mi"]);
+    await expect(page.getByTestId("mobile-sheet-search-results")).toBeVisible();
+    await expect(page.getByRole("link", { name: /Summer in Miami/ })).toBeVisible();
+
+    await page.getByTestId("mobile-sheet-search-cancel").click();
+    await expect(launchSheet).toHaveAttribute("data-sheet-state", "collapsed");
+    await expect(page.getByTestId("mobile-sheet-search")).toHaveCount(0);
   });
 
   test("mobile home launch globe uses granted browser location for pin", async ({ page }) => {
