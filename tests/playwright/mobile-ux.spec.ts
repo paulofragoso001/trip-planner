@@ -107,6 +107,59 @@ async function installMockGoogleMaps3D(page: Page) {
   });
 }
 
+async function installMockGoogleMaps3DNativeError(page: Page) {
+  await page.addInitScript(() => {
+    class MockBrokenMap3DElement extends HTMLElement {
+      constructor(options?: Record<string, unknown>) {
+        super();
+        Object.assign(this, options);
+        window.setTimeout(() => {
+          this.textContent =
+            "Oops! Something went wrong. This page didn't load Google Maps correctly. See the JavaScript console for technical details.";
+        }, 0);
+      }
+    }
+
+    class MockMarkerElement extends HTMLElement {
+      constructor(options?: Record<string, unknown>) {
+        super();
+        Object.assign(this, options);
+      }
+    }
+
+    if (!customElements.get("almidy-test-broken-map-3d")) {
+      customElements.define("almidy-test-broken-map-3d", MockBrokenMap3DElement);
+    }
+
+    if (!customElements.get("almidy-test-broken-map-3d-marker")) {
+      customElements.define("almidy-test-broken-map-3d-marker", MockMarkerElement);
+    }
+
+    (window as typeof window & {
+      google?: {
+        maps?: {
+          importLibrary?: (libraryName: string) => Promise<unknown>;
+        };
+      };
+    }).google = {
+      maps: {
+        importLibrary: async (libraryName: string) => {
+          if (libraryName === "maps3d") {
+            return {
+              GestureHandling: { GREEDY: "GREEDY" },
+              Map3DElement: MockBrokenMap3DElement,
+              MapMode: { HYBRID: "HYBRID" },
+              MarkerElement: MockMarkerElement
+            };
+          }
+
+          return {};
+        }
+      }
+    };
+  });
+}
+
 type MockLocationPermission = "granted" | "denied";
 
 async function installMockMobileLocation(
@@ -1402,6 +1455,23 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByTestId("almidy-google-maps-3d-globe")).toBeVisible();
     await expect(page.getByTestId("almidy-google-maps-3d-shell")).toHaveCount(0);
     await expect(page.getByRole("heading", { name: "My Trips" })).toHaveCount(1);
+  });
+
+  test("mobile launch suppresses native Google 3D error UI before readiness", async ({ page }) => {
+    await page.setViewportSize({ height: 900, width: 390 });
+    await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
+    await installMockGoogleMaps3DNativeError(page);
+    await page.addInitScript(() => {
+      Object.defineProperty(navigator, "language", { configurable: true, value: "en-US" });
+      Object.defineProperty(navigator, "languages", { configurable: true, value: ["en-US", "en"] });
+    });
+
+    await page.goto(baseUrl + "/dashboard", { waitUntil: "commit" });
+    await expect(page.getByTestId("mobile-home-wallet")).toBeVisible();
+    await expect(page.getByTestId("almidy-launch-globe")).toHaveAttribute("data-hero-mode", "google-maps-3d");
+    await expect(page.getByTestId("almidy-google-maps-3d-shell")).toBeVisible();
+    await expect(page.getByTestId("almidy-google-maps-3d-globe")).toHaveCount(0);
+    await expectNoHomeGoogleMapsCopy(page);
   });
 
   test("demo map exposes ordered route cards on mobile", async ({ page }) => {

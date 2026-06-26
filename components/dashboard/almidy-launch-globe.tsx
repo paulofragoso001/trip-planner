@@ -256,7 +256,6 @@ function GoogleMaps3DLaunchGlobe({
     let mapElement: GoogleMaps3DMapElement | null = null;
     let markerElement: GoogleMaps3DMarkerElement | null = null;
     let observer: MutationObserver | null = null;
-    let revealTimeout: number | null = null;
     let readyTimeout: number | null = null;
     const authFailureEvent = "almidy:google-maps-auth-failure";
 
@@ -362,11 +361,6 @@ function GoogleMaps3DLaunchGlobe({
         container.replaceChildren(mapElement);
         mapRef.current = mapElement;
         markerRef.current = markerElement;
-        revealTimeout = window.setTimeout(() => {
-          if (!readyRef.current && mapElement?.isConnected) {
-            revealWhenInitialized();
-          }
-        }, 1_200);
         readyTimeout = window.setTimeout(() => {
           if (!readyRef.current) {
             failClosed();
@@ -390,9 +384,6 @@ function GoogleMaps3DLaunchGlobe({
       window.removeEventListener(authFailureEvent, failClosed);
       if (readyTimeout) {
         window.clearTimeout(readyTimeout);
-      }
-      if (revealTimeout) {
-        window.clearTimeout(revealTimeout);
       }
       observer?.disconnect();
       markerRef.current = null;
