@@ -55,7 +55,7 @@ export function MobileHomeWallet({
         aria-hidden="true"
         className="pointer-events-none absolute inset-x-0 bottom-0 z-20 h-[42dvh] bg-[linear-gradient(180deg,rgba(0,0,0,0)_0%,rgba(2,6,23,0.14)_34%,rgba(2,6,23,0.78)_100%)]"
       />
-      {!latestTrip && unifiedMapSurfaceEnabled ? (
+      {unifiedMapSurfaceEnabled ? (
         <LaunchFirstTripCard href={dashboardActionRoutes.trips.create} />
       ) : null}
 
