@@ -1,14 +1,8 @@
 "use client";
 
-import {
-  GoogleMap,
-  OverlayView
-} from "@react-google-maps/api";
 import Image from "next/image";
-import type { CSSProperties, ReactNode } from "react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import GoogleMapsProvider from "@/components/GoogleMapsProvider";
-import { ALMIDY_MAP_SYSTEM_ID } from "@/lib/map/almidy-map-visuals";
+import type { CSSProperties, PointerEvent, ReactNode } from "react";
+import { useEffect, useRef, useState } from "react";
 import { countryCodeToFlag } from "@/lib/map/wayline-map-pins";
 import type {
   AlmidyLocationState,
@@ -24,8 +18,8 @@ type AlmidyLaunchGlobeProps = {
   pins?: AlmidyMapPin[];
 };
 
-type HeroState = "custom-globe" | "google-launch-globe";
-type LaunchPhase = "custom-globe" | "google-launch-globe";
+type HeroState = "interactive-3d-globe";
+type LaunchPhase = "interactive-3d-globe";
 
 type CountryFocus = {
   altitude: number;
@@ -43,6 +37,8 @@ const HERO_EARTH_Y_NUDGE_PERCENT = 0;
 const USER_PIN_SCREEN_X = 59;
 const USER_PIN_SCREEN_Y = 49;
 const USE_CURRENT_LOCATION_EVENT = "wayline:home-use-current-location";
+const MAX_GLOBE_DRAG_X = 72;
+const MAX_GLOBE_DRAG_Y = 28;
 
 const DEFAULT_COUNTRY: CountryFocus = {
   altitude: 1_850_000,
@@ -138,9 +134,8 @@ export function AlmidyLaunchGlobe({
   const [reduceMotion, setReduceMotion] = useState(false);
   const focus = country;
   const showPin = true;
-  const googleFocus = focus.source === "user" ? focus : null;
-  const heroState: HeroState = googleFocus ? "google-launch-globe" : "custom-globe";
-  const launchPhase: LaunchPhase = googleFocus ? "google-launch-globe" : "custom-globe";
+  const heroState: HeroState = "interactive-3d-globe";
+  const launchPhase: LaunchPhase = "interactive-3d-globe";
 
   function setLocationFocus(nextCountry: CountryFocus) {
     setCountry((currentCountry) => (shouldUpdateFocus(currentCountry, nextCountry) ? nextCountry : currentCountry));
@@ -191,41 +186,19 @@ export function AlmidyLaunchGlobe({
     };
   }, [launchPhase, reduceMotion]);
 
-  const fallbackGlobe = (
-    <AlmidyLaunchGlobeFallback
+  return (
+    <AlmidyLaunchGlobeSurface
       className={className}
       focus={focus}
-      heroState="custom-globe"
-      launchPhase="custom-globe"
+      heroState={heroState}
+      launchPhase={launchPhase}
       reduceMotion={reduceMotion}
       showPin={showPin}
     />
   );
-
-  if (!googleFocus) {
-    return fallbackGlobe;
-  }
-
-  return (
-    <GoogleMapsProvider
-      blockChildrenOnError
-      blockChildrenUntilLoaded
-      fallback={fallbackGlobe}
-      loadingFallback={fallbackGlobe}
-    >
-      <GoogleBackedLaunchGlobe
-        className={className}
-        fallback={fallbackGlobe}
-        focus={googleFocus}
-        heroState={heroState}
-        launchPhase={launchPhase}
-        reduceMotion={reduceMotion}
-      />
-    </GoogleMapsProvider>
-  );
 }
 
-function AlmidyLaunchGlobeFallback({
+function AlmidyLaunchGlobeSurface({
   className,
   focus,
   heroState,
@@ -282,100 +255,6 @@ function AlmidyLaunchGlobeFallback({
   );
 }
 
-function GoogleBackedLaunchGlobe({
-  className,
-  fallback,
-  focus,
-  heroState,
-  launchPhase,
-  reduceMotion
-}: {
-  className?: string;
-  fallback: ReactNode;
-  focus: CountryFocus;
-  heroState: HeroState;
-  launchPhase: LaunchPhase;
-  reduceMotion: boolean;
-}) {
-  const mapRef = useRef<google.maps.Map | null>(null);
-  const center = useMemo(() => ({ lat: focus.lat, lng: focus.lng }), [focus.lat, focus.lng]);
-  const mapReady =
-    typeof window !== "undefined" &&
-    typeof window.google?.maps?.Map === "function";
-  const containerStyle = useMemo(() => ({ height: "100%", width: "100%" }), []);
-
-  const syncCamera = useCallback((map: google.maps.Map) => {
-    map.panTo(center);
-    map.setZoom(3);
-    if (typeof map.setTilt === "function") {
-      map.setTilt(45);
-    }
-  }, [center]);
-
-  useEffect(() => {
-    if (mapRef.current) {
-      syncCamera(mapRef.current);
-    }
-  }, [syncCamera]);
-
-  if (!mapReady) {
-    return fallback;
-  }
-
-  return (
-    <LaunchGlobeShell
-      className={className}
-      focus={focus}
-      heroState={heroState}
-      launchPhase={launchPhase}
-      reduceMotion={reduceMotion}
-    >
-      <div
-        className="absolute inset-0 z-[1] overflow-hidden bg-black"
-        data-map-renderer="google-map"
-        data-map-system="almidy-launch-google-globe"
-        data-testid="almidy-launch-google-globe"
-      >
-        <GoogleMap
-          center={center}
-          mapContainerStyle={containerStyle}
-          onLoad={(map) => {
-            mapRef.current = map;
-            syncCamera(map);
-          }}
-          options={{
-            backgroundColor: "#000000",
-            clickableIcons: false,
-            disableDefaultUI: true,
-            fullscreenControl: false,
-            gestureHandling: "greedy",
-            heading: 0,
-            keyboardShortcuts: false,
-            mapTypeControl: false,
-            mapTypeId: "hybrid",
-            rotateControl: false,
-            scaleControl: false,
-            streetViewControl: false,
-            tilt: 45,
-            zoomControl: false
-          }}
-          zoom={3}
-        >
-          <OverlayView mapPaneName={OverlayView.OVERLAY_MOUSE_TARGET} position={center}>
-            <LaunchLocationMarker focus={focus} />
-          </OverlayView>
-        </GoogleMap>
-      </div>
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 z-10 bg-[linear-gradient(180deg,rgba(0,0,0,0.72)_0%,rgba(0,0,0,0.08)_19%,rgba(0,0,0,0)_58%,rgba(0,0,0,0.46)_100%)]"
-      />
-      <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-32 bg-[linear-gradient(180deg,rgba(0,0,0,0.9),rgba(0,0,0,0.32)_48%,transparent)]" />
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-[24%] bg-[linear-gradient(180deg,transparent,rgba(0,0,0,0.36)_58%,rgba(0,0,0,0.72)_100%)]" />
-    </LaunchGlobeShell>
-  );
-}
-
 function LaunchGlobeShell({
   children,
   className,
@@ -403,7 +282,7 @@ function LaunchGlobeShell({
       data-home-hero-mode={`home-hero-mode: ${reduceMotion ? "reduced-motion" : "almidy-owned"}`}
       data-hero-mode={heroState}
       data-launch-phase={launchPhase}
-      data-map-system={heroState === "google-launch-globe" ? "almidy-launch-google-globe" : ALMIDY_MAP_SYSTEM_ID}
+      data-map-system="almidy-interactive-3d-globe"
       data-testid="almidy-launch-globe"
       style={{
         "--wayline-pin-x": `${focus.pinX}%`,
@@ -411,25 +290,6 @@ function LaunchGlobeShell({
       } as CSSProperties}
     >
       {children}
-    </div>
-  );
-}
-
-function LaunchLocationMarker({ focus }: { focus: CountryFocus }) {
-  return (
-    <div
-      className="wayline-country-pin pointer-events-none -translate-x-1/2 -translate-y-1/2 text-center"
-      data-country-code={focus.code}
-      data-location-source={focus.source ?? "country"}
-      data-user-latitude={focus.source === "user" ? focus.lat.toFixed(5) : undefined}
-      data-user-longitude={focus.source === "user" ? focus.lng.toFixed(5) : undefined}
-      data-pin-coordinate={`${focus.lat.toFixed(5)},${focus.lng.toFixed(5)}`}
-      data-testid="mobile-home-country-pin"
-    >
-      <div className="mx-auto h-6 w-6 rounded-full border-[3px] border-white bg-orange-500 shadow-[0_4px_14px_rgba(0,0,0,0.48),0_0_18px_rgba(255,114,42,0.62)]" />
-      <div className="sr-only" data-testid="mobile-home-country-name">
-        {focus.name}
-      </div>
     </div>
   );
 }
@@ -600,37 +460,88 @@ function degreesToRadians(value: number) {
 }
 
 function HomeHeroCustomGlobe({ reduceMotion }: { reduceMotion: boolean }) {
+  const dragStartRef = useRef<{ dragX: number; dragY: number; pointerId: number; x: number; y: number } | null>(null);
+  const [drag, setDrag] = useState({ x: 0, y: 0 });
+
+  function handlePointerDown(event: PointerEvent<HTMLDivElement>) {
+    if (reduceMotion) {
+      return;
+    }
+
+    event.currentTarget.setPointerCapture(event.pointerId);
+    dragStartRef.current = {
+      dragX: drag.x,
+      dragY: drag.y,
+      pointerId: event.pointerId,
+      x: event.clientX,
+      y: event.clientY
+    };
+  }
+
+  function handlePointerMove(event: PointerEvent<HTMLDivElement>) {
+    const start = dragStartRef.current;
+    if (!start || start.pointerId !== event.pointerId) {
+      return;
+    }
+
+    const nextX = clamp(start.dragX + (event.clientX - start.x) * 0.42, -MAX_GLOBE_DRAG_X, MAX_GLOBE_DRAG_X);
+    const nextY = clamp(start.dragY + (event.clientY - start.y) * 0.22, -MAX_GLOBE_DRAG_Y, MAX_GLOBE_DRAG_Y);
+    setDrag({ x: nextX, y: nextY });
+  }
+
+  function handlePointerUp(event: PointerEvent<HTMLDivElement>) {
+    if (dragStartRef.current?.pointerId === event.pointerId) {
+      dragStartRef.current = null;
+    }
+  }
+
   return (
     <div
       className="absolute inset-0 z-[1] overflow-hidden bg-[radial-gradient(circle_at_52%_12%,rgba(255,255,255,0.36),transparent_1px),radial-gradient(circle_at_76%_7%,rgba(255,255,255,0.32),transparent_1px),radial-gradient(circle_at_24%_20%,rgba(255,255,255,0.32),transparent_1px),radial-gradient(circle_at_18%_34%,rgba(255,255,255,0.22),transparent_1px),radial-gradient(circle_at_70%_30%,rgba(255,255,255,0.34),transparent_1px),radial-gradient(circle_at_92%_24%,rgba(255,255,255,0.28),transparent_1px),#030303]"
+      data-3d-interactive="true"
       data-earth-source="almidy-custom-globe"
+      data-map-renderer="interactive-3d-globe"
+      data-map-system="almidy-interactive-3d-globe"
       data-testid="almidy-custom-globe"
+      onPointerCancel={handlePointerUp}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      style={{
+        "--launch-globe-drag-x": `${drag.x}px`,
+        "--launch-globe-drag-y": `${drag.y}px`
+      } as CSSProperties}
     >
       <div className="absolute inset-x-0 top-0 h-40 bg-[linear-gradient(180deg,rgba(0,0,0,0.86),rgba(0,0,0,0))]" />
       <div
         className={[
-          "absolute left-[50%] top-[14%] aspect-square w-[178vw] max-w-[62rem] -translate-x-1/2 overflow-hidden rounded-full border border-sky-100/16 bg-black shadow-[inset_-72px_-100px_110px_rgba(0,0,0,0.84),inset_34px_34px_60px_rgba(255,255,255,0.18),0_0_22px_rgba(186,230,253,0.26),0_0_90px_rgba(125,211,252,0.18)]",
+          "absolute left-[50%] top-[14%] aspect-square w-[178vw] max-w-[62rem] -translate-x-1/2 overflow-hidden rounded-full border border-sky-100/16 bg-black shadow-[inset_-72px_-100px_110px_rgba(0,0,0,0.84),inset_34px_34px_60px_rgba(255,255,255,0.18),0_0_22px_rgba(186,230,253,0.26),0_0_90px_rgba(125,211,252,0.18)] [perspective:1100px] [touch-action:none]",
           reduceMotion ? "" : "wayline-home-custom-globe-intro"
         ]
           .filter(Boolean)
           .join(" ")}
+        data-globe-drag-x={drag.x.toFixed(1)}
+        data-globe-drag-y={drag.y.toFixed(1)}
+        data-interactive-3d="true"
         data-testid="home-custom-globe"
       >
-        <Image
-          alt=""
-          className={[
-            "absolute inset-0 h-full w-full object-cover opacity-100 brightness-[1.08] contrast-[1.08] saturate-[1.1]",
-            reduceMotion ? "" : "wayline-home-custom-globe-texture"
-          ]
-            .filter(Boolean)
-            .join(" ")}
-          data-testid="home-custom-globe-texture"
-          height={820}
-          priority
-          sizes="(max-width: 1023px) 132vw, 1px"
-          src="/globe/wayline-earth-3d-fallback.png"
-          width={1200}
-        />
+        <div className="absolute inset-0 rounded-full will-change-transform [transform:rotateX(calc(var(--launch-globe-drag-y)*-0.09deg))_rotateY(calc(var(--launch-globe-drag-x)*0.12deg))_translate3d(var(--launch-globe-drag-x),var(--launch-globe-drag-y),0)] [transform-style:preserve-3d]">
+          <Image
+            alt=""
+            className={[
+              "absolute inset-0 h-full w-full object-cover opacity-100 brightness-[1.08] contrast-[1.08] saturate-[1.1]",
+              reduceMotion ? "" : "wayline-home-custom-globe-texture"
+            ]
+              .filter(Boolean)
+              .join(" ")}
+            data-testid="home-custom-globe-texture"
+            height={820}
+            priority
+            sizes="(max-width: 1023px) 132vw, 1px"
+            src="/globe/wayline-earth-3d-fallback.png"
+            width={1200}
+          />
+        </div>
         <div className="absolute inset-0 rounded-full bg-[radial-gradient(circle_at_50%_8%,rgba(255,255,255,0.28),transparent_18%),linear-gradient(112deg,rgba(0,0,0,0.1)_0%,rgba(0,0,0,0)_45%,rgba(0,0,0,0.72)_100%)]" />
         <div className="absolute inset-0 rounded-full ring-1 ring-inset ring-sky-100/24" />
       </div>
