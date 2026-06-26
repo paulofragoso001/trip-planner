@@ -47,11 +47,6 @@ type GoogleMaps3DMapElement = HTMLElement & {
   tilt?: number;
 };
 
-type GoogleMaps3DMarkerElement = HTMLElement & {
-  position?: GoogleMaps3DLatLngAltitude;
-  title?: string;
-};
-
 type GoogleMaps3DLibrary = {
   GestureHandling?: {
     GREEDY: string;
@@ -59,8 +54,8 @@ type GoogleMaps3DLibrary = {
   Map3DElement: new (options?: Partial<GoogleMaps3DMapElement>) => GoogleMaps3DMapElement;
   MapMode?: {
     HYBRID: string;
+    SATELLITE?: string;
   };
-  MarkerElement: new (options?: Partial<GoogleMaps3DMarkerElement>) => GoogleMaps3DMarkerElement;
 };
 
 type CountryFocus = {
@@ -79,8 +74,8 @@ const HERO_EARTH_Y_NUDGE_PERCENT = 0;
 const USER_PIN_SCREEN_X = 59;
 const USER_PIN_SCREEN_Y = 49;
 const USE_CURRENT_LOCATION_EVENT = "wayline:home-use-current-location";
-const LAUNCH_3D_MAX_ALTITUDE = 18_000_000;
-const LAUNCH_3D_MIN_ALTITUDE = 900_000;
+const LAUNCH_3D_MAX_ALTITUDE = 34_000_000;
+const LAUNCH_3D_MIN_ALTITUDE = 180_000;
 
 const DEFAULT_COUNTRY: CountryFocus = {
   altitude: 1_850_000,
@@ -249,31 +244,43 @@ function GoogleMaps3DLaunchGlobe({
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<GoogleMaps3DMapElement | null>(null);
-  const markerRef = useRef<GoogleMaps3DMarkerElement | null>(null);
   const readyRef = useRef(false);
   const [state, setState] = useState<LaunchGlobeState>("loading-google");
 
   useEffect(() => {
     let cancelled = false;
+    let failed = false;
     let mapElement: GoogleMaps3DMapElement | null = null;
-    let markerElement: GoogleMaps3DMarkerElement | null = null;
     let observer: MutationObserver | null = null;
-    let readyTimeout: number | null = null;
+    let runtimeErrorPoll: number | null = null;
     const authFailureEvent = "almidy:google-maps-auth-failure";
+
+    const hasNativeGoogleError = () => {
+      const text = mapElement?.textContent ?? "";
+      return (
+        text.includes("Oops! Something went wrong") ||
+        text.includes("This page didn't load Google Maps correctly") ||
+        text.includes("This page didn’t load Google Maps correctly")
+      );
+    };
 
     const failClosed = (nextState: LaunchGlobeState = "google-runtime-failed") => {
       if (cancelled) return;
+      failed = true;
       observer?.disconnect();
-      markerElement?.remove();
+      if (runtimeErrorPoll) {
+        window.clearInterval(runtimeErrorPoll);
+        runtimeErrorPoll = null;
+      }
       mapElement?.remove();
       readyRef.current = false;
       setState(nextState);
     };
 
     const revealWhenInitialized = () => {
-      if (cancelled) return;
+      if (cancelled || failed) return;
       window.requestAnimationFrame(() => {
-        if (cancelled) return;
+        if (cancelled || failed) return;
         readyRef.current = true;
         mapElement?.classList.remove("opacity-0");
         mapElement?.classList.add("opacity-100");
@@ -305,20 +312,21 @@ function GoogleMaps3DLaunchGlobe({
         const center = { altitude: 0, lat: focus.lat, lng: focus.lng };
         const gestureHandling = maps3d.GestureHandling?.GREEDY ?? "GREEDY";
         const mapMode = maps3d.MapMode?.HYBRID ?? "HYBRID";
+        const launchRange = cinematicRangeForFocus(focus);
 
         mapElement = new maps3d.Map3DElement({
           center,
           defaultUIHidden: true,
-          fov: 47,
+          fov: 38,
           gestureHandling,
-          heading: -18,
+          heading: -28,
           maxAltitude: LAUNCH_3D_MAX_ALTITUDE,
-          maxTilt: 78,
+          maxTilt: 82,
           minAltitude: LAUNCH_3D_MIN_ALTITUDE,
-          minTilt: 28,
+          minTilt: 12,
           mode: mapMode,
-          range: cinematicRangeForFocus(focus),
-          tilt: 67
+          range: launchRange,
+          tilt: 61
         });
         mapElement.className = "absolute inset-0 h-full w-full opacity-0 transition-opacity duration-500";
         mapElement.dataset.mapRenderer = "google-maps-3d";
@@ -326,27 +334,15 @@ function GoogleMaps3DLaunchGlobe({
         mapElement.setAttribute("aria-label", "Interactive 3D launch globe");
         mapElement.setAttribute("data-testid", "almidy-google-maps-3d-globe");
         mapElement.setAttribute("default-ui-hidden", "true");
-        mapElement.setAttribute("fov", "47");
+        mapElement.setAttribute("fov", "38");
         mapElement.setAttribute("gesture-handling", gestureHandling.toLowerCase());
         mapElement.setAttribute("max-altitude", String(LAUNCH_3D_MAX_ALTITUDE));
         mapElement.setAttribute("min-altitude", String(LAUNCH_3D_MIN_ALTITUDE));
         mapElement.setAttribute("mode", mapMode.toLowerCase());
-        mapElement.setAttribute("range", String(cinematicRangeForFocus(focus)));
-        mapElement.setAttribute("tilt", "67");
+        mapElement.setAttribute("range", String(launchRange));
+        mapElement.setAttribute("tilt", "61");
         mapElement.setAttribute("data-user-latitude", focus.lat.toFixed(5));
         mapElement.setAttribute("data-user-longitude", focus.lng.toFixed(5));
-
-        markerElement = new maps3d.MarkerElement({
-          position: center,
-          title: focus.name
-        });
-        markerElement.dataset.testid = "mobile-home-country-pin";
-        markerElement.dataset.countryCode = focus.code;
-        markerElement.dataset.locationSource = focus.source ?? "country";
-        markerElement.dataset.pinCoordinate = `${focus.lat.toFixed(5)},${focus.lng.toFixed(5)}`;
-        markerElement.dataset.userLatitude = focus.lat.toFixed(5);
-        markerElement.dataset.userLongitude = focus.lng.toFixed(5);
-        markerElement.appendChild(render3DMarkerContent(focus));
 
         const handleError = () => failClosed("google-runtime-failed");
         const handleSteady = () => revealWhenInitialized();
@@ -354,25 +350,19 @@ function GoogleMaps3DLaunchGlobe({
         mapElement.addEventListener("gmp-map-id-error", handleError, { once: true });
         mapElement.addEventListener("gmp-steadychange", handleSteady, { once: true });
         observer = new MutationObserver(() => {
-          const text = mapElement?.textContent ?? "";
-          if (
-            text.includes("Oops! Something went wrong") ||
-            text.includes("This page didn't load Google Maps correctly") ||
-            text.includes("This page didn’t load Google Maps correctly")
-          ) {
+          if (hasNativeGoogleError()) {
             failClosed("google-runtime-failed");
           }
         });
         observer.observe(mapElement, { childList: true, subtree: true });
-        mapElement.append(markerElement);
         container.replaceChildren(mapElement);
         mapRef.current = mapElement;
-        markerRef.current = markerElement;
-        readyTimeout = window.setTimeout(() => {
-          if (!readyRef.current) {
+        revealWhenInitialized();
+        runtimeErrorPoll = window.setInterval(() => {
+          if (hasNativeGoogleError()) {
             failClosed("google-runtime-failed");
           }
-        }, 8_000);
+        }, 120);
       } catch {
         if (!cancelled) {
           failClosed("google-runtime-failed");
@@ -389,13 +379,11 @@ function GoogleMaps3DLaunchGlobe({
     return () => {
       cancelled = true;
       window.removeEventListener(authFailureEvent, handleAuthFailure);
-      if (readyTimeout) {
-        window.clearTimeout(readyTimeout);
+      if (runtimeErrorPoll) {
+        window.clearInterval(runtimeErrorPoll);
       }
       observer?.disconnect();
-      markerRef.current = null;
       mapRef.current = null;
-      markerElement?.remove();
       mapElement?.remove();
     };
   }, [focus]);
@@ -439,6 +427,27 @@ function GoogleMaps3DLaunchGlobe({
           data-testid="almidy-google-maps-3d-host"
           ref={containerRef}
         />
+        <div
+          className="wayline-country-pin pointer-events-none absolute z-20 -translate-x-1/2 -translate-y-1/2 text-center"
+          data-country-code={focus.code}
+          data-location-source={focus.source ?? "country"}
+          data-pin-coordinate={`${focus.lat.toFixed(5)},${focus.lng.toFixed(5)}`}
+          data-testid="mobile-home-country-pin"
+          data-user-latitude={focus.lat.toFixed(5)}
+          data-user-longitude={focus.lng.toFixed(5)}
+          style={{
+            left: "59%",
+            top: "49%"
+          }}
+        >
+          <div className="mx-auto h-6 w-6 rounded-full border-[3px] border-white bg-orange-500 shadow-[0_4px_14px_rgba(0,0,0,0.48),0_0_18px_rgba(255,114,42,0.62)]" />
+          <div
+            className="sr-only"
+            data-testid="mobile-home-country-name"
+          >
+            {focus.name}
+          </div>
+        </div>
         <div className="pointer-events-none absolute inset-0 z-10 bg-[linear-gradient(180deg,rgba(0,0,0,0.78)_0%,rgba(0,0,0,0.08)_21%,rgba(0,0,0,0)_58%,rgba(0,0,0,0.42)_100%)]" />
         <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-32 bg-[linear-gradient(180deg,rgba(0,0,0,0.9),rgba(0,0,0,0.32)_48%,transparent)]" />
         <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-[24%] bg-[linear-gradient(180deg,transparent,rgba(0,0,0,0.36)_58%,rgba(0,0,0,0.72)_100%)]" />
@@ -578,21 +587,8 @@ function LaunchGlobeShell({
   );
 }
 
-function render3DMarkerContent(focus: CountryFocus) {
-  const marker = document.createElement("span");
-  marker.className = "grid h-6 w-6 place-items-center rounded-full border-[3px] border-white bg-orange-500 shadow-[0_4px_14px_rgba(0,0,0,0.48),0_0_18px_rgba(255,114,42,0.62)]";
-
-  const label = document.createElement("span");
-  label.className = "sr-only";
-  label.dataset.testid = "mobile-home-country-name";
-  label.textContent = focus.name;
-  marker.appendChild(label);
-
-  return marker;
-}
-
 function cinematicRangeForFocus(focus: CountryFocus) {
-  return focus.source === "user" ? 5_800_000 : 9_200_000;
+  return focus.source === "user" ? 10_800_000 : 13_400_000;
 }
 
 function shouldUpdateFocus(currentCountry: CountryFocus | null, nextCountry: CountryFocus) {

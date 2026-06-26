@@ -77,19 +77,8 @@ async function installMockGoogleMaps3D(page: Page) {
       }
     }
 
-    class MockMarkerElement extends HTMLElement {
-      constructor(options?: Record<string, unknown>) {
-        super();
-        Object.assign(this, options);
-      }
-    }
-
     if (!customElements.get("almidy-test-map-3d")) {
       customElements.define("almidy-test-map-3d", MockMap3DElement);
-    }
-
-    if (!customElements.get("almidy-test-map-3d-marker")) {
-      customElements.define("almidy-test-map-3d-marker", MockMarkerElement);
     }
 
     (window as typeof window & {
@@ -105,8 +94,7 @@ async function installMockGoogleMaps3D(page: Page) {
             return {
               GestureHandling: { GREEDY: "GREEDY" },
               Map3DElement: MockMap3DElement,
-              MapMode: { HYBRID: "HYBRID" },
-              MarkerElement: MockMarkerElement
+              MapMode: { HYBRID: "HYBRID" }
             };
           }
 

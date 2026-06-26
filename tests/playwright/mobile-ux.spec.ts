@@ -67,19 +67,8 @@ async function installMockGoogleMaps3D(page: Page) {
       }
     }
 
-    class MockMarkerElement extends HTMLElement {
-      constructor(options?: Record<string, unknown>) {
-        super();
-        Object.assign(this, options);
-      }
-    }
-
     if (!customElements.get("almidy-test-map-3d")) {
       customElements.define("almidy-test-map-3d", MockMap3DElement);
-    }
-
-    if (!customElements.get("almidy-test-map-3d-marker")) {
-      customElements.define("almidy-test-map-3d-marker", MockMarkerElement);
     }
 
     (window as typeof window & {
@@ -95,8 +84,7 @@ async function installMockGoogleMaps3D(page: Page) {
             return {
               GestureHandling: { GREEDY: "GREEDY" },
               Map3DElement: MockMap3DElement,
-              MapMode: { HYBRID: "HYBRID" },
-              MarkerElement: MockMarkerElement
+              MapMode: { HYBRID: "HYBRID" }
             };
           }
 
@@ -120,19 +108,8 @@ async function installMockGoogleMaps3DNativeError(page: Page) {
       }
     }
 
-    class MockMarkerElement extends HTMLElement {
-      constructor(options?: Record<string, unknown>) {
-        super();
-        Object.assign(this, options);
-      }
-    }
-
     if (!customElements.get("almidy-test-broken-map-3d")) {
       customElements.define("almidy-test-broken-map-3d", MockBrokenMap3DElement);
-    }
-
-    if (!customElements.get("almidy-test-broken-map-3d-marker")) {
-      customElements.define("almidy-test-broken-map-3d-marker", MockMarkerElement);
     }
 
     (window as typeof window & {
@@ -148,8 +125,7 @@ async function installMockGoogleMaps3DNativeError(page: Page) {
             return {
               GestureHandling: { GREEDY: "GREEDY" },
               Map3DElement: MockBrokenMap3DElement,
-              MapMode: { HYBRID: "HYBRID" },
-              MarkerElement: MockMarkerElement
+              MapMode: { HYBRID: "HYBRID" }
             };
           }
 
@@ -1216,9 +1192,9 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByTestId("almidy-launch-globe-diagnostic")).toHaveCount(0);
     await expect(google3DGlobe).toHaveAttribute("gesture-handling", "greedy");
     await expect(google3DGlobe).toHaveAttribute("mode", "hybrid");
-    await expect(google3DGlobe).toHaveAttribute("tilt", "67");
-    await expect(google3DGlobe).toHaveAttribute("min-altitude", "900000");
-    await expect(google3DGlobe).toHaveAttribute("max-altitude", "18000000");
+    await expect(google3DGlobe).toHaveAttribute("tilt", "61");
+    await expect(google3DGlobe).toHaveAttribute("min-altitude", "180000");
+    await expect(google3DGlobe).toHaveAttribute("max-altitude", "34000000");
     await expect(google3DGlobe).toHaveAttribute("data-user-latitude", "25.76170");
     await expect(google3DGlobe).toHaveAttribute("data-user-longitude", "-80.19180");
     await expect(page.getByTestId("home-custom-globe")).toHaveCount(0);
