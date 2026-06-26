@@ -84,7 +84,7 @@ async function installMockGoogleMaps3D(page: Page) {
             return {
               GestureHandling: { GREEDY: "GREEDY" },
               Map3DElement: MockMap3DElement,
-              MapMode: { HYBRID: "HYBRID" }
+              MapMode: { HYBRID: "HYBRID", SATELLITE: "SATELLITE" }
             };
           }
 
@@ -125,7 +125,7 @@ async function installMockGoogleMaps3DNativeError(page: Page) {
             return {
               GestureHandling: { GREEDY: "GREEDY" },
               Map3DElement: MockBrokenMap3DElement,
-              MapMode: { HYBRID: "HYBRID" }
+              MapMode: { HYBRID: "HYBRID", SATELLITE: "SATELLITE" }
             };
           }
 
@@ -1224,10 +1224,11 @@ test.describe("mobile soft-launch UX", () => {
       "data-user-longitude",
       "-80.19180"
     );
-    await expect(google3DGlobe).toHaveAttribute("data-camera-intent", "user-location");
-    await expect(google3DGlobe).toHaveAttribute("data-camera-altitude", "15000");
-    await expect(google3DGlobe).toHaveAttribute("data-camera-latitude", "25.76170");
-    await expect(google3DGlobe).toHaveAttribute("data-camera-longitude", "-80.19180");
+    await expect(google3DGlobe).toHaveAttribute("data-camera-intent", "configured-launch-with-user-marker");
+    await expect(google3DGlobe).toHaveAttribute("data-camera-altitude", "6500000");
+    await expect(google3DGlobe).toHaveAttribute("data-camera-latitude", "28.50000");
+    await expect(google3DGlobe).toHaveAttribute("data-camera-longitude", "-81.50000");
+    await expect(google3DGlobe).toHaveAttribute("data-camera-zoom", "3.2");
     await expect(page.getByTestId("almidy-google-maps-3d-user-marker")).toHaveAttribute(
       "position",
       "25.76170, -80.19180"
@@ -1254,11 +1255,12 @@ test.describe("mobile soft-launch UX", () => {
     await expect(google3DGlobe).toBeVisible({ timeout: 20_000 });
     await expect(page.getByTestId("almidy-launch-globe-diagnostic")).toHaveCount(0);
     await expect(google3DGlobe).toHaveAttribute("gesture-handling", "greedy");
-    await expect(google3DGlobe).toHaveAttribute("mode", "hybrid");
-    await expect(google3DGlobe).toHaveAttribute("data-camera-intent", "user-location");
-    await expect(google3DGlobe).toHaveAttribute("data-camera-altitude", "15000");
-    await expect(google3DGlobe).toHaveAttribute("data-camera-latitude", "25.76170");
-    await expect(google3DGlobe).toHaveAttribute("data-camera-longitude", "-80.19180");
+    await expect(google3DGlobe).toHaveAttribute("mode", "satellite");
+    await expect(google3DGlobe).toHaveAttribute("data-camera-intent", "configured-launch-with-user-marker");
+    await expect(google3DGlobe).toHaveAttribute("data-camera-altitude", "6500000");
+    await expect(google3DGlobe).toHaveAttribute("data-camera-latitude", "28.50000");
+    await expect(google3DGlobe).toHaveAttribute("data-camera-longitude", "-81.50000");
+    await expect(google3DGlobe).toHaveAttribute("data-camera-zoom", "3.2");
     await expect(google3DGlobe).toHaveAttribute("fov", "42");
     await expect(google3DGlobe).toHaveAttribute("heading", "0");
     await expect(google3DGlobe).toHaveAttribute("range", "0");

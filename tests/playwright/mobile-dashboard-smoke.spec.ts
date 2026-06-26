@@ -123,7 +123,7 @@ async function installMockGoogleMaps3D(page: Page) {
             return {
               GestureHandling: { GREEDY: "GREEDY" },
               Map3DElement: MockMap3DElement,
-              MapMode: { HYBRID: "HYBRID" }
+              MapMode: { HYBRID: "HYBRID", SATELLITE: "SATELLITE" }
             };
           }
 
