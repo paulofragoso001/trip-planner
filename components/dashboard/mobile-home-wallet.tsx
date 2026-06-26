@@ -148,7 +148,7 @@ function LaunchLocationPermissionOverlay() {
     <section
       aria-labelledby="launch-location-title"
       aria-modal="true"
-      className="absolute inset-0 z-50 flex items-center justify-center px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-[calc(1rem+env(safe-area-inset-top))]"
+      className="absolute inset-0 z-50 flex items-center justify-center px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-[calc(1rem+env(safe-area-inset-top))]"
       data-testid="launch-location-permission"
       role="dialog"
     >
@@ -156,33 +156,33 @@ function LaunchLocationPermissionOverlay() {
         className="absolute inset-0 bg-black/14 backdrop-blur-[2px]"
         aria-hidden="true"
       />
-      <div className="relative w-full max-w-[23rem] overflow-hidden rounded-[2.45rem] border border-white/55 bg-white/78 p-6 text-slate-950 shadow-[0_30px_90px_rgba(0,0,0,0.42)] ring-1 ring-black/5 backdrop-blur-2xl min-[390px]:p-7">
+      <div className="relative w-full max-w-[21.25rem] overflow-hidden rounded-[2rem] border border-white/70 bg-white/95 p-5 text-slate-950 shadow-[0_26px_76px_rgba(0,0,0,0.38)] ring-1 ring-black/5 backdrop-blur-xl min-[390px]:max-w-[22rem] min-[390px]:p-6">
         <div className="flex items-end gap-0">
-          <span className="grid h-20 w-20 place-items-center rounded-[1.55rem] bg-blue-500 text-white shadow-[0_16px_38px_rgba(37,99,235,0.35)]">
-            <Navigation className="h-11 w-11 fill-white" aria-hidden="true" />
+          <span className="grid h-16 w-16 place-items-center rounded-[1.25rem] bg-blue-500 text-white shadow-[0_14px_32px_rgba(37,99,235,0.32)]">
+            <Navigation className="h-9 w-9 fill-white" aria-hidden="true" />
           </span>
-          <span className="-ml-5 grid h-11 w-11 place-items-center rounded-[1rem] bg-blue-500 text-white shadow-[0_12px_28px_rgba(37,99,235,0.32)] ring-2 ring-white/70">
-            <MapPin className="h-6 w-6 fill-white" aria-hidden="true" />
+          <span className="-ml-4 grid h-9 w-9 place-items-center rounded-[0.85rem] bg-blue-500 text-white shadow-[0_10px_24px_rgba(37,99,235,0.3)] ring-2 ring-white/80">
+            <MapPin className="h-5 w-5 fill-white" aria-hidden="true" />
           </span>
         </div>
 
         <h2
-          className="mt-10 max-w-[16rem] text-[2rem] font-black leading-[1.08] tracking-normal text-slate-950 min-[390px]:text-[2.2rem]"
+          className="mt-7 max-w-[15rem] text-[1.55rem] font-black leading-[1.08] tracking-normal text-slate-950 min-[390px]:text-[1.72rem]"
           id="launch-location-title"
         >
           Allow "Almidy" to use your location?
         </h2>
-        <p className="mt-5 text-[1.35rem] font-medium leading-[1.22] text-slate-600 min-[390px]:text-[1.55rem]">
+        <p className="mt-3 text-[1.05rem] font-medium leading-[1.24] text-slate-600 min-[390px]:text-[1.16rem]">
           Show your location on the globe, and the places around you.
         </p>
 
         {locationStatus === "error" && locationError ? (
-          <p className="mt-4 rounded-2xl bg-white/58 px-4 py-3 text-sm font-bold leading-5 text-slate-600">
+          <p className="mt-4 rounded-2xl bg-slate-100 px-4 py-3 text-sm font-bold leading-5 text-slate-700">
             {locationError}
           </p>
         ) : null}
 
-        <div className="mt-7 grid gap-3">
+        <div className="mt-5 grid gap-2.5">
           <LocationPermissionButton disabled={isLocating} onClick={requestLocation}>
             {isLocating ? "Locating..." : "Allow Once"}
           </LocationPermissionButton>
@@ -209,7 +209,7 @@ function LocationPermissionButton({
 }) {
   return (
     <button
-      className="min-h-16 rounded-full bg-white/58 px-5 text-center text-[1.35rem] font-medium text-black shadow-[inset_0_1px_0_rgba(255,255,255,0.55)] transition hover:bg-white/72 focus:outline-none focus:ring-4 focus:ring-blue-400/20 disabled:cursor-wait disabled:opacity-70 min-[390px]:text-[1.5rem]"
+      className="min-h-12 rounded-full bg-slate-100 px-5 text-center text-[1.05rem] font-semibold text-slate-950 shadow-[inset_0_1px_0_rgba(255,255,255,0.75)] transition hover:bg-slate-200 focus:outline-none focus:ring-4 focus:ring-blue-400/20 disabled:cursor-wait disabled:opacity-70 min-[390px]:min-h-[3.25rem] min-[390px]:text-[1.14rem]"
       disabled={disabled}
       onClick={onClick}
       type="button"
