@@ -59,10 +59,43 @@ async function expectNoHomeGoogleMapsScripts(page: Page) {
 
 async function installMockGoogleMaps3D(page: Page) {
   await page.addInitScript(() => {
+    function createMockGlobeCanvas() {
+      const canvas = document.createElement("canvas");
+      canvas.height = 12;
+      canvas.width = 12;
+      canvas.dataset.mockGoogleMaps3DCanvas = "visible-texture";
+
+      const webglContext = {
+        RGBA: 0x1908,
+        UNSIGNED_BYTE: 0x1401,
+        readPixels: (
+          _x: number,
+          _y: number,
+          _width: number,
+          _height: number,
+          _format: number,
+          _type: number,
+          pixels: Uint8Array
+        ) => {
+          pixels[0] = 72;
+          pixels[1] = 132;
+          pixels[2] = 188;
+          pixels[3] = 255;
+        }
+      };
+
+      (canvas as HTMLCanvasElement & { getContext: (contextId: string) => unknown }).getContext = (
+        contextId: string
+      ) => (contextId === "webgl2" || contextId === "webgl" ? webglContext : null);
+
+      return canvas;
+    }
+
     class MockMap3DElement extends HTMLElement {
       constructor(options?: Record<string, unknown>) {
         super();
         Object.assign(this, options);
+        this.attachShadow({ mode: "open" }).appendChild(createMockGlobeCanvas());
         window.setTimeout(() => this.dispatchEvent(new Event("gmp-steadychange")), 0);
       }
     }
@@ -93,6 +126,39 @@ async function installMockGoogleMaps3D(page: Page) {
       }
     };
   });
+}
+
+async function expectLaunchGlobeCanvasPaintsVisibleTexture(page: Page) {
+  const isGlobeRendering = await page.evaluate(() => {
+    const mapElement =
+      document.querySelector('[data-testid="almidy-google-maps-3d-globe"]') ?? document.querySelector("gmp-map-3d");
+    const canvas = mapElement?.shadowRoot?.querySelector("canvas") ?? mapElement?.querySelector("canvas");
+
+    if (!(canvas instanceof HTMLCanvasElement)) {
+      return false;
+    }
+
+    const context = canvas.getContext("webgl2") ?? canvas.getContext("webgl");
+    if (!context || !("readPixels" in context)) {
+      return false;
+    }
+
+    const webglContext = context as WebGLRenderingContext;
+    const pixels = new Uint8Array(4);
+    webglContext.readPixels(
+      Math.floor(canvas.width / 2),
+      Math.floor(canvas.height / 2),
+      1,
+      1,
+      webglContext.RGBA,
+      webglContext.UNSIGNED_BYTE,
+      pixels
+    );
+
+    return pixels[0] + pixels[1] + pixels[2] > 10;
+  });
+
+  expect(isGlobeRendering).toBe(true);
 }
 
 async function installMockGoogleMaps3DNativeError(page: Page) {
@@ -1252,6 +1318,7 @@ test.describe("mobile soft-launch UX", () => {
     expect(heroMode).toBe("google-maps-3d");
     const google3DGlobe = page.getByTestId("almidy-google-maps-3d-globe");
     await expect(google3DGlobe).toBeVisible({ timeout: 20_000 });
+    await expectLaunchGlobeCanvasPaintsVisibleTexture(page);
     await expect(page.getByTestId("almidy-launch-globe-diagnostic")).toHaveCount(0);
     await expect(google3DGlobe).toHaveAttribute("gesture-handling", "greedy");
     await expect(google3DGlobe).toHaveAttribute("mode", "hybrid");
