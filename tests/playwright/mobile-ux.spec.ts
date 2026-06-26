@@ -582,6 +582,62 @@ test.describe("mobile soft-launch UX", () => {
     }
   });
 
+  test("mobile trip create form posts the v1 payload shape", async ({ page }) => {
+    test.setTimeout(90_000);
+    await page.setViewportSize({ height: 900, width: 390 });
+    await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
+
+    let capturedPayload: unknown = null;
+    await page.route("**/api/v1/trips", async (route) => {
+      capturedPayload = route.request().postDataJSON();
+      await route.fulfill({
+        body: JSON.stringify({
+          trip: {
+            id: "intercepted-v1-trip"
+          }
+        }),
+        contentType: "application/json",
+        status: 201
+      });
+    });
+
+    await page.goto(`${baseUrl}/dashboard/trips?view=list`, { waitUntil: "commit" });
+    await expect(
+      page.locator('[data-testid="mobile-first-trip-state"], [data-testid="mobile-trips-wallet"]').first()
+    ).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByTestId("mobile-trips-wallet-screen")).toHaveAttribute(
+      "data-hydrated",
+      "true",
+      { timeout: 20_000 }
+    );
+
+    const createPanel = page.getByTestId("mobile-create-another-trip").last();
+    if ((await createPanel.locator('[data-testid="mobile-trip-create-form"]:visible').count()) === 0) {
+      await createPanel.getByRole("button", { name: /Create trip/ }).click();
+    }
+
+    const form = page.locator('[data-testid="mobile-trip-create-form"]:visible').last();
+    await expect(form).toBeVisible();
+    await form.getByLabel("Trip name").fill("Miami weekend");
+    await form.getByLabel("Destination").fill("Miami, FL, USA");
+    await form.getByLabel("Start date").fill("2026-07-10");
+    await form.getByLabel("End date").fill("2026-07-12");
+    await form.getByLabel("Expense budget").fill("1250");
+    await form.getByLabel("Travel style").selectOption("relaxed");
+
+    await form.getByRole("button", { name: "Create" }).last().click();
+    await page.waitForURL(/\/dashboard\/trips\/intercepted-v1-trip$/, { timeout: 20_000, waitUntil: "commit" });
+
+    expect(capturedPayload).toEqual({
+      destination: "Miami, FL, USA",
+      end_date: "2026-07-12",
+      expense_budget: 1250,
+      start_date: "2026-07-10",
+      travel_style: "relaxed",
+      trip_name: "Miami weekend"
+    });
+  });
+
   test("mobile trip creation redirects to the trip wallet hub", async ({ page, request }) => {
     test.setTimeout(90_000);
     await page.setViewportSize({ height: 900, width: 390 });

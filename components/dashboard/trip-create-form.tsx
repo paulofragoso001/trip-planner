@@ -55,25 +55,35 @@ export function TripCreateForm({
   async function createTrip(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    const payload = {
-      budget: Number(budget || 0),
-      destination,
-      destination_formatted_address: destinationSelection?.formattedAddress || null,
-      destination_lat: destinationSelection?.lat || null,
-      destination_lng: destinationSelection?.lng || null,
-      destination_place_id: destinationSelection?.placeId || null,
-      destination_provider_metadata: destinationSelection?.providerMetadata || {},
-      destination_status: destinationSelection ? "resolved" : "manual",
-      end_date: endDate,
-      name,
-      start_date: startDate,
-      travel_style: travelStyle
-    };
+    const budgetValue = budget.trim() ? Number(budget) : null;
+    const payload = mobilePassMode
+      ? {
+          destination: destination.trim(),
+          end_date: endDate || null,
+          expense_budget: Number.isFinite(budgetValue) ? budgetValue : null,
+          start_date: startDate || null,
+          travel_style: travelStyle,
+          trip_name: name.trim()
+        }
+      : {
+          budget: Number(budget || 0),
+          destination,
+          destination_formatted_address: destinationSelection?.formattedAddress || null,
+          destination_lat: destinationSelection?.lat || null,
+          destination_lng: destinationSelection?.lng || null,
+          destination_place_id: destinationSelection?.placeId || null,
+          destination_provider_metadata: destinationSelection?.providerMetadata || {},
+          destination_status: destinationSelection ? "resolved" : "manual",
+          end_date: endDate,
+          name,
+          start_date: startDate,
+          travel_style: travelStyle
+        };
     const result = await run({
       body: payload,
       method: "POST",
       timeoutMs: mobilePassMode ? 60000 : 30000,
-      url: "/api/trips"
+      url: mobilePassMode ? "/api/v1/trips" : "/api/trips"
     });
 
     if (result.status === "success") {
