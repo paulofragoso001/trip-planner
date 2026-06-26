@@ -4,23 +4,27 @@ import type { ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 import GoogleMapsProvider from "@/components/GoogleMapsProvider";
 import { countryCodeToFlag } from "@/lib/map/wayline-map-pins";
-import type {
-  AlmidyLocationState,
-  AlmidyMapCameraCommand,
-  AlmidyMapPin
-} from "@/lib/map/wayline-map-models";
+import type { AlmidyLocationState } from "@/lib/map/wayline-map-models";
 
 type AlmidyLaunchGlobeProps = {
-  cameraCommand?: AlmidyMapCameraCommand | null;
   className?: string;
   location?: AlmidyLocationState;
+  locationStatus?: LocationRequestState;
   onLocateUser?: () => Promise<AlmidyLocationState> | void;
-  pins?: AlmidyMapPin[];
 };
 
 type HeroState = "google-maps-3d";
 type LaunchPhase = "google-maps-3d";
-type GoogleMaps3DStatus = "loading" | "unavailable";
+type LaunchGlobeState =
+  | "loading-location"
+  | "missing-location"
+  | "loading-google"
+  | "ready"
+  | "google-auth-failed"
+  | "google-script-failed"
+  | "google-runtime-failed"
+  | "container-invalid";
+type LocationRequestState = "idle" | "loading" | "ready" | "error";
 
 type GoogleMaps3DLatLngAltitude = {
   altitude?: number;
@@ -109,50 +113,17 @@ const COUNTRY_BY_CODE: Record<string, CountryFocus> = {
   US: DEFAULT_COUNTRY
 };
 
-const COUNTRY_BY_TIME_ZONE_PREFIX: Array<[string, CountryFocus]> = [
-  ["America/", COUNTRY_BY_CODE.US],
-  ["US/", COUNTRY_BY_CODE.US],
-  ["Canada/", COUNTRY_BY_CODE.CA],
-  ["Europe/London", COUNTRY_BY_CODE.GB],
-  ["Europe/Paris", COUNTRY_BY_CODE.FR],
-  ["Europe/Madrid", COUNTRY_BY_CODE.ES],
-  ["Europe/Lisbon", COUNTRY_BY_CODE.PT],
-  ["Europe/Rome", COUNTRY_BY_CODE.IT],
-  ["Europe/Berlin", COUNTRY_BY_CODE.DE],
-  ["Europe/Amsterdam", COUNTRY_BY_CODE.NL],
-  ["Europe/Athens", COUNTRY_BY_CODE.GR],
-  ["Atlantic/Reykjavik", COUNTRY_BY_CODE.IS],
-  ["Mexico/", COUNTRY_BY_CODE.MX],
-  ["Brazil/", COUNTRY_BY_CODE.BR]
-];
-
-const focusablePinKinds = new Set<AlmidyMapPin["kind"]>([
-  "country",
-  "place",
-  "route-endpoint",
-  "route-waypoint",
-  "trip",
-  "user-location"
-]);
-
-const EMPTY_PINS: AlmidyMapPin[] = [];
-
 export function AlmidyLaunchGlobe({
-  cameraCommand,
   className,
   location,
-  onLocateUser,
-  pins = EMPTY_PINS
+  locationStatus = "idle",
+  onLocateUser
 }: AlmidyLaunchGlobeProps) {
-  const [country, setCountry] = useState<CountryFocus>(DEFAULT_COUNTRY);
+  const [country, setCountry] = useState<CountryFocus | null>(null);
   const [reduceMotion, setReduceMotion] = useState(false);
   const focus = country;
   const heroState: HeroState = "google-maps-3d";
   const launchPhase: LaunchPhase = "google-maps-3d";
-
-  function setLocationFocus(nextCountry: CountryFocus) {
-    setCountry((currentCountry) => (shouldUpdateFocus(currentCountry, nextCountry) ? nextCountry : currentCountry));
-  }
 
   useEffect(() => {
     const media = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -165,11 +136,6 @@ export function AlmidyLaunchGlobe({
   }, []);
 
   useEffect(() => {
-    const localeCountry = countryFromLocale(navigator.languages?.[0] || navigator.language);
-    const timezoneCountry = countryFromTimeZone(Intl.DateTimeFormat().resolvedOptions().timeZone);
-
-    setCountry(localeCountry || timezoneCountry || DEFAULT_COUNTRY);
-
     const useCurrentLocation = () => {
       void onLocateUser?.();
     };
@@ -182,14 +148,12 @@ export function AlmidyLaunchGlobe({
   }, [onLocateUser]);
 
   useEffect(() => {
-    const nextFocus =
-      focusFromCameraCommand(cameraCommand, pins) ??
-      focusFromPins(pins) ??
-      focusFromLocationState(location);
-    if (nextFocus) {
-      setLocationFocus(nextFocus);
-    }
-  }, [cameraCommand, location, pins]);
+    const nextFocus = focusFromLocationState(location);
+    setCountry((currentCountry) => {
+      if (!nextFocus) return null;
+      return shouldUpdateFocus(currentCountry, nextFocus) ? nextFocus : currentCountry;
+    });
+  }, [location]);
 
   useEffect(() => {
     document.documentElement.dataset.waylineHomeLaunchPhase = reduceMotion ? "done" : launchPhase;
@@ -200,22 +164,35 @@ export function AlmidyLaunchGlobe({
   }, [launchPhase, reduceMotion]);
 
   const loading3DGlobe = (
-    <GoogleMaps3DLaunchShell
+    <GoogleMaps3DLaunchDiagnostic
       className={className}
       reduceMotion={reduceMotion}
-      status="loading"
+      state="loading-google"
     />
   );
+
+  if (!focus) {
+    const state: LaunchGlobeState = locationStatus === "loading" ? "loading-location" : "missing-location";
+
+    return (
+      <GoogleMaps3DLaunchDiagnostic
+        className={className}
+        onLocateUser={onLocateUser}
+        reduceMotion={reduceMotion}
+        state={state}
+      />
+    );
+  }
 
   return (
     <GoogleMapsProvider
       blockChildrenOnError
       blockChildrenUntilLoaded
       fallback={
-        <GoogleMaps3DLaunchShell
+        <GoogleMaps3DLaunchDiagnostic
           className={className}
           reduceMotion={reduceMotion}
-          status="unavailable"
+          state="google-script-failed"
         />
       }
       loadingFallback={loading3DGlobe}
@@ -248,8 +225,7 @@ function GoogleMaps3DLaunchGlobe({
   const mapRef = useRef<GoogleMaps3DMapElement | null>(null);
   const markerRef = useRef<GoogleMaps3DMarkerElement | null>(null);
   const readyRef = useRef(false);
-  const [failed, setFailed] = useState(false);
-  const [ready, setReady] = useState(false);
+  const [state, setState] = useState<LaunchGlobeState>("loading-google");
 
   useEffect(() => {
     let cancelled = false;
@@ -259,14 +235,13 @@ function GoogleMaps3DLaunchGlobe({
     let readyTimeout: number | null = null;
     const authFailureEvent = "almidy:google-maps-auth-failure";
 
-    const failClosed = () => {
+    const failClosed = (nextState: LaunchGlobeState = "google-runtime-failed") => {
       if (cancelled) return;
       observer?.disconnect();
       markerElement?.remove();
       mapElement?.remove();
       readyRef.current = false;
-      setReady(false);
-      setFailed(true);
+      setState(nextState);
     };
 
     const revealWhenInitialized = () => {
@@ -276,18 +251,24 @@ function GoogleMaps3DLaunchGlobe({
         readyRef.current = true;
         mapElement?.classList.remove("opacity-0");
         mapElement?.classList.add("opacity-100");
-        setReady(true);
+        setState("ready");
       });
     };
 
     async function mountGoogle3D() {
       const container = containerRef.current;
       if (!container || !window.google?.maps?.importLibrary) {
-        failClosed();
+        failClosed("google-runtime-failed");
         return;
       }
 
       try {
+        const bounds = container.getBoundingClientRect();
+        if (bounds.width < 1 || bounds.height < 1) {
+          failClosed("container-invalid");
+          return;
+        }
+
         const maps3d = await window.google.maps.importLibrary(
           "maps3d" as Parameters<typeof window.google.maps.importLibrary>[0]
         ) as unknown as GoogleMaps3DLibrary;
@@ -341,7 +322,7 @@ function GoogleMaps3DLaunchGlobe({
         markerElement.dataset.userLongitude = focus.lng.toFixed(5);
         markerElement.appendChild(render3DMarkerContent(focus));
 
-        const handleError = () => failClosed();
+        const handleError = () => failClosed("google-runtime-failed");
         const handleSteady = () => revealWhenInitialized();
         mapElement.addEventListener("gmp-error", handleError, { once: true });
         mapElement.addEventListener("gmp-map-id-error", handleError, { once: true });
@@ -353,7 +334,7 @@ function GoogleMaps3DLaunchGlobe({
             text.includes("This page didn't load Google Maps correctly") ||
             text.includes("This page didn’t load Google Maps correctly")
           ) {
-            failClosed();
+            failClosed("google-runtime-failed");
           }
         });
         observer.observe(mapElement, { childList: true, subtree: true });
@@ -363,25 +344,25 @@ function GoogleMaps3DLaunchGlobe({
         markerRef.current = markerElement;
         readyTimeout = window.setTimeout(() => {
           if (!readyRef.current) {
-            failClosed();
+            failClosed("google-runtime-failed");
           }
         }, 8_000);
       } catch {
         if (!cancelled) {
-          failClosed();
+          failClosed("google-runtime-failed");
         }
       }
     }
 
     readyRef.current = false;
-    setFailed(false);
-    setReady(false);
-    window.addEventListener(authFailureEvent, failClosed);
+    setState("loading-google");
+    const handleAuthFailure = () => failClosed("google-auth-failed");
+    window.addEventListener(authFailureEvent, handleAuthFailure);
     void mountGoogle3D();
 
     return () => {
       cancelled = true;
-      window.removeEventListener(authFailureEvent, failClosed);
+      window.removeEventListener(authFailureEvent, handleAuthFailure);
       if (readyTimeout) {
         window.clearTimeout(readyTimeout);
       }
@@ -393,34 +374,35 @@ function GoogleMaps3DLaunchGlobe({
     };
   }, [focus]);
 
-  if (failed) {
+  if (state !== "ready" && state !== "loading-google") {
     return (
-      <GoogleMaps3DLaunchShell
+      <GoogleMaps3DLaunchDiagnostic
         className={className}
         reduceMotion={reduceMotion}
-        status="unavailable"
+        state={state}
       />
     );
   }
 
   return (
     <>
-      {ready ? null : (
-        <GoogleMaps3DLaunchShell
+      {state === "ready" ? null : (
+        <GoogleMaps3DLaunchDiagnostic
           className={className}
           reduceMotion={reduceMotion}
-          status="loading"
+          state="loading-google"
         />
       )}
       <LaunchGlobeShell
         className={[
           className,
-          ready ? "" : "pointer-events-none opacity-0"
+          state === "ready" ? "" : "pointer-events-none opacity-0"
         ].filter(Boolean).join(" ")}
         heroState={heroState}
         launchPhase={launchPhase}
         reduceMotion={reduceMotion}
-        testId={ready ? "almidy-launch-globe" : "almidy-google-maps-3d-preflight"}
+        state={state}
+        testId={state === "ready" ? "almidy-launch-globe" : "almidy-google-maps-3d-preflight"}
       >
         <div
           className="absolute inset-0 z-[1] overflow-hidden bg-black"
@@ -437,34 +419,102 @@ function GoogleMaps3DLaunchGlobe({
   );
 }
 
-function GoogleMaps3DLaunchShell({
+function GoogleMaps3DLaunchDiagnostic({
   className,
+  onLocateUser,
   reduceMotion,
-  status
+  state
 }: {
   className?: string;
+  onLocateUser?: () => Promise<AlmidyLocationState> | void;
   reduceMotion: boolean;
-  status: GoogleMaps3DStatus;
+  state: LaunchGlobeState;
 }) {
+  const copy = launchGlobeDiagnosticCopy(state);
+
   return (
     <LaunchGlobeShell
       className={className}
       heroState="google-maps-3d"
       launchPhase="google-maps-3d"
       reduceMotion={reduceMotion}
+      state={state}
     >
       <div
         className="absolute inset-0 bg-[radial-gradient(circle_at_50%_36%,rgba(37,99,235,0.2),transparent_28%),linear-gradient(180deg,#000_0%,#02050b_24%,#06101b_100%)]"
         data-map-renderer="google-maps-3d"
-        data-map-runtime={status}
+        data-map-runtime={state}
         data-map-system="almidy-google-maps-3d"
-        data-testid="almidy-google-maps-3d-shell"
+        data-testid="almidy-launch-globe-diagnostic"
       />
       <div className="pointer-events-none absolute inset-0 z-10 bg-[linear-gradient(180deg,rgba(0,0,0,0.9)_0%,rgba(0,0,0,0.26)_31%,rgba(0,0,0,0.08)_58%,rgba(0,0,0,0.68)_100%)]" />
       <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-36 bg-[linear-gradient(180deg,rgba(0,0,0,0.96),rgba(0,0,0,0.44)_48%,transparent)]" />
       <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-[27%] bg-[linear-gradient(180deg,transparent,rgba(0,0,0,0.4)_54%,rgba(0,0,0,0.78)_100%)]" />
+      <div className="absolute left-1/2 top-[38%] z-20 w-[min(19rem,calc(100vw-3rem))] -translate-x-1/2 rounded-[2rem] border border-white/14 bg-black/58 px-5 py-4 text-center text-white shadow-[0_24px_70px_rgba(0,0,0,0.45)] backdrop-blur-xl">
+        <p className="text-[0.68rem] font-black uppercase tracking-[0.24em] text-white/50">
+          {state}
+        </p>
+        <p className="mt-2 text-base font-black tracking-tight">{copy.title}</p>
+        <p className="mt-1 text-sm font-semibold leading-snug text-white/68">{copy.message}</p>
+        {state === "missing-location" ? (
+          <button
+            className="mt-4 rounded-full bg-white px-4 py-2 text-sm font-black text-slate-950 shadow-[0_10px_24px_rgba(255,255,255,0.18)]"
+            onClick={() => {
+              void onLocateUser?.();
+            }}
+            type="button"
+          >
+            Use current location
+          </button>
+        ) : null}
+      </div>
     </LaunchGlobeShell>
   );
+}
+
+function launchGlobeDiagnosticCopy(state: LaunchGlobeState) {
+  switch (state) {
+    case "loading-location":
+      return {
+        message: "Allow location so the launch globe can center on you.",
+        title: "Finding your position"
+      };
+    case "missing-location":
+      return {
+        message: "Use your current location to render the interactive launch globe.",
+        title: "Current location needed"
+      };
+    case "loading-google":
+      return {
+        message: "Preparing the interactive globe surface.",
+        title: "Loading launch globe"
+      };
+    case "google-auth-failed":
+      return {
+        message: "The browser key rejected this launch surface. Check key restrictions for almidy.app.",
+        title: "Globe key rejected"
+      };
+    case "google-script-failed":
+      return {
+        message: "The launch script did not load. Check browser access and production configuration.",
+        title: "Globe script unavailable"
+      };
+    case "container-invalid":
+      return {
+        message: "The launch viewport did not provide a valid render area.",
+        title: "Globe container invalid"
+      };
+    case "google-runtime-failed":
+      return {
+        message: "The 3D runtime did not initialize in this browser session.",
+        title: "Globe runtime unavailable"
+      };
+    case "ready":
+      return {
+        message: "The launch globe is ready.",
+        title: "Launch globe ready"
+      };
+  }
 }
 
 function LaunchGlobeShell({
@@ -473,6 +523,7 @@ function LaunchGlobeShell({
   heroState,
   launchPhase,
   reduceMotion,
+  state,
   testId = "almidy-launch-globe"
 }: {
   children: ReactNode;
@@ -480,6 +531,7 @@ function LaunchGlobeShell({
   heroState: HeroState;
   launchPhase: LaunchPhase;
   reduceMotion: boolean;
+  state: LaunchGlobeState;
   testId?: string;
 }) {
   return (
@@ -493,6 +545,7 @@ function LaunchGlobeShell({
         .join(" ")}
       data-home-hero-mode={`home-hero-mode: ${reduceMotion ? "reduced-motion" : "almidy-owned"}`}
       data-hero-mode={heroState}
+      data-launch-globe-state={state}
       data-launch-phase={launchPhase}
       data-map-system="almidy-google-maps-3d"
       data-testid={testId}
@@ -519,7 +572,11 @@ function cinematicRangeForFocus(focus: CountryFocus) {
   return focus.source === "user" ? 5_800_000 : 9_200_000;
 }
 
-function shouldUpdateFocus(currentCountry: CountryFocus, nextCountry: CountryFocus) {
+function shouldUpdateFocus(currentCountry: CountryFocus | null, nextCountry: CountryFocus) {
+  if (!currentCountry) {
+    return true;
+  }
+
   if (currentCountry.source !== nextCountry.source || currentCountry.code !== nextCountry.code) {
     return true;
   }
@@ -537,7 +594,7 @@ function shouldUpdateFocus(currentCountry: CountryFocus, nextCountry: CountryFoc
 }
 
 function focusFromLocationState(location: AlmidyLocationState | undefined): CountryFocus | null {
-  if (!location?.coordinate) {
+  if (!location?.coordinate || location.source !== "browser") {
     return null;
   }
 
@@ -560,75 +617,6 @@ function focusFromLocationState(location: AlmidyLocationState | undefined): Coun
     pinX: USER_PIN_SCREEN_X,
     pinY: USER_PIN_SCREEN_Y,
     source: "user"
-  };
-}
-
-function focusFromPins(pins: AlmidyMapPin[]): CountryFocus | null {
-  const pin =
-    pins.find((candidate) => candidate.selected && candidate.kind === "user-location") ??
-    pins.find((candidate) => candidate.selected && focusablePinKinds.has(candidate.kind)) ??
-    pins.find((candidate) => candidate.kind === "user-location") ??
-    pins.find((candidate) => focusablePinKinds.has(candidate.kind));
-
-  if (!pin) {
-    return null;
-  }
-
-  const latitude = clamp(pin.coordinate.lat, -85, 85);
-  const longitude = normalizeLongitude(pin.coordinate.lng);
-  const countryCode = pin.countryCode?.toUpperCase() ?? null;
-  const countryFocus =
-    (countryCode ? COUNTRY_BY_CODE[countryCode] : null) ??
-    countryFromApproximateCoordinates(latitude, longitude) ??
-    DEFAULT_COUNTRY;
-  const isUserPin = pin.kind === "user-location";
-
-  return {
-    ...countryFocus,
-    altitude: isUserPin ? 1_150_000 : countryFocus.altitude,
-    code: countryCode || countryFocus.code,
-    flag: pin.flag || countryCodeToFlag(countryCode) || countryFocus.flag,
-    lat: latitude,
-    lng: longitude,
-    name: isUserPin
-      ? pin.subtitle || countryFocus.name || userFacingLocationLabel(pin.label) || DEFAULT_COUNTRY.name
-      : userFacingLocationLabel(pin.label) || pin.subtitle || countryFocus.name,
-    pinX: isUserPin ? USER_PIN_SCREEN_X : countryFocus.pinX,
-    pinY: isUserPin ? USER_PIN_SCREEN_Y : countryFocus.pinY,
-    source: isUserPin ? "user" : "country"
-  };
-}
-
-function focusFromCameraCommand(
-  command: AlmidyMapCameraCommand | null | undefined,
-  pins: AlmidyMapPin[]
-): CountryFocus | null {
-  if (!command || command.type === "openFlatMap") {
-    return null;
-  }
-
-  if (command.type === "zoomToWorld") {
-    return DEFAULT_COUNTRY;
-  }
-
-  const commandPin = command.pinId ? pins.find((pin) => pin.id === command.pinId) : null;
-  const latitude = clamp(command.camera.center.lat, -85, 85);
-  const longitude = normalizeLongitude(command.camera.center.lng);
-  const countryFocus = countryFromApproximateCoordinates(latitude, longitude) ?? DEFAULT_COUNTRY;
-  const isUserCommand = command.type === "focusUserLocation";
-
-  return {
-    ...countryFocus,
-    altitude: isUserCommand ? 1_150_000 : command.camera.altitudeMeters ?? countryFocus.altitude,
-    flag: commandPin?.flag || countryFocus.flag,
-    lat: latitude,
-    lng: longitude,
-    name: isUserCommand
-      ? countryFocus.name || userFacingLocationLabel(command.label) || DEFAULT_COUNTRY.name
-      : userFacingLocationLabel(command.label) || countryFocus.name,
-    pinX: isUserCommand ? USER_PIN_SCREEN_X : countryFocus.pinX,
-    pinY: isUserCommand ? USER_PIN_SCREEN_Y : countryFocus.pinY,
-    source: isUserCommand ? "user" : "country"
   };
 }
 
@@ -656,28 +644,6 @@ function distanceBetweenCoordinates(
 
 function degreesToRadians(value: number) {
   return (value * Math.PI) / 180;
-}
-
-function countryFromLocale(locale: string | undefined) {
-  if (!locale) {
-    return null;
-  }
-
-  try {
-    const region = new Intl.Locale(locale).region?.toUpperCase();
-    return region ? COUNTRY_BY_CODE[region] ?? null : null;
-  } catch {
-    const region = locale.split("-").at(-1)?.toUpperCase();
-    return region ? COUNTRY_BY_CODE[region] ?? null : null;
-  }
-}
-
-function countryFromTimeZone(timeZone: string | undefined) {
-  if (!timeZone) {
-    return null;
-  }
-
-  return COUNTRY_BY_TIME_ZONE_PREFIX.find(([prefix]) => timeZone.startsWith(prefix))?.[1] ?? null;
 }
 
 function countryFromApproximateCoordinates(latitude: number, longitude: number) {

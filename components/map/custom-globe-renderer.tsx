@@ -26,10 +26,9 @@ export function CustomGlobeRenderer({
     >
       <AlmidyLaunchGlobe
         className={className}
-        cameraCommand={activeSurface?.cameraCommand}
         location={activeSurface?.location}
+        locationStatus={unifiedMap?.locationStatus}
         onLocateUser={unifiedMap?.locateUser}
-        pins={activeSurface?.pins}
       />
     </div>
   );
