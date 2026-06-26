@@ -209,7 +209,7 @@ export function TravelWalletSheet({
   return (
     <section
       className={cn(
-        "wayline-home-content-reveal bottom-sheet-container pointer-events-auto relative z-10 w-full touch-none transform-gpu transition-transform duration-500 ease-[cubic-bezier(0.25,1,0.5,1)]",
+        "wayline-home-content-reveal bottom-sheet-container pointer-events-auto relative z-10 w-full transform-gpu transition-transform duration-500 ease-[cubic-bezier(0.25,1,0.5,1)]",
         forceExpanded && !isTouchDragging && "sheet-expand-up -translate-y-[15%]",
         isTouchDragging && "is-dragging !transition-none"
       )}
@@ -219,10 +219,6 @@ export function TravelWalletSheet({
       data-touch-dragging={isTouchDragging ? "true" : undefined}
       data-testid="mobile-home-wallet-content"
       id={surface === "home" ? "my-trips-sheet" : undefined}
-      onTouchCancel={handleTouchEnd}
-      onTouchEnd={handleTouchEnd}
-      onTouchMove={handleTouchMove}
-      onTouchStart={handleTouchStart}
       style={sheetDragStyle}
     >
       {isTripsSurface ? <span className="sr-only" data-testid="mobile-trips-sheet-content">My Trips sheet</span> : null}
@@ -240,11 +236,15 @@ export function TravelWalletSheet({
           aria-expanded={!isCollapsed}
           aria-controls="mobile-launch-expanded-menu"
           aria-label={sheetHandleLabel}
-          className="mx-auto grid h-7 w-24 place-items-center rounded-full focus:outline-none focus:ring-4 focus:ring-orange-300/20"
+          className="mx-auto grid h-7 w-24 touch-none place-items-center rounded-full focus:outline-none focus:ring-4 focus:ring-orange-300/20"
           data-testid="ios-launch-sheet-handle"
           onClick={handleHandleClick}
           onPointerDown={handlePointerDown}
           onPointerUp={handlePointerUp}
+          onTouchCancel={handleTouchEnd}
+          onTouchEnd={handleTouchEnd}
+          onTouchMove={handleTouchMove}
+          onTouchStart={handleTouchStart}
         >
           <span className="h-1 w-10 rounded-full bg-slate-300" aria-hidden="true" />
         </button>

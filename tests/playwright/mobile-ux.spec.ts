@@ -1169,11 +1169,13 @@ test.describe("mobile soft-launch UX", () => {
     await expect(launchSheet).toBeVisible();
     await expect(launchSheet).toHaveAttribute("data-sheet-state", "collapsed");
 
-    await launchSheet.dispatchEvent("touchstart", {
+    const launchSheetHandle = page.getByTestId("ios-launch-sheet-handle");
+
+    await launchSheetHandle.dispatchEvent("touchstart", {
       changedTouches: [{ clientY: 780, identifier: 1 }],
       touches: [{ clientY: 780, identifier: 1 }]
     });
-    await launchSheet.dispatchEvent("touchmove", {
+    await launchSheetHandle.dispatchEvent("touchmove", {
       changedTouches: [{ clientY: 360, identifier: 1 }],
       touches: [{ clientY: 360, identifier: 1 }]
     });
@@ -1182,13 +1184,58 @@ test.describe("mobile soft-launch UX", () => {
     await expect(launchSheet).toHaveClass(/is-dragging/);
     await expect.poll(async () => Number(await launchSheet.getAttribute("data-sheet-transform"))).toBeLessThan(35);
 
-    await launchSheet.dispatchEvent("touchend", {
+    await launchSheetHandle.dispatchEvent("touchend", {
       changedTouches: [{ clientY: 360, identifier: 1 }],
       touches: []
     });
 
     await expect(launchSheet).toHaveAttribute("data-sheet-state", "expanded");
     await expect(launchSheet).not.toHaveClass(/is-dragging/);
+    await expect(launchSheet).not.toHaveAttribute("data-touch-dragging", "true");
+  });
+
+  test("mobile launch sheet content scrolls without dragging the whole sheet", async ({ page }) => {
+    await page.setViewportSize({ height: 900, width: 390 });
+    await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
+    await installMockMobileLocation(page);
+
+    await page.goto(baseUrl + "/dashboard", { waitUntil: "commit" });
+
+    const launchSheet = page.getByTestId("mobile-home-wallet-content");
+    const launchSheetHandle = page.getByTestId("ios-launch-sheet-handle");
+    await expect(launchSheet).toBeVisible();
+    await launchSheetHandle.click();
+    await expect(launchSheet).toHaveAttribute("data-sheet-state", "expanded");
+
+    const expandedContent = page.getByTestId("ios-launch-sheet-expanded");
+    await expect(expandedContent).toBeVisible();
+    await expandedContent.evaluate((element) => {
+      element.scrollTop = 0;
+    });
+
+    const touchActions = await page.evaluate(() => {
+      const sheet = document.querySelector('[data-testid="mobile-home-wallet-content"]');
+      const handle = document.querySelector('[data-testid="ios-launch-sheet-handle"]');
+
+      return {
+        handle: handle ? window.getComputedStyle(handle).touchAction : "",
+        sheet: sheet ? window.getComputedStyle(sheet).touchAction : ""
+      };
+    });
+    expect(touchActions.sheet, "expanded sheet content keeps native scrolling gestures").not.toBe("none");
+    expect(touchActions.handle, "sheet drag remains scoped to the grab handle").toBe("none");
+
+    const box = await expandedContent.boundingBox();
+    expect(box).not.toBeNull();
+    if (box) {
+      await page.mouse.move(box.x + box.width / 2, box.y + Math.min(box.height - 24, 260));
+      await page.mouse.wheel(0, 520);
+    }
+
+    await expect.poll(async () => {
+      return expandedContent.evaluate((element) => element.scrollTop);
+    }, { message: "expanded launch sheet content scrolls internally" }).toBeGreaterThan(0);
+    await expect(launchSheet).toHaveAttribute("data-sheet-state", "expanded");
     await expect(launchSheet).not.toHaveAttribute("data-touch-dragging", "true");
   });
 
