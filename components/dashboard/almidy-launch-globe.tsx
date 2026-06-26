@@ -506,7 +506,7 @@ function LaunchGlobeShell({
 }
 
 function cinematicRangeForFocus(focus: CountryFocus) {
-  return focus.source === "user" ? 10_800_000 : 13_400_000;
+  return focus.source === "user" ? 16_800_000 : 18_600_000;
 }
 
 function shouldUpdateFocus(currentCountry: CountryFocus | null, nextCountry: CountryFocus) {

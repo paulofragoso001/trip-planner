@@ -98,26 +98,26 @@ function LaunchFirstTripCard({ href }: { href: string }) {
   return (
     <section
       aria-label="Create your first trip"
-      className="pointer-events-none absolute inset-x-4 top-[calc(5.75rem+env(safe-area-inset-top))] z-30"
+      className="pointer-events-none absolute inset-x-4 top-[calc(0.75rem+env(safe-area-inset-top))] z-30"
       data-testid="launch-first-trip-card"
     >
-      <div className="pointer-events-auto grid min-h-[9.5rem] grid-cols-[4.25rem_minmax(0,1fr)] gap-4 rounded-[1.65rem] bg-white px-4 py-5 text-slate-950 shadow-[0_20px_52px_rgba(0,0,0,0.28)] ring-1 ring-black/5 min-[390px]:min-h-[10.25rem] min-[390px]:rounded-[1.85rem] min-[390px]:px-5">
+      <div className="pointer-events-auto grid min-h-[7.2rem] grid-cols-[3.25rem_minmax(0,1fr)] gap-3 rounded-[1.4rem] bg-white px-3.5 py-3.5 text-slate-950 shadow-[0_18px_46px_rgba(0,0,0,0.24)] ring-1 ring-black/5 min-[390px]:min-h-[7.75rem] min-[390px]:grid-cols-[3.5rem_minmax(0,1fr)] min-[390px]:rounded-[1.55rem] min-[390px]:px-4">
         <div
           aria-hidden="true"
-          className="grid h-14 w-14 place-items-center rounded-full bg-slate-100 text-[2.25rem] shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]"
+          className="grid h-12 w-12 place-items-center rounded-full bg-slate-100 text-[1.95rem] shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] min-[390px]:h-[3.25rem] min-[390px]:w-[3.25rem] min-[390px]:text-[2.1rem]"
           data-testid="launch-first-trip-country-flag"
         >
           {countryFlag}
         </div>
         <div className="min-w-0">
-          <h2 className="text-[1.45rem] font-black leading-tight tracking-normal text-slate-950 min-[390px]:text-[1.65rem]">
+          <h2 className="text-[1.18rem] font-black leading-tight tracking-normal text-slate-950 min-[390px]:text-[1.32rem]">
             Create your first trip
           </h2>
-          <p className="mt-2 text-[1.02rem] font-semibold leading-snug text-slate-400 min-[390px]:text-[1.12rem]">
+          <p className="mt-1 text-[0.9rem] font-semibold leading-snug text-slate-400 min-[390px]:text-[0.98rem]">
             After creating a trip, a country flag will appear on the map to mark its location.
           </p>
           <Link
-            className="mt-4 inline-flex min-h-10 items-center rounded-full text-[1.08rem] font-black text-orange-500 transition hover:text-orange-600 focus:outline-none focus:ring-4 focus:ring-orange-300/20"
+            className="mt-2 inline-flex min-h-8 items-center rounded-full text-[0.98rem] font-black text-orange-500 transition hover:text-orange-600 focus:outline-none focus:ring-4 focus:ring-orange-300/20 min-[390px]:text-[1.05rem]"
             data-testid="launch-first-trip-create"
             href={href}
           >
