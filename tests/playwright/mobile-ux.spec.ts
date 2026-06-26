@@ -1358,9 +1358,11 @@ test.describe("mobile soft-launch UX", () => {
     await page.goto(`${baseUrl}/dashboard`, { waitUntil: "commit" });
     await expect(page.getByTestId("almidy-launch-globe")).toHaveAttribute("data-hero-mode", "google-maps-3d");
     await expect(page.getByTestId("almidy-launch-globe")).toHaveAttribute("data-launch-globe-state", "missing-location");
-    await expect(page.getByTestId("almidy-launch-globe-diagnostic")).toBeVisible();
+    await expect(page.getByTestId("almidy-launch-globe-state")).toHaveAttribute("data-map-runtime", "missing-location");
     await expect(page.getByTestId("almidy-google-maps-3d-globe")).toHaveCount(0);
-    await expect(page.getByTestId("almidy-custom-globe")).toHaveCount(0);
+    await expect(page.getByTestId("almidy-custom-globe")).toBeVisible();
+    await expect(page.getByTestId("mobile-home-country-pin")).toHaveCount(0);
+    await expect(page.getByText("Globe runtime unavailable")).toHaveCount(0);
     await expectNoHomeGoogleMapsCopy(page);
 
     await page.goto(`${baseUrl}/dashboard/trips`, { waitUntil: "commit" });
@@ -1370,7 +1372,7 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByTestId("mobile-country-sheet")).toBeVisible();
   });
 
-  test("mobile home launch globe supports reduced motion and missing-location diagnostic", async ({ page }) => {
+  test("mobile home launch globe supports reduced motion and missing-location fallback", async ({ page }) => {
     await page.setViewportSize({ height: 900, width: 390 });
     await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
     await page.emulateMedia({ reducedMotion: "reduce" });
@@ -1398,21 +1400,23 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByTestId("mobile-home-launch-globe")).toBeVisible();
     await expect(page.getByTestId("almidy-launch-globe")).toBeVisible();
     await expect(page.getByTestId("mobile-home-globe")).toHaveCount(0);
-    await expect(page.getByTestId("earth-only-visual")).toHaveCount(0);
+    await expect(page.getByTestId("earth-only-visual")).toBeVisible();
     await expect(page.getByTestId("almidy-launch-globe")).toHaveAttribute("data-hero-mode", "google-maps-3d");
     await expect(page.getByTestId("almidy-launch-globe")).toHaveAttribute(
       "data-home-hero-mode",
       "home-hero-mode: reduced-motion"
     );
-    await expect(page.getByTestId("almidy-custom-globe")).toHaveCount(0);
-    await expect(page.getByTestId("home-custom-globe")).toHaveCount(0);
-    await expect(page.getByTestId("home-custom-globe-texture")).toHaveCount(0);
+    await expect(page.getByTestId("almidy-custom-globe")).toBeVisible();
+    await expect(page.getByTestId("home-custom-globe")).toBeVisible();
+    await expect(page.getByTestId("home-custom-globe-texture")).toBeVisible();
     await expect(page.getByTestId("mobile-home-earth-image")).toHaveCount(0);
     await expect(page.getByTestId("mobile-home-earth-texture")).toHaveCount(0);
     await expect(page.getByTestId("mobile-home-earth-continents")).toHaveCount(0);
     await expect(page.getByTestId("almidy-launch-globe")).toHaveAttribute("data-launch-globe-state", "missing-location");
-    await expect(page.getByTestId("almidy-launch-globe-diagnostic")).toBeVisible();
+    await expect(page.getByTestId("almidy-launch-globe-state")).toHaveAttribute("data-map-runtime", "missing-location");
     await expect(page.getByTestId("almidy-google-maps-3d-globe")).toHaveCount(0);
+    await expect(page.getByTestId("mobile-home-country-pin")).toHaveCount(0);
+    await expect(page.getByText("Globe runtime unavailable")).toHaveCount(0);
     await expectNoHomeGoogleMapsCopy(page);
     const reducedMotionContentReveal = await page.getByTestId("mobile-home-wallet-content").evaluate((element) => {
       const style = window.getComputedStyle(element);
@@ -1438,7 +1442,7 @@ test.describe("mobile soft-launch UX", () => {
     }
   });
 
-  test("mobile home launch stays 3D-only without custom globe fallback", async ({ page }) => {
+  test("mobile home launch uses Google 3D when ready without fallback visible", async ({ page }) => {
     await page.setViewportSize({ height: 900, width: 390 });
     await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
     await installMockMobileLocation(page);
@@ -1475,8 +1479,12 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByTestId("mobile-home-wallet")).toBeVisible();
     await expect(page.getByTestId("almidy-launch-globe")).toHaveAttribute("data-hero-mode", "google-maps-3d");
     await expect(page.getByTestId("almidy-launch-globe")).toHaveAttribute("data-launch-globe-state", "google-runtime-failed");
-    await expect(page.getByTestId("almidy-launch-globe-diagnostic")).toBeVisible();
+    await expect(page.getByTestId("almidy-launch-globe-state")).toHaveAttribute("data-map-runtime", "google-runtime-failed");
+    await expect(page.getByTestId("almidy-custom-globe")).toBeVisible();
+    await expect(page.getByTestId("home-custom-globe")).toBeVisible();
     await expect(page.getByTestId("almidy-google-maps-3d-globe")).toHaveCount(0);
+    await expect(page.getByText("Globe runtime unavailable")).toHaveCount(0);
+    await expect(page.getByText("GOOGLE-RUNTIME-FAILED")).toHaveCount(0);
     await expectNoHomeGoogleMapsCopy(page);
   });
 
