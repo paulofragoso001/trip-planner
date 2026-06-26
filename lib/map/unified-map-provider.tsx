@@ -50,6 +50,7 @@ export type FocusTarget = {
 export type UnifiedMapProviderProps = {
   children: ReactNode;
   autoLocate?: boolean;
+  autoLocateMode?: "request" | "granted";
   initialCamera?: AlmidyMapCamera;
   initialLocation?: AlmidyLocationState;
   initialMode?: AlmidyMapMode;
@@ -109,6 +110,7 @@ const UnifiedMapContext = createContext<UnifiedMapContextValue | null>(null);
 
 export function UnifiedMapProvider({
   autoLocate = false,
+  autoLocateMode = "request",
   children,
   initialCamera = DEFAULT_CAMERA,
   initialLocation = DEFAULT_LOCATION,
@@ -375,6 +377,12 @@ export function UnifiedMapProvider({
 
     const permissions = navigator.permissions;
     if (!permissions?.query) {
+      if (autoLocateMode === "granted") {
+        return () => {
+          cancelled = true;
+        };
+      }
+
       requestLocation();
       return () => {
         cancelled = true;
@@ -384,18 +392,33 @@ export function UnifiedMapProvider({
     permissions
       .query({ name: "geolocation" as PermissionName })
       .then((permission) => {
-        if (!cancelled && permission.state !== "denied") {
+        if (cancelled) {
+          return;
+        }
+
+        if (autoLocateMode === "granted") {
+          if (permission.state === "granted") {
+            requestLocation();
+          }
+          return;
+        }
+
+        if (permission.state !== "denied") {
           requestLocation();
         }
       })
       .catch(() => {
+        if (autoLocateMode === "granted") {
+          return;
+        }
+
         requestLocation();
       });
 
     return () => {
       cancelled = true;
     };
-  }, [autoLocate, locateUser]);
+  }, [autoLocate, autoLocateMode, locateUser]);
 
   const surfaceState = useMemo<AlmidyMapSurfaceState>(
     () => ({

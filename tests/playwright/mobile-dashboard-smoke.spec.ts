@@ -16,7 +16,16 @@ async function openAuthenticatedMobileRoute(page: Page, path: string) {
   await expect(page.getByTestId("app-shell-mobile-bottom-nav")).toHaveCount(0);
 }
 
-async function installMockMobileLocation(page: Page) {
+type MockLocationPermission = "denied" | "granted" | "prompt";
+
+async function installMockMobileLocation(
+  page: Page,
+  {
+    permission = "granted"
+  }: {
+    permission?: MockLocationPermission;
+  } = {}
+) {
   await page.route("**/api/travel-data/geocode", async (route) => {
     await route.fulfill({
       body: JSON.stringify({
@@ -37,18 +46,38 @@ async function installMockMobileLocation(page: Page) {
     });
   });
 
-  await page.addInitScript(() => {
+  await page.addInitScript(({ mockedPermission }) => {
     window.localStorage.removeItem("wayline:last-user-location");
     Object.defineProperty(navigator, "permissions", {
       configurable: true,
       value: {
-        query: () => Promise.resolve({ state: "granted" })
+        query: () => Promise.resolve({ state: mockedPermission })
       }
+    });
+    let geolocationCalls = 0;
+    Object.defineProperty(window, "__waylineGeolocationCalls", {
+      configurable: true,
+      get: () => geolocationCalls
     });
     Object.defineProperty(navigator, "geolocation", {
       configurable: true,
       value: {
-        getCurrentPosition(success: (position: GeolocationPosition) => void) {
+        getCurrentPosition(
+          success: (position: GeolocationPosition) => void,
+          error?: (positionError: GeolocationPositionError) => void
+        ) {
+          geolocationCalls += 1;
+          if (mockedPermission === "denied") {
+            error?.({
+              code: 1,
+              message: "User denied Geolocation",
+              PERMISSION_DENIED: 1,
+              POSITION_UNAVAILABLE: 2,
+              TIMEOUT: 3
+            } as GeolocationPositionError);
+            return;
+          }
+
           success({
             coords: {
               accuracy: 20,
@@ -64,7 +93,7 @@ async function installMockMobileLocation(page: Page) {
         }
       }
     });
-  });
+  }, { mockedPermission: permission });
 }
 
 async function installMockGoogleMaps3D(page: Page) {
@@ -134,7 +163,54 @@ test.describe("authenticated mobile dashboard smoke", () => {
     );
     await expect(page.locator('[data-map-renderer="custom-globe"]')).toHaveCount(0);
     await expectCollapsedWalletSheet(page);
+    const firstTripCard = page.getByTestId("launch-first-trip-card");
+    if ((await firstTripCard.count()) > 0) {
+      await expect(firstTripCard.getByTestId("launch-first-trip-country-flag")).toHaveText("🇺🇸");
+      await expect(firstTripCard.getByRole("heading", { name: "Create your first trip" })).toBeVisible();
+      await expect(firstTripCard.getByTestId("launch-first-trip-create")).toHaveAttribute(
+        "href",
+        "/dashboard/trips?view=list#new-trip"
+      );
+    }
     await expect(page.getByTestId("mobile-trips-country-map-screen")).toHaveCount(0);
+  });
+
+  test("/dashboard asks for location before requesting browser geolocation", async ({ page }) => {
+    await page.setViewportSize(mobileViewport);
+    await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await installMockMobileLocation(page, { permission: "prompt" });
+    await installMockGoogleMaps3D(page);
+
+    await page.goto(`${baseUrl}/dashboard`, { waitUntil: "commit" });
+    await expect(page.getByTestId("app-shell-root")).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByTestId("launch-location-permission")).toBeVisible();
+    await expect(page.getByRole("heading", { name: 'Allow "Almidy" to use your location?' })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Allow Once" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Allow While Using App" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Don't Allow" })).toBeVisible();
+    await expect(page.getByTestId("almidy-google-maps-3d-globe")).toHaveCount(0);
+    await expect(page.getByTestId("mobile-home-country-pin")).toHaveCount(0);
+    await expect
+      .poll(() =>
+        page.evaluate(() => (window as typeof window & { __waylineGeolocationCalls: number }).__waylineGeolocationCalls)
+      )
+      .toBe(0);
+
+    await page.getByRole("button", { name: "Allow While Using App" }).click();
+    await expect
+      .poll(() =>
+        page.evaluate(() => (window as typeof window & { __waylineGeolocationCalls: number }).__waylineGeolocationCalls)
+      )
+      .toBe(1);
+    await expect(page.getByTestId("launch-location-permission")).toHaveCount(0);
+    await expect(page.getByTestId("almidy-launch-globe")).toHaveAttribute("data-launch-globe-state", "ready");
+    await expect(page.getByTestId("almidy-google-maps-3d-globe")).toBeVisible();
+    await expect(page.getByTestId("mobile-home-country-pin")).toBeVisible();
+    const firstTripCard = page.getByTestId("launch-first-trip-card");
+    if ((await firstTripCard.count()) > 0) {
+      await expect(firstTripCard.getByText("After creating a trip, a country flag will appear on the map to mark its location.")).toBeVisible();
+    }
   });
 
   test("/dashboard/trips renders the canonical My Trips globe sheet", async ({ page }) => {
