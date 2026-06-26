@@ -33,9 +33,7 @@ type GoogleMaps3DLatLngAltitude = {
 };
 
 type GoogleMaps3DMapElement = HTMLElement & {
-  availableLayers?: string;
   center?: GoogleMaps3DLatLngAltitude;
-  defaultLabelsDisabled?: boolean;
   defaultUIHidden?: boolean;
   fov?: number;
   gestureHandling?: string;
@@ -302,9 +300,7 @@ function GoogleMaps3DLaunchGlobe({
         const mapMode = maps3d.MapMode?.HYBRID ?? "HYBRID";
 
         mapElement = new maps3d.Map3DElement({
-          availableLayers: "",
           center,
-          defaultLabelsDisabled: true,
           defaultUIHidden: true,
           fov: LAUNCH_CAMERA_FOV,
           gestureHandling,
@@ -317,15 +313,12 @@ function GoogleMaps3DLaunchGlobe({
           range: LAUNCH_CAMERA_RANGE,
           tilt: LAUNCH_CAMERA_TILT
         });
-        mapElement.className = "absolute inset-0 h-full w-full bg-[#050b14] opacity-0";
+        mapElement.className = "absolute inset-0 h-full w-full opacity-0";
         mapElement.dataset.mapRenderer = "google-maps-3d";
         mapElement.dataset.mapSystem = "almidy-google-maps-3d";
         mapElement.setAttribute("aria-label", "Interactive 3D launch globe");
         mapElement.setAttribute("data-testid", "almidy-google-maps-3d-globe");
-        mapElement.setAttribute("available-layers", "");
-        mapElement.setAttribute("default-labels-disabled", "");
         mapElement.setAttribute("default-ui-hidden", "true");
-        mapElement.setAttribute("data-native-labels-hidden", "true");
         mapElement.setAttribute("data-camera-altitude", String(center.altitude));
         mapElement.setAttribute("data-camera-latitude", center.lat.toFixed(5));
         mapElement.setAttribute("data-camera-longitude", center.lng.toFixed(5));
@@ -426,7 +419,7 @@ function GoogleMaps3DLaunchGlobe({
         testId={state === "ready" ? "almidy-launch-globe" : "almidy-google-maps-3d-preflight"}
       >
         <div
-          className="absolute inset-0 z-[1] overflow-hidden bg-[#050b14]"
+          className="absolute inset-0 z-[1] overflow-hidden bg-black"
           data-map-renderer="google-maps-3d"
           data-map-system="almidy-google-maps-3d"
           data-testid="almidy-google-maps-3d-host"
