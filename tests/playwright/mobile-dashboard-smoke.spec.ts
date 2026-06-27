@@ -154,6 +154,14 @@ async function expectCollapsedWalletSheet(page: Page, surface = "home") {
   await expect(page.getByTestId("ios-launch-sheet-collapsed")).toBeVisible();
 }
 
+async function expectNoNativeGoogleMapsErrorUi(page: Page) {
+  const bodyText = await page.locator("body").innerText();
+
+  expect(bodyText).not.toContain("Oops! Something went wrong.");
+  expect(bodyText).not.toContain("This page didn't load Google Maps correctly.");
+  expect(bodyText).not.toContain("This page didn’t load Google Maps correctly.");
+}
+
 test.describe("authenticated mobile dashboard smoke", () => {
   test("/dashboard renders the launch globe wallet hub", async ({ page }) => {
     await openAuthenticatedMobileRoute(page, "/dashboard");
@@ -164,6 +172,7 @@ test.describe("authenticated mobile dashboard smoke", () => {
     await expect(page.getByTestId("almidy-launch-globe")).toHaveAttribute("data-launch-globe-state", "ready");
     await expect(page.getByTestId("almidy-google-maps-3d-globe")).toBeVisible();
     await expect(page.getByTestId("almidy-launch-globe-diagnostic")).toHaveCount(0);
+    await expectNoNativeGoogleMapsErrorUi(page);
     await expect(page.locator('[data-map-renderer="google-maps-3d"]').first()).toHaveAttribute(
       "data-map-system",
       "almidy-google-maps-3d"
@@ -171,8 +180,16 @@ test.describe("authenticated mobile dashboard smoke", () => {
     await expect(page.locator('[data-map-renderer="custom-globe"]')).toHaveCount(0);
     await expectCollapsedWalletSheet(page);
     const firstTripCard = page.getByTestId("launch-first-trip-card");
-    if ((await firstTripCard.count()) > 0) {
+    const hasLatestTrip = (await page.getByRole("link", { name: "Continue trip" }).count()) > 0;
+    if (hasLatestTrip) {
+      await expect(firstTripCard).toHaveCount(0);
+    } else {
+      await expect(firstTripCard).toBeVisible();
       await expect(firstTripCard.getByTestId("launch-first-trip-country-flag")).toHaveText("🇺🇸");
+      await expect(firstTripCard.getByTestId("launch-first-trip-country-flag")).toHaveAttribute(
+        "data-has-country-flag",
+        "true"
+      );
       await expect(firstTripCard.getByRole("heading", { name: "Create your first trip" })).toBeVisible();
       await expect(firstTripCard.getByTestId("launch-first-trip-create")).toHaveAttribute(
         "href",
@@ -201,7 +218,22 @@ test.describe("authenticated mobile dashboard smoke", () => {
     await expect(page.getByTestId("almidy-launch-globe")).toHaveAttribute("data-launch-globe-state", "ready");
     await expect(page.getByTestId("almidy-google-maps-3d-globe")).toBeVisible();
     await expect(page.getByTestId("almidy-google-maps-3d-globe")).toHaveAttribute("data-camera-intent", "launch");
+    await expect(page.getByTestId("almidy-google-maps-3d-globe")).toHaveAttribute("data-camera-latitude", "35.00000");
+    await expect(page.getByTestId("almidy-google-maps-3d-globe")).toHaveAttribute("data-camera-longitude", "-97.00000");
+    await expect(page.getByTestId("almidy-google-maps-3d-globe")).toHaveAttribute("data-camera-altitude", "6500000");
     await expect(page.getByTestId("mobile-home-country-pin")).toHaveCount(0);
+    const firstTripCard = page.getByTestId("launch-first-trip-card");
+    if ((await firstTripCard.count()) > 0) {
+      await expect(firstTripCard).toBeVisible();
+      await expect(firstTripCard.getByTestId("launch-first-trip-country-flag")).toHaveAttribute(
+        "data-has-country-flag",
+        "false"
+      );
+      await expect(firstTripCard.getByTestId("launch-first-trip-create")).toHaveAttribute(
+        "href",
+        "/dashboard/trips?view=list#new-trip"
+      );
+    }
     await expect
       .poll(() =>
         page.evaluate(() => (window as typeof window & { __waylineGeolocationCalls: number }).__waylineGeolocationCalls)
@@ -217,12 +249,21 @@ test.describe("authenticated mobile dashboard smoke", () => {
     await expect(page.getByTestId("launch-location-permission")).toHaveCount(0);
     await expect(page.getByTestId("almidy-launch-globe")).toHaveAttribute("data-launch-globe-state", "ready");
     await expect(page.getByTestId("almidy-google-maps-3d-globe")).toBeVisible();
-    await expect(page.getByTestId("almidy-google-maps-3d-globe")).toHaveAttribute("data-camera-intent", "launch");
+    await expect(page.getByTestId("almidy-google-maps-3d-globe")).toHaveAttribute("data-camera-intent", "user-location");
+    await expect(page.getByTestId("almidy-google-maps-3d-globe")).toHaveAttribute("data-camera-latitude", "25.76170");
+    await expect(page.getByTestId("almidy-google-maps-3d-globe")).toHaveAttribute("data-camera-longitude", "-80.19180");
+    await expect(page.getByTestId("almidy-google-maps-3d-globe")).toHaveAttribute("data-camera-altitude", "15000");
+    await expect(page.getByTestId("almidy-google-maps-3d-user-marker")).toBeVisible();
     await expect(page.getByTestId("mobile-home-country-pin")).toHaveCount(0);
-    const firstTripCard = page.getByTestId("launch-first-trip-card");
     if ((await firstTripCard.count()) > 0) {
+      await expect(firstTripCard.getByTestId("launch-first-trip-country-flag")).toHaveText("🇺🇸");
+      await expect(firstTripCard.getByTestId("launch-first-trip-country-flag")).toHaveAttribute(
+        "data-has-country-flag",
+        "true"
+      );
       await expect(firstTripCard.getByText("After creating a trip, a country flag will appear on the map to mark its location.")).toBeVisible();
     }
+    await expectNoNativeGoogleMapsErrorUi(page);
   });
 
   test("/dashboard/trips renders the canonical My Trips globe sheet", async ({ page }) => {

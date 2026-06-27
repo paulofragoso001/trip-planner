@@ -54,7 +54,7 @@ export function MobileHomeWallet({
         <CustomGlobeRenderer
           defaultFocusWhenEmpty
           showCountryPin={false}
-          useLocationFocus={false}
+          useLocationFocus
         />
         <FloatingGlobeControls />
       </section>
@@ -107,7 +107,7 @@ function LaunchFirstTripCard({
 }) {
   const router = useRouter();
   const { location } = useUnifiedMap();
-  const countryFlag = countryCodeToFlag(location.countryCode);
+  const countryFlag = location.source === "browser" ? countryCodeToFlag(location.countryCode) : null;
   const navigationTimeoutRef = useRef<number | null>(null);
   const [isSlidingOut, setIsSlidingOut] = useState(false);
 
@@ -130,10 +130,6 @@ function LaunchFirstTripCard({
     }, 500);
   }
 
-  if (location.source !== "browser" || !countryFlag) {
-    return null;
-  }
-
   return (
     <section
       aria-label="Create your first trip"
@@ -154,10 +150,11 @@ function LaunchFirstTripCard({
       >
         <div
           aria-hidden="true"
-          className="grid h-12 w-12 place-items-center rounded-full bg-slate-100 text-[1.95rem] shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] min-[390px]:h-[3.25rem] min-[390px]:w-[3.25rem] min-[390px]:text-[2.1rem]"
+          className="grid h-12 w-12 place-items-center rounded-full bg-slate-100 text-[1.95rem] text-slate-400 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] min-[390px]:h-[3.25rem] min-[390px]:w-[3.25rem] min-[390px]:text-[2.1rem]"
+          data-has-country-flag={countryFlag ? "true" : "false"}
           data-testid="launch-first-trip-country-flag"
         >
-          {countryFlag}
+          {countryFlag ?? <MapPin aria-hidden="true" className="h-6 w-6" />}
         </div>
         <div className="min-w-0">
           <h2 className="text-[1.18rem] font-black leading-tight tracking-normal text-slate-950 min-[390px]:text-[1.32rem]">
