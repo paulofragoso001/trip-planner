@@ -4,13 +4,18 @@ import type { ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 import GoogleMapsProvider from "@/components/GoogleMapsProvider";
 import { countryCodeToFlag } from "@/lib/map/wayline-map-pins";
-import type { AlmidyLocationState } from "@/lib/map/wayline-map-models";
+import type {
+  AlmidyLaunchGlobeTripPin,
+  AlmidyLocationState
+} from "@/lib/map/wayline-map-models";
 
 type AlmidyLaunchGlobeProps = {
   className?: string;
+  defaultFocusWhenEmpty?: boolean;
   location?: AlmidyLocationState;
   locationStatus?: LocationRequestState;
   onLocateUser?: () => Promise<AlmidyLocationState> | void;
+  tripPins?: AlmidyLaunchGlobeTripPin[];
 };
 
 type HeroState = "google-maps-3d";
@@ -118,13 +123,15 @@ const COUNTRY_BY_CODE: Record<string, CountryFocus> = {
 
 export function AlmidyLaunchGlobe({
   className,
+  defaultFocusWhenEmpty = false,
   location,
   locationStatus = "idle",
-  onLocateUser
+  onLocateUser,
+  tripPins = []
 }: AlmidyLaunchGlobeProps) {
   const [country, setCountry] = useState<CountryFocus | null>(null);
   const [reduceMotion, setReduceMotion] = useState(false);
-  const focus = country;
+  const focus = country ?? focusFromTripPins(tripPins) ?? (defaultFocusWhenEmpty ? DEFAULT_COUNTRY : null);
   const heroState: HeroState = "google-maps-3d";
   const launchPhase: LaunchPhase = "google-maps-3d";
 
@@ -209,6 +216,7 @@ export function AlmidyLaunchGlobe({
         heroState={heroState}
         launchPhase={launchPhase}
         reduceMotion={reduceMotion}
+        tripPins={tripPins}
       />
     </GoogleMapsProvider>
   );
@@ -219,13 +227,15 @@ function GoogleMaps3DLaunchGlobe({
   focus,
   heroState,
   launchPhase,
-  reduceMotion
+  reduceMotion,
+  tripPins
 }: {
   className?: string;
   focus: CountryFocus;
   heroState: HeroState;
   launchPhase: LaunchPhase;
   reduceMotion: boolean;
+  tripPins: AlmidyLaunchGlobeTripPin[];
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<GoogleMaps3DMapElement | null>(null);
@@ -446,6 +456,7 @@ function GoogleMaps3DLaunchGlobe({
             {focus.name}
           </div>
         </div>
+        <TripFlagPins pins={tripPins} />
         <div className="pointer-events-none absolute inset-0 z-10 bg-[linear-gradient(180deg,rgba(0,0,0,0.78)_0%,rgba(0,0,0,0.08)_21%,rgba(0,0,0,0)_58%,rgba(0,0,0,0.42)_100%)]" />
         <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-32 bg-[linear-gradient(180deg,rgba(0,0,0,0.9),rgba(0,0,0,0.32)_48%,transparent)]" />
         <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-[24%] bg-[linear-gradient(180deg,transparent,rgba(0,0,0,0.36)_58%,rgba(0,0,0,0.72)_100%)]" />
@@ -544,6 +555,75 @@ function createUserLocationMarker(focus: CountryFocus) {
   marker.setAttribute("position", `${focus.lat.toFixed(5)}, ${focus.lng.toFixed(5)}`);
   marker.textContent = focus.flag;
   return marker;
+}
+
+function focusFromTripPins(pins: AlmidyLaunchGlobeTripPin[]) {
+  const firstKnownCountry = pins
+    .map((pin) => COUNTRY_BY_CODE[pin.countryCode.toUpperCase()])
+    .find(Boolean);
+
+  if (!firstKnownCountry) {
+    return pins.length ? DEFAULT_COUNTRY : null;
+  }
+
+  return firstKnownCountry;
+}
+
+function TripFlagPins({ pins }: { pins: AlmidyLaunchGlobeTripPin[] }) {
+  if (!pins.length) {
+    return null;
+  }
+
+  return (
+    <div className="pointer-events-none absolute inset-0 z-20" data-testid="mobile-trips-globe-flag-layer">
+      {pins.map((pin, index) => {
+        const position = tripPinScreenPosition(pin, index);
+        return (
+          <div
+            className="absolute -translate-x-1/2 -translate-y-1/2 text-center"
+            data-country-code={pin.countryCode}
+            data-testid="mobile-trips-globe-flag-pin"
+            data-trip-id={pin.tripId ?? undefined}
+            key={pin.id}
+            style={{
+              left: `${position.x}%`,
+              top: `${position.y}%`
+            }}
+          >
+            <div className="grid h-11 w-11 place-items-center rounded-full border-[2.5px] border-black bg-white text-2xl leading-none shadow-[0_4px_0_rgba(0,0,0,0.95),0_10px_24px_rgba(0,0,0,0.36)] ring-1 ring-white/75">
+              <span aria-hidden="true">{pin.flag}</span>
+            </div>
+            <div className="mt-1 max-w-28 truncate text-[0.7rem] font-black leading-none text-white [text-shadow:0_2px_2px_rgba(0,0,0,0.95),0_0_8px_rgba(0,0,0,0.85)]">
+              {pin.label}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function tripPinScreenPosition(pin: AlmidyLaunchGlobeTripPin, index: number) {
+  if (
+    typeof pin.lat === "number" &&
+    Number.isFinite(pin.lat) &&
+    typeof pin.lng === "number" &&
+    Number.isFinite(pin.lng)
+  ) {
+    const x = ((normalizeLongitude(pin.lng) + 168) / 148) * 100;
+    const y = ((74 - clamp(pin.lat, -58, 74)) / 132) * 100;
+    return {
+      x: clamp(x, 7, 93),
+      y: clamp(y, 13, 82)
+    };
+  }
+
+  const focus = COUNTRY_BY_CODE[pin.countryCode.toUpperCase()] ?? DEFAULT_COUNTRY;
+  const spread = ((index % 5) - 2) * 3.2;
+  return {
+    x: clamp(focus.pinX + spread, 7, 93),
+    y: clamp(focus.pinY + Math.abs(spread) * 0.38, 13, 82)
+  };
 }
 
 function shouldUpdateFocus(currentCountry: CountryFocus | null, nextCountry: CountryFocus) {

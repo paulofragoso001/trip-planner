@@ -222,8 +222,10 @@ test.describe("authenticated mobile dashboard smoke", () => {
     });
     await expect(page.getByTestId("mobile-country-map-canvas")).toHaveAttribute(
       "data-map-system",
-      "almidy-map-system"
+      "almidy-google-maps-3d"
     );
+    await expect(page.getByTestId("almidy-launch-globe")).toHaveAttribute("data-map-system", "almidy-google-maps-3d");
+    await expect(page.getByTestId("mobile-trips-globe-flag-pin").first()).toBeVisible();
     await expect(page.getByTestId("mobile-country-sheet")).toBeVisible();
     await expect(page.getByTestId("mobile-country-sheet").getByTestId("mobile-home-wallet-content")).toBeVisible();
     await expectCollapsedWalletSheet(page, "trips");

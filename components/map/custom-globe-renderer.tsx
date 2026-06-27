@@ -2,16 +2,23 @@
 
 import { AlmidyLaunchGlobe } from "@/components/dashboard/almidy-launch-globe";
 import { useOptionalUnifiedMap } from "@/lib/map/unified-map-provider";
-import type { AlmidyMapSurfaceState } from "@/lib/map/wayline-map-models";
+import type {
+  AlmidyLaunchGlobeTripPin,
+  AlmidyMapSurfaceState
+} from "@/lib/map/wayline-map-models";
 
 type CustomGlobeRendererProps = {
   className?: string;
+  defaultFocusWhenEmpty?: boolean;
   surfaceState?: AlmidyMapSurfaceState;
+  tripPins?: AlmidyLaunchGlobeTripPin[];
 };
 
 export function CustomGlobeRenderer({
   className,
-  surfaceState
+  defaultFocusWhenEmpty,
+  surfaceState,
+  tripPins
 }: CustomGlobeRendererProps) {
   const unifiedMap = useOptionalUnifiedMap();
   const activeSurface = surfaceState ?? unifiedMap?.surfaceState;
@@ -26,9 +33,11 @@ export function CustomGlobeRenderer({
     >
       <AlmidyLaunchGlobe
         className={className}
+        defaultFocusWhenEmpty={defaultFocusWhenEmpty}
         location={activeSurface?.location}
         locationStatus={unifiedMap?.locationStatus}
         onLocateUser={unifiedMap?.locateUser}
+        tripPins={tripPins}
       />
     </div>
   );

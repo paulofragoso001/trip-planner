@@ -194,6 +194,10 @@ export function countryFlagFromDestinationText(destination?: string | null) {
   return countryCodeToFlag(countryCodeFromDestination(destination));
 }
 
+export function countryCodeFromDestinationText(destination?: string | null) {
+  return countryCodeFromDestination(destination);
+}
+
 export function normalizeCoordinate(coordinate: AlmidyCoordinate): AlmidyCoordinate {
   return {
     lat: clampLatitude(coordinate.lat),

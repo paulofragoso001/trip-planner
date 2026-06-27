@@ -135,6 +135,18 @@ export type AlmidyMapPin = {
   tripId?: string | null;
 };
 
+export type AlmidyLaunchGlobeTripPin = {
+  id: string;
+  countryCode: string;
+  flag: string;
+  href?: string | null;
+  label: string;
+  lat?: number | null;
+  lng?: number | null;
+  subtitle?: string | null;
+  tripId?: string | null;
+};
+
 export type AlmidyMapRouteMode =
   | "flight"
   | "drive"

@@ -1,30 +1,31 @@
 "use client";
 
 import { BarChart3, CalendarDays, ChevronDown, List, LocateFixed, MapPinned, Plus, Search, Settings, Sparkles } from "lucide-react";
-import { GoogleMap, OverlayView } from "@react-google-maps/api";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import GoogleMapsProvider, { GoogleMapsSurfaceFallback } from "@/components/GoogleMapsProvider";
 import { TripCreateForm } from "@/components/dashboard/trip-create-form";
 import { TravelWalletSheet } from "@/components/dashboard/travel-wallet-sheet";
-import { AlmidyGoogleMapPinMarker } from "@/components/map/wayline-google-map-pin-marker";
+import { CustomGlobeRenderer } from "@/components/map/custom-globe-renderer";
 import { cn } from "@/components/trip-ui";
 import type { DashboardRecentTripView } from "@/app/dashboard/loader";
 import type { TripsData } from "@/app/dashboard/trips/loader";
 import { dashboardActionRoutes } from "@/lib/dashboard/action-routes";
-import {
-  ALMIDY_MAP_SYSTEM_ID,
-  almidyGoogleCountryMapStyles
-} from "@/lib/map/almidy-map-visuals";
 import { unifiedMapSurfaceEnabled } from "@/lib/map/feature-flags";
 import {
   UnifiedMapProvider,
   useOptionalUnifiedMap
 } from "@/lib/map/unified-map-provider";
-import { buildTripPin } from "@/lib/map/wayline-map-pins";
-import type { AlmidyCoordinate, AlmidyMapPin } from "@/lib/map/wayline-map-models";
+import {
+  buildTripPin,
+  countryCodeFromDestinationText,
+  countryCodeToFlag
+} from "@/lib/map/wayline-map-pins";
+import type {
+  AlmidyLaunchGlobeTripPin,
+  AlmidyMapPin
+} from "@/lib/map/wayline-map-models";
 
 type MobileTripsWalletProps = Pick<TripsData, "error" | "trips">;
 type Trip = TripsData["trips"][number];
@@ -229,6 +230,7 @@ function MobileTripsCountriesMap({
   const unifiedMap = useOptionalUnifiedMap();
   const markerTrips = useMemo(() => activeYearTrips.filter(hasTripCoordinates), [activeYearTrips]);
   const tripPins = useMemo(() => markerTrips.map(tripToMapPin), [markerTrips]);
+  const globeTripPins = useMemo(() => activeYearTrips.map(tripToGlobeFlagPin).filter(isGlobeTripPin), [activeYearTrips]);
   const recentTrips = activeYearTrips.map(mapTripToWalletTrip);
   const latestTrip = recentTrips[0] || null;
   const primaryHref = latestTrip?.href || dashboardActionRoutes.trips.create;
@@ -259,7 +261,7 @@ function MobileTripsCountriesMap({
       data-user-pin-longitude={userLocationPin ? userLocationPin.coordinate.lng.toFixed(5) : undefined}
       data-user-pin-source={unifiedMap?.surfaceState.location.coordinate ? unifiedMap.surfaceState.location.source : undefined}
     >
-      <MobileCountryMapCanvas trips={markerTrips} />
+      <MobileTripsGlobeCanvas tripPins={globeTripPins} />
 
       <div className="absolute right-4 top-10 z-20 overflow-hidden rounded-full border border-white/10 bg-black/86 text-orange-400 shadow-[0_18px_50px_rgba(0,0,0,0.45)] backdrop-blur-xl">
         <Link
@@ -296,143 +298,21 @@ function MobileTripsCountriesMap({
   );
 }
 
-function MobileCountryMapCanvas({ trips }: { trips: Trip[] }) {
-  const unifiedMap = useOptionalUnifiedMap();
-  const hasUserLocation = Boolean(unifiedMap?.location.coordinate);
-
-  if (!trips.length && !hasUserLocation) {
-    return (
-      <div
-        className="absolute inset-0 z-0 overflow-hidden bg-slate-950"
-        data-map-system={ALMIDY_MAP_SYSTEM_ID}
-        data-testid="mobile-country-map-canvas"
-      >
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_19%_18%,rgba(20,184,166,0.32),transparent_27%),radial-gradient(circle_at_62%_28%,rgba(37,99,235,0.38),transparent_32%),linear-gradient(180deg,#0b1d2d,#06101d_58%,#020617)]" />
-        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(2,6,23,0.12),rgba(2,6,23,0.03)_38%,rgba(2,6,23,0.78))]" />
-      </div>
-    );
-  }
-
-  return (
-    <GoogleMapsProvider
-      blockChildrenOnError
-      fallback={
-        <GoogleMapsSurfaceFallback
-          height="100dvh"
-          message="Maps are temporarily unavailable. Your trips are still ready below."
-        />
-      }
-    >
-      <LoadedMobileCountryMap trips={trips} />
-    </GoogleMapsProvider>
-  );
-}
-
-function LoadedMobileCountryMap({ trips }: { trips: Trip[] }) {
-  const unifiedMap = useOptionalUnifiedMap();
-  const mapRef = useRef<google.maps.Map | null>(null);
-  const mapReady = typeof window !== "undefined" && typeof window.google?.maps?.Map === "function";
-  const tripPins = useMemo(() => trips.map(tripToMapPin), [trips]);
-  const pins = unifiedMap?.surfaceState.pins.length ? unifiedMap.surfaceState.pins : tripPins;
-  const coordinates = useMemo(() => pins.map((pin) => pin.coordinate), [pins]);
-  const mapCenter = unifiedMap?.location.coordinate ?? coordinateCenter(coordinates);
-
-  useEffect(() => {
-    fitCountryMap(mapRef.current, coordinates);
-  }, [coordinates, mapReady]);
-
+function MobileTripsGlobeCanvas({ tripPins }: { tripPins: AlmidyLaunchGlobeTripPin[] }) {
   return (
     <div
-      className="absolute inset-0 z-0 overflow-hidden bg-slate-950"
-      data-map-system={ALMIDY_MAP_SYSTEM_ID}
+      className="absolute inset-0 z-0 overflow-hidden bg-black"
+      data-map-system="almidy-google-maps-3d"
       data-testid="mobile-country-map-canvas"
     >
-      {mapReady ? (
-        <GoogleMap
-          center={mapCenter}
-          mapContainerStyle={{ height: "100dvh", width: "100%" }}
-          onLoad={(map) => {
-            mapRef.current = map;
-            fitCountryMap(map, coordinates);
-          }}
-          options={{
-            clickableIcons: false,
-            disableDefaultUI: true,
-            fullscreenControl: false,
-            gestureHandling: "greedy",
-            mapTypeControl: false,
-            restriction: {
-              latLngBounds: {
-                east: -20,
-                north: 74,
-                south: -58,
-                west: -172
-              },
-              strictBounds: false
-            },
-            styles: almidyGoogleCountryMapStyles,
-            zoomControl: false
-          }}
-          zoom={3}
-        >
-          {pins.map((pin) => (
-            <OverlayView
-              key={pin.id}
-              mapPaneName={OverlayView.OVERLAY_MOUSE_TARGET}
-              position={pin.coordinate}
-            >
-              <AlmidyGoogleMapPinMarker
-                href={pin.href}
-                onSelect={unifiedMap?.selectPin}
-                pin={pin}
-                showLabel
-                testId={pin.kind === "user-location" ? "mobile-country-map-user-marker" : "mobile-country-map-marker"}
-                variant={pin.kind === "user-location" ? "flag-label" : "compact"}
-              />
-            </OverlayView>
-          ))}
-        </GoogleMap>
-      ) : (
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_19%_18%,rgba(20,184,166,0.32),transparent_27%),radial-gradient(circle_at_62%_28%,rgba(37,99,235,0.38),transparent_32%),linear-gradient(180deg,#0b1d2d,#06101d_58%,#020617)]" />
-      )}
-      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(2,6,23,0.12),rgba(2,6,23,0.03)_38%,rgba(2,6,23,0.78))]" />
+      <CustomGlobeRenderer
+        className="absolute inset-0 h-full min-h-[100dvh] w-full"
+        defaultFocusWhenEmpty
+        tripPins={tripPins}
+      />
+      <div className="pointer-events-none absolute inset-0 z-10 bg-[linear-gradient(180deg,rgba(0,0,0,0.46),rgba(0,0,0,0.02)_35%,rgba(0,0,0,0.56)_100%)]" />
     </div>
   );
-}
-
-function coordinateCenter(coordinates: AlmidyCoordinate[]) {
-  if (!coordinates.length) return { lat: 12, lng: -82 };
-
-  const totals = coordinates.reduce(
-    (accumulator, coordinate) => ({
-      lat: accumulator.lat + coordinate.lat,
-      lng: accumulator.lng + coordinate.lng
-    }),
-    { lat: 0, lng: 0 }
-  );
-
-  return {
-    lat: totals.lat / coordinates.length,
-    lng: totals.lng / coordinates.length
-  };
-}
-
-function fitCountryMap(
-  map: google.maps.Map | null,
-  coordinates: AlmidyCoordinate[]
-) {
-  if (
-    !map ||
-    !coordinates.length ||
-    typeof window === "undefined" ||
-    typeof window.google?.maps?.LatLngBounds !== "function"
-  ) {
-    return;
-  }
-
-  const bounds = new window.google.maps.LatLngBounds();
-  coordinates.forEach((coordinate) => bounds.extend(coordinate));
-  map.fitBounds(bounds, { bottom: 260, left: 64, right: 64, top: 96 });
 }
 
 function normalizeTripSearch(value: string) {
@@ -618,6 +498,31 @@ function tripToMapPin(trip: Trip): AlmidyMapPin {
     subtitle: trip.name,
     tripId: trip.id
   });
+}
+
+function tripToGlobeFlagPin(trip: Trip): AlmidyLaunchGlobeTripPin | null {
+  const countryCode = countryCodeFromDestinationText(trip.destination);
+  const flag = countryCodeToFlag(countryCode);
+
+  if (!countryCode || !flag) {
+    return null;
+  }
+
+  return {
+    countryCode,
+    flag,
+    href: trip.href,
+    id: `trip-country-${trip.id}`,
+    label: destinationMapLabel(trip),
+    lat: trip.destinationLat ?? null,
+    lng: trip.destinationLng ?? null,
+    subtitle: trip.name,
+    tripId: trip.id
+  };
+}
+
+function isGlobeTripPin(pin: AlmidyLaunchGlobeTripPin | null): pin is AlmidyLaunchGlobeTripPin {
+  return Boolean(pin);
 }
 
 function tripYear(trip: Trip) {
