@@ -390,9 +390,8 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByTestId("mobile-trips-globe-flag-pin").first()).toBeVisible();
     await expect(page.getByTestId("mobile-trips-globe-flag-pin").first()).toHaveAttribute("data-active", "true");
     await expect(page.getByTestId("mobile-home-country-pin")).toHaveCount(0);
-    await expect(page.getByTestId("mobile-trips-overview-carousel")).toBeVisible();
-    await expect(page.getByTestId("mobile-trips-overview-card").first()).toBeVisible();
-    await expect(page.getByTestId("mobile-trips-overview-card").first()).toHaveAttribute("data-active", "true");
+    await expect(page.getByTestId("mobile-trips-overview-carousel")).toHaveCount(0);
+    await expect(page.getByTestId("mobile-trips-overview-card")).toHaveCount(0);
     await expect(page.getByTestId("mobile-country-sheet")).toBeVisible();
     await expect(page.getByTestId("mobile-trips-overview-controls")).toBeVisible();
     await expect(page.getByPlaceholder("Search for trips")).toBeVisible();
@@ -438,13 +437,7 @@ test.describe("mobile soft-launch UX", () => {
     try {
       await page.goto(`${baseUrl}/dashboard/trips`, { waitUntil: "commit" });
       await expect(page.getByTestId("mobile-trips-country-map-screen")).toBeVisible({ timeout: 20_000 });
-
-      const barcelonaCard = page.locator(
-        `[data-testid="mobile-trips-overview-card"][data-trip-id="${tripId}"]`
-      );
-      await barcelonaCard.scrollIntoViewIfNeeded();
-      await expect(barcelonaCard).toBeVisible();
-      await expect(barcelonaCard).toContainText("Barcelona");
+      await expect(page.getByTestId("mobile-trips-overview-card")).toHaveCount(0);
       await expect(page.getByTestId("mobile-trips-country-map-screen")).toHaveAttribute(
         "data-globe-trip-pin-countries",
         /(^|,)ES(,|$)/
@@ -454,15 +447,23 @@ test.describe("mobile soft-launch UX", () => {
         new RegExp(`(^|,)${escapeRegExp(tripId)}(,|$)`)
       );
       await expect(page.getByTestId("almidy-launch-globe")).toHaveAttribute("data-map-system", "almidy-google-maps-3d");
-      await barcelonaCard.click();
 
-      const barcelonaPin = page.locator('[data-testid="mobile-trips-globe-flag-pin"][data-country-code="ES"]');
+      const barcelonaPin = page.locator(
+        `[data-testid="mobile-trips-globe-flag-pin"][data-trip-id="${tripId}"]`
+      );
       await expect(barcelonaPin).toBeVisible();
       await expect(barcelonaPin).toHaveAttribute("data-trip-id", tripId);
       await expect(barcelonaPin).toHaveAttribute("data-country-code", "ES");
       await expect(barcelonaPin).toHaveAttribute("data-pin-latitude", "41.38740");
       await expect(barcelonaPin).toHaveAttribute("data-pin-longitude", "2.16860");
+      await barcelonaPin.click();
       await expect(barcelonaPin).toHaveAttribute("data-active", "true");
+
+      const barcelonaCard = page.locator(
+        `[data-testid="mobile-trips-overview-card"][data-trip-id="${tripId}"]`
+      );
+      await expect(barcelonaCard).toBeVisible();
+      await expect(barcelonaCard).toContainText("Barcelona");
 
       const globe = page.getByTestId("almidy-launch-globe");
       await expect(globe).toHaveAttribute("data-camera-intent", "trip-overview");

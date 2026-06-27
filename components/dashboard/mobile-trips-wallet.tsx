@@ -244,6 +244,7 @@ function MobileTripsCountriesMap({
   const carouselRef = useRef<HTMLDivElement | null>(null);
   const carouselCardRefs = useRef(new Map<string, HTMLButtonElement>());
   const [activeTripId, setActiveTripId] = useState<string | null>(null);
+  const [selectedTripId, setSelectedTripId] = useState<string | null>(null);
   const markerTrips = useMemo(() => activeYearTrips.filter(hasTripCoordinates), [activeYearTrips]);
   const tripPins = useMemo(() => markerTrips.map(tripToMapPin), [markerTrips]);
   const globeTripPins = useMemo(() => activeYearTrips.map(tripToGlobeFlagPin).filter(isGlobeTripPin), [activeYearTrips]);
@@ -251,6 +252,10 @@ function MobileTripsCountriesMap({
     const pinTripIds = new Set(globeTripPins.map((pin) => pin.tripId ?? pin.id));
     return activeYearTrips.filter((trip) => pinTripIds.has(trip.id));
   }, [activeYearTrips, globeTripPins]);
+  const selectedCarouselTrips = useMemo(
+    () => selectedTripId ? carouselTrips.filter((trip) => trip.id === selectedTripId) : [],
+    [carouselTrips, selectedTripId]
+  );
   const userLocationPin = unifiedMap?.surfaceState.pins.find((pin) => pin.kind === "user-location") ?? null;
   const selectedPin = unifiedMap?.surfaceState.pins.find((pin) => pin.id === unifiedMap.surfaceState.selectedId) ?? null;
 
@@ -272,6 +277,14 @@ function MobileTripsCountriesMap({
     });
   }, [globeTripPins]);
 
+  useEffect(() => {
+    if (!selectedTripId) return;
+    const selectedStillVisible = globeTripPins.some((pin) => (pin.tripId ?? pin.id) === selectedTripId);
+    if (!selectedStillVisible) {
+      setSelectedTripId(null);
+    }
+  }, [globeTripPins, selectedTripId]);
+
   function selectTripOnMap(tripId: string, options: { scrollCarousel?: boolean } = {}) {
     setActiveTripId(tripId);
     unifiedMap?.selectPin(`trip-${tripId}`);
@@ -285,6 +298,11 @@ function MobileTripsCountriesMap({
         inline: "center"
       });
     });
+  }
+
+  function handleTripPinSelect(tripId: string) {
+    setSelectedTripId((current) => current === tripId ? null : tripId);
+    selectTripOnMap(tripId);
   }
 
   function handleCarouselScroll() {
@@ -333,7 +351,7 @@ function MobileTripsCountriesMap({
     >
       <MobileTripsGlobeCanvas
         activeTripId={activeTripId}
-        onTripPinSelect={(tripId) => selectTripOnMap(tripId)}
+        onTripPinSelect={handleTripPinSelect}
         tripPins={globeTripPins}
       />
 
@@ -363,7 +381,7 @@ function MobileTripsCountriesMap({
         cardRefs={carouselCardRefs}
         onScroll={handleCarouselScroll}
         onSelectTrip={(tripId) => selectTripOnMap(tripId, { scrollCarousel: false })}
-        trips={carouselTrips}
+        trips={selectedCarouselTrips}
       />
 
       <MobileTripsOverviewPanel

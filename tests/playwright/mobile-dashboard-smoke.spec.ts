@@ -233,9 +233,8 @@ test.describe("authenticated mobile dashboard smoke", () => {
     await expect(page.getByTestId("mobile-trips-globe-flag-pin").first()).toBeVisible();
     await expect(page.getByTestId("mobile-trips-globe-flag-pin").first()).toHaveAttribute("data-active", "true");
     await expect(page.getByTestId("mobile-home-country-pin")).toHaveCount(0);
-    await expect(page.getByTestId("mobile-trips-overview-carousel")).toBeVisible();
-    await expect(page.getByTestId("mobile-trips-overview-card").first()).toBeVisible();
-    await expect(page.getByTestId("mobile-trips-overview-card").first()).toHaveAttribute("data-active", "true");
+    await expect(page.getByTestId("mobile-trips-overview-carousel")).toHaveCount(0);
+    await expect(page.getByTestId("mobile-trips-overview-card")).toHaveCount(0);
     await expect(page.getByTestId("mobile-country-sheet")).toBeVisible();
     await expect(page.getByTestId("mobile-trips-overview-controls")).toBeVisible();
     await expect(page.getByPlaceholder("Search for trips")).toBeVisible();
