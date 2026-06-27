@@ -389,21 +389,21 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByTestId("almidy-launch-globe")).toHaveAttribute("data-map-system", "almidy-google-maps-3d");
     await expect(page.getByTestId("mobile-trips-globe-flag-pin").first()).toBeVisible();
     await expect(page.getByTestId("mobile-home-country-pin")).toHaveCount(0);
-    await expect(page.getByTestId("mobile-home-wallet-content")).toBeVisible();
-    await expect(page.getByTestId("mobile-home-wallet-content")).toHaveAttribute("data-sheet-state", "collapsed");
-    await expect(page.getByTestId("mobile-home-wallet-content")).toHaveAttribute("data-sheet-surface", "trips");
-    await expect(page.getByTestId("mobile-trips-sheet-content")).toBeVisible();
-    await expect(page.getByTestId("ios-launch-sheet-collapsed")).toBeVisible();
+    await expect(page.getByTestId("mobile-country-sheet")).toBeVisible();
+    await expect(page.getByTestId("mobile-trips-overview-controls")).toBeVisible();
+    await expect(page.getByPlaceholder("Search for trips")).toBeVisible();
+    await expect(page.getByTestId("mobile-trips-overview-year-select")).toBeVisible();
     await expect(page.getByRole("heading", { name: "My Trips" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Open trip list" })).toHaveAttribute(
       "href",
       "/dashboard/trips?view=list"
     );
+    await expect(page.getByRole("link", { name: "Create trip" })).toHaveAttribute(
+      "href",
+      "/dashboard/trips?view=list#new-trip"
+    );
     await expect(page.getByTestId("mobile-home-wallet")).toHaveCount(0);
-    await expect(page.getByTestId("mobile-country-sheet").getByTestId("mobile-home-wallet-content")).toHaveCount(1);
-    await page.getByRole("button", { name: "Open My Trips" }).click();
-    await expect(page.getByTestId("mobile-trips-sheet-expanded")).toBeVisible();
-    await expect(page.getByTestId("mobile-trips-native-actions")).toBeVisible();
+    await expect(page.getByTestId("mobile-home-wallet-content")).toHaveCount(0);
   });
 
   test("mobile trips secondary list route remains available", async ({ page }) => {

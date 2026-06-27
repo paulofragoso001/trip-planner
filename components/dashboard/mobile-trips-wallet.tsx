@@ -6,10 +6,8 @@ import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { TripCreateForm } from "@/components/dashboard/trip-create-form";
-import { TravelWalletSheet } from "@/components/dashboard/travel-wallet-sheet";
 import { CustomGlobeRenderer } from "@/components/map/custom-globe-renderer";
 import { cn } from "@/components/trip-ui";
-import type { DashboardRecentTripView } from "@/app/dashboard/loader";
 import type { TripsData } from "@/app/dashboard/trips/loader";
 import { dashboardActionRoutes } from "@/lib/dashboard/action-routes";
 import { unifiedMapSurfaceEnabled } from "@/lib/map/feature-flags";
@@ -76,7 +74,12 @@ export function MobileTripsWallet({ error, trips }: MobileTripsWalletProps) {
       <UnifiedMapProvider autoLocate initialMode="country-map">
         <MobileTripsCountriesMap
           activeYearTrips={countryMapTrips}
+          activeYear={activeYear}
           hydrated={hydrated}
+          onQueryChange={setQuery}
+          onYearChange={setSelectedYear}
+          query={query}
+          years={years}
         />
       </UnifiedMapProvider>
     );
@@ -220,24 +223,27 @@ export function MobileTripsWallet({ error, trips }: MobileTripsWalletProps) {
 
 type MobileTripsCountriesMapProps = {
   activeYearTrips: Trip[];
+  activeYear: string;
   hydrated: boolean;
+  onQueryChange: (query: string) => void;
+  onYearChange: (year: string) => void;
+  query: string;
+  years: string[];
 };
 
 function MobileTripsCountriesMap({
   activeYearTrips,
-  hydrated
+  activeYear,
+  hydrated,
+  onQueryChange,
+  onYearChange,
+  query,
+  years
 }: MobileTripsCountriesMapProps) {
   const unifiedMap = useOptionalUnifiedMap();
   const markerTrips = useMemo(() => activeYearTrips.filter(hasTripCoordinates), [activeYearTrips]);
   const tripPins = useMemo(() => markerTrips.map(tripToMapPin), [markerTrips]);
   const globeTripPins = useMemo(() => activeYearTrips.map(tripToGlobeFlagPin).filter(isGlobeTripPin), [activeYearTrips]);
-  const recentTrips = activeYearTrips.map(mapTripToWalletTrip);
-  const latestTrip = recentTrips[0] || null;
-  const primaryHref = latestTrip?.href || dashboardActionRoutes.trips.create;
-  const primaryLabel = latestTrip ? "Continue trip" : "Create trip";
-  const primaryMeta = latestTrip
-    ? `${latestTrip.name} · ${latestTrip.destination}`
-    : "Start a new travel wallet.";
   const userLocationPin = unifiedMap?.surfaceState.pins.find((pin) => pin.kind === "user-location") ?? null;
   const selectedPin = unifiedMap?.surfaceState.pins.find((pin) => pin.id === unifiedMap.surfaceState.selectedId) ?? null;
 
@@ -263,7 +269,7 @@ function MobileTripsCountriesMap({
     >
       <MobileTripsGlobeCanvas tripPins={globeTripPins} />
 
-      <div className="absolute right-4 top-10 z-20 overflow-hidden rounded-full border border-white/10 bg-black/86 text-orange-400 shadow-[0_18px_50px_rgba(0,0,0,0.45)] backdrop-blur-xl">
+      <div className="absolute right-4 top-[calc(4.5rem+env(safe-area-inset-top))] z-20 overflow-hidden rounded-[1.45rem] border border-white/10 bg-black/86 text-orange-400 shadow-[0_18px_50px_rgba(0,0,0,0.45)] backdrop-blur-xl">
         <Link
           aria-label="Open trip list"
           className="grid h-12 w-12 place-items-center border-b border-white/10 transition hover:bg-white/10 focus:outline-none focus:ring-4 focus:ring-orange-400/20"
@@ -283,18 +289,113 @@ function MobileTripsCountriesMap({
         </button>
       </div>
 
-      <div className="absolute inset-x-0 bottom-0 z-20" data-testid="mobile-country-sheet">
-        <TravelWalletSheet
-          ideasWaitingCount={0}
-          initialSheetState="collapsed"
-          primaryHref={primaryHref}
-          primaryLabel={primaryLabel}
-          primaryMeta={primaryMeta}
-          recentTrips={recentTrips}
-          surface="trips"
-        />
-      </div>
+      <MobileTripsOverviewPanel
+        activeYear={activeYear}
+        hydrated={hydrated}
+        onQueryChange={onQueryChange}
+        onYearChange={onYearChange}
+        query={query}
+        years={years}
+      />
     </section>
+  );
+}
+
+function MobileTripsOverviewPanel({
+  activeYear,
+  hydrated,
+  onQueryChange,
+  onYearChange,
+  query,
+  years
+}: {
+  activeYear: string;
+  hydrated: boolean;
+  onQueryChange: (query: string) => void;
+  onYearChange: (year: string) => void;
+  query: string;
+  years: string[];
+}) {
+  return (
+    <div
+      className="absolute inset-x-0 bottom-0 z-20 rounded-t-[2rem] bg-black/94 px-5 pb-[calc(1.15rem+env(safe-area-inset-bottom))] pt-4 text-white shadow-[0_-18px_64px_rgba(0,0,0,0.46)] ring-1 ring-white/8 backdrop-blur-2xl"
+      data-testid="mobile-country-sheet"
+    >
+      <div
+        className="mx-auto grid w-full max-w-[31rem] gap-4"
+        data-testid="mobile-trips-overview-controls"
+      >
+        <div className="grid grid-cols-[3rem_minmax(0,1fr)_auto] items-center gap-3">
+          <Link
+            aria-label="Trip settings"
+            className="grid h-11 w-11 place-items-center rounded-full bg-orange-500/16 text-orange-400 ring-1 ring-orange-400/10 transition hover:bg-orange-500/22 focus:outline-none focus:ring-4 focus:ring-orange-400/20"
+            href={dashboardActionRoutes.settings.account}
+          >
+            <Settings className="h-5 w-5" aria-hidden="true" />
+          </Link>
+          <h1 className="truncate text-center text-[1.65rem] font-black tracking-tight text-white">
+            My Trips
+          </h1>
+          <div className="flex items-center justify-end gap-2">
+            <Link
+              aria-label="Open travel stats"
+              className="grid h-11 w-11 place-items-center rounded-full bg-orange-500/16 text-orange-400 ring-1 ring-orange-400/10 transition hover:bg-orange-500/22 focus:outline-none focus:ring-4 focus:ring-orange-400/20"
+              data-testid="mobile-trips-stats-link"
+              href={dashboardActionRoutes.trips.stats}
+            >
+              <BarChart3 className="h-5 w-5" aria-hidden="true" />
+            </Link>
+            <Link
+              aria-disabled={!hydrated}
+              aria-label="Create trip"
+              className={cn(
+                "grid h-11 w-11 place-items-center rounded-full bg-orange-500/18 text-orange-400 ring-1 ring-orange-400/10 transition hover:bg-orange-500/24 focus:outline-none focus:ring-4 focus:ring-orange-400/20",
+                !hydrated && "pointer-events-none opacity-60"
+              )}
+              href="/dashboard/trips?view=list#new-trip"
+            >
+              <Plus className="h-6 w-6" aria-hidden="true" />
+            </Link>
+          </div>
+        </div>
+
+        <label className="relative block">
+          <span className="sr-only">Search for trips</span>
+          <Search
+            className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-white/42"
+            aria-hidden="true"
+          />
+          <input
+            className="h-12 w-full rounded-full border border-white/[0.06] bg-white/[0.09] pl-12 pr-4 text-base font-semibold text-white outline-none placeholder:text-white/38 focus:border-orange-300/45 focus:ring-4 focus:ring-orange-400/15"
+            onChange={(event) => onQueryChange(event.target.value)}
+            placeholder="Search for trips"
+            type="search"
+            value={query}
+          />
+        </label>
+
+        <label className="relative inline-flex w-fit items-center">
+          <span className="sr-only">Trip year</span>
+          <select
+            className="h-12 appearance-none rounded-full border border-transparent bg-transparent py-0 pl-0 pr-9 text-4xl font-black leading-none tracking-tight text-orange-500 outline-none focus:ring-4 focus:ring-orange-400/20"
+            data-testid="mobile-trips-overview-year-select"
+            onChange={(event) => onYearChange(event.target.value)}
+            value={activeYear}
+          >
+            {years.length ? years.map((year) => (
+              <option className="bg-black text-white" key={year} value={year}>
+                {year}
+              </option>
+            )) : (
+              <option className="bg-black text-white" value={activeYear}>
+                {activeYear}
+              </option>
+            )}
+          </select>
+          <ChevronDown className="pointer-events-none ml-[-2.1rem] h-7 w-7 text-orange-500" aria-hidden="true" />
+        </label>
+      </div>
+    </div>
   );
 }
 
@@ -312,7 +413,11 @@ function MobileTripsGlobeCanvas({ tripPins }: { tripPins: AlmidyLaunchGlobeTripP
         tripPins={tripPins}
         useLocationFocus={false}
       />
-      <div className="pointer-events-none absolute inset-0 z-10 bg-[linear-gradient(180deg,rgba(0,0,0,0.46),rgba(0,0,0,0.02)_35%,rgba(0,0,0,0.56)_100%)]" />
+      <div className="pointer-events-none absolute inset-0 z-10 bg-[linear-gradient(180deg,rgba(0,0,0,0.24),rgba(4,10,20,0.42)_35%,rgba(0,0,0,0.72)_100%)]" />
+      <div
+        className="pointer-events-none absolute inset-0 z-10 bg-[#030916]/30 mix-blend-multiply"
+        aria-hidden="true"
+      />
     </div>
   );
 }
@@ -469,17 +574,6 @@ function hasTripCoordinates(trip: Trip) {
     typeof trip.destinationLng === "number" &&
     Number.isFinite(trip.destinationLng)
   );
-}
-
-function mapTripToWalletTrip(trip: Trip): DashboardRecentTripView {
-  return {
-    dateRange: trip.dateRange,
-    destination: trip.destination,
-    href: trip.href,
-    id: trip.id,
-    name: trip.name,
-    status: tripStatusLabel(trip)
-  };
 }
 
 function destinationMapLabel(trip: Trip) {

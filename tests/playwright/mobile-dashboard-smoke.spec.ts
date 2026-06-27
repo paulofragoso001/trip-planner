@@ -231,19 +231,20 @@ test.describe("authenticated mobile dashboard smoke", () => {
     await expect(page.getByTestId("mobile-trips-globe-flag-pin").first()).toBeVisible();
     await expect(page.getByTestId("mobile-home-country-pin")).toHaveCount(0);
     await expect(page.getByTestId("mobile-country-sheet")).toBeVisible();
-    await expect(page.getByTestId("mobile-country-sheet").getByTestId("mobile-home-wallet-content")).toBeVisible();
-    await expectCollapsedWalletSheet(page, "trips");
-    await expect(page.getByTestId("mobile-trips-sheet-content")).toBeVisible();
+    await expect(page.getByTestId("mobile-trips-overview-controls")).toBeVisible();
+    await expect(page.getByPlaceholder("Search for trips")).toBeVisible();
+    await expect(page.getByTestId("mobile-trips-overview-year-select")).toBeVisible();
+    await expect(page.getByRole("link", { name: "Open travel stats" })).toHaveAttribute(
+      "href",
+      "/dashboard/profile/stats"
+    );
+    await expect(page.getByRole("link", { name: "Create trip" })).toHaveAttribute(
+      "href",
+      "/dashboard/trips?view=list#new-trip"
+    );
     await expect(page.getByRole("heading", { name: "My Trips" })).toBeVisible();
     await expect(page.getByTestId("mobile-home-wallet")).toHaveCount(0);
-
-    await page.getByRole("button", { name: "Open My Trips" }).click();
-    await expect(page.getByTestId("mobile-trips-sheet-expanded")).toBeVisible();
-    await expect(page.getByTestId("mobile-trips-native-actions")).toBeVisible();
-    await expect(page.getByRole("link", { name: "Trip list Search and manage" })).toHaveAttribute(
-      "href",
-      "/dashboard/trips?view=list"
-    );
+    await expect(page.getByTestId("mobile-home-wallet-content")).toHaveCount(0);
   });
 
   test("/dashboard/trips?view=list renders the secondary list/create flow", async ({ page }) => {
@@ -265,7 +266,7 @@ test.describe("authenticated mobile dashboard smoke", () => {
     await expect(page.getByTestId("mobile-trips-country-map-screen")).toBeVisible({
       timeout: 20_000
     });
-    await expect(page.getByTestId("mobile-country-sheet").getByTestId("mobile-home-wallet-content")).toBeVisible();
+    await expect(page.getByTestId("mobile-trips-overview-controls")).toBeVisible();
     await expect(page.getByTestId("mobile-home-wallet")).toHaveCount(0);
   });
 
