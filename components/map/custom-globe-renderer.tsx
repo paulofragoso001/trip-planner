@@ -8,8 +8,10 @@ import type {
 } from "@/lib/map/wayline-map-models";
 
 type CustomGlobeRendererProps = {
+  activeTripId?: string | null;
   className?: string;
   defaultFocusWhenEmpty?: boolean;
+  onTripPinSelect?: (tripId: string) => void;
   showCountryPin?: boolean;
   surfaceState?: AlmidyMapSurfaceState;
   tripPins?: AlmidyLaunchGlobeTripPin[];
@@ -17,8 +19,10 @@ type CustomGlobeRendererProps = {
 };
 
 export function CustomGlobeRenderer({
+  activeTripId,
   className,
   defaultFocusWhenEmpty,
+  onTripPinSelect,
   showCountryPin,
   surfaceState,
   tripPins,
@@ -36,11 +40,13 @@ export function CustomGlobeRenderer({
       data-selected-map-id={activeSurface?.selectedId ?? undefined}
     >
       <AlmidyLaunchGlobe
+        activeTripId={activeTripId}
         className={className}
         defaultFocusWhenEmpty={defaultFocusWhenEmpty}
         location={activeSurface?.location}
         locationStatus={unifiedMap?.locationStatus}
         onLocateUser={unifiedMap?.locateUser}
+        onTripPinSelect={onTripPinSelect}
         showCountryPin={showCountryPin}
         tripPins={tripPins}
         useLocationFocus={useLocationFocus}

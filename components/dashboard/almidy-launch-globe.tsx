@@ -10,11 +10,13 @@ import type {
 } from "@/lib/map/wayline-map-models";
 
 type AlmidyLaunchGlobeProps = {
+  activeTripId?: string | null;
   className?: string;
   defaultFocusWhenEmpty?: boolean;
   location?: AlmidyLocationState;
   locationStatus?: LocationRequestState;
   onLocateUser?: () => Promise<AlmidyLocationState> | void;
+  onTripPinSelect?: (tripId: string) => void;
   showCountryPin?: boolean;
   tripPins?: AlmidyLaunchGlobeTripPin[];
   useLocationFocus?: boolean;
@@ -124,11 +126,13 @@ const COUNTRY_BY_CODE: Record<string, CountryFocus> = {
 };
 
 export function AlmidyLaunchGlobe({
+  activeTripId,
   className,
   defaultFocusWhenEmpty = false,
   location,
   locationStatus = "idle",
   onLocateUser,
+  onTripPinSelect,
   showCountryPin = true,
   tripPins = [],
   useLocationFocus = true
@@ -224,8 +228,10 @@ export function AlmidyLaunchGlobe({
         focus={focus}
         heroState={heroState}
         launchPhase={launchPhase}
+        onTripPinSelect={onTripPinSelect}
         reduceMotion={reduceMotion}
         showCountryPin={showCountryPin}
+        activeTripId={activeTripId}
         tripPins={tripPins}
       />
     </GoogleMapsProvider>
@@ -233,18 +239,22 @@ export function AlmidyLaunchGlobe({
 }
 
 function GoogleMaps3DLaunchGlobe({
+  activeTripId,
   className,
   focus,
   heroState,
   launchPhase,
+  onTripPinSelect,
   reduceMotion,
   showCountryPin,
   tripPins
 }: {
+  activeTripId?: string | null;
   className?: string;
   focus: CountryFocus;
   heroState: HeroState;
   launchPhase: LaunchPhase;
+  onTripPinSelect?: (tripId: string) => void;
   reduceMotion: boolean;
   showCountryPin: boolean;
   tripPins: AlmidyLaunchGlobeTripPin[];
@@ -470,7 +480,11 @@ function GoogleMaps3DLaunchGlobe({
             </div>
           </div>
         ) : null}
-        <TripFlagPins pins={tripPins} />
+        <TripFlagPins
+          activeTripId={activeTripId}
+          onTripPinSelect={onTripPinSelect}
+          pins={tripPins}
+        />
         <div className="pointer-events-none absolute inset-0 z-10 bg-[linear-gradient(180deg,rgba(0,0,0,0.78)_0%,rgba(0,0,0,0.08)_21%,rgba(0,0,0,0)_58%,rgba(0,0,0,0.42)_100%)]" />
         <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-32 bg-[linear-gradient(180deg,rgba(0,0,0,0.9),rgba(0,0,0,0.32)_48%,transparent)]" />
         <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-[24%] bg-[linear-gradient(180deg,transparent,rgba(0,0,0,0.36)_58%,rgba(0,0,0,0.72)_100%)]" />
@@ -583,7 +597,15 @@ function focusFromTripPins(pins: AlmidyLaunchGlobeTripPin[]) {
   return firstKnownCountry;
 }
 
-function TripFlagPins({ pins }: { pins: AlmidyLaunchGlobeTripPin[] }) {
+function TripFlagPins({
+  activeTripId,
+  onTripPinSelect,
+  pins
+}: {
+  activeTripId?: string | null;
+  onTripPinSelect?: (tripId: string) => void;
+  pins: AlmidyLaunchGlobeTripPin[];
+}) {
   if (!pins.length) {
     return null;
   }
@@ -592,25 +614,43 @@ function TripFlagPins({ pins }: { pins: AlmidyLaunchGlobeTripPin[] }) {
     <div className="pointer-events-none absolute inset-0 z-20" data-testid="mobile-trips-globe-flag-layer">
       {pins.map((pin, index) => {
         const position = tripPinScreenPosition(pin, index);
+        const tripId = pin.tripId ?? pin.id;
+        const isActive = activeTripId ? activeTripId === tripId : index === 0;
         return (
-          <div
-            className="absolute -translate-x-1/2 -translate-y-1/2 text-center"
+          <button
+            aria-label={`Select ${pin.label}`}
+            className="pointer-events-auto absolute -translate-x-1/2 -translate-y-1/2 touch-manipulation text-center focus:outline-none"
+            data-active={isActive ? "true" : "false"}
             data-country-code={pin.countryCode}
             data-testid="mobile-trips-globe-flag-pin"
             data-trip-id={pin.tripId ?? undefined}
             key={pin.id}
+            onClick={() => onTripPinSelect?.(tripId)}
             style={{
               left: `${position.x}%`,
               top: `${position.y}%`
             }}
+            type="button"
           >
-            <div className="grid h-11 w-11 place-items-center rounded-full border-[2.5px] border-black bg-white text-2xl leading-none shadow-[0_4px_0_rgba(0,0,0,0.95),0_10px_24px_rgba(0,0,0,0.36)] ring-1 ring-white/75">
+            <div
+              className={[
+                "mx-auto grid h-10 w-10 place-items-center overflow-hidden rounded-full border-[2.5px] text-2xl leading-none shadow-[0_4px_0_rgba(0,0,0,0.95),0_10px_24px_rgba(0,0,0,0.36)] transition duration-200",
+                isActive
+                  ? "scale-125 border-orange-500 bg-white ring-2 ring-orange-400/70"
+                  : "border-black bg-white ring-1 ring-white/75"
+              ].join(" ")}
+            >
               <span aria-hidden="true">{pin.flag}</span>
             </div>
-            <div className="mt-1 max-w-28 truncate text-[0.7rem] font-black leading-none text-white [text-shadow:0_2px_2px_rgba(0,0,0,0.95),0_0_8px_rgba(0,0,0,0.85)]">
+            <div
+              className={[
+                "mt-1 max-w-28 truncate rounded px-1.5 py-0.5 text-[0.7rem] font-black leading-none [text-shadow:0_2px_2px_rgba(0,0,0,0.95),0_0_8px_rgba(0,0,0,0.85)]",
+                isActive ? "bg-orange-600 text-white" : "bg-black/56 text-white"
+              ].join(" ")}
+            >
               {pin.label}
             </div>
-          </div>
+          </button>
         );
       })}
     </div>

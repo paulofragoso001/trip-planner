@@ -4,7 +4,7 @@ import { BarChart3, CalendarDays, ChevronDown, List, LocateFixed, MapPinned, Plu
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { ReactNode } from "react";
+import type { MutableRefObject, ReactNode, RefObject } from "react";
 import { TripCreateForm } from "@/components/dashboard/trip-create-form";
 import { CustomGlobeRenderer } from "@/components/map/custom-globe-renderer";
 import { cn } from "@/components/trip-ui";
@@ -241,15 +241,76 @@ function MobileTripsCountriesMap({
   years
 }: MobileTripsCountriesMapProps) {
   const unifiedMap = useOptionalUnifiedMap();
+  const carouselRef = useRef<HTMLDivElement | null>(null);
+  const carouselCardRefs = useRef(new Map<string, HTMLButtonElement>());
+  const [activeTripId, setActiveTripId] = useState<string | null>(null);
   const markerTrips = useMemo(() => activeYearTrips.filter(hasTripCoordinates), [activeYearTrips]);
   const tripPins = useMemo(() => markerTrips.map(tripToMapPin), [markerTrips]);
   const globeTripPins = useMemo(() => activeYearTrips.map(tripToGlobeFlagPin).filter(isGlobeTripPin), [activeYearTrips]);
+  const carouselTrips = useMemo(() => {
+    const pinTripIds = new Set(globeTripPins.map((pin) => pin.tripId ?? pin.id));
+    return activeYearTrips.filter((trip) => pinTripIds.has(trip.id));
+  }, [activeYearTrips, globeTripPins]);
   const userLocationPin = unifiedMap?.surfaceState.pins.find((pin) => pin.kind === "user-location") ?? null;
   const selectedPin = unifiedMap?.surfaceState.pins.find((pin) => pin.id === unifiedMap.surfaceState.selectedId) ?? null;
 
   useEffect(() => {
     unifiedMap?.setPins(tripPins);
   }, [tripPins, unifiedMap?.setPins]);
+
+  useEffect(() => {
+    if (!globeTripPins.length) {
+      setActiveTripId(null);
+      return;
+    }
+
+    setActiveTripId((current) => {
+      const currentStillVisible = current
+        ? globeTripPins.some((pin) => (pin.tripId ?? pin.id) === current)
+        : false;
+      return currentStillVisible ? current : globeTripPins[0].tripId ?? globeTripPins[0].id;
+    });
+  }, [globeTripPins]);
+
+  function selectTripOnMap(tripId: string, options: { scrollCarousel?: boolean } = {}) {
+    setActiveTripId(tripId);
+    unifiedMap?.selectPin(`trip-${tripId}`);
+
+    if (options.scrollCarousel === false) return;
+
+    window.requestAnimationFrame(() => {
+      carouselCardRefs.current.get(tripId)?.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+        inline: "center"
+      });
+    });
+  }
+
+  function handleCarouselScroll() {
+    const carousel = carouselRef.current;
+    if (!carousel || carouselTrips.length < 2) return;
+
+    const carouselCenter = carousel.scrollLeft + carousel.clientWidth / 2;
+    let nearestTripId: string | null = null;
+    let nearestDistance = Number.POSITIVE_INFINITY;
+
+    for (const trip of carouselTrips) {
+      const card = carouselCardRefs.current.get(trip.id);
+      if (!card) continue;
+
+      const cardCenter = card.offsetLeft + card.offsetWidth / 2;
+      const distance = Math.abs(carouselCenter - cardCenter);
+      if (distance < nearestDistance) {
+        nearestDistance = distance;
+        nearestTripId = trip.id;
+      }
+    }
+
+    if (nearestTripId && nearestTripId !== activeTripId) {
+      selectTripOnMap(nearestTripId, { scrollCarousel: false });
+    }
+  }
 
   return (
     <section
@@ -267,7 +328,11 @@ function MobileTripsCountriesMap({
       data-user-pin-longitude={userLocationPin ? userLocationPin.coordinate.lng.toFixed(5) : undefined}
       data-user-pin-source={unifiedMap?.surfaceState.location.coordinate ? unifiedMap.surfaceState.location.source : undefined}
     >
-      <MobileTripsGlobeCanvas tripPins={globeTripPins} />
+      <MobileTripsGlobeCanvas
+        activeTripId={activeTripId}
+        onTripPinSelect={(tripId) => selectTripOnMap(tripId)}
+        tripPins={globeTripPins}
+      />
 
       <div className="absolute right-4 top-[calc(4.5rem+env(safe-area-inset-top))] z-20 overflow-hidden rounded-[1.45rem] border border-white/10 bg-black/86 text-orange-400 shadow-[0_18px_50px_rgba(0,0,0,0.45)] backdrop-blur-xl">
         <Link
@@ -289,6 +354,15 @@ function MobileTripsCountriesMap({
         </button>
       </div>
 
+      <MobileTripsMapCarousel
+        activeTripId={activeTripId}
+        carouselRef={carouselRef}
+        cardRefs={carouselCardRefs}
+        onScroll={handleCarouselScroll}
+        onSelectTrip={(tripId) => selectTripOnMap(tripId)}
+        trips={carouselTrips}
+      />
+
       <MobileTripsOverviewPanel
         activeYear={activeYear}
         hydrated={hydrated}
@@ -298,6 +372,82 @@ function MobileTripsCountriesMap({
         years={years}
       />
     </section>
+  );
+}
+
+function MobileTripsMapCarousel({
+  activeTripId,
+  carouselRef,
+  cardRefs,
+  onScroll,
+  onSelectTrip,
+  trips
+}: {
+  activeTripId: string | null;
+  carouselRef: RefObject<HTMLDivElement | null>;
+  cardRefs: MutableRefObject<Map<string, HTMLButtonElement>>;
+  onScroll: () => void;
+  onSelectTrip: (tripId: string) => void;
+  trips: Trip[];
+}) {
+  if (!trips.length) {
+    return null;
+  }
+
+  return (
+    <div className="absolute inset-x-0 bottom-[calc(13.4rem+env(safe-area-inset-bottom))] z-20">
+      <div
+        className="no-scrollbar flex snap-x snap-mandatory gap-3 overflow-x-auto px-5 pb-1"
+        data-testid="mobile-trips-overview-carousel"
+        onScroll={onScroll}
+        ref={carouselRef}
+      >
+        {trips.map((trip) => {
+          const isActive = activeTripId === trip.id;
+          return (
+            <button
+              className={cn(
+                "min-h-[7.25rem] w-[76vw] max-w-[21rem] shrink-0 snap-center rounded-[1.45rem] border p-4 text-left shadow-[0_18px_48px_rgba(0,0,0,0.42)] backdrop-blur-xl transition focus:outline-none focus:ring-4 focus:ring-orange-400/25",
+                isActive
+                  ? "border-orange-400/70 bg-black/88 text-white"
+                  : "border-white/12 bg-black/62 text-white/82"
+              )}
+              data-active={isActive ? "true" : "false"}
+              data-testid="mobile-trips-overview-card"
+              data-trip-id={trip.id}
+              key={trip.id}
+              onClick={() => onSelectTrip(trip.id)}
+              ref={(node) => {
+                if (node) {
+                  cardRefs.current.set(trip.id, node);
+                } else {
+                  cardRefs.current.delete(trip.id);
+                }
+              }}
+              type="button"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate text-[1.35rem] font-black leading-tight tracking-tight text-white">
+                    {destinationMapLabel(trip)}
+                  </p>
+                  <p className="mt-1 truncate text-sm font-bold text-white/58">
+                    {trip.destination}
+                  </p>
+                </div>
+                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-orange-500/18 text-lg ring-1 ring-orange-400/20">
+                  {countryCodeToFlag(countryCodeFromDestinationText(trip.destination)) ?? "•"}
+                </span>
+              </div>
+              <div className="mt-4 flex items-center gap-2 text-xs font-black uppercase tracking-[0.22em] text-orange-300">
+                <CalendarDays className="h-4 w-4" aria-hidden="true" />
+                <span className="truncate">{trip.dateRange || tripStatusLabel(trip)}</span>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
@@ -399,7 +549,15 @@ function MobileTripsOverviewPanel({
   );
 }
 
-function MobileTripsGlobeCanvas({ tripPins }: { tripPins: AlmidyLaunchGlobeTripPin[] }) {
+function MobileTripsGlobeCanvas({
+  activeTripId,
+  onTripPinSelect,
+  tripPins
+}: {
+  activeTripId: string | null;
+  onTripPinSelect: (tripId: string) => void;
+  tripPins: AlmidyLaunchGlobeTripPin[];
+}) {
   return (
     <div
       className="absolute inset-0 z-0 overflow-hidden bg-black"
@@ -407,8 +565,10 @@ function MobileTripsGlobeCanvas({ tripPins }: { tripPins: AlmidyLaunchGlobeTripP
       data-testid="mobile-country-map-canvas"
     >
       <CustomGlobeRenderer
+        activeTripId={activeTripId}
         className="absolute inset-0 h-full min-h-[100dvh] w-full"
         defaultFocusWhenEmpty
+        onTripPinSelect={onTripPinSelect}
         showCountryPin={false}
         tripPins={tripPins}
         useLocationFocus={false}
