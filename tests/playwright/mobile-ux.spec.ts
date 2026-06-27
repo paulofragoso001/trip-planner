@@ -943,6 +943,59 @@ test.describe("mobile soft-launch UX", () => {
     }
   });
 
+  test("v1 trips API accepts valid Tokyo coordinates and rejects malformed payloads", async ({ request }) => {
+    test.setTimeout(60_000);
+
+    const tripName = `Tokyo Spring Escape ${Date.now()}`;
+    const response = await request.post(`${baseUrl}/api/v1/trips`, {
+      data: {
+        countryCode: "jp",
+        destination: "Tokyo, Japan",
+        destination_formatted_address: "Tokyo, Japan",
+        destination_lat: 35.6762,
+        destination_lng: 139.6503,
+        end_date: "2026-04-26",
+        expense_budget: 3200,
+        start_date: "2026-04-12",
+        travel_style: "relaxed",
+        trip_name: tripName
+      },
+      headers: { "x-cypress-dashboard": "true" }
+    });
+
+    expect(response.status()).toBe(201);
+    const responseBody = await response.json();
+    const createdTripId = responseBody?.trip?.id;
+
+    try {
+      expect(responseBody).toMatchObject({
+        success: true,
+        trip: {
+          countryCode: "JP",
+          country_code: "JP",
+          destination_name: "Tokyo, Japan",
+          expense_budget: 3200,
+          lat: 35.6762,
+          lng: 139.6503,
+          travel_style: "relaxed",
+          trip_name: tripName
+        }
+      });
+
+      const badResponse = await request.post(`${baseUrl}/api/v1/trips`, {
+        data: {
+          start_date: "2026-04-12"
+        },
+        headers: { "x-cypress-dashboard": "true" }
+      });
+      expect(badResponse.status()).toBe(400);
+      const badBody = await badResponse.json();
+      expect(badBody.error).toMatch(/destination|trip_name|invalid input/i);
+    } finally {
+      await deleteTripForTest(request, createdTripId);
+    }
+  });
+
   test("mobile trip creation redirects to the trip wallet hub", async ({ page, request }) => {
     test.setTimeout(90_000);
     await page.setViewportSize({ height: 900, width: 390 });
