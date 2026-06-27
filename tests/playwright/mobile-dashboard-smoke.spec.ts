@@ -175,7 +175,9 @@ test.describe("authenticated mobile dashboard smoke", () => {
     await expect(page.getByTestId("mobile-trips-country-map-screen")).toHaveCount(0);
   });
 
-  test("/dashboard asks for location before requesting browser geolocation", async ({ page }) => {
+  test("/dashboard asks for location before requesting browser geolocation", async ({ context, page }) => {
+    await context.grantPermissions(["geolocation"], { origin: baseUrl });
+    await context.setGeolocation({ latitude: 25.7617, longitude: -80.1918 });
     await page.setViewportSize(mobileViewport);
     await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
     await page.emulateMedia({ reducedMotion: "reduce" });
