@@ -6,6 +6,9 @@ import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { MutableRefObject, ReactNode, RefObject } from "react";
 import { TripCreateForm } from "@/components/dashboard/trip-create-form";
+import MobileTripsWalletSheet, {
+  type MobileTripsWalletSheetTrip
+} from "@/components/dashboard/mobile-trips-wallet-sheet";
 import { CustomGlobeRenderer } from "@/components/map/custom-globe-renderer";
 import { cn } from "@/components/trip-ui";
 import type { TripsData } from "@/app/dashboard/trips/loader";
@@ -248,6 +251,7 @@ function MobileTripsCountriesMap({
   const markerTrips = useMemo(() => activeYearTrips.filter(hasTripCoordinates), [activeYearTrips]);
   const tripPins = useMemo(() => markerTrips.map(tripToMapPin), [markerTrips]);
   const globeTripPins = useMemo(() => markerTrips.map(tripToGlobeFlagPin).filter(isGlobeTripPin), [markerTrips]);
+  const sheetTrips = useMemo(() => activeYearTrips.map(tripToWalletSheetTrip), [activeYearTrips]);
   const carouselTrips = useMemo(() => {
     const pinTripIds = new Set(globeTripPins.map((pin) => pin.tripId ?? pin.id));
     return activeYearTrips.filter((trip) => pinTripIds.has(trip.id));
@@ -393,12 +397,14 @@ function MobileTripsCountriesMap({
         trips={selectedCarouselTrips}
       />
 
-      <MobileTripsOverviewPanel
-        activeYear={activeYear}
-        hydrated={hydrated}
+      <MobileTripsWalletSheet
+        currentYear={activeYear}
         onQueryChange={onQueryChange}
         onYearChange={onYearChange}
         query={query}
+        settingsHref={dashboardActionRoutes.settings.account}
+        statsHref={dashboardActionRoutes.trips.stats}
+        trips={sheetTrips}
         years={years}
       />
     </section>
@@ -847,6 +853,21 @@ function tripToGlobeFlagPin(trip: Trip): AlmidyLaunchGlobeTripPin | null {
     lng: coordinate.lng,
     subtitle: trip.name,
     tripId: trip.id
+  };
+}
+
+function tripToWalletSheetTrip(trip: Trip): MobileTripsWalletSheetTrip {
+  const coordinate = tripDestinationCoordinate(trip);
+  return {
+    city: destinationMapLabel(trip),
+    countryCode: countryCodeFromDestinationText(trip.destination),
+    date_range: trip.dateRange || "Dates pending",
+    destination_name: trip.destination,
+    id: trip.id,
+    image: trip.imageUrl,
+    lat: coordinate?.lat ?? null,
+    lng: coordinate?.lng ?? null,
+    statusText: tripStatusLabel(trip)
   };
 }
 

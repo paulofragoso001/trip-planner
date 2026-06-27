@@ -415,6 +415,50 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByTestId("mobile-home-wallet-content")).toHaveCount(0);
   });
 
+  test("mobile trips wallet sheet maximizes and creates a 2026 trip", async ({ page, request }) => {
+    test.setTimeout(90_000);
+    await page.setViewportSize({ height: 900, width: 390 });
+    await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
+    await installMockMobileLocation(page);
+    await installMockGoogleMaps3D(page);
+
+    await page.goto(`${baseUrl}/dashboard/trips`, { waitUntil: "commit" });
+    await expect(page.getByTestId("mobile-trips-country-map-screen")).toBeVisible({ timeout: 20_000 });
+
+    const plusButton = page.getByTestId("mobile-trips-wallet-create-trigger");
+    await expect(plusButton).toBeVisible();
+    await plusButton.click();
+    await expect(page.getByTestId("mobile-country-sheet")).toHaveAttribute("data-sheet-state", "creating");
+
+    const inputTripName = page.getByPlaceholder("e.g., Tokyo Spring Escape");
+    const inputDestination = page.getByPlaceholder("Search city, region, or country");
+    await expect(inputTripName).toBeVisible();
+
+    const tripName = `Kyoto Autumn ${Date.now()}`;
+    await inputTripName.fill(tripName);
+    await inputDestination.fill("Kyoto, Japan");
+    await page.getByPlaceholder("e.g., April 12").fill("2026-10-01");
+    await page.getByPlaceholder("e.g., April 26").fill("2026-10-15");
+
+    const responsePromise = page.waitForResponse((response) =>
+      response.url() === `${baseUrl}/api/trips` && response.request().method() === "POST"
+    );
+    const submitButton = page.getByRole("button", { exact: true, name: "Create" });
+    await expect(submitButton).toBeEnabled();
+    await submitButton.click();
+    const response = await responsePromise;
+    expect(response.status()).toBe(201);
+    const payload = await response.json();
+    const createdTripId = payload?.trip?.id;
+
+    try {
+      await expect(inputTripName).not.toBeVisible({ timeout: 20_000 });
+      await expect(page.getByTestId("mobile-country-sheet")).toHaveAttribute("data-sheet-state", "collapsed");
+    } finally {
+      await deleteTripForTest(request, createdTripId);
+    }
+  });
+
   test("mobile trips globe pins saved destinations with latitude and longitude aligned", async ({ page, request }) => {
     test.setTimeout(90_000);
     await page.setViewportSize({ height: 900, width: 390 });
