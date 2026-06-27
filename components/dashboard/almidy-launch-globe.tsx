@@ -62,6 +62,11 @@ type GoogleMaps3DMapElement = HTMLElement & {
   tilt?: number;
 };
 
+type GoogleMaps3DMarkerElement = HTMLElement & {
+  altitudeMode?: string;
+  position?: GoogleMaps3DLatLngAltitude;
+};
+
 type GoogleMaps3DLibrary = {
   GestureHandling?: {
     GREEDY: string;
@@ -650,11 +655,14 @@ function tripCameraCenterForPins(
 }
 
 function createUserLocationMarker(focus: CountryFocus) {
-  const marker = document.createElement(USER_LOCATION_MARKER_TAG);
+  const marker = document.createElement(USER_LOCATION_MARKER_TAG) as GoogleMaps3DMarkerElement;
+  const position = { altitude: 0, lat: focus.lat, lng: focus.lng };
+  marker.altitudeMode = "CLAMP_TO_GROUND";
+  marker.position = position;
   marker.setAttribute("altitude-mode", "clamp-to-ground");
   marker.setAttribute("data-country-code", focus.code);
   marker.setAttribute("data-testid", "almidy-google-maps-3d-user-marker");
-  marker.setAttribute("position", `${focus.lat.toFixed(5)}, ${focus.lng.toFixed(5)}`);
+  marker.setAttribute("position", formatMarkerPosition(position));
   marker.textContent = focus.flag;
   return marker;
 }
@@ -670,7 +678,10 @@ function createTripFlagMarker(
   }
 
   const tripId = pin.tripId ?? pin.id;
-  const marker = document.createElement(USER_LOCATION_MARKER_TAG);
+  const marker = document.createElement(USER_LOCATION_MARKER_TAG) as GoogleMaps3DMarkerElement;
+  const position = { altitude: 0, lat: coordinate.lat, lng: coordinate.lng };
+  marker.altitudeMode = "CLAMP_TO_GROUND";
+  marker.position = position;
   marker.setAttribute("altitude-mode", "clamp-to-ground");
   marker.setAttribute("aria-label", `Select ${pin.label}`);
   marker.setAttribute("data-active", isActive ? "true" : "false");
@@ -679,7 +690,7 @@ function createTripFlagMarker(
   marker.setAttribute("data-pin-longitude", coordinate.lng.toFixed(5));
   marker.setAttribute("data-testid", "mobile-trips-globe-flag-pin");
   marker.setAttribute("data-trip-id", tripId);
-  marker.setAttribute("position", `${coordinate.lat.toFixed(5)}, ${coordinate.lng.toFixed(5)}`);
+  marker.setAttribute("position", formatMarkerPosition(position));
   marker.className = "mobile-trips-map-marker";
   marker.addEventListener("click", () => onTripPinSelect?.(tripId));
 
@@ -710,6 +721,10 @@ function createTripFlagMarker(
   marker.appendChild(content);
 
   return marker;
+}
+
+function formatMarkerPosition(position: GoogleMaps3DLatLngAltitude) {
+  return `${position.lat.toFixed(5)}, ${position.lng.toFixed(5)}, ${Math.round(position.altitude ?? 0)}`;
 }
 
 function focusFromTripPins(pins: AlmidyLaunchGlobeTripPin[]) {

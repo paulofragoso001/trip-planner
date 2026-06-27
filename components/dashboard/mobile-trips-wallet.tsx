@@ -247,7 +247,7 @@ function MobileTripsCountriesMap({
   const [selectedTripId, setSelectedTripId] = useState<string | null>(null);
   const markerTrips = useMemo(() => activeYearTrips.filter(hasTripCoordinates), [activeYearTrips]);
   const tripPins = useMemo(() => markerTrips.map(tripToMapPin), [markerTrips]);
-  const globeTripPins = useMemo(() => activeYearTrips.map(tripToGlobeFlagPin).filter(isGlobeTripPin), [activeYearTrips]);
+  const globeTripPins = useMemo(() => markerTrips.map(tripToGlobeFlagPin).filter(isGlobeTripPin), [markerTrips]);
   const carouselTrips = useMemo(() => {
     const pinTripIds = new Set(globeTripPins.map((pin) => pin.tripId ?? pin.id));
     return activeYearTrips.filter((trip) => pinTripIds.has(trip.id));
@@ -788,8 +788,9 @@ function tripToMapPin(trip: Trip): AlmidyMapPin {
 function tripToGlobeFlagPin(trip: Trip): AlmidyLaunchGlobeTripPin | null {
   const countryCode = countryCodeFromDestinationText(trip.destination);
   const flag = countryCodeToFlag(countryCode);
+  const coordinate = tripDestinationCoordinate(trip);
 
-  if (!countryCode || !flag) {
+  if (!countryCode || !flag || !coordinate) {
     return null;
   }
 
@@ -799,10 +800,21 @@ function tripToGlobeFlagPin(trip: Trip): AlmidyLaunchGlobeTripPin | null {
     href: trip.href,
     id: `trip-country-${trip.id}`,
     label: destinationMapLabel(trip),
-    lat: trip.destinationLat ?? null,
-    lng: trip.destinationLng ?? null,
+    lat: coordinate.lat,
+    lng: coordinate.lng,
     subtitle: trip.name,
     tripId: trip.id
+  };
+}
+
+function tripDestinationCoordinate(trip: Trip) {
+  if (!hasTripCoordinates(trip)) {
+    return null;
+  }
+
+  return {
+    lat: trip.destinationLat,
+    lng: trip.destinationLng
   };
 }
 

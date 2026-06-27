@@ -486,6 +486,7 @@ test.describe("mobile soft-launch UX", () => {
       await expect(barcelonaPin).toHaveAttribute("data-country-code", "ES");
       await expect(barcelonaPin).toHaveAttribute("data-pin-latitude", "41.38510");
       await expect(barcelonaPin).toHaveAttribute("data-pin-longitude", "2.17340");
+      await expect(barcelonaPin).toHaveAttribute("position", "41.38510, 2.17340, 0");
 
       const newYorkPin = page.locator(
         `[data-testid="mobile-trips-globe-flag-pin"][data-trip-id="${newYorkTripId}"]`
@@ -495,6 +496,7 @@ test.describe("mobile soft-launch UX", () => {
       await expect(newYorkPin).toHaveAttribute("data-country-code", "US");
       await expect(newYorkPin).toHaveAttribute("data-pin-latitude", "40.71280");
       await expect(newYorkPin).toHaveAttribute("data-pin-longitude", "-74.00600");
+      await expect(newYorkPin).toHaveAttribute("position", "40.71280, -74.00600, 0");
 
       await barcelonaPin.click();
       await expect(barcelonaPin).toHaveAttribute("data-active", "true");
