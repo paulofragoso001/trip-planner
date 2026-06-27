@@ -883,6 +883,66 @@ test.describe("mobile soft-launch UX", () => {
     });
   });
 
+  test("v1 trips API stores real destination coordinates and supports year reads", async ({ request }) => {
+    test.setTimeout(60_000);
+
+    const tripName = `V1 Barcelona API ${Date.now()}`;
+    const createResponse = await request.post(`${baseUrl}/api/v1/trips`, {
+      data: {
+        country_code: "es",
+        destination: "Barcelona, Catalonia, Spain",
+        destination_formatted_address: "Barcelona, Catalonia, Spain",
+        destination_lat: 41.3851,
+        destination_lng: 2.1734,
+        end_date: "2026-07-24",
+        expense_budget: 1800,
+        start_date: "2026-07-10",
+        travel_style: "balanced",
+        trip_name: tripName
+      },
+      headers: { "x-cypress-dashboard": "true" }
+    });
+    expect(createResponse.status()).toBe(201);
+    const createPayload = await createResponse.json();
+    const createdTripId = createPayload?.trip?.id;
+
+    try {
+      expect(createPayload).toMatchObject({
+        success: true,
+        trip: {
+          countryCode: "ES",
+          country_code: "ES",
+          destination_name: "Barcelona, Catalonia, Spain",
+          expense_budget: 1800,
+          lat: 41.3851,
+          lng: 2.1734,
+          travel_style: "balanced",
+          trip_name: tripName
+        }
+      });
+
+      const readResponse = await request.get(`${baseUrl}/api/v1/trips?year=2026`, {
+        headers: { "x-cypress-dashboard": "true" }
+      });
+      expect(readResponse.status()).toBe(200);
+      const readPayload = await readResponse.json();
+      expect(readPayload.success).toBe(true);
+      expect(readPayload.trips).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            countryCode: "ES",
+            id: createdTripId,
+            lat: 41.3851,
+            lng: 2.1734,
+            trip_name: tripName
+          })
+        ])
+      );
+    } finally {
+      await deleteTripForTest(request, createdTripId);
+    }
+  });
+
   test("mobile trip creation redirects to the trip wallet hub", async ({ page, request }) => {
     test.setTimeout(90_000);
     await page.setViewportSize({ height: 900, width: 390 });
