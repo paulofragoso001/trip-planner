@@ -12,6 +12,7 @@ type CustomGlobeRendererProps = {
   className?: string;
   defaultFocusWhenEmpty?: boolean;
   onTripPinSelect?: (tripId: string) => void;
+  renderTripPins?: boolean;
   showCountryPin?: boolean;
   surfaceState?: AlmidyMapSurfaceState;
   tripPins?: AlmidyLaunchGlobeTripPin[];
@@ -23,6 +24,7 @@ export function CustomGlobeRenderer({
   className,
   defaultFocusWhenEmpty,
   onTripPinSelect,
+  renderTripPins,
   showCountryPin,
   surfaceState,
   tripPins,
@@ -47,6 +49,7 @@ export function CustomGlobeRenderer({
         locationStatus={unifiedMap?.locationStatus}
         onLocateUser={unifiedMap?.locateUser}
         onTripPinSelect={onTripPinSelect}
+        renderTripPins={renderTripPins}
         showCountryPin={showCountryPin}
         tripPins={tripPins}
         useLocationFocus={useLocationFocus}

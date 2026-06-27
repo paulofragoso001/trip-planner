@@ -17,6 +17,7 @@ type AlmidyLaunchGlobeProps = {
   locationStatus?: LocationRequestState;
   onLocateUser?: () => Promise<AlmidyLocationState> | void;
   onTripPinSelect?: (tripId: string) => void;
+  renderTripPins?: boolean;
   showCountryPin?: boolean;
   tripPins?: AlmidyLaunchGlobeTripPin[];
   useLocationFocus?: boolean;
@@ -37,6 +38,11 @@ type LocationRequestState = "idle" | "loading" | "ready" | "error";
 
 type GoogleMaps3DLatLngAltitude = {
   altitude?: number;
+  lat: number;
+  lng: number;
+};
+
+type TripPinCoordinate = {
   lat: number;
   lng: number;
 };
@@ -90,6 +96,7 @@ const LAUNCH_CAMERA_HEADING = 0;
 const LAUNCH_CAMERA_RANGE = 0;
 const LAUNCH_CAMERA_TARGET = { altitude: 6_500_000, lat: 35, lng: -97 };
 const LAUNCH_CAMERA_TILT = 0;
+const TRIP_OVERVIEW_CAMERA_ALTITUDE = 4_600_000;
 const USER_LOCATION_CAMERA_ALTITUDE = 15_000;
 const USER_LOCATION_MARKER_TAG = "gmp-marker";
 
@@ -133,6 +140,7 @@ export function AlmidyLaunchGlobe({
   locationStatus = "idle",
   onLocateUser,
   onTripPinSelect,
+  renderTripPins = true,
   showCountryPin = true,
   tripPins = [],
   useLocationFocus = true
@@ -230,6 +238,7 @@ export function AlmidyLaunchGlobe({
         launchPhase={launchPhase}
         onTripPinSelect={onTripPinSelect}
         reduceMotion={reduceMotion}
+        renderTripPins={renderTripPins}
         showCountryPin={showCountryPin}
         activeTripId={activeTripId}
         tripPins={tripPins}
@@ -246,6 +255,7 @@ function GoogleMaps3DLaunchGlobe({
   launchPhase,
   onTripPinSelect,
   reduceMotion,
+  renderTripPins,
   showCountryPin,
   tripPins
 }: {
@@ -256,6 +266,7 @@ function GoogleMaps3DLaunchGlobe({
   launchPhase: LaunchPhase;
   onTripPinSelect?: (tripId: string) => void;
   reduceMotion: boolean;
+  renderTripPins: boolean;
   showCountryPin: boolean;
   tripPins: AlmidyLaunchGlobeTripPin[];
 }) {
@@ -263,6 +274,14 @@ function GoogleMaps3DLaunchGlobe({
   const mapRef = useRef<GoogleMaps3DMapElement | null>(null);
   const readyRef = useRef(false);
   const [state, setState] = useState<LaunchGlobeState>("loading-google");
+  const shellUserLocationCenter = userCameraCenterForFocus(focus);
+  const shellTripOverviewCenter = tripCameraCenterForPins(tripPins, activeTripId);
+  const shellCameraCenter = shellUserLocationCenter ?? shellTripOverviewCenter ?? LAUNCH_CAMERA_TARGET;
+  const shellCameraIntent = shellUserLocationCenter
+    ? "user-location"
+    : shellTripOverviewCenter
+      ? "trip-overview"
+      : "launch";
 
   useEffect(() => {
     let cancelled = false;
@@ -327,7 +346,8 @@ function GoogleMaps3DLaunchGlobe({
         }
 
         const userLocationCenter = userCameraCenterForFocus(focus);
-        const center = userLocationCenter ?? LAUNCH_CAMERA_TARGET;
+        const tripOverviewCenter = tripCameraCenterForPins(tripPins, activeTripId);
+        const center = userLocationCenter ?? tripOverviewCenter ?? LAUNCH_CAMERA_TARGET;
         const gestureHandling = maps3d.GestureHandling?.GREEDY ?? "GREEDY";
         const mapMode = maps3d.MapMode?.HYBRID ?? "HYBRID";
 
@@ -368,6 +388,8 @@ function GoogleMaps3DLaunchGlobe({
         if (userLocationCenter) {
           mapElement.setAttribute("data-camera-intent", "user-location");
           mapElement.appendChild(createUserLocationMarker(focus));
+        } else if (tripOverviewCenter) {
+          mapElement.setAttribute("data-camera-intent", "trip-overview");
         } else {
           mapElement.setAttribute("data-camera-intent", "launch");
         }
@@ -414,11 +436,13 @@ function GoogleMaps3DLaunchGlobe({
       mapRef.current = null;
       mapElement?.remove();
     };
-  }, [focus]);
+  }, [activeTripId, focus, tripPins]);
 
   if (state !== "ready" && state !== "loading-google") {
     return (
       <LaunchGlobePreflight
+        cameraCenter={shellCameraCenter}
+        cameraIntent={shellCameraIntent}
         className={className}
         heroState={heroState}
         launchPhase={launchPhase}
@@ -432,6 +456,8 @@ function GoogleMaps3DLaunchGlobe({
     <>
       {state === "ready" ? null : (
         <LaunchGlobePreflight
+          cameraCenter={shellCameraCenter}
+          cameraIntent={shellCameraIntent}
           className={className}
           heroState={heroState}
           launchPhase={launchPhase}
@@ -449,6 +475,8 @@ function GoogleMaps3DLaunchGlobe({
         reduceMotion={reduceMotion}
         state={state}
         testId={state === "ready" ? "almidy-launch-globe" : "almidy-google-maps-3d-preflight"}
+        cameraCenter={shellCameraCenter}
+        cameraIntent={shellCameraIntent}
       >
         <div
           className="absolute inset-0 z-[1] overflow-hidden bg-black"
@@ -480,11 +508,13 @@ function GoogleMaps3DLaunchGlobe({
             </div>
           </div>
         ) : null}
-        <TripFlagPins
-          activeTripId={activeTripId}
-          onTripPinSelect={onTripPinSelect}
-          pins={tripPins}
-        />
+        {renderTripPins ? (
+          <TripFlagPins
+            activeTripId={activeTripId}
+            onTripPinSelect={onTripPinSelect}
+            pins={tripPins}
+          />
+        ) : null}
         <div className="pointer-events-none absolute inset-0 z-10 bg-[linear-gradient(180deg,rgba(0,0,0,0.78)_0%,rgba(0,0,0,0.08)_21%,rgba(0,0,0,0)_58%,rgba(0,0,0,0.42)_100%)]" />
         <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-32 bg-[linear-gradient(180deg,rgba(0,0,0,0.9),rgba(0,0,0,0.32)_48%,transparent)]" />
         <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-[24%] bg-[linear-gradient(180deg,transparent,rgba(0,0,0,0.36)_58%,rgba(0,0,0,0.72)_100%)]" />
@@ -494,12 +524,16 @@ function GoogleMaps3DLaunchGlobe({
 }
 
 function LaunchGlobePreflight({
+  cameraCenter,
+  cameraIntent,
   className,
   heroState,
   launchPhase,
   reduceMotion,
   state
 }: {
+  cameraCenter?: GoogleMaps3DLatLngAltitude;
+  cameraIntent?: "launch" | "trip-overview" | "user-location";
   className?: string;
   heroState: HeroState;
   launchPhase: LaunchPhase;
@@ -509,6 +543,8 @@ function LaunchGlobePreflight({
   return (
     <LaunchGlobeShell
       className={className}
+      cameraCenter={cameraCenter}
+      cameraIntent={cameraIntent}
       heroState={heroState}
       launchPhase={launchPhase}
       reduceMotion={reduceMotion}
@@ -526,6 +562,8 @@ function LaunchGlobePreflight({
 }
 
 function LaunchGlobeShell({
+  cameraCenter,
+  cameraIntent,
   children,
   className,
   heroState,
@@ -534,6 +572,8 @@ function LaunchGlobeShell({
   state,
   testId = "almidy-launch-globe"
 }: {
+  cameraCenter?: GoogleMaps3DLatLngAltitude;
+  cameraIntent?: "launch" | "trip-overview" | "user-location";
   children: ReactNode;
   className?: string;
   heroState: HeroState;
@@ -552,6 +592,10 @@ function LaunchGlobeShell({
         .filter(Boolean)
         .join(" ")}
       data-home-hero-mode={`home-hero-mode: ${reduceMotion ? "reduced-motion" : "almidy-owned"}`}
+      data-camera-altitude={cameraCenter?.altitude !== undefined ? String(cameraCenter.altitude) : undefined}
+      data-camera-intent={cameraIntent}
+      data-camera-latitude={cameraCenter ? cameraCenter.lat.toFixed(5) : undefined}
+      data-camera-longitude={cameraCenter ? cameraCenter.lng.toFixed(5) : undefined}
       data-hero-mode={heroState}
       data-launch-globe-state={state}
       data-launch-phase={launchPhase}
@@ -572,6 +616,26 @@ function userCameraCenterForFocus(focus: CountryFocus): GoogleMaps3DLatLngAltitu
     altitude: USER_LOCATION_CAMERA_ALTITUDE,
     lat: focus.lat,
     lng: focus.lng
+  };
+}
+
+function tripCameraCenterForPins(
+  pins: AlmidyLaunchGlobeTripPin[],
+  activeTripId?: string | null
+): GoogleMaps3DLatLngAltitude | null {
+  const anchorPin =
+    (activeTripId ? pins.find((pin) => (pin.tripId ?? pin.id) === activeTripId) : null) ??
+    pins.find((pin) => tripPinCoordinate(pin));
+  const coordinate = anchorPin ? tripPinCoordinate(anchorPin) : null;
+
+  if (!coordinate) {
+    return null;
+  }
+
+  return {
+    altitude: TRIP_OVERVIEW_CAMERA_ALTITUDE,
+    lat: coordinate.lat,
+    lng: coordinate.lng
   };
 }
 
@@ -613,15 +677,18 @@ function TripFlagPins({
   return (
     <div className="pointer-events-none absolute inset-0 z-20" data-testid="mobile-trips-globe-flag-layer">
       {pins.map((pin, index) => {
-        const position = tripPinScreenPosition(pin, index);
+        const position = tripPinScreenPosition(pin, index, activeTripId, pins);
         const tripId = pin.tripId ?? pin.id;
         const isActive = activeTripId ? activeTripId === tripId : index === 0;
+        const coordinate = tripPinCoordinate(pin);
         return (
           <button
             aria-label={`Select ${pin.label}`}
             className="pointer-events-auto absolute -translate-x-1/2 -translate-y-1/2 touch-manipulation text-center focus:outline-none"
             data-active={isActive ? "true" : "false"}
             data-country-code={pin.countryCode}
+            data-pin-latitude={coordinate ? coordinate.lat.toFixed(5) : undefined}
+            data-pin-longitude={coordinate ? coordinate.lng.toFixed(5) : undefined}
             data-testid="mobile-trips-globe-flag-pin"
             data-trip-id={pin.tripId ?? undefined}
             key={pin.id}
@@ -657,15 +724,31 @@ function TripFlagPins({
   );
 }
 
-function tripPinScreenPosition(pin: AlmidyLaunchGlobeTripPin, index: number) {
-  if (
-    typeof pin.lat === "number" &&
-    Number.isFinite(pin.lat) &&
-    typeof pin.lng === "number" &&
-    Number.isFinite(pin.lng)
-  ) {
-    const x = ((normalizeLongitude(pin.lng) + 168) / 148) * 100;
-    const y = ((74 - clamp(pin.lat, -58, 74)) / 132) * 100;
+function tripPinScreenPosition(
+  pin: AlmidyLaunchGlobeTripPin,
+  index: number,
+  activeTripId: string | null | undefined,
+  pins: AlmidyLaunchGlobeTripPin[]
+) {
+  const coordinate = tripPinCoordinate(pin);
+  const activePin =
+    (activeTripId ? pins.find((candidate) => (candidate.tripId ?? candidate.id) === activeTripId) : null) ??
+    pins.find((candidate) => tripPinCoordinate(candidate));
+  const activeCoordinate = activePin ? tripPinCoordinate(activePin) : null;
+
+  if (coordinate && activeCoordinate) {
+    const longitudeDelta = normalizeLongitude(coordinate.lng - activeCoordinate.lng);
+    const latitudeDelta = coordinate.lat - activeCoordinate.lat;
+
+    return {
+      x: clamp(58 + longitudeDelta * 1.12, 7, 93),
+      y: clamp(49 - latitudeDelta * 1.18, 13, 82)
+    };
+  }
+
+  if (coordinate) {
+    const x = ((normalizeLongitude(coordinate.lng) + 180) / 360) * 100;
+    const y = latitudeToMercatorY(coordinate.lat);
     return {
       x: clamp(x, 7, 93),
       y: clamp(y, 13, 82)
@@ -678,6 +761,29 @@ function tripPinScreenPosition(pin: AlmidyLaunchGlobeTripPin, index: number) {
     x: clamp(focus.pinX + spread, 7, 93),
     y: clamp(focus.pinY + Math.abs(spread) * 0.38, 13, 82)
   };
+}
+
+function tripPinCoordinate(pin: AlmidyLaunchGlobeTripPin): TripPinCoordinate | null {
+  if (
+    typeof pin.lat === "number" &&
+    Number.isFinite(pin.lat) &&
+    typeof pin.lng === "number" &&
+    Number.isFinite(pin.lng)
+  ) {
+    return {
+      lat: pin.lat,
+      lng: normalizeLongitude(pin.lng)
+    };
+  }
+
+  return null;
+}
+
+function latitudeToMercatorY(latitude: number) {
+  const clampedLatitude = clamp(latitude, -85, 85);
+  const radians = clampedLatitude * Math.PI / 180;
+  const mercator = Math.log(Math.tan(Math.PI / 4 + radians / 2));
+  return (1 - mercator / Math.PI) / 2 * 100;
 }
 
 function shouldUpdateFocus(currentCountry: CountryFocus | null, nextCountry: CountryFocus) {

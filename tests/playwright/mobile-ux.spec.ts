@@ -410,6 +410,69 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByTestId("mobile-home-wallet-content")).toHaveCount(0);
   });
 
+  test("mobile trips globe pins Barcelona trips at saved destination coordinates", async ({ page, request }) => {
+    test.setTimeout(90_000);
+    await page.setViewportSize({ height: 900, width: 390 });
+    await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
+    await installMockMobileLocation(page);
+    await installMockGoogleMaps3D(page);
+
+    const tripName = `Barcelona coordinate regression ${Date.now()}`;
+    const response = await request.post(`${baseUrl}/api/trips`, {
+      data: {
+        destination: "Barcelona, Spain",
+        destination_lat: 41.3874,
+        destination_lng: 2.1686,
+        end_date: "2026-07-30",
+        name: tripName,
+        start_date: "2026-06-26",
+        status: "Planning",
+        travel_style: "balanced"
+      },
+      headers: { "x-cypress-dashboard": "true" }
+    });
+    expect(response.status()).toBe(201);
+    const payload = await response.json();
+    const tripId = payload?.trip?.id;
+
+    try {
+      await page.goto(`${baseUrl}/dashboard/trips`, { waitUntil: "commit" });
+      await expect(page.getByTestId("mobile-trips-country-map-screen")).toBeVisible({ timeout: 20_000 });
+
+      const barcelonaCard = page.locator(
+        `[data-testid="mobile-trips-overview-card"][data-trip-id="${tripId}"]`
+      );
+      await barcelonaCard.scrollIntoViewIfNeeded();
+      await expect(barcelonaCard).toBeVisible();
+      await expect(barcelonaCard).toContainText("Barcelona");
+      await expect(page.getByTestId("mobile-trips-country-map-screen")).toHaveAttribute(
+        "data-globe-trip-pin-countries",
+        /(^|,)ES(,|$)/
+      );
+      await expect(page.getByTestId("mobile-trips-country-map-screen")).toHaveAttribute(
+        "data-globe-trip-pin-ids",
+        new RegExp(`(^|,)${escapeRegExp(tripId)}(,|$)`)
+      );
+      await expect(page.getByTestId("almidy-launch-globe")).toHaveAttribute("data-map-system", "almidy-google-maps-3d");
+      await barcelonaCard.click();
+
+      const barcelonaPin = page.locator('[data-testid="mobile-trips-globe-flag-pin"][data-country-code="ES"]');
+      await expect(barcelonaPin).toBeVisible();
+      await expect(barcelonaPin).toHaveAttribute("data-trip-id", tripId);
+      await expect(barcelonaPin).toHaveAttribute("data-country-code", "ES");
+      await expect(barcelonaPin).toHaveAttribute("data-pin-latitude", "41.38740");
+      await expect(barcelonaPin).toHaveAttribute("data-pin-longitude", "2.16860");
+      await expect(barcelonaPin).toHaveAttribute("data-active", "true");
+
+      const globe = page.getByTestId("almidy-launch-globe");
+      await expect(globe).toHaveAttribute("data-camera-intent", "trip-overview");
+      await expect(globe).toHaveAttribute("data-camera-latitude", "41.38740");
+      await expect(globe).toHaveAttribute("data-camera-longitude", "2.16860");
+    } finally {
+      await deleteTripForTest(request, tripId);
+    }
+  });
+
   test("mobile trips secondary list route remains available", async ({ page }) => {
     test.setTimeout(90_000);
     await page.setViewportSize({ height: 900, width: 390 });

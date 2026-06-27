@@ -318,6 +318,9 @@ function MobileTripsCountriesMap({
       data-camera-command={unifiedMap?.surfaceState.cameraCommand?.type ?? undefined}
       data-hydrated={hydrated ? "true" : "false"}
       data-map-mode={unifiedMap?.surfaceState.mode}
+      data-globe-trip-pin-countries={globeTripPins.map((pin) => pin.countryCode).join(",")}
+      data-globe-trip-pin-count={String(globeTripPins.length)}
+      data-globe-trip-pin-ids={globeTripPins.map((pin) => pin.tripId ?? pin.id).join(",")}
       data-selected-map-id={unifiedMap?.surfaceState.selectedId ?? undefined}
       data-selected-pin-country-code={selectedPin?.countryCode ?? undefined}
       data-selected-pin-label={selectedPin?.label ?? undefined}
@@ -359,7 +362,7 @@ function MobileTripsCountriesMap({
         carouselRef={carouselRef}
         cardRefs={carouselCardRefs}
         onScroll={handleCarouselScroll}
-        onSelectTrip={(tripId) => selectTripOnMap(tripId)}
+        onSelectTrip={(tripId) => selectTripOnMap(tripId, { scrollCarousel: false })}
         trips={carouselTrips}
       />
 
@@ -569,15 +572,85 @@ function MobileTripsGlobeCanvas({
         className="absolute inset-0 h-full min-h-[100dvh] w-full"
         defaultFocusWhenEmpty
         onTripPinSelect={onTripPinSelect}
+        renderTripPins={false}
         showCountryPin={false}
         tripPins={tripPins}
         useLocationFocus={false}
+      />
+      <MobileTripsGlobeFlagLayer
+        activeTripId={activeTripId}
+        onTripPinSelect={onTripPinSelect}
+        pins={tripPins}
       />
       <div className="pointer-events-none absolute inset-0 z-10 bg-[linear-gradient(180deg,rgba(0,0,0,0.24),rgba(4,10,20,0.42)_35%,rgba(0,0,0,0.72)_100%)]" />
       <div
         className="pointer-events-none absolute inset-0 z-10 bg-[#030916]/30 mix-blend-multiply"
         aria-hidden="true"
       />
+    </div>
+  );
+}
+
+function MobileTripsGlobeFlagLayer({
+  activeTripId,
+  onTripPinSelect,
+  pins
+}: {
+  activeTripId: string | null;
+  onTripPinSelect: (tripId: string) => void;
+  pins: AlmidyLaunchGlobeTripPin[];
+}) {
+  if (!pins.length) {
+    return null;
+  }
+
+  return (
+    <div className="pointer-events-none absolute inset-0 z-20" data-testid="mobile-trips-globe-flag-layer">
+      {pins.map((pin, index) => {
+        const tripId = pin.tripId ?? pin.id;
+        const isActive = activeTripId ? activeTripId === tripId : index === 0;
+        const coordinate = globePinCoordinate(pin);
+        const position = globePinScreenPosition(pin, index, activeTripId, pins);
+
+        return (
+          <button
+            aria-label={`Select ${pin.label}`}
+            className="pointer-events-auto absolute -translate-x-1/2 -translate-y-1/2 touch-manipulation text-center focus:outline-none"
+            data-active={isActive ? "true" : "false"}
+            data-country-code={pin.countryCode}
+            data-pin-latitude={coordinate ? coordinate.lat.toFixed(5) : undefined}
+            data-pin-longitude={coordinate ? coordinate.lng.toFixed(5) : undefined}
+            data-testid="mobile-trips-globe-flag-pin"
+            data-trip-id={pin.tripId ?? undefined}
+            key={pin.id}
+            onClick={() => onTripPinSelect(tripId)}
+            style={{
+              left: `${position.x}%`,
+              top: `${position.y}%`
+            }}
+            type="button"
+          >
+            <div
+              className={cn(
+                "mx-auto grid h-11 w-11 place-items-center overflow-hidden rounded-full border-[2.5px] text-2xl leading-none shadow-[0_4px_0_rgba(0,0,0,0.95),0_10px_24px_rgba(0,0,0,0.36)] transition duration-200",
+                isActive
+                  ? "scale-125 border-orange-500 bg-white ring-4 ring-orange-400/60"
+                  : "border-black bg-white ring-1 ring-white/75"
+              )}
+            >
+              <span aria-hidden="true">{pin.flag}</span>
+            </div>
+            <div
+              className={cn(
+                "mt-1 max-w-28 truncate rounded px-1.5 py-0.5 text-[0.72rem] font-black leading-none [text-shadow:0_2px_2px_rgba(0,0,0,0.95),0_0_8px_rgba(0,0,0,0.85)]",
+                isActive ? "bg-orange-600 text-white" : "bg-black/56 text-white"
+              )}
+            >
+              {pin.label}
+            </div>
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -779,6 +852,72 @@ function tripToGlobeFlagPin(trip: Trip): AlmidyLaunchGlobeTripPin | null {
 
 function isGlobeTripPin(pin: AlmidyLaunchGlobeTripPin | null): pin is AlmidyLaunchGlobeTripPin {
   return Boolean(pin);
+}
+
+function globePinScreenPosition(
+  pin: AlmidyLaunchGlobeTripPin,
+  index: number,
+  activeTripId: string | null,
+  pins: AlmidyLaunchGlobeTripPin[]
+) {
+  const coordinate = globePinCoordinate(pin);
+  const activePin =
+    (activeTripId ? pins.find((candidate) => (candidate.tripId ?? candidate.id) === activeTripId) : null) ??
+    pins.find((candidate) => globePinCoordinate(candidate));
+  const activeCoordinate = activePin ? globePinCoordinate(activePin) : null;
+
+  if (coordinate && activeCoordinate) {
+    const longitudeDelta = normalizeTripLongitude(coordinate.lng - activeCoordinate.lng);
+    const latitudeDelta = coordinate.lat - activeCoordinate.lat;
+
+    return {
+      x: clampTripMapValue(58 + longitudeDelta * 1.12, 7, 93),
+      y: clampTripMapValue(49 - latitudeDelta * 1.18, 13, 82)
+    };
+  }
+
+  if (coordinate) {
+    return {
+      x: clampTripMapValue(((coordinate.lng + 180) / 360) * 100, 7, 93),
+      y: clampTripMapValue(((85 - clampTripMapValue(coordinate.lat, -85, 85)) / 170) * 100, 13, 82)
+    };
+  }
+
+  const countryCode = pin.countryCode.toUpperCase();
+  const fallbackByCountry: Record<string, { x: number; y: number }> = {
+    ES: { x: 58, y: 49 },
+    US: { x: 58, y: 49 }
+  };
+  const fallback = fallbackByCountry[countryCode] ?? { x: 58 + ((index % 5) - 2) * 3, y: 49 };
+
+  return {
+    x: clampTripMapValue(fallback.x, 7, 93),
+    y: clampTripMapValue(fallback.y, 13, 82)
+  };
+}
+
+function globePinCoordinate(pin: AlmidyLaunchGlobeTripPin) {
+  if (
+    typeof pin.lat === "number" &&
+    Number.isFinite(pin.lat) &&
+    typeof pin.lng === "number" &&
+    Number.isFinite(pin.lng)
+  ) {
+    return {
+      lat: pin.lat,
+      lng: normalizeTripLongitude(pin.lng)
+    };
+  }
+
+  return null;
+}
+
+function clampTripMapValue(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
+}
+
+function normalizeTripLongitude(longitude: number) {
+  return ((((longitude + 180) % 360) + 360) % 360) - 180;
 }
 
 function tripYear(trip: Trip) {
