@@ -557,6 +557,49 @@ test.describe("mobile soft-launch UX", () => {
     }
   });
 
+  test("mobile trips globe renders empty year state without stalling loader", async ({ page, request }) => {
+    test.setTimeout(90_000);
+    await page.setViewportSize({ height: 900, width: 390 });
+    await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
+    await installMockMobileLocation(page);
+    await installMockGoogleMaps3D(page);
+
+    const unmappedTripResponse = await request.post(`${baseUrl}/api/trips`, {
+      data: {
+        destination: "Coordinate pending destination",
+        end_date: "2099-07-30",
+        name: `Unmapped empty globe regression ${Date.now()}`,
+        start_date: "2099-06-26",
+        status: "Planning",
+        travel_style: "balanced"
+      },
+      headers: { "x-cypress-dashboard": "true" }
+    });
+    expect(unmappedTripResponse.status()).toBe(201);
+    const unmappedTripPayload = await unmappedTripResponse.json();
+    const unmappedTripId = unmappedTripPayload?.trip?.id;
+
+    try {
+      await page.goto(`${baseUrl}/dashboard/trips`, { waitUntil: "commit" });
+      await expect(page.getByTestId("mobile-trips-country-map-screen")).toBeVisible({ timeout: 20_000 });
+      await expect(page.getByTestId("mobile-trips-overview-year-select")).toHaveValue("2099");
+      await expect(page.getByTestId("mobile-country-map-canvas")).toHaveAttribute(
+        "data-map-trip-state",
+        "empty"
+      );
+      await expect(page.getByTestId("mobile-country-map-canvas")).toHaveAttribute(
+        "data-map-instance-key",
+        "trips-globe-2099-empty"
+      );
+      await expect(page.getByText("Loading trips...")).toHaveCount(0);
+      await expect(page.getByTestId("almidy-launch-globe")).toHaveAttribute("data-map-system", "almidy-google-maps-3d");
+      await expect(page.getByTestId("mobile-trips-empty-year-map-state")).toContainText("No trips saved for 2099");
+      await expect(page.getByTestId("mobile-trips-globe-flag-pin")).toHaveCount(0);
+    } finally {
+      await deleteTripForTest(request, unmappedTripId);
+    }
+  });
+
   test("mobile trips secondary list route remains available", async ({ page }) => {
     test.setTimeout(90_000);
     await page.setViewportSize({ height: 900, width: 390 });

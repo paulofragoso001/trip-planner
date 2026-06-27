@@ -358,6 +358,8 @@ function MobileTripsCountriesMap({
     >
       <MobileTripsGlobeCanvas
         activeTripId={activeTripId}
+        activeYear={activeYear}
+        hydrated={hydrated}
         onTripPinSelect={handleTripPinSelect}
         tripPins={globeTripPins}
       />
@@ -579,28 +581,36 @@ function MobileTripsOverviewPanel({
 
 function MobileTripsGlobeCanvas({
   activeTripId,
+  activeYear,
+  hydrated,
   onTripPinSelect,
   tripPins
 }: {
   activeTripId: string | null;
+  activeYear: string;
+  hydrated: boolean;
   onTripPinSelect: (tripId: string) => void;
   tripPins: AlmidyLaunchGlobeTripPin[];
 }) {
-  const mapInstanceKey = `trips-globe-${tripPins.length}-${tripPins
-    .map((pin) => [
-      pin.tripId ?? pin.id,
-      pin.countryCode,
-      Number(pin.lat).toFixed(5),
-      Number(pin.lng).toFixed(5)
-    ].join(":"))
-    .join("|")}`;
+  const hasTripPins = tripPins.length > 0;
+  const mapInstanceKey = hasTripPins
+    ? `trips-globe-${tripPins.length}-${tripPins
+        .map((pin) => [
+          pin.tripId ?? pin.id,
+          pin.countryCode,
+          Number(pin.lat).toFixed(5),
+          Number(pin.lng).toFixed(5)
+        ].join(":"))
+        .join("|")}`
+    : `trips-globe-${activeYear}-empty`;
 
-  if (!tripPins.length) {
+  if (!hydrated) {
     return (
       <div
         className="absolute inset-0 z-10 flex items-center justify-center overflow-visible bg-[#090e14] [transform-style:preserve-3d]"
-        data-map-instance-key="trips-globe-empty"
+        data-map-instance-key="trips-globe-loading"
         data-map-system="almidy-google-maps-3d"
+        data-map-trip-state="loading"
         data-testid="mobile-country-map-canvas"
       >
         <span className="text-sm font-semibold text-white/42">Loading trips...</span>
@@ -613,6 +623,7 @@ function MobileTripsGlobeCanvas({
       className="absolute inset-0 z-10 overflow-visible bg-black [transform-style:preserve-3d]"
       data-map-instance-key={mapInstanceKey}
       data-map-system="almidy-google-maps-3d"
+      data-map-trip-state={hasTripPins ? "ready" : "empty"}
       data-testid="mobile-country-map-canvas"
     >
       <CustomGlobeRenderer
@@ -626,6 +637,14 @@ function MobileTripsGlobeCanvas({
         tripPins={tripPins}
         useLocationFocus={false}
       />
+      {!hasTripPins ? (
+        <div
+          className="pointer-events-none absolute left-1/2 top-[31%] z-30 -translate-x-1/2 rounded-2xl border border-white/10 bg-black/62 px-4 py-2 text-center text-xs font-bold text-white/58 shadow-[0_18px_46px_rgba(0,0,0,0.38)] backdrop-blur-xl"
+          data-testid="mobile-trips-empty-year-map-state"
+        >
+          No trips saved for {activeYear}
+        </div>
+      ) : null}
       <div className="pointer-events-none absolute inset-0 z-10 bg-[linear-gradient(180deg,rgba(0,0,0,0.24),rgba(4,10,20,0.42)_35%,rgba(0,0,0,0.72)_100%)]" />
       <div
         className="pointer-events-none absolute inset-0 z-10 bg-[#030916]/30 mix-blend-multiply"
