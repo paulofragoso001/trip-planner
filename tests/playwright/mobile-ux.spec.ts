@@ -1435,27 +1435,12 @@ test.describe("mobile soft-launch UX", () => {
       "almidy-google-maps-3d"
     );
     await expect(page.getByTestId("almidy-google-maps-3d-host")).toBeVisible();
-    await expect(google3DGlobe).toHaveAttribute(
-      "data-user-latitude",
-      "25.76170"
-    );
-    await expect(google3DGlobe).toHaveAttribute(
-      "data-user-longitude",
-      "-80.19180"
-    );
-    await expect(google3DGlobe).toHaveAttribute("data-camera-intent", "user-location");
-    await expect(google3DGlobe).toHaveAttribute("data-camera-altitude", "15000");
-    await expect(google3DGlobe).toHaveAttribute("data-camera-latitude", "25.76170");
-    await expect(google3DGlobe).toHaveAttribute("data-camera-longitude", "-80.19180");
-    await expect(page.getByTestId("almidy-google-maps-3d-user-marker")).toHaveAttribute(
-      "position",
-      "25.76170, -80.19180"
-    );
-    await expect(page.getByTestId("mobile-home-country-pin")).toHaveAttribute("data-location-source", "user");
-    await expect(page.getByTestId("mobile-home-country-pin")).toHaveAttribute("data-user-latitude", "25.76170");
-    await expect(page.getByTestId("mobile-home-country-pin")).toHaveAttribute("data-user-longitude", "-80.19180");
-    await expect(page.getByTestId("mobile-home-country-pin")).toHaveAttribute("data-pin-coordinate", "25.76170,-80.19180");
-    await expect(page.getByTestId("mobile-home-country-name")).toHaveText("United States");
+    await expect(google3DGlobe).toHaveAttribute("data-camera-intent", "launch");
+    await expect(google3DGlobe).toHaveAttribute("data-camera-altitude", "6500000");
+    await expect(google3DGlobe).toHaveAttribute("data-camera-latitude", "35.00000");
+    await expect(google3DGlobe).toHaveAttribute("data-camera-longitude", "-97.00000");
+    await expect(page.getByTestId("almidy-google-maps-3d-user-marker")).toHaveCount(0);
+    await expect(page.getByTestId("mobile-home-country-pin")).toHaveCount(0);
   });
 
   test("mobile launch globe is draggable interactive 3D", async ({ page }) => {
@@ -1474,10 +1459,10 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByTestId("almidy-launch-globe-diagnostic")).toHaveCount(0);
     await expect(google3DGlobe).toHaveAttribute("gesture-handling", "greedy");
     await expect(google3DGlobe).toHaveAttribute("mode", "hybrid");
-    await expect(google3DGlobe).toHaveAttribute("data-camera-intent", "user-location");
-    await expect(google3DGlobe).toHaveAttribute("data-camera-altitude", "15000");
-    await expect(google3DGlobe).toHaveAttribute("data-camera-latitude", "25.76170");
-    await expect(google3DGlobe).toHaveAttribute("data-camera-longitude", "-80.19180");
+    await expect(google3DGlobe).toHaveAttribute("data-camera-intent", "launch");
+    await expect(google3DGlobe).toHaveAttribute("data-camera-altitude", "6500000");
+    await expect(google3DGlobe).toHaveAttribute("data-camera-latitude", "35.00000");
+    await expect(google3DGlobe).toHaveAttribute("data-camera-longitude", "-97.00000");
     await expect(google3DGlobe).toHaveAttribute("fov", "42");
     await expect(google3DGlobe).toHaveAttribute("heading", "0");
     await expect(google3DGlobe).toHaveAttribute("range", "0");
@@ -1485,16 +1470,8 @@ test.describe("mobile soft-launch UX", () => {
     await expect(google3DGlobe).toHaveAttribute("min-altitude", "180000");
     await expect(google3DGlobe).toHaveAttribute("min-tilt", "0");
     await expect(google3DGlobe).toHaveAttribute("max-altitude", "34000000");
-    await expect(google3DGlobe).toHaveAttribute("data-user-latitude", "25.76170");
-    await expect(google3DGlobe).toHaveAttribute("data-user-longitude", "-80.19180");
-    await expect(page.getByTestId("almidy-google-maps-3d-user-marker")).toHaveAttribute(
-      "altitude-mode",
-      "clamp-to-ground"
-    );
-    await expect(page.getByTestId("almidy-google-maps-3d-user-marker")).toHaveAttribute(
-      "position",
-      "25.76170, -80.19180"
-    );
+    await expect(page.getByTestId("almidy-google-maps-3d-user-marker")).toHaveCount(0);
+    await expect(page.getByTestId("mobile-home-country-pin")).toHaveCount(0);
     await expect(page.getByTestId("home-custom-globe")).toHaveCount(0);
     await expectNoHomeGoogleMapsCopy(page);
   });
@@ -1631,9 +1608,9 @@ test.describe("mobile soft-launch UX", () => {
 
     await page.goto(`${baseUrl}/dashboard`, { waitUntil: "commit" });
     await expect(page.getByTestId("almidy-launch-globe")).toHaveAttribute("data-hero-mode", "google-maps-3d");
-    await expect(page.getByTestId("almidy-launch-globe")).toHaveAttribute("data-launch-globe-state", "missing-location");
-    await expect(page.getByTestId("almidy-launch-globe-state")).toHaveAttribute("data-map-runtime", "missing-location");
-    await expect(page.getByTestId("almidy-google-maps-3d-globe")).toHaveCount(0);
+    await expect(page.getByTestId("almidy-launch-globe")).toHaveAttribute("data-launch-globe-state", "ready");
+    await expect(page.getByTestId("almidy-google-maps-3d-globe")).toBeVisible();
+    await expect(page.getByTestId("almidy-google-maps-3d-globe")).toHaveAttribute("data-camera-intent", "launch");
     await expect(page.getByTestId("earth-only-visual")).toHaveCount(0);
     await expect(page.getByTestId("almidy-photorealistic-globe")).toHaveCount(0);
     await expect(page.getByTestId("home-photorealistic-globe")).toHaveCount(0);
@@ -1695,9 +1672,9 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByTestId("mobile-home-earth-image")).toHaveCount(0);
     await expect(page.getByTestId("mobile-home-earth-texture")).toHaveCount(0);
     await expect(page.getByTestId("mobile-home-earth-continents")).toHaveCount(0);
-    await expect(page.getByTestId("almidy-launch-globe")).toHaveAttribute("data-launch-globe-state", "missing-location");
-    await expect(page.getByTestId("almidy-launch-globe-state")).toHaveAttribute("data-map-runtime", "missing-location");
-    await expect(page.getByTestId("almidy-google-maps-3d-globe")).toHaveCount(0);
+    await expect(page.getByTestId("almidy-launch-globe")).toHaveAttribute("data-launch-globe-state", "ready");
+    await expect(page.getByTestId("almidy-google-maps-3d-globe")).toBeVisible();
+    await expect(page.getByTestId("almidy-google-maps-3d-globe")).toHaveAttribute("data-camera-intent", "launch");
     await expect(page.getByTestId("mobile-home-country-pin")).toHaveCount(0);
     await expect(page.getByText("Globe runtime unavailable")).toHaveCount(0);
     await expectNoHomeGoogleMapsCopy(page);

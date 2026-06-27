@@ -51,7 +51,11 @@ export function MobileHomeWallet({
         className="globe-layer absolute inset-x-0 bottom-0 top-0 overflow-hidden bg-black"
         data-testid="mobile-home-launch-globe"
       >
-        <CustomGlobeRenderer />
+        <CustomGlobeRenderer
+          defaultFocusWhenEmpty
+          showCountryPin={false}
+          useLocationFocus={false}
+        />
         <FloatingGlobeControls />
       </section>
       <div

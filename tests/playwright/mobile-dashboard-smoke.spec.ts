@@ -189,7 +189,9 @@ test.describe("authenticated mobile dashboard smoke", () => {
     await expect(page.getByRole("button", { name: "Allow Once" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Allow While Using App" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Don't Allow" })).toBeVisible();
-    await expect(page.getByTestId("almidy-google-maps-3d-globe")).toHaveCount(0);
+    await expect(page.getByTestId("almidy-launch-globe")).toHaveAttribute("data-launch-globe-state", "ready");
+    await expect(page.getByTestId("almidy-google-maps-3d-globe")).toBeVisible();
+    await expect(page.getByTestId("almidy-google-maps-3d-globe")).toHaveAttribute("data-camera-intent", "launch");
     await expect(page.getByTestId("mobile-home-country-pin")).toHaveCount(0);
     await expect
       .poll(() =>
@@ -206,7 +208,8 @@ test.describe("authenticated mobile dashboard smoke", () => {
     await expect(page.getByTestId("launch-location-permission")).toHaveCount(0);
     await expect(page.getByTestId("almidy-launch-globe")).toHaveAttribute("data-launch-globe-state", "ready");
     await expect(page.getByTestId("almidy-google-maps-3d-globe")).toBeVisible();
-    await expect(page.getByTestId("mobile-home-country-pin")).toBeVisible();
+    await expect(page.getByTestId("almidy-google-maps-3d-globe")).toHaveAttribute("data-camera-intent", "launch");
+    await expect(page.getByTestId("mobile-home-country-pin")).toHaveCount(0);
     const firstTripCard = page.getByTestId("launch-first-trip-card");
     if ((await firstTripCard.count()) > 0) {
       await expect(firstTripCard.getByText("After creating a trip, a country flag will appear on the map to mark its location.")).toBeVisible();
