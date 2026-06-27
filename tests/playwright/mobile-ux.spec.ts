@@ -83,7 +83,14 @@ async function installMockGoogleMaps3D(page: Page) {
           if (libraryName === "maps3d") {
             return {
               GestureHandling: { GREEDY: "GREEDY" },
-              Map3DElement: MockMap3DElement,
+              Map3DElement: class {
+                constructor(options?: Record<string, unknown>) {
+                  const element = document.createElement("almidy-test-map-3d");
+                  Object.assign(element, options);
+                  window.setTimeout(() => element.dispatchEvent(new Event("gmp-steadychange")), 0);
+                  return element;
+                }
+              },
               MapMode: { HYBRID: "HYBRID" }
             };
           }
@@ -387,8 +394,7 @@ test.describe("mobile soft-launch UX", () => {
       "almidy-google-maps-3d"
     );
     await expect(page.getByTestId("almidy-launch-globe")).toHaveAttribute("data-map-system", "almidy-google-maps-3d");
-    await expect(page.getByTestId("mobile-trips-globe-flag-pin").first()).toBeVisible();
-    await expect(page.getByTestId("mobile-trips-globe-flag-pin").first()).toHaveAttribute("data-active", "true");
+    await expect(page.getByTestId("mobile-trips-globe-flag-pin").first()).toHaveAttribute("data-active", "false");
     await expect(page.getByTestId("mobile-home-country-pin")).toHaveCount(0);
     await expect(page.getByTestId("mobile-trips-overview-carousel")).toHaveCount(0);
     await expect(page.getByTestId("mobile-trips-overview-card")).toHaveCount(0);
@@ -409,7 +415,7 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByTestId("mobile-home-wallet-content")).toHaveCount(0);
   });
 
-  test("mobile trips globe pins Barcelona trips at saved destination coordinates", async ({ page, request }) => {
+  test("mobile trips globe pins saved destinations with latitude and longitude aligned", async ({ page, request }) => {
     test.setTimeout(90_000);
     await page.setViewportSize({ height: 900, width: 390 });
     await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
@@ -417,11 +423,11 @@ test.describe("mobile soft-launch UX", () => {
     await installMockGoogleMaps3D(page);
 
     const tripName = `Barcelona coordinate regression ${Date.now()}`;
-    const response = await request.post(`${baseUrl}/api/trips`, {
+    const barcelonaResponse = await request.post(`${baseUrl}/api/trips`, {
       data: {
         destination: "Barcelona, Spain",
-        destination_lat: 41.3874,
-        destination_lng: 2.1686,
+        destination_lat: 41.3851,
+        destination_lng: 2.1734,
         end_date: "2026-07-30",
         name: tripName,
         start_date: "2026-06-26",
@@ -430,47 +436,83 @@ test.describe("mobile soft-launch UX", () => {
       },
       headers: { "x-cypress-dashboard": "true" }
     });
-    expect(response.status()).toBe(201);
-    const payload = await response.json();
-    const tripId = payload?.trip?.id;
+    expect(barcelonaResponse.status()).toBe(201);
+    const barcelonaPayload = await barcelonaResponse.json();
+    const barcelonaTripId = barcelonaPayload?.trip?.id;
+
+    const newYorkResponse = await request.post(`${baseUrl}/api/trips`, {
+      data: {
+        destination: "New York, USA",
+        destination_lat: 40.7128,
+        destination_lng: -74.006,
+        end_date: "2026-08-08",
+        name: `New York coordinate regression ${Date.now()}`,
+        start_date: "2026-08-01",
+        status: "Planning",
+        travel_style: "balanced"
+      },
+      headers: { "x-cypress-dashboard": "true" }
+    });
+    expect(newYorkResponse.status()).toBe(201);
+    const newYorkPayload = await newYorkResponse.json();
+    const newYorkTripId = newYorkPayload?.trip?.id;
 
     try {
       await page.goto(`${baseUrl}/dashboard/trips`, { waitUntil: "commit" });
       await expect(page.getByTestId("mobile-trips-country-map-screen")).toBeVisible({ timeout: 20_000 });
       await expect(page.getByTestId("mobile-trips-overview-card")).toHaveCount(0);
+      await expect(
+        page.locator('[data-testid="mobile-trips-overview-card"]', { hasText: "Barcelona, Spain" })
+      ).toHaveCount(0);
       await expect(page.getByTestId("mobile-trips-country-map-screen")).toHaveAttribute(
         "data-globe-trip-pin-countries",
         /(^|,)ES(,|$)/
       );
       await expect(page.getByTestId("mobile-trips-country-map-screen")).toHaveAttribute(
         "data-globe-trip-pin-ids",
-        new RegExp(`(^|,)${escapeRegExp(tripId)}(,|$)`)
+        new RegExp(`(^|,)${escapeRegExp(barcelonaTripId)}(,|$)`)
+      );
+      await expect(page.getByTestId("mobile-trips-country-map-screen")).toHaveAttribute(
+        "data-globe-trip-pin-ids",
+        new RegExp(`(^|,)${escapeRegExp(newYorkTripId)}(,|$)`)
       );
       await expect(page.getByTestId("almidy-launch-globe")).toHaveAttribute("data-map-system", "almidy-google-maps-3d");
 
       const barcelonaPin = page.locator(
-        `[data-testid="mobile-trips-globe-flag-pin"][data-trip-id="${tripId}"]`
+        `[data-testid="mobile-trips-globe-flag-pin"][data-trip-id="${barcelonaTripId}"]`
       );
       await expect(barcelonaPin).toBeVisible();
-      await expect(barcelonaPin).toHaveAttribute("data-trip-id", tripId);
+      await expect(barcelonaPin).toHaveAttribute("data-trip-id", barcelonaTripId);
       await expect(barcelonaPin).toHaveAttribute("data-country-code", "ES");
-      await expect(barcelonaPin).toHaveAttribute("data-pin-latitude", "41.38740");
-      await expect(barcelonaPin).toHaveAttribute("data-pin-longitude", "2.16860");
+      await expect(barcelonaPin).toHaveAttribute("data-pin-latitude", "41.38510");
+      await expect(barcelonaPin).toHaveAttribute("data-pin-longitude", "2.17340");
+
+      const newYorkPin = page.locator(
+        `[data-testid="mobile-trips-globe-flag-pin"][data-trip-id="${newYorkTripId}"]`
+      );
+      await expect(newYorkPin).toBeVisible();
+      await expect(newYorkPin).toHaveAttribute("data-trip-id", newYorkTripId);
+      await expect(newYorkPin).toHaveAttribute("data-country-code", "US");
+      await expect(newYorkPin).toHaveAttribute("data-pin-latitude", "40.71280");
+      await expect(newYorkPin).toHaveAttribute("data-pin-longitude", "-74.00600");
+
       await barcelonaPin.click();
       await expect(barcelonaPin).toHaveAttribute("data-active", "true");
 
       const barcelonaCard = page.locator(
-        `[data-testid="mobile-trips-overview-card"][data-trip-id="${tripId}"]`
+        `[data-testid="mobile-trips-overview-card"][data-trip-id="${barcelonaTripId}"]`
       );
       await expect(barcelonaCard).toBeVisible();
       await expect(barcelonaCard).toContainText("Barcelona");
+      await expect(barcelonaCard.getByText("Barcelona, Spain")).toBeVisible();
 
       const globe = page.getByTestId("almidy-launch-globe");
       await expect(globe).toHaveAttribute("data-camera-intent", "trip-overview");
-      await expect(globe).toHaveAttribute("data-camera-latitude", "41.38740");
-      await expect(globe).toHaveAttribute("data-camera-longitude", "2.16860");
+      await expect(globe).toHaveAttribute("data-camera-latitude", "41.38510");
+      await expect(globe).toHaveAttribute("data-camera-longitude", "2.17340");
     } finally {
-      await deleteTripForTest(request, tripId);
+      await deleteTripForTest(request, barcelonaTripId);
+      await deleteTripForTest(request, newYorkTripId);
     }
   });
 

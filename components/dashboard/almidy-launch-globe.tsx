@@ -272,6 +272,7 @@ function GoogleMaps3DLaunchGlobe({
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<GoogleMaps3DMapElement | null>(null);
+  const onTripPinSelectRef = useRef(onTripPinSelect);
   const readyRef = useRef(false);
   const [state, setState] = useState<LaunchGlobeState>("loading-google");
   const shellUserLocationCenter = userCameraCenterForFocus(focus);
@@ -282,6 +283,10 @@ function GoogleMaps3DLaunchGlobe({
     : shellTripOverviewCenter
       ? "trip-overview"
       : "launch";
+
+  useEffect(() => {
+    onTripPinSelectRef.current = onTripPinSelect;
+  }, [onTripPinSelect]);
 
   useEffect(() => {
     let cancelled = false;
@@ -393,6 +398,18 @@ function GoogleMaps3DLaunchGlobe({
         } else {
           mapElement.setAttribute("data-camera-intent", "launch");
         }
+        if (renderTripPins) {
+          tripPins.forEach((pin, index) => {
+            const tripMarker = createTripFlagMarker(
+              pin,
+              activeTripId ? activeTripId === (pin.tripId ?? pin.id) : false,
+              (tripId) => onTripPinSelectRef.current?.(tripId)
+            );
+            if (tripMarker) {
+              mapElement?.appendChild(tripMarker);
+            }
+          });
+        }
 
         const handleError = () => failClosed("google-runtime-failed");
         const handleSteady = () => revealWhenInitialized();
@@ -436,7 +453,7 @@ function GoogleMaps3DLaunchGlobe({
       mapRef.current = null;
       mapElement?.remove();
     };
-  }, [activeTripId, focus, tripPins]);
+  }, [activeTripId, focus, renderTripPins, tripPins]);
 
   if (state !== "ready" && state !== "loading-google") {
     return (
@@ -507,13 +524,6 @@ function GoogleMaps3DLaunchGlobe({
               {focus.name}
             </div>
           </div>
-        ) : null}
-        {renderTripPins ? (
-          <TripFlagPins
-            activeTripId={activeTripId}
-            onTripPinSelect={onTripPinSelect}
-            pins={tripPins}
-          />
         ) : null}
         <div className="pointer-events-none absolute inset-0 z-10 bg-[linear-gradient(180deg,rgba(0,0,0,0.78)_0%,rgba(0,0,0,0.08)_21%,rgba(0,0,0,0)_58%,rgba(0,0,0,0.42)_100%)]" />
         <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-32 bg-[linear-gradient(180deg,rgba(0,0,0,0.9),rgba(0,0,0,0.32)_48%,transparent)]" />
@@ -649,6 +659,59 @@ function createUserLocationMarker(focus: CountryFocus) {
   return marker;
 }
 
+function createTripFlagMarker(
+  pin: AlmidyLaunchGlobeTripPin,
+  isActive: boolean,
+  onTripPinSelect?: (tripId: string) => void
+) {
+  const coordinate = tripPinCoordinate(pin);
+  if (!coordinate) {
+    return null;
+  }
+
+  const tripId = pin.tripId ?? pin.id;
+  const marker = document.createElement(USER_LOCATION_MARKER_TAG);
+  marker.setAttribute("altitude-mode", "clamp-to-ground");
+  marker.setAttribute("aria-label", `Select ${pin.label}`);
+  marker.setAttribute("data-active", isActive ? "true" : "false");
+  marker.setAttribute("data-country-code", pin.countryCode);
+  marker.setAttribute("data-pin-latitude", coordinate.lat.toFixed(5));
+  marker.setAttribute("data-pin-longitude", coordinate.lng.toFixed(5));
+  marker.setAttribute("data-testid", "mobile-trips-globe-flag-pin");
+  marker.setAttribute("data-trip-id", tripId);
+  marker.setAttribute("position", `${coordinate.lat.toFixed(5)}, ${coordinate.lng.toFixed(5)}`);
+  marker.className = "mobile-trips-map-marker";
+  marker.addEventListener("click", () => onTripPinSelect?.(tripId));
+
+  const content = document.createElement("button");
+  content.type = "button";
+  content.className = "touch-manipulation text-center focus:outline-none";
+  content.addEventListener("click", (event) => {
+    event.stopPropagation();
+    onTripPinSelect?.(tripId);
+  });
+
+  const flag = document.createElement("span");
+  flag.className = [
+    "mx-auto grid h-11 w-11 place-items-center overflow-hidden rounded-full border-[2.5px] bg-white text-2xl leading-none shadow-[0_4px_0_rgba(0,0,0,0.95),0_10px_24px_rgba(0,0,0,0.36)] transition duration-200",
+    isActive ? "scale-125 border-orange-500 ring-4 ring-orange-400/60" : "border-black ring-1 ring-white/75"
+  ].join(" ");
+  flag.setAttribute("aria-hidden", "true");
+  flag.textContent = pin.flag;
+
+  const label = document.createElement("span");
+  label.className = [
+    "mt-1 block max-w-28 truncate rounded px-1.5 py-0.5 text-[0.72rem] font-black leading-none [text-shadow:0_2px_2px_rgba(0,0,0,0.95),0_0_8px_rgba(0,0,0,0.85)]",
+    isActive ? "bg-orange-600 text-white" : "bg-black/56 text-white"
+  ].join(" ");
+  label.textContent = pin.label;
+
+  content.append(flag, label);
+  marker.appendChild(content);
+
+  return marker;
+}
+
 function focusFromTripPins(pins: AlmidyLaunchGlobeTripPin[]) {
   const firstKnownCountry = pins
     .map((pin) => COUNTRY_BY_CODE[pin.countryCode.toUpperCase()])
@@ -661,129 +724,18 @@ function focusFromTripPins(pins: AlmidyLaunchGlobeTripPin[]) {
   return firstKnownCountry;
 }
 
-function TripFlagPins({
-  activeTripId,
-  onTripPinSelect,
-  pins
-}: {
-  activeTripId?: string | null;
-  onTripPinSelect?: (tripId: string) => void;
-  pins: AlmidyLaunchGlobeTripPin[];
-}) {
-  if (!pins.length) {
-    return null;
-  }
-
-  return (
-    <div className="pointer-events-none absolute inset-0 z-20" data-testid="mobile-trips-globe-flag-layer">
-      {pins.map((pin, index) => {
-        const position = tripPinScreenPosition(pin, index, activeTripId, pins);
-        const tripId = pin.tripId ?? pin.id;
-        const isActive = activeTripId ? activeTripId === tripId : index === 0;
-        const coordinate = tripPinCoordinate(pin);
-        return (
-          <button
-            aria-label={`Select ${pin.label}`}
-            className="pointer-events-auto absolute -translate-x-1/2 -translate-y-1/2 touch-manipulation text-center focus:outline-none"
-            data-active={isActive ? "true" : "false"}
-            data-country-code={pin.countryCode}
-            data-pin-latitude={coordinate ? coordinate.lat.toFixed(5) : undefined}
-            data-pin-longitude={coordinate ? coordinate.lng.toFixed(5) : undefined}
-            data-testid="mobile-trips-globe-flag-pin"
-            data-trip-id={pin.tripId ?? undefined}
-            key={pin.id}
-            onClick={() => onTripPinSelect?.(tripId)}
-            style={{
-              left: `${position.x}%`,
-              top: `${position.y}%`
-            }}
-            type="button"
-          >
-            <div
-              className={[
-                "mx-auto grid h-10 w-10 place-items-center overflow-hidden rounded-full border-[2.5px] text-2xl leading-none shadow-[0_4px_0_rgba(0,0,0,0.95),0_10px_24px_rgba(0,0,0,0.36)] transition duration-200",
-                isActive
-                  ? "scale-125 border-orange-500 bg-white ring-2 ring-orange-400/70"
-                  : "border-black bg-white ring-1 ring-white/75"
-              ].join(" ")}
-            >
-              <span aria-hidden="true">{pin.flag}</span>
-            </div>
-            <div
-              className={[
-                "mt-1 max-w-28 truncate rounded px-1.5 py-0.5 text-[0.7rem] font-black leading-none [text-shadow:0_2px_2px_rgba(0,0,0,0.95),0_0_8px_rgba(0,0,0,0.85)]",
-                isActive ? "bg-orange-600 text-white" : "bg-black/56 text-white"
-              ].join(" ")}
-            >
-              {pin.label}
-            </div>
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
-function tripPinScreenPosition(
-  pin: AlmidyLaunchGlobeTripPin,
-  index: number,
-  activeTripId: string | null | undefined,
-  pins: AlmidyLaunchGlobeTripPin[]
-) {
-  const coordinate = tripPinCoordinate(pin);
-  const activePin =
-    (activeTripId ? pins.find((candidate) => (candidate.tripId ?? candidate.id) === activeTripId) : null) ??
-    pins.find((candidate) => tripPinCoordinate(candidate));
-  const activeCoordinate = activePin ? tripPinCoordinate(activePin) : null;
-
-  if (coordinate && activeCoordinate) {
-    const longitudeDelta = normalizeLongitude(coordinate.lng - activeCoordinate.lng);
-    const latitudeDelta = coordinate.lat - activeCoordinate.lat;
-
-    return {
-      x: clamp(58 + longitudeDelta * 1.12, 7, 93),
-      y: clamp(49 - latitudeDelta * 1.18, 13, 82)
-    };
-  }
-
-  if (coordinate) {
-    const x = ((normalizeLongitude(coordinate.lng) + 180) / 360) * 100;
-    const y = latitudeToMercatorY(coordinate.lat);
-    return {
-      x: clamp(x, 7, 93),
-      y: clamp(y, 13, 82)
-    };
-  }
-
-  const focus = COUNTRY_BY_CODE[pin.countryCode.toUpperCase()] ?? DEFAULT_COUNTRY;
-  const spread = ((index % 5) - 2) * 3.2;
-  return {
-    x: clamp(focus.pinX + spread, 7, 93),
-    y: clamp(focus.pinY + Math.abs(spread) * 0.38, 13, 82)
-  };
-}
-
 function tripPinCoordinate(pin: AlmidyLaunchGlobeTripPin): TripPinCoordinate | null {
-  if (
-    typeof pin.lat === "number" &&
-    Number.isFinite(pin.lat) &&
-    typeof pin.lng === "number" &&
-    Number.isFinite(pin.lng)
-  ) {
+  const lat = typeof pin.lat === "number" ? pin.lat : Number(pin.lat);
+  const lng = typeof pin.lng === "number" ? pin.lng : Number(pin.lng);
+
+  if (Number.isFinite(lat) && Number.isFinite(lng)) {
     return {
-      lat: pin.lat,
-      lng: normalizeLongitude(pin.lng)
+      lat,
+      lng: normalizeLongitude(lng)
     };
   }
 
   return null;
-}
-
-function latitudeToMercatorY(latitude: number) {
-  const clampedLatitude = clamp(latitude, -85, 85);
-  const radians = clampedLatitude * Math.PI / 180;
-  const mercator = Math.log(Math.tan(Math.PI / 4 + radians / 2));
-  return (1 - mercator / Math.PI) / 2 * 100;
 }
 
 function shouldUpdateFocus(currentCountry: CountryFocus | null, nextCountry: CountryFocus) {

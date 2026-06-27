@@ -141,8 +141,8 @@ export type AlmidyLaunchGlobeTripPin = {
   flag: string;
   href?: string | null;
   label: string;
-  lat?: number | null;
-  lng?: number | null;
+  lat?: number | string | null;
+  lng?: number | string | null;
   subtitle?: string | null;
   tripId?: string | null;
 };

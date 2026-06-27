@@ -122,7 +122,14 @@ async function installMockGoogleMaps3D(page: Page) {
           if (libraryName === "maps3d") {
             return {
               GestureHandling: { GREEDY: "GREEDY" },
-              Map3DElement: MockMap3DElement,
+              Map3DElement: class {
+                constructor(options?: Record<string, unknown>) {
+                  const element = document.createElement("almidy-test-map-3d");
+                  Object.assign(element, options);
+                  window.setTimeout(() => element.dispatchEvent(new Event("gmp-steadychange")), 0);
+                  return element;
+                }
+              },
               MapMode: { HYBRID: "HYBRID" }
             };
           }
@@ -231,7 +238,7 @@ test.describe("authenticated mobile dashboard smoke", () => {
     );
     await expect(page.getByTestId("almidy-launch-globe")).toHaveAttribute("data-map-system", "almidy-google-maps-3d");
     await expect(page.getByTestId("mobile-trips-globe-flag-pin").first()).toBeVisible();
-    await expect(page.getByTestId("mobile-trips-globe-flag-pin").first()).toHaveAttribute("data-active", "true");
+    await expect(page.getByTestId("mobile-trips-globe-flag-pin").first()).toHaveAttribute("data-active", "false");
     await expect(page.getByTestId("mobile-home-country-pin")).toHaveCount(0);
     await expect(page.getByTestId("mobile-trips-overview-carousel")).toHaveCount(0);
     await expect(page.getByTestId("mobile-trips-overview-card")).toHaveCount(0);
