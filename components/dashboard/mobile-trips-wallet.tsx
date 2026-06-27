@@ -362,7 +362,7 @@ function MobileTripsCountriesMap({
         tripPins={globeTripPins}
       />
 
-      <div className="absolute right-4 top-[calc(4.5rem+env(safe-area-inset-top))] z-20 overflow-hidden rounded-[1.45rem] border border-white/10 bg-black/86 text-orange-400 shadow-[0_18px_50px_rgba(0,0,0,0.45)] backdrop-blur-xl">
+      <div className="absolute right-4 top-[calc(4.5rem+env(safe-area-inset-top))] z-30 overflow-hidden rounded-[1.45rem] border border-white/10 bg-black/86 text-orange-400 shadow-[0_18px_50px_rgba(0,0,0,0.45)] backdrop-blur-xl">
         <Link
           aria-label="Open trip list"
           className="grid h-12 w-12 place-items-center border-b border-white/10 transition hover:bg-white/10 focus:outline-none focus:ring-4 focus:ring-orange-400/20"
@@ -496,7 +496,7 @@ function MobileTripsOverviewPanel({
 }) {
   return (
     <div
-      className="absolute inset-x-0 bottom-0 z-20 rounded-t-[2rem] bg-black/94 px-5 pb-[calc(1.15rem+env(safe-area-inset-bottom))] pt-4 text-white shadow-[0_-18px_64px_rgba(0,0,0,0.46)] ring-1 ring-white/8 backdrop-blur-2xl"
+      className="absolute inset-x-0 bottom-0 z-50 overflow-hidden rounded-t-[2rem] bg-black/94 px-5 pb-[calc(1.15rem+env(safe-area-inset-bottom))] pt-4 text-white shadow-[0_-18px_64px_rgba(0,0,0,0.46)] ring-1 ring-white/8 backdrop-blur-2xl"
       data-testid="mobile-country-sheet"
     >
       <div
@@ -598,7 +598,7 @@ function MobileTripsGlobeCanvas({
   if (!tripPins.length) {
     return (
       <div
-        className="absolute inset-0 z-0 flex items-center justify-center overflow-hidden bg-[#090e14]"
+        className="absolute inset-0 z-10 flex items-center justify-center overflow-visible bg-[#090e14] [transform-style:preserve-3d]"
         data-map-instance-key="trips-globe-empty"
         data-map-system="almidy-google-maps-3d"
         data-testid="mobile-country-map-canvas"
@@ -610,14 +610,14 @@ function MobileTripsGlobeCanvas({
 
   return (
     <div
-      className="absolute inset-0 z-0 overflow-hidden bg-black"
+      className="absolute inset-0 z-10 overflow-visible bg-black [transform-style:preserve-3d]"
       data-map-instance-key={mapInstanceKey}
       data-map-system="almidy-google-maps-3d"
       data-testid="mobile-country-map-canvas"
     >
       <CustomGlobeRenderer
         activeTripId={activeTripId}
-        className="absolute inset-0 h-full min-h-[100dvh] w-full"
+        className="absolute inset-0 h-full min-h-[100dvh] w-full overflow-visible [transform-style:preserve-3d]"
         defaultFocusWhenEmpty
         mapInstanceKey={mapInstanceKey}
         onTripPinSelect={onTripPinSelect}

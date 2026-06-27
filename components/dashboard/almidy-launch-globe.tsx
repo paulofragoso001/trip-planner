@@ -659,6 +659,7 @@ function createUserLocationMarker(focus: CountryFocus) {
   const position = { altitude: 0, lat: focus.lat, lng: focus.lng };
   marker.altitudeMode = "CLAMP_TO_GROUND";
   marker.position = position;
+  applyMarkerStacking(marker, 30);
   marker.setAttribute("altitude-mode", "clamp-to-ground");
   marker.setAttribute("data-country-code", focus.code);
   marker.setAttribute("data-testid", "almidy-google-maps-3d-user-marker");
@@ -682,6 +683,7 @@ function createTripFlagMarker(
   const position = { altitude: 0, lat: coordinate.lat, lng: coordinate.lng };
   marker.altitudeMode = "CLAMP_TO_GROUND";
   marker.position = position;
+  applyMarkerStacking(marker, isActive ? 45 : 40);
   marker.setAttribute("altitude-mode", "clamp-to-ground");
   marker.setAttribute("aria-label", `Select ${pin.label}`);
   marker.setAttribute("data-active", isActive ? "true" : "false");
@@ -696,7 +698,7 @@ function createTripFlagMarker(
 
   const content = document.createElement("button");
   content.type = "button";
-  content.className = "touch-manipulation text-center focus:outline-none";
+  content.className = "pointer-events-auto touch-manipulation text-center focus:outline-none";
   content.addEventListener("click", (event) => {
     event.stopPropagation();
     onTripPinSelect?.(tripId);
@@ -721,6 +723,14 @@ function createTripFlagMarker(
   marker.appendChild(content);
 
   return marker;
+}
+
+function applyMarkerStacking(marker: HTMLElement, zIndex: number) {
+  marker.style.overflow = "visible";
+  marker.style.pointerEvents = "auto";
+  marker.style.position = "relative";
+  marker.style.transformStyle = "preserve-3d";
+  marker.style.zIndex = String(zIndex);
 }
 
 function formatMarkerPosition(position: GoogleMaps3DLatLngAltitude) {

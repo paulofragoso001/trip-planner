@@ -491,6 +491,41 @@ test.describe("mobile soft-launch UX", () => {
       await expect(barcelonaPin).toHaveAttribute("data-pin-latitude", "41.38510");
       await expect(barcelonaPin).toHaveAttribute("data-pin-longitude", "2.17340");
       await expect(barcelonaPin).toHaveAttribute("position", "41.38510, 2.17340, 0");
+      const barcelonaPinPaint = await barcelonaPin.evaluate((element) => {
+        const rect = element.getBoundingClientRect();
+        const style = window.getComputedStyle(element);
+        const hitTarget = document.elementFromPoint(
+          rect.left + rect.width / 2,
+          rect.top + rect.height / 2
+        );
+
+        return {
+          height: rect.height,
+          hitTestContainsMarker: Boolean(hitTarget && element.contains(hitTarget)),
+          isInViewport:
+            rect.width > 0 &&
+            rect.height > 0 &&
+            rect.bottom > 0 &&
+            rect.right > 0 &&
+            rect.left < window.innerWidth &&
+            rect.top < window.innerHeight,
+          overflow: style.overflow,
+          pointerEvents: style.pointerEvents,
+          width: rect.width,
+          zIndex: style.zIndex
+        };
+      });
+      const sheetZIndex = await page.getByTestId("mobile-country-sheet").evaluate((element) =>
+        Number(window.getComputedStyle(element).zIndex)
+      );
+      expect(barcelonaPinPaint.width).toBeGreaterThan(0);
+      expect(barcelonaPinPaint.height).toBeGreaterThan(0);
+      expect(barcelonaPinPaint.hitTestContainsMarker).toBe(true);
+      expect(barcelonaPinPaint.isInViewport).toBe(true);
+      expect(barcelonaPinPaint.pointerEvents).toBe("auto");
+      expect(barcelonaPinPaint.overflow).toBe("visible");
+      expect(Number(barcelonaPinPaint.zIndex)).toBe(40);
+      expect(sheetZIndex).toBeGreaterThan(Number(barcelonaPinPaint.zIndex));
 
       const newYorkPin = page.locator(
         `[data-testid="mobile-trips-globe-flag-pin"][data-trip-id="${newYorkTripId}"]`
