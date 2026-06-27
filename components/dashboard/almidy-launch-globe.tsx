@@ -15,7 +15,9 @@ type AlmidyLaunchGlobeProps = {
   location?: AlmidyLocationState;
   locationStatus?: LocationRequestState;
   onLocateUser?: () => Promise<AlmidyLocationState> | void;
+  showCountryPin?: boolean;
   tripPins?: AlmidyLaunchGlobeTripPin[];
+  useLocationFocus?: boolean;
 };
 
 type HeroState = "google-maps-3d";
@@ -127,7 +129,9 @@ export function AlmidyLaunchGlobe({
   location,
   locationStatus = "idle",
   onLocateUser,
-  tripPins = []
+  showCountryPin = true,
+  tripPins = [],
+  useLocationFocus = true
 }: AlmidyLaunchGlobeProps) {
   const [country, setCountry] = useState<CountryFocus | null>(null);
   const [reduceMotion, setReduceMotion] = useState(false);
@@ -158,12 +162,17 @@ export function AlmidyLaunchGlobe({
   }, [onLocateUser]);
 
   useEffect(() => {
+    if (!useLocationFocus) {
+      setCountry(null);
+      return;
+    }
+
     const nextFocus = focusFromLocationState(location);
     setCountry((currentCountry) => {
       if (!nextFocus) return null;
       return shouldUpdateFocus(currentCountry, nextFocus) ? nextFocus : currentCountry;
     });
-  }, [location]);
+  }, [location, useLocationFocus]);
 
   useEffect(() => {
     document.documentElement.dataset.waylineHomeLaunchPhase = reduceMotion ? "done" : launchPhase;
@@ -216,6 +225,7 @@ export function AlmidyLaunchGlobe({
         heroState={heroState}
         launchPhase={launchPhase}
         reduceMotion={reduceMotion}
+        showCountryPin={showCountryPin}
         tripPins={tripPins}
       />
     </GoogleMapsProvider>
@@ -228,6 +238,7 @@ function GoogleMaps3DLaunchGlobe({
   heroState,
   launchPhase,
   reduceMotion,
+  showCountryPin,
   tripPins
 }: {
   className?: string;
@@ -235,6 +246,7 @@ function GoogleMaps3DLaunchGlobe({
   heroState: HeroState;
   launchPhase: LaunchPhase;
   reduceMotion: boolean;
+  showCountryPin: boolean;
   tripPins: AlmidyLaunchGlobeTripPin[];
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -435,27 +447,29 @@ function GoogleMaps3DLaunchGlobe({
           data-testid="almidy-google-maps-3d-host"
           ref={containerRef}
         />
-        <div
-          className="wayline-country-pin pointer-events-none absolute z-20 -translate-x-1/2 -translate-y-1/2 text-center"
-          data-country-code={focus.code}
-          data-location-source={focus.source ?? "country"}
-          data-pin-coordinate={`${focus.lat.toFixed(5)},${focus.lng.toFixed(5)}`}
-          data-testid="mobile-home-country-pin"
-          data-user-latitude={focus.lat.toFixed(5)}
-          data-user-longitude={focus.lng.toFixed(5)}
-          style={{
-            left: "59%",
-            top: "49%"
-          }}
-        >
-          <div className="mx-auto h-6 w-6 rounded-full border-[3px] border-white bg-orange-500 shadow-[0_4px_14px_rgba(0,0,0,0.48),0_0_18px_rgba(255,114,42,0.62)]" />
+        {showCountryPin ? (
           <div
-            className="sr-only"
-            data-testid="mobile-home-country-name"
+            className="wayline-country-pin pointer-events-none absolute z-20 -translate-x-1/2 -translate-y-1/2 text-center"
+            data-country-code={focus.code}
+            data-location-source={focus.source ?? "country"}
+            data-pin-coordinate={`${focus.lat.toFixed(5)},${focus.lng.toFixed(5)}`}
+            data-testid="mobile-home-country-pin"
+            data-user-latitude={focus.lat.toFixed(5)}
+            data-user-longitude={focus.lng.toFixed(5)}
+            style={{
+              left: "59%",
+              top: "49%"
+            }}
           >
-            {focus.name}
+            <div className="mx-auto h-6 w-6 rounded-full border-[3px] border-white bg-orange-500 shadow-[0_4px_14px_rgba(0,0,0,0.48),0_0_18px_rgba(255,114,42,0.62)]" />
+            <div
+              className="sr-only"
+              data-testid="mobile-home-country-name"
+            >
+              {focus.name}
+            </div>
           </div>
-        </div>
+        ) : null}
         <TripFlagPins pins={tripPins} />
         <div className="pointer-events-none absolute inset-0 z-10 bg-[linear-gradient(180deg,rgba(0,0,0,0.78)_0%,rgba(0,0,0,0.08)_21%,rgba(0,0,0,0)_58%,rgba(0,0,0,0.42)_100%)]" />
         <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-32 bg-[linear-gradient(180deg,rgba(0,0,0,0.9),rgba(0,0,0,0.32)_48%,transparent)]" />

@@ -308,7 +308,9 @@ function MobileTripsGlobeCanvas({ tripPins }: { tripPins: AlmidyLaunchGlobeTripP
       <CustomGlobeRenderer
         className="absolute inset-0 h-full min-h-[100dvh] w-full"
         defaultFocusWhenEmpty
+        showCountryPin={false}
         tripPins={tripPins}
+        useLocationFocus={false}
       />
       <div className="pointer-events-none absolute inset-0 z-10 bg-[linear-gradient(180deg,rgba(0,0,0,0.46),rgba(0,0,0,0.02)_35%,rgba(0,0,0,0.56)_100%)]" />
     </div>

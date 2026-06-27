@@ -10,15 +10,19 @@ import type {
 type CustomGlobeRendererProps = {
   className?: string;
   defaultFocusWhenEmpty?: boolean;
+  showCountryPin?: boolean;
   surfaceState?: AlmidyMapSurfaceState;
   tripPins?: AlmidyLaunchGlobeTripPin[];
+  useLocationFocus?: boolean;
 };
 
 export function CustomGlobeRenderer({
   className,
   defaultFocusWhenEmpty,
+  showCountryPin,
   surfaceState,
-  tripPins
+  tripPins,
+  useLocationFocus
 }: CustomGlobeRendererProps) {
   const unifiedMap = useOptionalUnifiedMap();
   const activeSurface = surfaceState ?? unifiedMap?.surfaceState;
@@ -37,7 +41,9 @@ export function CustomGlobeRenderer({
         location={activeSurface?.location}
         locationStatus={unifiedMap?.locationStatus}
         onLocateUser={unifiedMap?.locateUser}
+        showCountryPin={showCountryPin}
         tripPins={tripPins}
+        useLocationFocus={useLocationFocus}
       />
     </div>
   );

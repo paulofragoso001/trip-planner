@@ -388,6 +388,7 @@ test.describe("mobile soft-launch UX", () => {
     );
     await expect(page.getByTestId("almidy-launch-globe")).toHaveAttribute("data-map-system", "almidy-google-maps-3d");
     await expect(page.getByTestId("mobile-trips-globe-flag-pin").first()).toBeVisible();
+    await expect(page.getByTestId("mobile-home-country-pin")).toHaveCount(0);
     await expect(page.getByTestId("mobile-home-wallet-content")).toBeVisible();
     await expect(page.getByTestId("mobile-home-wallet-content")).toHaveAttribute("data-sheet-state", "collapsed");
     await expect(page.getByTestId("mobile-home-wallet-content")).toHaveAttribute("data-sheet-surface", "trips");
