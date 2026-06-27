@@ -12,6 +12,7 @@ type CustomGlobeRendererProps = {
   className?: string;
   defaultFocusWhenEmpty?: boolean;
   onTripPinSelect?: (tripId: string) => void;
+  mapInstanceKey?: string;
   renderTripPins?: boolean;
   showCountryPin?: boolean;
   surfaceState?: AlmidyMapSurfaceState;
@@ -23,6 +24,7 @@ export function CustomGlobeRenderer({
   activeTripId,
   className,
   defaultFocusWhenEmpty,
+  mapInstanceKey,
   onTripPinSelect,
   renderTripPins,
   showCountryPin,
@@ -39,9 +41,11 @@ export function CustomGlobeRenderer({
       data-map-mode={activeSurface?.mode ?? "globe"}
       data-map-renderer="google-maps-3d"
       data-map-system="almidy-google-maps-3d"
+      data-map-instance-key={mapInstanceKey}
       data-selected-map-id={activeSurface?.selectedId ?? undefined}
     >
       <AlmidyLaunchGlobe
+        key={mapInstanceKey}
         activeTripId={activeTripId}
         className={className}
         defaultFocusWhenEmpty={defaultFocusWhenEmpty}

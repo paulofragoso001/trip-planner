@@ -476,6 +476,10 @@ test.describe("mobile soft-launch UX", () => {
         "data-globe-trip-pin-ids",
         new RegExp(`(^|,)${escapeRegExp(newYorkTripId)}(,|$)`)
       );
+      await expect(page.getByTestId("mobile-country-map-canvas")).toHaveAttribute(
+        "data-map-instance-key",
+        new RegExp(`^trips-globe-\\d+-.*${escapeRegExp(barcelonaTripId)}:ES:41\\.38510:2\\.17340`)
+      );
       await expect(page.getByTestId("almidy-launch-globe")).toHaveAttribute("data-map-system", "almidy-google-maps-3d");
 
       const barcelonaPin = page.locator(

@@ -586,9 +586,32 @@ function MobileTripsGlobeCanvas({
   onTripPinSelect: (tripId: string) => void;
   tripPins: AlmidyLaunchGlobeTripPin[];
 }) {
+  const mapInstanceKey = `trips-globe-${tripPins.length}-${tripPins
+    .map((pin) => [
+      pin.tripId ?? pin.id,
+      pin.countryCode,
+      Number(pin.lat).toFixed(5),
+      Number(pin.lng).toFixed(5)
+    ].join(":"))
+    .join("|")}`;
+
+  if (!tripPins.length) {
+    return (
+      <div
+        className="absolute inset-0 z-0 flex items-center justify-center overflow-hidden bg-[#090e14]"
+        data-map-instance-key="trips-globe-empty"
+        data-map-system="almidy-google-maps-3d"
+        data-testid="mobile-country-map-canvas"
+      >
+        <span className="text-sm font-semibold text-white/42">Loading trips...</span>
+      </div>
+    );
+  }
+
   return (
     <div
       className="absolute inset-0 z-0 overflow-hidden bg-black"
+      data-map-instance-key={mapInstanceKey}
       data-map-system="almidy-google-maps-3d"
       data-testid="mobile-country-map-canvas"
     >
@@ -596,6 +619,7 @@ function MobileTripsGlobeCanvas({
         activeTripId={activeTripId}
         className="absolute inset-0 h-full min-h-[100dvh] w-full"
         defaultFocusWhenEmpty
+        mapInstanceKey={mapInstanceKey}
         onTripPinSelect={onTripPinSelect}
         renderTripPins
         showCountryPin={false}
