@@ -2428,6 +2428,77 @@ test.describe("mobile soft-launch UX", () => {
     }
   });
 
+  test("mobile map surfaces unresolved segments and deep-links to edit location", async ({ page, request }) => {
+    test.setTimeout(90_000);
+    await page.setViewportSize({ height: 900, width: 390 });
+    await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
+
+    const tripResponse = await request.post(`${baseUrl}/api/trips`, {
+      data: {
+        destination: "Miami, FL",
+        name: `Unresolved segment test ${Date.now()}`,
+        status: "Planning",
+        travel_style: "balanced"
+      },
+      headers: { "x-cypress-dashboard": "true" }
+    });
+    expect(tripResponse.status()).toBe(201);
+    const tripPayload = await tripResponse.json();
+    const tripId = tripPayload?.trip?.id;
+    expect(typeof tripId).toBe("string");
+
+    try {
+      const mappedResponse = await request.post(`${baseUrl}/api/trip-segments`, {
+        data: {
+          kind: "restaurant",
+          lat: 25.7617,
+          lng: -80.1918,
+          location: "Brickell, Miami, FL",
+          startTime: "2026-06-12T19:00:00.000Z",
+          title: "Brickell dinner",
+          tripId
+        },
+        headers: { "x-cypress-dashboard": "true" }
+      });
+      expect(mappedResponse.status()).toBe(201);
+
+      const unresolvedResponse = await request.post(`${baseUrl}/api/trip-segments`, {
+        data: {
+          kind: "place",
+          location: "Needs mapped place",
+          locationStatus: "manual_location_required",
+          title: "Pending address stop",
+          tripId
+        },
+        headers: { "x-cypress-dashboard": "true" }
+      });
+      expect(unresolvedResponse.status()).toBe(201);
+      const unresolvedPayload = await unresolvedResponse.json();
+      const unresolvedSegmentId = unresolvedPayload?.data?.segment?.id;
+      expect(typeof unresolvedSegmentId).toBe("string");
+
+      await page.goto(`${baseUrl}/dashboard/trips/${tripId}/map`, { waitUntil: "commit" });
+      const routePanel = page.getByTestId("map-route-panel");
+      await expect(routePanel).toBeVisible({ timeout: 30_000 });
+      await expect(routePanel.getByTestId("map-unresolved-location-summary")).toBeVisible();
+      await expect(routePanel.getByTestId("map-unresolved-location-card")).toContainText("Pending address stop");
+      await expect(routePanel.getByText("They stay off the route until a mapped place is selected.")).toBeVisible();
+
+      await routePanel.getByTestId("map-unresolved-location-card").getByRole("link", { name: "Edit" }).click();
+      await expect(page).toHaveURL(new RegExp(`/dashboard/trips/${tripId}/timeline#${unresolvedSegmentId}`));
+      const unresolvedItem = page.locator(`[id="${unresolvedSegmentId}"]`).first();
+      const editForm = unresolvedItem.getByTestId("mobile-edit-trip-item-form");
+      await expect(editForm).toBeVisible({ timeout: 20_000 });
+      const formInputValues = await editForm.locator("input").evaluateAll((inputs) =>
+        inputs.map((input) => (input as HTMLInputElement).value)
+      );
+      expect(formInputValues).toContain("Pending address stop");
+      await expect(unresolvedItem.getByText("Select a suggested place to map this.")).toBeVisible();
+    } finally {
+      await deleteTripForTest(request, tripId);
+    }
+  });
+
   test("map itinerary action opens the map-aware itinerary sheet", async ({ page }) => {
     test.setTimeout(90_000);
     await page.setViewportSize({ height: 900, width: 390 });

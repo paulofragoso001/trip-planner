@@ -27,6 +27,20 @@ export function ItineraryCardActions({ item, tripId }: ItineraryCardActionsProps
     setHydrated(true);
   }, []);
 
+  useEffect(() => {
+    function openFromHash() {
+      const hash = decodeURIComponent(window.location.hash.replace(/^#/, ""));
+      if (hash === item.id) {
+        setEditing(true);
+        document.getElementById(item.id)?.scrollIntoView({ block: "center" });
+      }
+    }
+
+    openFromHash();
+    window.addEventListener("hashchange", openFromHash);
+    return () => window.removeEventListener("hashchange", openFromHash);
+  }, [item.id]);
+
   function handleSaved() {
     setEditing(false);
     router.refresh();

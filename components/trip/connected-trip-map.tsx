@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Loader2 } from "lucide-react";
+import { AlertTriangle, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import GoogleMapsProvider, { GoogleMapsSurfaceFallback } from "@/components/GoogleMapsProvider";
@@ -370,8 +370,30 @@ export function ConnectedTripMap({
             </div>
 
             {items.length && unmappedCount ? (
-              <div className="rounded-2xl bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
-                Some places need confirmed locations.
+              <div
+                className="grid gap-2 rounded-2xl bg-amber-300/12 px-3 py-3 text-sm font-semibold text-amber-50 ring-1 ring-amber-200/15 lg:bg-amber-50 lg:text-amber-800 lg:ring-0"
+                data-testid="map-unresolved-location-summary"
+              >
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                  <div>
+                    <p className="font-black">Some places need confirmed locations.</p>
+                    <p className="mt-1 text-xs font-semibold text-amber-100/75 lg:text-amber-700">
+                      They stay off the route until a mapped place is selected.
+                    </p>
+                  </div>
+                </div>
+                <div className="grid gap-2">
+                  {unmappedSegments.slice(0, 3).map((segment) => (
+                    <MapUnresolvedSegmentAction
+                      key={segment.id}
+                      pending={pendingRetry === segment.id}
+                      segment={segment}
+                      tripId={tripId}
+                      onRetry={() => retryLocation(segment.id)}
+                    />
+                  ))}
+                </div>
               </div>
             ) : null}
           </div>
@@ -396,8 +418,21 @@ export function ConnectedTripMap({
             </p>
             {unmappedCount ? (
               <p className="mt-3 rounded-2xl bg-amber-300/14 px-3 py-2 font-semibold text-amber-100 ring-1 ring-amber-200/15">
-                {unmappedCount} place{unmappedCount === 1 ? "" : "s"} need confirmed locations.
+                {unmappedCount} place{unmappedCount === 1 ? "" : "s"} need confirmed locations before they can appear on this map.
               </p>
+            ) : null}
+            {unmappedSegments.length ? (
+              <div className="mt-3 grid gap-2" data-testid="map-empty-unresolved-list">
+                {unmappedSegments.slice(0, 3).map((segment) => (
+                  <MapUnresolvedSegmentAction
+                    key={segment.id}
+                    pending={pendingRetry === segment.id}
+                    segment={segment}
+                    tripId={tripId}
+                    onRetry={() => retryLocation(segment.id)}
+                  />
+                ))}
+              </div>
             ) : null}
             {!unmappedCount && activitySegments.length ? (
               <p className="mt-3 rounded-2xl bg-blue-300/14 px-3 py-2 font-semibold text-blue-100 ring-1 ring-blue-200/15">
@@ -448,9 +483,9 @@ export function ConnectedTripMap({
                 </button>
                 <Link
                   className="inline-flex min-h-11 items-center justify-center rounded-xl bg-white px-3 text-xs font-black text-slate-800 ring-1 ring-slate-200"
-                  href={`/dashboard/trips/${encodeURIComponent(tripId)}/timeline#new-plan`}
+                  href={`/dashboard/trips/${encodeURIComponent(tripId)}/timeline#${encodeURIComponent(segment.id)}`}
                 >
-                  Add location manually
+                  Edit location
                 </Link>
               </div>
             </div>
@@ -476,7 +511,7 @@ export function ConnectedTripMap({
                 </Link>
                 <Link
                   className="inline-flex min-h-11 items-center justify-center rounded-xl bg-white px-3 text-xs font-black text-blue-900 ring-1 ring-blue-100"
-                  href={`/dashboard/trips/${encodeURIComponent(tripId)}/timeline#new-plan`}
+                  href={`/dashboard/trips/${encodeURIComponent(tripId)}/timeline#${encodeURIComponent(segment.id)}`}
                 >
                   Add meeting point
                 </Link>
@@ -497,6 +532,52 @@ export function ConnectedTripMap({
         target={detailItem ? { item: detailItem, type: "segment" } : null}
         tripId={tripId}
       />
+    </div>
+  );
+}
+
+function MapUnresolvedSegmentAction({
+  onRetry,
+  pending,
+  segment,
+  tripId
+}: {
+  onRetry: () => void;
+  pending: boolean;
+  segment: UnmappedMapSegment;
+  tripId: string;
+}) {
+  return (
+    <div
+      className="rounded-2xl bg-white/8 px-3 py-3 ring-1 ring-white/10 lg:bg-white lg:ring-amber-100"
+      data-testid="map-unresolved-location-card"
+    >
+      <p className="line-clamp-2 break-words text-sm font-black text-white lg:text-slate-950">{segment.title}</p>
+      <p className="mt-1 text-xs font-semibold text-amber-100/75 lg:text-amber-800">
+        {copyForLocationStatus(segment)}
+      </p>
+      {segment.safeRejectedAddress ? (
+        <p className="mt-1 line-clamp-2 break-words text-xs text-amber-100/65 lg:text-slate-500">
+          Found outside this trip: {segment.safeRejectedAddress}
+        </p>
+      ) : null}
+      <div className="mt-3 grid grid-cols-2 gap-2">
+        <button
+          className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-white px-3 text-xs font-black text-slate-950 disabled:opacity-60 lg:bg-slate-950 lg:text-white"
+          disabled={pending}
+          onClick={onRetry}
+          type="button"
+        >
+          {pending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+          Retry
+        </button>
+        <Link
+          className="inline-flex min-h-10 items-center justify-center rounded-xl bg-white/10 px-3 text-xs font-black text-white ring-1 ring-white/12 lg:bg-white lg:text-slate-950 lg:ring-slate-200"
+          href={`/dashboard/trips/${encodeURIComponent(tripId)}/timeline#${encodeURIComponent(segment.id)}`}
+        >
+          Edit
+        </Link>
+      </div>
     </div>
   );
 }
