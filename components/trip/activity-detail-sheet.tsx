@@ -16,6 +16,9 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { GoogleMapRenderer } from "@/components/map/google-map-renderer";
 import type { TripMapItem } from "@/components/TripMap";
 import { DisplayAddressSheet } from "@/components/trip/display-address-sheet";
+import SegmentExpenseLedger, {
+  type SegmentExpenseLedgerItem
+} from "@/components/trip/segment-expense-ledger";
 import type { AlmidyMapSurfaceState } from "@/lib/map/wayline-map-models";
 import {
   hasResolvedRoute,
@@ -92,6 +95,22 @@ type DetailView = {
   websiteUrl: string | null;
 };
 
+type SegmentExpenseLedgerState = {
+  expenses: SegmentExpenseLedgerItem[];
+  totalFormatted: string;
+};
+
+type SegmentExpenseLedgerApiResponse = {
+  expenses?: Array<{
+    amount?: string | null;
+    category?: string | null;
+    id?: string | null;
+    title?: string | null;
+  }>;
+  success?: boolean;
+  total_formatted?: string | null;
+};
+
 export function ActivityDetailSheet({
   disabled = false,
   onClose,
@@ -106,12 +125,52 @@ export function ActivityDetailSheet({
   const mapItem = useMemo(() => (detail ? getDetailMapItem(detail) : null), [detail]);
   const mapSurface = useMemo(() => (mapItem ? tripItemToMapSurface(mapItem) : null), [mapItem]);
   const displayAddress = useMemo(() => (detail ? getDisplayAddress(detail) : null), [detail]);
+  const targetSegmentId = target?.type === "segment" ? target.item.id : null;
+  const [expenseLedger, setExpenseLedger] = useState<SegmentExpenseLedgerState>({
+    expenses: [],
+    totalFormatted: "0.00"
+  });
 
   useEffect(() => {
     setDisplayAddressOpen(false);
     setMoreOpen(false);
     setShared(false);
   }, [target?.item.id]);
+
+  useEffect(() => {
+    if (!targetSegmentId) {
+      setExpenseLedger({ expenses: [], totalFormatted: "0.00" });
+      return;
+    }
+
+    let active = true;
+    setExpenseLedger({ expenses: [], totalFormatted: "0.00" });
+
+    fetch(`/api/v1/segments/${encodeURIComponent(targetSegmentId)}/expenses`)
+      .then(async (response) => (response.ok ? response.json() : null))
+      .then((payload: SegmentExpenseLedgerApiResponse | null) => {
+        if (!active || !payload?.success || !Array.isArray(payload.expenses)) return;
+
+        setExpenseLedger({
+          expenses: payload.expenses.map((expense) => ({
+            amount: String(expense.amount || "0.00"),
+            category: String(expense.category || "other"),
+            id: String(expense.id),
+            title: String(expense.title || "Expense")
+          })),
+          totalFormatted: String(payload.total_formatted || "0.00")
+        });
+      })
+      .catch(() => {
+        if (active) {
+          setExpenseLedger({ expenses: [], totalFormatted: "0.00" });
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [targetSegmentId]);
 
   useEffect(() => {
     if (!target) return;
@@ -293,7 +352,13 @@ export function ActivityDetailSheet({
             onSave={() => onSaveRecommendation?.(target.item)}
           />
         ) : (
-          <SegmentDetailBody detail={detail} item={target.item} onClose={onClose} tripId={tripId} />
+          <SegmentDetailBody
+            detail={detail}
+            expenseLedger={expenseLedger}
+            item={target.item}
+            onClose={onClose}
+            tripId={tripId}
+          />
         )}
       </section>
 
@@ -351,17 +416,27 @@ function tripItemToMapSurface(item: TripMapItem): AlmidyMapSurfaceState {
 
 function SegmentDetailBody({
   detail,
+  expenseLedger,
   item,
   onClose,
   tripId
 }: {
   detail: DetailView;
+  expenseLedger: SegmentExpenseLedgerState;
   item: TripMapItem;
   onClose: () => void;
   tripId: string;
 }) {
   if (detail.kind === "route") {
-    return <RouteDetailBody detail={detail} item={item} onClose={onClose} tripId={tripId} />;
+    return (
+      <RouteDetailBody
+        detail={detail}
+        expenseLedger={expenseLedger}
+        item={item}
+        onClose={onClose}
+        tripId={tripId}
+      />
+    );
   }
 
   const scheduleRows = getScheduleRows(detail.kind, item);
@@ -380,6 +455,11 @@ function SegmentDetailBody({
         <DetailRows rows={detail.details} />
       ) : null}
 
+      <SegmentExpenseLedger
+        expenses={expenseLedger.expenses}
+        totalFormatted={expenseLedger.totalFormatted}
+      />
+
       {detail.notes ? (
         <NotesBlock notes={detail.notes} />
       ) : null}
@@ -391,11 +471,13 @@ function SegmentDetailBody({
 
 function RouteDetailBody({
   detail,
+  expenseLedger,
   item,
   onClose,
   tripId
 }: {
   detail: DetailView;
+  expenseLedger: SegmentExpenseLedgerState;
   item: TripMapItem;
   onClose: () => void;
   tripId: string;
@@ -418,6 +500,11 @@ function RouteDetailBody({
       {detail.details.length ? (
         <DetailRows rows={detail.details} />
       ) : null}
+
+      <SegmentExpenseLedger
+        expenses={expenseLedger.expenses}
+        totalFormatted={expenseLedger.totalFormatted}
+      />
 
       {detail.notes ? (
         <NotesBlock notes={detail.notes} />
