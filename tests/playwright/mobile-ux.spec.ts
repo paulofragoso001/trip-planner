@@ -2488,6 +2488,46 @@ test.describe("mobile soft-launch UX", () => {
     expect(bodyText).not.toContain("This page didn\u2019t load Google Maps correctly.");
   });
 
+  test("Verify itemized expense rows render contextually within the active segment sheet view", async ({ page }) => {
+    await page.setViewportSize({ height: 900, width: 390 });
+    await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
+    await page.route("**/api/v1/segments/*/expenses", async (route) => {
+      await route.fulfill({
+        body: JSON.stringify({
+          expenses: [
+            {
+              amount: "35.00",
+              category: "transport",
+              id: "expense-baggage-fee",
+              title: "Baggage Fee"
+            },
+            {
+              amount: "15.00",
+              category: "transport",
+              id: "expense-flight-wifi",
+              title: "In-flight Wi-Fi"
+            }
+          ],
+          segment_id: route.request().url().split("/segments/")[1]?.split("/expenses")[0] || "segment",
+          success: true,
+          total_cents: 5000,
+          total_formatted: "50.00"
+        }),
+        contentType: "application/json",
+        status: 200
+      });
+    });
+
+    await page.goto(`${baseUrl}/dashboard/trips/demo/map`, { waitUntil: "commit" });
+    await expect(page.getByTestId("map-selected-route-card")).toBeVisible({ timeout: 30_000 });
+    await page.getByTestId("map-selected-route-card").getByRole("button", { name: "Details" }).click();
+
+    const detailPanel = page.getByTestId("activity-detail-panel");
+    await expect(detailPanel.getByText("Segment Costs")).toBeVisible();
+    await expect(detailPanel.getByText("Baggage Fee")).toBeVisible();
+    await expect(detailPanel.getByText("$35.00")).toBeVisible();
+  });
+
   test("mobile map keeps day filters inside the route sheet", async ({ page, request }) => {
     test.setTimeout(90_000);
     await page.setViewportSize({ height: 900, width: 390 });
