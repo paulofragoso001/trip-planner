@@ -45,7 +45,6 @@ export function CustomGlobeRenderer({
       data-selected-map-id={activeSurface?.selectedId ?? undefined}
     >
       <AlmidyLaunchGlobe
-        key={mapInstanceKey}
         activeTripId={activeTripId}
         className={className}
         defaultFocusWhenEmpty={defaultFocusWhenEmpty}

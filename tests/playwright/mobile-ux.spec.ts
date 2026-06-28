@@ -574,6 +574,12 @@ test.describe("mobile soft-launch UX", () => {
         new RegExp(`^trips-globe-\\d+-.*${escapeRegExp(barcelonaTripId)}:ES:41\\.38510:2\\.17340`)
       );
       await expect(page.getByTestId("almidy-launch-globe")).toHaveAttribute("data-map-system", "almidy-google-maps-3d");
+      const google3DGlobe = page.getByTestId("almidy-google-maps-3d-globe");
+      await expect(google3DGlobe).toBeVisible();
+      await google3DGlobe.evaluate((element) => {
+        (element as HTMLElement & { __almidyStableMountProbe?: string }).__almidyStableMountProbe =
+          "selection-survived";
+      });
 
       const barcelonaPin = page.locator(
         `[data-testid="mobile-trips-globe-flag-pin"][data-trip-id="${barcelonaTripId}"]`
@@ -631,6 +637,10 @@ test.describe("mobile soft-launch UX", () => {
       await expect(newYorkPin).toHaveAttribute("position", "40.71280, -74.00600, 0");
 
       await barcelonaPin.click();
+      const globeStayedMounted = await google3DGlobe.evaluate((element) => {
+        return (element as HTMLElement & { __almidyStableMountProbe?: string }).__almidyStableMountProbe;
+      });
+      expect(globeStayedMounted).toBe("selection-survived");
       await expect(barcelonaPin).toHaveAttribute("data-active", "true");
 
       const barcelonaCard = page.locator(

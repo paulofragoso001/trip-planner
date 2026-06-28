@@ -277,8 +277,12 @@ function GoogleMaps3DLaunchGlobe({
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<GoogleMaps3DMapElement | null>(null);
+  const activeTripIdRef = useRef(activeTripId);
+  const focusRef = useRef(focus);
   const onTripPinSelectRef = useRef(onTripPinSelect);
   const readyRef = useRef(false);
+  const renderTripPinsRef = useRef(renderTripPins);
+  const tripPinsRef = useRef(tripPins);
   const [state, setState] = useState<LaunchGlobeState>("loading-google");
   const shellUserLocationCenter = userCameraCenterForFocus(focus);
   const shellTripOverviewCenter = tripCameraCenterForPins(tripPins, activeTripId);
@@ -292,6 +296,23 @@ function GoogleMaps3DLaunchGlobe({
   useEffect(() => {
     onTripPinSelectRef.current = onTripPinSelect;
   }, [onTripPinSelect]);
+
+  useEffect(() => {
+    activeTripIdRef.current = activeTripId;
+    focusRef.current = focus;
+    renderTripPinsRef.current = renderTripPins;
+    tripPinsRef.current = tripPins;
+
+    if (readyRef.current && mapRef.current) {
+      syncGoogle3DMapCameraAndMarkers(mapRef.current, {
+        activeTripId,
+        focus,
+        onTripPinSelect: (tripId) => onTripPinSelectRef.current?.(tripId),
+        renderTripPins,
+        tripPins
+      });
+    }
+  }, [activeTripId, focus, renderTripPins, tripPins]);
 
   useEffect(() => {
     let cancelled = false;
@@ -355,8 +376,11 @@ function GoogleMaps3DLaunchGlobe({
           return;
         }
 
-        const userLocationCenter = userCameraCenterForFocus(focus);
-        const tripOverviewCenter = tripCameraCenterForPins(tripPins, activeTripId);
+        const currentFocus = focusRef.current;
+        const currentTripPins = tripPinsRef.current;
+        const currentActiveTripId = activeTripIdRef.current;
+        const userLocationCenter = userCameraCenterForFocus(currentFocus);
+        const tripOverviewCenter = tripCameraCenterForPins(currentTripPins, currentActiveTripId);
         const center = userLocationCenter ?? tripOverviewCenter ?? LAUNCH_CAMERA_TARGET;
         const gestureHandling = maps3d.GestureHandling?.GREEDY ?? "GREEDY";
         const mapMode = maps3d.MapMode?.HYBRID ?? "HYBRID";
@@ -393,28 +417,13 @@ function GoogleMaps3DLaunchGlobe({
         mapElement.setAttribute("mode", mapMode.toLowerCase());
         mapElement.setAttribute("range", String(LAUNCH_CAMERA_RANGE));
         mapElement.setAttribute("tilt", String(LAUNCH_CAMERA_TILT));
-        mapElement.setAttribute("data-user-latitude", focus.lat.toFixed(5));
-        mapElement.setAttribute("data-user-longitude", focus.lng.toFixed(5));
-        if (userLocationCenter) {
-          mapElement.setAttribute("data-camera-intent", "user-location");
-          mapElement.appendChild(createUserLocationMarker(focus));
-        } else if (tripOverviewCenter) {
-          mapElement.setAttribute("data-camera-intent", "trip-overview");
-        } else {
-          mapElement.setAttribute("data-camera-intent", "launch");
-        }
-        if (renderTripPins) {
-          tripPins.forEach((pin, index) => {
-            const tripMarker = createTripFlagMarker(
-              pin,
-              activeTripId ? activeTripId === (pin.tripId ?? pin.id) : false,
-              (tripId) => onTripPinSelectRef.current?.(tripId)
-            );
-            if (tripMarker) {
-              mapElement?.appendChild(tripMarker);
-            }
-          });
-        }
+        syncGoogle3DMapCameraAndMarkers(mapElement, {
+          activeTripId: currentActiveTripId,
+          focus: currentFocus,
+          onTripPinSelect: (tripId) => onTripPinSelectRef.current?.(tripId),
+          renderTripPins: renderTripPinsRef.current,
+          tripPins: currentTripPins
+        });
 
         const handleError = () => failClosed("google-runtime-failed");
         const handleSteady = () => revealWhenInitialized();
@@ -458,7 +467,7 @@ function GoogleMaps3DLaunchGlobe({
       mapRef.current = null;
       mapElement?.remove();
     };
-  }, [activeTripId, focus, renderTripPins, tripPins]);
+  }, []);
 
   if (state !== "ready" && state !== "loading-google") {
     return (
@@ -654,6 +663,60 @@ function tripCameraCenterForPins(
   };
 }
 
+function syncGoogle3DMapCameraAndMarkers(
+  mapElement: GoogleMaps3DMapElement,
+  {
+    activeTripId,
+    focus,
+    onTripPinSelect,
+    renderTripPins,
+    tripPins
+  }: {
+    activeTripId?: string | null;
+    focus: CountryFocus;
+    onTripPinSelect?: (tripId: string) => void;
+    renderTripPins: boolean;
+    tripPins: AlmidyLaunchGlobeTripPin[];
+  }
+) {
+  const userLocationCenter = userCameraCenterForFocus(focus);
+  const tripOverviewCenter = tripCameraCenterForPins(tripPins, activeTripId);
+  const center = userLocationCenter ?? tripOverviewCenter ?? LAUNCH_CAMERA_TARGET;
+  mapElement.center = center;
+  mapElement.setAttribute("data-camera-altitude", String(center.altitude));
+  mapElement.setAttribute("data-camera-latitude", center.lat.toFixed(5));
+  mapElement.setAttribute("data-camera-longitude", center.lng.toFixed(5));
+  mapElement.setAttribute("data-user-latitude", focus.lat.toFixed(5));
+  mapElement.setAttribute("data-user-longitude", focus.lng.toFixed(5));
+  mapElement.setAttribute(
+    "data-camera-intent",
+    userLocationCenter ? "user-location" : tripOverviewCenter ? "trip-overview" : "launch"
+  );
+
+  mapElement
+    .querySelectorAll('[data-almidy-marker-kind="user"],[data-almidy-marker-kind="trip"]')
+    .forEach((marker) => marker.remove());
+
+  if (userLocationCenter) {
+    mapElement.appendChild(createUserLocationMarker(focus));
+  }
+
+  if (!renderTripPins) {
+    return;
+  }
+
+  tripPins.forEach((pin) => {
+    const tripMarker = createTripFlagMarker(
+      pin,
+      activeTripId ? activeTripId === (pin.tripId ?? pin.id) : false,
+      onTripPinSelect
+    );
+    if (tripMarker) {
+      mapElement.appendChild(tripMarker);
+    }
+  });
+}
+
 function createUserLocationMarker(focus: CountryFocus) {
   const marker = document.createElement(USER_LOCATION_MARKER_TAG) as GoogleMaps3DMarkerElement;
   const position = { altitude: 0, lat: focus.lat, lng: focus.lng };
@@ -661,6 +724,7 @@ function createUserLocationMarker(focus: CountryFocus) {
   marker.position = position;
   applyMarkerStacking(marker, 30);
   marker.setAttribute("altitude-mode", "clamp-to-ground");
+  marker.setAttribute("data-almidy-marker-kind", "user");
   marker.setAttribute("data-country-code", focus.code);
   marker.setAttribute("data-testid", "almidy-google-maps-3d-user-marker");
   marker.setAttribute("position", formatMarkerPosition(position));
@@ -687,6 +751,7 @@ function createTripFlagMarker(
   marker.setAttribute("altitude-mode", "clamp-to-ground");
   marker.setAttribute("aria-label", `Select ${pin.label}`);
   marker.setAttribute("data-active", isActive ? "true" : "false");
+  marker.setAttribute("data-almidy-marker-kind", "trip");
   marker.setAttribute("data-country-code", pin.countryCode);
   marker.setAttribute("data-pin-latitude", coordinate.lat.toFixed(5));
   marker.setAttribute("data-pin-longitude", coordinate.lng.toFixed(5));
