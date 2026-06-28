@@ -945,7 +945,7 @@ test.describe("mobile soft-launch UX", () => {
     await form.getByLabel("Travel style").selectOption("relaxed");
 
     await form.getByRole("button", { name: "Create" }).last().click();
-    await page.waitForURL(/\/dashboard\/trips\/intercepted-v1-trip$/, { timeout: 20_000, waitUntil: "commit" });
+    await page.waitForURL("**/dashboard/trips", { timeout: 20_000, waitUntil: "commit" });
 
     expect(capturedPayload).toEqual({
       country_code: "ES",
@@ -960,6 +960,111 @@ test.describe("mobile soft-launch UX", () => {
       travel_style: "relaxed",
       trip_name: "Barcelona summer"
     });
+  });
+
+  test("mobile first-trip create flow returns to globe with coordinate-backed country pin", async ({
+    page,
+    request
+  }) => {
+    test.setTimeout(120_000);
+    await page.setViewportSize({ height: 900, width: 390 });
+    await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
+    await installMockMobileLocation(page);
+    await installMockGooglePlacesAutocomplete(page);
+
+    const tripName = `Barcelona mobile create ${Date.now()}`;
+    let createdTripId: string | null = null;
+
+    try {
+      await page.goto(`${baseUrl}/dashboard/trips?view=list#new-trip`, { waitUntil: "commit" });
+      await expect(page.getByTestId("mobile-trips-wallet-screen")).toBeVisible({ timeout: 20_000 });
+      const form = page.locator('[data-testid="mobile-trip-create-form"]:visible').last();
+      await expect(form).toBeVisible({ timeout: 20_000 });
+      await form.getByLabel("Trip name").fill(tripName);
+      await form.getByLabel("Destination").fill("Barcelona");
+      await form.getByRole("button", { name: /Barcelona, Catalonia, Spain/ }).click();
+      await form.getByLabel("Start date").fill("2026-07-10");
+      await form.getByLabel("End date").fill("2026-07-24");
+
+      const createResponsePromise = page.waitForResponse(
+        (response) =>
+          response.url().includes("/api/v1/trips") &&
+          response.request().method() === "POST" &&
+          response.status() === 201
+      );
+      await form.getByRole("button", { name: "Create" }).last().click();
+      await createResponsePromise;
+      await page.waitForURL("**/dashboard/trips", { timeout: 20_000, waitUntil: "commit" });
+
+      const tripsResponse = await request.get(`${baseUrl}/api/trips`, {
+        headers: { "x-cypress-dashboard": "true" }
+      });
+      expect(tripsResponse.status()).toBe(200);
+      const tripsPayload = await tripsResponse.json();
+      const createdTrip = tripsPayload.trips.find((trip: any) => trip.name === tripName);
+      createdTripId = createdTrip?.id ?? null;
+      expect(createdTrip).toMatchObject({
+        destination: "Barcelona, Catalonia, Spain",
+        destination_lat: 41.3851,
+        destination_lng: 2.1734,
+        destination_status: "resolved"
+      });
+      expect(createdTripId).toBeTruthy();
+
+      await expect(page.getByTestId("mobile-trips-country-map-screen")).toBeVisible({ timeout: 20_000 });
+      await expect(page.getByTestId("mobile-country-map-canvas")).toHaveAttribute(
+        "data-map-system",
+        "almidy-google-maps-3d"
+      );
+      await expect(page.getByTestId("mobile-trips-country-map-screen")).toHaveAttribute(
+        "data-globe-trip-pin-countries",
+        /(^|,)ES(,|$)/
+      );
+
+      const barcelonaPin = page.locator(
+        `[data-testid="mobile-trips-globe-flag-pin"][data-trip-id="${createdTripId}"]`
+      );
+      await expect(barcelonaPin).toBeVisible();
+      await expect(barcelonaPin).toHaveAttribute("data-country-code", "ES");
+      await expect(barcelonaPin).toHaveAttribute("data-pin-latitude", "41.38510");
+      await expect(barcelonaPin).toHaveAttribute("data-pin-longitude", "2.17340");
+      await expect(barcelonaPin).toHaveAttribute("position", "41.38510, 2.17340, 0");
+      await expect(
+        page.locator(`[data-testid="mobile-trips-overview-card"][data-trip-id="${createdTripId}"]`)
+      ).toHaveCount(0);
+
+      const google3DGlobe = page.getByTestId("almidy-google-maps-3d-globe");
+      await expect(google3DGlobe).toBeVisible();
+      await google3DGlobe.evaluate((element) => {
+        (element as HTMLElement & { __almidyStableMountProbe?: string }).__almidyStableMountProbe =
+          "pin-tap-survived";
+      });
+
+      await barcelonaPin.click();
+      await expect(barcelonaPin).toHaveAttribute("data-active", "true");
+      const card = page.locator(
+        `[data-testid="mobile-trips-overview-card"][data-trip-id="${createdTripId}"]`
+      );
+      await expect(card).toBeVisible();
+      await expect(card).toContainText("Barcelona");
+      await expect(card.getByText("Barcelona, Catalonia, Spain")).toBeVisible();
+      const globeStayedMounted = await google3DGlobe.evaluate((element) => {
+        return (element as HTMLElement & { __almidyStableMountProbe?: string }).__almidyStableMountProbe;
+      });
+      expect(globeStayedMounted).toBe("pin-tap-survived");
+
+      await page.reload({ waitUntil: "commit" });
+      await expect(page.getByTestId("mobile-trips-country-map-screen")).toBeVisible({ timeout: 20_000 });
+      const reloadedPin = page.locator(
+        `[data-testid="mobile-trips-globe-flag-pin"][data-trip-id="${createdTripId}"]`
+      );
+      await expect(reloadedPin).toBeVisible();
+      await expect(reloadedPin).toHaveAttribute("data-country-code", "ES");
+      await expect(reloadedPin).toHaveAttribute("data-pin-latitude", "41.38510");
+      await expect(reloadedPin).toHaveAttribute("data-pin-longitude", "2.17340");
+    } finally {
+      await deleteTripForTest(request, createdTripId);
+    }
   });
 
   test("v1 trips API stores real destination coordinates and supports year reads", async ({ request }) => {

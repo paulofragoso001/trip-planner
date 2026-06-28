@@ -239,7 +239,11 @@ export function MobileTripsWallet({ error, trips }: MobileTripsWalletProps) {
           ) : null}
           {createOpen ? (
             <div className="overflow-hidden rounded-[1.65rem] bg-white text-slate-950 shadow-2xl ring-1 ring-white/70">
-              <TripCreateForm mode="mobile-pass" redirectOnSuccess />
+              <TripCreateForm
+                mode="mobile-pass"
+                redirectOnSuccess
+                successRedirectHref="/dashboard/trips"
+              />
             </div>
           ) : null}
         </section>

@@ -29,12 +29,14 @@ type TripCreateFormProps = {
   formId?: string;
   mode?: "default" | "mobile-pass";
   redirectOnSuccess?: boolean;
+  successRedirectHref?: string;
 };
 
 export function TripCreateForm({
   formId = "new-trip",
   mode = "default",
-  redirectOnSuccess = false
+  redirectOnSuccess = false,
+  successRedirectHref
 }: TripCreateFormProps) {
   const router = useRouter();
   const [budget, setBudget] = useState("");
@@ -119,7 +121,7 @@ export function TripCreateForm({
       setStartDate("");
       setTravelStyle("balanced");
       if (redirectOnSuccess && tripId) {
-        window.location.assign(`/dashboard/trips/${encodeURIComponent(tripId)}`);
+        window.location.assign(successRedirectHref || `/dashboard/trips/${encodeURIComponent(tripId)}`);
         return;
       }
       router.refresh();
