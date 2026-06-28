@@ -99,7 +99,7 @@ function validateDeletionRequestBody(value: unknown) {
 
   const details: Record<string, string> = {};
   const unknown = Object.keys(value).filter(
-    (key) => key !== "confirmDeletion" && key !== "reason"
+    (key) => key !== "confirmDeletion" && key !== "confirmationPhrase" && key !== "reason"
   );
 
   if (unknown.length) {
@@ -108,6 +108,10 @@ function validateDeletionRequestBody(value: unknown) {
 
   if (value.confirmDeletion !== true) {
     details.confirmDeletion = "Account deletion requests require confirmation.";
+  }
+
+  if (value.confirmationPhrase !== "DELETE MY ACCOUNT") {
+    details.confirmationPhrase = "Type DELETE MY ACCOUNT to confirm this account deletion request.";
   }
 
   let reason: string | null = null;

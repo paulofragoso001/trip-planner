@@ -101,9 +101,26 @@ test.describe("dashboard destructive action boundaries", () => {
       })
     });
 
+    const accountWithoutPhrase = await request.post(`${baseUrl}/api/account/deletion-request`, {
+      data: {
+        confirmDeletion: true,
+        reason: "Testing missing typed phrase."
+      },
+      headers: sameOriginHeaders
+    });
+    expect(accountWithoutPhrase.status()).toBe(400);
+    expect(await accountWithoutPhrase.json()).toMatchObject({
+      error: expect.objectContaining({
+        details: expect.objectContaining({
+          confirmationPhrase: expect.stringMatching(/DELETE MY ACCOUNT/)
+        })
+      })
+    });
+
     const accountUnknownField = await request.post(`${baseUrl}/api/account/deletion-request`, {
       data: {
         confirmDeletion: true,
+        confirmationPhrase: "DELETE MY ACCOUNT",
         reason: "Testing unknown field rejection.",
         userId: "client-controlled"
       },
