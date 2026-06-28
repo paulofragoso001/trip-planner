@@ -453,6 +453,28 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByTestId("app-shell-topbar")).toBeVisible();
   });
 
+  test("Verify account deletion sequence locks destruction button until confirmation matches", async ({ page }) => {
+    await page.setViewportSize({ height: 900, width: 390 });
+    await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
+    await page.goto(`${baseUrl}/dashboard/account`, { waitUntil: "commit" });
+    await expect(page.getByTestId("account-settings-page")).toBeVisible({ timeout: 30_000 });
+
+    const initialButton = page.locator('button:has-text("Delete Account...")');
+    await expect(initialButton).toBeVisible();
+    await initialButton.click();
+
+    const confirmInput = page.locator('input[placeholder="Type required text match"]');
+    const actionButton = page.locator('button:has-text("Confirm Destruction")');
+    await expect(confirmInput).toBeVisible();
+    await expect(actionButton).toBeDisabled();
+
+    await confirmInput.fill("DELETE ACCOUNT");
+    await expect(actionButton).toBeDisabled();
+
+    await confirmInput.fill("DELETE MY ACCOUNT");
+    await expect(actionButton).toBeEnabled();
+  });
+
   test("mobile trips page is canonical and keeps the My Trips map surface", async ({ page }) => {
     test.setTimeout(90_000);
     await page.setViewportSize({ height: 900, width: 390 });

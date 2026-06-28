@@ -148,7 +148,7 @@ export function AccountDeletionRequestForm({
                     disabled={!canSubmitRequest || isPending}
                     type="submit"
                   >
-                    {isPending ? "Submitting..." : "Submit deletion request"}
+                    {isPending ? "Submitting..." : "Confirm Destruction"}
                   </button>
                 </div>
               </div>
