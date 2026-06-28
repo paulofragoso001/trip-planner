@@ -102,6 +102,79 @@ async function installMockGoogleMaps3D(page: Page) {
   });
 }
 
+async function installMockGooglePlacesAutocomplete(
+  page: Page,
+  {
+    address = "Barcelona, Catalonia, Spain",
+    lat = 41.3851,
+    lng = 2.1734,
+    name = "Barcelona",
+    placeId = "test-barcelona-place"
+  }: {
+    address?: string;
+    lat?: number;
+    lng?: number;
+    name?: string;
+    placeId?: string;
+  } = {}
+) {
+  await page.addInitScript(
+    ({ address: mockedAddress, lat: mockedLat, lng: mockedLng, name: mockedName, placeId: mockedPlaceId }) => {
+      const currentGoogle = (window as typeof window & { google?: any }).google ?? {};
+      const currentMaps = currentGoogle.maps ?? {};
+      const currentImportLibrary = currentMaps.importLibrary;
+      const places = {
+        AutocompleteSessionToken: class {},
+        AutocompleteSuggestion: {
+          fetchAutocompleteSuggestions: async () => ({
+            suggestions: [
+              {
+                placePrediction: {
+                  mainText: { text: mockedName },
+                  placeId: mockedPlaceId,
+                  secondaryText: { text: mockedAddress },
+                  text: { text: mockedAddress },
+                  toPlace: () => ({
+                    fetchFields: async () => ({
+                      place: {
+                        displayName: mockedName,
+                        formattedAddress: mockedAddress,
+                        googleMapsURI: `https://maps.google.com/?q=${encodeURIComponent(mockedAddress)}`,
+                        id: mockedPlaceId,
+                        location: {
+                          lat: () => mockedLat,
+                          lng: () => mockedLng
+                        },
+                        types: ["locality", "political"]
+                      }
+                    })
+                  })
+                }
+              }
+            ]
+          })
+        }
+      };
+
+      (window as typeof window & { google?: any }).google = {
+        ...currentGoogle,
+        maps: {
+          ...currentMaps,
+          importLibrary: async (libraryName: string) => {
+            if (libraryName === "places") {
+              return places;
+            }
+
+            return currentImportLibrary ? currentImportLibrary(libraryName) : {};
+          },
+          places
+        }
+      };
+    },
+    { address, lat, lng, name, placeId }
+  );
+}
+
 async function installMockGoogleMaps3DNativeError(page: Page) {
   await page.addInitScript(() => {
     class MockBrokenMap3DElement extends HTMLElement {
@@ -415,7 +488,7 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByTestId("mobile-home-wallet-content")).toHaveCount(0);
   });
 
-  test("mobile trips wallet sheet maximizes and creates a 2026 trip", async ({ page, request }) => {
+  test("mobile trips overview create trigger opens the canonical new-trip form", async ({ page }) => {
     test.setTimeout(90_000);
     await page.setViewportSize({ height: 900, width: 390 });
     await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
@@ -428,35 +501,11 @@ test.describe("mobile soft-launch UX", () => {
     const plusButton = page.getByTestId("mobile-trips-wallet-create-trigger");
     await expect(plusButton).toBeVisible();
     await plusButton.click();
-    await expect(page.getByTestId("mobile-country-sheet")).toHaveAttribute("data-sheet-state", "creating");
-
-    const inputTripName = page.getByPlaceholder("e.g., Tokyo Spring Escape");
-    const inputDestination = page.getByPlaceholder("Search city, region, or country");
-    await expect(inputTripName).toBeVisible();
-
-    const tripName = `Kyoto Autumn ${Date.now()}`;
-    await inputTripName.fill(tripName);
-    await inputDestination.fill("Kyoto, Japan");
-    await page.getByPlaceholder("e.g., April 12").fill("2026-10-01");
-    await page.getByPlaceholder("e.g., April 26").fill("2026-10-15");
-
-    const responsePromise = page.waitForResponse((response) =>
-      response.url() === `${baseUrl}/api/trips` && response.request().method() === "POST"
-    );
-    const submitButton = page.getByRole("button", { exact: true, name: "Create" });
-    await expect(submitButton).toBeEnabled();
-    await submitButton.click();
-    const response = await responsePromise;
-    expect(response.status()).toBe(201);
-    const payload = await response.json();
-    const createdTripId = payload?.trip?.id;
-
-    try {
-      await expect(inputTripName).not.toBeVisible({ timeout: 20_000 });
-      await expect(page.getByTestId("mobile-country-sheet")).toHaveAttribute("data-sheet-state", "collapsed");
-    } finally {
-      await deleteTripForTest(request, createdTripId);
-    }
+    await page.waitForURL("**/dashboard/trips?view=list#new-trip", { timeout: 20_000, waitUntil: "commit" });
+    await expect(page.getByTestId("mobile-trips-wallet-screen")).toBeVisible({ timeout: 20_000 });
+    const mobileCreateForm = page.getByTestId("mobile-create-another-trip").getByTestId("mobile-trip-create-form");
+    await expect(mobileCreateForm).toBeVisible({ timeout: 20_000 });
+    await expect(mobileCreateForm).toHaveAttribute("data-hydrated", "true");
   });
 
   test("mobile trips globe pins saved destinations with latitude and longitude aligned", async ({ page, request }) => {
@@ -595,6 +644,19 @@ test.describe("mobile soft-launch UX", () => {
       await expect(globe).toHaveAttribute("data-camera-intent", "trip-overview");
       await expect(globe).toHaveAttribute("data-camera-latitude", "41.38510");
       await expect(globe).toHaveAttribute("data-camera-longitude", "2.17340");
+
+      await page.reload({ waitUntil: "commit" });
+      await expect(page.getByTestId("mobile-trips-country-map-screen")).toBeVisible({ timeout: 20_000 });
+      const reloadedBarcelonaPin = page.locator(
+        `[data-testid="mobile-trips-globe-flag-pin"][data-trip-id="${barcelonaTripId}"]`
+      );
+      await expect(reloadedBarcelonaPin).toBeVisible();
+      await expect(reloadedBarcelonaPin).toHaveAttribute("data-country-code", "ES");
+      await expect(reloadedBarcelonaPin).toHaveAttribute("data-pin-latitude", "41.38510");
+      await expect(reloadedBarcelonaPin).toHaveAttribute("data-pin-longitude", "2.17340");
+      await expect(
+        page.locator(`[data-testid="mobile-trips-overview-card"][data-trip-id="${barcelonaTripId}"]`)
+      ).toHaveCount(0);
     } finally {
       await deleteTripForTest(request, barcelonaTripId);
       await deleteTripForTest(request, newYorkTripId);
@@ -831,6 +893,7 @@ test.describe("mobile soft-launch UX", () => {
     test.setTimeout(90_000);
     await page.setViewportSize({ height: 900, width: 390 });
     await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
+    await installMockGooglePlacesAutocomplete(page);
 
     let capturedPayload: unknown = null;
     await page.route("**/api/v1/trips", async (route) => {
@@ -863,10 +926,11 @@ test.describe("mobile soft-launch UX", () => {
 
     const form = page.locator('[data-testid="mobile-trip-create-form"]:visible').last();
     await expect(form).toBeVisible();
-    await form.getByLabel("Trip name").fill("Miami weekend");
-    await form.getByLabel("Destination").fill("Miami, FL, USA");
+    await form.getByLabel("Trip name").fill("Barcelona summer");
+    await form.getByLabel("Destination").fill("Barcelona");
+    await form.getByRole("button", { name: /Barcelona, Catalonia, Spain/ }).click();
     await form.getByLabel("Start date").fill("2026-07-10");
-    await form.getByLabel("End date").fill("2026-07-12");
+    await form.getByLabel("End date").fill("2026-07-24");
     await form.getByLabel("Expense budget").fill("1250");
     await form.getByLabel("Travel style").selectOption("relaxed");
 
@@ -874,12 +938,17 @@ test.describe("mobile soft-launch UX", () => {
     await page.waitForURL(/\/dashboard\/trips\/intercepted-v1-trip$/, { timeout: 20_000, waitUntil: "commit" });
 
     expect(capturedPayload).toEqual({
-      destination: "Miami, FL, USA",
-      end_date: "2026-07-12",
+      country_code: "ES",
+      destination: "Barcelona, Catalonia, Spain",
+      destination_formatted_address: "Barcelona, Catalonia, Spain",
+      destination_lat: 41.3851,
+      destination_lng: 2.1734,
+      destination_place_id: "test-barcelona-place",
+      end_date: "2026-07-24",
       expense_budget: 1250,
       start_date: "2026-07-10",
       travel_style: "relaxed",
-      trip_name: "Miami weekend"
+      trip_name: "Barcelona summer"
     });
   });
 

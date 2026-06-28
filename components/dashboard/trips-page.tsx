@@ -49,8 +49,8 @@ function TripsWalletExperience({ error, trips }: Pick<TripsPageProps, "error" | 
           <p className="text-sm font-semibold leading-6 text-slate-600">
             Choose a destination and Almidy will turn it into a visual trip wallet.
           </p>
-          <div className="mt-4">
-            <TripCreateForm mode="mobile-pass" redirectOnSuccess />
+          <div className="mt-4" id="new-trip">
+            <TripCreateForm formId="desktop-first-trip-form" mode="mobile-pass" redirectOnSuccess />
           </div>
         </WalletCard>
       </div>
@@ -98,6 +98,7 @@ function TripsWalletExperience({ error, trips }: Pick<TripsPageProps, "error" | 
       <details
         className="group rounded-[2rem] border border-slate-200 bg-white p-3 shadow-sm"
         data-testid="desktop-create-another-trip"
+        id="new-trip"
       >
         <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 rounded-[1.5rem] px-2 py-3 text-sm font-black text-slate-950 focus:outline-none focus:ring-4 focus:ring-blue-100">
           <span>Create another trip pass</span>
@@ -109,7 +110,7 @@ function TripsWalletExperience({ error, trips }: Pick<TripsPageProps, "error" | 
           </span>
         </summary>
         <div className="pt-3">
-          <TripCreateForm mode="mobile-pass" redirectOnSuccess />
+          <TripCreateForm formId="desktop-new-trip-form" mode="mobile-pass" redirectOnSuccess />
         </div>
       </details>
     </div>

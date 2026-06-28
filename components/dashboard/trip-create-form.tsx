@@ -18,6 +18,7 @@ import {
   mobileSelectClassName
 } from "@/components/ui/mobile-form";
 import { useAlmidyAction } from "@/hooks/use-wayline-action";
+import { countryCodeFromDestinationText } from "@/lib/map/wayline-map-pins";
 import {
   TRIP_TRAVEL_STYLES,
   TRIP_TRAVEL_STYLE_LABELS,
@@ -25,11 +26,13 @@ import {
 } from "@/lib/trips";
 
 type TripCreateFormProps = {
+  formId?: string;
   mode?: "default" | "mobile-pass";
   redirectOnSuccess?: boolean;
 };
 
 export function TripCreateForm({
+  formId = "new-trip",
   mode = "default",
   redirectOnSuccess = false
 }: TripCreateFormProps) {
@@ -46,7 +49,12 @@ export function TripCreateForm({
   const { isPending, run, state } = useAlmidyAction<{ trip?: { id: string } }>();
   const mobilePassMode = mode === "mobile-pass";
   const previewDates = formatPreviewDates(startDate, endDate);
-  const canCreate = Boolean(name.trim() && destination.trim() && !isPending);
+  const canCreate = Boolean(
+    name.trim() &&
+      destination.trim() &&
+      !isPending &&
+      (!mobilePassMode || destinationSelection)
+  );
 
   useEffect(() => {
     setHydrated(true);
@@ -56,9 +64,24 @@ export function TripCreateForm({
     event.preventDefault();
 
     const budgetValue = budget.trim() ? Number(budget) : null;
+    const destinationCountryCode = countryCodeFromDestinationText(
+      [
+        destinationSelection?.formattedAddress,
+        destinationSelection?.address,
+        destinationSelection?.name,
+        destination
+      ]
+        .filter(Boolean)
+        .join(" ")
+    );
     const payload = mobilePassMode
       ? {
+          country_code: destinationCountryCode,
           destination: destination.trim(),
+          destination_formatted_address: destinationSelection?.formattedAddress || null,
+          destination_lat: destinationSelection?.lat ?? null,
+          destination_lng: destinationSelection?.lng ?? null,
+          destination_place_id: destinationSelection?.placeId || null,
           end_date: endDate || null,
           expense_budget: Number.isFinite(budgetValue) ? budgetValue : null,
           start_date: startDate || null,
@@ -117,7 +140,7 @@ export function TripCreateForm({
         className="grid gap-4 pb-[calc(1rem+env(safe-area-inset-bottom))]"
         data-hydrated={hydrated ? "true" : "false"}
         data-testid="mobile-trip-create-form"
-        id="new-trip"
+        id={formId}
         onSubmit={createTrip}
       >
         <MobileFormShell data-testid="mobile-trip-create-sheet">
@@ -155,7 +178,7 @@ export function TripCreateForm({
             <MobileField
               helper={
                 destination.trim() && !destinationSelection
-                  ? "Manual destination. Select a Google result for better maps."
+                  ? "Select a suggested destination to pin this trip on the map."
                   : destinationSelection
                     ? "Destination matched for maps and planning."
                     : null
@@ -251,7 +274,7 @@ export function TripCreateForm({
     <form
       className="mt-5 grid gap-4"
       data-hydrated={hydrated ? "true" : "false"}
-      id="new-trip"
+      id={formId}
       onSubmit={createTrip}
     >
       <label className="grid gap-2 text-sm font-black text-slate-800">

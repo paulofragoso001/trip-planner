@@ -301,15 +301,16 @@ test.describe("authenticated mobile dashboard smoke", () => {
   });
 
   test("/dashboard/trips?view=list renders the secondary list/create flow", async ({ page }) => {
-    await openAuthenticatedMobileRoute(page, "/dashboard/trips?view=list");
+    await openAuthenticatedMobileRoute(page, "/dashboard/trips?view=list#new-trip");
 
-    await expect(page).toHaveURL(`${baseUrl}/dashboard/trips?view=list`);
+    await expect(page).toHaveURL(`${baseUrl}/dashboard/trips?view=list#new-trip`);
     await expect(page.getByTestId("mobile-trips-wallet-screen")).toBeVisible({ timeout: 20_000 });
     await expect(page.getByRole("heading", { name: "My Trips" })).toBeVisible();
     await expect(page.getByPlaceholder("Search for trips")).toBeVisible();
     await expect(
       page.locator('[data-testid="mobile-first-trip-state"], [data-testid="mobile-trips-wallet"]').first()
     ).toBeVisible();
+    await expect(page.getByTestId("mobile-create-another-trip").getByTestId("mobile-trip-create-form")).toBeVisible();
   });
 
   test("/dashboard?view=trips forwards to the canonical My Trips route", async ({ page }) => {

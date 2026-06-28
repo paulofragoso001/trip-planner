@@ -64,6 +64,30 @@ export function MobileTripsWallet({ error, trips }: MobileTripsWalletProps) {
     setHydrated(true);
   }, []);
 
+  useEffect(() => {
+    if (!hydrated || !isListView) {
+      return;
+    }
+
+    const openCreateFlowFromHash = () => {
+      if (window.location.hash !== "#new-trip") {
+        return;
+      }
+
+      setCreateOpen(true);
+      window.requestAnimationFrame(() => {
+        createRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    };
+
+    openCreateFlowFromHash();
+    window.addEventListener("hashchange", openCreateFlowFromHash);
+
+    return () => {
+      window.removeEventListener("hashchange", openCreateFlowFromHash);
+    };
+  }, [hydrated, isListView]);
+
   function openCreateFlow() {
     if (!hydrated) return;
     setCreateOpen(true);
