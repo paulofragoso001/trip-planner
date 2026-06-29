@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { MapPin, MoreHorizontal, Pencil } from "lucide-react";
+import { ExternalLink, MapPin, MoreHorizontal, Pencil } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import type { TimelineItemView } from "@/app/dashboard/trips/[tripId]/timeline/types";
@@ -17,12 +17,25 @@ type ItineraryCardActionsProps = {
 export function ItineraryCardActions({ item, tripId }: ItineraryCardActionsProps) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
+  const [showExternalMaps, setShowExternalMaps] = useState(false);
   const [hydrated, setHydrated] = useState(false);
   const [showNotes, setShowNotes] = useState(false);
   const hasMappedLocation = item.lat !== null && item.lng !== null;
   const canRetry =
     item.locationStatus !== "resolved" && item.locationStatus !== "needs_activity_provider";
   const placeDisplay = placeDisplayForTimelineItem(item);
+  const mapDisplay = placeDisplay || {
+    address: item.location === "Location not set" ? null : item.location,
+    name: item.title
+  };
+  const externalMaps = hasMappedLocation
+    ? externalMapTargets({
+        address: mapDisplay.address,
+        lat: item.lat,
+        lng: item.lng,
+        name: mapDisplay.name
+      })
+    : null;
 
   useEffect(() => {
     setHydrated(true);
@@ -67,10 +80,10 @@ export function ItineraryCardActions({ item, tripId }: ItineraryCardActionsProps
         <div className="flex shrink-0 items-center gap-2">
           {hasMappedLocation ? (
             <Link
-              aria-label={`View ${item.title} on map`}
+              aria-label={`View ${mapDisplay.name} on map`}
               className="grid h-9 w-9 place-items-center rounded-full bg-white text-slate-950 shadow-sm transition hover:bg-slate-200 focus:outline-none focus:ring-4 focus:ring-slate-200 lg:h-11 lg:w-11 lg:bg-slate-950 lg:text-white lg:hover:bg-slate-800"
               href={`/dashboard/trips/${tripId}/map#${encodeURIComponent(item.id)}`}
-              title="View on map"
+              title="Route inside Almidy"
             >
               <MapPin className="h-4 w-4" aria-hidden="true" />
             </Link>
@@ -86,14 +99,46 @@ export function ItineraryCardActions({ item, tripId }: ItineraryCardActionsProps
           >
             <Pencil className="h-4 w-4" aria-hidden="true" />
           </button>
-          <button
-            aria-label={`More actions for ${item.title}`}
-            className="grid h-9 w-9 place-items-center rounded-full bg-white/10 text-slate-200 shadow-sm transition hover:bg-white/[0.15] focus:outline-none focus:ring-4 focus:ring-blue-100 disabled:opacity-60 lg:h-11 lg:w-11 lg:bg-slate-100 lg:text-slate-700 lg:hover:bg-slate-200"
-            disabled={!hydrated}
-            type="button"
-          >
-            <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
-          </button>
+          <div className="relative">
+            <button
+              aria-expanded={showExternalMaps}
+              aria-label={`Open external maps for ${mapDisplay.name}`}
+              className="grid h-9 w-9 place-items-center rounded-full bg-white/10 text-slate-200 shadow-sm transition hover:bg-white/[0.15] focus:outline-none focus:ring-4 focus:ring-blue-100 disabled:opacity-60 lg:h-11 lg:w-11 lg:bg-slate-100 lg:text-slate-700 lg:hover:bg-slate-200"
+              disabled={!hydrated || !externalMaps}
+              onClick={() => setShowExternalMaps((value) => !value)}
+              title="Open in maps"
+              type="button"
+            >
+              <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
+            </button>
+            {showExternalMaps && externalMaps ? (
+              <div
+                className="absolute right-0 top-[calc(100%+0.5rem)] z-[80] w-52 overflow-hidden rounded-2xl border border-white/10 bg-[#121214]/98 p-1.5 text-sm font-black text-white shadow-2xl backdrop-blur-2xl lg:border-slate-200 lg:bg-white lg:text-slate-950"
+                data-testid="external-map-menu"
+              >
+                <a
+                  className="flex min-h-11 items-center gap-2 rounded-xl px-3 py-2 transition hover:bg-white/10 lg:hover:bg-slate-50"
+                  href={externalMaps.google}
+                  rel="noreferrer"
+                  target="_blank"
+                  onClick={() => setShowExternalMaps(false)}
+                >
+                  <ExternalLink className="h-4 w-4 text-orange-400" aria-hidden="true" />
+                  Google Maps
+                </a>
+                <a
+                  className="flex min-h-11 items-center gap-2 rounded-xl px-3 py-2 transition hover:bg-white/10 lg:hover:bg-slate-50"
+                  href={externalMaps.apple}
+                  rel="noreferrer"
+                  target="_blank"
+                  onClick={() => setShowExternalMaps(false)}
+                >
+                  <ExternalLink className="h-4 w-4 text-orange-400" aria-hidden="true" />
+                  Apple Maps
+                </a>
+              </div>
+            ) : null}
+          </div>
         </div>
       </div>
 
@@ -202,6 +247,28 @@ function placeDisplayForTimelineItem(item: TimelineItemView) {
   return {
     address: address || null,
     name: name || item.title
+  };
+}
+
+function externalMapTargets({
+  address,
+  lat,
+  lng,
+  name
+}: {
+  address: string | null;
+  lat: number | null;
+  lng: number | null;
+  name: string;
+}) {
+  if (typeof lat !== "number" || typeof lng !== "number") return null;
+
+  const coords = `${lat},${lng}`;
+  const query = address || name || coords;
+
+  return {
+    apple: `https://maps.apple.com/?q=${encodeURIComponent(query)}&ll=${coords}`,
+    google: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`
   };
 }
 
