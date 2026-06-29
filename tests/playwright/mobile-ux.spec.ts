@@ -3429,6 +3429,79 @@ test.describe("mobile soft-launch UX", () => {
     }
   });
 
+  test("timeline geocoded extraction renders place names and external routing choices", async ({
+    page,
+    request
+  }) => {
+    test.setTimeout(90_000);
+    await page.setViewportSize({ height: 900, width: 390 });
+    await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
+
+    const tripResponse = await request.post(`${baseUrl}/api/trips`, {
+      data: {
+        destination: "Miami, FL",
+        name: `Geocoded extraction test ${Date.now()}`,
+        status: "Planning",
+        travel_style: "balanced"
+      },
+      headers: { "x-cypress-dashboard": "true" }
+    });
+    expect(tripResponse.status()).toBe(201);
+    const tripPayload = await tripResponse.json();
+    const tripId = tripPayload?.trip?.id;
+    expect(typeof tripId).toBe("string");
+
+    try {
+      const segmentResponse = await request.post(`${baseUrl}/api/trip-segments`, {
+        data: {
+          kind: "activity",
+          lat: 25.7599,
+          lng: -80.1919,
+          location: "1441 Brickell Ave #4, Miami, FL 33131",
+          provider: "google_places",
+          providerMetadata: {
+            address: "1441 Brickell Ave #4, Miami, FL 33131",
+            formattedAddress: "1441 Brickell Ave #4, Miami, FL 33131",
+            formatted_address: "1441 Brickell Ave #4, Miami, FL 33131",
+            name: "Equinox Brickell",
+            provider: "google_places",
+            providerPlaceId: "test-equinox-brickell"
+          },
+          title: "Workout",
+          tripId
+        },
+        headers: { "x-cypress-dashboard": "true" }
+      });
+      expect(segmentResponse.status()).toBe(201);
+
+      await page.goto(`${baseUrl}/dashboard/trips/${tripId}/timeline`, { waitUntil: "commit" });
+      const content = page.getByTestId("app-shell-content");
+      const placeMetadata = content.getByTestId("timeline-place-metadata").first();
+
+      await expect(placeMetadata).toContainText("Equinox Brickell", { timeout: 60_000 });
+      await expect(placeMetadata).toContainText("1441 Brickell Ave");
+      await expect(content.getByRole("link", { name: /View Equinox Brickell on map/ })).toBeVisible();
+
+      const optionsButton = content.getByTitle("Open in external maps application").first();
+      await expect(optionsButton).toBeVisible();
+      await optionsButton.click();
+
+      const menu = content.getByTestId("external-map-menu").first();
+      await expect(menu.getByRole("link", { name: /Open in Google Maps/ })).toBeVisible();
+      await expect(menu.getByRole("link", { name: /Open in Apple Maps/ })).toBeVisible();
+      await expect(menu.getByRole("link", { name: /Open in Google Maps/ })).toHaveAttribute(
+        "href",
+        /google\.com\/maps\/search/
+      );
+      await expect(menu.getByRole("link", { name: /Open in Apple Maps/ })).toHaveAttribute(
+        "href",
+        /maps\.apple\.com/
+      );
+    } finally {
+      await deleteTripForTest(request, tripId);
+    }
+  });
+
   test("demo itinerary uses compact square place photos on mobile", async ({ page }) => {
     test.setTimeout(90_000);
     await page.setViewportSize({ height: 900, width: 390 });

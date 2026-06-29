@@ -106,7 +106,7 @@ export function ItineraryCardActions({ item, tripId }: ItineraryCardActionsProps
               className="grid h-9 w-9 place-items-center rounded-full bg-white/10 text-slate-200 shadow-sm transition hover:bg-white/[0.15] focus:outline-none focus:ring-4 focus:ring-blue-100 disabled:opacity-60 lg:h-11 lg:w-11 lg:bg-slate-100 lg:text-slate-700 lg:hover:bg-slate-200"
               disabled={!hydrated || !externalMaps}
               onClick={() => setShowExternalMaps((value) => !value)}
-              title="Open in maps"
+              title="Open in external maps application"
               type="button"
             >
               <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
@@ -124,7 +124,7 @@ export function ItineraryCardActions({ item, tripId }: ItineraryCardActionsProps
                   onClick={() => setShowExternalMaps(false)}
                 >
                   <ExternalLink className="h-4 w-4 text-orange-400" aria-hidden="true" />
-                  Google Maps
+                  Open in Google Maps
                 </a>
                 <a
                   className="flex min-h-11 items-center gap-2 rounded-xl px-3 py-2 transition hover:bg-white/10 lg:hover:bg-slate-50"
@@ -134,7 +134,7 @@ export function ItineraryCardActions({ item, tripId }: ItineraryCardActionsProps
                   onClick={() => setShowExternalMaps(false)}
                 >
                   <ExternalLink className="h-4 w-4 text-orange-400" aria-hidden="true" />
-                  Apple Maps
+                  Open in Apple Maps
                 </a>
               </div>
             ) : null}

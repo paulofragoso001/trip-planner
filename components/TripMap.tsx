@@ -135,11 +135,7 @@ export default function TripMap({
       return;
     }
 
-    const bounds = new window.google.maps.LatLngBounds();
-    mapPoints.forEach((point) => {
-      bounds.extend(point);
-    });
-    mapRef.current.fitBounds(bounds);
+    fitMapToPoints(mapRef.current, mapPoints);
   }, [mapPoints]);
 
   useEffect(() => {
@@ -150,8 +146,14 @@ export default function TripMap({
     const item = items.find((currentItem) => currentItem.id === selectedId);
 
     if (item) {
-      mapRef.current.panTo(getItemCenter(item));
+      const selectedRoutePoints = getRouteEndpointPoints(item);
+      if (selectedRoutePoints.length > 1) {
+        fitMapToPoints(mapRef.current, selectedRoutePoints);
+        return;
+      }
+
       mapRef.current.setZoom(14);
+      mapRef.current.panTo(getItemCenter(item));
     }
   }, [selectedId, items]);
 
@@ -553,11 +555,16 @@ function getDistanceMeters(
 
 function getMapPoints(items: TripMapItem[]) {
   return items.flatMap((item) => {
-    const origin = endpointPosition(item.route?.origin);
-    const destination = endpointPosition(item.route?.destination);
-    if (origin && destination) return [origin, destination];
-    return [{ lat: item.lat, lng: item.lng }];
+    const routePoints = getRouteEndpointPoints(item);
+    if (routePoints.length > 1) return routePoints;
+    return isValidLatLng(item) ? [{ lat: item.lat, lng: item.lng }] : [];
   });
+}
+
+function getRouteEndpointPoints(item: TripMapItem) {
+  const origin = endpointPosition(item.route?.origin);
+  const destination = endpointPosition(item.route?.destination);
+  return [origin, destination].filter((point): point is google.maps.LatLngLiteral => Boolean(point));
 }
 
 function getItemCenter(item: TripMapItem) {
@@ -573,10 +580,39 @@ function getItemCenter(item: TripMapItem) {
 }
 
 function endpointPosition(endpoint: TripRouteEndpoint | null | undefined) {
-  if (typeof endpoint?.lat !== "number" || typeof endpoint.lng !== "number") {
+  if (
+    typeof endpoint?.lat !== "number" ||
+    typeof endpoint.lng !== "number" ||
+    !Number.isFinite(endpoint.lat) ||
+    !Number.isFinite(endpoint.lng)
+  ) {
     return null;
   }
   return { lat: endpoint.lat, lng: endpoint.lng };
+}
+
+function fitMapToPoints(map: google.maps.Map, points: google.maps.LatLngLiteral[]) {
+  if (
+    typeof window === "undefined" ||
+    typeof window.google?.maps?.LatLngBounds !== "function" ||
+    !points.length
+  ) {
+    return;
+  }
+
+  if (points.length === 1) {
+    map.setCenter(points[0]);
+    map.setZoom(12);
+    return;
+  }
+
+  const bounds = new window.google.maps.LatLngBounds();
+  points.forEach((point) => bounds.extend(point));
+  map.fitBounds(bounds, { bottom: 360, left: 72, right: 72, top: 110 });
+}
+
+function isValidLatLng(value: Pick<TripMapItem, "lat" | "lng">) {
+  return Number.isFinite(value.lat) && Number.isFinite(value.lng);
 }
 
 function ringLabelPosition(center: google.maps.LatLngLiteral, radiusMeters: number) {
