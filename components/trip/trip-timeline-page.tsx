@@ -26,6 +26,7 @@ import { AsyncActionButton } from "@/components/dashboard/async-action-button";
 import { PlacePhoto } from "@/components/place-photo";
 import { GeneratePlanButton } from "@/components/trip/generate-plan-button";
 import { ItineraryCardActions } from "@/components/trip/itinerary-card-actions";
+import { MobileMapAwareSheet } from "@/components/trip/mobile-map-aware-sheet";
 import { MobileMapPreview } from "@/components/trip/mobile-map-preview";
 import { TripSegmentForm } from "@/components/trip/trip-segment-form";
 import { EmptyState } from "@/components/trip-ui";
@@ -228,23 +229,15 @@ function ItineraryMapAwareMobileView({
     >
       <MapAwareRoutePreview items={items} title={title} />
 
-      <div
-        className="absolute inset-x-0 bottom-0 z-20 flex max-h-[60svh] flex-col rounded-t-[1.75rem] border-t border-white/10 bg-[#202022]/96 shadow-[0_-22px_55px_rgba(0,0,0,0.45)] backdrop-blur-2xl"
-        data-testid="map-aware-sheet"
+      <MobileMapAwareSheet
+        bottomBar={<MobileTimelineBottomBar activeDayLabel={activeDayLabel} tripId={tripId} variant="sheet" />}
       >
-        <div className="mx-auto mt-3 h-1.5 w-12 rounded-full bg-white/35" aria-hidden="true" />
-        <div
-          className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-3 pb-4 pt-4"
-          data-testid="map-aware-sheet-scroll"
-        >
           <MapAwareSheetHeader closeHref={closeHref} monthLabel={monthLabel} title={title} tripId={tripId} />
           <div className="mt-4">
             <ItineraryTimelineBody days={days} error={error} mapAware={true} tripId={tripId} />
           </div>
           <MobileAddTripItem tripId={tripId} />
-        </div>
-        <MobileTimelineBottomBar activeDayLabel={activeDayLabel} tripId={tripId} variant="sheet" />
-      </div>
+      </MobileMapAwareSheet>
     </section>
   );
 }
@@ -1026,13 +1019,13 @@ function ItineraryMoreMenu({ tripId }: { tripId: string }) {
 function MobileAddTripItem({ tripId }: { tripId: string }) {
   return (
     <details
-      className="mt-4 rounded-[1.5rem] bg-[#171719] p-3 text-white ring-1 ring-white/10"
+      className="mt-4 overflow-hidden rounded-[1.5rem] bg-[#121214] text-white ring-1 ring-white/10 [&[open]>summary]:hidden"
       id="new-plan"
     >
-      <summary className="cursor-pointer text-sm font-black text-orange-400">
-        Add trip item
+      <summary className="cursor-pointer list-none px-4 py-4 text-sm font-black text-orange-400 [&::-webkit-details-marker]:hidden">
+        <span aria-hidden="true">▾ </span>Add trip item
       </summary>
-      <div className="mt-3 rounded-2xl bg-white p-2 text-slate-950">
+      <div className="bg-[#121214] p-0 text-white">
         <TripSegmentForm buttonLabel="Add trip item" tripId={tripId} />
       </div>
     </details>

@@ -3039,8 +3039,15 @@ test.describe("mobile soft-launch UX", () => {
     await expect(itinerary.getByTestId("mobile-real-map-preview")).toBeVisible();
     await expect(itinerary.getByTestId("mobile-real-map-preview")).toHaveAttribute("data-map-theme", "dark");
     await expect(itinerary.getByTestId("map-aware-sheet")).toBeVisible();
+    await expect(itinerary.getByTestId("map-aware-sheet")).toHaveAttribute("data-sheet-state", "collapsed");
+    await itinerary.getByRole("button", { name: "Expand itinerary sheet" }).click();
+    await expect(itinerary.getByTestId("map-aware-sheet")).toHaveAttribute("data-sheet-state", "expanded");
     await expect(itinerary.getByTestId("itinerary-date-strip")).toBeVisible();
     await expect(page.locator("details#new-plan")).toBeVisible();
+    const mobileNewPlan = itinerary.locator("details#new-plan");
+    await mobileNewPlan.locator("> summary").click();
+    await expect(mobileNewPlan.getByTestId("mobile-add-trip-item-form")).toBeVisible();
+    await expect(mobileNewPlan.locator("> div")).not.toHaveClass(/bg-white/);
     await expect(page.getByRole("navigation", { name: "Itinerary quick actions" })).toBeVisible();
 
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
