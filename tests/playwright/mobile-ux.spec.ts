@@ -530,6 +530,68 @@ test.describe("mobile soft-launch UX", () => {
     await expect(mobileCreateForm).toHaveAttribute("data-hydrated", "true");
   });
 
+  test("mobile wallet trip card opens the canonical trip workspace", async ({ page, request }) => {
+    test.setTimeout(90_000);
+    await page.setViewportSize({ height: 900, width: 390 });
+    await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
+    await installMockMobileLocation(page);
+    await installMockGoogleMaps3D(page);
+
+    const tripName = `Miami wallet navigation ${Date.now()}`;
+    const tripResponse = await request.post(`${baseUrl}/api/trips`, {
+      data: {
+        destination: "Miami, FL, United States",
+        destination_lat: 25.7617,
+        destination_lng: -80.1918,
+        end_date: "2026-05-08",
+        name: tripName,
+        start_date: "2026-05-01",
+        status: "Planning",
+        travel_style: "balanced"
+      },
+      headers: { "x-cypress-dashboard": "true" }
+    });
+    expect(tripResponse.status()).toBe(201);
+    const tripPayload = await tripResponse.json();
+    const tripId = tripPayload?.trip?.id;
+
+    try {
+      await page.goto(`${baseUrl}/dashboard/trips`, { waitUntil: "commit" });
+      await expect(page.getByTestId("mobile-trips-country-map-screen")).toBeVisible({ timeout: 20_000 });
+
+      const tripCard = page.locator(
+        `[data-testid="mobile-trips-wallet-card"][href="/dashboard/trips/${tripId}"]`
+      );
+      await expect(tripCard).toBeVisible({ timeout: 20_000 });
+      await expect(tripCard).toHaveAttribute("href", `/dashboard/trips/${tripId}`);
+
+      await tripCard.click();
+      await page.waitForURL(`**/dashboard/trips/${tripId}`, { timeout: 20_000, waitUntil: "commit" });
+      await expect(page).toHaveURL(new RegExp(`/dashboard/trips/${escapeRegExp(tripId)}$`));
+    } finally {
+      await deleteTripForTest(request, tripId);
+    }
+  });
+
+  test("mobile wallet plus action routes to the new trip anchor", async ({ page }) => {
+    test.setTimeout(90_000);
+    await page.setViewportSize({ height: 900, width: 390 });
+    await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
+    await installMockMobileLocation(page);
+    await installMockGoogleMaps3D(page);
+
+    await page.goto(`${baseUrl}/dashboard/trips`, { waitUntil: "commit" });
+    await expect(page.getByTestId("mobile-trips-country-map-screen")).toBeVisible({ timeout: 20_000 });
+
+    const createButton = page.getByTestId("mobile-trips-wallet-create-trigger");
+    await expect(createButton).toBeVisible();
+    await expect(createButton).toHaveAttribute("href", "/dashboard/trips?view=list#new-trip");
+
+    await createButton.click();
+    await page.waitForURL("**/dashboard/trips?view=list#new-trip", { timeout: 20_000, waitUntil: "commit" });
+    await expect(page).toHaveURL(`${baseUrl}/dashboard/trips?view=list#new-trip`);
+  });
+
   test("mobile trips globe pins saved destinations with latitude and longitude aligned", async ({ page, request }) => {
     test.setTimeout(90_000);
     await page.setViewportSize({ height: 900, width: 390 });
