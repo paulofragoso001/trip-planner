@@ -2491,7 +2491,9 @@ test.describe("mobile soft-launch UX", () => {
   test("Verify itemized expense rows render contextually within the active segment sheet view", async ({ page }) => {
     await page.setViewportSize({ height: 900, width: 390 });
     await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
-    await page.route("**/api/v1/segments/*/expenses", async (route) => {
+    let ledgerRequests = 0;
+    await page.route(/\/api\/v1\/segments\/[^/]+\/expenses$/, async (route) => {
+      ledgerRequests += 1;
       await route.fulfill({
         body: JSON.stringify({
           expenses: [
@@ -2523,6 +2525,8 @@ test.describe("mobile soft-launch UX", () => {
     await page.getByTestId("map-selected-route-card").getByRole("button", { name: "Details" }).click();
 
     const detailPanel = page.getByTestId("activity-detail-panel");
+    await expect(page.getByTestId("activity-detail-sheet")).toBeVisible();
+    await expect.poll(() => ledgerRequests).toBeGreaterThan(0);
     await expect(detailPanel.getByText("Segment Costs")).toBeVisible();
     await expect(detailPanel.getByText("Baggage Fee")).toBeVisible();
     await expect(detailPanel.getByText("$35.00")).toBeVisible();

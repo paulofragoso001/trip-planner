@@ -22,11 +22,14 @@ import { countryCodeFromDestinationText } from "@/lib/map/wayline-map-pins";
 import {
   TRIP_TRAVEL_STYLES,
   TRIP_TRAVEL_STYLE_LABELS,
+  type TripFormInitialData,
+  type TripFormPayload,
   type TripTravelStyle
 } from "@/lib/trips";
 
 type TripCreateFormProps = {
   formId?: string;
+  initialData?: TripFormInitialData;
   mode?: "default" | "mobile-pass";
   redirectOnSuccess?: boolean;
   successRedirectHref?: string;
@@ -34,61 +37,78 @@ type TripCreateFormProps = {
 
 export function TripCreateForm({
   formId = "new-trip",
+  initialData,
   mode = "default",
   redirectOnSuccess = false,
   successRedirectHref
 }: TripCreateFormProps) {
   const router = useRouter();
-  const [budget, setBudget] = useState("");
-  const [destination, setDestination] = useState("");
-  const [destinationSelection, setDestinationSelection] =
-    useState<LocationSelection | null>(null);
-  const [endDate, setEndDate] = useState("");
+  const [budget, setBudget] = useState(() =>
+    initialData?.expense_budget == null ? "" : String(initialData.expense_budget)
+  );
+  const [destination, setDestination] = useState(() => initialData?.destination || "");
+  const [destinationSelection, setDestinationSelection] = useState<LocationSelection | null>(() =>
+    locationSelectionFromInitialData(initialData)
+  );
+  const [endDate, setEndDate] = useState(() => initialData?.end_date || "");
   const [hydrated, setHydrated] = useState(false);
-  const [name, setName] = useState("");
-  const [startDate, setStartDate] = useState("");
-  const [travelStyle, setTravelStyle] = useState<TripTravelStyle>("balanced");
+  const [name, setName] = useState(() => initialData?.trip_name || "");
+  const [startDate, setStartDate] = useState(() => initialData?.start_date || "");
+  const [travelStyle, setTravelStyle] = useState<TripTravelStyle>(
+    () => initialData?.travel_style || "balanced"
+  );
   const { isPending, run, state } = useAlmidyAction<{ trip?: { id: string } }>();
   const mobilePassMode = mode === "mobile-pass";
   const previewDates = formatPreviewDates(startDate, endDate);
+  const selectedCountryCode = countryCodeFromSelection(destinationSelection, destination);
   const canCreate = Boolean(
     name.trim() &&
       destination.trim() &&
       !isPending &&
-      (!mobilePassMode || destinationSelection)
+      (!mobilePassMode || (destinationSelection && selectedCountryCode))
   );
 
   useEffect(() => {
     setHydrated(true);
   }, []);
 
+  useEffect(() => {
+    if (!initialData) return;
+
+    setBudget(initialData.expense_budget == null ? "" : String(initialData.expense_budget));
+    setDestination(initialData.destination || "");
+    setDestinationSelection(locationSelectionFromInitialData(initialData));
+    setEndDate(initialData.end_date || "");
+    setName(initialData.trip_name || "");
+    setStartDate(initialData.start_date || "");
+    setTravelStyle(initialData.travel_style || "balanced");
+  }, [initialData]);
+
   async function createTrip(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     const budgetValue = budget.trim() ? Number(budget) : null;
-    const destinationCountryCode = countryCodeFromDestinationText(
-      [
-        destinationSelection?.formattedAddress,
-        destinationSelection?.address,
-        destinationSelection?.name,
-        destination
-      ]
-        .filter(Boolean)
-        .join(" ")
-    );
+    const mobilePayload = mobilePassMode
+      ? buildTripFormPayload({
+          budgetValue,
+          destination,
+          destinationSelection,
+          endDate,
+          name,
+          startDate,
+          travelStyle
+        })
+      : null;
+
+    if (mobilePassMode && !mobilePayload) {
+      return;
+    }
+
     const payload = mobilePassMode
       ? {
-          country_code: destinationCountryCode,
-          destination: destination.trim(),
+          ...mobilePayload,
           destination_formatted_address: destinationSelection?.formattedAddress || null,
-          destination_lat: destinationSelection?.lat ?? null,
-          destination_lng: destinationSelection?.lng ?? null,
-          destination_place_id: destinationSelection?.placeId || null,
-          end_date: endDate || null,
-          expense_budget: Number.isFinite(budgetValue) ? budgetValue : null,
-          start_date: startDate || null,
-          travel_style: travelStyle,
-          trip_name: name.trim()
+          destination_place_id: destinationSelection?.placeId || null
         }
       : {
           budget: Number(budget || 0),
@@ -139,13 +159,16 @@ export function TripCreateForm({
   if (mobilePassMode) {
     return (
       <form
-        className="grid gap-4 pb-[calc(1rem+env(safe-area-inset-bottom))]"
+        className="flex min-h-0 flex-col"
         data-hydrated={hydrated ? "true" : "false"}
         data-testid="mobile-trip-create-form"
         id={formId}
         onSubmit={createTrip}
       >
-        <MobileFormShell data-testid="mobile-trip-create-sheet">
+        <MobileFormShell
+          className="flex max-h-[min(78dvh,44rem)] min-h-0 flex-col overflow-hidden"
+          data-testid="mobile-trip-create-sheet"
+        >
           <MobileFormHeader
             leftAction={
               <a className={mobileSecondaryActionClassName} href="/dashboard">
@@ -166,107 +189,109 @@ export function TripCreateForm({
             title="Create Trip"
           />
 
-          <MobileFormSection title="Trip">
-            <MobileField label="Trip name">
-              <input
-                aria-label="Trip name"
-                className={mobileInputClassName}
-                onChange={(event) => setName(event.target.value)}
-                placeholder="Miami weekend"
-                required
-                value={name}
-              />
-            </MobileField>
-            <MobileField
-              helper={
-                destination.trim() && !destinationSelection
-                  ? "Select a suggested destination to pin this trip on the map."
-                  : destinationSelection
-                    ? "Destination matched for maps and planning."
-                    : null
-              }
-              label="Destination"
-            >
-              <GoogleMapsProvider>
-                <LocationAutocomplete
-                  ariaLabel="Destination"
-                  inputClassName={mobileInputClassName}
-                  name="destination"
-                  onInputChange={(value) => {
-                    setDestination(value);
-                    setDestinationSelection(null);
-                  }}
-                  onSelect={(location) => {
-                    setDestination(location.address);
-                    setDestinationSelection(location);
-                  }}
-                  placeholder="Search Miami, Barcelona, Tokyo..."
+          <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain pb-[calc(6rem+env(safe-area-inset-bottom))] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <MobileFormSection title="Trip">
+              <MobileField label="Trip name">
+                <input
+                  aria-label="Trip name"
+                  className={mobileInputClassName}
+                  onChange={(event) => setName(event.target.value)}
+                  placeholder="Miami weekend"
                   required
-                  value={destination}
+                  value={name}
                 />
-              </GoogleMapsProvider>
-            </MobileField>
-          </MobileFormSection>
-
-          <MobileFormSection title="Dates">
-            <MobileField label="Start date">
-              <input
-                aria-label="Start date"
-                className={mobileInputClassName}
-                id="trip-dates"
-                onChange={(event) => setStartDate(event.target.value)}
-                type="date"
-                value={startDate}
-              />
-            </MobileField>
-            <MobileField label="End date">
-              <input
-                aria-label="End date"
-                className={mobileInputClassName}
-                onChange={(event) => setEndDate(event.target.value)}
-                type="date"
-                value={endDate}
-              />
-            </MobileField>
-          </MobileFormSection>
-
-          <MobileFormSection title="Details">
-            <MobileField label="Expense budget">
-              <input
-                aria-label="Expense budget"
-                className={mobileInputClassName}
-                inputMode="decimal"
-                onChange={(event) => setBudget(event.target.value)}
-                placeholder="Optional"
-                value={budget}
-              />
-            </MobileField>
-            <MobileField label="Travel style">
-              <select
-                aria-label="Travel style"
-                className={mobileSelectClassName}
-                onChange={(event) => setTravelStyle(event.target.value as TripTravelStyle)}
-                value={travelStyle}
+              </MobileField>
+              <MobileField
+                helper={
+                  destination.trim() && !destinationSelection
+                    ? "Select a suggested destination to pin this trip on the map."
+                    : destinationSelection
+                      ? "Destination matched for maps and planning."
+                      : null
+                }
+                label="Destination"
               >
-                {TRIP_TRAVEL_STYLES.map((style) => (
-                  <option className="bg-[#1f1f21] text-white" key={style} value={style}>
-                    {TRIP_TRAVEL_STYLE_LABELS[style]}
-                  </option>
-                ))}
-              </select>
-            </MobileField>
-          </MobileFormSection>
+                <GoogleMapsProvider>
+                  <LocationAutocomplete
+                    ariaLabel="Destination"
+                    inputClassName={mobileInputClassName}
+                    name="destination"
+                    onInputChange={(value) => {
+                      setDestination(value);
+                      setDestinationSelection(null);
+                    }}
+                    onSelect={(location) => {
+                      setDestination(location.address);
+                      setDestinationSelection(location);
+                    }}
+                    placeholder="Search Miami, Barcelona, Tokyo..."
+                    required
+                    value={destination}
+                  />
+                </GoogleMapsProvider>
+              </MobileField>
+            </MobileFormSection>
 
-          {state.status !== "idle" && message ? (
-            <div className="px-4 pb-4">
-              <p
-                aria-live="polite"
-                className={`rounded-2xl px-4 py-3 text-sm font-semibold ring-1 ${messageTone}`}
-              >
-                {message}
-              </p>
-            </div>
-          ) : null}
+            <MobileFormSection title="Dates">
+              <MobileField label="Start date">
+                <input
+                  aria-label="Start date"
+                  className={mobileInputClassName}
+                  id="trip-dates"
+                  onChange={(event) => setStartDate(event.target.value)}
+                  type="date"
+                  value={startDate}
+                />
+              </MobileField>
+              <MobileField label="End date">
+                <input
+                  aria-label="End date"
+                  className={mobileInputClassName}
+                  onChange={(event) => setEndDate(event.target.value)}
+                  type="date"
+                  value={endDate}
+                />
+              </MobileField>
+            </MobileFormSection>
+
+            <MobileFormSection title="Details">
+              <MobileField label="Expense budget">
+                <input
+                  aria-label="Expense budget"
+                  className={mobileInputClassName}
+                  inputMode="decimal"
+                  onChange={(event) => setBudget(event.target.value)}
+                  placeholder="Optional"
+                  value={budget}
+                />
+              </MobileField>
+              <MobileField label="Travel style">
+                <select
+                  aria-label="Travel style"
+                  className={mobileSelectClassName}
+                  onChange={(event) => setTravelStyle(event.target.value as TripTravelStyle)}
+                  value={travelStyle}
+                >
+                  {TRIP_TRAVEL_STYLES.map((style) => (
+                    <option className="bg-[#1f1f21] text-white" key={style} value={style}>
+                      {TRIP_TRAVEL_STYLE_LABELS[style]}
+                    </option>
+                  ))}
+                </select>
+              </MobileField>
+            </MobileFormSection>
+
+            {state.status !== "idle" && message ? (
+              <div className="px-4 pb-4">
+                <p
+                  aria-live="polite"
+                  className={`rounded-2xl px-4 py-3 text-sm font-semibold ring-1 ${messageTone}`}
+                >
+                  {message}
+                </p>
+              </div>
+            ) : null}
+          </div>
         </MobileFormShell>
       </form>
     );
@@ -383,6 +408,85 @@ export function TripCreateForm({
       ) : null}
     </form>
   );
+}
+
+function buildTripFormPayload({
+  budgetValue,
+  destination,
+  destinationSelection,
+  endDate,
+  name,
+  startDate,
+  travelStyle
+}: {
+  budgetValue: number | null;
+  destination: string;
+  destinationSelection: LocationSelection | null;
+  endDate: string;
+  name: string;
+  startDate: string;
+  travelStyle: TripTravelStyle;
+}): TripFormPayload | null {
+  if (!destinationSelection) return null;
+
+  const countryCode = countryCodeFromSelection(destinationSelection, destination);
+  if (!countryCode) return null;
+
+  return {
+    country_code: countryCode,
+    destination: destination.trim(),
+    destination_lat: destinationSelection.lat,
+    destination_lng: destinationSelection.lng,
+    end_date: endDate || "",
+    expense_budget: Number.isFinite(budgetValue) ? budgetValue : null,
+    start_date: startDate || "",
+    travel_style: travelStyle,
+    trip_name: name.trim()
+  };
+}
+
+function countryCodeFromSelection(
+  destinationSelection: LocationSelection | null,
+  destination: string
+) {
+  const metadataCountryCode = destinationSelection?.providerMetadata?.countryCode;
+  if (typeof metadataCountryCode === "string" && /^[a-z]{2}$/i.test(metadataCountryCode)) {
+    return metadataCountryCode.toUpperCase();
+  }
+
+  return countryCodeFromDestinationText(
+    [
+      destinationSelection?.formattedAddress,
+      destinationSelection?.address,
+      destinationSelection?.name,
+      destination
+    ]
+      .filter(Boolean)
+      .join(" ")
+  );
+}
+
+function locationSelectionFromInitialData(
+  initialData: TripFormInitialData | null | undefined
+): LocationSelection | null {
+  if (
+    !initialData ||
+    typeof initialData.destination_lat !== "number" ||
+    typeof initialData.destination_lng !== "number"
+  ) {
+    return null;
+  }
+
+  return {
+    address: initialData.destination || "",
+    formattedAddress: initialData.destination_formatted_address || initialData.destination || null,
+    lat: initialData.destination_lat,
+    lng: initialData.destination_lng,
+    placeId: initialData.destination_place_id || null,
+    providerMetadata: initialData.country_code
+      ? { countryCode: initialData.country_code }
+      : {}
+  };
 }
 
 function readCreatedTripId(payload: unknown) {

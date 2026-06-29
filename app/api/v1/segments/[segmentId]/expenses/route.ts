@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { createSegmentExpense, getSegmentExpenses } from "@/lib/db/expenses";
 import { authorizeDashboardApi } from "@/lib/server/dashboard-test-auth";
 import { validateSessionMutationRequest } from "@/lib/server/request-protection";
 
@@ -43,17 +44,6 @@ type RouteContext = {
   params: Promise<{ segmentId: string }>;
 };
 
-type SegmentExpenseRow = {
-  amount_cents: number;
-  category: string;
-  created_at?: string | null;
-  currency: string;
-  id: string;
-  segment_id: string;
-  title: string;
-  updated_at?: string | null;
-};
-
 export async function GET(_request: Request, { params }: RouteContext) {
   const segmentId = readSegmentId(await params);
   if (!segmentId) {
@@ -68,29 +58,21 @@ export async function GET(_request: Request, { params }: RouteContext) {
     return NextResponse.json({ error: "Unauthorized", success: false }, { status: 401 });
   }
 
-  const { data, error } = await auth.supabase
-    .from("trip_segment_expenses")
-    .select("id,segment_id,title,amount_cents,currency,category,created_at,updated_at")
-    .eq("segment_id", segmentId)
-    .order("created_at", { ascending: true });
-
-  if (error) {
+  try {
+    const ledger = await getSegmentExpenses(segmentId, auth.supabase);
+    return NextResponse.json({
+      expenses: ledger.expenses,
+      segment_id: segmentId,
+      success: true,
+      total_cents: ledger.totalCents,
+      total_formatted: ledger.totalFormatted
+    });
+  } catch {
     return NextResponse.json(
       { error: "Failed to fetch segment ledger", success: false },
       { status: 500 }
     );
   }
-
-  const rows = ((data || []) as SegmentExpenseRow[]).map(formatExpenseRow);
-  const totalCents = rows.reduce((acc, row) => acc + row.amount_cents, 0);
-
-  return NextResponse.json({
-    expenses: rows,
-    segment_id: segmentId,
-    success: true,
-    total_cents: totalCents,
-    total_formatted: formatCents(totalCents)
-  });
 }
 
 export async function POST(request: Request, { params }: RouteContext) {
@@ -129,29 +111,25 @@ export async function POST(request: Request, { params }: RouteContext) {
     );
   }
 
-  const { data, error } = await auth.supabase
-    .from("trip_segment_expenses")
-    .insert({
+  try {
+    const expense = await createSegmentExpense(
+      {
       amount_cents: payload.data.amount_cents,
       category: payload.data.category,
       currency: payload.data.currency,
       segment_id: segmentId,
       title: payload.data.title
-    })
-    .select("id,segment_id,title,amount_cents,currency,category,created_at,updated_at")
-    .single();
+      },
+      auth.supabase
+    );
 
-  if (error) {
+    return NextResponse.json({ expense, success: true }, { status: 201 });
+  } catch {
     return NextResponse.json(
       { error: "Failed to insert segment expense", success: false },
       { status: 500 }
     );
   }
-
-  return NextResponse.json(
-    { expense: formatExpenseRow(data as SegmentExpenseRow), success: true },
-    { status: 201 }
-  );
 }
 
 export function OPTIONS() {
@@ -177,15 +155,4 @@ async function readJsonObject(request: Request) {
   } catch {
     return { error: "Request body must be valid JSON.", ok: false as const };
   }
-}
-
-function formatExpenseRow(row: SegmentExpenseRow) {
-  return {
-    ...row,
-    amount: formatCents(row.amount_cents)
-  };
-}
-
-function formatCents(value: number) {
-  return (value / 100).toFixed(2);
 }

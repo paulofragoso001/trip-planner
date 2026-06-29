@@ -36,7 +36,7 @@ export function MobileFormShell({
   return (
     <div
       className={cn(
-        "rounded-[1.55rem] border border-white/10 bg-[#1f1f21] text-white shadow-[0_22px_60px_rgba(0,0,0,0.32)]",
+        "min-h-0 rounded-[1.55rem] border border-white/10 bg-[#1f1f21] text-white shadow-[0_22px_60px_rgba(0,0,0,0.32)]",
         "lg:border-slate-200 lg:bg-white lg:text-slate-950 lg:shadow-sm",
         className
       )}
@@ -54,7 +54,7 @@ export function MobileFormHeader({
   title
 }: MobileFormHeaderProps) {
   return (
-    <div className="grid grid-cols-[minmax(44px,auto)_minmax(0,1fr)_minmax(44px,auto)] items-start gap-3 border-b border-white/10 px-4 py-3 lg:border-slate-200">
+    <div className="shrink-0 grid grid-cols-[minmax(44px,auto)_minmax(0,1fr)_minmax(44px,auto)] items-start gap-3 border-b border-white/10 px-4 py-3 lg:border-slate-200">
       <div className="flex justify-start">{leftAction}</div>
       <div className="min-w-0 text-center">
         <h2 className="truncate text-base font-black leading-tight text-white lg:text-slate-950">
@@ -79,11 +79,11 @@ export function MobileFormSection({
   return (
     <section className={cn("px-4 py-3", className)}>
       {title ? (
-        <h3 className="mb-2 text-xs font-black uppercase tracking-[0.18em] text-white/42 lg:text-slate-500">
+        <h3 className="mb-2 text-[9px] font-extrabold uppercase tracking-[0.18em] text-zinc-500 lg:text-slate-500">
           {title}
         </h3>
       ) : null}
-      <div className="overflow-hidden rounded-2xl bg-white/[0.06] ring-1 ring-white/8 lg:bg-slate-50 lg:ring-slate-200">
+      <div className="divide-y divide-zinc-800/60 overflow-visible rounded-xl border border-zinc-800 bg-[#1e1e24] shadow-xl lg:border-slate-200 lg:bg-slate-50">
         {children}
       </div>
     </section>
@@ -92,8 +92,8 @@ export function MobileFormSection({
 
 export function MobileField({ children, helper, label }: MobileFieldProps) {
   return (
-    <div className="grid min-h-14 gap-1 border-b border-white/8 px-4 py-3 last:border-b-0 lg:border-slate-200">
-      <span className="text-xs font-black uppercase tracking-[0.14em] text-white/42 lg:text-slate-500">
+    <div className="grid min-h-14 gap-1 px-3.5 py-3.5 transition-colors focus-within:bg-[#25252d] lg:focus-within:bg-white">
+      <span className="text-[9px] font-extrabold uppercase tracking-[0.14em] text-zinc-500 lg:text-slate-500">
         {label}
       </span>
       {children}
@@ -107,13 +107,13 @@ export function MobileField({ children, helper, label }: MobileFieldProps) {
 }
 
 export const mobileInputClassName =
-  "min-h-9 w-full border-0 bg-transparent p-0 text-[17px] font-semibold leading-tight text-white outline-none placeholder:text-white/32 focus:ring-0 lg:text-slate-950 lg:placeholder:text-slate-400";
+  "min-h-9 w-full min-w-0 border-0 bg-transparent p-0 text-[17px] font-semibold leading-tight text-white outline-none placeholder:text-zinc-500 focus:ring-0 lg:text-slate-950 lg:placeholder:text-slate-400";
 
 export const mobileSelectClassName =
-  "min-h-9 w-full border-0 bg-transparent p-0 text-[17px] font-semibold leading-tight text-white outline-none focus:ring-0 lg:text-slate-950";
+  "min-h-9 w-full min-w-0 border-0 bg-transparent p-0 text-[17px] font-semibold leading-tight text-white outline-none focus:ring-0 lg:text-slate-950";
 
 export const mobileTextareaClassName =
-  "min-h-24 w-full resize-none border-0 bg-transparent p-0 text-[17px] font-semibold leading-6 text-white outline-none placeholder:text-white/32 focus:ring-0 lg:text-slate-950 lg:placeholder:text-slate-400";
+  "min-h-24 w-full min-w-0 resize-none border-0 bg-transparent p-0 text-[17px] font-semibold leading-6 text-white outline-none placeholder:text-zinc-500 focus:ring-0 lg:text-slate-950 lg:placeholder:text-slate-400";
 
 export const mobilePrimaryActionClassName =
   "inline-flex min-h-11 items-center justify-center rounded-full bg-orange-500 px-4 text-sm font-black text-white transition hover:bg-orange-400 disabled:cursor-not-allowed disabled:opacity-45";

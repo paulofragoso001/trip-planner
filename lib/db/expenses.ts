@@ -1,8 +1,7 @@
-"use client";
-
-import { getSupabaseClient } from "@/lib/supabaseClient";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 export interface SegmentExpense {
+  amount?: string;
   amount_cents: number;
   category: string;
   currency: string;
@@ -11,17 +10,20 @@ export interface SegmentExpense {
   title: string;
 }
 
-type SegmentExpenseInsert = Omit<SegmentExpense, "id">;
+export type SegmentExpenseInsert = Omit<SegmentExpense, "amount" | "id">;
 
 const expenseColumns = "id,segment_id,title,amount_cents,currency,category";
 
-export async function getSegmentExpenses(segmentId: string) {
+export async function getSegmentExpenses(
+  segmentId: string,
+  supabaseClient?: SupabaseClient
+) {
   const safeSegmentId = segmentId.trim();
   if (!safeSegmentId) {
     throw new Error("segmentId is required to fetch segment expenses.");
   }
 
-  const supabase = getSupabaseClient();
+  const supabase = supabaseClient || (await getDefaultSupabaseClient());
   const { data, error } = await supabase
     .from("trip_segment_expenses")
     .select(expenseColumns)
@@ -33,19 +35,23 @@ export async function getSegmentExpenses(segmentId: string) {
     throw new Error(error.message);
   }
 
-  const expenses = (data || []) as SegmentExpense[];
+  const expenses = ((data || []) as SegmentExpense[]).map(formatExpenseRow);
   const totalCents = expenses.reduce((sum, item) => sum + Number(item.amount_cents || 0), 0);
 
   return {
     expenses,
+    totalCents,
     totalFormatted: (totalCents / 100).toFixed(2)
   };
 }
 
-export async function createSegmentExpense(payload: SegmentExpenseInsert) {
+export async function createSegmentExpense(
+  payload: SegmentExpenseInsert,
+  supabaseClient?: SupabaseClient
+) {
   validateSegmentExpensePayload(payload);
 
-  const supabase = getSupabaseClient();
+  const supabase = supabaseClient || (await getDefaultSupabaseClient());
   const { data, error } = await supabase
     .from("trip_segment_expenses")
     .insert([payload])
@@ -57,7 +63,7 @@ export async function createSegmentExpense(payload: SegmentExpenseInsert) {
     throw new Error(error.message);
   }
 
-  return data as SegmentExpense;
+  return formatExpenseRow(data as SegmentExpense);
 }
 
 function validateSegmentExpensePayload(payload: SegmentExpenseInsert) {
@@ -76,4 +82,20 @@ function validateSegmentExpensePayload(payload: SegmentExpenseInsert) {
   if (!payload.category?.trim()) {
     throw new Error("category is required to create a segment expense.");
   }
+}
+
+function formatExpenseRow(row: SegmentExpense): SegmentExpense {
+  return {
+    ...row,
+    amount: (Number(row.amount_cents || 0) / 100).toFixed(2)
+  };
+}
+
+async function getDefaultSupabaseClient() {
+  if (typeof window === "undefined") {
+    throw new Error("A Supabase client is required outside the browser.");
+  }
+
+  const { getSupabaseClient } = await import("@/lib/supabaseClient");
+  return getSupabaseClient();
 }

@@ -51,6 +51,27 @@ export type Trip = {
 
 export type TripDestinationStatus = "manual" | "resolved" | "unresolved";
 
+export type TripFormPayload = {
+  trip_name: string;
+  destination: string;
+  destination_lat: number;
+  destination_lng: number;
+  country_code: string;
+  start_date: string;
+  end_date: string;
+  expense_budget?: number | null;
+  travel_style: TripTravelStyle;
+};
+
+export type TripFormInitialData = Partial<
+  Omit<TripFormPayload, "destination_lat" | "destination_lng">
+> & {
+  destination_lat?: number | null;
+  destination_lng?: number | null;
+  destination_formatted_address?: string | null;
+  destination_place_id?: string | null;
+};
+
 export type TripInput = {
   name: string;
   destination: string;

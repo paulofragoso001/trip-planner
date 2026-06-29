@@ -127,7 +127,7 @@ export function ItineraryCardActions({ item, tripId }: ItineraryCardActionsProps
       ) : null}
 
       {editing ? (
-        <div className="mt-3 rounded-3xl bg-white p-3 text-slate-950 shadow-sm lg:bg-transparent lg:p-0 lg:shadow-none">
+        <div className="mt-3 text-white lg:rounded-3xl lg:bg-transparent lg:p-0 lg:text-slate-950 lg:shadow-none">
           <TripSegmentForm
             buttonLabel="Save changes"
             defaultConfirmationCode={item.confirmationCode}
@@ -148,8 +148,8 @@ export function ItineraryCardActions({ item, tripId }: ItineraryCardActionsProps
             segmentId={item.id}
             tripId={tripId}
           />
-          <details className="mt-2 rounded-xl bg-slate-50 px-3 py-2">
-            <summary className="cursor-pointer text-xs font-black uppercase tracking-[0.12em] text-slate-500">
+          <details className="mt-2 rounded-xl bg-white/[0.06] px-3 py-2 ring-1 ring-white/8 lg:bg-slate-50 lg:ring-0">
+            <summary className="cursor-pointer text-xs font-black uppercase tracking-[0.12em] text-white/60 lg:text-slate-500">
               More actions
             </summary>
             <div className="mt-3">

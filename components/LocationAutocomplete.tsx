@@ -302,7 +302,7 @@ export default function LocationAutocomplete({
   const showManualWarning = mode === "unavailable" && inputValue.trim().length > 0;
 
   return (
-    <div className="relative space-y-2">
+    <div className="relative min-w-0 overflow-visible">
       <input
         ref={inputRef}
         aria-label={ariaLabel}
@@ -319,7 +319,7 @@ export default function LocationAutocomplete({
         value={inputValue}
       />
       {mode === "suggestions" && suggestions.length > 0 ? (
-        <div className="absolute left-0 right-0 top-[calc(100%-4px)] z-50 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl">
+        <div className="absolute left-0 right-0 top-[calc(100%+0.5rem)] z-[90] max-h-[min(18rem,42dvh)] overflow-y-auto overflow-x-hidden rounded-xl border border-slate-200 bg-white shadow-2xl [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {suggestions.map((suggestion) => (
             <button
               className="block w-full px-4 py-3 text-left transition hover:bg-blue-50 focus:bg-blue-50 focus:outline-none disabled:opacity-60"
@@ -342,17 +342,17 @@ export default function LocationAutocomplete({
         </div>
       ) : null}
       {mode === "loading" ? (
-        <p className="text-xs font-semibold text-slate-500">
+        <p className="mt-2 text-xs font-semibold text-slate-500">
           {loadingMessage}
         </p>
       ) : null}
       {showManualWarning ? (
-        <p className="text-xs font-semibold text-amber-700">
+        <p className="mt-2 text-xs font-semibold text-amber-700">
           {manualWarning}
         </p>
       ) : null}
       {placeError ? (
-        <p className="text-xs font-semibold text-red-700">{placeError}</p>
+        <p className="mt-2 text-xs font-semibold text-red-700">{placeError}</p>
       ) : null}
     </div>
   );

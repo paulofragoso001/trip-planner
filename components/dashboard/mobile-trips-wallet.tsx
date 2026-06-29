@@ -238,7 +238,7 @@ export function MobileTripsWallet({ error, trips }: MobileTripsWalletProps) {
             </button>
           ) : null}
           {createOpen ? (
-            <div className="overflow-hidden rounded-[1.65rem] bg-white text-slate-950 shadow-2xl ring-1 ring-white/70">
+            <div className="min-h-0 overflow-visible rounded-[1.65rem] bg-transparent text-white shadow-2xl">
               <TripCreateForm
                 mode="mobile-pass"
                 redirectOnSuccess

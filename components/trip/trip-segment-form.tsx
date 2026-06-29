@@ -305,15 +305,18 @@ export function TripSegmentForm({
   const fieldClass = mobileInputClassName;
   const selectClass = mobileSelectClassName;
   const textareaClass = mobileTextareaClassName;
-  const labelClass = "grid gap-1.5 border-b border-white/8 px-4 py-3 text-xs font-black uppercase tracking-[0.14em] text-white/42 last:border-b-0 lg:border-slate-200 lg:text-slate-500";
+  const groupClass =
+    "divide-y divide-zinc-800/60 overflow-visible rounded-xl border border-zinc-800 bg-[#1e1e24] shadow-xl lg:border-slate-200 lg:bg-slate-50";
+  const labelClass =
+    "grid min-w-0 gap-1.5 px-3.5 py-3.5 text-[9px] font-extrabold uppercase tracking-[0.14em] text-zinc-500 transition-colors focus-within:bg-[#25252d] lg:text-slate-500 lg:focus-within:bg-white";
 
   return (
     <form
-      className="grid gap-4 rounded-[1.55rem] border border-white/10 bg-[#1f1f21] p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] text-white shadow-[0_22px_60px_rgba(0,0,0,0.32)] lg:rounded-2xl lg:border-slate-200 lg:bg-white lg:text-slate-950 lg:shadow-sm"
+      className="flex max-h-[min(78dvh,44rem)] min-h-0 flex-col overflow-hidden rounded-[1.55rem] border border-white/10 bg-[#1f1f21] p-4 text-white shadow-[0_22px_60px_rgba(0,0,0,0.32)] lg:max-h-none lg:overflow-visible lg:rounded-2xl lg:border-slate-200 lg:bg-white lg:text-slate-950 lg:shadow-sm"
       data-testid={isEditing ? "mobile-edit-trip-item-form" : "mobile-add-trip-item-form"}
       onSubmit={submit}
     >
-      <div className="grid grid-cols-[minmax(44px,auto)_minmax(0,1fr)_minmax(44px,auto)] items-start gap-3 border-b border-white/10 pb-3 lg:border-slate-200">
+      <div className="shrink-0 grid grid-cols-[minmax(44px,auto)_minmax(0,1fr)_minmax(44px,auto)] items-start gap-3 border-b border-white/10 pb-3 lg:border-slate-200">
         {onCancel ? (
           <button
             className={mobileSecondaryActionClassName}
@@ -348,126 +351,128 @@ export function TripSegmentForm({
         </button>
       </div>
 
-      <div className="overflow-hidden rounded-2xl bg-white/[0.06] ring-1 ring-white/8 lg:bg-slate-50 lg:ring-slate-200">
-        <label className={labelClass}>
-          Type
-          <select
-            className={selectClass}
-            onChange={(event) => handleTypeChange(event.target.value as TripItemFormType)}
-            value={formType}
-          >
-            {tripItemTypeOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className={labelClass}>
-          {copy.titleLabel}
-          <input
-            className={fieldClass}
-            onChange={(event) => setTitle(event.target.value)}
-            placeholder={copy.titlePlaceholder}
-            required
-            value={title}
-          />
-        </label>
-      </div>
-
-      {isRouteSegment ? (
-        <div className="grid gap-3 overflow-hidden rounded-2xl bg-white/[0.06] py-1 ring-1 ring-white/8 lg:bg-slate-50 lg:ring-slate-200">
-          {!isFlightSegment ? (
+      <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain pb-[calc(6rem+env(safe-area-inset-bottom))] pt-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:overflow-visible lg:pb-0">
+        <div className="grid gap-4">
+          <div className={groupClass}>
             <label className={labelClass}>
-              Transport type
+              Type
               <select
                 className={selectClass}
-                onChange={(event) => setRouteMode(normalizeRouteMode(event.target.value))}
-                value={routeMode === "flight" ? "transfer" : routeMode}
+                onChange={(event) => handleTypeChange(event.target.value as TripItemFormType)}
+                value={formType}
               >
-                <option value="drive">Car</option>
-                <option value="train">Train</option>
-                <option value="bus">Bus</option>
-                <option value="ferry">Ferry</option>
-                <option value="transfer">Transfer</option>
-                <option value="transfer">Rideshare</option>
-                <option value="transportation">Other transport</option>
+                {tripItemTypeOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
               </select>
             </label>
-          ) : null}
-          <div className="grid gap-0 sm:grid-cols-2">
+
             <label className={labelClass}>
-              From
-              <GoogleMapsProvider>
-                <LocationAutocomplete
-                  ariaLabel="Route origin"
-                  inputClassName={fieldClass}
-                  loadingMessage="Places autocomplete is loading. You can still type an origin."
-                  manualWarning="Select a suggested place to map this route."
-                  onInputChange={(value) => handleRouteEndpointInputChange("origin", value)}
-                  onSelect={(selection) => handleRouteEndpointSelect("origin", selection)}
-                  placeholder="Barcelona, Spain or BCN"
-                  resolveErrorMessage="Almidy could not map that origin. Try another location."
-                  unresolvedMessage="Select a mapped origin."
-                  value={routeOriginInput}
-                />
-              </GoogleMapsProvider>
-            </label>
-            <label className={labelClass}>
-              To
-              <GoogleMapsProvider>
-                <LocationAutocomplete
-                  ariaLabel="Route destination"
-                  inputClassName={fieldClass}
-                  loadingMessage="Places autocomplete is loading. You can still type a destination."
-                  manualWarning="Select a suggested place to map this route."
-                  onInputChange={(value) => handleRouteEndpointInputChange("destination", value)}
-                  onSelect={(selection) => handleRouteEndpointSelect("destination", selection)}
-                  placeholder="Miami, FL or MIA"
-                  resolveErrorMessage="Almidy could not map that destination. Try another location."
-                  unresolvedMessage="Select a mapped destination."
-                  value={routeDestinationInput}
-                />
-              </GoogleMapsProvider>
+              {copy.titleLabel}
+              <input
+                className={fieldClass}
+                onChange={(event) => setTitle(event.target.value)}
+                placeholder={copy.titlePlaceholder}
+                required
+                value={title}
+              />
             </label>
           </div>
-          {routeOriginInput || routeDestinationInput ? (
-            <p className="px-4 pb-3 text-xs font-semibold text-white/52 lg:text-slate-500">
-              {routeOrigin?.lat != null && routeDestination?.lat != null
-                ? "Route ready."
-                : "Select origin and destination places to draw this route."}
-            </p>
-          ) : null}
-        </div>
-      ) : (
-        <div className="overflow-hidden rounded-2xl bg-white/[0.06] ring-1 ring-white/8 lg:bg-slate-50 lg:ring-slate-200">
-          <label className={labelClass}>
-            {copy.locationLabel}
-            <GoogleMapsProvider>
-              <LocationAutocomplete
-                ariaLabel="Stop location"
-                inputClassName={fieldClass}
-                loadingMessage="Places autocomplete is loading. You can still type a location."
-                manualWarning="Select a suggested place to map this item."
-                onInputChange={handleLocationInputChange}
-                onSelect={handleLocationSelect}
-                placeholder={copy.locationPlaceholder}
-                resolveErrorMessage="Almidy could not map that Google result. Try another location."
-                unresolvedMessage="Select a suggested place with a mapped location."
-                value={location}
-              />
-            </GoogleMapsProvider>
-            {location.trim() && !locationSelected ? (
-              <p className="mt-2 text-xs font-semibold text-orange-200/76 lg:text-amber-700">
-                Select a suggested place to map this.
-              </p>
-            ) : null}
-          </label>
-        </div>
-      )}
 
-      <div className="grid overflow-hidden rounded-2xl bg-white/[0.06] ring-1 ring-white/8 sm:grid-cols-2 lg:bg-slate-50 lg:ring-slate-200">
+          {isRouteSegment ? (
+            <div className={groupClass}>
+              {!isFlightSegment ? (
+                <label className={labelClass}>
+                  Transport type
+                  <select
+                    className={selectClass}
+                    onChange={(event) => setRouteMode(normalizeRouteMode(event.target.value))}
+                    value={routeMode === "flight" ? "transfer" : routeMode}
+                  >
+                    <option value="drive">Car</option>
+                    <option value="train">Train</option>
+                    <option value="bus">Bus</option>
+                    <option value="ferry">Ferry</option>
+                    <option value="transfer">Transfer</option>
+                    <option value="transfer">Rideshare</option>
+                    <option value="transportation">Other transport</option>
+                  </select>
+                </label>
+              ) : null}
+              <div className="grid gap-0 divide-y divide-zinc-800/60 sm:grid-cols-2 sm:divide-x sm:divide-y-0">
+                <label className={labelClass}>
+                  From
+                  <GoogleMapsProvider>
+                    <LocationAutocomplete
+                      ariaLabel="Route origin"
+                      inputClassName={fieldClass}
+                      loadingMessage="Places autocomplete is loading. You can still type an origin."
+                      manualWarning="Select a suggested place to map this route."
+                      onInputChange={(value) => handleRouteEndpointInputChange("origin", value)}
+                      onSelect={(selection) => handleRouteEndpointSelect("origin", selection)}
+                      placeholder="Barcelona, Spain or BCN"
+                      resolveErrorMessage="Almidy could not map that origin. Try another location."
+                      unresolvedMessage="Select a mapped origin."
+                      value={routeOriginInput}
+                    />
+                  </GoogleMapsProvider>
+                </label>
+                <label className={labelClass}>
+                  To
+                  <GoogleMapsProvider>
+                    <LocationAutocomplete
+                      ariaLabel="Route destination"
+                      inputClassName={fieldClass}
+                      loadingMessage="Places autocomplete is loading. You can still type a destination."
+                      manualWarning="Select a suggested place to map this route."
+                      onInputChange={(value) => handleRouteEndpointInputChange("destination", value)}
+                      onSelect={(selection) => handleRouteEndpointSelect("destination", selection)}
+                      placeholder="Miami, FL or MIA"
+                      resolveErrorMessage="Almidy could not map that destination. Try another location."
+                      unresolvedMessage="Select a mapped destination."
+                      value={routeDestinationInput}
+                    />
+                  </GoogleMapsProvider>
+                </label>
+              </div>
+              {routeOriginInput || routeDestinationInput ? (
+                <p className="px-4 pb-3 text-xs font-semibold text-white/52 lg:text-slate-500">
+                  {routeOrigin?.lat != null && routeDestination?.lat != null
+                    ? "Route ready."
+                    : "Select origin and destination places to draw this route."}
+                </p>
+              ) : null}
+            </div>
+          ) : (
+            <div className={groupClass}>
+              <label className={labelClass}>
+                {copy.locationLabel}
+                <GoogleMapsProvider>
+                  <LocationAutocomplete
+                    ariaLabel="Stop location"
+                    inputClassName={fieldClass}
+                    loadingMessage="Places autocomplete is loading. You can still type a location."
+                    manualWarning="Select a suggested place to map this item."
+                    onInputChange={handleLocationInputChange}
+                    onSelect={handleLocationSelect}
+                    placeholder={copy.locationPlaceholder}
+                    resolveErrorMessage="Almidy could not map that Google result. Try another location."
+                    unresolvedMessage="Select a suggested place with a mapped location."
+                    value={location}
+                  />
+                </GoogleMapsProvider>
+                {location.trim() && !locationSelected ? (
+                  <p className="mt-2 text-xs font-semibold text-orange-200/76 lg:text-amber-700">
+                    Select a suggested place to map this.
+                  </p>
+                ) : null}
+              </label>
+            </div>
+          )}
+
+      <div className={`${groupClass} grid sm:grid-cols-2 sm:divide-x sm:divide-y-0`}>
         <label className={labelClass}>
           {copy.startDateLabel}
           <input
@@ -489,7 +494,7 @@ export function TripSegmentForm({
       </div>
 
       {showsEndTime ? (
-        <div className={`grid overflow-hidden rounded-2xl bg-white/[0.06] ring-1 ring-white/8 lg:bg-slate-50 lg:ring-slate-200 ${usesSeparateEndDate ? "sm:grid-cols-2" : ""}`}>
+        <div className={`${groupClass} grid ${usesSeparateEndDate ? "sm:grid-cols-2 sm:divide-x sm:divide-y-0" : ""}`}>
           {usesSeparateEndDate ? (
             <label className={labelClass}>
               {copy.endDateLabel}
@@ -604,6 +609,8 @@ export function TripSegmentForm({
       {state.status !== "idle" && message ? (
         <p className={`rounded-2xl px-4 py-3 text-xs font-semibold ring-1 ${tone}`}>{message}</p>
       ) : null}
+        </div>
+      </div>
     </form>
   );
 }
