@@ -2920,6 +2920,88 @@ test.describe("mobile soft-launch UX", () => {
     }
   });
 
+  test("map automatically fits bounds for international long-distance flight segments", async ({
+    page,
+    request
+  }) => {
+    test.setTimeout(90_000);
+    await page.setViewportSize({ height: 900, width: 390 });
+    await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
+
+    const tripResponse = await request.post(`${baseUrl}/api/trips`, {
+      data: {
+        destination: "São Paulo, Brazil",
+        name: `Long distance map bounds test ${Date.now()}`,
+        status: "Planning",
+        travel_style: "balanced"
+      },
+      headers: { "x-cypress-dashboard": "true" }
+    });
+    expect(tripResponse.status()).toBe(201);
+    const tripPayload = await tripResponse.json();
+    const tripId = tripPayload?.trip?.id;
+    expect(typeof tripId).toBe("string");
+
+    try {
+      const route = {
+        arriveAt: "2026-06-05T10:05:00.000Z",
+        carrier: "LATAM",
+        confirmation: "MIA-GRU-TEST",
+        departAt: "2026-06-05T05:00:00.000Z",
+        destination: {
+          address: "Rod. Hélio Smidt, s/nº - Cumbica, Guarulhos - SP, Brazil",
+          code: "GRU",
+          label: "São Paulo/Guarulhos-Governor André Franco Montoro International Airport",
+          lat: -23.4356,
+          lng: -46.4731
+        },
+        flightNumber: "LA8195",
+        mode: "flight",
+        origin: {
+          address: "2100 NW 42nd Ave, Miami, FL 33142",
+          code: "MIA",
+          label: "Miami International Airport",
+          lat: 25.7959,
+          lng: -80.287
+        }
+      };
+
+      const segmentResponse = await request.post(`${baseUrl}/api/trip-segments`, {
+        data: {
+          endTime: route.arriveAt,
+          kind: "flight",
+          lat: route.origin.lat,
+          lng: route.origin.lng,
+          location: "Miami International Airport to São Paulo/Guarulhos-Governor André Franco Montoro International Airport",
+          provider: "google_places",
+          providerMetadata: {
+            route
+          },
+          startTime: route.departAt,
+          title: "Miami to São Paulo",
+          tripId
+        },
+        headers: { "x-cypress-dashboard": "true" }
+      });
+      expect(segmentResponse.status()).toBe(201);
+
+      await page.goto(`${baseUrl}/dashboard/trips/${tripId}/map`, { waitUntil: "commit" });
+
+      const mapContainer = page.locator('[data-map-system="almidy-map-system"]').first();
+      await expect(mapContainer).toBeVisible({ timeout: 30_000 });
+      const selectedRouteCard = page.getByTestId("map-selected-route-card");
+      await expect(selectedRouteCard).toContainText(/Miami International Airport to São Paulo/, {
+        timeout: 30_000
+      });
+
+      const isMapLayerRendered = await mapContainer.evaluate((el) => el.childElementCount > 0);
+      expect(isMapLayerRendered).toBeTruthy();
+      await expect(selectedRouteCard).toBeVisible();
+    } finally {
+      await deleteTripForTest(request, tripId);
+    }
+  });
+
   test("mobile itinerary panel expands and opens add item form without overlap", async ({ page, request }) => {
     test.setTimeout(90_000);
     await page.setViewportSize({ height: 900, width: 390 });
