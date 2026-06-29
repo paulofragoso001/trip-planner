@@ -277,6 +277,7 @@ function MobileTripsCountriesMap({
   const carouselCardRefs = useRef(new Map<string, HTMLButtonElement>());
   const [activeTripId, setActiveTripId] = useState<string | null>(null);
   const [selectedTripId, setSelectedTripId] = useState<string | null>(null);
+  const [mapSelectionRevision, setMapSelectionRevision] = useState(0);
   const markerTrips = useMemo(() => activeYearTrips.filter(hasTripCoordinates), [activeYearTrips]);
   const tripPins = useMemo(() => markerTrips.map(tripToMapPin), [markerTrips]);
   const globeTripPins = useMemo(() => markerTrips.map(tripToGlobeFlagPin).filter(isGlobeTripPin), [markerTrips]);
@@ -319,6 +320,7 @@ function MobileTripsCountriesMap({
 
   function selectTripOnMap(tripId: string, options: { scrollCarousel?: boolean } = {}) {
     setActiveTripId(tripId);
+    setMapSelectionRevision((revision) => revision + 1);
     unifiedMap?.selectPin(`trip-${tripId}`);
 
     if (options.scrollCarousel === false) return;
@@ -394,6 +396,7 @@ function MobileTripsCountriesMap({
         activeYear={activeYear}
         hydrated={hydrated}
         onTripPinSelect={handleTripPinSelect}
+        selectionRevision={mapSelectionRevision}
         tripPins={globeTripPins}
       />
 
@@ -619,12 +622,14 @@ function MobileTripsGlobeCanvas({
   activeYear,
   hydrated,
   onTripPinSelect,
+  selectionRevision,
   tripPins
 }: {
   activeTripId: string | null;
   activeYear: string;
   hydrated: boolean;
   onTripPinSelect: (tripId: string) => void;
+  selectionRevision: number;
   tripPins: AlmidyLaunchGlobeTripPin[];
 }) {
   const hasTripPins = tripPins.length > 0;
@@ -668,6 +673,7 @@ function MobileTripsGlobeCanvas({
         mapInstanceKey={mapInstanceKey}
         onTripPinSelect={onTripPinSelect}
         renderTripPins
+        selectionRevision={selectionRevision}
         showCountryPin={false}
         tripPins={tripPins}
         useLocationFocus={false}

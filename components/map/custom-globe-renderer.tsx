@@ -24,6 +24,7 @@ type CustomGlobeRendererProps = {
   onTripPinSelect?: (tripId: string) => void;
   mapInstanceKey?: string;
   renderTripPins?: boolean;
+  selectionRevision?: number;
   showCountryPin?: boolean;
   surfaceState?: AlmidyMapSurfaceState;
   tripPins?: AlmidyLaunchGlobeTripPin[];
@@ -37,6 +38,7 @@ export function CustomGlobeRenderer({
   mapInstanceKey,
   onTripPinSelect,
   renderTripPins,
+  selectionRevision,
   showCountryPin,
   surfaceState,
   tripPins,
@@ -53,6 +55,7 @@ export function CustomGlobeRenderer({
         className={className}
         mapInstanceKey={mapInstanceKey}
         onTripPinSelect={onTripPinSelect}
+        selectionRevision={selectionRevision}
         tripPins={tripPins ?? []}
       />
     );
@@ -90,6 +93,7 @@ type TripsOverviewMapRendererProps = {
   className?: string;
   mapInstanceKey?: string;
   onTripPinSelect?: (tripId: string) => void;
+  selectionRevision?: number;
   tripPins: AlmidyLaunchGlobeTripPin[];
 };
 
@@ -118,6 +122,7 @@ function LoadedTripsOverviewMapRenderer({
   className,
   mapInstanceKey,
   onTripPinSelect,
+  selectionRevision,
   tripPins
 }: TripsOverviewMapRendererProps) {
   const mapRef = useRef<google.maps.Map | null>(null);
@@ -167,7 +172,7 @@ function LoadedTripsOverviewMapRenderer({
     );
     mapRef.current.panTo(target);
     mapRef.current.setZoom(5);
-  }, [activePin, mapReady]);
+  }, [activePin, mapReady, selectionRevision]);
 
   const handleMapLoad = useCallback((map: google.maps.Map) => {
     mapRef.current = map;
