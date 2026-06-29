@@ -335,6 +335,9 @@ export function TripSegmentForm({
           <p className="mt-1 truncate text-xs font-semibold text-white/48 lg:text-slate-500">
             {copy.helper}
           </p>
+          <p className="mt-1 text-[0.62rem] font-mono font-black uppercase tracking-[0.18em] text-orange-300/80 lg:text-amber-700">
+            {copy.contextLabel}
+          </p>
         </div>
         <button
           className={mobilePrimaryActionClassName}
@@ -355,7 +358,7 @@ export function TripSegmentForm({
         <div className="grid gap-4">
           <div className={groupClass}>
             <label className={labelClass}>
-              Type
+              Reservation type
               <select
                 className={selectClass}
                 onChange={(event) => handleTypeChange(event.target.value as TripItemFormType)}
@@ -379,6 +382,18 @@ export function TripSegmentForm({
                 value={title}
               />
             </label>
+
+            {!isRouteSegment && (formType === "restaurant" || isHotelSegment) ? (
+              <label className={labelClass}>
+                Confirmation / booking code
+                <input
+                  className={`${fieldClass} font-mono tracking-wider`}
+                  onChange={(event) => setRouteConfirmation(event.target.value)}
+                  placeholder="H782NG9"
+                  value={routeConfirmation}
+                />
+              </label>
+            ) : null}
           </div>
 
           {isRouteSegment ? (
@@ -435,6 +450,35 @@ export function TripSegmentForm({
                       value={routeDestinationInput}
                     />
                   </GoogleMapsProvider>
+                </label>
+              </div>
+              <div className="grid gap-0 divide-y divide-zinc-800/60 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+                <label className={labelClass}>
+                  {isFlightSegment ? "Airline carrier" : "Carrier"}
+                  <input
+                    className={fieldClass}
+                    onChange={(event) => setRouteCarrier(event.target.value)}
+                    placeholder={isFlightSegment ? "American Airlines" : "Brightline"}
+                    value={routeCarrier}
+                  />
+                </label>
+                <label className={labelClass}>
+                  {isFlightSegment ? "Flight number" : "Route number"}
+                  <input
+                    className={`${fieldClass} font-mono tracking-wider`}
+                    onChange={(event) => setRouteFlightNumber(event.target.value)}
+                    placeholder={isFlightSegment ? "AA-2415" : "Train 101"}
+                    value={routeFlightNumber}
+                  />
+                </label>
+                <label className={labelClass}>
+                  Confirmation / booking code
+                  <input
+                    className={`${fieldClass} font-mono tracking-wider`}
+                    onChange={(event) => setRouteConfirmation(event.target.value)}
+                    placeholder="ABC123"
+                    value={routeConfirmation}
+                  />
                 </label>
               </div>
               {routeOriginInput || routeDestinationInput ? (
@@ -523,47 +567,6 @@ export function TripSegmentForm({
           Notes and details
         </summary>
         <div className="mt-3 grid gap-3">
-          {isRouteSegment ? (
-            <div className="grid gap-3 sm:grid-cols-3">
-              <label className={labelClass}>
-                {isFlightSegment ? "Airline" : "Carrier"}
-                <input
-                  className={fieldClass}
-                  onChange={(event) => setRouteCarrier(event.target.value)}
-                  placeholder={isFlightSegment ? "American Airlines" : "Brightline"}
-                  value={routeCarrier}
-                />
-              </label>
-              <label className={labelClass}>
-                {isFlightSegment ? "Flight number" : "Route number"}
-                <input
-                  className={fieldClass}
-                  onChange={(event) => setRouteFlightNumber(event.target.value)}
-                  placeholder={isFlightSegment ? "AA112" : "Train 101"}
-                  value={routeFlightNumber}
-                />
-              </label>
-              <label className={labelClass}>
-                Confirmation
-                <input
-                  className={fieldClass}
-                  onChange={(event) => setRouteConfirmation(event.target.value)}
-                  placeholder="ABC123"
-                  value={routeConfirmation}
-                />
-              </label>
-            </div>
-          ) : formType === "restaurant" || isHotelSegment ? (
-            <label className={labelClass}>
-              Confirmation
-              <input
-                className={fieldClass}
-                onChange={(event) => setRouteConfirmation(event.target.value)}
-                placeholder="Optional confirmation"
-                value={routeConfirmation}
-              />
-            </label>
-          ) : null}
           <label className={labelClass}>
             Notes
             <textarea
@@ -666,6 +669,7 @@ function formCopyForType(type: TripItemFormType) {
   switch (type) {
     case "activity":
       return {
+        contextLabel: "activity",
         endDateLabel: "End date",
         endTimeLabel: "End time",
         helper: "Add an activity, tour, or experience.",
@@ -679,6 +683,7 @@ function formCopyForType(type: TripItemFormType) {
       };
     case "flight":
       return {
+        contextLabel: "flight",
         endDateLabel: "Arrival date",
         endTimeLabel: "Arrival time",
         helper: "Add a flight route with departure and arrival details.",
@@ -692,6 +697,7 @@ function formCopyForType(type: TripItemFormType) {
       };
     case "hotel":
       return {
+        contextLabel: "lodging",
         endDateLabel: "Check-out date",
         endTimeLabel: "Check-out time",
         helper: "Add lodging and check-in details.",
@@ -705,6 +711,7 @@ function formCopyForType(type: TripItemFormType) {
       };
     case "meeting":
       return {
+        contextLabel: "meeting",
         endDateLabel: "End date",
         endTimeLabel: "End time",
         helper: "Add a meetup, reservation, or appointment.",
@@ -718,6 +725,7 @@ function formCopyForType(type: TripItemFormType) {
       };
     case "restaurant":
       return {
+        contextLabel: "dining",
         endDateLabel: "End date",
         endTimeLabel: "End time",
         helper: "Add a restaurant or reservation.",
@@ -731,6 +739,7 @@ function formCopyForType(type: TripItemFormType) {
       };
     case "transport":
       return {
+        contextLabel: "transit",
         endDateLabel: "Arrival date",
         endTimeLabel: "Arrival time",
         helper: "Add a transfer, train, bus, ferry, or rideshare.",
@@ -745,6 +754,7 @@ function formCopyForType(type: TripItemFormType) {
     case "place":
     default:
       return {
+        contextLabel: "place",
         endDateLabel: "End date",
         endTimeLabel: "End time",
         helper: "Add a mapped place to your trip.",
