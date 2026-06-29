@@ -2981,6 +2981,57 @@ test.describe("mobile soft-launch UX", () => {
     }
   });
 
+  test("itinerary reservation fields adapt when the item type changes", async ({ page, request }) => {
+    test.setTimeout(90_000);
+    await page.setViewportSize({ height: 900, width: 390 });
+    await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
+
+    const tripResponse = await request.post(`${baseUrl}/api/trips`, {
+      data: {
+        destination: "Miami, FL",
+        name: `Reservation fields test ${Date.now()}`,
+        status: "Planning",
+        travel_style: "balanced"
+      },
+      headers: { "x-cypress-dashboard": "true" }
+    });
+    expect(tripResponse.status()).toBe(201);
+    const tripPayload = await tripResponse.json();
+    const tripId = tripPayload?.trip?.id;
+    expect(typeof tripId).toBe("string");
+
+    try {
+      await page.goto(`${baseUrl}/dashboard/trips/${tripId}/timeline#new-plan`, { waitUntil: "commit" });
+
+      const mobileAddPanel = page.locator("#new-plan");
+      await expect(mobileAddPanel).toBeVisible({ timeout: 30_000 });
+      const summary = mobileAddPanel.locator("summary", { hasText: "Add trip item" });
+      await expect(summary).toBeVisible();
+      await summary.click();
+
+      const addForm = mobileAddPanel.getByTestId("mobile-add-trip-item-form");
+      await expect(addForm).toBeVisible();
+
+      const typeDropdown = addForm.getByLabel("Reservation type");
+      await expect(typeDropdown).toBeVisible();
+
+      await typeDropdown.selectOption("restaurant");
+      await expect(addForm.getByText("dining", { exact: true })).toBeVisible();
+      await expect(addForm.getByText("Restaurant name")).toBeVisible();
+      await expect(addForm.getByText("Confirmation / booking code")).toBeVisible();
+      await expect(addForm.getByText("Flight number")).not.toBeVisible();
+
+      await typeDropdown.selectOption("flight");
+      await expect(addForm.getByText("flight", { exact: true })).toBeVisible();
+      await expect(addForm.getByText("Airline carrier")).toBeVisible();
+      await expect(addForm.getByText("Flight number")).toBeVisible();
+      await expect(addForm.getByText("From")).toBeVisible();
+      await expect(addForm.getByText("To")).toBeVisible();
+    } finally {
+      await deleteTripForTest(request, tripId);
+    }
+  });
+
   test("mobile map surfaces unresolved segments and deep-links to edit location", async ({ page, request }) => {
     test.setTimeout(90_000);
     await page.setViewportSize({ height: 900, width: 390 });
