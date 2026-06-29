@@ -122,6 +122,12 @@ function LoadedTripsOverviewMapRenderer({
 }: TripsOverviewMapRendererProps) {
   const mapRef = useRef<google.maps.Map | null>(null);
   const visiblePins = useMemo(() => tripPins.map(toResolvedTripPin).filter(isResolvedTripPin), [tripPins]);
+  const activePin = useMemo(
+    () => activeTripId
+      ? visiblePins.find((pin) => (pin.tripId ?? pin.id) === activeTripId) ?? null
+      : null,
+    [activeTripId, visiblePins]
+  );
   const mapReady =
     typeof window !== "undefined" &&
     typeof window.google?.maps?.Map === "function" &&
@@ -152,6 +158,26 @@ function LoadedTripsOverviewMapRenderer({
     }
   }, [fitPins]);
 
+  useEffect(() => {
+    if (!mapReady || !mapRef.current || !activePin) return;
+
+    const target = new window.google.maps.LatLng(
+      activePin.coordinate.lat,
+      activePin.coordinate.lng
+    );
+    mapRef.current.panTo(target);
+    mapRef.current.setZoom(5);
+  }, [activePin, mapReady]);
+
+  const handleMapLoad = useCallback((map: google.maps.Map) => {
+    mapRef.current = map;
+    fitPins(map);
+  }, [fitPins]);
+
+  const handleMapUnmount = useCallback(() => {
+    mapRef.current = null;
+  }, []);
+
   if (!mapReady) {
     return (
       <div
@@ -178,10 +204,8 @@ function LoadedTripsOverviewMapRenderer({
       <GoogleMap
         center={center}
         mapContainerStyle={{ height: "100%", width: "100%" }}
-        onLoad={(map) => {
-          mapRef.current = map;
-          fitPins(map);
-        }}
+        onLoad={handleMapLoad}
+        onUnmount={handleMapUnmount}
         options={{
           backgroundColor: "#061331",
           clickableIcons: false,

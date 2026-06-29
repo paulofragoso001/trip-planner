@@ -63,7 +63,7 @@ async function installMockGoogleMaps3D(page: Page) {
       __panes: Record<string, HTMLElement>;
       fitBounds: () => void;
       getDiv: () => HTMLElement;
-      panTo: () => void;
+      panTo: (latLng?: { lat?: number | (() => number); lng?: number | (() => number) }) => void;
       setCenter: () => void;
       setClickableIcons: () => void;
       setHeading: () => void;
@@ -71,7 +71,7 @@ async function installMockGoogleMaps3D(page: Page) {
       setOptions: () => void;
       setStreetView: () => void;
       setTilt: () => void;
-      setZoom: () => void;
+      setZoom: (zoom?: number) => void;
     };
 
     class MockMap3DElement extends HTMLElement {
@@ -114,7 +114,11 @@ async function installMockGoogleMaps3D(page: Page) {
       getDiv() {
         return this.div;
       }
-      panTo() {}
+      panTo(latLng?: { lat?: number | (() => number); lng?: number | (() => number) }) {
+        const lat = typeof latLng?.lat === "function" ? latLng.lat() : Number(latLng?.lat ?? 0);
+        const lng = typeof latLng?.lng === "function" ? latLng.lng() : Number(latLng?.lng ?? 0);
+        this.div.dataset.googleMapPanTo = `${lat.toFixed(5)},${lng.toFixed(5)}`;
+      }
       setCenter() {}
       setClickableIcons() {}
       setHeading() {}
@@ -122,7 +126,9 @@ async function installMockGoogleMaps3D(page: Page) {
       setOptions() {}
       setStreetView() {}
       setTilt() {}
-      setZoom() {}
+      setZoom(zoom?: number) {
+        this.div.dataset.googleMapZoom = String(zoom ?? "");
+      }
     }
 
     class MockLatLng {
@@ -677,6 +683,8 @@ test.describe("mobile soft-launch UX", () => {
       await vancouverLabel.dispatchEvent("click");
 
       await expect(vancouverPin).toHaveAttribute("data-active", "true");
+      await expect(mapWrapper.locator('[data-google-map-pan-to="49.28270,-123.12070"]')).toBeAttached();
+      await expect(mapWrapper.locator('[data-google-map-zoom="5"]')).toBeAttached();
       await expect(page.getByTestId("mobile-trips-country-map-screen")).toHaveAttribute(
         "data-selected-map-id",
         `trip-${vancouverTripId}`
