@@ -98,6 +98,21 @@ async function installMockMobileLocation(
 
 async function installMockGoogleMaps3D(page: Page) {
   await page.addInitScript(() => {
+    type MockMapInstance = {
+      __panes: Record<string, HTMLElement>;
+      fitBounds: () => void;
+      getDiv: () => HTMLElement;
+      panTo: () => void;
+      setCenter: () => void;
+      setClickableIcons: () => void;
+      setHeading: () => void;
+      setMapTypeId: () => void;
+      setOptions: () => void;
+      setStreetView: () => void;
+      setTilt: () => void;
+      setZoom: () => void;
+    };
+
     class MockMap3DElement extends HTMLElement {
       constructor(options?: Record<string, unknown>) {
         super();
@@ -110,6 +125,103 @@ async function installMockGoogleMaps3D(page: Page) {
       customElements.define("almidy-test-map-3d", MockMap3DElement);
     }
 
+    class MockMap {
+      __panes: Record<string, HTMLElement>;
+      private div: HTMLElement;
+      mapTypes = { set: () => {} };
+
+      constructor(div: HTMLElement) {
+        this.div = div;
+        this.__panes = {
+          floatPane: document.createElement("div"),
+          mapPane: document.createElement("div"),
+          markerLayer: document.createElement("div"),
+          overlayLayer: document.createElement("div"),
+          overlayMouseTarget: document.createElement("div")
+        };
+        Object.entries(this.__panes).forEach(([name, pane]) => {
+          pane.style.inset = "0";
+          pane.style.overflow = "visible";
+          pane.style.pointerEvents = name === "overlayMouseTarget" ? "auto" : "none";
+          pane.style.position = "absolute";
+          pane.style.zIndex = name === "overlayMouseTarget" ? "30" : "1";
+          div.appendChild(pane);
+        });
+      }
+
+      fitBounds() {}
+      getDiv() {
+        return this.div;
+      }
+      panTo() {}
+      setCenter() {}
+      setClickableIcons() {}
+      setHeading() {}
+      setMapTypeId() {}
+      setOptions() {}
+      setStreetView() {}
+      setTilt() {}
+      setZoom() {}
+    }
+
+    class MockLatLng {
+      private latitude: number;
+      private longitude: number;
+
+      constructor(lat: number, lng: number) {
+        this.latitude = Number(lat);
+        this.longitude = Number(lng);
+      }
+
+      lat() {
+        return this.latitude;
+      }
+
+      lng() {
+        return this.longitude;
+      }
+    }
+
+    class MockLatLngBounds {
+      extend() {
+        return this;
+      }
+    }
+
+    class MockOverlayView {
+      private map: MockMapInstance | null = null;
+
+      draw() {}
+      getPanes() {
+        return this.map?.__panes ?? null;
+      }
+      getProjection() {
+        const map = this.map;
+        return {
+          fromLatLngToDivPixel(latLng: { lat?: number | (() => number); lng?: number | (() => number) }) {
+            const lat = typeof latLng.lat === "function" ? latLng.lat() : Number(latLng.lat ?? 0);
+            const lng = typeof latLng.lng === "function" ? latLng.lng() : Number(latLng.lng ?? 0);
+            const rect = map?.getDiv().getBoundingClientRect() ?? { height: 900, width: 390 };
+            return {
+              x: ((lng + 180) / 360) * rect.width,
+              y: ((90 - lat) / 180) * rect.height
+            };
+          }
+        };
+      }
+      onAdd() {}
+      onRemove() {}
+      setMap(map: MockMapInstance | null) {
+        this.map = map;
+        if (map) {
+          this.onAdd();
+          this.draw();
+        } else {
+          this.onRemove();
+        }
+      }
+    }
+
     (window as typeof window & {
       google?: {
         maps?: {
@@ -118,6 +230,12 @@ async function installMockGoogleMaps3D(page: Page) {
       };
     }).google = {
       maps: {
+        ColorScheme: { DARK: "DARK" },
+        event: {
+          addListener: () => ({ remove: () => {} }),
+          clearInstanceListeners: () => {},
+          removeListener: () => {}
+        },
         importLibrary: async (libraryName: string) => {
           if (libraryName === "maps3d") {
             return {
@@ -135,7 +253,11 @@ async function installMockGoogleMaps3D(page: Page) {
           }
 
           return {};
-        }
+        },
+        LatLngBounds: MockLatLngBounds,
+        LatLng: MockLatLng,
+        Map: MockMap,
+        OverlayView: MockOverlayView
       }
     };
   });
@@ -275,9 +397,9 @@ test.describe("authenticated mobile dashboard smoke", () => {
     });
     await expect(page.getByTestId("mobile-country-map-canvas")).toHaveAttribute(
       "data-map-system",
-      "almidy-google-maps-3d"
+      "almidy-map-system"
     );
-    await expect(page.getByTestId("almidy-launch-globe")).toHaveAttribute("data-map-system", "almidy-google-maps-3d");
+    await expect(page.getByTestId("almidy-launch-globe")).toHaveCount(0);
     await expect(page.getByTestId("mobile-trips-globe-flag-pin").first()).toBeVisible();
     await expect(page.getByTestId("mobile-trips-globe-flag-pin").first()).toHaveAttribute("data-active", "false");
     await expect(page.getByTestId("mobile-home-country-pin")).toHaveCount(0);

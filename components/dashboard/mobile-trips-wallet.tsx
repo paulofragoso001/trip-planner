@@ -13,6 +13,7 @@ import { CustomGlobeRenderer } from "@/components/map/custom-globe-renderer";
 import { cn } from "@/components/trip-ui";
 import type { TripsData } from "@/app/dashboard/trips/loader";
 import { dashboardActionRoutes } from "@/lib/dashboard/action-routes";
+import { ALMIDY_MAP_SYSTEM_ID } from "@/lib/map/almidy-map-visuals";
 import { unifiedMapSurfaceEnabled } from "@/lib/map/feature-flags";
 import {
   UnifiedMapProvider,
@@ -643,7 +644,7 @@ function MobileTripsGlobeCanvas({
       <div
         className="absolute inset-0 z-10 flex items-center justify-center overflow-visible bg-[#090e14] [transform-style:preserve-3d]"
         data-map-instance-key="trips-globe-loading"
-        data-map-system="almidy-google-maps-3d"
+        data-map-system={ALMIDY_MAP_SYSTEM_ID}
         data-map-trip-state="loading"
         data-testid="mobile-country-map-canvas"
       >
@@ -656,7 +657,7 @@ function MobileTripsGlobeCanvas({
     <div
       className="absolute inset-0 z-10 overflow-visible bg-black [transform-style:preserve-3d]"
       data-map-instance-key={mapInstanceKey}
-      data-map-system="almidy-google-maps-3d"
+      data-map-system={ALMIDY_MAP_SYSTEM_ID}
       data-map-trip-state={hasTripPins ? "ready" : "empty"}
       data-testid="mobile-country-map-canvas"
     >

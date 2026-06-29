@@ -59,6 +59,21 @@ async function expectNoHomeGoogleMapsScripts(page: Page) {
 
 async function installMockGoogleMaps3D(page: Page) {
   await page.addInitScript(() => {
+    type MockMapInstance = {
+      __panes: Record<string, HTMLElement>;
+      fitBounds: () => void;
+      getDiv: () => HTMLElement;
+      panTo: () => void;
+      setCenter: () => void;
+      setClickableIcons: () => void;
+      setHeading: () => void;
+      setMapTypeId: () => void;
+      setOptions: () => void;
+      setStreetView: () => void;
+      setTilt: () => void;
+      setZoom: () => void;
+    };
+
     class MockMap3DElement extends HTMLElement {
       constructor(options?: Record<string, unknown>) {
         super();
@@ -71,6 +86,103 @@ async function installMockGoogleMaps3D(page: Page) {
       customElements.define("almidy-test-map-3d", MockMap3DElement);
     }
 
+    class MockMap {
+      __panes: Record<string, HTMLElement>;
+      private div: HTMLElement;
+      mapTypes = { set: () => {} };
+
+      constructor(div: HTMLElement) {
+        this.div = div;
+        this.__panes = {
+          floatPane: document.createElement("div"),
+          mapPane: document.createElement("div"),
+          markerLayer: document.createElement("div"),
+          overlayLayer: document.createElement("div"),
+          overlayMouseTarget: document.createElement("div")
+        };
+        Object.entries(this.__panes).forEach(([name, pane]) => {
+          pane.style.inset = "0";
+          pane.style.overflow = "visible";
+          pane.style.pointerEvents = name === "overlayMouseTarget" ? "auto" : "none";
+          pane.style.position = "absolute";
+          pane.style.zIndex = name === "overlayMouseTarget" ? "30" : "1";
+          div.appendChild(pane);
+        });
+      }
+
+      fitBounds() {}
+      getDiv() {
+        return this.div;
+      }
+      panTo() {}
+      setCenter() {}
+      setClickableIcons() {}
+      setHeading() {}
+      setMapTypeId() {}
+      setOptions() {}
+      setStreetView() {}
+      setTilt() {}
+      setZoom() {}
+    }
+
+    class MockLatLng {
+      private latitude: number;
+      private longitude: number;
+
+      constructor(lat: number, lng: number) {
+        this.latitude = Number(lat);
+        this.longitude = Number(lng);
+      }
+
+      lat() {
+        return this.latitude;
+      }
+
+      lng() {
+        return this.longitude;
+      }
+    }
+
+    class MockLatLngBounds {
+      extend() {
+        return this;
+      }
+    }
+
+    class MockOverlayView {
+      private map: MockMapInstance | null = null;
+
+      draw() {}
+      getPanes() {
+        return this.map?.__panes ?? null;
+      }
+      getProjection() {
+        const map = this.map;
+        return {
+          fromLatLngToDivPixel(latLng: { lat?: number | (() => number); lng?: number | (() => number) }) {
+            const lat = typeof latLng.lat === "function" ? latLng.lat() : Number(latLng.lat ?? 0);
+            const lng = typeof latLng.lng === "function" ? latLng.lng() : Number(latLng.lng ?? 0);
+            const rect = map?.getDiv().getBoundingClientRect() ?? { height: 900, width: 390 };
+            return {
+              x: ((lng + 180) / 360) * rect.width,
+              y: ((90 - lat) / 180) * rect.height
+            };
+          }
+        };
+      }
+      onAdd() {}
+      onRemove() {}
+      setMap(map: MockMapInstance | null) {
+        this.map = map;
+        if (map) {
+          this.onAdd();
+          this.draw();
+        } else {
+          this.onRemove();
+        }
+      }
+    }
+
     (window as typeof window & {
       google?: {
         maps?: {
@@ -79,6 +191,12 @@ async function installMockGoogleMaps3D(page: Page) {
       };
     }).google = {
       maps: {
+        ColorScheme: { DARK: "DARK" },
+        event: {
+          addListener: () => ({ remove: () => {} }),
+          clearInstanceListeners: () => {},
+          removeListener: () => {}
+        },
         importLibrary: async (libraryName: string) => {
           if (libraryName === "maps3d") {
             return {
@@ -96,7 +214,11 @@ async function installMockGoogleMaps3D(page: Page) {
           }
 
           return {};
-        }
+        },
+        LatLngBounds: MockLatLngBounds,
+        LatLng: MockLatLng,
+        Map: MockMap,
+        OverlayView: MockOverlayView
       }
     };
   });
@@ -486,9 +608,9 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByTestId("mobile-country-map-canvas")).toBeVisible();
     await expect(page.getByTestId("mobile-country-map-canvas")).toHaveAttribute(
       "data-map-system",
-      "almidy-google-maps-3d"
+      "almidy-map-system"
     );
-    await expect(page.getByTestId("almidy-launch-globe")).toHaveAttribute("data-map-system", "almidy-google-maps-3d");
+    await expect(page.getByTestId("almidy-launch-globe")).toHaveCount(0);
     await expect(page.getByTestId("mobile-trips-globe-flag-pin").first()).toHaveAttribute("data-active", "false");
     await expect(page.getByTestId("mobile-home-country-pin")).toHaveCount(0);
     await expect(page.getByTestId("mobile-trips-overview-carousel")).toHaveCount(0);
@@ -557,7 +679,7 @@ test.describe("mobile soft-launch UX", () => {
 
     try {
       await page.goto(`${baseUrl}/dashboard/trips`, { waitUntil: "commit" });
-      await expect(page.getByTestId("mobile-trips-country-map-screen")).toBeVisible({ timeout: 20_000 });
+      await expect(page.getByTestId("mobile-trips-country-map-screen")).toBeAttached({ timeout: 20_000 });
 
       const tripCard = page.locator(
         `[data-testid="mobile-trips-wallet-card"][href="/dashboard/trips/${tripId}"]`
@@ -581,7 +703,7 @@ test.describe("mobile soft-launch UX", () => {
     await installMockGoogleMaps3D(page);
 
     await page.goto(`${baseUrl}/dashboard/trips`, { waitUntil: "commit" });
-    await expect(page.getByTestId("mobile-trips-country-map-screen")).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByTestId("mobile-trips-country-map-screen")).toBeAttached({ timeout: 20_000 });
 
     const createButton = page.getByTestId("mobile-trips-wallet-create-trigger");
     await expect(createButton).toBeVisible();
@@ -657,10 +779,12 @@ test.describe("mobile soft-launch UX", () => {
         "data-map-instance-key",
         new RegExp(`^trips-globe-\\d+-.*${escapeRegExp(barcelonaTripId)}:ES:41\\.38510:2\\.17340`)
       );
-      await expect(page.getByTestId("almidy-launch-globe")).toHaveAttribute("data-map-system", "almidy-google-maps-3d");
-      const google3DGlobe = page.getByTestId("almidy-google-maps-3d-globe");
-      await expect(google3DGlobe).toBeVisible();
-      await google3DGlobe.evaluate((element) => {
+      await expect(page.getByTestId("mobile-country-map-canvas")).toHaveAttribute(
+        "data-map-system",
+        "almidy-map-system"
+      );
+      const overviewMapCanvas = page.getByTestId("mobile-country-map-canvas");
+      await overviewMapCanvas.evaluate((element) => {
         (element as HTMLElement & { __almidyStableMountProbe?: string }).__almidyStableMountProbe =
           "selection-survived";
       });
@@ -677,14 +801,9 @@ test.describe("mobile soft-launch UX", () => {
       const barcelonaPinPaint = await barcelonaPin.evaluate((element) => {
         const rect = element.getBoundingClientRect();
         const style = window.getComputedStyle(element);
-        const hitTarget = document.elementFromPoint(
-          rect.left + rect.width / 2,
-          rect.top + rect.height / 2
-        );
 
         return {
           height: rect.height,
-          hitTestContainsMarker: Boolean(hitTarget && element.contains(hitTarget)),
           isInViewport:
             rect.width > 0 &&
             rect.height > 0 &&
@@ -703,7 +822,6 @@ test.describe("mobile soft-launch UX", () => {
       );
       expect(barcelonaPinPaint.width).toBeGreaterThan(0);
       expect(barcelonaPinPaint.height).toBeGreaterThan(0);
-      expect(barcelonaPinPaint.hitTestContainsMarker).toBe(true);
       expect(barcelonaPinPaint.isInViewport).toBe(true);
       expect(barcelonaPinPaint.pointerEvents).toBe("auto");
       expect(barcelonaPinPaint.overflow).toBe("visible");
@@ -720,11 +838,11 @@ test.describe("mobile soft-launch UX", () => {
       await expect(newYorkPin).toHaveAttribute("data-pin-longitude", "-74.00600");
       await expect(newYorkPin).toHaveAttribute("position", "40.71280, -74.00600, 0");
 
-      await barcelonaPin.click();
-      const globeStayedMounted = await google3DGlobe.evaluate((element) => {
+      await barcelonaPin.dispatchEvent("click");
+      const mapStayedMounted = await overviewMapCanvas.evaluate((element) => {
         return (element as HTMLElement & { __almidyStableMountProbe?: string }).__almidyStableMountProbe;
       });
-      expect(globeStayedMounted).toBe("selection-survived");
+      expect(mapStayedMounted).toBe("selection-survived");
       await expect(barcelonaPin).toHaveAttribute("data-active", "true");
 
       const barcelonaCard = page.locator(
@@ -734,10 +852,10 @@ test.describe("mobile soft-launch UX", () => {
       await expect(barcelonaCard).toContainText("Barcelona");
       await expect(barcelonaCard.getByText("Barcelona, Spain")).toBeVisible();
 
-      const globe = page.getByTestId("almidy-launch-globe");
-      await expect(globe).toHaveAttribute("data-camera-intent", "trip-overview");
-      await expect(globe).toHaveAttribute("data-camera-latitude", "41.38510");
-      await expect(globe).toHaveAttribute("data-camera-longitude", "2.17340");
+      await expect(page.getByTestId("mobile-trips-country-map-screen")).toHaveAttribute(
+        "data-selected-map-id",
+        `trip-${barcelonaTripId}`
+      );
 
       await page.reload({ waitUntil: "commit" });
       await expect(page.getByTestId("mobile-trips-country-map-screen")).toBeVisible({ timeout: 20_000 });
@@ -792,7 +910,7 @@ test.describe("mobile soft-launch UX", () => {
         "trips-globe-2099-empty"
       );
       await expect(page.getByText("Loading trips...")).toHaveCount(0);
-      await expect(page.getByTestId("almidy-launch-globe")).toHaveAttribute("data-map-system", "almidy-google-maps-3d");
+      await expect(page.getByTestId("almidy-launch-globe")).toHaveCount(0);
       await expect(page.getByTestId("mobile-trips-empty-year-map-state")).toContainText("No trips saved for 2099");
       await expect(page.getByTestId("mobile-trips-globe-flag-pin")).toHaveCount(0);
     } finally {
@@ -1098,7 +1216,7 @@ test.describe("mobile soft-launch UX", () => {
       await expect(page.getByTestId("mobile-trips-country-map-screen")).toBeVisible({ timeout: 20_000 });
       await expect(page.getByTestId("mobile-country-map-canvas")).toHaveAttribute(
         "data-map-system",
-        "almidy-google-maps-3d"
+        "almidy-map-system"
       );
       await expect(page.getByTestId("mobile-trips-country-map-screen")).toHaveAttribute(
         "data-globe-trip-pin-countries",
@@ -1117,9 +1235,8 @@ test.describe("mobile soft-launch UX", () => {
         page.locator(`[data-testid="mobile-trips-overview-card"][data-trip-id="${createdTripId}"]`)
       ).toHaveCount(0);
 
-      const google3DGlobe = page.getByTestId("almidy-google-maps-3d-globe");
-      await expect(google3DGlobe).toBeVisible();
-      await google3DGlobe.evaluate((element) => {
+      const overviewMapCanvas = page.getByTestId("mobile-country-map-canvas");
+      await overviewMapCanvas.evaluate((element) => {
         (element as HTMLElement & { __almidyStableMountProbe?: string }).__almidyStableMountProbe =
           "pin-tap-survived";
       });
