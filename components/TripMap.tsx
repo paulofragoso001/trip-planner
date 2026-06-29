@@ -2,11 +2,12 @@
 
 import {
   Circle,
+  DirectionsRenderer,
   GoogleMap,
   OverlayView,
   Polyline
 } from "@react-google-maps/api";
-import { Fragment, useEffect, useMemo, useRef } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import {
   hasResolvedRoute,
   routeEndpointLabel,
@@ -90,9 +91,11 @@ export default function TripMap({
   onSelect,
   height = 420,
   mapTheme = "default",
-  showRouteDetails = false
+  showRouteDetails = false,
+  travelMode = "DRIVING"
 }: TripMapProps) {
   const mapRef = useRef<google.maps.Map | null>(null);
+  const [directions, setDirections] = useState<google.maps.DirectionsResult | null>(null);
 
   const mapPoints = useMemo(() => getMapPoints(items), [items]);
   const placeItems = useMemo(
@@ -151,6 +154,61 @@ export default function TripMap({
       mapRef.current.setZoom(14);
     }
   }, [selectedId, items]);
+
+  useEffect(() => {
+    let active = true;
+
+    if (
+      routePath.length < 2 ||
+      typeof window === "undefined" ||
+      typeof window.google?.maps?.DirectionsService !== "function"
+    ) {
+      setDirections(null);
+      return () => {
+        active = false;
+      };
+    }
+
+    const googleMaps = window.google.maps;
+    const origin = routePath[0];
+    const destination = routePath[routePath.length - 1];
+    const directionsTravelMode = googleMaps.TravelMode?.[travelMode] ?? googleMaps.TravelMode?.DRIVING;
+
+    if (!origin || !destination || !directionsTravelMode) {
+      setDirections(null);
+      return () => {
+        active = false;
+      };
+    }
+
+    const directionsService = new googleMaps.DirectionsService();
+    directionsService.route(
+      {
+        destination,
+        optimizeWaypoints: false,
+        origin,
+        travelMode: directionsTravelMode,
+        waypoints: routePath.slice(1, -1).map((point) => ({
+          location: new googleMaps.LatLng(point.lat, point.lng),
+          stopover: true
+        }))
+      },
+      (result, status) => {
+        if (!active) return;
+
+        if (status === googleMaps.DirectionsStatus?.OK && result) {
+          setDirections(result);
+          return;
+        }
+
+        setDirections(null);
+      }
+    );
+
+    return () => {
+      active = false;
+    };
+  }, [routePath, travelMode]);
 
   if (!mapsConfigured) {
     return (
@@ -226,7 +284,22 @@ export default function TripMap({
           </Fragment>
         ))}
 
-        {routePath.length > 1 ? (
+        {directions ? (
+          <DirectionsRenderer
+            directions={directions}
+            options={{
+              polylineOptions: {
+                strokeColor: almidyMapColors.routeResolvedActive,
+                strokeOpacity: 0.86,
+                strokeWeight: 5
+              },
+              preserveViewport: true,
+              suppressMarkers: false
+            }}
+          />
+        ) : null}
+
+        {!directions && routePath.length > 1 ? (
           <Polyline
             path={routePath}
             options={{

@@ -151,7 +151,7 @@ export function ConnectedTripMap({
                 selectedId={selectedId}
                 onSelect={setSelectedId}
                 showRouteDetails={false}
-                travelMode="TRANSIT"
+                travelMode="DRIVING"
               />
             </GoogleMapsProvider>
 
