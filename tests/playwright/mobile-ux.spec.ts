@@ -2888,14 +2888,18 @@ test.describe("mobile soft-launch UX", () => {
       await page.goto(`${baseUrl}/dashboard/trips/${tripId}/map`, { waitUntil: "commit" });
       await expect(page.getByTestId("connected-trip-map")).toBeVisible({ timeout: 30_000 });
       await expect(page.getByTestId("trip-map-canvas")).toHaveAttribute("data-map-theme", "dark");
+      const routePanel = page.getByTestId("map-route-panel");
+      await expect(routePanel).toHaveAttribute("data-sheet-state", "collapsed");
+      await routePanel.getByRole("button", { name: "Expand route timeline sheet" }).click();
+      await expect(routePanel).toHaveAttribute("data-sheet-state", "expanded");
       await expect(page.getByTestId("map-day-filter-overlay")).toBeHidden();
       const mobileFilter = page.getByTestId("map-mobile-day-filter");
       await expect(mobileFilter).toBeVisible();
       await expect(mobileFilter.getByRole("button", { name: "All" })).toBeVisible();
       await expect(mobileFilter.getByRole("button", { name: "Jun 10" })).toBeVisible();
       await expect(mobileFilter.getByRole("button", { name: "Jun 11" })).toBeVisible();
-      await expect(page.getByTestId("map-route-panel").getByText("1 of 1")).toBeVisible();
-      const mapPanelFitsViewport = await page.getByTestId("map-route-panel").evaluate((node) => {
+      await expect(routePanel.getByText("1 of 1")).toBeVisible();
+      const mapPanelFitsViewport = await routePanel.evaluate((node) => {
         const box = node.getBoundingClientRect();
         return box.left >= -1 && box.right <= window.innerWidth + 1 && node.scrollWidth <= node.clientWidth + 1;
       });

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { motion, useDragControls, useReducedMotion } from "framer-motion";
 import { AlertTriangle, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -57,8 +58,11 @@ export function ConnectedTripMap({
   );
   const [selectedId, setSelectedId] = useState<string | null>(visibleItems[0]?.id ?? null);
   const [detailItem, setDetailItem] = useState<TripMapItem | null>(null);
+  const [isTimelineMaximized, setIsTimelineMaximized] = useState(false);
   const [pendingRetry, setPendingRetry] = useState<string | null>(null);
   const [retryMessage, setRetryMessage] = useState<string | null>(null);
+  const routeSheetDragControls = useDragControls();
+  const reduceMotion = useReducedMotion();
   const selectedItem = visibleItems.find((item) => item.id === selectedId) ?? visibleItems[0];
   const selectedIndex = selectedItem
     ? Math.max(visibleItems.findIndex((item) => item.id === selectedItem.id), 0)
@@ -105,6 +109,20 @@ export function ConnectedTripMap({
       setRetryMessage(error instanceof Error ? error.message : "Location matching is temporarily unavailable.");
     } finally {
       setPendingRetry(null);
+    }
+  }
+
+  function handleRouteSheetDragEnd(
+    _: MouseEvent | TouchEvent | PointerEvent,
+    info: { offset: { y: number }; velocity: { y: number } }
+  ) {
+    if (info.offset.y < -42 || info.velocity.y < -340) {
+      setIsTimelineMaximized(true);
+      return;
+    }
+
+    if (info.offset.y > 42 || info.velocity.y > 340) {
+      setIsTimelineMaximized(false);
     }
   }
 
@@ -172,12 +190,33 @@ export function ConnectedTripMap({
             ) : null}
           </div>
 
-          <div
-            className="absolute inset-x-0 bottom-0 z-20 grid max-h-[56dvh] gap-3 overflow-y-auto overflow-x-hidden rounded-t-[2rem] border border-white/10 bg-slate-950/92 p-3 pb-[calc(1rem+env(safe-area-inset-bottom))] text-white shadow-2xl backdrop-blur-2xl sm:p-4 lg:relative lg:inset-auto lg:max-h-none lg:overflow-visible lg:rounded-[2rem] lg:border-slate-200 lg:bg-white lg:pb-4 lg:text-slate-950 lg:shadow-sm lg:backdrop-blur-none"
+          <motion.div
+            animate={{
+              "--route-sheet-height": isTimelineMaximized ? "85dvh" : "56dvh"
+            } as Record<string, string>}
+            className="absolute inset-x-0 bottom-0 z-20 flex h-[var(--route-sheet-height)] flex-col overflow-hidden rounded-t-[2rem] border border-white/10 bg-slate-950/92 p-3 pb-[calc(1rem+env(safe-area-inset-bottom))] text-white shadow-2xl backdrop-blur-2xl sm:p-4 lg:relative lg:inset-auto lg:h-auto lg:overflow-visible lg:rounded-[2rem] lg:border-slate-200 lg:bg-white lg:pb-4 lg:text-slate-950 lg:shadow-sm lg:backdrop-blur-none"
             data-map-bottom-sheet="true"
+            data-sheet-state={isTimelineMaximized ? "expanded" : "collapsed"}
             data-testid="map-route-panel"
+            drag="y"
+            dragControls={routeSheetDragControls}
+            dragConstraints={{ bottom: 0, top: 0 }}
+            dragElastic={0.06}
+            dragListener={false}
+            onDragEnd={handleRouteSheetDragEnd}
+            transition={reduceMotion ? { duration: 0 } : { type: "spring", damping: 26, stiffness: 210 }}
           >
-            <div className="mx-auto h-1.5 w-16 rounded-full bg-white/45 lg:hidden" aria-hidden="true" />
+            <button
+              aria-label={isTimelineMaximized ? "Collapse route timeline sheet" : "Expand route timeline sheet"}
+              className="mx-auto mb-3 grid h-6 w-20 shrink-0 touch-none place-items-center rounded-full focus:outline-none focus:ring-4 focus:ring-orange-300/20 lg:hidden"
+              onClick={() => setIsTimelineMaximized((current) => !current)}
+              onPointerDown={(event) => routeSheetDragControls.start(event)}
+              type="button"
+            >
+              <span className="h-1.5 w-16 rounded-full bg-white/45" />
+            </button>
+            <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain pr-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:overflow-visible lg:pr-0">
+              <div className="grid min-w-0 content-start gap-3">
             {selectedItem ? (
             <>
               {hasDayFilter ? (
@@ -311,7 +350,7 @@ export function ConnectedTripMap({
                   <p className="text-xs font-bold text-white/50 lg:text-slate-500">{hiddenPlaceCount} hidden</p>
                 ) : null}
               </div>
-              <div className="grid max-h-[28dvh] min-w-0 content-start items-start gap-1.5 overflow-y-auto overflow-x-hidden pr-1 sm:max-h-none sm:gap-2 sm:overflow-visible sm:pr-0" data-testid="map-route-list">
+              <div className="grid min-w-0 content-start items-start gap-1.5 overflow-visible pr-1 sm:gap-2 sm:pr-0" data-testid="map-route-list">
                 {visibleItems.map((item, index) => {
                   const active = item.id === selectedItem?.id;
                   const routeNumber = item.routeOrder || index + 1;
@@ -396,7 +435,9 @@ export function ConnectedTripMap({
                 </div>
               </div>
             ) : null}
-          </div>
+              </div>
+            </div>
+          </motion.div>
         </div>
       ) : (
         <div className="relative min-h-[100dvh] overflow-hidden bg-slate-950 lg:min-h-[520px] lg:rounded-[2rem] lg:border lg:border-slate-200">
