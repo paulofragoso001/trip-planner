@@ -33,6 +33,27 @@ interface WalletSheetProps {
 const collapsedHeight = 260;
 const expandedHeight = "92dvh";
 
+function tripNeedsConfiguration(trip: MobileTripsWalletSheetTrip) {
+  const destinationName = trip.destination_name?.trim().toLowerCase();
+
+  return (
+    !destinationName ||
+    destinationName === "destination not set" ||
+    trip.lat === null ||
+    trip.lng === null
+  );
+}
+
+function tripCardHref(trip: MobileTripsWalletSheetTrip) {
+  const tripId = encodeURIComponent(trip.id);
+
+  if (tripNeedsConfiguration(trip)) {
+    return `/dashboard/trips?view=list&edit=${tripId}#new-trip`;
+  }
+
+  return `/dashboard/trips/${tripId}`;
+}
+
 export default function MobileTripsWalletSheet({
   currentYear,
   onQueryChange,
@@ -205,10 +226,10 @@ export default function MobileTripsWalletSheet({
                 />
               </label>
 
-              <label className="relative mb-4 inline-flex w-fit items-center">
+              <label className="mb-4 inline-grid min-h-11 w-fit grid-cols-[auto_auto] items-center gap-1 rounded-full pr-1">
                 <span className="sr-only">Trip year</span>
                 <select
-                  className="h-10 appearance-none rounded-full border border-transparent bg-transparent py-0 pl-0 pr-8 text-xl font-bold text-[#e67e22] outline-none focus:ring-4 focus:ring-orange-400/20"
+                  className="h-11 appearance-none rounded-full border border-transparent bg-transparent py-0 pl-0 pr-1 text-xl font-bold leading-none text-[#e67e22] outline-none focus:ring-4 focus:ring-orange-400/20"
                   data-testid="mobile-trips-overview-year-select"
                   onChange={(event) => onYearChange?.(event.target.value)}
                   value={currentYear}
@@ -219,14 +240,17 @@ export default function MobileTripsWalletSheet({
                     </option>
                   ))}
                 </select>
-                <ChevronDown className="pointer-events-none ml-[-1.75rem] h-4 w-4 text-[#e67e22]" aria-hidden="true" />
+                <ChevronDown className="pointer-events-none h-4 w-4 shrink-0 text-[#e67e22]" aria-hidden="true" />
               </label>
 
               {filteredTrips.length ? (
                 <div className="flex min-h-0 flex-1 snap-x gap-4 overflow-x-auto pb-2">
                   {filteredTrips.map((trip) => (
-                    <article
-                      className="relative min-w-[280px] snap-center overflow-hidden rounded-2xl border border-zinc-800/50 bg-zinc-900"
+                    <Link
+                      aria-label={`Open ${trip.city || "trip"}`}
+                      className="relative min-w-[280px] snap-center overflow-hidden rounded-2xl border border-zinc-800/50 bg-zinc-900 transition hover:border-orange-400/35 focus:outline-none focus:ring-4 focus:ring-orange-400/20"
+                      data-testid="mobile-trips-wallet-card"
+                      href={tripCardHref(trip)}
                       key={trip.id}
                     >
                       {trip.image ? (
@@ -244,7 +268,7 @@ export default function MobileTripsWalletSheet({
                         <h3 className="mt-1 text-xl font-bold text-white">{trip.city}</h3>
                         <span className="mt-1 text-xs text-zinc-500">{trip.date_range}</span>
                       </div>
-                    </article>
+                    </Link>
                   ))}
                 </div>
               ) : (

@@ -185,10 +185,10 @@ export function MobileTripsWallet({ error, trips }: MobileTripsWalletProps) {
             {visibleTripGroups.length > 0 ? (
               visibleTripGroups.map((group) => (
                 <section className="grid gap-4" key={group.year}>
-                  <label className="relative inline-flex w-fit items-center">
+                  <label className="inline-grid min-h-14 w-fit grid-cols-[auto_auto] items-center gap-2 rounded-full pr-1">
                     <span className="sr-only">Trip year</span>
                     <select
-                      className="h-12 appearance-none rounded-full border border-transparent bg-transparent py-0 pl-0 pr-9 text-5xl font-black leading-none tracking-tight text-orange-500 outline-none focus:ring-4 focus:ring-orange-400/20"
+                      className="h-14 appearance-none rounded-full border border-transparent bg-transparent py-0 pl-0 pr-0 text-5xl font-black leading-[1.05] tracking-tight text-orange-500 outline-none focus:ring-4 focus:ring-orange-400/20"
                       onChange={(event) => setSelectedYear(event.target.value)}
                       value={group.year}
                     >
@@ -198,7 +198,7 @@ export function MobileTripsWallet({ error, trips }: MobileTripsWalletProps) {
                         </option>
                       ))}
                     </select>
-                    <ChevronDown className="pointer-events-none ml-[-2.1rem] h-7 w-7 text-orange-500" aria-hidden="true" />
+                    <ChevronDown className="pointer-events-none h-7 w-7 shrink-0 text-orange-500" aria-hidden="true" />
                   </label>
                   <div className="grid gap-4">
                     {group.trips.map((trip) => (
@@ -588,10 +588,10 @@ function MobileTripsOverviewPanel({
           />
         </label>
 
-        <label className="relative inline-flex w-fit items-center">
+        <label className="inline-grid min-h-14 w-fit grid-cols-[auto_auto] items-center gap-2 rounded-full pr-1">
           <span className="sr-only">Trip year</span>
           <select
-            className="h-12 appearance-none rounded-full border border-transparent bg-transparent py-0 pl-0 pr-9 text-4xl font-black leading-none tracking-tight text-orange-500 outline-none focus:ring-4 focus:ring-orange-400/20"
+            className="h-14 appearance-none rounded-full border border-transparent bg-transparent py-0 pl-0 pr-0 text-4xl font-black leading-[1.05] tracking-tight text-orange-500 outline-none focus:ring-4 focus:ring-orange-400/20"
             data-testid="mobile-trips-overview-year-select"
             onChange={(event) => onYearChange(event.target.value)}
             value={activeYear}
@@ -606,7 +606,7 @@ function MobileTripsOverviewPanel({
               </option>
             )}
           </select>
-          <ChevronDown className="pointer-events-none ml-[-2.1rem] h-7 w-7 text-orange-500" aria-hidden="true" />
+          <ChevronDown className="pointer-events-none h-7 w-7 shrink-0 text-orange-500" aria-hidden="true" />
         </label>
       </div>
     </div>
