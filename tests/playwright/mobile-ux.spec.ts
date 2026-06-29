@@ -632,6 +632,63 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByTestId("mobile-home-wallet-content")).toHaveCount(0);
   });
 
+  test("2D premium map anchors flag pins and routes city label selection", async ({ page, request }) => {
+    test.setTimeout(90_000);
+    await page.setViewportSize({ height: 900, width: 390 });
+    await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
+    await installMockMobileLocation(page);
+    await installMockGoogleMaps3D(page);
+
+    const vancouverResponse = await request.post(`${baseUrl}/api/trips`, {
+      data: {
+        destination: "Vancouver, Canada",
+        destination_lat: 49.2827,
+        destination_lng: -123.1207,
+        end_date: "2026-09-18",
+        name: `Vancouver flat map regression ${Date.now()}`,
+        start_date: "2026-09-12",
+        status: "Planning",
+        travel_style: "balanced"
+      },
+      headers: { "x-cypress-dashboard": "true" }
+    });
+    expect(vancouverResponse.status()).toBe(201);
+    const vancouverPayload = await vancouverResponse.json();
+    const vancouverTripId = vancouverPayload?.trip?.id;
+
+    try {
+      await page.goto(`${baseUrl}/dashboard/trips`, { waitUntil: "commit" });
+
+      const mapWrapper = page.getByTestId("mobile-country-map-canvas");
+      await expect(mapWrapper).toBeVisible({ timeout: 20_000 });
+      await expect(mapWrapper).toHaveAttribute("data-map-system", "almidy-map-system");
+
+      const vancouverPin = page.locator(
+        `[data-testid="mobile-trips-globe-flag-pin"][data-trip-id="${vancouverTripId}"]`
+      );
+      await expect(vancouverPin).toBeVisible();
+      await expect(vancouverPin).toHaveAttribute("data-country-code", "CA");
+      await expect(vancouverPin).toHaveAttribute("data-pin-latitude", "49.28270");
+      await expect(vancouverPin).toHaveAttribute("data-pin-longitude", "-123.12070");
+      await expect(vancouverPin).toHaveAttribute("position", "49.28270, -123.12070, 0");
+
+      const vancouverLabel = vancouverPin.getByText("Vancouver");
+      await expect(vancouverLabel).toBeVisible();
+      await vancouverLabel.dispatchEvent("click");
+
+      await expect(vancouverPin).toHaveAttribute("data-active", "true");
+      await expect(page.getByTestId("mobile-trips-country-map-screen")).toHaveAttribute(
+        "data-selected-map-id",
+        `trip-${vancouverTripId}`
+      );
+      await expect(
+        page.locator(`[data-testid="mobile-trips-overview-card"][data-trip-id="${vancouverTripId}"]`)
+      ).toBeVisible();
+    } finally {
+      await deleteTripForTest(request, vancouverTripId);
+    }
+  });
+
   test("mobile trips overview create trigger opens the canonical new-trip form", async ({ page }) => {
     test.setTimeout(90_000);
     await page.setViewportSize({ height: 900, width: 390 });
