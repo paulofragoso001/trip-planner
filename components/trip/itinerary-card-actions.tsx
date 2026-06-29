@@ -22,6 +22,7 @@ export function ItineraryCardActions({ item, tripId }: ItineraryCardActionsProps
   const hasMappedLocation = item.lat !== null && item.lng !== null;
   const canRetry =
     item.locationStatus !== "resolved" && item.locationStatus !== "needs_activity_provider";
+  const placeDisplay = placeDisplayForTimelineItem(item);
 
   useEffect(() => {
     setHydrated(true);
@@ -105,6 +106,23 @@ export function ItineraryCardActions({ item, tripId }: ItineraryCardActionsProps
         </div>
       ) : null}
 
+      {placeDisplay ? (
+        <div
+          className="mt-3 rounded-xl bg-white/[0.06] p-3 text-sm leading-5 text-slate-300 ring-1 ring-white/10 lg:bg-slate-50 lg:text-slate-600 lg:ring-0"
+          data-testid="timeline-place-metadata"
+        >
+          <span className="mb-1 block text-[0.65rem] font-black uppercase tracking-[0.14em] text-slate-500 lg:text-slate-400">
+            Google place
+          </span>
+          <p className="break-words font-black text-white lg:text-slate-950">{placeDisplay.name}</p>
+          {placeDisplay.address ? (
+            <p className="mt-1 break-words text-xs font-semibold text-slate-400 lg:text-slate-500">
+              {placeDisplay.address}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+
       {editing && (canRetry || item.locationStatus === "needs_activity_provider") ? (
         <div className="mt-3 flex flex-wrap gap-2">
           {canRetry ? (
@@ -137,7 +155,7 @@ export function ItineraryCardActions({ item, tripId }: ItineraryCardActionsProps
             defaultKind={item.kind}
             defaultLat={item.lat}
             defaultLng={item.lng}
-            defaultLocation={item.location === "Location not set" ? null : item.location}
+            defaultLocation={placeDisplay?.address || (item.location === "Location not set" ? null : item.location)}
             defaultNotes={item.notes}
             defaultProviderMetadata={item.providerMetadata}
             defaultStartTime={item.startAt}
@@ -160,4 +178,43 @@ export function ItineraryCardActions({ item, tripId }: ItineraryCardActionsProps
       ) : null}
     </div>
   );
+}
+
+function placeDisplayForTimelineItem(item: TimelineItemView) {
+  const metadata = isRecord(item.providerMetadata) ? item.providerMetadata : {};
+  const name = readMetadataString(metadata, ["name", "displayName", "placeName"]);
+  const address = readMetadataString(metadata, ["formattedAddress", "formatted_address", "address"]);
+
+  if (!name && !address) return null;
+
+  const normalizedTitle = item.title.trim().toLowerCase();
+  const normalizedLocation = item.location.trim().toLowerCase();
+  const normalizedName = name?.toLowerCase();
+  const normalizedAddress = address?.toLowerCase();
+
+  if (
+    (!name || normalizedName === normalizedTitle) &&
+    (!address || normalizedAddress === normalizedLocation)
+  ) {
+    return null;
+  }
+
+  return {
+    address: address || null,
+    name: name || item.title
+  };
+}
+
+function readMetadataString(metadata: Record<string, unknown>, keys: string[]) {
+  for (const key of keys) {
+    const value = metadata[key];
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
+  }
+  return null;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value));
 }

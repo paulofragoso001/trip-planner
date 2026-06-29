@@ -178,7 +178,12 @@ export default function LocationAutocomplete({
         name: place.name || null,
         placeId: place.place_id || null,
         providerMetadata: {
+          address,
+          formattedAddress: place.formatted_address || null,
+          formatted_address: place.formatted_address || null,
+          name: place.name || null,
           provider: "google_places",
+          providerPlaceId: place.place_id || null,
           source: "legacy_autocomplete",
           types: place.types || []
         }
@@ -387,8 +392,13 @@ function selectionFromPlace(
     name: place.displayName || fallbackName,
     placeId: place.id || null,
     providerMetadata: {
+      address,
+      formattedAddress: place.formattedAddress || null,
+      formatted_address: place.formattedAddress || null,
       googleMapsUri: place.googleMapsURI || null,
+      name: place.displayName || fallbackName,
       provider: "google_places",
+      providerPlaceId: place.id || null,
       source: "autocomplete_suggestions",
       types: place.types || []
     }

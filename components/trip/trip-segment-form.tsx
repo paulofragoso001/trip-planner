@@ -132,7 +132,7 @@ export function TripSegmentForm({
     setLocation(selection.formattedAddress || selection.address);
     setLat(String(selection.lat));
     setLng(String(selection.lng));
-    setProviderMetadata(selection.providerMetadata || null);
+    setProviderMetadata(locationProviderMetadata(selection));
     setProviderPlaceId(selection.placeId || null);
     setLocationSelected(true);
   }
@@ -777,7 +777,18 @@ function endpointFromSelection(selection: LocationSelection): TripRouteEndpoint 
     lat: selection.lat,
     lng: selection.lng,
     placeId: selection.placeId || null,
-    providerMetadata: selection.providerMetadata || null
+    providerMetadata: locationProviderMetadata(selection)
+  };
+}
+
+function locationProviderMetadata(selection: LocationSelection): Record<string, unknown> {
+  return {
+    ...(selection.providerMetadata || {}),
+    address: selection.formattedAddress || selection.address,
+    formattedAddress: selection.formattedAddress || null,
+    formatted_address: selection.formattedAddress || null,
+    name: selection.name || null,
+    providerPlaceId: selection.placeId || selection.providerMetadata?.providerPlaceId || null
   };
 }
 

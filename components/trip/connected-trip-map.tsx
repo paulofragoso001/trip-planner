@@ -64,6 +64,7 @@ export function ConnectedTripMap({
   const routeSheetDragControls = useDragControls();
   const reduceMotion = useReducedMotion();
   const selectedItem = visibleItems.find((item) => item.id === selectedId) ?? visibleItems[0];
+  const selectedPlaceDisplay = selectedItem ? placeDisplayForMapItem(selectedItem) : null;
   const selectedIndex = selectedItem
     ? Math.max(visibleItems.findIndex((item) => item.id === selectedItem.id), 0)
     : 0;
@@ -284,7 +285,7 @@ export function ConnectedTripMap({
                 <div className="mt-3 grid min-w-0 grid-cols-[64px_minmax(0,1fr)] gap-2 sm:grid-cols-[104px_minmax(0,1fr)] sm:gap-3 sm:items-center">
                   <div className="relative min-w-0">
                   <PlacePhoto
-                    alt={selectedItem.imageAlt || `Photo of ${selectedItem.title}`}
+                    alt={selectedItem.imageAlt || `Photo of ${selectedPlaceDisplay?.name || selectedItem.title}`}
                     attribution={selectedItem.imageAttribution}
                     className="h-16 w-16 rounded-2xl sm:h-24 sm:w-24 xl:h-28 xl:w-28"
                     fallbackLabel={selectedItem.category || "Place"}
@@ -296,15 +297,20 @@ export function ConnectedTripMap({
                   </div>
                   <div className="min-w-0">
                   <h3 className="line-clamp-2 break-words text-base font-black leading-tight text-white sm:text-lg">
-                    {selectedItem.title}
+                    {selectedPlaceDisplay?.name || selectedItem.title}
                   </h3>
+                  {selectedPlaceDisplay?.name && selectedPlaceDisplay.name !== selectedItem.title ? (
+                    <p className="mt-1 truncate text-[0.65rem] font-black uppercase tracking-[0.14em] text-white/42">
+                      {selectedItem.title}
+                    </p>
+                  ) : null}
                   <p className="mt-1 text-xs font-semibold text-white/60">
                     {[selectedItem.dayLabel, selectedItem.timeLabel, selectedItem.category]
                       .filter(Boolean)
                       .join(" · ")}
                   </p>
-                  {selectedItem.address ? (
-                    <p className="mt-1 line-clamp-1 break-words text-xs text-white/62 sm:line-clamp-2">{selectedItem.address}</p>
+                  {selectedPlaceDisplay?.address ? (
+                    <p className="mt-1 line-clamp-1 break-words text-xs text-white/62 sm:line-clamp-2">{selectedPlaceDisplay.address}</p>
                   ) : null}
                   {selectedItem.route ? (
                     <div className="mt-2 grid gap-1 text-xs font-semibold text-white/65">
@@ -371,7 +377,7 @@ export function ConnectedTripMap({
                     >
                       <span className="flex items-center gap-3">
                         <PlacePhoto
-                          alt={item.imageAlt || `Photo of ${item.title}`}
+                          alt={item.imageAlt || `Photo of ${placeDisplayForMapItem(item).name}`}
                           attribution={item.imageAttribution}
                           className="h-11 w-11 shrink-0 rounded-xl"
                           fallbackLabel={item.category || "Place"}
@@ -381,10 +387,15 @@ export function ConnectedTripMap({
                           {routeNumber}
                         </span>
                         <span className="min-w-0 flex-1">
-                          <span className="block truncate font-black leading-tight">{item.title}</span>
+                          <span className="block truncate font-black leading-tight">{placeDisplayForMapItem(item).name}</span>
                           <span className="mt-0.5 block truncate text-xs font-semibold text-slate-500">
                             {[item.dayLabel, item.timeLabel, item.category].filter(Boolean).join(" · ")}
                           </span>
+                          {placeDisplayForMapItem(item).address ? (
+                            <span className="mt-0.5 block truncate text-xs font-semibold text-slate-400">
+                              {placeDisplayForMapItem(item).address}
+                            </span>
+                          ) : null}
                         </span>
                       </span>
                     </button>
@@ -639,9 +650,35 @@ function googleMapsUrlForItem(item: TripMapItem) {
     }
   }
 
+  const display = placeDisplayForMapItem(item);
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-    item.address || item.title
+    display.address || display.name
   )}`;
+}
+
+function placeDisplayForMapItem(item: TripMapItem) {
+  const metadata = isRecord(item.providerMetadata) ? item.providerMetadata : {};
+  const name = readMetadataString(metadata, ["name", "displayName", "placeName"]) || item.title;
+  const address =
+    readMetadataString(metadata, ["formattedAddress", "formatted_address", "address"]) ||
+    item.address ||
+    null;
+
+  return { address, name };
+}
+
+function readMetadataString(metadata: Record<string, unknown>, keys: string[]) {
+  for (const key of keys) {
+    const value = metadata[key];
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
+  }
+  return null;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value));
 }
 
 function buildRouteSummary(items: TripMapItem[]) {
