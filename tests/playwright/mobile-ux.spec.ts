@@ -2920,6 +2920,67 @@ test.describe("mobile soft-launch UX", () => {
     }
   });
 
+  test("mobile itinerary panel expands and opens add item form without overlap", async ({ page, request }) => {
+    test.setTimeout(90_000);
+    await page.setViewportSize({ height: 900, width: 390 });
+    await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
+
+    const tripResponse = await request.post(`${baseUrl}/api/trips`, {
+      data: {
+        destination: "Miami, FL",
+        name: `Mobile itinerary form test ${Date.now()}`,
+        status: "Planning",
+        travel_style: "balanced"
+      },
+      headers: { "x-cypress-dashboard": "true" }
+    });
+    expect(tripResponse.status()).toBe(201);
+    const tripPayload = await tripResponse.json();
+    const tripId = tripPayload?.trip?.id;
+    expect(typeof tripId).toBe("string");
+
+    try {
+      const segmentResponse = await request.post(`${baseUrl}/api/trip-segments`, {
+        data: {
+          kind: "activity",
+          lat: 25.7617,
+          lng: -80.1918,
+          location: "Wynwood Walls",
+          startTime: "2026-06-11T11:00:00.000Z",
+          title: "Wynwood Walls",
+          tripId
+        },
+        headers: { "x-cypress-dashboard": "true" }
+      });
+      expect(segmentResponse.status()).toBe(201);
+
+      await page.goto(`${baseUrl}/dashboard/trips/${tripId}/map`, { waitUntil: "commit" });
+      const routePanel = page.getByTestId("map-route-panel");
+      await expect(routePanel).toBeVisible({ timeout: 30_000 });
+      await expect(routePanel).toHaveAttribute("data-sheet-state", "collapsed");
+
+      await routePanel.getByRole("button", { name: "Expand route timeline sheet" }).click();
+      await expect(routePanel).toHaveAttribute("data-sheet-state", "expanded");
+
+      await routePanel.getByRole("link", { name: "Add trip item" }).click();
+      await expect(page).toHaveURL(new RegExp(`/dashboard/trips/${tripId}/timeline#new-plan`));
+
+      const mobileAddPanel = page.locator("#new-plan");
+      await expect(mobileAddPanel).toBeVisible();
+      const summary = mobileAddPanel.locator("summary", { hasText: "Add trip item" });
+      await expect(summary).toBeVisible();
+      await summary.click();
+
+      await expect(summary).not.toBeVisible();
+      const addForm = mobileAddPanel.getByTestId("mobile-add-trip-item-form");
+      await expect(addForm).toBeVisible();
+      await expect(addForm.getByPlaceholder("Wynwood Walls")).toBeVisible();
+      await expect(addForm.getByPlaceholder("Search Google Places...")).toBeVisible();
+    } finally {
+      await deleteTripForTest(request, tripId);
+    }
+  });
+
   test("mobile map surfaces unresolved segments and deep-links to edit location", async ({ page, request }) => {
     test.setTimeout(90_000);
     await page.setViewportSize({ height: 900, width: 390 });
