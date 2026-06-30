@@ -45,17 +45,17 @@ export const almidyGoogleMapDarkStyles: google.maps.MapTypeStyle[] = [
 ];
 
 export const almidyGoogleCountryMapStyles: google.maps.MapTypeStyle[] = [
-  { elementType: "geometry", stylers: [{ color: "#07162d" }] },
+  { elementType: "geometry", stylers: [{ color: "#1a1b20" }] },
   { elementType: "labels.icon", stylers: [{ visibility: "off" }] },
-  { elementType: "labels.text.fill", stylers: [{ color: "#cbd5e1" }] },
-  { elementType: "labels.text.stroke", stylers: [{ color: almidyMapColors.background }, { weight: 4 }] },
-  { featureType: "administrative.country", elementType: "geometry.stroke", stylers: [{ color: "#334155" }] },
+  { elementType: "labels.text.fill", stylers: [{ color: "#8e8e93" }] },
+  { elementType: "labels.text.stroke", stylers: [{ color: "#1a1b20" }, { weight: 4 }] },
+  { featureType: "administrative.country", elementType: "geometry.stroke", stylers: [{ color: "#3a3d46" }, { weight: 1 }] },
   { featureType: "administrative.land_parcel", stylers: [{ visibility: "off" }] },
-  { featureType: "landscape", elementType: "geometry", stylers: [{ color: almidyMapColors.land }] },
-  { featureType: "landscape.natural", elementType: "geometry", stylers: [{ color: "#0f4c4f" }] },
+  { featureType: "landscape", elementType: "geometry", stylers: [{ color: "#22242b" }] },
+  { featureType: "landscape.natural", elementType: "geometry", stylers: [{ color: "#22242b" }] },
   { featureType: "poi", stylers: [{ visibility: "off" }] },
   { featureType: "road", stylers: [{ visibility: "off" }] },
   { featureType: "transit", stylers: [{ visibility: "off" }] },
-  { featureType: "water", elementType: "geometry", stylers: [{ color: almidyMapColors.water }] },
-  { featureType: "water", elementType: "labels.text.fill", stylers: [{ color: "#2f5aa8" }] }
+  { featureType: "water", elementType: "geometry", stylers: [{ color: "#111216" }] },
+  { featureType: "water", elementType: "labels.text.fill", stylers: [{ color: "#5f6674" }] }
 ];
