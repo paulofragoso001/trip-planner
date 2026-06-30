@@ -186,7 +186,7 @@ function LoadedTripsOverviewMapRenderer({
   if (!mapReady) {
     return (
       <div
-        className="absolute inset-0 grid place-items-center bg-[#1a1b20] text-center text-xs font-bold tracking-[0.2em] text-white/40"
+        className="absolute inset-0 grid place-items-center bg-[#1A1A1E] text-center text-xs font-bold tracking-[0.2em] text-white/40"
         data-map-renderer="google-map"
         data-map-runtime="preparing"
         data-map-system={ALMIDY_MAP_SYSTEM_ID}
@@ -199,7 +199,7 @@ function LoadedTripsOverviewMapRenderer({
 
   return (
     <div
-      className={["absolute inset-0 overflow-visible bg-[#1a1b20]", className].filter(Boolean).join(" ")}
+      className={["absolute inset-0 overflow-visible bg-[#1A1A1E]", className].filter(Boolean).join(" ")}
       data-map-mode={activeSurface?.mode ?? "country-map"}
       data-map-renderer="google-map"
       data-map-system={ALMIDY_MAP_SYSTEM_ID}
@@ -212,7 +212,7 @@ function LoadedTripsOverviewMapRenderer({
         onLoad={handleMapLoad}
         onUnmount={handleMapUnmount}
         options={{
-          backgroundColor: "#1a1b20",
+          backgroundColor: "#1A1A1E",
           clickableIcons: false,
           colorScheme: window.google.maps.ColorScheme?.DARK,
           disableDefaultUI: true,
