@@ -510,7 +510,7 @@ function GoogleMaps3DLaunchGlobe({
         cameraIntent={shellCameraIntent}
       >
         <div
-          className="absolute inset-0 z-0 h-full w-full overflow-hidden bg-black"
+          className="absolute inset-0 z-0 h-full min-h-[100dvh] w-full overflow-hidden bg-black"
           data-map-renderer="google-maps-3d"
           data-map-system="almidy-google-maps-3d"
           data-testid="almidy-google-maps-3d-host"
@@ -610,7 +610,7 @@ function LaunchGlobeShell({
     <div
       aria-hidden="true"
       className={[
-        "absolute inset-0 h-full min-h-[100dvh] w-full overflow-hidden bg-black",
+        "absolute inset-0 h-[100dvh] min-h-[100dvh] w-screen overflow-hidden bg-black",
         className
       ]
         .filter(Boolean)
