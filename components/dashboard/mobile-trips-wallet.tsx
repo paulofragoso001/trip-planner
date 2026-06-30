@@ -647,7 +647,7 @@ function MobileTripsGlobeCanvas({
   if (!hydrated) {
     return (
       <div
-        className="absolute inset-0 z-0 flex h-full w-full items-center justify-center overflow-visible bg-[#1a1b20] [transform-style:preserve-3d]"
+        className="absolute inset-0 z-0 flex h-full w-full items-center justify-center overflow-visible bg-[#252832] [transform-style:preserve-3d]"
         data-map-instance-key="trips-globe-loading"
         data-map-system={ALMIDY_MAP_SYSTEM_ID}
         data-map-trip-state="loading"
@@ -660,7 +660,7 @@ function MobileTripsGlobeCanvas({
 
   return (
     <div
-      className="absolute inset-0 z-0 h-full w-full overflow-visible bg-[#1a1b20] [transform-style:preserve-3d]"
+      className="absolute inset-0 z-0 h-full w-full overflow-visible bg-[#252832] [transform-style:preserve-3d]"
       data-map-instance-key={mapInstanceKey}
       data-map-system={ALMIDY_MAP_SYSTEM_ID}
       data-map-trip-state={hasTripPins ? "ready" : "empty"}
@@ -686,9 +686,9 @@ function MobileTripsGlobeCanvas({
           No trips saved for {activeYear}
         </div>
       ) : null}
-      <div className="pointer-events-none absolute inset-0 z-10 bg-[linear-gradient(180deg,rgba(0,0,0,0.24),rgba(4,10,20,0.42)_35%,rgba(0,0,0,0.72)_100%)]" />
+      <div className="pointer-events-none absolute inset-0 z-10 bg-[linear-gradient(180deg,rgba(0,0,0,0.04),rgba(4,10,20,0.10)_38%,rgba(0,0,0,0.34)_100%)]" />
       <div
-        className="pointer-events-none absolute inset-0 z-10 bg-[#030916]/30 mix-blend-multiply"
+        className="pointer-events-none absolute inset-0 z-10 bg-[#020617]/8"
         aria-hidden="true"
       />
     </div>

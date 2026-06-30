@@ -154,7 +154,7 @@ function LoadedTripsOverviewMapRenderer({
 
     const bounds = new window.google.maps.LatLngBounds();
     visiblePins.forEach((pin) => bounds.extend(pin.coordinate));
-    map.fitBounds(bounds, { bottom: 132, left: 56, right: 56, top: 96 });
+    map.fitBounds(bounds, { bottom: 184, left: 36, right: 36, top: 24 });
   }, [mapReady, visiblePins]);
 
   useEffect(() => {
@@ -186,7 +186,7 @@ function LoadedTripsOverviewMapRenderer({
   if (!mapReady) {
     return (
       <div
-        className="absolute inset-0 grid place-items-center bg-[#1A1A1E] text-center text-xs font-bold tracking-[0.2em] text-white/40"
+        className="absolute inset-0 grid place-items-center bg-[#252832] text-center text-xs font-bold tracking-[0.2em] text-white/48"
         data-map-renderer="google-map"
         data-map-runtime="preparing"
         data-map-system={ALMIDY_MAP_SYSTEM_ID}
@@ -199,7 +199,7 @@ function LoadedTripsOverviewMapRenderer({
 
   return (
     <div
-      className={["absolute inset-0 overflow-visible bg-[#1A1A1E]", className].filter(Boolean).join(" ")}
+      className={["absolute inset-0 overflow-visible bg-[#252832]", className].filter(Boolean).join(" ")}
       data-map-mode={activeSurface?.mode ?? "country-map"}
       data-map-renderer="google-map"
       data-map-system={ALMIDY_MAP_SYSTEM_ID}
@@ -212,7 +212,7 @@ function LoadedTripsOverviewMapRenderer({
         onLoad={handleMapLoad}
         onUnmount={handleMapUnmount}
         options={{
-          backgroundColor: "#1A1A1E",
+          backgroundColor: "#252832",
           clickableIcons: false,
           colorScheme: window.google.maps.ColorScheme?.DARK,
           disableDefaultUI: true,

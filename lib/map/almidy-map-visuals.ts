@@ -45,17 +45,18 @@ export const almidyGoogleMapDarkStyles: google.maps.MapTypeStyle[] = [
 ];
 
 export const almidyGoogleCountryMapStyles: google.maps.MapTypeStyle[] = [
-  { elementType: "geometry", stylers: [{ color: "#1A1A1E" }] },
+  { elementType: "geometry", stylers: [{ color: "#252832" }] },
   { elementType: "labels.icon", stylers: [{ visibility: "off" }] },
-  { elementType: "labels.text.fill", stylers: [{ color: "#9A9A9F" }] },
-  { elementType: "labels.text.stroke", stylers: [{ color: "#1A1A1E" }, { weight: 4 }] },
-  { featureType: "administrative.country", elementType: "geometry.stroke", stylers: [{ color: "#3F3F46" }, { weight: 1.2 }] },
+  { elementType: "labels.text.fill", stylers: [{ color: "#b9bdc7" }] },
+  { elementType: "labels.text.stroke", stylers: [{ color: "#161920" }, { weight: 3.5 }] },
+  { featureType: "administrative.country", elementType: "geometry.stroke", stylers: [{ color: "#5b6270" }, { weight: 1.35 }] },
+  { featureType: "administrative.province", elementType: "geometry.stroke", stylers: [{ color: "#3e4654" }, { weight: 0.8 }] },
   { featureType: "administrative.land_parcel", stylers: [{ visibility: "off" }] },
-  { featureType: "landscape", elementType: "geometry", stylers: [{ color: "#232329" }] },
-  { featureType: "landscape.natural", elementType: "geometry", stylers: [{ color: "#232329" }] },
+  { featureType: "landscape", elementType: "geometry", stylers: [{ color: "#2f3440" }] },
+  { featureType: "landscape.natural", elementType: "geometry", stylers: [{ color: "#343a45" }] },
   { featureType: "poi", stylers: [{ visibility: "off" }] },
   { featureType: "road", stylers: [{ visibility: "off" }] },
   { featureType: "transit", stylers: [{ visibility: "off" }] },
-  { featureType: "water", elementType: "geometry", stylers: [{ color: "#0E0F12" }] },
-  { featureType: "water", elementType: "labels.text.fill", stylers: [{ color: "#5f6674" }] }
+  { featureType: "water", elementType: "geometry", stylers: [{ color: "#111827" }] },
+  { featureType: "water", elementType: "labels.text.fill", stylers: [{ color: "#6f7d92" }] }
 ];
