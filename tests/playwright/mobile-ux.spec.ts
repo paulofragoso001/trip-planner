@@ -761,6 +761,56 @@ test.describe("mobile soft-launch UX", () => {
     }
   });
 
+  test("Verify 2D map viewport layout fills the background completely with zero top clipping bounds", async ({ page, request }) => {
+    test.setTimeout(90_000);
+    await page.setViewportSize({ height: 900, width: 390 });
+    await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
+    await installMockMobileLocation(page);
+    await installMockGoogleMaps3D(page);
+
+    const barcelonaResponse = await request.post(`${baseUrl}/api/trips`, {
+      data: {
+        destination: "Barcelona, Spain",
+        destination_lat: 41.3851,
+        destination_lng: 2.1734,
+        end_date: "2026-07-30",
+        name: `Barcelona viewport coverage ${Date.now()}`,
+        start_date: "2026-06-26",
+        status: "Planning",
+        travel_style: "balanced"
+      },
+      headers: { "x-cypress-dashboard": "true" }
+    });
+    expect(barcelonaResponse.status()).toBe(201);
+    const barcelonaPayload = await barcelonaResponse.json();
+    const barcelonaTripId = barcelonaPayload?.trip?.id;
+
+    try {
+      await page.goto(`${baseUrl}/dashboard/trips`, { waitUntil: "commit" });
+
+      const mapElement = page.getByTestId("mobile-country-map-canvas");
+      await expect(mapElement).toBeVisible({ timeout: 20_000 });
+      await expect(mapElement).toHaveAttribute("data-map-system", "almidy-map-system");
+
+      const bounds = await mapElement.boundingBox();
+      const viewport = page.viewportSize();
+      expect(bounds).not.toBeNull();
+      expect(bounds?.height).toBeGreaterThan(600);
+      if (bounds && viewport) {
+        expect(bounds.y).toBeLessThanOrEqual(0);
+        expect(bounds.height).toBeGreaterThanOrEqual(viewport.height);
+      }
+
+      const barcelonaPin = page.locator(
+        `[data-testid="mobile-trips-globe-flag-pin"][data-trip-id="${barcelonaTripId}"]`
+      );
+      await expect(barcelonaPin).toBeVisible();
+      await expect(barcelonaPin.getByText("Barcelona")).toBeVisible();
+    } finally {
+      await deleteTripForTest(request, barcelonaTripId);
+    }
+  });
+
   test("Verify map camera panning updates position tracking safely after selecting card components", async ({ page, request }) => {
     test.setTimeout(90_000);
     await page.setViewportSize({ height: 900, width: 390 });
