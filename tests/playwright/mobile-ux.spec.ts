@@ -697,6 +697,70 @@ test.describe("mobile soft-launch UX", () => {
     }
   });
 
+  test("Verify map canvas fills the entire viewport background and doesn't clip info card popups", async ({ page, request }) => {
+    test.setTimeout(90_000);
+    await page.setViewportSize({ height: 900, width: 390 });
+    await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
+    await installMockMobileLocation(page);
+    await installMockGoogleMaps3D(page);
+
+    const brazilResponse = await request.post(`${baseUrl}/api/trips`, {
+      data: {
+        destination: "Brazil",
+        destination_lat: -14.235,
+        destination_lng: -51.9253,
+        end_date: "2026-06-16",
+        name: `Brazil full bleed regression ${Date.now()}`,
+        start_date: "2026-06-04",
+        status: "Planning",
+        travel_style: "balanced"
+      },
+      headers: { "x-cypress-dashboard": "true" }
+    });
+    expect(brazilResponse.status()).toBe(201);
+    const brazilPayload = await brazilResponse.json();
+    const brazilTripId = brazilPayload?.trip?.id;
+
+    try {
+      await page.goto(`${baseUrl}/dashboard/trips`, { waitUntil: "commit" });
+
+      const mapElement = page.getByTestId("mobile-country-map-canvas");
+      await expect(mapElement).toBeVisible({ timeout: 20_000 });
+      await expect(mapElement).toHaveAttribute("data-map-system", "almidy-map-system");
+
+      const viewport = page.viewportSize();
+      const boundingBox = await mapElement.boundingBox();
+      expect(boundingBox).not.toBeNull();
+      expect(boundingBox?.width).toBeGreaterThan(300);
+      if (viewport && boundingBox) {
+        expect(boundingBox.width).toBeGreaterThanOrEqual(viewport.width);
+        expect(boundingBox.height).toBeGreaterThanOrEqual(viewport.height);
+      }
+
+      const brazilPin = page.locator(
+        `[data-testid="mobile-trips-globe-flag-pin"][data-trip-id="${brazilTripId}"]`
+      );
+      await expect(brazilPin).toBeVisible();
+      await brazilPin.getByText("Brazil").dispatchEvent("click");
+
+      const selectedTripCard = page.locator(
+        `[data-testid="mobile-trips-overview-card"][data-trip-id="${brazilTripId}"]`
+      );
+      await expect(selectedTripCard).toBeVisible();
+      await expect(selectedTripCard).toContainText("Brazil");
+
+      const cardBox = await selectedTripCard.boundingBox();
+      const sheetBox = await page.getByTestId("mobile-country-sheet").boundingBox();
+      expect(cardBox).not.toBeNull();
+      expect(sheetBox).not.toBeNull();
+      if (cardBox && sheetBox) {
+        expect(cardBox.y + cardBox.height).toBeLessThanOrEqual(sheetBox.y + 1);
+      }
+    } finally {
+      await deleteTripForTest(request, brazilTripId);
+    }
+  });
+
   test("Verify map camera panning updates position tracking safely after selecting card components", async ({ page, request }) => {
     test.setTimeout(90_000);
     await page.setViewportSize({ height: 900, width: 390 });

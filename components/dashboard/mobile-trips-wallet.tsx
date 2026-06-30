@@ -463,7 +463,7 @@ function MobileTripsMapCarousel({
   }
 
   return (
-    <div className="absolute inset-x-0 bottom-[calc(13.4rem+env(safe-area-inset-bottom))] z-20">
+    <div className="absolute inset-x-0 bottom-[calc(20rem+env(safe-area-inset-bottom))] z-20">
       <div
         className="no-scrollbar flex snap-x snap-mandatory gap-3 overflow-x-auto px-5 pb-1"
         data-testid="mobile-trips-overview-carousel"
