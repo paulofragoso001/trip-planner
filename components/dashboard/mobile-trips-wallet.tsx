@@ -374,7 +374,7 @@ function MobileTripsCountriesMap({
 
   return (
     <section
-      className="relative isolate -mx-3 -mt-4 min-h-[100dvh] overflow-hidden bg-black text-white sm:-mx-6 sm:-mt-6 lg:hidden"
+      className="relative isolate -mx-3 -mt-4 h-[100dvh] min-h-[100dvh] max-h-[100dvh] overflow-hidden bg-black text-white sm:-mx-6 sm:-mt-6 lg:hidden"
       data-camera-command={unifiedMap?.surfaceState.cameraCommand?.type ?? undefined}
       data-hydrated={hydrated ? "true" : "false"}
       data-map-mode={unifiedMap?.surfaceState.mode}
@@ -647,7 +647,7 @@ function MobileTripsGlobeCanvas({
   if (!hydrated) {
     return (
       <div
-        className="absolute inset-0 z-10 flex items-center justify-center overflow-visible bg-[#090e14] [transform-style:preserve-3d]"
+        className="absolute inset-0 z-0 flex h-full w-full items-center justify-center overflow-visible bg-[#1a1b20] [transform-style:preserve-3d]"
         data-map-instance-key="trips-globe-loading"
         data-map-system={ALMIDY_MAP_SYSTEM_ID}
         data-map-trip-state="loading"
@@ -660,7 +660,7 @@ function MobileTripsGlobeCanvas({
 
   return (
     <div
-      className="absolute inset-0 z-10 overflow-visible bg-black [transform-style:preserve-3d]"
+      className="absolute inset-0 z-0 h-full w-full overflow-visible bg-[#1a1b20] [transform-style:preserve-3d]"
       data-map-instance-key={mapInstanceKey}
       data-map-system={ALMIDY_MAP_SYSTEM_ID}
       data-map-trip-state={hasTripPins ? "ready" : "empty"}
@@ -668,7 +668,7 @@ function MobileTripsGlobeCanvas({
     >
       <CustomGlobeRenderer
         activeTripId={activeTripId}
-        className="absolute inset-0 h-full min-h-[100dvh] w-full overflow-visible [transform-style:preserve-3d]"
+        className="absolute inset-0 h-full w-full overflow-visible [transform-style:preserve-3d]"
         defaultFocusWhenEmpty
         mapInstanceKey={mapInstanceKey}
         onTripPinSelect={onTripPinSelect}

@@ -154,7 +154,7 @@ function LoadedTripsOverviewMapRenderer({
 
     const bounds = new window.google.maps.LatLngBounds();
     visiblePins.forEach((pin) => bounds.extend(pin.coordinate));
-    map.fitBounds(bounds, { bottom: 360, left: 72, right: 72, top: 110 });
+    map.fitBounds(bounds, { bottom: 132, left: 56, right: 56, top: 96 });
   }, [mapReady, visiblePins]);
 
   useEffect(() => {
