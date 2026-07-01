@@ -9,7 +9,7 @@ import { TripCreateForm } from "@/components/dashboard/trip-create-form";
 import MobileTripsWalletSheet, {
   type MobileTripsWalletSheetTrip
 } from "@/components/dashboard/mobile-trips-wallet-sheet";
-import { CustomGlobeRenderer } from "@/components/map/custom-globe-renderer";
+import { GoogleMapRenderer } from "@/components/map/google-map-renderer";
 import { cn } from "@/components/trip-ui";
 import type { TripsData } from "@/app/dashboard/trips/loader";
 import { dashboardActionRoutes } from "@/lib/dashboard/action-routes";
@@ -26,7 +26,8 @@ import {
 } from "@/lib/map/wayline-map-pins";
 import type {
   AlmidyLaunchGlobeTripPin,
-  AlmidyMapPin
+  AlmidyMapPin,
+  AlmidyMapSurfaceState
 } from "@/lib/map/wayline-map-models";
 
 type MobileTripsWalletProps = Pick<TripsData, "error" | "trips">;
@@ -277,7 +278,6 @@ function MobileTripsCountriesMap({
   const carouselCardRefs = useRef(new Map<string, HTMLButtonElement>());
   const [activeTripId, setActiveTripId] = useState<string | null>(null);
   const [selectedTripId, setSelectedTripId] = useState<string | null>(null);
-  const [mapSelectionRevision, setMapSelectionRevision] = useState(0);
   const markerTrips = useMemo(() => activeYearTrips.filter(hasTripCoordinates), [activeYearTrips]);
   const tripPins = useMemo(() => markerTrips.map(tripToMapPin), [markerTrips]);
   const globeTripPins = useMemo(() => markerTrips.map(tripToGlobeFlagPin).filter(isGlobeTripPin), [markerTrips]);
@@ -320,7 +320,6 @@ function MobileTripsCountriesMap({
 
   function selectTripOnMap(tripId: string, options: { scrollCarousel?: boolean } = {}) {
     setActiveTripId(tripId);
-    setMapSelectionRevision((revision) => revision + 1);
     unifiedMap?.selectPin(`trip-${tripId}`);
 
     if (options.scrollCarousel === false) return;
@@ -395,9 +394,8 @@ function MobileTripsCountriesMap({
         activeTripId={activeTripId}
         activeYear={activeYear}
         hydrated={hydrated}
+        mapPins={tripPins}
         onTripPinSelect={handleTripPinSelect}
-        selectionRevision={mapSelectionRevision}
-        tripPins={globeTripPins}
       />
 
       <div className="absolute right-4 top-[calc(4.5rem+env(safe-area-inset-top))] z-30 overflow-hidden rounded-[1.45rem] border border-white/10 bg-black/86 text-orange-400 shadow-[0_18px_50px_rgba(0,0,0,0.45)] backdrop-blur-xl">
@@ -621,25 +619,53 @@ function MobileTripsGlobeCanvas({
   activeTripId,
   activeYear,
   hydrated,
-  onTripPinSelect,
-  selectionRevision,
-  tripPins
+  mapPins,
+  onTripPinSelect
 }: {
   activeTripId: string | null;
   activeYear: string;
   hydrated: boolean;
+  mapPins: AlmidyMapPin[];
   onTripPinSelect: (tripId: string) => void;
-  selectionRevision: number;
-  tripPins: AlmidyLaunchGlobeTripPin[];
 }) {
-  const hasTripPins = tripPins.length > 0;
+  const hasTripPins = mapPins.length > 0;
+  const selectedPinId = activeTripId ? `trip-${activeTripId}` : null;
+  const surfacePins = useMemo(
+    () => mapPins.map((pin) => ({
+      ...pin,
+      selected: pin.id === selectedPinId || pin.tripId === activeTripId
+    })),
+    [activeTripId, mapPins, selectedPinId]
+  );
+  const mapCenter = surfacePins[0]?.coordinate ?? { lat: 25.7617, lng: -80.1918 };
+  const surfaceState = useMemo<AlmidyMapSurfaceState>(
+    () => ({
+      camera: {
+        center: mapCenter,
+        intent: hasTripPins ? "trip" : "world",
+        selectedId: selectedPinId,
+        zoom: hasTripPins ? 4 : 3
+      },
+      location: {
+        coordinate: null,
+        permission: "unknown",
+        source: "fallback"
+      },
+      mode: "map",
+      pins: surfacePins,
+      renderer: "google-2d",
+      routes: [],
+      selectedId: selectedPinId
+    }),
+    [hasTripPins, mapCenter, selectedPinId, surfacePins]
+  );
   const mapInstanceKey = hasTripPins
-    ? `trips-globe-${tripPins.length}-${tripPins
+    ? `trips-globe-${mapPins.length}-${mapPins
         .map((pin) => [
           pin.tripId ?? pin.id,
           pin.countryCode,
-          Number(pin.lat).toFixed(5),
-          Number(pin.lng).toFixed(5)
+          pin.coordinate.lat.toFixed(5),
+          pin.coordinate.lng.toFixed(5)
         ].join(":"))
         .join("|")}`
     : `trips-globe-${activeYear}-empty`;
@@ -666,17 +692,21 @@ function MobileTripsGlobeCanvas({
       data-map-trip-state={hasTripPins ? "ready" : "empty"}
       data-testid="mobile-country-map-canvas"
     >
-      <CustomGlobeRenderer
-        activeTripId={activeTripId}
+      <GoogleMapRenderer
         className="absolute inset-0 h-full w-full overflow-visible [transform-style:preserve-3d]"
-        defaultFocusWhenEmpty
-        mapInstanceKey={mapInstanceKey}
-        onTripPinSelect={onTripPinSelect}
-        renderTripPins
-        selectionRevision={selectionRevision}
-        showCountryPin={false}
-        tripPins={tripPins}
-        useLocationFocus={false}
+        height="100%"
+        mapTheme="dark"
+        markerTestId="mobile-trips-globe-flag-pin"
+        markerVariant="flag-label"
+        onPinSelect={(pinId) => {
+          const selectedPin = surfacePins.find((pin) => pin.id === pinId);
+          const tripId = selectedPin?.tripId ?? pinId.replace(/^trip-/, "");
+          if (tripId) {
+            onTripPinSelect(tripId);
+          }
+        }}
+        showPinLabels
+        surfaceState={surfaceState}
       />
       {!hasTripPins ? (
         <div

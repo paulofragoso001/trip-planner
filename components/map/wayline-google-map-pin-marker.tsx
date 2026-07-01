@@ -32,12 +32,15 @@ export function AlmidyGoogleMapPinMarker({
   const label = pinDisplayLabel(pin);
   const glyph = pinGlyph(pin);
   const markerDataAttributes = {
+    "data-active": pin.selected ? "true" : "false",
+    "data-country-code": pin.countryCode ?? undefined,
     "data-pin-country-code": pin.countryCode ?? undefined,
     "data-pin-id": pin.id,
     "data-pin-kind": pin.kind,
     "data-pin-label": label,
     "data-pin-latitude": pin.coordinate.lat.toFixed(5),
-    "data-pin-longitude": pin.coordinate.lng.toFixed(5)
+    "data-pin-longitude": pin.coordinate.lng.toFixed(5),
+    "data-trip-id": pin.tripId ?? undefined
   };
   const markerClassName = [
     "group grid -translate-x-1/2 justify-items-center focus:outline-none",

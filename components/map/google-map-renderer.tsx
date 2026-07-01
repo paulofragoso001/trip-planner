@@ -24,8 +24,11 @@ import type {
 type GoogleMapRendererProps = {
   className?: string;
   height?: number | string;
+  markerTestId?: string;
+  markerVariant?: "compact" | "flag-label";
   mapTheme?: "default" | "dark";
   onPinSelect?: (pinId: string) => void;
+  showPinLabels?: boolean;
   surfaceState?: AlmidyMapSurfaceState;
 };
 
@@ -52,8 +55,11 @@ export function GoogleMapRenderer(props: GoogleMapRendererProps) {
 function LoadedGoogleMapRenderer({
   className,
   height = "100%",
+  markerTestId,
+  markerVariant,
   mapTheme = "default",
   onPinSelect,
+  showPinLabels,
   surfaceState
 }: GoogleMapRendererProps) {
   const unifiedMap = useOptionalUnifiedMap();
@@ -204,6 +210,9 @@ function LoadedGoogleMapRenderer({
                 onPinSelect?.(pinId);
               }}
               pin={pin}
+              showLabel={showPinLabels}
+              testId={markerTestId}
+              variant={markerVariant}
             />
           </OverlayView>
         ))}
