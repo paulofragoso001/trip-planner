@@ -320,6 +320,7 @@ function MobileTripsCountriesMap({
 
   function selectTripOnMap(tripId: string, options: { scrollCarousel?: boolean } = {}) {
     setActiveTripId(tripId);
+    setSelectedTripId(tripId);
     unifiedMap?.selectPin(`trip-${tripId}`);
 
     if (options.scrollCarousel === false) return;

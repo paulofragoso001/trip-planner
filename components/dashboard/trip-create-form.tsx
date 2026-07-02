@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { CalendarDays, ImageIcon, MapPin } from "lucide-react";
 import type { FormEvent } from "react";
 import { useEffect, useState } from "react";
 import GoogleMapsProvider from "@/components/GoogleMapsProvider";
@@ -9,12 +10,9 @@ import LocationAutocomplete, {
 } from "@/components/LocationAutocomplete";
 import {
   MobileField,
-  MobileFormHeader,
   MobileFormSection,
   MobileFormShell,
   mobileInputClassName,
-  mobilePrimaryActionClassName,
-  mobileSecondaryActionClassName,
   mobileSelectClassName
 } from "@/components/ui/mobile-form";
 import { useAlmidyAction } from "@/hooks/use-wayline-action";
@@ -166,131 +164,165 @@ export function TripCreateForm({
         onSubmit={createTrip}
       >
         <MobileFormShell
-          className="flex max-h-[min(78dvh,44rem)] min-h-0 flex-col overflow-hidden"
+          className="relative -mx-3 flex max-h-[calc(100dvh-1.25rem)] min-h-[calc(100dvh-5.75rem)] flex-col overflow-hidden rounded-[2.15rem] border-white/10 bg-[#807867] shadow-[0_28px_80px_rgba(0,0,0,0.42)] sm:-mx-4"
           data-testid="mobile-trip-create-sheet"
         >
-          <MobileFormHeader
-            leftAction={
-              <a className={mobileSecondaryActionClassName} href="/dashboard">
+          <div
+            aria-hidden="true"
+            className="absolute inset-x-0 top-0 h-[27rem] bg-[linear-gradient(180deg,rgba(0,0,0,0.02)_0%,rgba(91,82,64,0.22)_58%,#807867_100%),url('https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=1200&q=80')] bg-cover bg-center"
+          />
+          <div className="pointer-events-none absolute inset-x-0 top-[21rem] h-44 bg-gradient-to-b from-transparent via-[#807867]/90 to-[#807867]" />
+
+          <div className="relative z-10 flex min-h-0 flex-1 flex-col">
+            <div className="flex shrink-0 items-center justify-between px-5 pt-5">
+              <a
+                className="inline-flex min-h-12 items-center justify-center rounded-full border border-white/55 bg-white/70 px-5 text-[1.38rem] font-semibold text-black shadow-[0_10px_28px_rgba(0,0,0,0.18)] backdrop-blur-xl transition hover:bg-white/85 focus:outline-none focus:ring-4 focus:ring-white/30"
+                href="/dashboard"
+              >
                 Cancel
               </a>
-            }
-            rightAction={
               <button
                 aria-busy={isPending}
-                className={mobilePrimaryActionClassName}
+                className="inline-flex min-h-12 items-center justify-center rounded-full bg-orange-500 px-7 text-[1.35rem] font-bold text-white shadow-[0_12px_32px_rgba(249,115,22,0.34)] transition hover:bg-orange-400 disabled:cursor-not-allowed disabled:opacity-65"
                 disabled={!canCreate}
                 type="submit"
               >
-                {isPending ? "Creating..." : "Create"}
+                {isPending ? "Creating..." : "Create Trip"}
               </button>
-            }
-            subtitle={previewDates}
-            title="Create Trip"
-          />
+            </div>
 
-          <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain pb-[calc(6rem+env(safe-area-inset-bottom))] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            <MobileFormSection title="Trip">
-              <MobileField label="Trip name">
-                <input
-                  aria-label="Trip name"
-                  className={mobileInputClassName}
-                  onChange={(event) => setName(event.target.value)}
-                  placeholder="Miami weekend"
-                  required
-                  value={name}
-                />
-              </MobileField>
-              <MobileField
-                helper={
-                  destination.trim() && !destinationSelection
-                    ? "Select a suggested destination to pin this trip on the map."
-                    : destinationSelection
-                      ? "Destination matched for maps and planning."
-                      : null
-                }
-                label="Destination"
-              >
-                <GoogleMapsProvider>
-                  <LocationAutocomplete
-                    ariaLabel="Destination"
-                    inputClassName={mobileInputClassName}
-                    name="destination"
-                    onInputChange={(value) => {
-                      setDestination(value);
-                      setDestinationSelection(null);
-                    }}
-                    onSelect={(location) => {
-                      setDestination(location.address);
-                      setDestinationSelection(location);
-                    }}
-                    placeholder="Search Miami, Barcelona, Tokyo..."
+            <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain pb-[calc(7rem+env(safe-area-inset-bottom))] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              <section className="flex min-h-[35rem] flex-col items-center justify-center px-5 pb-16 pt-80 text-center text-white">
+                <label className="grid w-full max-w-[22rem] gap-2">
+                  <span className="sr-only">Trip name</span>
+                  <input
+                    aria-label="Trip name"
+                    className="w-full border-0 bg-transparent p-0 text-center text-[3rem] font-semibold leading-none tracking-normal text-white outline-none placeholder:text-white/72 focus:ring-0 min-[390px]:text-[3.45rem]"
+                    onChange={(event) => setName(event.target.value)}
+                    placeholder="Trip name"
                     required
-                    value={destination}
+                    value={name}
                   />
-                </GoogleMapsProvider>
-              </MobileField>
-            </MobileFormSection>
-
-            <MobileFormSection title="Dates">
-              <MobileField label="Start date">
-                <input
-                  aria-label="Start date"
-                  className={mobileInputClassName}
-                  id="trip-dates"
-                  onChange={(event) => setStartDate(event.target.value)}
-                  type="date"
-                  value={startDate}
-                />
-              </MobileField>
-              <MobileField label="End date">
-                <input
-                  aria-label="End date"
-                  className={mobileInputClassName}
-                  onChange={(event) => setEndDate(event.target.value)}
-                  type="date"
-                  value={endDate}
-                />
-              </MobileField>
-            </MobileFormSection>
-
-            <MobileFormSection title="Details">
-              <MobileField label="Expense budget">
-                <input
-                  aria-label="Expense budget"
-                  className={mobileInputClassName}
-                  inputMode="decimal"
-                  onChange={(event) => setBudget(event.target.value)}
-                  placeholder="Optional"
-                  value={budget}
-                />
-              </MobileField>
-              <MobileField label="Travel style">
-                <select
-                  aria-label="Travel style"
-                  className={mobileSelectClassName}
-                  onChange={(event) => setTravelStyle(event.target.value as TripTravelStyle)}
-                  value={travelStyle}
-                >
-                  {TRIP_TRAVEL_STYLES.map((style) => (
-                    <option className="bg-[#1f1f21] text-white" key={style} value={style}>
-                      {TRIP_TRAVEL_STYLE_LABELS[style]}
-                    </option>
-                  ))}
-                </select>
-              </MobileField>
-            </MobileFormSection>
-
-            {state.status !== "idle" && message ? (
-              <div className="px-4 pb-4">
-                <p
-                  aria-live="polite"
-                  className={`rounded-2xl px-4 py-3 text-sm font-semibold ring-1 ${messageTone}`}
-                >
-                  {message}
+                </label>
+                <p className="mt-5 text-2xl font-bold text-white">
+                  {previewDates === "Add dates when you are ready" ? "No date set" : previewDates}
                 </p>
-              </div>
-            ) : null}
+                <div className="mt-9 grid w-full max-w-[23rem] grid-cols-[1fr_auto_1fr] items-center gap-8 text-white/78">
+                  <button
+                    className="grid place-items-center gap-2 text-white/78"
+                    onClick={() => document.getElementById("trip-dates")?.focus()}
+                    type="button"
+                  >
+                    <CalendarDays className="h-9 w-9 text-white/60" aria-hidden="true" />
+                    <span className="text-xl font-medium">Set Dates</span>
+                  </button>
+                  <div className="h-20 w-px bg-white/42" />
+                  <button
+                    className="grid place-items-center gap-2 text-white/78"
+                    type="button"
+                  >
+                    <ImageIcon className="h-9 w-9 text-white/60" aria-hidden="true" />
+                    <span className="text-xl font-medium">Background</span>
+                  </button>
+                </div>
+              </section>
+
+              <section className="px-4 pb-5">
+                <div className="rounded-[1.75rem] border border-white/14 bg-[#1f1f21]/90 p-1 shadow-[0_18px_55px_rgba(0,0,0,0.28)] backdrop-blur-xl">
+                  <MobileFormSection className="px-0 py-0" title={null}>
+                    <MobileField
+                      helper={
+                        destination.trim() && !destinationSelection
+                          ? "Select a suggested destination to pin this trip on the map."
+                          : destinationSelection
+                            ? "Destination matched for maps and planning."
+                            : "Choose a Google Places result so Almidy can pin the trip correctly."
+                      }
+                      label={
+                        <span className="inline-flex items-center gap-2">
+                          <MapPin className="h-3.5 w-3.5" aria-hidden="true" />
+                          Destination
+                        </span>
+                      }
+                    >
+                      <GoogleMapsProvider>
+                        <LocationAutocomplete
+                          ariaLabel="Destination"
+                          inputClassName={mobileInputClassName}
+                          name="destination"
+                          onInputChange={(value) => {
+                            setDestination(value);
+                            setDestinationSelection(null);
+                          }}
+                          onSelect={(location) => {
+                            setDestination(location.address);
+                            setDestinationSelection(location);
+                          }}
+                          placeholder="Search Miami, Barcelona, Tokyo..."
+                          required
+                          value={destination}
+                        />
+                      </GoogleMapsProvider>
+                    </MobileField>
+                  </MobileFormSection>
+
+                  <MobileFormSection className="px-0 py-0" title={null}>
+                    <MobileField label="Start date">
+                      <input
+                        aria-label="Start date"
+                        className={mobileInputClassName}
+                        id="trip-dates"
+                        onChange={(event) => setStartDate(event.target.value)}
+                        type="date"
+                        value={startDate}
+                      />
+                    </MobileField>
+                    <MobileField label="End date">
+                      <input
+                        aria-label="End date"
+                        className={mobileInputClassName}
+                        onChange={(event) => setEndDate(event.target.value)}
+                        type="date"
+                        value={endDate}
+                      />
+                    </MobileField>
+                    <MobileField label="Expense budget">
+                      <input
+                        aria-label="Expense budget"
+                        className={mobileInputClassName}
+                        inputMode="decimal"
+                        onChange={(event) => setBudget(event.target.value)}
+                        placeholder="Optional"
+                        value={budget}
+                      />
+                    </MobileField>
+                    <MobileField label="Travel style">
+                      <select
+                        aria-label="Travel style"
+                        className={mobileSelectClassName}
+                        onChange={(event) => setTravelStyle(event.target.value as TripTravelStyle)}
+                        value={travelStyle}
+                      >
+                        {TRIP_TRAVEL_STYLES.map((style) => (
+                          <option className="bg-[#1f1f21] text-white" key={style} value={style}>
+                            {TRIP_TRAVEL_STYLE_LABELS[style]}
+                          </option>
+                        ))}
+                      </select>
+                    </MobileField>
+                  </MobileFormSection>
+                </div>
+
+                {state.status !== "idle" && message ? (
+                  <p
+                    aria-live="polite"
+                    className={`mt-4 rounded-2xl px-4 py-3 text-sm font-semibold ring-1 ${messageTone}`}
+                  >
+                    {message}
+                  </p>
+                ) : null}
+              </section>
+            </div>
           </div>
         </MobileFormShell>
       </form>

@@ -40,10 +40,11 @@ export function AlmidyGoogleMapPinMarker({
     "data-pin-label": label,
     "data-pin-latitude": pin.coordinate.lat.toFixed(5),
     "data-pin-longitude": pin.coordinate.lng.toFixed(5),
-    "data-trip-id": pin.tripId ?? undefined
+    "data-trip-id": pin.tripId ?? undefined,
+    position: `${pin.coordinate.lat.toFixed(5)}, ${pin.coordinate.lng.toFixed(5)}, 0`
   };
   const markerClassName = [
-    "group grid -translate-x-1/2 justify-items-center focus:outline-none",
+    "group pointer-events-auto grid touch-manipulation -translate-x-1/2 justify-items-center focus:outline-none",
     variant === "flag-label" ? "-translate-y-full" : "-translate-y-1/2",
     className
   ]

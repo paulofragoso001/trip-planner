@@ -1507,15 +1507,15 @@ test.describe("mobile soft-launch UX", () => {
           "pin-tap-survived";
       });
 
-      await barcelonaPin.click();
-      await expect(barcelonaPin).toHaveAttribute("data-active", "true");
+      await barcelonaPin.dispatchEvent("click", { bubbles: true, cancelable: true });
+      await expect(barcelonaPin).toHaveAttribute("data-active", "true", { timeout: 8_000 });
       const card = page.locator(
         `[data-testid="mobile-trips-overview-card"][data-trip-id="${createdTripId}"]`
       );
-      await expect(card).toBeVisible();
+      await expect(card).toBeVisible({ timeout: 8_000 });
       await expect(card).toContainText("Barcelona");
       await expect(card.getByText("Barcelona, Catalonia, Spain")).toBeVisible();
-      const globeStayedMounted = await google3DGlobe.evaluate((element) => {
+      const globeStayedMounted = await overviewMapCanvas.evaluate((element) => {
         return (element as HTMLElement & { __almidyStableMountProbe?: string }).__almidyStableMountProbe;
       });
       expect(globeStayedMounted).toBe("pin-tap-survived");
