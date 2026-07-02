@@ -319,6 +319,8 @@ export function TravelWalletSheet({
                 primaryMeta={primaryMeta}
                 surface={surface}
               />
+            ) : recentTrips.length === 0 ? (
+              <WelcomeGetStarted />
             ) : isTripsSurface ? (
               <ExpandedTripsNative
                 primaryHref={primaryHref}
@@ -349,6 +351,45 @@ export function TravelWalletSheet({
         />
       ) : null}
     </section>
+  );
+}
+
+function WelcomeGetStarted() {
+  return (
+    <div
+      className="mt-5 h-[calc(100dvh-6.25rem)] overflow-y-auto pb-[calc(6.5rem+env(safe-area-inset-bottom))]"
+      data-testid="mobile-launch-welcome"
+    >
+      <section className="rounded-[1.75rem] border border-orange-200/70 bg-[linear-gradient(135deg,#fffaf7,#ffeadc)] px-5 py-6 text-slate-950 shadow-[0_22px_60px_rgba(249,115,22,0.12)]">
+        <p className="text-sm font-black uppercase tracking-[0.12em] text-orange-500">Welcome</p>
+        <h2 className="mt-3 text-[2.15rem] font-black leading-none tracking-normal text-black">
+          Get Started
+        </h2>
+        <p className="mt-4 max-w-[17rem] text-[1.12rem] font-medium leading-snug text-slate-400 min-[390px]:max-w-[19rem] min-[390px]:text-[1.22rem]">
+          Create your next trip and plan your itinerary, expenses, documents, and more
+        </p>
+        <div className="mt-7 grid gap-3">
+          <Link
+            className="inline-flex min-h-14 items-center justify-center rounded-full bg-orange-500 px-5 text-center text-lg font-black text-white shadow-[0_18px_42px_rgba(249,115,22,0.28)] transition hover:bg-orange-600 focus:outline-none focus:ring-4 focus:ring-orange-300/25"
+            href={dashboardActionRoutes.trips.create}
+          >
+            Create Your First Trip
+          </Link>
+          <Link
+            className="inline-flex min-h-14 items-center justify-center rounded-full bg-[#eadfd8] px-5 text-center text-lg font-black text-black transition hover:bg-[#dfd2ca] focus:outline-none focus:ring-4 focus:ring-orange-300/20"
+            href={dashboardActionRoutes.imports.forwardReservation}
+          >
+            Forward Your Reservation
+          </Link>
+          <Link
+            className="inline-flex min-h-14 items-center justify-center rounded-full bg-[#eadfd8] px-5 text-center text-lg font-black text-black transition hover:bg-[#dfd2ca] focus:outline-none focus:ring-4 focus:ring-orange-300/20"
+            href={dashboardActionRoutes.plan.sampleMiami}
+          >
+            Explore Sample Trip
+          </Link>
+        </div>
+      </section>
+    </div>
   );
 }
 

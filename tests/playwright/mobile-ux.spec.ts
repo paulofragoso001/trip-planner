@@ -461,6 +461,29 @@ test.describe("mobile soft-launch UX", () => {
     });
   }
 
+  test("mobile guests can open launch globe and see welcome get started sheet", async ({ page }) => {
+    await page.setViewportSize({ height: 900, width: 390 });
+    await page.setExtraHTTPHeaders({ "sec-ch-ua-mobile": "?1" });
+    await installMockMobileLocation(page);
+
+    await page.goto(`${baseUrl}/dashboard`, { waitUntil: "commit" });
+
+    await expect(page).toHaveURL(/\/dashboard$/);
+    await expect(page).not.toHaveURL(/\/login/);
+    await expect(page.getByTestId("app-shell-root")).toHaveAttribute("data-shell-variant", "mobile");
+    await expect(page.getByTestId("mobile-home-wallet")).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByTestId("mobile-home-wallet-content")).toHaveAttribute("data-sheet-state", "expanded");
+    await expect(page.getByTestId("mobile-launch-welcome")).toBeVisible();
+    await expect(page.getByText("Welcome")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Get Started" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Create Your First Trip" })).toHaveAttribute(
+      "href",
+      "/dashboard/trips?view=list#new-trip"
+    );
+    await expect(page.getByRole("link", { name: "Forward Your Reservation" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Explore Sample Trip" })).toBeVisible();
+  });
+
   for (const width of viewports) {
     test(`core routes avoid horizontal overflow at ${width}px`, async ({ page }) => {
       test.setTimeout(180_000);

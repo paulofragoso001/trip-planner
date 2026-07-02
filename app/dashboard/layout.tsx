@@ -48,6 +48,18 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
   ).catch(() => ({ data: { user: null } }));
 
   if (!user) {
+    if (isMobileRequest(requestHeaders)) {
+      return (
+        <AppShell
+          userEmail="Guest"
+          userMenu={<GuestUserMenu />}
+          workspaceName="Almidy"
+        >
+          {children}
+        </AppShell>
+      );
+    }
+
     redirect("/login");
   }
 
@@ -111,4 +123,35 @@ function TestUserMenu() {
       </Link>
     </div>
   );
+}
+
+function GuestUserMenu() {
+  return (
+    <div className="grid gap-3 rounded-xl border border-white/10 bg-white/[0.08] p-3 text-sm text-slate-100">
+      <p className="font-black text-white">Welcome to Almidy</p>
+      <p className="mt-1 text-slate-400">Create an account when you are ready to save trips.</p>
+      <Link
+        className="rounded-xl border border-white/10 bg-white/10 px-3 py-2 text-center font-bold text-white transition hover:bg-white/15"
+        href="/login"
+      >
+        Log in or sign up
+      </Link>
+    </div>
+  );
+}
+
+function isMobileRequest(requestHeaders: Headers) {
+  const mobileHint = requestHeaders.get("sec-ch-ua-mobile");
+
+  if (mobileHint === "?1") {
+    return true;
+  }
+
+  if (mobileHint === "?0") {
+    return false;
+  }
+
+  const userAgent = requestHeaders.get("user-agent") ?? "";
+
+  return /\b(Android|iPhone|iPod|IEMobile|Opera Mini|Mobile Safari)\b/i.test(userAgent);
 }

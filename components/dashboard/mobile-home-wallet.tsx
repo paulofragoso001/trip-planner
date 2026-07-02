@@ -26,6 +26,8 @@ export function MobileHomeWallet({
   recentTrips
 }: MobileHomeWalletProps) {
   const latestTrip = recentTrips[0] || null;
+  const hasTrips = recentTrips.length > 0;
+  const resolvedInitialSheetState = hasTrips ? initialSheetState : "expanded";
   const [isCreatingFirstTrip, setIsCreatingFirstTrip] = useState(false);
   const importsWaiting =
     metrics.find((metric) => metric.label === "Ideas waiting")?.value ??
@@ -80,7 +82,7 @@ export function MobileHomeWallet({
           primaryMeta={primaryMeta}
           recentTrips={recentTrips}
           forceExpanded={isCreatingFirstTrip}
-          initialSheetState={initialSheetState}
+          initialSheetState={resolvedInitialSheetState}
         />
       </section>
       {unifiedMapSurfaceEnabled ? <LaunchLocationPermissionOverlay /> : null}
