@@ -41,6 +41,7 @@ export function MobileTripsWallet({ error, trips }: MobileTripsWalletProps) {
   const [selectedYear, setSelectedYear] = useState<string | null>(null);
   const createRef = useRef<HTMLDivElement | null>(null);
   const isListView = searchParams.get("view") === "list";
+  const focusedCreateOnly = isListView && createOpen && trips.length === 0;
 
   const filteredTrips = useMemo(() => {
     if (!query.trim()) return trips;
@@ -121,8 +122,14 @@ export function MobileTripsWallet({ error, trips }: MobileTripsWalletProps) {
       data-testid="mobile-trips-wallet-screen"
       data-unified-map-surface={unifiedMapSurfaceEnabled ? "enabled" : "disabled"}
     >
-      <MobileTripsBackground />
-      <div className="relative z-10 mx-auto grid w-full max-w-[31rem] gap-5 px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-5">
+      {focusedCreateOnly ? null : <MobileTripsBackground />}
+      <div
+        className={cn(
+          "relative z-10 mx-auto grid w-full max-w-[31rem] gap-5 px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-5",
+          focusedCreateOnly && "max-w-none px-0 pb-0 pt-0"
+        )}
+      >
+        {focusedCreateOnly ? null : (
         <header className="grid gap-5">
           <div className="flex min-h-12 items-center justify-between gap-3">
             <Link
@@ -171,18 +178,19 @@ export function MobileTripsWallet({ error, trips }: MobileTripsWalletProps) {
             />
           </label>
         </header>
+        )}
 
-        {error ? (
+        {!focusedCreateOnly && error ? (
           <div className="rounded-[1.5rem] border border-red-300/20 bg-red-950/50 p-4 text-sm font-bold text-red-100">
             {error}
           </div>
         ) : null}
 
-        {trips.length === 0 ? (
+        {!focusedCreateOnly && trips.length === 0 ? (
           <div className="grid gap-4" data-testid="mobile-first-trip-state">
             <NoTripsCard disabled={!hydrated} onCreate={openCreateFlow} />
           </div>
-        ) : (
+        ) : !focusedCreateOnly ? (
           <div className="grid gap-6" data-testid="mobile-trips-wallet">
             {visibleTripGroups.length > 0 ? (
               visibleTripGroups.map((group) => (
@@ -215,12 +223,13 @@ export function MobileTripsWallet({ error, trips }: MobileTripsWalletProps) {
               </div>
             )}
           </div>
-        )}
+        ) : null}
 
         <section
           className={cn(
             "grid gap-3 rounded-[2rem] border border-white/10 bg-white/[0.08] p-3 shadow-[0_24px_70px_rgba(0,0,0,0.30)] backdrop-blur-xl",
-            createOpen ? "ring-1 ring-orange-300/16" : "p-2"
+            createOpen ? "ring-1 ring-orange-300/16" : "p-2",
+            focusedCreateOnly && "rounded-none border-0 bg-transparent p-0 shadow-none ring-0 backdrop-blur-0"
           )}
           data-testid="mobile-create-another-trip"
           id="mobile-new-trip"
@@ -240,7 +249,12 @@ export function MobileTripsWallet({ error, trips }: MobileTripsWalletProps) {
             </button>
           ) : null}
           {createOpen ? (
-            <div className="min-h-0 overflow-visible rounded-[1.65rem] bg-transparent text-white shadow-2xl">
+            <div
+              className={cn(
+                "min-h-0 overflow-visible bg-transparent text-white",
+                !focusedCreateOnly && "rounded-[1.65rem] shadow-2xl"
+              )}
+            >
               <TripCreateForm
                 mode="mobile-pass"
                 redirectOnSuccess
