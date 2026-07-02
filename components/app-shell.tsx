@@ -41,12 +41,22 @@ function useIsDesktopDashboardShell() {
   const [isDesktop, setIsDesktop] = useState(false);
 
   useEffect(() => {
-    const query = window.matchMedia("(min-width: 768px)");
-    const sync = () => setIsDesktop(query.matches);
+    const widthQuery = window.matchMedia("(min-width: 1024px)");
+    const hoverQuery = window.matchMedia("(hover: hover)");
+    const pointerQuery = window.matchMedia("(pointer: fine)");
+    const sync = () => {
+      setIsDesktop(widthQuery.matches && hoverQuery.matches && pointerQuery.matches);
+    };
 
     sync();
-    query.addEventListener("change", sync);
-    return () => query.removeEventListener("change", sync);
+    widthQuery.addEventListener("change", sync);
+    hoverQuery.addEventListener("change", sync);
+    pointerQuery.addEventListener("change", sync);
+    return () => {
+      widthQuery.removeEventListener("change", sync);
+      hoverQuery.removeEventListener("change", sync);
+      pointerQuery.removeEventListener("change", sync);
+    };
   }, []);
 
   return isDesktop;

@@ -518,13 +518,12 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByTestId("app-shell-mobile-drawer")).toHaveCount(0);
     await expect(page.getByTestId("mobile-home-wallet")).toBeVisible();
 
-    await page.setViewportSize({ height: 900, width: 768 });
+    await page.setViewportSize({ height: 430, width: 932 });
     await page.goto(`${baseUrl}/dashboard`, { waitUntil: "commit" });
-    await expect(page.getByTestId("app-shell-root")).toHaveAttribute("data-shell-variant", "desktop");
-    await expect(page.getByTestId("app-shell-sidebar")).toBeVisible();
-    await expect(page.getByTestId("app-shell-topbar")).toBeVisible();
-    await expect(page.getByTestId("app-shell-nav")).toBeVisible();
-    await expect(page.getByTestId("app-shell-mobile-bottom-nav")).toHaveCount(0);
+    await expect(page.getByTestId("app-shell-root")).toHaveAttribute("data-shell-variant", "mobile");
+    await expect(page.getByTestId("app-shell-sidebar")).toHaveCount(0);
+    await expect(page.getByTestId("app-shell-topbar")).toHaveCount(0);
+    await expect(page.getByTestId("mobile-home-wallet")).toBeVisible();
 
     await page.setViewportSize({ height: 900, width: 1024 });
     await page.goto(`${baseUrl}/dashboard`, { waitUntil: "commit" });
