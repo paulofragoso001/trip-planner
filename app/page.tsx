@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 import {
   CalendarDays,
   CircleDollarSign,
@@ -43,6 +45,12 @@ const floatingCards = [
 ];
 
 export default async function HomePage() {
+  const requestHeaders = await headers();
+
+  if (isMobileRequest(requestHeaders)) {
+    redirect("/dashboard");
+  }
+
   const supabase = await createClient();
   const {
     data: { user }
@@ -213,6 +221,22 @@ export default async function HomePage() {
       </footer>
     </main>
   );
+}
+
+function isMobileRequest(requestHeaders: Headers) {
+  const mobileHint = requestHeaders.get("sec-ch-ua-mobile");
+
+  if (mobileHint === "?1") {
+    return true;
+  }
+
+  if (mobileHint === "?0") {
+    return false;
+  }
+
+  const userAgent = requestHeaders.get("user-agent") ?? "";
+
+  return /\b(Android|iPhone|iPod|IEMobile|Opera Mini|Mobile Safari)\b/i.test(userAgent);
 }
 
 function MiniMetric({ label, value }: { label: string; value: string }) {

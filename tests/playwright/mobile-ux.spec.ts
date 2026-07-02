@@ -439,16 +439,18 @@ async function installMockMobileLocation(
 
 test.describe("mobile soft-launch UX", () => {
   for (const width of [360, 390, 430] as const) {
-    test(`public homepage avoids horizontal overflow at ${width}px`, async ({ page }) => {
+    test(`mobile root opens launch globe instead of landing page at ${width}px`, async ({ page }) => {
       await page.setViewportSize({ height: 900, width });
+      await page.setExtraHTTPHeaders({
+        "sec-ch-ua-mobile": "?1",
+        "x-cypress-dashboard": "true"
+      });
       await page.goto(`${baseUrl}/`, { waitUntil: "commit" });
 
-      await expect(
-        page.getByRole("heading", {
-          name: "All your trip details. Finally, in one place."
-        })
-      ).toBeVisible();
-      await expect(page.getByRole("link", { name: "Start planning" })).toBeVisible();
+      await expect(page).toHaveURL(/\/dashboard$/);
+      await expect(page.getByTestId("app-shell-root")).toHaveAttribute("data-shell-variant", "mobile");
+      await expect(page.getByTestId("mobile-home-wallet")).toBeVisible({ timeout: 30_000 });
+      await expect(page.getByRole("heading", { name: "All your trip details. Finally, in one place." })).toHaveCount(0);
 
       const overflow = await page.evaluate(() => {
         const root = document.documentElement;
