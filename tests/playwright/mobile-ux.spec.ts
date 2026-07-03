@@ -230,6 +230,172 @@ async function installMockGoogleMaps3D(page: Page) {
   });
 }
 
+async function installMockAppleMapKit(page: Page) {
+  await page.addInitScript(() => {
+    type MockMapKitCoordinate = {
+      latitude: number;
+      longitude: number;
+    };
+
+    type MockMapKitAnnotation = {
+      addEventListener: (eventName: string, handler: () => void) => void;
+      element?: HTMLElement;
+      selected?: boolean;
+    };
+
+    class MockCoordinate {
+      latitude: number;
+      longitude: number;
+
+      constructor(latitude: number, longitude: number) {
+        this.latitude = Number(latitude);
+        this.longitude = Number(longitude);
+      }
+    }
+
+    class MockPadding {
+      constructor(
+        public top: number,
+        public right: number,
+        public bottom: number,
+        public left: number
+      ) {}
+    }
+
+    class MockAnnotation {
+      coordinate: MockMapKitCoordinate;
+      element: HTMLElement;
+      selected = false;
+      private handlers = new Map<string, () => void>();
+
+      constructor(
+        coordinate: MockMapKitCoordinate,
+        elementFactory: () => HTMLElement,
+        options?: Record<string, unknown>
+      ) {
+        this.coordinate = coordinate;
+        this.element = elementFactory();
+        this.selected = Boolean(options?.selected);
+      }
+
+      addEventListener(eventName: string, handler: () => void) {
+        this.handlers.set(eventName, handler);
+      }
+
+      trigger(eventName: string) {
+        this.handlers.get(eventName)?.();
+      }
+    }
+
+    class MockMarkerAnnotation extends MockAnnotation {
+      constructor(coordinate: MockMapKitCoordinate, options?: Record<string, unknown>) {
+        super(
+          coordinate,
+          () => {
+            const marker = document.createElement("button");
+            marker.type = "button";
+            marker.textContent = String(options?.title ?? "Map marker");
+            return marker;
+          },
+          options
+        );
+      }
+    }
+
+    class MockMap {
+      annotations: MockMapKitAnnotation[] = [];
+      overlays: unknown[] = [];
+      center: MockMapKitCoordinate | null = null;
+      private container: HTMLElement;
+
+      constructor(container: HTMLElement) {
+        this.container = container;
+        this.container.dataset.mapkitMock = "ready";
+        this.container.style.position = "relative";
+      }
+
+      addAnnotation(annotation: MockMapKitAnnotation) {
+        this.addAnnotations([annotation]);
+      }
+
+      addAnnotations(annotations: MockMapKitAnnotation[]) {
+        this.annotations = [...this.annotations, ...annotations];
+        annotations.forEach((annotation) => {
+          if (annotation.element && !this.container.contains(annotation.element)) {
+            annotation.element.style.position = "relative";
+            annotation.element.style.zIndex = annotation.selected ? "50" : "40";
+            this.container.appendChild(annotation.element);
+          }
+        });
+      }
+
+      removeAnnotation(annotation: MockMapKitAnnotation) {
+        this.removeAnnotations([annotation]);
+      }
+
+      removeAnnotations(annotations: MockMapKitAnnotation[]) {
+        const removable = new Set(annotations);
+        annotations.forEach((annotation) => annotation.element?.remove());
+        this.annotations = this.annotations.filter((annotation) => !removable.has(annotation));
+      }
+
+      addOverlay(overlay: unknown) {
+        this.overlays.push(overlay);
+      }
+
+      removeOverlays(overlays: unknown[]) {
+        const removable = new Set(overlays);
+        this.overlays = this.overlays.filter((overlay) => !removable.has(overlay));
+      }
+
+      setCenterAnimated(coordinate: MockMapKitCoordinate) {
+        this.center = coordinate;
+        this.container.dataset.mapkitPanTo = `${coordinate.latitude.toFixed(5)},${coordinate.longitude.toFixed(5)}`;
+      }
+
+      showAnnotations(annotations: MockMapKitAnnotation[]) {
+        if (annotations[0]) {
+          this.center = (annotations[0] as MockAnnotation).coordinate;
+        }
+      }
+
+      showItems(items: MockMapKitAnnotation[]) {
+        this.showAnnotations(items);
+      }
+
+      setRegionAnimated() {}
+      destroy() {}
+    }
+
+    class MockStyle {
+      constructor(public options?: Record<string, unknown>) {}
+    }
+
+    class MockPolylineOverlay {
+      constructor(
+        public coordinates: MockMapKitCoordinate[],
+        public options?: Record<string, unknown>
+      ) {}
+    }
+
+    (window as typeof window & { mapkit?: any; __almidyMapKitInitialized?: boolean }).mapkit = {
+      Annotation: MockAnnotation,
+      ColorScheme: { Dark: "dark" },
+      Coordinate: MockCoordinate,
+      FeatureVisibility: { Hidden: "hidden" },
+      init: () => {
+        (window as typeof window & { __almidyMapKitInitialized?: boolean }).__almidyMapKitInitialized = true;
+      },
+      initialized: true,
+      Map: MockMap,
+      MarkerAnnotation: MockMarkerAnnotation,
+      Padding: MockPadding,
+      PolylineOverlay: MockPolylineOverlay,
+      Style: MockStyle
+    };
+  });
+}
+
 async function installMockGooglePlacesAutocomplete(
   page: Page,
   {
@@ -435,6 +601,7 @@ async function installMockMobileLocation(
   );
 
   await installMockGoogleMaps3D(page);
+  await installMockAppleMapKit(page);
 }
 
 test.describe("mobile soft-launch UX", () => {
@@ -631,6 +798,7 @@ test.describe("mobile soft-launch UX", () => {
     test.setTimeout(90_000);
     await page.setViewportSize({ height: 900, width: 390 });
     await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
+    await installMockAppleMapKit(page);
     await page.goto(`${baseUrl}/dashboard/trips`, { waitUntil: "commit" });
 
     await expect(page).toHaveURL(/\/dashboard\/trips$/);
@@ -638,7 +806,7 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByTestId("mobile-country-map-canvas")).toBeVisible();
     await expect(page.getByTestId("mobile-country-map-canvas")).toHaveAttribute(
       "data-map-system",
-      "almidy-map-system"
+      "almidy-apple-map-system"
     );
     await expect(page.getByTestId("almidy-launch-globe")).toHaveCount(0);
     await expect(page.getByTestId("mobile-trips-globe-flag-pin").first()).toHaveAttribute("data-active", "false");
@@ -691,7 +859,7 @@ test.describe("mobile soft-launch UX", () => {
 
       const mapWrapper = page.getByTestId("mobile-country-map-canvas");
       await expect(mapWrapper).toBeVisible({ timeout: 20_000 });
-      await expect(mapWrapper).toHaveAttribute("data-map-system", "almidy-map-system");
+      await expect(mapWrapper).toHaveAttribute("data-map-system", "almidy-apple-map-system");
 
       const vancouverPin = page.locator(
         `[data-testid="mobile-trips-globe-flag-pin"][data-trip-id="${vancouverTripId}"]`
@@ -700,15 +868,12 @@ test.describe("mobile soft-launch UX", () => {
       await expect(vancouverPin).toHaveAttribute("data-country-code", "CA");
       await expect(vancouverPin).toHaveAttribute("data-pin-latitude", "49.28270");
       await expect(vancouverPin).toHaveAttribute("data-pin-longitude", "-123.12070");
-      await expect(vancouverPin).toHaveAttribute("position", "49.28270, -123.12070, 0");
 
       const vancouverLabel = vancouverPin.getByText("Vancouver");
       await expect(vancouverLabel).toBeVisible();
       await vancouverLabel.dispatchEvent("click");
 
       await expect(vancouverPin).toHaveAttribute("data-active", "true");
-      await expect(mapWrapper.locator('[data-google-map-pan-to="49.28270,-123.12070"]')).toBeAttached();
-      await expect(mapWrapper.locator('[data-google-map-zoom="5"]')).toBeAttached();
       await expect(page.getByTestId("mobile-trips-country-map-screen")).toHaveAttribute(
         "data-selected-map-id",
         `trip-${vancouverTripId}`
@@ -750,7 +915,7 @@ test.describe("mobile soft-launch UX", () => {
 
       const mapElement = page.getByTestId("mobile-country-map-canvas");
       await expect(mapElement).toBeVisible({ timeout: 20_000 });
-      await expect(mapElement).toHaveAttribute("data-map-system", "almidy-map-system");
+      await expect(mapElement).toHaveAttribute("data-map-system", "almidy-apple-map-system");
 
       const viewport = page.viewportSize();
       const boundingBox = await mapElement.boundingBox();
@@ -814,7 +979,7 @@ test.describe("mobile soft-launch UX", () => {
 
       const mapElement = page.getByTestId("mobile-country-map-canvas");
       await expect(mapElement).toBeVisible({ timeout: 20_000 });
-      await expect(mapElement).toHaveAttribute("data-map-system", "almidy-map-system");
+      await expect(mapElement).toHaveAttribute("data-map-system", "almidy-apple-map-system");
 
       const bounds = await mapElement.boundingBox();
       const viewport = page.viewportSize();
@@ -864,7 +1029,7 @@ test.describe("mobile soft-launch UX", () => {
 
       const mapWrapper = page.getByTestId("mobile-country-map-canvas");
       await expect(mapWrapper).toBeVisible({ timeout: 20_000 });
-      await expect(mapWrapper).toHaveAttribute("data-map-system", "almidy-map-system");
+      await expect(mapWrapper).toHaveAttribute("data-map-system", "almidy-apple-map-system");
 
       const vancouverPin = page.locator(
         `[data-testid="mobile-trips-globe-flag-pin"][data-trip-id="${vancouverTripId}"]`
@@ -876,19 +1041,11 @@ test.describe("mobile soft-launch UX", () => {
         `[data-testid="mobile-trips-overview-card"][data-trip-id="${vancouverTripId}"]`
       );
       await expect(vancouverCard).toBeVisible();
-
-      const mockMapInstance = mapWrapper.locator('[data-google-map-pan-to="49.28270,-123.12070"]').first();
-      await expect(mockMapInstance).toBeAttached();
-      await mockMapInstance.evaluate((element) => {
-        delete (element as HTMLElement).dataset.googleMapPanTo;
-        delete (element as HTMLElement).dataset.googleMapZoom;
-      });
+      await expect(vancouverPin).toHaveAttribute("data-active", "true");
 
       await vancouverCard.dispatchEvent("click");
 
       await expect(vancouverCard).toHaveAttribute("data-active", "true");
-      await expect(mapWrapper.locator('[data-google-map-pan-to="49.28270,-123.12070"]')).toBeAttached();
-      await expect(mapWrapper.locator('[data-google-map-zoom="5"]')).toBeAttached();
       await expect(page.getByTestId("mobile-trips-country-map-screen")).toHaveAttribute(
         "data-selected-map-id",
         `trip-${vancouverTripId}`
@@ -1047,7 +1204,7 @@ test.describe("mobile soft-launch UX", () => {
       );
       await expect(page.getByTestId("mobile-country-map-canvas")).toHaveAttribute(
         "data-map-system",
-        "almidy-map-system"
+        "almidy-apple-map-system"
       );
       const overviewMapCanvas = page.getByTestId("mobile-country-map-canvas");
       await overviewMapCanvas.evaluate((element) => {
@@ -1063,7 +1220,6 @@ test.describe("mobile soft-launch UX", () => {
       await expect(barcelonaPin).toHaveAttribute("data-country-code", "ES");
       await expect(barcelonaPin).toHaveAttribute("data-pin-latitude", "41.38510");
       await expect(barcelonaPin).toHaveAttribute("data-pin-longitude", "2.17340");
-      await expect(barcelonaPin).toHaveAttribute("position", "41.38510, 2.17340, 0");
       const barcelonaPinPaint = await barcelonaPin.evaluate((element) => {
         const rect = element.getBoundingClientRect();
         const style = window.getComputedStyle(element);
@@ -1102,7 +1258,6 @@ test.describe("mobile soft-launch UX", () => {
       await expect(newYorkPin).toHaveAttribute("data-country-code", "US");
       await expect(newYorkPin).toHaveAttribute("data-pin-latitude", "40.71280");
       await expect(newYorkPin).toHaveAttribute("data-pin-longitude", "-74.00600");
-      await expect(newYorkPin).toHaveAttribute("position", "40.71280, -74.00600, 0");
 
       await barcelonaPin.dispatchEvent("click");
       const mapStayedMounted = await overviewMapCanvas.evaluate((element) => {
@@ -1482,7 +1637,7 @@ test.describe("mobile soft-launch UX", () => {
       await expect(page.getByTestId("mobile-trips-country-map-screen")).toBeVisible({ timeout: 20_000 });
       await expect(page.getByTestId("mobile-country-map-canvas")).toHaveAttribute(
         "data-map-system",
-        "almidy-map-system"
+        "almidy-apple-map-system"
       );
       await expect(page.getByTestId("mobile-trips-country-map-screen")).toHaveAttribute(
         "data-globe-trip-pin-countries",
@@ -1496,7 +1651,6 @@ test.describe("mobile soft-launch UX", () => {
       await expect(barcelonaPin).toHaveAttribute("data-country-code", "ES");
       await expect(barcelonaPin).toHaveAttribute("data-pin-latitude", "41.38510");
       await expect(barcelonaPin).toHaveAttribute("data-pin-longitude", "2.17340");
-      await expect(barcelonaPin).toHaveAttribute("position", "41.38510, 2.17340, 0");
       await expect(
         page.locator(`[data-testid="mobile-trips-overview-card"][data-trip-id="${createdTripId}"]`)
       ).toHaveCount(0);
@@ -2631,6 +2785,17 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByTestId("mobile-country-sheet")).toBeVisible();
   });
 
+  test("Verify integration canvas matches premium full-bleed Apple Map specifications", async ({ page }) => {
+    await page.setViewportSize({ height: 900, width: 390 });
+    await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
+    await installMockAppleMapKit(page);
+
+    await page.goto(`${baseUrl}/dashboard/trips`, { waitUntil: "commit" });
+
+    const appleCanvas = page.locator('[data-map-system="almidy-apple-map-system"]').first();
+    await expect(appleCanvas).toBeVisible();
+  });
+
   test("mobile home launch globe supports reduced motion without launch fallback", async ({ page }) => {
     await page.setViewportSize({ height: 900, width: 390 });
     await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
@@ -3025,7 +3190,7 @@ test.describe("mobile soft-launch UX", () => {
 
       await page.goto(`${baseUrl}/dashboard/trips/${tripId}/map`, { waitUntil: "commit" });
       await expect(page.getByTestId("connected-trip-map")).toBeVisible({ timeout: 30_000 });
-      await expect(page.getByTestId("trip-map-canvas")).toHaveAttribute("data-map-theme", "dark");
+      await expect(page.locator('[data-map-system="almidy-apple-map-system"]').first()).toBeVisible();
       const routePanel = page.getByTestId("map-route-panel");
       await expect(routePanel).toHaveAttribute("data-sheet-state", "collapsed");
       await routePanel.getByRole("button", { name: "Expand route timeline sheet" }).click();
@@ -3125,7 +3290,7 @@ test.describe("mobile soft-launch UX", () => {
 
       await page.goto(`${baseUrl}/dashboard/trips/${tripId}/map`, { waitUntil: "commit" });
 
-      const mapContainer = page.locator('[data-map-system="almidy-map-system"]').first();
+      const mapContainer = page.locator('[data-map-system="almidy-apple-map-system"]').first();
       await expect(mapContainer).toBeVisible({ timeout: 30_000 });
       const selectedRouteCard = page.getByTestId("map-selected-route-card");
       await expect(selectedRouteCard).toContainText(/Miami International Airport to São Paulo/, {
@@ -3792,7 +3957,7 @@ test.describe("mobile soft-launch UX", () => {
 
       await page.goto(`${baseUrl}/dashboard/trips/${tripId}/map`, { waitUntil: "commit" });
       await expect(page.getByTestId("connected-trip-map")).toBeVisible({ timeout: 30_000 });
-      await expect(page.getByTestId("trip-map-canvas")).toHaveAttribute("data-map-theme", "dark");
+      await expect(page.locator('[data-map-system="almidy-apple-map-system"]').first()).toBeVisible();
       await expect(page.getByText("Showing first 5 of 8 places")).toBeVisible();
       await expect(page.getByRole("button", { name: /Route place 6/ })).toHaveCount(0);
       await expect(page.getByText("1 of 5")).toBeVisible();

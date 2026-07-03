@@ -1,18 +1,10 @@
 "use client";
 
-import {
-  GoogleMap,
-  OverlayView
-} from "@react-google-maps/api";
-import { useCallback, useEffect, useMemo, useRef } from "react";
-import GoogleMapsProvider, { GoogleMapsSurfaceFallback } from "@/components/GoogleMapsProvider";
-import { AlmidyLaunchGlobe } from "@/components/dashboard/almidy-launch-globe";
-import {
-  ALMIDY_MAP_SYSTEM_ID,
-  almidyGoogleCountryMapStyles
-} from "@/lib/map/almidy-map-visuals";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { countryCodeToFlag } from "@/lib/map/wayline-map-pins";
 import { useOptionalUnifiedMap } from "@/lib/map/unified-map-provider";
 import type {
+  AlmidyCoordinate,
   AlmidyLaunchGlobeTripPin,
   AlmidyMapSurfaceState
 } from "@/lib/map/wayline-map-models";
@@ -31,223 +23,339 @@ type CustomGlobeRendererProps = {
   useLocationFocus?: boolean;
 };
 
+type MapKitCoordinate = {
+  latitude: number;
+  longitude: number;
+};
+
+type MapKitAnnotation = {
+  addEventListener?: (eventName: string, handler: () => void) => void;
+  element?: HTMLElement;
+  selected?: boolean;
+};
+
+type MapKitMap = {
+  addAnnotation?: (annotation: MapKitAnnotation) => void;
+  addAnnotations?: (annotations: MapKitAnnotation[]) => void;
+  annotations?: MapKitAnnotation[];
+  center?: MapKitCoordinate;
+  destroy?: () => void;
+  removeAnnotation?: (annotation: MapKitAnnotation) => void;
+  removeAnnotations?: (annotations: MapKitAnnotation[]) => void;
+  setCenterAnimated?: (coordinate: MapKitCoordinate, animate?: boolean) => void;
+  showAnnotations?: (
+    annotations: MapKitAnnotation[],
+    options?: { animate?: boolean; padding?: unknown }
+  ) => void;
+  showItems?: (
+    annotations: MapKitAnnotation[],
+    options?: { animate?: boolean; padding?: unknown }
+  ) => void;
+};
+
+type MapKitRuntime = {
+  Annotation: new (
+    coordinate: MapKitCoordinate,
+    elementFactory: () => HTMLElement,
+    options?: Record<string, unknown>
+  ) => MapKitAnnotation;
+  ColorScheme?: {
+    Dark?: string;
+  };
+  Coordinate: new (latitude: number, longitude: number) => MapKitCoordinate;
+  CoordinateRegion?: new (
+    center: MapKitCoordinate,
+    span: { latitudeDelta: number; longitudeDelta: number }
+  ) => unknown;
+  FeatureVisibility?: {
+    Hidden?: string;
+  };
+  Map: new (container: HTMLElement, options?: Record<string, unknown>) => MapKitMap;
+  Padding?: new (top: number, right: number, bottom: number, left: number) => unknown;
+  init: (options: { authorizationCallback: (done: (token: string) => void) => void }) => void;
+  initialized?: boolean;
+};
+
+declare global {
+  interface Window {
+    mapkit?: MapKitRuntime;
+  }
+}
+
+type AppleMapPin = {
+  id: string;
+  coordinate: AlmidyCoordinate;
+  countryCode?: string | null;
+  flag: string;
+  kind: "trip" | "user-location";
+  label: string;
+  subtitle?: string | null;
+  tripId?: string | null;
+};
+
+const APPLE_MAPKIT_SCRIPT_ID = "almidy-apple-mapkit-js";
+const APPLE_MAPKIT_SCRIPT_SRC = "https://cdn.apple-mapkit.com/mk/5.x.x/mapkit.js";
+const APPLE_MAP_SYSTEM_ID = "almidy-apple-map-system";
+const DEFAULT_WORLD_CENTER: AlmidyCoordinate = { lat: 28.5, lng: -81.5 };
+const DEFAULT_LOCATION_FLAG = "•";
+const mapKitConfigured = Boolean(process.env.NEXT_PUBLIC_APPLE_MAPKIT_TOKEN);
+
+let mapKitScriptPromise: Promise<void> | null = null;
+let mapKitInitialized = false;
+
 export function CustomGlobeRenderer({
   activeTripId,
   className,
   defaultFocusWhenEmpty,
   mapInstanceKey,
   onTripPinSelect,
-  renderTripPins,
   selectionRevision,
-  showCountryPin,
+  showCountryPin = true,
   surfaceState,
-  tripPins,
-  useLocationFocus
+  tripPins = [],
+  useLocationFocus = true
 }: CustomGlobeRendererProps) {
   const unifiedMap = useOptionalUnifiedMap();
   const activeSurface = surfaceState ?? unifiedMap?.surfaceState;
-
-  if (renderTripPins) {
-    return (
-      <TripsOverviewMapRenderer
-        activeSurface={activeSurface}
-        activeTripId={activeTripId}
-        className={className}
-        mapInstanceKey={mapInstanceKey}
-        onTripPinSelect={onTripPinSelect}
-        selectionRevision={selectionRevision}
-        tripPins={tripPins ?? []}
-      />
-    );
-  }
-
-  return (
-    <div
-      className="absolute inset-0"
-      data-map-mode={activeSurface?.mode ?? "globe"}
-      data-map-renderer="google-maps-3d"
-      data-map-system="almidy-google-maps-3d"
-      data-map-instance-key={mapInstanceKey}
-      data-selected-map-id={activeSurface?.selectedId ?? undefined}
-    >
-      <AlmidyLaunchGlobe
-        activeTripId={activeTripId}
-        className={className}
-        defaultFocusWhenEmpty={defaultFocusWhenEmpty}
-        location={activeSurface?.location}
-        locationStatus={unifiedMap?.locationStatus}
-        onLocateUser={unifiedMap?.locateUser}
-        onTripPinSelect={onTripPinSelect}
-        renderTripPins={renderTripPins}
-        showCountryPin={showCountryPin}
-        tripPins={tripPins}
-        useLocationFocus={useLocationFocus}
-      />
-    </div>
+  const mapContainerRef = useRef<HTMLDivElement | null>(null);
+  const mapRef = useRef<MapKitMap | null>(null);
+  const annotationRefs = useRef<MapKitAnnotation[]>([]);
+  const [runtimeState, setRuntimeState] = useState<"loading" | "ready" | "error">(
+    mapKitConfigured ? "loading" : "error"
   );
-}
 
-type TripsOverviewMapRendererProps = {
-  activeSurface?: AlmidyMapSurfaceState;
-  activeTripId?: string | null;
-  className?: string;
-  mapInstanceKey?: string;
-  onTripPinSelect?: (tripId: string) => void;
-  selectionRevision?: number;
-  tripPins: AlmidyLaunchGlobeTripPin[];
-};
+  const pins = useMemo(
+    () => buildAppleMapPins({
+      location: activeSurface?.location,
+      showCountryPin,
+      tripPins,
+      useLocationFocus
+    }),
+    [activeSurface?.location, showCountryPin, tripPins, useLocationFocus]
+  );
 
-const overviewFallbackCenter = { lat: 28.5, lng: -81.5 };
+  const selectedPin = useMemo(
+    () =>
+      activeTripId
+        ? pins.find((pin) => (pin.tripId ?? pin.id) === activeTripId) ?? null
+        : null,
+    [activeTripId, pins]
+  );
 
-function TripsOverviewMapRenderer(props: TripsOverviewMapRendererProps) {
-  return (
-    <GoogleMapsProvider
-      blockChildrenOnError
-      fallback={
-        <GoogleMapsSurfaceFallback
-          height="100%"
-          message="Maps are temporarily unavailable. Your saved trips are still available below."
-          placement="above-sheet"
-        />
+  const initializeMapKit = useCallback(async () => {
+    if (!mapKitConfigured) {
+      setRuntimeState("error");
+      return;
+    }
+
+    try {
+      await loadMapKitScript();
+      const mapkit = window.mapkit;
+
+      if (!mapkit || !mapContainerRef.current || mapRef.current) {
+        setRuntimeState(mapkit ? "ready" : "error");
+        return;
       }
-    >
-      <LoadedTripsOverviewMapRenderer {...props} />
-    </GoogleMapsProvider>
-  );
-}
 
-function LoadedTripsOverviewMapRenderer({
-  activeSurface,
-  activeTripId,
-  className,
-  mapInstanceKey,
-  onTripPinSelect,
-  selectionRevision,
-  tripPins
-}: TripsOverviewMapRendererProps) {
-  const mapRef = useRef<google.maps.Map | null>(null);
-  const visiblePins = useMemo(() => tripPins.map(toResolvedTripPin).filter(isResolvedTripPin), [tripPins]);
-  const activePin = useMemo(
-    () => activeTripId
-      ? visiblePins.find((pin) => (pin.tripId ?? pin.id) === activeTripId) ?? null
-      : null,
-    [activeTripId, visiblePins]
-  );
-  const mapReady =
-    typeof window !== "undefined" &&
-    typeof window.google?.maps?.Map === "function" &&
-    typeof window.google?.maps?.LatLngBounds === "function";
-  const center = visiblePins[0]?.coordinate ?? overviewFallbackCenter;
+      if (!mapKitInitialized) {
+        mapkit.init({
+          authorizationCallback: (done) => {
+            done(process.env.NEXT_PUBLIC_APPLE_MAPKIT_TOKEN ?? "");
+          }
+        });
+        mapKitInitialized = true;
+      }
 
-  const fitPins = useCallback((map: google.maps.Map) => {
-    if (!mapReady || visiblePins.length === 0) {
-      map.panTo(overviewFallbackCenter);
-      map.setZoom(3);
-      return;
+      const map = new mapkit.Map(mapContainerRef.current, {
+        center: new mapkit.Coordinate(DEFAULT_WORLD_CENTER.lat, DEFAULT_WORLD_CENTER.lng),
+        colorScheme: mapkit.ColorScheme?.Dark,
+        isRotationEnabled: false,
+        showsCompass: mapkit.FeatureVisibility?.Hidden,
+        showsMapTypeControl: false,
+        showsScale: mapkit.FeatureVisibility?.Hidden,
+        showsUserLocationControl: false,
+        showsZoomControl: false
+      });
+
+      mapRef.current = map;
+      setRuntimeState("ready");
+    } catch {
+      setRuntimeState("error");
     }
-
-    if (visiblePins.length === 1) {
-      map.panTo(visiblePins[0].coordinate);
-      map.setZoom(5);
-      return;
-    }
-
-    const bounds = new window.google.maps.LatLngBounds();
-    visiblePins.forEach((pin) => bounds.extend(pin.coordinate));
-    map.fitBounds(bounds, { bottom: 184, left: 36, right: 36, top: 24 });
-  }, [mapReady, visiblePins]);
-
-  useEffect(() => {
-    if (mapRef.current) {
-      fitPins(mapRef.current);
-    }
-  }, [fitPins]);
-
-  useEffect(() => {
-    if (!mapReady || !mapRef.current || !activePin) return;
-
-    const target = new window.google.maps.LatLng(
-      activePin.coordinate.lat,
-      activePin.coordinate.lng
-    );
-    mapRef.current.panTo(target);
-    mapRef.current.setZoom(5);
-  }, [activePin, mapReady, selectionRevision]);
-
-  const handleMapLoad = useCallback((map: google.maps.Map) => {
-    mapRef.current = map;
-    fitPins(map);
-  }, [fitPins]);
-
-  const handleMapUnmount = useCallback(() => {
-    mapRef.current = null;
   }, []);
 
-  if (!mapReady) {
+  useEffect(() => {
+    void initializeMapKit();
+
+    return () => {
+      const map = mapRef.current;
+      if (map && annotationRefs.current.length) {
+        removeMapAnnotations(map, annotationRefs.current);
+      }
+      map?.destroy?.();
+      mapRef.current = null;
+      annotationRefs.current = [];
+    };
+  }, [initializeMapKit]);
+
+  useEffect(() => {
+    const mapkit = window.mapkit;
+    const map = mapRef.current;
+
+    if (runtimeState !== "ready" || !mapkit || !map) {
+      return;
+    }
+
+    removeMapAnnotations(map, annotationRefs.current);
+
+    const annotations = pins.map((pin) =>
+      createFlagAnnotation({
+        isActive: (pin.tripId ?? pin.id) === activeTripId,
+        mapkit,
+        onSelect: () => onTripPinSelect?.(pin.tripId ?? pin.id),
+        pin
+      })
+    );
+
+    annotationRefs.current = annotations;
+    addMapAnnotations(map, annotations);
+
+    if (selectedPin) {
+      map.setCenterAnimated?.(
+        new mapkit.Coordinate(selectedPin.coordinate.lat, selectedPin.coordinate.lng),
+        true
+      );
+      return;
+    }
+
+    if (annotations.length > 0) {
+      const padding = mapkit.Padding ? new mapkit.Padding(80, 44, 260, 44) : undefined;
+      if (typeof map.showItems === "function") {
+        map.showItems(annotations, { animate: true, padding });
+      } else {
+        map.showAnnotations?.(annotations, { animate: true, padding });
+      }
+      return;
+    }
+
+    const center = DEFAULT_WORLD_CENTER;
+    map.setCenterAnimated?.(new mapkit.Coordinate(center.lat, center.lng), false);
+  }, [activeTripId, onTripPinSelect, pins, runtimeState, selectedPin, selectionRevision]);
+
+  if (!mapKitConfigured) {
     return (
-      <div
-        className="absolute inset-0 grid place-items-center bg-[#252832] text-center text-xs font-bold tracking-[0.2em] text-white/48"
-        data-map-renderer="google-map"
-        data-map-runtime="preparing"
-        data-map-system={ALMIDY_MAP_SYSTEM_ID}
-        data-testid="almidy-trips-map-preflight"
-      >
-        Preparing map canvas
-      </div>
+      <AppleMapFallback
+        className={className}
+        mapInstanceKey={mapInstanceKey}
+        message="Apple Maps is not configured for this environment."
+        state="missing-token"
+      />
     );
   }
 
   return (
     <div
-      className={["absolute inset-0 overflow-visible bg-[#252832]", className].filter(Boolean).join(" ")}
-      data-map-mode={activeSurface?.mode ?? "country-map"}
-      data-map-renderer="google-map"
-      data-map-system={ALMIDY_MAP_SYSTEM_ID}
+      className={["absolute inset-0 overflow-hidden bg-[#16202c]", className].filter(Boolean).join(" ")}
       data-map-instance-key={mapInstanceKey}
-      data-selected-map-id={activeSurface?.selectedId ?? undefined}
+      data-map-mode={activeSurface?.mode ?? (defaultFocusWhenEmpty ? "launch-globe" : "country-map")}
+      data-map-renderer="apple-mapkit"
+      data-map-runtime={runtimeState}
+      data-map-system={APPLE_MAP_SYSTEM_ID}
+      data-selected-map-id={activeTripId ?? activeSurface?.selectedId ?? undefined}
     >
-      <GoogleMap
-        center={center}
-        mapContainerStyle={{ height: "100%", width: "100%" }}
-        onLoad={handleMapLoad}
-        onUnmount={handleMapUnmount}
-        options={{
-          backgroundColor: "#252832",
-          clickableIcons: false,
-          colorScheme: window.google.maps.ColorScheme?.DARK,
-          disableDefaultUI: true,
-          fullscreenControl: false,
-          gestureHandling: "greedy",
-          mapTypeId: "roadmap",
-          streetViewControl: false,
-          styles: almidyGoogleCountryMapStyles,
-          zoomControl: false
-        }}
-        zoom={3}
-      >
-        {visiblePins.map((pin) => (
-          <OverlayView
-            key={pin.id}
-            mapPaneName={OverlayView.OVERLAY_MOUSE_TARGET}
-            position={pin.coordinate}
-          >
-            <TripFlagPin
-              isActive={(pin.tripId ?? pin.id) === activeTripId}
-              onSelect={() => onTripPinSelect?.(pin.tripId ?? pin.id)}
-              pin={pin}
-            />
-          </OverlayView>
-        ))}
-      </GoogleMap>
+      <div ref={mapContainerRef} className="absolute inset-0 h-full w-full" />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_28%,rgba(255,255,255,0.10),rgba(8,12,18,0)_36%),linear-gradient(180deg,rgba(5,8,13,0)_0%,rgba(5,8,13,0.10)_52%,rgba(5,8,13,0.28)_100%)]"
+      />
+      {runtimeState === "loading" ? (
+        <div className="absolute inset-0 grid place-items-center text-center text-xs font-bold uppercase tracking-[0.22em] text-white/52">
+          Preparing Apple Maps
+        </div>
+      ) : null}
+      {runtimeState === "error" ? (
+        <AppleMapFallback
+          className="absolute inset-0"
+          mapInstanceKey={mapInstanceKey}
+          message="Apple Maps is temporarily unavailable."
+          state="runtime-error"
+        />
+      ) : null}
     </div>
   );
 }
 
-type ResolvedTripPin = AlmidyLaunchGlobeTripPin & {
-  coordinate: google.maps.LatLngLiteral;
-};
+function loadMapKitScript() {
+  if (typeof window === "undefined") {
+    return Promise.reject(new Error("MapKit is browser-only."));
+  }
 
-function toResolvedTripPin(pin: AlmidyLaunchGlobeTripPin): ResolvedTripPin | null {
+  if (window.mapkit) {
+    return Promise.resolve();
+  }
+
+  if (mapKitScriptPromise) {
+    return mapKitScriptPromise;
+  }
+
+  mapKitScriptPromise = new Promise<void>((resolve, reject) => {
+    const existingScript = document.getElementById(APPLE_MAPKIT_SCRIPT_ID) as HTMLScriptElement | null;
+
+    if (existingScript) {
+      existingScript.addEventListener("load", () => resolve(), { once: true });
+      existingScript.addEventListener("error", () => reject(new Error("MapKit script failed.")), { once: true });
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.async = true;
+    script.crossOrigin = "anonymous";
+    script.id = APPLE_MAPKIT_SCRIPT_ID;
+    script.src = APPLE_MAPKIT_SCRIPT_SRC;
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error("MapKit script failed."));
+    document.head.appendChild(script);
+  });
+
+  return mapKitScriptPromise;
+}
+
+function buildAppleMapPins({
+  location,
+  showCountryPin,
+  tripPins,
+  useLocationFocus
+}: {
+  location?: AlmidyMapSurfaceState["location"];
+  showCountryPin: boolean;
+  tripPins: AlmidyLaunchGlobeTripPin[];
+  useLocationFocus: boolean;
+}) {
+  const pins = tripPins
+    .map(toAppleTripPin)
+    .filter((pin): pin is AppleMapPin => Boolean(pin));
+
+  if (
+    showCountryPin &&
+    useLocationFocus &&
+    location?.source === "browser" &&
+    location.coordinate
+  ) {
+    pins.unshift({
+      coordinate: location.coordinate,
+      countryCode: location.countryCode,
+      flag: location.countryCode ? countryCodeToFlag(location.countryCode) ?? DEFAULT_LOCATION_FLAG : DEFAULT_LOCATION_FLAG,
+      id: "browser-location",
+      kind: "user-location",
+      label: location.city || location.countryName || "Current location",
+      subtitle: location.countryName ?? null
+    });
+  }
+
+  return pins;
+}
+
+function toAppleTripPin(pin: AlmidyLaunchGlobeTripPin): AppleMapPin | null {
   const lat = Number(pin.lat);
   const lng = Number(pin.lng);
 
@@ -256,70 +364,142 @@ function toResolvedTripPin(pin: AlmidyLaunchGlobeTripPin): ResolvedTripPin | nul
   }
 
   return {
-    ...pin,
-    coordinate: { lat, lng }
+    coordinate: { lat, lng },
+    countryCode: pin.countryCode,
+    flag: pin.flag || countryCodeToFlag(pin.countryCode) || DEFAULT_LOCATION_FLAG,
+    id: pin.id,
+    kind: "trip",
+    label: pin.label,
+    subtitle: pin.subtitle,
+    tripId: pin.tripId
   };
 }
 
-function isResolvedTripPin(pin: ResolvedTripPin | null): pin is ResolvedTripPin {
-  return Boolean(pin);
+function createFlagAnnotation({
+  isActive,
+  mapkit,
+  onSelect,
+  pin
+}: {
+  isActive: boolean;
+  mapkit: MapKitRuntime;
+  onSelect: () => void;
+  pin: AppleMapPin;
+}) {
+  const coordinate = new mapkit.Coordinate(pin.coordinate.lat, pin.coordinate.lng);
+  const annotation = new mapkit.Annotation(
+    coordinate,
+    () => createFlagAnnotationElement({ isActive, onSelect, pin }),
+    {
+      anchorOffset: new DOMPoint(0, -42),
+      clusteringIdentifier: pin.kind === "trip" ? "almidy-trip" : undefined,
+      data: pin,
+      selected: isActive,
+      title: pin.label
+    }
+  );
+
+  annotation.addEventListener?.("select", onSelect);
+  annotation.selected = isActive;
+  return annotation;
 }
 
-function TripFlagPin({
+function createFlagAnnotationElement({
   isActive,
   onSelect,
   pin
 }: {
   isActive: boolean;
   onSelect: () => void;
-  pin: ResolvedTripPin;
+  pin: AppleMapPin;
 }) {
   const tripId = pin.tripId ?? pin.id;
-  const position = `${pin.coordinate.lat.toFixed(5)}, ${pin.coordinate.lng.toFixed(5)}, 0`;
-  const markerPositionAttribute = { position };
+  const button = document.createElement("button");
+  button.type = "button";
+  button.setAttribute("aria-label", `Select ${pin.label}`);
+  button.dataset.active = isActive ? "true" : "false";
+  button.dataset.almidyMarkerKind = pin.kind;
+  button.dataset.countryCode = pin.countryCode ?? "";
+  button.dataset.pinLatitude = pin.coordinate.lat.toFixed(5);
+  button.dataset.pinLongitude = pin.coordinate.lng.toFixed(5);
+  button.dataset.testid = pin.kind === "trip" ? "mobile-trips-globe-flag-pin" : "mobile-current-location-pin";
+  button.dataset.tripId = tripId;
+  button.style.pointerEvents = "auto";
+  button.className = [
+    "group pointer-events-auto flex -translate-x-1/2 -translate-y-full touch-manipulation flex-col items-center overflow-visible text-center focus:outline-none",
+    isActive ? "z-50" : "z-40"
+  ].join(" ");
 
+  const flag = document.createElement("span");
+  flag.setAttribute("aria-hidden", "true");
+  flag.className = [
+    "grid h-11 w-11 place-items-center overflow-hidden rounded-full border-[2.5px] bg-white text-2xl leading-none shadow-[0_4px_0_rgba(0,0,0,0.95),0_10px_24px_rgba(0,0,0,0.36)] transition duration-200",
+    isActive ? "scale-125 border-orange-500 ring-4 ring-orange-400/60" : "border-black ring-1 ring-white/75"
+  ].join(" ");
+  flag.textContent = pin.flag;
+
+  const label = document.createElement("span");
+  label.className = [
+    "mt-1 block max-w-28 truncate rounded px-1.5 py-0.5 text-[0.72rem] font-black leading-none [text-shadow:0_2px_2px_rgba(0,0,0,0.95),0_0_8px_rgba(0,0,0,0.85)]",
+    isActive ? "bg-orange-600 text-white" : "bg-black/56 text-white"
+  ].join(" ");
+  label.textContent = pin.label;
+
+  button.append(flag, label);
+  button.addEventListener("click", (event) => {
+    event.stopPropagation();
+    onSelect();
+  });
+
+  return button;
+}
+
+function addMapAnnotations(map: MapKitMap, annotations: MapKitAnnotation[]) {
+  if (annotations.length === 0) return;
+
+  if (typeof map.addAnnotations === "function") {
+    map.addAnnotations(annotations);
+    return;
+  }
+
+  annotations.forEach((annotation) => map.addAnnotation?.(annotation));
+}
+
+function removeMapAnnotations(map: MapKitMap, annotations: MapKitAnnotation[]) {
+  if (annotations.length === 0) return;
+
+  if (typeof map.removeAnnotations === "function") {
+    map.removeAnnotations(annotations);
+    return;
+  }
+
+  annotations.forEach((annotation) => map.removeAnnotation?.(annotation));
+}
+
+function AppleMapFallback({
+  className,
+  mapInstanceKey,
+  message,
+  state
+}: {
+  className?: string;
+  mapInstanceKey?: string;
+  message: string;
+  state: string;
+}) {
   return (
-    <button
-      aria-label={`Select ${pin.label}`}
-      className="group pointer-events-auto relative flex -translate-x-1/2 -translate-y-full touch-manipulation flex-col items-center overflow-visible text-center focus:outline-none"
-      data-active={isActive ? "true" : "false"}
-      data-almidy-marker-kind="trip"
-      data-country-code={pin.countryCode}
-      data-pin-latitude={pin.coordinate.lat.toFixed(5)}
-      data-pin-longitude={pin.coordinate.lng.toFixed(5)}
-      data-testid="mobile-trips-globe-flag-pin"
-      data-trip-id={tripId}
-      onClick={(event) => {
-        event.stopPropagation();
-        onSelect();
-      }}
-      {...markerPositionAttribute}
-      style={{
-        overflow: "visible",
-        pointerEvents: "auto",
-        position: "relative",
-        transformStyle: "preserve-3d",
-        zIndex: isActive ? 45 : 40
-      }}
-      type="button"
+    <div
+      className={[
+        "absolute inset-0 grid place-items-center bg-[#16202c] px-8 text-center text-xs font-bold uppercase tracking-[0.18em] text-white/56",
+        className
+      ].filter(Boolean).join(" ")}
+      data-map-instance-key={mapInstanceKey}
+      data-map-renderer="apple-mapkit"
+      data-map-runtime={state}
+      data-map-system={APPLE_MAP_SYSTEM_ID}
+      data-testid="almidy-apple-map-preflight"
     >
-      <span
-        aria-hidden="true"
-        className={[
-          "grid h-11 w-11 place-items-center overflow-hidden rounded-full border-[2.5px] bg-white text-2xl leading-none shadow-[0_4px_0_rgba(0,0,0,0.95),0_10px_24px_rgba(0,0,0,0.36)] transition duration-200",
-          isActive ? "scale-125 border-orange-500 ring-4 ring-orange-400/60" : "border-black ring-1 ring-white/75"
-        ].join(" ")}
-      >
-        {pin.flag}
-      </span>
-      <span
-        className={[
-          "mt-1 block max-w-28 truncate rounded px-1.5 py-0.5 text-[0.72rem] font-black leading-none [text-shadow:0_2px_2px_rgba(0,0,0,0.95),0_0_8px_rgba(0,0,0,0.85)]",
-          isActive ? "bg-orange-600 text-white" : "bg-black/56 text-white"
-        ].join(" ")}
-      >
-        {pin.label}
-      </span>
-    </button>
+      {message}
+    </div>
   );
 }

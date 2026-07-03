@@ -3,6 +3,10 @@
 import type { ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 import GoogleMapsProvider from "@/components/GoogleMapsProvider";
+import MobileTripsWalletSheet, {
+  type MobileTripsWalletSheetTrip
+} from "@/components/dashboard/mobile-trips-wallet-sheet";
+import { CustomGlobeRenderer } from "@/components/map/custom-globe-renderer";
 import { countryCodeToFlag } from "@/lib/map/wayline-map-pins";
 import type {
   AlmidyLaunchGlobeTripPin,
@@ -137,6 +141,70 @@ const COUNTRY_BY_CODE: Record<string, CountryFocus> = {
   US: DEFAULT_COUNTRY
 };
 
+type AlmidyLaunchGlobeHubProps = {
+  savedTrips: MobileTripsWalletSheetTrip[];
+};
+
+export default function AlmidyLaunchGlobeHub({
+  savedTrips
+}: AlmidyLaunchGlobeHubProps) {
+  const [activeTripId, setActiveTripId] = useState<string | null>(null);
+  const activeTripData = savedTrips.find((trip) => trip.id === activeTripId) ?? null;
+  const tripPins = savedTrips
+    .map(walletTripToGlobePin)
+    .filter((pin): pin is AlmidyLaunchGlobeTripPin => Boolean(pin));
+  const activeFlag = activeTripData?.countryCode
+    ? countryCodeToFlag(activeTripData.countryCode)
+    : null;
+
+  return (
+    <div className="fixed inset-0 flex h-screen w-screen flex-col justify-between overflow-hidden bg-[#121214]">
+      <div className="absolute inset-0 z-10 h-full w-full pb-[240px]">
+        <CustomGlobeRenderer
+          activeTripId={activeTripId}
+          defaultFocusWhenEmpty
+          mapInstanceKey={`launch-hub-${savedTrips.length}`}
+          onTripPinSelect={setActiveTripId}
+          showCountryPin={false}
+          tripPins={tripPins}
+          useLocationFocus={false}
+        />
+      </div>
+
+      {activeTripId && activeTripData ? (
+        <div className="absolute bottom-[280px] left-4 right-4 z-20 flex animate-in items-center justify-between rounded-xl border border-zinc-800/80 bg-[#1e1e24]/90 p-4 shadow-[0_12px_32px_rgba(0,0,0,0.6)] backdrop-blur-md fade-in slide-in-from-bottom-3 duration-200">
+          <div className="min-w-0 flex-1">
+            <span className="mb-0.5 block text-[9px] font-extrabold uppercase tracking-wider text-zinc-500">
+              Selected Trip
+            </span>
+            <h4 className="truncate text-base font-extrabold tracking-tight text-white">
+              {activeTripData.city}
+            </h4>
+            <p className="mt-0.5 truncate text-xs font-medium text-zinc-400">
+              {activeTripData.destination_name || activeTripData.date_range}
+            </p>
+          </div>
+          <div className="ml-4 grid h-8 w-8 shrink-0 place-items-center overflow-hidden rounded-full border border-zinc-700 bg-white text-lg shadow-sm">
+            {activeFlag ?? "•"}
+          </div>
+        </div>
+      ) : null}
+
+      <div className="flex-1 pointer-events-none" />
+
+      <div className="relative z-30 w-full shrink-0">
+        <MobileTripsWalletSheet
+          currentYear="2026"
+          onOpenSettings={() => {}}
+          onOpenStats={() => {}}
+          onYearChange={() => {}}
+          trips={savedTrips}
+        />
+      </div>
+    </div>
+  );
+}
+
 export function AlmidyLaunchGlobe({
   activeTripId,
   className,
@@ -250,6 +318,27 @@ export function AlmidyLaunchGlobe({
       />
     </GoogleMapsProvider>
   );
+}
+
+function walletTripToGlobePin(trip: MobileTripsWalletSheetTrip): AlmidyLaunchGlobeTripPin | null {
+  const lat = Number(trip.lat);
+  const lng = Number(trip.lng);
+  const countryCode = trip.countryCode?.trim().toUpperCase();
+
+  if (!countryCode || !Number.isFinite(lat) || !Number.isFinite(lng)) {
+    return null;
+  }
+
+  return {
+    countryCode,
+    flag: countryCodeToFlag(countryCode) ?? "•",
+    id: `trip-country-${trip.id}`,
+    label: trip.city,
+    lat,
+    lng,
+    subtitle: trip.destination_name || trip.date_range,
+    tripId: trip.id
+  };
 }
 
 function GoogleMaps3DLaunchGlobe({

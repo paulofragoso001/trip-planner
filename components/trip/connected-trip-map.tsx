@@ -4,10 +4,9 @@ import Link from "next/link";
 import { motion, useDragControls, useReducedMotion } from "framer-motion";
 import { AlertTriangle, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
-import GoogleMapsProvider, { GoogleMapsSurfaceFallback } from "@/components/GoogleMapsProvider";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { PlacePhoto } from "@/components/place-photo";
-import TripMap, { type TripMapItem } from "@/components/TripMap";
+import type { TripMapItem } from "@/components/TripMap";
 import type { UnmappedMapSegment } from "@/app/dashboard/trips/[tripId]/map/loader";
 import { ActivityDetailSheet } from "@/components/trip/activity-detail-sheet";
 import { waylineCopy } from "@/lib/copy/wayline-copy";
@@ -22,6 +21,83 @@ type ConnectedTripMapProps = {
   unmappedCount?: number;
   unmappedSegments?: UnmappedMapSegment[];
 };
+
+type ItineraryMapKitCoordinate = {
+  latitude: number;
+  longitude: number;
+};
+
+type ItineraryMapKitAnnotation = {
+  addEventListener?: (eventName: string, handler: () => void) => void;
+  title?: string;
+};
+
+type ItineraryMapKitOverlay = unknown;
+
+type ItineraryMapKitMap = {
+  addAnnotations?: (annotations: ItineraryMapKitAnnotation[]) => void;
+  addOverlay?: (overlay: ItineraryMapKitOverlay) => void;
+  annotations?: ItineraryMapKitAnnotation[];
+  destroy?: () => void;
+  overlays?: ItineraryMapKitOverlay[];
+  removeAnnotations?: (annotations: ItineraryMapKitAnnotation[]) => void;
+  removeOverlays?: (overlays: ItineraryMapKitOverlay[]) => void;
+  setCenterAnimated?: (coordinate: ItineraryMapKitCoordinate, animate?: boolean) => void;
+  setRegionAnimated?: (region: unknown, animate?: boolean) => void;
+  showAnnotations?: (
+    annotations: ItineraryMapKitAnnotation[],
+    options?: { animate?: boolean; padding?: unknown }
+  ) => void;
+  showItems?: (
+    items: Array<ItineraryMapKitAnnotation | ItineraryMapKitOverlay>,
+    options?: { animate?: boolean; padding?: unknown }
+  ) => void;
+};
+
+type ItineraryMapKitRuntime = {
+  ColorScheme?: {
+    Dark?: string;
+  };
+  Coordinate: new (latitude: number, longitude: number) => ItineraryMapKitCoordinate;
+  CoordinateRegion?: new (
+    center: ItineraryMapKitCoordinate,
+    span: { latitudeDelta: number; longitudeDelta: number }
+  ) => unknown;
+  FeatureVisibility?: {
+    Hidden?: string;
+  };
+  Map: new (container: HTMLElement, options?: Record<string, unknown>) => ItineraryMapKitMap;
+  MarkerAnnotation: new (
+    coordinate: ItineraryMapKitCoordinate,
+    options?: Record<string, unknown>
+  ) => ItineraryMapKitAnnotation;
+  Padding?: new (top: number, right: number, bottom: number, left: number) => unknown;
+  PolylineOverlay?: new (
+    coordinates: ItineraryMapKitCoordinate[],
+    options?: Record<string, unknown>
+  ) => ItineraryMapKitOverlay;
+  Style?: new (options?: Record<string, unknown>) => unknown;
+  init: (options: { authorizationCallback: (done: (token: string) => void) => void }) => void;
+};
+
+declare global {
+  interface Window {
+    __almidyMapKitInitialized?: boolean;
+  }
+}
+
+type RouteMapStop = {
+  id: string;
+  lat: number;
+  lng: number;
+  locationName: string;
+};
+
+const APPLE_MAPKIT_SCRIPT_ID = "almidy-apple-mapkit-js";
+const APPLE_MAPKIT_SCRIPT_SRC = "https://cdn.apple-mapkit.com/mk/5.x.x/mapkit.js";
+const appleMapKitConfigured = Boolean(process.env.NEXT_PUBLIC_APPLE_MAPKIT_TOKEN);
+
+let mapKitScriptPromise: Promise<void> | null = null;
 
 export function ConnectedTripMap({
   destination,
@@ -72,6 +148,7 @@ export function ConnectedTripMap({
   const selectedPlaceUrl = selectedItem ? googleMapsUrlForItem(selectedItem) : null;
   const hiddenPlaceCount = Math.max(dayFilteredItems.length - visibleItems.length, 0);
   const routeSummary = buildRouteSummary(visibleItems);
+  const mapStops = useMemo(() => getRouteMapStops(visibleItems), [visibleItems]);
 
   useEffect(() => {
     setHydrated(true);
@@ -135,26 +212,14 @@ export function ConnectedTripMap({
       {items.length ? (
         <div className="relative min-h-[100dvh] lg:grid lg:min-h-0 lg:gap-3">
           <div className="relative overflow-hidden rounded-none border-0 bg-slate-950 shadow-none lg:rounded-[1.75rem] lg:border lg:border-slate-800 lg:shadow-sm">
-            <GoogleMapsProvider
-              blockChildrenOnError
-              fallback={
-                <GoogleMapsSurfaceFallback
-                  height="clamp(520px, calc(100dvh - 5rem), 840px)"
-                  message="Maps are temporarily unavailable. Your itinerary is still available below."
-                  placement="above-sheet"
-                />
-              }
-            >
-              <TripMap
-                height="clamp(520px, calc(100dvh - 5rem), 840px)"
-                items={visibleItems}
-                mapTheme="dark"
-                selectedId={selectedId}
-                onSelect={setSelectedId}
-                showRouteDetails={false}
-                travelMode="DRIVING"
-              />
-            </GoogleMapsProvider>
+            <ConnectedItineraryMap
+              coordinates={mapStops}
+              onSelectStop={(id) => {
+                const itemId = id.split(":")[0];
+                if (itemId) setSelectedId(itemId);
+              }}
+              selectedId={selectedId}
+            />
 
             <div className="pointer-events-none absolute left-1/2 top-4 z-10 hidden -translate-x-1/2 lg:block">
               <div className="whitespace-nowrap rounded-full bg-white/95 px-4 py-2 text-xs font-black text-slate-950 shadow-lg ring-1 ring-slate-200 backdrop-blur sm:text-sm">
@@ -588,6 +653,156 @@ export function ConnectedTripMap({
   );
 }
 
+function ConnectedItineraryMap({
+  coordinates,
+  onSelectStop,
+  selectedId
+}: {
+  coordinates: RouteMapStop[];
+  onSelectStop?: (id: string) => void;
+  selectedId?: string | null;
+}) {
+  const mapContainerRef = useRef<HTMLDivElement | null>(null);
+  const mapRef = useRef<ItineraryMapKitMap | null>(null);
+  const [runtimeState, setRuntimeState] = useState<"loading" | "ready" | "error">(
+    appleMapKitConfigured ? "loading" : "error"
+  );
+
+  useEffect(() => {
+    if (!appleMapKitConfigured) {
+      setRuntimeState("error");
+      return;
+    }
+
+    let cancelled = false;
+
+    async function initialize() {
+      try {
+        await loadMapKitScript();
+        const mapkit = window.mapkit as ItineraryMapKitRuntime | undefined;
+
+        if (cancelled || !mapkit || !mapContainerRef.current || mapRef.current) {
+          if (!cancelled) setRuntimeState(mapkit ? "ready" : "error");
+          return;
+        }
+
+        if (!window.__almidyMapKitInitialized) {
+          mapkit.init({
+            authorizationCallback: (done) => {
+              done(process.env.NEXT_PUBLIC_APPLE_MAPKIT_TOKEN ?? "");
+            }
+          });
+          window.__almidyMapKitInitialized = true;
+        }
+
+        mapRef.current = new mapkit.Map(mapContainerRef.current, {
+          center: new mapkit.Coordinate(25.7617, -80.1918),
+          colorScheme: mapkit.ColorScheme?.Dark,
+          isRotationEnabled: false,
+          showsCompass: mapkit.FeatureVisibility?.Hidden,
+          showsMapTypeControl: false,
+          showsScale: mapkit.FeatureVisibility?.Hidden,
+          showsUserLocationControl: false,
+          showsZoomControl: false
+        });
+        setRuntimeState("ready");
+      } catch {
+        if (!cancelled) setRuntimeState("error");
+      }
+    }
+
+    void initialize();
+
+    return () => {
+      cancelled = true;
+      const map = mapRef.current;
+      removeMapKitArtifacts(map);
+      map?.destroy?.();
+      mapRef.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    const mapkit = window.mapkit as ItineraryMapKitRuntime | undefined;
+    const map = mapRef.current;
+
+    if (runtimeState !== "ready" || !mapkit || !map || coordinates.length === 0) {
+      return;
+    }
+
+    removeMapKitArtifacts(map);
+
+    const annotations = coordinates.map((coordinate, index) => {
+      const annotation = new mapkit.MarkerAnnotation(
+        new mapkit.Coordinate(coordinate.lat, coordinate.lng),
+        {
+          color: coordinate.id.startsWith(selectedId ?? "__none__") ? "#E67E22" : "#2F6BFF",
+          glyphText: String(index + 1),
+          selected: coordinate.id.startsWith(selectedId ?? "__none__"),
+          title: coordinate.locationName
+        }
+      );
+
+      if ("addEventListener" in annotation && typeof annotation.addEventListener === "function") {
+        annotation.addEventListener("select", () => onSelectStop?.(coordinate.id));
+      }
+
+      return annotation;
+    });
+
+    map.addAnnotations?.(annotations);
+
+    const overlays: ItineraryMapKitOverlay[] = [];
+    if (coordinates.length >= 2 && mapkit.PolylineOverlay) {
+      const routeCoordinates = coordinates.map((coordinate) =>
+        new mapkit.Coordinate(coordinate.lat, coordinate.lng)
+      );
+      const style = mapkit.Style
+        ? new mapkit.Style({
+          lineWidth: 4,
+          strokeColor: "#E67E22",
+          strokeOpacity: 0.88
+        })
+        : undefined;
+      const routeLine = new mapkit.PolylineOverlay(routeCoordinates, { style });
+      overlays.push(routeLine);
+      map.addOverlay?.(routeLine);
+    }
+
+    fitMapKitToCoordinates({
+      annotations,
+      coordinates,
+      map,
+      mapkit,
+      overlays
+    });
+  }, [coordinates, onSelectStop, runtimeState, selectedId]);
+
+  return (
+    <div
+      className="relative h-[clamp(520px,calc(100dvh-5rem),840px)] w-full overflow-hidden bg-[#17202c]"
+      data-map-runtime={runtimeState}
+      data-map-system="almidy-apple-map-system"
+    >
+      <div ref={mapContainerRef} className="absolute inset-0 h-full w-full" />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(5,8,13,0.03),rgba(5,8,13,0.18))]"
+      />
+      {runtimeState === "loading" ? (
+        <div className="absolute inset-0 grid place-items-center text-center text-xs font-black uppercase tracking-[0.18em] text-white/55">
+          Preparing route map
+        </div>
+      ) : null}
+      {runtimeState === "error" ? (
+        <div className="absolute inset-0 grid place-items-center px-8 text-center text-xs font-black uppercase tracking-[0.16em] text-white/55">
+          Apple Maps is temporarily unavailable. Your itinerary is still available below.
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function MapUnresolvedSegmentAction({
   onRetry,
   pending,
@@ -731,6 +946,140 @@ function copyForLocationStatus(segment: UnmappedMapSegment) {
     return "Add a confirmed location before this stop appears on the map.";
   }
   return waylineCopy.location.needsLocation;
+}
+
+function getRouteMapStops(items: TripMapItem[]): RouteMapStop[] {
+  const stops: RouteMapStop[] = [];
+
+  items.forEach((item) => {
+    if (hasResolvedRoute(item.route)) {
+      const route = item.route;
+      if (!route) return;
+      const origin = route.origin;
+      const destination = route.destination;
+      if (typeof origin?.lat === "number" && typeof origin.lng === "number") {
+        stops.push({
+          id: `${item.id}:origin`,
+          lat: origin.lat,
+          lng: origin.lng,
+          locationName: routeEndpointLabel(origin) || `${item.title} origin`
+        });
+      }
+      if (typeof destination?.lat === "number" && typeof destination.lng === "number") {
+        stops.push({
+          id: `${item.id}:destination`,
+          lat: destination.lat,
+          lng: destination.lng,
+          locationName: routeEndpointLabel(destination) || `${item.title} destination`
+        });
+      }
+      return;
+    }
+
+    if (Number.isFinite(item.lat) && Number.isFinite(item.lng)) {
+      stops.push({
+        id: item.id,
+        lat: item.lat,
+        lng: item.lng,
+        locationName: placeDisplayForMapItem(item).name
+      });
+    }
+  });
+
+  return stops;
+}
+
+function loadMapKitScript() {
+  if (typeof window === "undefined") {
+    return Promise.reject(new Error("MapKit is browser-only."));
+  }
+
+  if (window.mapkit) {
+    return Promise.resolve();
+  }
+
+  if (mapKitScriptPromise) {
+    return mapKitScriptPromise;
+  }
+
+  mapKitScriptPromise = new Promise<void>((resolve, reject) => {
+    const existingScript = document.getElementById(APPLE_MAPKIT_SCRIPT_ID) as HTMLScriptElement | null;
+
+    if (existingScript) {
+      existingScript.addEventListener("load", () => resolve(), { once: true });
+      existingScript.addEventListener("error", () => reject(new Error("MapKit script failed.")), { once: true });
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.async = true;
+    script.crossOrigin = "anonymous";
+    script.id = APPLE_MAPKIT_SCRIPT_ID;
+    script.src = APPLE_MAPKIT_SCRIPT_SRC;
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error("MapKit script failed."));
+    document.head.appendChild(script);
+  });
+
+  return mapKitScriptPromise;
+}
+
+function removeMapKitArtifacts(map: ItineraryMapKitMap | null) {
+  if (!map) return;
+
+  if (map.overlays?.length) {
+    map.removeOverlays?.(map.overlays);
+  }
+
+  if (map.annotations?.length) {
+    map.removeAnnotations?.(map.annotations);
+  }
+}
+
+function fitMapKitToCoordinates({
+  annotations,
+  coordinates,
+  map,
+  mapkit,
+  overlays
+}: {
+  annotations: ItineraryMapKitAnnotation[];
+  coordinates: RouteMapStop[];
+  map: ItineraryMapKitMap;
+  mapkit: ItineraryMapKitRuntime;
+  overlays: ItineraryMapKitOverlay[];
+}) {
+  const padding = mapkit.Padding ? new mapkit.Padding(96, 44, 300, 44) : undefined;
+  const visibleItems = [...overlays, ...annotations];
+
+  if (visibleItems.length && typeof map.showItems === "function") {
+    map.showItems(visibleItems, { animate: true, padding });
+    return;
+  }
+
+  if (annotations.length && typeof map.showAnnotations === "function") {
+    map.showAnnotations(annotations, { animate: true, padding });
+    return;
+  }
+
+  if (!mapkit.CoordinateRegion || coordinates.length === 0) {
+    return;
+  }
+
+  const lats = coordinates.map((coordinate) => coordinate.lat);
+  const lngs = coordinates.map((coordinate) => coordinate.lng);
+  const minLat = Math.min(...lats);
+  const maxLat = Math.max(...lats);
+  const minLng = Math.min(...lngs);
+  const maxLng = Math.max(...lngs);
+  const center = new mapkit.Coordinate((minLat + maxLat) / 2, (minLng + maxLng) / 2);
+  const region = new mapkit.CoordinateRegion(center, {
+    latitudeDelta: Math.max(maxLat - minLat, 0.05) * 1.35,
+    longitudeDelta: Math.max(maxLng - minLng, 0.05) * 1.35
+  });
+
+  map.setRegionAnimated?.(region, true);
+  map.setCenterAnimated?.(center, true);
 }
 
 function readError(payload: unknown, fallback: string) {

@@ -9,11 +9,10 @@ import { TripCreateForm } from "@/components/dashboard/trip-create-form";
 import MobileTripsWalletSheet, {
   type MobileTripsWalletSheetTrip
 } from "@/components/dashboard/mobile-trips-wallet-sheet";
-import { GoogleMapRenderer } from "@/components/map/google-map-renderer";
+import { CustomGlobeRenderer } from "@/components/map/custom-globe-renderer";
 import { cn } from "@/components/trip-ui";
 import type { TripsData } from "@/app/dashboard/trips/loader";
 import { dashboardActionRoutes } from "@/lib/dashboard/action-routes";
-import { ALMIDY_MAP_SYSTEM_ID } from "@/lib/map/almidy-map-visuals";
 import { unifiedMapSurfaceEnabled } from "@/lib/map/feature-flags";
 import {
   UnifiedMapProvider,
@@ -26,12 +25,13 @@ import {
 } from "@/lib/map/wayline-map-pins";
 import type {
   AlmidyLaunchGlobeTripPin,
-  AlmidyMapPin,
-  AlmidyMapSurfaceState
+  AlmidyMapPin
 } from "@/lib/map/wayline-map-models";
 
 type MobileTripsWalletProps = Pick<TripsData, "error" | "trips">;
 type Trip = TripsData["trips"][number];
+
+const ALMIDY_APPLE_MAP_SYSTEM_ID = "almidy-apple-map-system";
 
 export function MobileTripsWallet({ error, trips }: MobileTripsWalletProps) {
   const searchParams = useSearchParams();
@@ -652,27 +652,19 @@ function MobileTripsGlobeCanvas({
     })),
     [activeTripId, mapPins, selectedPinId]
   );
-  const mapCenter = surfacePins[0]?.coordinate ?? { lat: 25.7617, lng: -80.1918 };
-  const surfaceState = useMemo<AlmidyMapSurfaceState>(
-    () => ({
-      camera: {
-        center: mapCenter,
-        intent: hasTripPins ? "trip" : "world",
-        selectedId: selectedPinId,
-        zoom: hasTripPins ? 4 : 3
-      },
-      location: {
-        coordinate: null,
-        permission: "unknown",
-        source: "fallback"
-      },
-      mode: "map",
-      pins: surfacePins,
-      renderer: "google-2d",
-      routes: [],
-      selectedId: selectedPinId
-    }),
-    [hasTripPins, mapCenter, selectedPinId, surfacePins]
+  const tripPins = useMemo<AlmidyLaunchGlobeTripPin[]>(
+    () =>
+      surfacePins.map((pin) => ({
+        countryCode: pin.countryCode || "",
+        flag: pin.flag || countryCodeToFlag(pin.countryCode || "") || "•",
+        id: pin.id,
+        label: pin.label,
+        lat: pin.coordinate.lat,
+        lng: pin.coordinate.lng,
+        subtitle: pin.subtitle,
+        tripId: pin.tripId
+      })),
+    [surfacePins]
   );
   const mapInstanceKey = hasTripPins
     ? `trips-globe-${mapPins.length}-${mapPins
@@ -690,7 +682,7 @@ function MobileTripsGlobeCanvas({
       <div
         className="absolute inset-0 z-0 flex h-full w-full items-center justify-center overflow-visible bg-[#252832] [transform-style:preserve-3d]"
         data-map-instance-key="trips-globe-loading"
-        data-map-system={ALMIDY_MAP_SYSTEM_ID}
+        data-map-system={ALMIDY_APPLE_MAP_SYSTEM_ID}
         data-map-trip-state="loading"
         data-testid="mobile-country-map-canvas"
       >
@@ -703,25 +695,20 @@ function MobileTripsGlobeCanvas({
     <div
       className="absolute inset-0 z-0 h-full w-full overflow-visible bg-[#252832] [transform-style:preserve-3d]"
       data-map-instance-key={mapInstanceKey}
-      data-map-system={ALMIDY_MAP_SYSTEM_ID}
+      data-map-system={ALMIDY_APPLE_MAP_SYSTEM_ID}
       data-map-trip-state={hasTripPins ? "ready" : "empty"}
       data-testid="mobile-country-map-canvas"
     >
-      <GoogleMapRenderer
+      <CustomGlobeRenderer
+        activeTripId={activeTripId}
         className="absolute inset-0 h-full w-full overflow-visible [transform-style:preserve-3d]"
-        height="100%"
-        mapTheme="dark"
-        markerTestId="mobile-trips-globe-flag-pin"
-        markerVariant="flag-label"
-        onPinSelect={(pinId) => {
-          const selectedPin = surfacePins.find((pin) => pin.id === pinId);
-          const tripId = selectedPin?.tripId ?? pinId.replace(/^trip-/, "");
-          if (tripId) {
-            onTripPinSelect(tripId);
-          }
-        }}
-        showPinLabels
-        surfaceState={surfaceState}
+        defaultFocusWhenEmpty
+        mapInstanceKey={mapInstanceKey}
+        onTripPinSelect={onTripPinSelect}
+        renderTripPins
+        showCountryPin={false}
+        tripPins={tripPins}
+        useLocationFocus={false}
       />
       {!hasTripPins ? (
         <div
