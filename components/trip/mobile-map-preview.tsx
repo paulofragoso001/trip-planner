@@ -3,9 +3,9 @@
 import Link from "next/link";
 import { MapIcon, Navigation } from "lucide-react";
 import { useMemo } from "react";
-import { GoogleMapRenderer } from "@/components/map/google-map-renderer";
+import { CustomGlobeRenderer } from "@/components/map/custom-globe-renderer";
 import type { TripMapItem } from "@/components/TripMap";
-import type { AlmidyMapSurfaceState } from "@/lib/map/wayline-map-models";
+import { countryCodeToFlag } from "@/lib/map/wayline-map-pins";
 
 type MobileMapPreviewProps = {
   ctaHref?: string;
@@ -24,7 +24,7 @@ export function MobileMapPreview({
   label,
   title
 }: MobileMapPreviewProps) {
-  const mapSurface = useMemo(() => tripItemsToMapSurface(items), [items]);
+  const mapPins = useMemo(() => tripItemsToApplePins(items), [items]);
 
   return (
     <section
@@ -35,10 +35,12 @@ export function MobileMapPreview({
       style={{ minHeight: height }}
     >
       {items.length ? (
-        <GoogleMapRenderer
-          height={height}
-          mapTheme="dark"
-          surfaceState={mapSurface}
+        <CustomGlobeRenderer
+          className="absolute inset-0"
+          mapInstanceKey={`timeline-preview-${mapPins.map((pin) => pin.id).join("-")}`}
+          showCountryPin={false}
+          tripPins={mapPins}
+          useLocationFocus={false}
         />
       ) : (
         <div
@@ -83,40 +85,32 @@ export function MobileMapPreview({
   );
 }
 
-function tripItemsToMapSurface(items: TripMapItem[]): AlmidyMapSurfaceState {
-  const firstItem = items[0];
-  const center = firstItem ? { lat: firstItem.lat, lng: firstItem.lng } : { lat: 25.7617, lng: -80.1918 };
+function tripItemsToApplePins(items: TripMapItem[]) {
+  return items.map((item, index) => {
+    const countryCode = inferCountryCodeForTripItem(item);
 
-  return {
-    camera: {
-      center,
-      intent: "trip",
-      selectedId: firstItem?.id ?? null,
-      zoom: items.length > 1 ? 11 : 14
-    },
-    location: {
-      coordinate: null,
-      permission: "unknown",
-      source: "fallback"
-    },
-    mode: "route",
-    pins: items.map((item, index) => ({
-      coordinate: { lat: item.lat, lng: item.lng },
+    return {
+      countryCode,
+      flag: countryCodeToFlag(countryCode) ?? "•",
       id: item.id,
-      imageAlt: item.imageAlt,
-      imageAttribution: item.imageAttribution,
-      imageUrl: item.imageUrl,
-      kind: "place",
       label: item.title,
-      order: item.routeOrder ?? index + 1,
-      provider: item.provider,
-      providerPlaceId: item.providerPlaceId,
-      selected: item.id === firstItem?.id,
+      lat: item.lat,
+      lng: item.lng,
       subtitle: item.category,
-      tone: item.id === firstItem?.id ? "orange" : "blue"
-    })),
-    renderer: "google-2d",
-    routes: [],
-    selectedId: firstItem?.id ?? null
-  };
+      tripId: item.id || `timeline-pin-${index}`
+    };
+  });
+}
+
+function inferCountryCodeForTripItem(item: TripMapItem) {
+  const text = [item.title, item.address, item.category, item.route?.destination?.address, item.route?.origin?.address]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  if (text.includes("brazil") || text.includes("são paulo") || text.includes("guarulhos")) return "BR";
+  if (text.includes("spain") || text.includes("barcelona") || text.includes("madrid")) return "ES";
+  if (text.includes("japan") || text.includes("tokyo") || text.includes("kyoto")) return "JP";
+  if (text.includes("canada") || text.includes("vancouver")) return "CA";
+  return "US";
 }

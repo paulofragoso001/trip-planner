@@ -11,6 +11,7 @@ import type { UnmappedMapSegment } from "@/app/dashboard/trips/[tripId]/map/load
 import { ActivityDetailSheet } from "@/components/trip/activity-detail-sheet";
 import { waylineCopy } from "@/lib/copy/wayline-copy";
 import { hasResolvedRoute, routeEndpointLabel } from "@/lib/trip-segment-route";
+import { loadAppleMapKitToken } from "@/lib/map/apple-mapkit-token";
 
 type ConnectedTripMapProps = {
   destination: string | null;
@@ -29,6 +30,8 @@ type ItineraryMapKitCoordinate = {
 
 type ItineraryMapKitAnnotation = {
   addEventListener?: (eventName: string, handler: () => void) => void;
+  element?: HTMLElement;
+  selected?: boolean;
   title?: string;
 };
 
@@ -55,6 +58,11 @@ type ItineraryMapKitMap = {
 };
 
 type ItineraryMapKitRuntime = {
+  Annotation: new (
+    coordinate: ItineraryMapKitCoordinate,
+    elementFactory: () => HTMLElement,
+    options?: Record<string, unknown>
+  ) => ItineraryMapKitAnnotation;
   ColorScheme?: {
     Dark?: string;
   };
@@ -95,7 +103,6 @@ type RouteMapStop = {
 
 const APPLE_MAPKIT_SCRIPT_ID = "almidy-apple-mapkit-js";
 const APPLE_MAPKIT_SCRIPT_SRC = "https://cdn.apple-mapkit.com/mk/5.x.x/mapkit.js";
-const appleMapKitConfigured = Boolean(process.env.NEXT_PUBLIC_APPLE_MAPKIT_TOKEN);
 
 let mapKitScriptPromise: Promise<void> | null = null;
 
@@ -664,20 +671,20 @@ function ConnectedItineraryMap({
 }) {
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<ItineraryMapKitMap | null>(null);
-  const [runtimeState, setRuntimeState] = useState<"loading" | "ready" | "error">(
-    appleMapKitConfigured ? "loading" : "error"
-  );
+  const [runtimeState, setRuntimeState] = useState<"loading" | "ready" | "error" | "missing-token">("loading");
 
   useEffect(() => {
-    if (!appleMapKitConfigured) {
-      setRuntimeState("error");
-      return;
-    }
-
     let cancelled = false;
 
     async function initialize() {
       try {
+        const token = await loadAppleMapKitToken();
+
+        if (!token) {
+          if (!cancelled) setRuntimeState("missing-token");
+          return;
+        }
+
         await loadMapKitScript();
         const mapkit = window.mapkit as ItineraryMapKitRuntime | undefined;
 
@@ -689,7 +696,7 @@ function ConnectedItineraryMap({
         if (!window.__almidyMapKitInitialized) {
           mapkit.init({
             authorizationCallback: (done) => {
-              done(process.env.NEXT_PUBLIC_APPLE_MAPKIT_TOKEN ?? "");
+              done(token);
             }
           });
           window.__almidyMapKitInitialized = true;
@@ -732,23 +739,15 @@ function ConnectedItineraryMap({
 
     removeMapKitArtifacts(map);
 
-    const annotations = coordinates.map((coordinate, index) => {
-      const annotation = new mapkit.MarkerAnnotation(
-        new mapkit.Coordinate(coordinate.lat, coordinate.lng),
-        {
-          color: coordinate.id.startsWith(selectedId ?? "__none__") ? "#E67E22" : "#2F6BFF",
-          glyphText: String(index + 1),
-          selected: coordinate.id.startsWith(selectedId ?? "__none__"),
-          title: coordinate.locationName
-        }
-      );
-
-      if ("addEventListener" in annotation && typeof annotation.addEventListener === "function") {
-        annotation.addEventListener("select", () => onSelectStop?.(coordinate.id));
-      }
-
-      return annotation;
-    });
+    const annotations = coordinates.map((coordinate, index) =>
+      createItineraryStopAnnotation({
+        coordinate,
+        index,
+        isActive: coordinate.id.startsWith(selectedId ?? "__none__"),
+        mapkit,
+        onSelect: () => onSelectStop?.(coordinate.id)
+      })
+    );
 
     map.addAnnotations?.(annotations);
 
@@ -797,6 +796,11 @@ function ConnectedItineraryMap({
       {runtimeState === "error" ? (
         <div className="absolute inset-0 grid place-items-center px-8 text-center text-xs font-black uppercase tracking-[0.16em] text-white/55">
           Apple Maps is temporarily unavailable. Your itinerary is still available below.
+        </div>
+      ) : null}
+      {runtimeState === "missing-token" ? (
+        <div className="absolute inset-0 grid place-items-center px-8 text-center text-xs font-black uppercase tracking-[0.16em] text-white/55">
+          Apple Maps is not configured for this environment. Your itinerary is still available below.
         </div>
       ) : null}
     </div>
@@ -987,6 +991,89 @@ function getRouteMapStops(items: TripMapItem[]): RouteMapStop[] {
   });
 
   return stops;
+}
+
+function createItineraryStopAnnotation({
+  coordinate,
+  index,
+  isActive,
+  mapkit,
+  onSelect
+}: {
+  coordinate: RouteMapStop;
+  index: number;
+  isActive: boolean;
+  mapkit: ItineraryMapKitRuntime;
+  onSelect: () => void;
+}) {
+  const annotation = new mapkit.Annotation(
+    new mapkit.Coordinate(coordinate.lat, coordinate.lng),
+    () =>
+      createItineraryStopAnnotationElement({
+        coordinate,
+        index,
+        isActive,
+        onSelect
+      }),
+    {
+      anchorOffset: new DOMPoint(0, -38),
+      data: coordinate,
+      selected: isActive,
+      title: coordinate.locationName
+    }
+  );
+
+  annotation.addEventListener?.("select", onSelect);
+  annotation.selected = isActive;
+  return annotation;
+}
+
+function createItineraryStopAnnotationElement({
+  coordinate,
+  index,
+  isActive,
+  onSelect
+}: {
+  coordinate: RouteMapStop;
+  index: number;
+  isActive: boolean;
+  onSelect: () => void;
+}) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.setAttribute("aria-label", `Select ${coordinate.locationName}`);
+  button.dataset.active = isActive ? "true" : "false";
+  button.dataset.stopId = coordinate.id;
+  button.dataset.stopLatitude = coordinate.lat.toFixed(5);
+  button.dataset.stopLongitude = coordinate.lng.toFixed(5);
+  button.dataset.testid = "itinerary-apple-map-stop-pin";
+  button.style.pointerEvents = "auto";
+  button.className = [
+    "group pointer-events-auto flex -translate-x-1/2 -translate-y-full touch-manipulation flex-col items-center overflow-visible text-center focus:outline-none",
+    isActive ? "z-50" : "z-40"
+  ].join(" ");
+
+  const marker = document.createElement("span");
+  marker.className = [
+    "grid h-11 min-w-11 place-items-center rounded-full border-[2.5px] bg-white px-2 text-sm font-black leading-none text-orange-600 shadow-[0_4px_0_rgba(0,0,0,0.95),0_10px_24px_rgba(0,0,0,0.36)] transition duration-200",
+    isActive ? "scale-125 border-orange-500 ring-4 ring-orange-400/60" : "border-black ring-1 ring-white/75"
+  ].join(" ");
+  marker.textContent = String(index + 1);
+
+  const label = document.createElement("span");
+  label.className = [
+    "mt-1 block max-w-32 truncate rounded px-1.5 py-0.5 text-[0.72rem] font-black leading-none [text-shadow:0_2px_2px_rgba(0,0,0,0.95),0_0_8px_rgba(0,0,0,0.85)]",
+    isActive ? "bg-orange-600 text-white" : "bg-black/56 text-white"
+  ].join(" ");
+  label.textContent = coordinate.locationName;
+
+  button.append(marker, label);
+  button.addEventListener("click", (event) => {
+    event.stopPropagation();
+    onSelect();
+  });
+
+  return button;
 }
 
 function loadMapKitScript() {

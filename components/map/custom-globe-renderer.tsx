@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { countryCodeToFlag } from "@/lib/map/wayline-map-pins";
+import { loadAppleMapKitToken } from "@/lib/map/apple-mapkit-token";
 import { useOptionalUnifiedMap } from "@/lib/map/unified-map-provider";
 import type {
   AlmidyCoordinate,
@@ -98,7 +99,6 @@ const APPLE_MAPKIT_SCRIPT_SRC = "https://cdn.apple-mapkit.com/mk/5.x.x/mapkit.js
 const APPLE_MAP_SYSTEM_ID = "almidy-apple-map-system";
 const DEFAULT_WORLD_CENTER: AlmidyCoordinate = { lat: 28.5, lng: -81.5 };
 const DEFAULT_LOCATION_FLAG = "•";
-const mapKitConfigured = Boolean(process.env.NEXT_PUBLIC_APPLE_MAPKIT_TOKEN);
 
 let mapKitScriptPromise: Promise<void> | null = null;
 let mapKitInitialized = false;
@@ -120,9 +120,7 @@ export function CustomGlobeRenderer({
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MapKitMap | null>(null);
   const annotationRefs = useRef<MapKitAnnotation[]>([]);
-  const [runtimeState, setRuntimeState] = useState<"loading" | "ready" | "error">(
-    mapKitConfigured ? "loading" : "error"
-  );
+  const [runtimeState, setRuntimeState] = useState<"loading" | "ready" | "error" | "missing-token">("loading");
 
   const pins = useMemo(
     () => buildAppleMapPins({
@@ -143,12 +141,14 @@ export function CustomGlobeRenderer({
   );
 
   const initializeMapKit = useCallback(async () => {
-    if (!mapKitConfigured) {
-      setRuntimeState("error");
-      return;
-    }
-
     try {
+      const token = await loadAppleMapKitToken();
+
+      if (!token) {
+        setRuntimeState("missing-token");
+        return;
+      }
+
       await loadMapKitScript();
       const mapkit = window.mapkit;
 
@@ -160,7 +160,7 @@ export function CustomGlobeRenderer({
       if (!mapKitInitialized) {
         mapkit.init({
           authorizationCallback: (done) => {
-            done(process.env.NEXT_PUBLIC_APPLE_MAPKIT_TOKEN ?? "");
+            done(token);
           }
         });
         mapKitInitialized = true;
@@ -242,7 +242,7 @@ export function CustomGlobeRenderer({
     map.setCenterAnimated?.(new mapkit.Coordinate(center.lat, center.lng), false);
   }, [activeTripId, onTripPinSelect, pins, runtimeState, selectedPin, selectionRevision]);
 
-  if (!mapKitConfigured) {
+  if (runtimeState === "missing-token") {
     return (
       <AppleMapFallback
         className={className}

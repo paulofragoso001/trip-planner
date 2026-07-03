@@ -231,6 +231,14 @@ async function installMockGoogleMaps3D(page: Page) {
 }
 
 async function installMockAppleMapKit(page: Page) {
+  await page.route("**/api/mapkit-token", async (route) => {
+    await route.fulfill({
+      body: JSON.stringify({ token: "test-mapkit-token" }),
+      contentType: "application/json",
+      status: 200
+    });
+  });
+
   await page.addInitScript(() => {
     type MockMapKitCoordinate = {
       latitude: number;
@@ -2794,6 +2802,54 @@ test.describe("mobile soft-launch UX", () => {
 
     const appleCanvas = page.locator('[data-map-system="almidy-apple-map-system"]').first();
     await expect(appleCanvas).toBeVisible();
+  });
+
+  test("Verify itinerary timeline workspace page fully replaces Google layers with Apple MapKit", async ({
+    page,
+    request
+  }) => {
+    test.setTimeout(90_000);
+    await page.setViewportSize({ height: 900, width: 390 });
+    await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
+    await installMockAppleMapKit(page);
+
+    const tripResponse = await request.post(`${baseUrl}/api/trips`, {
+      data: {
+        destination: "São Paulo, Brazil",
+        name: `Timeline Apple MapKit regression ${Date.now()}`,
+        status: "Planning",
+        travel_style: "balanced"
+      },
+      headers: { "x-cypress-dashboard": "true" }
+    });
+    expect(tripResponse.status()).toBe(201);
+    const tripPayload = await tripResponse.json();
+    const tripId = tripPayload?.trip?.id;
+    expect(typeof tripId).toBe("string");
+
+    try {
+      const segmentResponse = await request.post(`${baseUrl}/api/trip-segments`, {
+        data: {
+          kind: "activity",
+          lat: -23.4356,
+          lng: -46.4731,
+          location: "São Paulo/Guarulhos-Governor André Franco Montoro International Airport",
+          startTime: "2026-06-05T10:05:00.000Z",
+          title: "São Paulo airport arrival",
+          tripId
+        },
+        headers: { "x-cypress-dashboard": "true" }
+      });
+      expect(segmentResponse.status()).toBe(201);
+
+      await page.goto(`${baseUrl}/dashboard/trips/${tripId}/timeline`, { waitUntil: "commit" });
+
+      await expect(page.locator(".gm-style")).not.toBeAttached();
+      const appleItineraryCanvas = page.locator('[data-map-system="almidy-apple-map-system"]').first();
+      await expect(appleItineraryCanvas).toBeVisible();
+    } finally {
+      await deleteTripForTest(request, tripId);
+    }
   });
 
   test("mobile home launch globe supports reduced motion without launch fallback", async ({ page }) => {
