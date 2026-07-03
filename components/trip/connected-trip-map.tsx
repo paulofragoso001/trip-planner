@@ -4,14 +4,16 @@ import Link from "next/link";
 import { motion, useDragControls, useReducedMotion } from "framer-motion";
 import { AlertTriangle, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { CustomGlobeRenderer } from "@/components/map/custom-globe-renderer";
 import { PlacePhoto } from "@/components/place-photo";
 import type { TripMapItem } from "@/components/TripMap";
 import type { UnmappedMapSegment } from "@/app/dashboard/trips/[tripId]/map/loader";
 import { ActivityDetailSheet } from "@/components/trip/activity-detail-sheet";
 import { waylineCopy } from "@/lib/copy/wayline-copy";
+import { countryCodeToFlag } from "@/lib/map/wayline-map-pins";
+import type { AlmidyLaunchGlobeTripPin } from "@/lib/map/wayline-map-models";
 import { hasResolvedRoute, routeEndpointLabel } from "@/lib/trip-segment-route";
-import { loadAppleMapKitToken } from "@/lib/map/apple-mapkit-token";
 
 type ConnectedTripMapProps = {
   destination: string | null;
@@ -23,88 +25,12 @@ type ConnectedTripMapProps = {
   unmappedSegments?: UnmappedMapSegment[];
 };
 
-type ItineraryMapKitCoordinate = {
-  latitude: number;
-  longitude: number;
-};
-
-type ItineraryMapKitAnnotation = {
-  addEventListener?: (eventName: string, handler: () => void) => void;
-  element?: HTMLElement;
-  selected?: boolean;
-  title?: string;
-};
-
-type ItineraryMapKitOverlay = unknown;
-
-type ItineraryMapKitMap = {
-  addAnnotations?: (annotations: ItineraryMapKitAnnotation[]) => void;
-  addOverlay?: (overlay: ItineraryMapKitOverlay) => void;
-  annotations?: ItineraryMapKitAnnotation[];
-  destroy?: () => void;
-  overlays?: ItineraryMapKitOverlay[];
-  removeAnnotations?: (annotations: ItineraryMapKitAnnotation[]) => void;
-  removeOverlays?: (overlays: ItineraryMapKitOverlay[]) => void;
-  setCenterAnimated?: (coordinate: ItineraryMapKitCoordinate, animate?: boolean) => void;
-  setRegionAnimated?: (region: unknown, animate?: boolean) => void;
-  showAnnotations?: (
-    annotations: ItineraryMapKitAnnotation[],
-    options?: { animate?: boolean; padding?: unknown }
-  ) => void;
-  showItems?: (
-    items: Array<ItineraryMapKitAnnotation | ItineraryMapKitOverlay>,
-    options?: { animate?: boolean; padding?: unknown }
-  ) => void;
-};
-
-type ItineraryMapKitRuntime = {
-  Annotation: new (
-    coordinate: ItineraryMapKitCoordinate,
-    elementFactory: () => HTMLElement,
-    options?: Record<string, unknown>
-  ) => ItineraryMapKitAnnotation;
-  ColorScheme?: {
-    Dark?: string;
-  };
-  Coordinate: new (latitude: number, longitude: number) => ItineraryMapKitCoordinate;
-  CoordinateRegion?: new (
-    center: ItineraryMapKitCoordinate,
-    span: { latitudeDelta: number; longitudeDelta: number }
-  ) => unknown;
-  FeatureVisibility?: {
-    Hidden?: string;
-  };
-  Map: new (container: HTMLElement, options?: Record<string, unknown>) => ItineraryMapKitMap;
-  MarkerAnnotation: new (
-    coordinate: ItineraryMapKitCoordinate,
-    options?: Record<string, unknown>
-  ) => ItineraryMapKitAnnotation;
-  Padding?: new (top: number, right: number, bottom: number, left: number) => unknown;
-  PolylineOverlay?: new (
-    coordinates: ItineraryMapKitCoordinate[],
-    options?: Record<string, unknown>
-  ) => ItineraryMapKitOverlay;
-  Style?: new (options?: Record<string, unknown>) => unknown;
-  init: (options: { authorizationCallback: (done: (token: string) => void) => void }) => void;
-};
-
-declare global {
-  interface Window {
-    __almidyMapKitInitialized?: boolean;
-  }
-}
-
 type RouteMapStop = {
   id: string;
   lat: number;
   lng: number;
   locationName: string;
 };
-
-const APPLE_MAPKIT_SCRIPT_ID = "almidy-apple-mapkit-js";
-const APPLE_MAPKIT_SCRIPT_SRC = "https://cdn.apple-mapkit.com/mk/5.x.x/mapkit.js";
-
-let mapKitScriptPromise: Promise<void> | null = null;
 
 export function ConnectedTripMap({
   destination,
@@ -669,140 +595,46 @@ function ConnectedItineraryMap({
   onSelectStop?: (id: string) => void;
   selectedId?: string | null;
 }) {
-  const mapContainerRef = useRef<HTMLDivElement | null>(null);
-  const mapRef = useRef<ItineraryMapKitMap | null>(null);
-  const [runtimeState, setRuntimeState] = useState<"loading" | "ready" | "error" | "missing-token">("loading");
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function initialize() {
-      try {
-        const token = await loadAppleMapKitToken();
-
-        if (!token) {
-          if (!cancelled) setRuntimeState("missing-token");
-          return;
-        }
-
-        await loadMapKitScript();
-        const mapkit = window.mapkit as ItineraryMapKitRuntime | undefined;
-
-        if (cancelled || !mapkit || !mapContainerRef.current || mapRef.current) {
-          if (!cancelled) setRuntimeState(mapkit ? "ready" : "error");
-          return;
-        }
-
-        if (!window.__almidyMapKitInitialized) {
-          mapkit.init({
-            authorizationCallback: (done) => {
-              done(token);
-            }
-          });
-          window.__almidyMapKitInitialized = true;
-        }
-
-        mapRef.current = new mapkit.Map(mapContainerRef.current, {
-          center: new mapkit.Coordinate(25.7617, -80.1918),
-          colorScheme: mapkit.ColorScheme?.Dark,
-          isRotationEnabled: false,
-          showsCompass: mapkit.FeatureVisibility?.Hidden,
-          showsMapTypeControl: false,
-          showsScale: mapkit.FeatureVisibility?.Hidden,
-          showsUserLocationControl: false,
-          showsZoomControl: false
-        });
-        setRuntimeState("ready");
-      } catch {
-        if (!cancelled) setRuntimeState("error");
-      }
-    }
-
-    void initialize();
-
-    return () => {
-      cancelled = true;
-      const map = mapRef.current;
-      removeMapKitArtifacts(map);
-      map?.destroy?.();
-      mapRef.current = null;
-    };
-  }, []);
-
-  useEffect(() => {
-    const mapkit = window.mapkit as ItineraryMapKitRuntime | undefined;
-    const map = mapRef.current;
-
-    if (runtimeState !== "ready" || !mapkit || !map || coordinates.length === 0) {
-      return;
-    }
-
-    removeMapKitArtifacts(map);
-
-    const annotations = coordinates.map((coordinate, index) =>
-      createItineraryStopAnnotation({
-        coordinate,
-        index,
-        isActive: coordinate.id.startsWith(selectedId ?? "__none__"),
-        mapkit,
-        onSelect: () => onSelectStop?.(coordinate.id)
-      })
-    );
-
-    map.addAnnotations?.(annotations);
-
-    const overlays: ItineraryMapKitOverlay[] = [];
-    if (coordinates.length >= 2 && mapkit.PolylineOverlay) {
-      const routeCoordinates = coordinates.map((coordinate) =>
-        new mapkit.Coordinate(coordinate.lat, coordinate.lng)
-      );
-      const style = mapkit.Style
-        ? new mapkit.Style({
-          lineWidth: 4,
-          strokeColor: "#E67E22",
-          strokeOpacity: 0.88
-        })
-        : undefined;
-      const routeLine = new mapkit.PolylineOverlay(routeCoordinates, { style });
-      overlays.push(routeLine);
-      map.addOverlay?.(routeLine);
-    }
-
-    fitMapKitToCoordinates({
-      annotations,
-      coordinates,
-      map,
-      mapkit,
-      overlays
-    });
-  }, [coordinates, onSelectStop, runtimeState, selectedId]);
+  const tripPins = useMemo<AlmidyLaunchGlobeTripPin[]>(
+    () =>
+      coordinates.map((coordinate, index) => {
+        const countryCode = inferCountryCodeForRouteStop(coordinate);
+        return {
+          countryCode,
+          flag: countryCodeToFlag(countryCode) ?? String(index + 1),
+          id: coordinate.id,
+          label: coordinate.locationName,
+          lat: coordinate.lat,
+          lng: coordinate.lng,
+          subtitle: `Stop ${index + 1}`,
+          tripId: coordinate.id
+        };
+      }),
+    [coordinates]
+  );
+  const mapInstanceKey = useMemo(
+    () =>
+      `itinerary-map-${tripPins
+        .map((pin) => `${pin.id}:${pin.lat}:${pin.lng}`)
+        .join("|")}`,
+    [tripPins]
+  );
 
   return (
     <div
       className="relative h-[clamp(520px,calc(100dvh-5rem),840px)] w-full overflow-hidden bg-[#17202c]"
-      data-map-runtime={runtimeState}
       data-map-system="almidy-apple-map-system"
     >
-      <div ref={mapContainerRef} className="absolute inset-0 h-full w-full" />
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(5,8,13,0.03),rgba(5,8,13,0.18))]"
+      <CustomGlobeRenderer
+        activeTripId={selectedId}
+        className="absolute inset-0"
+        defaultFocusWhenEmpty
+        mapInstanceKey={mapInstanceKey}
+        onTripPinSelect={onSelectStop}
+        showCountryPin={false}
+        tripPins={tripPins}
+        useLocationFocus={false}
       />
-      {runtimeState === "loading" ? (
-        <div className="absolute inset-0 grid place-items-center text-center text-xs font-black uppercase tracking-[0.18em] text-white/55">
-          Preparing route map
-        </div>
-      ) : null}
-      {runtimeState === "error" ? (
-        <div className="absolute inset-0 grid place-items-center px-8 text-center text-xs font-black uppercase tracking-[0.16em] text-white/55">
-          Apple Maps is temporarily unavailable. Your itinerary is still available below.
-        </div>
-      ) : null}
-      {runtimeState === "missing-token" ? (
-        <div className="absolute inset-0 grid place-items-center px-8 text-center text-xs font-black uppercase tracking-[0.16em] text-white/55">
-          Apple Maps is not configured for this environment. Your itinerary is still available below.
-        </div>
-      ) : null}
     </div>
   );
 }
@@ -993,180 +825,46 @@ function getRouteMapStops(items: TripMapItem[]): RouteMapStop[] {
   return stops;
 }
 
-function createItineraryStopAnnotation({
-  coordinate,
-  index,
-  isActive,
-  mapkit,
-  onSelect
-}: {
-  coordinate: RouteMapStop;
-  index: number;
-  isActive: boolean;
-  mapkit: ItineraryMapKitRuntime;
-  onSelect: () => void;
-}) {
-  const annotation = new mapkit.Annotation(
-    new mapkit.Coordinate(coordinate.lat, coordinate.lng),
-    () =>
-      createItineraryStopAnnotationElement({
-        coordinate,
-        index,
-        isActive,
-        onSelect
-      }),
-    {
-      anchorOffset: new DOMPoint(0, -38),
-      data: coordinate,
-      selected: isActive,
-      title: coordinate.locationName
-    }
-  );
+function inferCountryCodeForRouteStop(stop: RouteMapStop) {
+  const value = `${stop.locationName} ${stop.lat} ${stop.lng}`.toLowerCase();
 
-  annotation.addEventListener?.("select", onSelect);
-  annotation.selected = isActive;
-  return annotation;
-}
-
-function createItineraryStopAnnotationElement({
-  coordinate,
-  index,
-  isActive,
-  onSelect
-}: {
-  coordinate: RouteMapStop;
-  index: number;
-  isActive: boolean;
-  onSelect: () => void;
-}) {
-  const button = document.createElement("button");
-  button.type = "button";
-  button.setAttribute("aria-label", `Select ${coordinate.locationName}`);
-  button.dataset.active = isActive ? "true" : "false";
-  button.dataset.stopId = coordinate.id;
-  button.dataset.stopLatitude = coordinate.lat.toFixed(5);
-  button.dataset.stopLongitude = coordinate.lng.toFixed(5);
-  button.dataset.testid = "itinerary-apple-map-stop-pin";
-  button.style.pointerEvents = "auto";
-  button.className = [
-    "group pointer-events-auto flex -translate-x-1/2 -translate-y-full touch-manipulation flex-col items-center overflow-visible text-center focus:outline-none",
-    isActive ? "z-50" : "z-40"
-  ].join(" ");
-
-  const marker = document.createElement("span");
-  marker.className = [
-    "grid h-11 min-w-11 place-items-center rounded-full border-[2.5px] bg-white px-2 text-sm font-black leading-none text-orange-600 shadow-[0_4px_0_rgba(0,0,0,0.95),0_10px_24px_rgba(0,0,0,0.36)] transition duration-200",
-    isActive ? "scale-125 border-orange-500 ring-4 ring-orange-400/60" : "border-black ring-1 ring-white/75"
-  ].join(" ");
-  marker.textContent = String(index + 1);
-
-  const label = document.createElement("span");
-  label.className = [
-    "mt-1 block max-w-32 truncate rounded px-1.5 py-0.5 text-[0.72rem] font-black leading-none [text-shadow:0_2px_2px_rgba(0,0,0,0.95),0_0_8px_rgba(0,0,0,0.85)]",
-    isActive ? "bg-orange-600 text-white" : "bg-black/56 text-white"
-  ].join(" ");
-  label.textContent = coordinate.locationName;
-
-  button.append(marker, label);
-  button.addEventListener("click", (event) => {
-    event.stopPropagation();
-    onSelect();
-  });
-
-  return button;
-}
-
-function loadMapKitScript() {
-  if (typeof window === "undefined") {
-    return Promise.reject(new Error("MapKit is browser-only."));
+  if (
+    value.includes("brazil") ||
+    value.includes("brasil") ||
+    value.includes("são paulo") ||
+    value.includes("sao paulo") ||
+    (stop.lat < -5 && stop.lng < -30 && stop.lng > -75)
+  ) {
+    return "BR";
   }
 
-  if (window.mapkit) {
-    return Promise.resolve();
+  if (
+    value.includes("spain") ||
+    value.includes("barcelona") ||
+    value.includes("madrid") ||
+    (stop.lat > 35 && stop.lat < 44 && stop.lng > -10 && stop.lng < 5)
+  ) {
+    return "ES";
   }
 
-  if (mapKitScriptPromise) {
-    return mapKitScriptPromise;
+  if (
+    value.includes("japan") ||
+    value.includes("tokyo") ||
+    value.includes("kyoto") ||
+    (stop.lat > 30 && stop.lat < 46 && stop.lng > 129 && stop.lng < 146)
+  ) {
+    return "JP";
   }
 
-  mapKitScriptPromise = new Promise<void>((resolve, reject) => {
-    const existingScript = document.getElementById(APPLE_MAPKIT_SCRIPT_ID) as HTMLScriptElement | null;
-
-    if (existingScript) {
-      existingScript.addEventListener("load", () => resolve(), { once: true });
-      existingScript.addEventListener("error", () => reject(new Error("MapKit script failed.")), { once: true });
-      return;
-    }
-
-    const script = document.createElement("script");
-    script.async = true;
-    script.crossOrigin = "anonymous";
-    script.id = APPLE_MAPKIT_SCRIPT_ID;
-    script.src = APPLE_MAPKIT_SCRIPT_SRC;
-    script.onload = () => resolve();
-    script.onerror = () => reject(new Error("MapKit script failed."));
-    document.head.appendChild(script);
-  });
-
-  return mapKitScriptPromise;
-}
-
-function removeMapKitArtifacts(map: ItineraryMapKitMap | null) {
-  if (!map) return;
-
-  if (map.overlays?.length) {
-    map.removeOverlays?.(map.overlays);
+  if (
+    value.includes("canada") ||
+    value.includes("vancouver") ||
+    (stop.lat > 48 && stop.lat < 70 && stop.lng > -142 && stop.lng < -52)
+  ) {
+    return "CA";
   }
 
-  if (map.annotations?.length) {
-    map.removeAnnotations?.(map.annotations);
-  }
-}
-
-function fitMapKitToCoordinates({
-  annotations,
-  coordinates,
-  map,
-  mapkit,
-  overlays
-}: {
-  annotations: ItineraryMapKitAnnotation[];
-  coordinates: RouteMapStop[];
-  map: ItineraryMapKitMap;
-  mapkit: ItineraryMapKitRuntime;
-  overlays: ItineraryMapKitOverlay[];
-}) {
-  const padding = mapkit.Padding ? new mapkit.Padding(96, 44, 300, 44) : undefined;
-  const visibleItems = [...overlays, ...annotations];
-
-  if (visibleItems.length && typeof map.showItems === "function") {
-    map.showItems(visibleItems, { animate: true, padding });
-    return;
-  }
-
-  if (annotations.length && typeof map.showAnnotations === "function") {
-    map.showAnnotations(annotations, { animate: true, padding });
-    return;
-  }
-
-  if (!mapkit.CoordinateRegion || coordinates.length === 0) {
-    return;
-  }
-
-  const lats = coordinates.map((coordinate) => coordinate.lat);
-  const lngs = coordinates.map((coordinate) => coordinate.lng);
-  const minLat = Math.min(...lats);
-  const maxLat = Math.max(...lats);
-  const minLng = Math.min(...lngs);
-  const maxLng = Math.max(...lngs);
-  const center = new mapkit.Coordinate((minLat + maxLat) / 2, (minLng + maxLng) / 2);
-  const region = new mapkit.CoordinateRegion(center, {
-    latitudeDelta: Math.max(maxLat - minLat, 0.05) * 1.35,
-    longitudeDelta: Math.max(maxLng - minLng, 0.05) * 1.35
-  });
-
-  map.setRegionAnimated?.(region, true);
-  map.setCenterAnimated?.(center, true);
+  return "US";
 }
 
 function readError(payload: unknown, fallback: string) {
