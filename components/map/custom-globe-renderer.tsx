@@ -67,8 +67,9 @@ type MapKitRuntime = {
   Coordinate: new (latitude: number, longitude: number) => MapKitCoordinate;
   CoordinateRegion?: new (
     center: MapKitCoordinate,
-    span: { latitudeDelta: number; longitudeDelta: number }
+    span: unknown
   ) => unknown;
+  CoordinateSpan?: new (latitudeDelta: number, longitudeDelta: number) => unknown;
   FeatureVisibility?: {
     Hidden?: string;
   };
@@ -178,33 +179,39 @@ export function CustomGlobeRenderer({
         return;
       }
 
-      if (!mapKitInitialized) {
+      if (!mapKitInitialized && !mapkit.initialized) {
         mapkit.init({
           authorizationCallback: (done) => {
             done(token);
           }
         });
-        mapKitInitialized = true;
       }
+      mapKitInitialized = true;
 
       const initialCenter = new mapkit.Coordinate(DEFAULT_WORLD_CENTER.lat, DEFAULT_WORLD_CENTER.lng);
       const mapConstructor = mapkit.Map as MapKitMapConstructor;
       const mapType = mapConstructor.MapTypes?.Hybrid ?? mapConstructor.MapTypes?.Satellite;
-      const initialRegion = mapkit.CoordinateRegion
-        ? new mapkit.CoordinateRegion(initialCenter, { latitudeDelta: 90, longitudeDelta: 180 })
-        : undefined;
-      const map = new mapkit.Map(mapContainerRef.current, {
+      const initialRegion = buildMapKitCoordinateRegion(mapkit, initialCenter, 90, 180);
+      const mapOptions: Record<string, unknown> = {
         center: initialCenter,
         colorScheme: mapkit.ColorScheme?.Dark,
         isRotationEnabled: false,
-        mapType,
-        region: initialRegion,
         showsCompass: mapkit.FeatureVisibility?.Hidden,
         showsMapTypeControl: false,
         showsScale: mapkit.FeatureVisibility?.Hidden,
         showsUserLocationControl: false,
         showsZoomControl: false
-      });
+      };
+
+      if (mapType) {
+        mapOptions.mapType = mapType;
+      }
+
+      if (initialRegion) {
+        mapOptions.region = initialRegion;
+      }
+
+      const map = createMapKitMap(mapkit, mapContainerRef.current, mapOptions);
 
       mapRef.current = map;
       setRuntimeState("ready");
@@ -382,6 +389,43 @@ function sanitizeRuntimeMapKitToken(value: string) {
     .replace(/[\r\n\t ]+/g, "")
     .replace(/^["']+|["']+$/g, "")
     .trim();
+}
+
+function buildMapKitCoordinateRegion(
+  mapkit: MapKitRuntime,
+  center: MapKitCoordinate,
+  latitudeDelta: number,
+  longitudeDelta: number
+) {
+  if (!mapkit.CoordinateRegion || !mapkit.CoordinateSpan) {
+    return undefined;
+  }
+
+  try {
+    return new mapkit.CoordinateRegion(
+      center,
+      new mapkit.CoordinateSpan(latitudeDelta, longitudeDelta)
+    );
+  } catch (regionError) {
+    console.error(`${APPLE_MAPKIT_LOG_PREFIX} REGION BUILD FAILED:`, regionError);
+    return undefined;
+  }
+}
+
+function createMapKitMap(
+  mapkit: MapKitRuntime,
+  container: HTMLElement,
+  options: Record<string, unknown>
+) {
+  try {
+    return new mapkit.Map(container, options);
+  } catch (mapError) {
+    console.error(`${APPLE_MAPKIT_LOG_PREFIX} MAP CONSTRUCTION FAILED WITH SATELLITE OPTIONS:`, mapError);
+    const fallbackOptions = { ...options };
+    delete fallbackOptions.mapType;
+    delete fallbackOptions.region;
+    return new mapkit.Map(container, fallbackOptions);
+  }
 }
 
 function buildAppleMapPins({

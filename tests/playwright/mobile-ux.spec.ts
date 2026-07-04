@@ -263,15 +263,22 @@ async function installMockAppleMapKit(page: Page) {
 
     class MockCoordinateRegion {
       center: MockMapKitCoordinate;
-      span: { latitudeDelta: number; longitudeDelta: number };
+      span: MockCoordinateSpan;
 
       constructor(
         center: MockMapKitCoordinate,
-        span: { latitudeDelta: number; longitudeDelta: number }
+        span: MockCoordinateSpan
       ) {
         this.center = center;
         this.span = span;
       }
+    }
+
+    class MockCoordinateSpan {
+      constructor(
+        public latitudeDelta: number,
+        public longitudeDelta: number
+      ) {}
     }
 
     class MockPadding {
@@ -411,6 +418,7 @@ async function installMockAppleMapKit(page: Page) {
       ColorScheme: { Dark: "dark" },
       Coordinate: MockCoordinate,
       CoordinateRegion: MockCoordinateRegion,
+      CoordinateSpan: MockCoordinateSpan,
       FeatureVisibility: { Hidden: "hidden" },
       init: () => {
         (window as typeof window & { __almidyMapKitInitialized?: boolean }).__almidyMapKitInitialized = true;
