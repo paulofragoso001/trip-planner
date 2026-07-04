@@ -4,9 +4,8 @@ import { Globe2, MapPin, Navigation } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { MouseEvent } from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { DashboardData } from "@/app/dashboard/loader";
-import AppleCanvasGlobe from "@/components/dashboard/apple-canvas-globe";
 import { CustomGlobeRenderer } from "@/components/map/custom-globe-renderer";
 import { TravelWalletSheet } from "@/components/dashboard/travel-wallet-sheet";
 import { cn } from "@/components/trip-ui";
@@ -30,7 +29,6 @@ export function MobileHomeWallet({
   const hasTrips = recentTrips.length > 0;
   const resolvedInitialSheetState = hasTrips ? initialSheetState : "expanded";
   const [isCreatingFirstTrip, setIsCreatingFirstTrip] = useState(false);
-  const [showCanvasGlobe, setShowCanvasGlobe] = useState(true);
   const importsWaiting =
     metrics.find((metric) => metric.label === "Ideas waiting")?.value ??
     metrics.find((metric) => metric.label === "Imports waiting")?.value ??
@@ -41,9 +39,6 @@ export function MobileHomeWallet({
   const primaryMeta = latestTrip
     ? `${latestTrip.name} · ${latestTrip.destination}`
     : "Start a new travel wallet.";
-  const revealMapSurface = useCallback(() => {
-    setShowCanvasGlobe(false);
-  }, []);
 
   const walletSurface = (
     <section
@@ -63,20 +58,6 @@ export function MobileHomeWallet({
           showCountryPin={false}
           useLocationFocus
         />
-        <div
-          className={cn(
-            "absolute inset-0 z-20 transform-gpu transition-[opacity,transform,filter] duration-700 ease-[cubic-bezier(0.2,0.9,0.2,1)]",
-            showCanvasGlobe
-              ? "pointer-events-auto scale-100 opacity-100 blur-0"
-              : "pointer-events-none scale-110 opacity-0 blur-sm"
-          )}
-          data-globe-transition-state={showCanvasGlobe ? "globe" : "map"}
-        >
-          <AppleCanvasGlobe
-            onGlobeClick={revealMapSurface}
-            savedTrips={[]}
-          />
-        </div>
         <FloatingGlobeControls />
       </section>
       <div
@@ -87,7 +68,6 @@ export function MobileHomeWallet({
         <LaunchFirstTripCard
           href={dashboardActionRoutes.trips.create}
           onCreateTripStart={() => {
-            revealMapSurface();
             setIsCreatingFirstTrip(true);
           }}
         />
@@ -96,8 +76,6 @@ export function MobileHomeWallet({
       <section
         className="launch-bottom-sheet pointer-events-none absolute inset-x-0 bottom-0 z-30"
         data-testid="mobile-home-wallet-stage"
-        onFocusCapture={revealMapSurface}
-        onPointerDownCapture={revealMapSurface}
       >
         <TravelWalletSheet
           ideasWaitingCount={ideasWaitingCount}

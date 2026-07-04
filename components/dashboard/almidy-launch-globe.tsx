@@ -1,9 +1,8 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import GoogleMapsProvider from "@/components/GoogleMapsProvider";
-import AppleCanvasGlobe from "@/components/dashboard/apple-canvas-globe";
 import MobileTripsWalletSheet, {
   type MobileTripsWalletSheetTrip
 } from "@/components/dashboard/mobile-trips-wallet-sheet";
@@ -150,30 +149,15 @@ export default function AlmidyLaunchGlobeHub({
   savedTrips
 }: AlmidyLaunchGlobeHubProps) {
   const [activeTripId, setActiveTripId] = useState<string | null>(null);
-  const [showCanvasGlobe, setShowCanvasGlobe] = useState(true);
   const activeTripData = savedTrips.find((trip) => trip.id === activeTripId) ?? null;
   const tripPins = savedTrips
     .map(walletTripToGlobePin)
     .filter((pin): pin is AlmidyLaunchGlobeTripPin => Boolean(pin));
-  const canvasGlobeTrips = useMemo(
-    () =>
-      tripPins.map((pin) => ({
-        city: pin.label,
-        countryCode: pin.countryCode,
-        lat: Number(pin.lat),
-        lng: Number(pin.lng)
-      })),
-    [tripPins]
-  );
   const activeFlag = activeTripData?.countryCode
     ? countryCodeToFlag(activeTripData.countryCode)
     : null;
-  const revealMapSurface = useCallback(() => {
-    setShowCanvasGlobe(false);
-  }, []);
   const handleTripPinSelect = useCallback((tripId: string) => {
     setActiveTripId(tripId);
-    setShowCanvasGlobe(false);
   }, []);
 
   return (
@@ -187,22 +171,6 @@ export default function AlmidyLaunchGlobeHub({
           showCountryPin={false}
           tripPins={tripPins}
           useLocationFocus={false}
-        />
-      </div>
-
-      <div
-        aria-hidden={showCanvasGlobe ? undefined : true}
-        className={[
-          "absolute inset-0 z-20 h-full w-full transition-[opacity,transform,filter] duration-700 ease-[cubic-bezier(0.22,1,0.36,1)]",
-          showCanvasGlobe
-            ? "pointer-events-auto scale-100 opacity-100 blur-0"
-            : "pointer-events-none scale-110 opacity-0 blur-sm"
-        ].join(" ")}
-        data-globe-transition-state={showCanvasGlobe ? "globe" : "map"}
-      >
-        <AppleCanvasGlobe
-          onGlobeClick={revealMapSurface}
-          savedTrips={canvasGlobeTrips}
         />
       </div>
 
@@ -227,11 +195,7 @@ export default function AlmidyLaunchGlobeHub({
 
       <div className="flex-1 pointer-events-none" />
 
-      <div
-        className="relative z-30 w-full shrink-0"
-        onFocusCapture={revealMapSurface}
-        onPointerDownCapture={revealMapSurface}
-      >
+      <div className="relative z-30 w-full shrink-0">
         <MobileTripsWalletSheet
           currentYear="2026"
           onOpenSettings={() => {}}

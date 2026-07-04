@@ -261,6 +261,19 @@ async function installMockAppleMapKit(page: Page) {
       }
     }
 
+    class MockCoordinateRegion {
+      center: MockMapKitCoordinate;
+      span: { latitudeDelta: number; longitudeDelta: number };
+
+      constructor(
+        center: MockMapKitCoordinate,
+        span: { latitudeDelta: number; longitudeDelta: number }
+      ) {
+        this.center = center;
+        this.span = span;
+      }
+    }
+
     class MockPadding {
       constructor(
         public top: number,
@@ -316,9 +329,11 @@ async function installMockAppleMapKit(page: Page) {
       center: MockMapKitCoordinate | null = null;
       private container: HTMLElement;
 
-      constructor(container: HTMLElement) {
+      constructor(container: HTMLElement, options?: Record<string, unknown>) {
         this.container = container;
         this.container.dataset.mapkitMock = "ready";
+        this.container.dataset.mapkitMapType = String(options?.mapType ?? "");
+        this.container.dataset.mapkitHasRegion = options?.region ? "true" : "false";
         this.container.style.position = "relative";
       }
 
@@ -375,6 +390,11 @@ async function installMockAppleMapKit(page: Page) {
       destroy() {}
     }
 
+    (MockMap as typeof MockMap & { MapTypes?: Record<string, string> }).MapTypes = {
+      Hybrid: "hybrid",
+      Satellite: "satellite"
+    };
+
     class MockStyle {
       constructor(public options?: Record<string, unknown>) {}
     }
@@ -390,6 +410,7 @@ async function installMockAppleMapKit(page: Page) {
       Annotation: MockAnnotation,
       ColorScheme: { Dark: "dark" },
       Coordinate: MockCoordinate,
+      CoordinateRegion: MockCoordinateRegion,
       FeatureVisibility: { Hidden: "hidden" },
       init: () => {
         (window as typeof window & { __almidyMapKitInitialized?: boolean }).__almidyMapKitInitialized = true;
@@ -2804,23 +2825,22 @@ test.describe("mobile soft-launch UX", () => {
     await expect(appleCanvas).toBeVisible();
   });
 
-  test("Verify interactive canvas globe responds to tap events and alters active layouts", async ({ page }) => {
+  test("Verify launch renders native Apple MapKit hybrid surface instead of canvas globe", async ({ page }) => {
     await page.setViewportSize({ height: 900, width: 390 });
     await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
     await installMockMobileLocation(page);
 
     await page.goto(`${baseUrl}/dashboard`, { waitUntil: "commit" });
 
-    const globeLayer = page.getByTestId("apple-canvas-globe");
-    await expect(globeLayer).toBeVisible({ timeout: 30_000 });
-    await expect(page.locator('[data-globe-transition-state="globe"]').first()).toBeVisible();
+    await expect(page.getByTestId("apple-canvas-globe")).toHaveCount(0);
+    await expect(page.locator("[data-globe-transition-state]")).toHaveCount(0);
 
-    const globeCanvas = globeLayer.locator("canvas");
-    await expect(globeCanvas).toBeVisible();
-    await globeCanvas.click({ position: { x: 200, y: 200 } });
-
-    await expect(page.locator('[data-globe-transition-state="map"]').first()).toBeAttached();
-    await expect(page.locator('[data-map-system="almidy-apple-map-system"]').first()).toBeAttached();
+    const appleMapContainer = page.locator('[data-map-system="almidy-apple-map-system"]').first();
+    await expect(appleMapContainer).toBeVisible({ timeout: 30_000 });
+    await expect(appleMapContainer).toHaveAttribute("data-map-renderer", "apple-mapkit");
+    const mapKitCanvas = appleMapContainer.locator('[data-mapkit-mock="ready"]').first();
+    await expect(mapKitCanvas).toHaveAttribute("data-mapkit-map-type", "hybrid");
+    await expect(mapKitCanvas).toHaveAttribute("data-mapkit-has-region", "true");
   });
 
   test("Verify itinerary timeline workspace page fully replaces Google layers with Apple MapKit", async ({

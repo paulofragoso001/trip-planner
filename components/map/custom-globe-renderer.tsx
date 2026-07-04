@@ -43,6 +43,7 @@ type MapKitMap = {
   destroy?: () => void;
   removeAnnotation?: (annotation: MapKitAnnotation) => void;
   removeAnnotations?: (annotations: MapKitAnnotation[]) => void;
+  setRegionAnimated?: (region: unknown, animate?: boolean) => void;
   setCenterAnimated?: (coordinate: MapKitCoordinate, animate?: boolean) => void;
   showAnnotations?: (
     annotations: MapKitAnnotation[],
@@ -75,6 +76,13 @@ type MapKitRuntime = {
   Padding?: new (top: number, right: number, bottom: number, left: number) => unknown;
   init: (options: { authorizationCallback: (done: (token: string) => void) => void }) => void;
   initialized?: boolean;
+};
+
+type MapKitMapConstructor = MapKitRuntime["Map"] & {
+  MapTypes?: {
+    Hybrid?: string;
+    Satellite?: string;
+  };
 };
 
 declare global {
@@ -166,10 +174,18 @@ export function CustomGlobeRenderer({
         mapKitInitialized = true;
       }
 
+      const initialCenter = new mapkit.Coordinate(DEFAULT_WORLD_CENTER.lat, DEFAULT_WORLD_CENTER.lng);
+      const mapConstructor = mapkit.Map as MapKitMapConstructor;
+      const mapType = mapConstructor.MapTypes?.Hybrid ?? mapConstructor.MapTypes?.Satellite;
+      const initialRegion = mapkit.CoordinateRegion
+        ? new mapkit.CoordinateRegion(initialCenter, { latitudeDelta: 90, longitudeDelta: 180 })
+        : undefined;
       const map = new mapkit.Map(mapContainerRef.current, {
-        center: new mapkit.Coordinate(DEFAULT_WORLD_CENTER.lat, DEFAULT_WORLD_CENTER.lng),
+        center: initialCenter,
         colorScheme: mapkit.ColorScheme?.Dark,
         isRotationEnabled: false,
+        mapType,
+        region: initialRegion,
         showsCompass: mapkit.FeatureVisibility?.Hidden,
         showsMapTypeControl: false,
         showsScale: mapkit.FeatureVisibility?.Hidden,
@@ -264,10 +280,6 @@ export function CustomGlobeRenderer({
       data-selected-map-id={activeTripId ?? activeSurface?.selectedId ?? undefined}
     >
       <div ref={mapContainerRef} className="absolute inset-0 h-full w-full" />
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_28%,rgba(255,255,255,0.10),rgba(8,12,18,0)_36%),linear-gradient(180deg,rgba(5,8,13,0)_0%,rgba(5,8,13,0.10)_52%,rgba(5,8,13,0.28)_100%)]"
-      />
       {runtimeState === "loading" ? (
         <div className="absolute inset-0 grid place-items-center text-center text-xs font-bold uppercase tracking-[0.22em] text-white/52">
           Preparing Apple Maps
