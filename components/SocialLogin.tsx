@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { getAuthCallbackUrl } from "@/lib/auth/auth-redirect-url";
+import { signInWithNativeOAuth } from "@/lib/auth/native-oauth";
 import { createClient } from "@/lib/supabase/client";
 
 type Provider = "google" | "github" | "facebook";
@@ -48,6 +49,15 @@ export function SocialLogin() {
     setMessage("");
 
     const supabase = createClient();
+    const nativeResult = await signInWithNativeOAuth(supabase, provider);
+    if (nativeResult.handled) {
+      if (nativeResult.error) {
+        setMessage(nativeResult.error.message);
+        setLoadingProvider(null);
+      }
+      return;
+    }
+
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
       options: {

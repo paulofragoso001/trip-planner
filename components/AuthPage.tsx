@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { getAuthCallbackUrl } from "@/lib/auth/auth-redirect-url";
+import { signInWithNativeOAuth } from "@/lib/auth/native-oauth";
 import { createClient } from "@/lib/supabase/client";
 
 type AuthPageProps = {
@@ -48,6 +49,15 @@ export default function AuthPage({ message }: AuthPageProps) {
     setLoading("google");
     setStatus("");
 
+    const nativeResult = await signInWithNativeOAuth(supabase, "google");
+    if (nativeResult.handled) {
+      if (nativeResult.error) {
+        setStatus(nativeResult.error.message);
+        setLoading(null);
+      }
+      return;
+    }
+
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: { redirectTo }
@@ -69,6 +79,15 @@ export default function AuthPage({ message }: AuthPageProps) {
 
     setLoading("facebook");
     setStatus("");
+
+    const nativeResult = await signInWithNativeOAuth(supabase, "facebook");
+    if (nativeResult.handled) {
+      if (nativeResult.error) {
+        setStatus(nativeResult.error.message);
+        setLoading(null);
+      }
+      return;
+    }
 
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "facebook",

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { CapacitorAuthSessionBridge } from "@/components/native/capacitor-auth-session-bridge";
 import { validateEnv } from "@/lib/server/env";
 import "./globals.css";
 
@@ -17,7 +18,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <CapacitorAuthSessionBridge />
+        {children}
+      </body>
     </html>
   );
 }
