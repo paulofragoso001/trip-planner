@@ -2804,6 +2804,25 @@ test.describe("mobile soft-launch UX", () => {
     await expect(appleCanvas).toBeVisible();
   });
 
+  test("Verify interactive canvas globe responds to tap events and alters active layouts", async ({ page }) => {
+    await page.setViewportSize({ height: 900, width: 390 });
+    await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
+    await installMockMobileLocation(page);
+
+    await page.goto(`${baseUrl}/dashboard`, { waitUntil: "commit" });
+
+    const globeLayer = page.getByTestId("apple-canvas-globe");
+    await expect(globeLayer).toBeVisible({ timeout: 30_000 });
+    await expect(page.locator('[data-globe-transition-state="globe"]').first()).toBeVisible();
+
+    const globeCanvas = globeLayer.locator("canvas");
+    await expect(globeCanvas).toBeVisible();
+    await globeCanvas.click({ position: { x: 200, y: 200 } });
+
+    await expect(page.locator('[data-globe-transition-state="map"]').first()).toBeAttached();
+    await expect(page.locator('[data-map-system="almidy-apple-map-system"]').first()).toBeAttached();
+  });
+
   test("Verify itinerary timeline workspace page fully replaces Google layers with Apple MapKit", async ({
     page,
     request
