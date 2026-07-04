@@ -1,18 +1,35 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+export type ExpenseCurrency = "USD" | "EUR" | "GBP" | "BRL" | "JPY" | "CAD";
+export type ExpenseCategory =
+  | "transport"
+  | "lodging"
+  | "dining"
+  | "activity"
+  | "shopping"
+  | "other";
+
 export interface SegmentExpense {
   amount?: string;
   amount_cents: number;
-  category: string;
-  currency: string;
+  category: ExpenseCategory;
+  created_at?: string;
+  currency: ExpenseCurrency;
   id: string;
   segment_id: string;
   title: string;
+  updated_at?: string;
 }
 
-export type SegmentExpenseInsert = Omit<SegmentExpense, "amount" | "id">;
+export type SegmentExpenseInsert = {
+  amount_cents: number;
+  category: ExpenseCategory;
+  currency: ExpenseCurrency;
+  segment_id: string;
+  title: string;
+};
 
-const expenseColumns = "id,segment_id,title,amount_cents,currency,category";
+const expenseColumns = "id,segment_id,title,amount_cents,currency,category,created_at,updated_at";
 
 export async function getSegmentExpenses(
   segmentId: string,

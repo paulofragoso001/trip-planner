@@ -3,6 +3,44 @@ import { dashboardActionRoutes } from "../../lib/dashboard/action-routes";
 
 const baseUrl = "http://127.0.0.1:3000";
 
+test.describe("Almidy Segment Expenses Transaction API Controllers", () => {
+  test("POST /api/v1/segments/[id]/expenses rejects unauthorized client handshakes", async ({
+    request
+  }) => {
+    const fallbackResponse = await request.post("/api/v1/segments/test_segment_id/expenses", {
+      data: {
+        amount: 8.5,
+        category: "dining",
+        currency: "USD",
+        title: "Airport Coffee"
+      },
+      headers: {
+        Origin: baseUrl,
+        "Sec-Fetch-Site": "same-origin"
+      }
+    });
+
+    expect(fallbackResponse.status()).toBe(401);
+  });
+
+  test("POST /api/v1/segments/[id]/expenses intercepts structural parameter typos with 400 Bad Request", async ({
+    request
+  }) => {
+    const brokenResponse = await request.post("/api/v1/segments/test_segment_id/expenses", {
+      data: {
+        amount: -120
+      },
+      headers: {
+        Authorization: "Bearer mock_test_user_session_token_string",
+        Origin: baseUrl,
+        "Sec-Fetch-Site": "same-origin"
+      }
+    });
+
+    expect(brokenResponse.status()).toBe(400);
+  });
+});
+
 test.describe("dashboard navigation and client-state actions", () => {
   test.beforeEach(async ({ page }) => {
     await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });

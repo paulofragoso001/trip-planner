@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { createSegmentExpense, getSegmentExpenses } from "@/lib/db/expenses";
 import { authorizeDashboardApi } from "@/lib/server/dashboard-test-auth";
@@ -44,7 +45,7 @@ type RouteContext = {
   params: Promise<{ segmentId: string }>;
 };
 
-export async function GET(_request: Request, { params }: RouteContext) {
+export async function GET(request: Request, { params }: RouteContext) {
   const segmentId = readSegmentId(await params);
   if (!segmentId) {
     return NextResponse.json(
@@ -53,7 +54,7 @@ export async function GET(_request: Request, { params }: RouteContext) {
     );
   }
 
-  const auth = await authorizeDashboardApi();
+  const auth = await authorizeExpenseLedgerRequest(request);
   if (!auth) {
     return NextResponse.json({ error: "Unauthorized", success: false }, { status: 401 });
   }
@@ -89,11 +90,6 @@ export async function POST(request: Request, { params }: RouteContext) {
     );
   }
 
-  const auth = await authorizeDashboardApi();
-  if (!auth) {
-    return NextResponse.json({ error: "Unauthorized", success: false }, { status: 401 });
-  }
-
   const body = await readJsonObject(request);
   if (!body.ok) {
     return NextResponse.json({ error: body.error, success: false }, { status: 400 });
@@ -111,14 +107,19 @@ export async function POST(request: Request, { params }: RouteContext) {
     );
   }
 
+  const auth = await authorizeExpenseLedgerRequest(request);
+  if (!auth) {
+    return NextResponse.json({ error: "Unauthorized", success: false }, { status: 401 });
+  }
+
   try {
     const expense = await createSegmentExpense(
       {
-      amount_cents: payload.data.amount_cents,
-      category: payload.data.category,
-      currency: payload.data.currency,
-      segment_id: segmentId,
-      title: payload.data.title
+        amount_cents: payload.data.amount_cents,
+        category: payload.data.category,
+        currency: payload.data.currency,
+        segment_id: segmentId,
+        title: payload.data.title
       },
       auth.supabase
     );
@@ -142,6 +143,43 @@ export function OPTIONS() {
 function readSegmentId(params: { segmentId?: string }) {
   const segmentId = params.segmentId?.trim();
   return segmentId || null;
+}
+
+async function authorizeExpenseLedgerRequest(request: Request) {
+  const bearerToken = readBearerToken(request.headers.get("authorization"));
+  if (!bearerToken) {
+    return authorizeDashboardApi();
+  }
+
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+  if (!supabaseUrl || !publishableKey) {
+    return null;
+  }
+
+  const supabase = createSupabaseClient(supabaseUrl, publishableKey, {
+    global: {
+      headers: {
+        Authorization: `Bearer ${bearerToken}`
+      }
+    }
+  });
+
+  const {
+    data: { user },
+    error
+  } = await supabase.auth.getUser(bearerToken);
+
+  if (error || !user) {
+    return null;
+  }
+
+  return { supabase, userId: user.id };
+}
+
+function readBearerToken(authHeader: string | null) {
+  const match = authHeader?.match(/^Bearer\s+(.+)$/i);
+  return match?.[1]?.trim() || null;
 }
 
 async function readJsonObject(request: Request) {
