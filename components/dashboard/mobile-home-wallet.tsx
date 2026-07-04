@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import type { MouseEvent } from "react";
 import { useEffect, useRef, useState } from "react";
 import type { DashboardData } from "@/app/dashboard/loader";
-import { CustomGlobeRenderer } from "@/components/map/custom-globe-renderer";
+import { AlmidyLaunchGlobe } from "@/components/dashboard/almidy-launch-globe";
 import { TravelWalletSheet } from "@/components/dashboard/travel-wallet-sheet";
 import { cn } from "@/components/trip-ui";
 import { dashboardActionRoutes } from "@/lib/dashboard/action-routes";
@@ -53,7 +53,8 @@ export function MobileHomeWallet({
         className="globe-layer absolute inset-x-0 bottom-0 top-0 overflow-hidden bg-black"
         data-testid="mobile-home-launch-globe"
       >
-        <CustomGlobeRenderer
+        <AlmidyLaunchGlobe
+          className="absolute inset-0 h-full w-full"
           defaultFocusWhenEmpty
           showCountryPin={false}
           useLocationFocus
