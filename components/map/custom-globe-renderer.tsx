@@ -105,6 +105,7 @@ type AppleMapPin = {
 const APPLE_MAPKIT_SCRIPT_ID = "almidy-apple-mapkit-js";
 const APPLE_MAPKIT_SCRIPT_SRC = "https://cdn.apple-mapkit.com/mk/5.x.x/mapkit.js";
 const APPLE_MAP_SYSTEM_ID = "almidy-apple-map-system";
+const APPLE_MAPKIT_LOG_PREFIX = "ALMIDY MAPKIT";
 const DEFAULT_WORLD_CENTER: AlmidyCoordinate = { lat: 28.5, lng: -81.5 };
 const DEFAULT_LOCATION_FLAG = "•";
 
@@ -150,18 +151,30 @@ export function CustomGlobeRenderer({
 
   const initializeMapKit = useCallback(async () => {
     try {
-      const token = await loadAppleMapKitToken();
+      const rawToken = await loadAppleMapKitToken();
+      const token = sanitizeRuntimeMapKitToken(rawToken ?? "");
 
       if (!token) {
+        console.error(`${APPLE_MAPKIT_LOG_PREFIX} TOKEN MISSING: /api/mapkit-token returned no usable token.`);
         setRuntimeState("missing-token");
         return;
+      }
+
+      if (rawToken && rawToken !== token) {
+        console.error(`${APPLE_MAPKIT_LOG_PREFIX} TOKEN SANITIZED: token contained wrapping quotes, spaces, or newline characters.`);
       }
 
       await loadMapKitScript();
       const mapkit = window.mapkit;
 
-      if (!mapkit || !mapContainerRef.current || mapRef.current) {
-        setRuntimeState(mapkit ? "ready" : "error");
+      if (!mapkit) {
+        console.error(`${APPLE_MAPKIT_LOG_PREFIX} SCRIPT READY WITHOUT RUNTIME: window.mapkit was unavailable after script load.`);
+        setRuntimeState("error");
+        return;
+      }
+
+      if (!mapContainerRef.current || mapRef.current) {
+        setRuntimeState("ready");
         return;
       }
 
@@ -195,7 +208,8 @@ export function CustomGlobeRenderer({
 
       mapRef.current = map;
       setRuntimeState("ready");
-    } catch {
+    } catch (initError) {
+      console.error(`${APPLE_MAPKIT_LOG_PREFIX} CONTEXT CRASH:`, initError);
       setRuntimeState("error");
     }
   }, []);
@@ -314,22 +328,60 @@ function loadMapKitScript() {
     const existingScript = document.getElementById(APPLE_MAPKIT_SCRIPT_ID) as HTMLScriptElement | null;
 
     if (existingScript) {
+      existingScript.crossOrigin = "anonymous";
+      existingScript.setAttribute("crossorigin", "anonymous");
+
+      if (existingScript.dataset.mapkitLoadState === "loaded") {
+        if (window.mapkit) {
+          resolve();
+          return;
+        }
+
+        reject(new Error("MapKit script loaded without exposing window.mapkit."));
+        return;
+      }
+
       existingScript.addEventListener("load", () => resolve(), { once: true });
-      existingScript.addEventListener("error", () => reject(new Error("MapKit script failed.")), { once: true });
+      existingScript.addEventListener(
+        "error",
+        () => {
+          mapKitScriptPromise = null;
+          console.error(`${APPLE_MAPKIT_LOG_PREFIX} SCRIPT LOAD FAILED`, { src: APPLE_MAPKIT_SCRIPT_SRC });
+          reject(new Error("MapKit script failed."));
+        },
+        { once: true }
+      );
       return;
     }
 
     const script = document.createElement("script");
     script.async = true;
     script.crossOrigin = "anonymous";
+    script.setAttribute("crossorigin", "anonymous");
     script.id = APPLE_MAPKIT_SCRIPT_ID;
     script.src = APPLE_MAPKIT_SCRIPT_SRC;
-    script.onload = () => resolve();
-    script.onerror = () => reject(new Error("MapKit script failed."));
+    script.onload = () => {
+      script.dataset.mapkitLoadState = "loaded";
+      resolve();
+    };
+    script.onerror = () => {
+      script.dataset.mapkitLoadState = "failed";
+      mapKitScriptPromise = null;
+      console.error(`${APPLE_MAPKIT_LOG_PREFIX} SCRIPT LOAD FAILED`, { src: APPLE_MAPKIT_SCRIPT_SRC });
+      reject(new Error("MapKit script failed."));
+    };
     document.head.appendChild(script);
   });
 
   return mapKitScriptPromise;
+}
+
+function sanitizeRuntimeMapKitToken(value: string) {
+  return value
+    .replace(/\\n/g, "")
+    .replace(/[\r\n\t ]+/g, "")
+    .replace(/^["']+|["']+$/g, "")
+    .trim();
 }
 
 function buildAppleMapPins({
