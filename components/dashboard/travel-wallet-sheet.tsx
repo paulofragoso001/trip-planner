@@ -248,7 +248,7 @@ export function TravelWalletSheet({
       {isTripsSurface ? <span className="sr-only" data-testid="mobile-trips-sheet-content">My Trips sheet</span> : null}
       <div
         className={cn(
-          "mx-0 w-full overflow-hidden bg-white text-slate-950 shadow-[0_-24px_70px_rgba(0,0,0,0.34)] transition-[height,max-height,border-radius] duration-300 ease-out",
+          "relative mx-0 w-full overflow-hidden bg-white text-slate-950 shadow-[0_-24px_70px_rgba(0,0,0,0.34)] transition-[height,max-height,border-radius] duration-300 ease-out",
           isCollapsed
             ? cn(
                 "rounded-t-[2rem] min-[390px]:rounded-t-[2.2rem]",
@@ -323,6 +323,7 @@ export function TravelWalletSheet({
                 primaryHref={primaryHref}
                 primaryLabel={primaryLabel}
                 primaryMeta={primaryMeta}
+                pinned={isEmptyHomeLaunch}
                 surface={surface}
               />
             ) : recentTrips.length === 0 ? (
@@ -404,9 +405,11 @@ function CollapsedLauncher({
   primaryHref,
   primaryLabel,
   primaryMeta,
+  pinned = false,
   surface
 }: {
   onOpenSearch: () => void;
+  pinned?: boolean;
   primaryHref: string;
   primaryLabel: string;
   primaryMeta: string;
@@ -416,7 +419,14 @@ function CollapsedLauncher({
   const searchLabel = surface === "trips" ? "List" : "Search";
 
   return (
-    <div className="mt-4" data-testid="ios-launch-sheet-collapsed">
+    <div
+      className={cn(
+        pinned
+          ? "absolute inset-x-4 bottom-[calc(1.05rem+env(safe-area-inset-bottom))] min-[390px]:inset-x-5"
+          : "mt-4"
+      )}
+      data-testid="ios-launch-sheet-collapsed"
+    >
       <div data-testid="mobile-home-actions">
         <div className="grid grid-cols-[3.8rem_minmax(0,1fr)_3.8rem] items-center gap-3" data-testid="mobile-home-compact-actions">
           {surface === "trips" ? (
