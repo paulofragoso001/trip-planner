@@ -3,7 +3,6 @@
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Map } from "lucide-react";
-import Link from "next/link";
 import GoogleMapsProvider from "@/components/GoogleMapsProvider";
 import MobileTripsWalletSheet, {
   type MobileTripsWalletSheetTrip
@@ -173,8 +172,6 @@ export default function AlmidyLaunchGlobeHub({
     setShowNativeMapControl(canOpenNativeMap());
   }, []);
 
-  const showFirstTripCard = savedTrips.length === 0;
-
   return (
     <div className="fixed inset-0 flex h-screen w-screen flex-col justify-between overflow-hidden bg-[#121214]">
       <div className="absolute inset-0 z-10 h-full w-full pb-[240px]">
@@ -189,51 +186,10 @@ export default function AlmidyLaunchGlobeHub({
         />
       </div>
 
-      {showFirstTripCard ? (
-        <section
-          aria-label="Create your first trip"
-          className="absolute inset-x-4 top-[calc(0.75rem+env(safe-area-inset-top))] z-30"
-          data-testid="launch-first-trip-card"
-          id="create-trip-card"
-        >
-          <div className="grid min-h-[7.2rem] grid-cols-[3.25rem_minmax(0,1fr)] gap-3 rounded-[1.4rem] bg-white px-3.5 py-3.5 text-slate-950 shadow-[0_18px_46px_rgba(0,0,0,0.24)] ring-1 ring-black/5 min-[390px]:min-h-[7.75rem] min-[390px]:grid-cols-[3.5rem_minmax(0,1fr)] min-[390px]:rounded-[1.55rem] min-[390px]:px-4">
-            <div
-              aria-hidden="true"
-              className="grid h-12 w-12 place-items-center rounded-full bg-slate-100 text-[1.95rem] shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] min-[390px]:h-[3.25rem] min-[390px]:w-[3.25rem] min-[390px]:text-[2.1rem]"
-              data-has-country-flag="true"
-              data-testid="launch-first-trip-country-flag"
-            >
-              {DEFAULT_COUNTRY.flag}
-            </div>
-            <div className="min-w-0">
-              <h2 className="text-[1.18rem] font-black leading-tight tracking-normal text-slate-950 min-[390px]:text-[1.32rem]">
-                Create your first trip
-              </h2>
-              <p className="mt-1 text-[0.9rem] font-semibold leading-snug text-slate-400 min-[390px]:text-[0.98rem]">
-                After creating a trip, a country flag will appear on the map to mark its location.
-              </p>
-              <Link
-                className="mt-2 inline-flex min-h-8 items-center rounded-full text-[0.98rem] font-black text-orange-500 transition hover:text-orange-600 focus:outline-none focus:ring-4 focus:ring-orange-300/20 min-[390px]:text-[1.05rem]"
-                data-testid="launch-first-trip-create"
-                href="/dashboard/trips?view=list#new-trip"
-                id="create-trip-btn"
-              >
-                Create Trip
-              </Link>
-            </div>
-          </div>
-        </section>
-      ) : null}
-
       {showNativeMapControl ? (
         <button
           aria-label="Open native map"
-          className={[
-            "absolute right-4 z-30 grid h-11 w-11 place-items-center rounded-full border border-white/15 bg-black/70 text-white shadow-[0_10px_28px_rgba(0,0,0,0.45)] backdrop-blur-md transition hover:bg-black/80 focus:outline-none focus:ring-4 focus:ring-orange-400/25",
-            showFirstTripCard
-              ? "top-[calc(9.25rem+env(safe-area-inset-top))]"
-              : "top-[max(16px,env(safe-area-inset-top))]"
-          ].join(" ")}
+          className="absolute right-4 top-[max(16px,env(safe-area-inset-top))] z-30 grid h-11 w-11 place-items-center rounded-full border border-white/15 bg-black/70 text-white shadow-[0_10px_28px_rgba(0,0,0,0.45)] backdrop-blur-md transition hover:bg-black/80 focus:outline-none focus:ring-4 focus:ring-orange-400/25"
           data-testid="ios-native-map-open"
           onClick={handleOpenNativeMap}
           type="button"
