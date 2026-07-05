@@ -9,6 +9,7 @@ import {
   ChevronRight,
   Cloud,
   CreditCard,
+  Eye,
   FileText,
   List,
   Globe2,
@@ -83,6 +84,7 @@ export function TravelWalletSheet({
   const [isTouchDragging, setIsTouchDragging] = useState(false);
   const [touchTransform, setTouchTransform] = useState<number | null>(null);
   const [returnSheetState, setReturnSheetState] = useState<SheetState>(initialSheetState);
+  const [showTripScopeMenu, setShowTripScopeMenu] = useState(false);
   const dragStartY = useRef<number | null>(null);
   const ignoreNextHandleClick = useRef(false);
   const touchStartY = useRef<number | null>(null);
@@ -115,14 +117,17 @@ export function TravelWalletSheet({
   }, [forceExpanded]);
 
   function expandTrips() {
+    setShowTripScopeMenu(false);
     setSheetState("expanded");
   }
 
   function collapseSheet() {
+    setShowTripScopeMenu(false);
     setSheetState("collapsed");
   }
 
   function openSearch() {
+    setShowTripScopeMenu(false);
     setReturnSheetState(isSettings || isSearch ? "collapsed" : sheetState);
     setSheetState("search");
   }
@@ -160,7 +165,18 @@ export function TravelWalletSheet({
       return;
     }
 
+    setShowTripScopeMenu(false);
     setSheetState((current) => (current === "collapsed" ? "expanded" : "collapsed"));
+  }
+
+  function handleTripsTitleClick() {
+    if (isEmptyHomeLaunch && isCollapsed) {
+      setShowTripScopeMenu((isVisible) => !isVisible);
+      return;
+    }
+
+    setShowTripScopeMenu(false);
+    setSheetState(isCollapsed ? "expanded" : "collapsed");
   }
 
   function handleTouchStart(event: TouchEvent<HTMLElement>) {
@@ -246,6 +262,7 @@ export function TravelWalletSheet({
       style={sheetDragStyle}
     >
       {isTripsSurface ? <span className="sr-only" data-testid="mobile-trips-sheet-content">My Trips sheet</span> : null}
+      {isEmptyHomeLaunch && isCollapsed && showTripScopeMenu ? <TripScopeMenu /> : null}
       <div
         className={cn(
           "relative mx-0 w-full overflow-hidden bg-white text-slate-950 shadow-[0_-24px_70px_rgba(0,0,0,0.34)] transition-[height,max-height,border-radius] duration-300 ease-out",
@@ -292,10 +309,11 @@ export function TravelWalletSheet({
             <header className="flex items-start justify-between gap-3">
               <button
                 type="button"
-                aria-expanded={!isCollapsed}
-                aria-label={isCollapsed ? "Open My Trips" : "Collapse My Trips"}
+                aria-controls={isEmptyHomeLaunch && isCollapsed ? "launch-trip-scope-menu" : undefined}
+                aria-expanded={isEmptyHomeLaunch && isCollapsed ? showTripScopeMenu : !isCollapsed}
+                aria-label={isEmptyHomeLaunch && isCollapsed ? "Choose trip list" : isCollapsed ? "Open My Trips" : "Collapse My Trips"}
                 className="min-w-0 flex-1 text-left focus:outline-none focus:ring-4 focus:ring-orange-300/20"
-                onClick={isCollapsed ? expandTrips : collapseSheet}
+                onClick={handleTripsTitleClick}
               >
                 <span className="flex min-w-0 items-center gap-2">
                   <h1 className="truncate text-[clamp(2.35rem,11.5vw,3.35rem)] font-black leading-none tracking-normal text-slate-950">
@@ -303,7 +321,10 @@ export function TravelWalletSheet({
                   </h1>
                   <ChevronDown
                     aria-hidden="true"
-                    className={cn("mt-2 h-6 w-6 shrink-0 text-slate-400 transition-transform", isExpanded && "rotate-180")}
+                    className={cn(
+                      "mt-2 h-6 w-6 shrink-0 text-slate-400 transition-transform",
+                      (isExpanded || showTripScopeMenu) && "rotate-180"
+                    )}
                   />
                 </span>
               </button>
@@ -311,7 +332,10 @@ export function TravelWalletSheet({
                 type="button"
                 aria-label="Open settings"
                 className="grid h-[3.25rem] w-[3.25rem] shrink-0 place-items-center rounded-full bg-orange-50 text-orange-500 transition hover:bg-orange-100 focus:outline-none focus:ring-4 focus:ring-orange-300/20"
-                onClick={() => setSheetState("settings")}
+                onClick={() => {
+                  setShowTripScopeMenu(false);
+                  setSheetState("settings");
+                }}
               >
                 <Settings className="h-6 w-6" aria-hidden="true" />
               </button>
@@ -396,6 +420,40 @@ function WelcomeGetStarted() {
           </Link>
         </div>
       </section>
+    </div>
+  );
+}
+
+function TripScopeMenu() {
+  return (
+    <div
+      className="absolute bottom-[calc(clamp(18rem,32dvh,21rem)-1.6rem)] left-3 z-20 w-[min(18rem,calc(100vw-2rem))] overflow-hidden rounded-[1.85rem] border border-white/55 bg-white/72 text-slate-950 shadow-[0_24px_70px_rgba(15,23,42,0.22)] backdrop-blur-2xl min-[390px]:left-4 min-[390px]:w-[19.2rem]"
+      data-testid="launch-trip-scope-menu"
+      id="launch-trip-scope-menu"
+    >
+      <button
+        className="grid min-h-[5.6rem] w-full grid-cols-[3.6rem_minmax(0,1fr)] items-center gap-2 px-5 text-left transition hover:bg-white/55 focus:outline-none focus:ring-4 focus:ring-orange-300/20"
+        type="button"
+      >
+        <span className="grid h-10 w-10 place-items-center text-slate-950" aria-hidden="true">
+          <Eye className="h-7 w-7" />
+        </span>
+        <span className="min-w-0">
+          <span className="block truncate text-[1.45rem] font-medium leading-tight text-black">Friends&apos; Trips</span>
+          <span className="mt-1 block text-[1.02rem] font-medium leading-tight text-slate-500">
+            All trips that you didn&apos;t travel together.
+          </span>
+        </span>
+      </button>
+      <Link
+        className="grid min-h-[4.4rem] w-full grid-cols-[3.6rem_minmax(0,1fr)] items-center gap-2 px-5 text-left transition hover:bg-white/55 focus:outline-none focus:ring-4 focus:ring-orange-300/20"
+        href={dashboardActionRoutes.trips.list}
+      >
+        <span className="grid h-10 w-10 place-items-center text-slate-950" aria-hidden="true">
+          <Briefcase className="h-7 w-7" />
+        </span>
+        <span className="truncate text-[1.45rem] font-medium leading-tight text-black">My Trips</span>
+      </Link>
     </div>
   );
 }
