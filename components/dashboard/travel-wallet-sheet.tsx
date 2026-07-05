@@ -341,7 +341,7 @@ export function TravelWalletSheet({
               </button>
             </header>
 
-            {isCollapsed ? (
+            {isCollapsed && !isEmptyHomeLaunch ? (
               <CollapsedLauncher
                 onOpenSearch={openSearch}
                 primaryHref={primaryHref}
