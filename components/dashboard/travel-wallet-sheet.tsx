@@ -341,15 +341,16 @@ export function TravelWalletSheet({
               </button>
             </header>
 
-            {isCollapsed && !isEmptyHomeLaunch ? (
-              <CollapsedLauncher
-                onOpenSearch={openSearch}
-                primaryHref={primaryHref}
-                primaryLabel={primaryLabel}
-                primaryMeta={primaryMeta}
-                pinned={isEmptyHomeLaunch}
-                surface={surface}
-              />
+            {isCollapsed ? (
+              isEmptyHomeLaunch ? null : (
+                <CollapsedLauncher
+                  onOpenSearch={openSearch}
+                  primaryHref={primaryHref}
+                  primaryLabel={primaryLabel}
+                  primaryMeta={primaryMeta}
+                  surface={surface}
+                />
+              )
             ) : recentTrips.length === 0 ? (
               <WelcomeGetStarted />
             ) : isTripsSurface ? (
