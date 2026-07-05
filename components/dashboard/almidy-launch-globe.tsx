@@ -2,8 +2,7 @@
 
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Briefcase, Eye, Map, Settings } from "lucide-react";
-import Link from "next/link";
+import { Map } from "lucide-react";
 import GoogleMapsProvider from "@/components/GoogleMapsProvider";
 import MobileTripsWalletSheet, {
   type MobileTripsWalletSheetTrip
@@ -173,8 +172,6 @@ export default function AlmidyLaunchGlobeHub({
     setShowNativeMapControl(canOpenNativeMap());
   }, []);
 
-  const isEmptyLaunch = savedTrips.length === 0;
-
   return (
     <div className="fixed inset-0 flex h-screen w-screen flex-col justify-between overflow-hidden bg-[#121214]">
       <div className="absolute inset-0 z-10 h-full w-full pb-[240px]">
@@ -189,17 +186,10 @@ export default function AlmidyLaunchGlobeHub({
         />
       </div>
 
-      {isEmptyLaunch ? <LaunchEmptyTripCard /> : null}
-
       {showNativeMapControl ? (
         <button
           aria-label="Open native map"
-          className={[
-            "absolute right-4 z-30 grid h-11 w-11 place-items-center rounded-full border border-white/15 bg-black/70 text-white shadow-[0_10px_28px_rgba(0,0,0,0.45)] backdrop-blur-md transition hover:bg-black/80 focus:outline-none focus:ring-4 focus:ring-orange-400/25",
-            isEmptyLaunch
-              ? "top-[calc(9.25rem+env(safe-area-inset-top))]"
-              : "top-[max(16px,env(safe-area-inset-top))]"
-          ].join(" ")}
+          className="absolute right-4 top-[max(16px,env(safe-area-inset-top))] z-30 grid h-11 w-11 place-items-center rounded-full border border-white/15 bg-black/70 text-white shadow-[0_10px_28px_rgba(0,0,0,0.45)] backdrop-blur-md transition hover:bg-black/80 focus:outline-none focus:ring-4 focus:ring-orange-400/25"
           data-testid="ios-native-map-open"
           onClick={handleOpenNativeMap}
           type="button"
@@ -230,124 +220,15 @@ export default function AlmidyLaunchGlobeHub({
       <div className="flex-1 pointer-events-none" />
 
       <div className="relative z-30 w-full shrink-0">
-        {isEmptyLaunch ? (
-          <LaunchEmptyTripsSheet />
-        ) : (
-          <MobileTripsWalletSheet
-            currentYear="2026"
-            onOpenSettings={() => {}}
-            onOpenStats={() => {}}
-            onYearChange={() => {}}
-            trips={savedTrips}
-          />
-        )}
+        <MobileTripsWalletSheet
+          currentYear="2026"
+          onOpenSettings={() => {}}
+          onOpenStats={() => {}}
+          onYearChange={() => {}}
+          trips={savedTrips}
+        />
       </div>
     </div>
-  );
-}
-
-function LaunchEmptyTripCard() {
-  return (
-    <section
-      aria-label="Create your first trip"
-      className="absolute inset-x-4 top-[calc(0.75rem+env(safe-area-inset-top))] z-30"
-      data-testid="launch-first-trip-card"
-      id="create-trip-card"
-    >
-      <div className="grid min-h-[7.2rem] grid-cols-[3.25rem_minmax(0,1fr)] gap-3 rounded-[1.4rem] bg-white px-3.5 py-3.5 text-slate-950 shadow-[0_18px_46px_rgba(0,0,0,0.24)] ring-1 ring-black/5 min-[390px]:min-h-[7.75rem] min-[390px]:grid-cols-[3.5rem_minmax(0,1fr)] min-[390px]:rounded-[1.55rem] min-[390px]:px-4">
-        <div
-          aria-hidden="true"
-          className="grid h-12 w-12 place-items-center rounded-full bg-slate-100 text-[1.95rem] shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] min-[390px]:h-[3.25rem] min-[390px]:w-[3.25rem] min-[390px]:text-[2.1rem]"
-          data-has-country-flag="true"
-          data-testid="launch-first-trip-country-flag"
-        >
-          {DEFAULT_COUNTRY.flag}
-        </div>
-        <div className="min-w-0">
-          <h2 className="text-[1.18rem] font-black leading-tight tracking-normal text-slate-950 min-[390px]:text-[1.32rem]">
-            Create your first trip
-          </h2>
-          <p className="mt-1 text-[0.9rem] font-semibold leading-snug text-slate-400 min-[390px]:text-[0.98rem]">
-            After creating a trip, a country flag will appear on the map to mark its location.
-          </p>
-          <Link
-            className="mt-2 inline-flex min-h-8 items-center rounded-full text-[0.98rem] font-black text-orange-500 transition hover:text-orange-600 focus:outline-none focus:ring-4 focus:ring-orange-300/20 min-[390px]:text-[1.05rem]"
-            data-testid="launch-first-trip-create"
-            href="/dashboard/trips?view=list#new-trip"
-            id="create-trip-btn"
-          >
-            Create Trip
-          </Link>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function LaunchEmptyTripsSheet() {
-  const [isMenuOpen, setIsMenuOpen] = useState(true);
-
-  return (
-    <section
-      aria-label="My Trips wallet sheet"
-      className="fixed inset-x-4 bottom-0 z-50 min-h-[13.6rem] rounded-t-[2rem] bg-white text-slate-950 shadow-[0_-18px_54px_rgba(0,0,0,0.24)] ring-1 ring-black/5"
-      data-testid="mobile-country-sheet"
-    >
-      <div
-        className="relative px-5 pb-[calc(1.75rem+env(safe-area-inset-bottom))] pt-7"
-        data-sheet-state="collapsed"
-        data-sheet-surface="home"
-        data-testid="mobile-home-wallet-content"
-      >
-        <div aria-hidden="true" className="absolute left-1/2 top-2 h-1 w-12 -translate-x-1/2 rounded-full bg-slate-300" />
-        <div className="flex items-start justify-between gap-4" data-testid="ios-launch-sheet-collapsed">
-          <div className="min-w-0">
-            <button
-              aria-expanded={isMenuOpen}
-              aria-label="Choose trip collection"
-              className="inline-flex max-w-full items-center gap-2 rounded-2xl text-left text-[2.75rem] font-black leading-none tracking-normal text-black transition focus:outline-none focus:ring-4 focus:ring-orange-300/20"
-              onClick={() => setIsMenuOpen((current) => !current)}
-              type="button"
-            >
-              <span className="truncate">My Trips</span>
-              <span aria-hidden="true" className="mt-2 text-4xl font-light leading-none text-slate-400">⌄</span>
-            </button>
-            {isMenuOpen ? (
-              <div className="absolute -top-[9.5rem] left-3 z-20 w-[min(21rem,calc(100vw-3rem))] overflow-hidden rounded-[1.75rem] border border-slate-200/70 bg-white/72 p-3 text-slate-950 shadow-[0_18px_46px_rgba(15,23,42,0.22)] backdrop-blur-xl">
-                <button
-                  className="grid w-full grid-cols-[3rem_minmax(0,1fr)] items-center gap-3 rounded-2xl px-2 py-2 text-left transition hover:bg-white/60 focus:outline-none focus:ring-4 focus:ring-orange-300/20"
-                  type="button"
-                >
-                  <Eye className="mx-auto h-7 w-7 text-black" aria-hidden="true" />
-                  <span className="min-w-0">
-                    <span className="block text-xl font-medium leading-tight text-black">Friends' Trips</span>
-                    <span className="mt-1 block text-base font-medium leading-tight text-slate-600">
-                      All trips that you didn't travel together.
-                    </span>
-                  </span>
-                </button>
-                <Link
-                  aria-label="Open trip list"
-                  className="grid w-full grid-cols-[3rem_minmax(0,1fr)] items-center gap-3 rounded-2xl px-2 py-3 text-left transition hover:bg-white/60 focus:outline-none focus:ring-4 focus:ring-orange-300/20"
-                  href="/dashboard/trips?view=list"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  <Briefcase className="mx-auto h-7 w-7 text-black" aria-hidden="true" />
-                  <span className="block text-xl font-medium leading-tight text-black">My Trips</span>
-                </Link>
-              </div>
-            ) : null}
-          </div>
-          <button
-            aria-label="Trip settings"
-            className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-orange-100 text-orange-500 transition hover:bg-orange-200 focus:outline-none focus:ring-4 focus:ring-orange-300/25"
-            type="button"
-          >
-            <Settings className="h-7 w-7" aria-hidden="true" />
-          </button>
-        </div>
-      </div>
-    </section>
   );
 }
 
