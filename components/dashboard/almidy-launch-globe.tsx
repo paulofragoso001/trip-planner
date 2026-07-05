@@ -2,12 +2,14 @@
 
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Map } from "lucide-react";
 import GoogleMapsProvider from "@/components/GoogleMapsProvider";
 import MobileTripsWalletSheet, {
   type MobileTripsWalletSheetTrip
 } from "@/components/dashboard/mobile-trips-wallet-sheet";
 import { CustomGlobeRenderer } from "@/components/map/custom-globe-renderer";
 import { countryCodeToFlag } from "@/lib/map/wayline-map-pins";
+import { canOpenNativeMap, openNativeMap } from "@/lib/native-map";
 import type {
   AlmidyLaunchGlobeTripPin,
   AlmidyLocationState
@@ -149,6 +151,7 @@ export default function AlmidyLaunchGlobeHub({
   savedTrips
 }: AlmidyLaunchGlobeHubProps) {
   const [activeTripId, setActiveTripId] = useState<string | null>(null);
+  const [showNativeMapControl, setShowNativeMapControl] = useState(false);
   const activeTripData = savedTrips.find((trip) => trip.id === activeTripId) ?? null;
   const tripPins = savedTrips
     .map(walletTripToGlobePin)
@@ -158,6 +161,15 @@ export default function AlmidyLaunchGlobeHub({
     : null;
   const handleTripPinSelect = useCallback((tripId: string) => {
     setActiveTripId(tripId);
+  }, []);
+  const handleOpenNativeMap = useCallback(() => {
+    void openNativeMap().catch((error) => {
+      console.error("Unable to open native map", error);
+    });
+  }, []);
+
+  useEffect(() => {
+    setShowNativeMapControl(canOpenNativeMap());
   }, []);
 
   return (
@@ -173,6 +185,18 @@ export default function AlmidyLaunchGlobeHub({
           useLocationFocus={false}
         />
       </div>
+
+      {showNativeMapControl ? (
+        <button
+          aria-label="Open native map"
+          className="absolute right-4 top-[max(16px,env(safe-area-inset-top))] z-30 grid h-11 w-11 place-items-center rounded-full border border-white/15 bg-black/70 text-white shadow-[0_10px_28px_rgba(0,0,0,0.45)] backdrop-blur-md transition hover:bg-black/80 focus:outline-none focus:ring-4 focus:ring-orange-400/25"
+          data-testid="ios-native-map-open"
+          onClick={handleOpenNativeMap}
+          type="button"
+        >
+          <Map className="h-5 w-5" aria-hidden="true" />
+        </button>
+      ) : null}
 
       {activeTripId && activeTripData ? (
         <div className="absolute bottom-[280px] left-4 right-4 z-20 flex animate-in items-center justify-between rounded-xl border border-zinc-800/80 bg-[#1e1e24]/90 p-4 shadow-[0_12px_32px_rgba(0,0,0,0.6)] backdrop-blur-md fade-in slide-in-from-bottom-3 duration-200">
