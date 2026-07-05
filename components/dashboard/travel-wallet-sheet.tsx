@@ -95,6 +95,7 @@ export function TravelWalletSheet({
   const isSearch = sheetState === "search";
   const currentYear = new Date().getFullYear();
   const isTripsSurface = surface === "trips";
+  const isEmptyHomeLaunch = !isTripsSurface && recentTrips.length === 0;
   const sheetHandleLabel = isTripsSurface
     ? isCollapsed
       ? "Expand My Trips sheet"
@@ -249,7 +250,12 @@ export function TravelWalletSheet({
         className={cn(
           "mx-0 w-full overflow-hidden bg-white text-slate-950 shadow-[0_-24px_70px_rgba(0,0,0,0.34)] transition-[height,max-height,border-radius] duration-300 ease-out",
           isCollapsed
-            ? "h-[clamp(10.6rem,21dvh,12.1rem)] max-h-[clamp(10.6rem,21dvh,12.1rem)] rounded-t-[2rem] min-[390px]:rounded-t-[2.2rem]"
+            ? cn(
+                "rounded-t-[2rem] min-[390px]:rounded-t-[2.2rem]",
+                isEmptyHomeLaunch
+                  ? "h-[clamp(18rem,32dvh,21rem)] max-h-[clamp(18rem,32dvh,21rem)]"
+                  : "h-[clamp(10.6rem,21dvh,12.1rem)] max-h-[clamp(10.6rem,21dvh,12.1rem)]"
+              )
             : "h-[100dvh] min-h-[100dvh] max-h-[100dvh] rounded-t-[2rem] min-[390px]:rounded-t-[2.25rem]"
         )}
         data-testid="ios-launch-sheet"
