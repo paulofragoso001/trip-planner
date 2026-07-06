@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { CalendarDays, ImageIcon, MapPin } from "lucide-react";
+import { CalendarDays, ImageIcon } from "lucide-react";
 import type { FormEvent } from "react";
 import { useEffect, useState } from "react";
 import GoogleMapsProvider from "@/components/GoogleMapsProvider";
@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/mobile-form";
 import { useAlmidyAction } from "@/hooks/use-wayline-action";
 import { countryCodeFromDestinationText } from "@/lib/map/wayline-map-pins";
+import { buildPlacePhotoUrl } from "@/lib/travel-data/photo-url";
 import {
   TRIP_TRAVEL_STYLES,
   TRIP_TRAVEL_STYLE_LABELS,
@@ -61,7 +62,7 @@ export function TripCreateForm({
   const previewDates = formatPreviewDates(startDate, endDate);
   const selectedCountryCode = countryCodeFromSelection(destinationSelection, destination);
   const destinationPreviewLabel = destinationPreviewText(destinationSelection, destination, name);
-  const heroImageUrl = tripHeroImageUrl(destinationPreviewLabel);
+  const heroImageUrl = tripHeroImageUrl(destinationSelection, destinationPreviewLabel);
   const canCreate = Boolean(
     name.trim() &&
       destination.trim() &&
@@ -90,6 +91,10 @@ export function TripCreateForm({
     if (!mobilePassMode || initialData) {
       return;
     }
+
+    const inferredDates = inferDatesFromTripName(name);
+    setStartDate(inferredDates.startDate);
+    setEndDate(inferredDates.endDate);
 
     if (destinationInputSource !== "name") {
       return;
@@ -202,8 +207,11 @@ export function TripCreateForm({
         id={formId}
         onSubmit={createTrip}
       >
+        <GoogleMapsProvider>
+          <span className="sr-only">Preparing destination matching.</span>
+        </GoogleMapsProvider>
         <MobileFormShell
-          className="relative -mx-3 flex max-h-[calc(100dvh-1.25rem)] min-h-[calc(100dvh-5.75rem)] flex-col overflow-hidden rounded-[2.15rem] border-white/10 bg-[#807867] shadow-[0_28px_80px_rgba(0,0,0,0.42)] sm:-mx-4"
+          className="relative mx-auto flex h-[calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-1rem)] min-h-[38rem] w-full max-w-[31rem] flex-col overflow-hidden rounded-[2.15rem] border-0 bg-[#807867] shadow-[0_28px_80px_rgba(0,0,0,0.42)] outline-none"
           data-testid="mobile-trip-create-sheet"
         >
           <div
@@ -216,7 +224,7 @@ export function TripCreateForm({
           <div className="pointer-events-none absolute inset-x-0 top-[21rem] h-44 bg-gradient-to-b from-transparent via-[#807867]/90 to-[#807867]" />
 
           <div className="relative z-10 flex min-h-0 flex-1 flex-col">
-            <div className="flex shrink-0 items-center justify-between px-5 pt-5">
+            <div className="flex shrink-0 items-center justify-between px-5 pt-[calc(env(safe-area-inset-top)+1rem)]">
               <a
                 className="inline-flex min-h-12 items-center justify-center rounded-full border border-white/55 bg-white/70 px-5 text-[1.38rem] font-semibold text-black shadow-[0_10px_28px_rgba(0,0,0,0.18)] backdrop-blur-xl transition hover:bg-white/85 focus:outline-none focus:ring-4 focus:ring-white/30"
                 href="/dashboard"
@@ -233,8 +241,8 @@ export function TripCreateForm({
               </button>
             </div>
 
-            <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain pb-[calc(7rem+env(safe-area-inset-bottom))] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-              <section className="flex min-h-[35rem] flex-col items-center justify-center px-5 pb-16 pt-80 text-center text-white">
+            <div className="min-h-0 flex-1 overflow-hidden">
+              <section className="flex h-full flex-col items-center justify-center px-5 pb-[calc(5rem+env(safe-area-inset-bottom))] pt-20 text-center text-white">
                 <label className="grid w-full max-w-[22rem] gap-2">
                   <span className="sr-only">Trip name</span>
                   <input
@@ -257,7 +265,6 @@ export function TripCreateForm({
                 <div className="mt-9 grid w-full max-w-[23rem] grid-cols-[1fr_auto_1fr] items-center gap-8 text-white/78">
                   <button
                     className="grid place-items-center gap-2 text-white/78"
-                    onClick={() => document.getElementById("trip-dates")?.focus()}
                     type="button"
                   >
                     <CalendarDays className="h-9 w-9 text-white/60" aria-hidden="true" />
@@ -272,110 +279,18 @@ export function TripCreateForm({
                     <span className="text-xl font-medium">Background</span>
                   </button>
                 </div>
+                <p className="mt-8 max-w-[19rem] text-sm font-semibold leading-6 text-white/72">
+                  Type a destination in the trip name, like Miami weekend or Paris Sep 12-15.
+                </p>
               </section>
-
-              <section className="px-6 pb-7">
-                <div className="overflow-hidden rounded-[2rem] border border-white/46 bg-white/16 shadow-[0_18px_55px_rgba(0,0,0,0.20)] backdrop-blur-xl">
-                  <div className="grid gap-2 border-b border-white/18 px-5 py-5">
-                    <span className="inline-flex items-center gap-2 text-[0.7rem] font-extrabold uppercase tracking-[0.28em] text-white/58">
-                      <MapPin className="h-4 w-4" aria-hidden="true" />
-                      Destination
-                    </span>
-                    <GoogleMapsProvider>
-                      <LocationAutocomplete
-                        ariaLabel="Destination"
-                        inputClassName="min-h-10 w-full min-w-0 border-0 bg-transparent p-0 text-[1.35rem] font-semibold leading-tight text-white outline-none placeholder:text-white/48 focus:ring-0"
-                        name="destination"
-                        onInputChange={(value) => {
-                          setDestination(value);
-                          setDestinationInputSource(value.trim() ? "manual" : "name");
-                          setDestinationSelection(null);
-                        }}
-                        onSelect={(location) => {
-                          setDestination(location.address);
-                          setDestinationInputSource("selected");
-                          setDestinationSelection(location);
-                        }}
-                        placeholder="Type a trip name or search Miami, Barcelona, Tokyo..."
-                        required
-                        value={destination}
-                      />
-                    </GoogleMapsProvider>
-                    <span className="text-sm font-semibold leading-6 text-white/82">
-                      {destination.trim() && !destinationSelection
-                        ? "Select a suggested destination to pin this trip on the map."
-                        : destinationSelection
-                          ? "Destination matched for maps and planning."
-                          : "Choose a Google Places result so Almidy can pin the trip correctly."}
-                    </span>
-                  </div>
-
-                  <label className="grid gap-2 border-b border-white/18 px-5 py-4">
-                    <span className="text-[0.68rem] font-extrabold uppercase tracking-[0.28em] text-white/52">
-                      Start date
-                    </span>
-                    <input
-                      aria-label="Start date"
-                      className="min-h-10 w-full min-w-0 border-0 bg-transparent p-0 text-[1.2rem] font-semibold leading-tight text-white outline-none placeholder:text-white/44 focus:ring-0"
-                      id="trip-dates"
-                      onChange={(event) => setStartDate(event.target.value)}
-                      type="date"
-                      value={startDate}
-                    />
-                  </label>
-                  <label className="grid gap-2 border-b border-white/18 px-5 py-4">
-                    <span className="text-[0.68rem] font-extrabold uppercase tracking-[0.28em] text-white/52">
-                      End date
-                    </span>
-                    <input
-                      aria-label="End date"
-                      className="min-h-10 w-full min-w-0 border-0 bg-transparent p-0 text-[1.2rem] font-semibold leading-tight text-white outline-none placeholder:text-white/44 focus:ring-0"
-                      onChange={(event) => setEndDate(event.target.value)}
-                      type="date"
-                      value={endDate}
-                    />
-                  </label>
-                  <label className="grid gap-2 border-b border-white/18 px-5 py-4">
-                    <span className="text-[0.68rem] font-extrabold uppercase tracking-[0.28em] text-white/52">
-                      Expense budget
-                    </span>
-                    <input
-                      aria-label="Expense budget"
-                      className="min-h-10 w-full min-w-0 border-0 bg-transparent p-0 text-[1.2rem] font-semibold leading-tight text-white outline-none placeholder:text-white/44 focus:ring-0"
-                      inputMode="decimal"
-                      onChange={(event) => setBudget(event.target.value)}
-                      placeholder="Optional"
-                      value={budget}
-                    />
-                  </label>
-                  <label className="grid gap-2 px-5 py-4">
-                    <span className="text-[0.68rem] font-extrabold uppercase tracking-[0.28em] text-white/52">
-                      Travel style
-                    </span>
-                    <select
-                      aria-label="Travel style"
-                      className="min-h-10 w-full min-w-0 border-0 bg-transparent p-0 text-[1.2rem] font-semibold leading-tight text-white outline-none focus:ring-0"
-                      onChange={(event) => setTravelStyle(event.target.value as TripTravelStyle)}
-                      value={travelStyle}
-                    >
-                      {TRIP_TRAVEL_STYLES.map((style) => (
-                        <option className="bg-[#807867] text-white" key={style} value={style}>
-                          {TRIP_TRAVEL_STYLE_LABELS[style]}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                </div>
-
-                {state.status !== "idle" && message ? (
-                  <p
-                    aria-live="polite"
-                    className={`mt-4 rounded-2xl px-4 py-3 text-sm font-semibold ring-1 ${messageTone}`}
-                  >
-                    {message}
-                  </p>
-                ) : null}
-              </section>
+              {state.status !== "idle" && message ? (
+                <p
+                  aria-live="polite"
+                  className={`absolute inset-x-5 bottom-[calc(1rem+env(safe-area-inset-bottom))] z-20 rounded-2xl px-4 py-3 text-sm font-semibold ring-1 ${messageTone}`}
+                >
+                  {message}
+                </p>
+              ) : null}
             </div>
           </div>
         </MobileFormShell>
@@ -590,7 +505,15 @@ function destinationPreviewText(
   );
 }
 
-function tripHeroImageUrl(locationText: string) {
+function tripHeroImageUrl(
+  destinationSelection: LocationSelection | null,
+  locationText: string
+) {
+  const placePhotoUrl = buildPlacePhotoUrl(destinationSelection?.providerMetadata, 1200);
+  if (placePhotoUrl) {
+    return placePhotoUrl;
+  }
+
   const query = encodeURIComponent(`${locationText} landmark travel`);
   return `https://source.unsplash.com/1200x900/?${query}`;
 }
@@ -624,10 +547,62 @@ function inferDestinationFromTripName(value: string) {
 
 function cleanDestinationCandidate(value: string) {
   return value
+    .replace(/\b(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\.?\s+\d{1,2}(?:\s*(?:-|to|through|until)\s*(?:\w+\.?\s*)?\d{1,2})?\b/gi, " ")
+    .replace(/\b\d{4}-\d{2}-\d{2}(?:\s*(?:-|to|through|until)\s*\d{4}-\d{2}-\d{2})?\b/g, " ")
     .replace(/\b(?:my|our|the|a|an|first|next|new|summer|winter|spring|fall|autumn)\b/gi, " ")
     .replace(/[|/\\()[\]{}]+/g, " ")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function inferDatesFromTripName(value: string) {
+  const normalized = value.replace(/[–—]/g, "-");
+  const isoRange = normalized.match(
+    /\b(\d{4}-\d{2}-\d{2})(?:\s*(?:-|to|through|until)\s*(\d{4}-\d{2}-\d{2}))?\b/i
+  );
+
+  if (isoRange) {
+    return {
+      endDate: isoRange[2] || "",
+      startDate: isoRange[1]
+    };
+  }
+
+  const monthRange = normalized.match(
+    /\b(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\.?\s+(\d{1,2})(?:\s*(?:-|to|through|until)\s*(?:(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\.?\s*)?(\d{1,2}))?/i
+  );
+
+  if (!monthRange) {
+    return { endDate: "", startDate: "" };
+  }
+
+  const currentYear = new Date().getFullYear();
+  const startMonthIndex = monthIndexFromName(monthRange[1]);
+  const endMonthIndex = monthIndexFromName(monthRange[3] || monthRange[1]);
+  const startDate = dateInputValue(currentYear, startMonthIndex, Number(monthRange[2]));
+  const endDate = monthRange[4]
+    ? dateInputValue(currentYear, endMonthIndex, Number(monthRange[4]))
+    : "";
+
+  return { endDate, startDate };
+}
+
+function monthIndexFromName(value: string) {
+  const key = value.toLowerCase().slice(0, 3);
+  return ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"].indexOf(key);
+}
+
+function dateInputValue(year: number, monthIndex: number, day: number) {
+  if (monthIndex < 0 || day < 1 || day > 31) {
+    return "";
+  }
+
+  const date = new Date(Date.UTC(year, monthIndex, day));
+  if (date.getUTCMonth() !== monthIndex || date.getUTCDate() !== day) {
+    return "";
+  }
+
+  return date.toISOString().slice(0, 10);
 }
 
 async function resolveLocationFromQuery(query: string): Promise<LocationSelection | null> {
@@ -649,7 +624,7 @@ async function resolveLocationFromQuery(query: string): Promise<LocationSelectio
 
     const place = prediction.toPlace();
     const { place: resolvedPlace } = await place.fetchFields({
-      fields: ["id", "displayName", "formattedAddress", "location", "types", "googleMapsURI"]
+      fields: ["id", "displayName", "formattedAddress", "location", "types", "googleMapsURI", "photos"]
     });
 
     return locationSelectionFromGooglePlace(
@@ -680,6 +655,7 @@ function locationSelectionFromGooglePlace(
   const lat = readGoogleCoordinate(place.location || undefined, "lat");
   const lng = readGoogleCoordinate(place.location || undefined, "lng");
   const address = place.formattedAddress || place.displayName || fallbackName;
+  const primaryPhoto = readGooglePlacePhoto(place);
 
   if (!address || typeof lat !== "number" || typeof lng !== "number") {
     return null;
@@ -697,7 +673,12 @@ function locationSelectionFromGooglePlace(
       formattedAddress: place.formattedAddress || null,
       formatted_address: place.formattedAddress || null,
       googleMapsUri: place.googleMapsURI || null,
+      imageAlt: `Photo of ${place.displayName || fallbackName}`,
+      imageAttribution: primaryPhoto.attribution,
+      imageProvider: primaryPhoto.name ? "Google" : null,
       name: place.displayName || fallbackName,
+      primaryPhotoAttributions: primaryPhoto.authorAttributions,
+      primaryPhotoName: primaryPhoto.name,
       provider: "google_places",
       providerPlaceId: place.id || null,
       source: "trip_name_autocomplete",
@@ -713,6 +694,45 @@ function readGoogleCoordinate(
   const value = location?.[key];
 
   return typeof value === "function" ? value() : value;
+}
+
+function readGooglePlacePhoto(place: google.maps.places.Place) {
+  const photos = Array.isArray(place.photos) ? place.photos : [];
+  const primaryPhoto = photos[0] as
+    | {
+        authorAttributions?: unknown;
+        name?: string;
+      }
+    | undefined;
+
+  return {
+    attribution: formatGooglePhotoAttribution(primaryPhoto?.authorAttributions),
+    authorAttributions: primaryPhoto?.authorAttributions || null,
+    name: typeof primaryPhoto?.name === "string" ? primaryPhoto.name.replace(/\/media$/, "") : null
+  };
+}
+
+function formatGooglePhotoAttribution(value: unknown) {
+  if (!Array.isArray(value)) {
+    return null;
+  }
+
+  const labels = value
+    .map((item) => {
+      if (!item || typeof item !== "object") {
+        return null;
+      }
+
+      const record = item as Record<string, unknown>;
+      return typeof record.displayName === "string"
+        ? record.displayName
+        : typeof record.name === "string"
+          ? record.name
+          : null;
+    })
+    .filter((item): item is string => Boolean(item));
+
+  return labels.length ? labels.join(", ") : null;
 }
 
 function readCreatedTripId(payload: unknown) {
