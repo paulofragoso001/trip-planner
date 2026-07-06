@@ -21,6 +21,8 @@ import {
   type TripTravelStyle
 } from "@/lib/trips";
 
+type DestinationInputSource = "initial" | "name" | "manual" | "selected";
+
 type TripCreateFormProps = {
   formId?: string;
   initialData?: TripFormInitialData;
@@ -41,6 +43,9 @@ export function TripCreateForm({
     initialData?.expense_budget == null ? "" : String(initialData.expense_budget)
   );
   const [destination, setDestination] = useState(() => initialData?.destination || "");
+  const [destinationInputSource, setDestinationInputSource] = useState<DestinationInputSource>(
+    () => initialData?.destination ? "initial" : "name"
+  );
   const [destinationSelection, setDestinationSelection] = useState<LocationSelection | null>(() =>
     locationSelectionFromInitialData(initialData)
   );
@@ -55,6 +60,8 @@ export function TripCreateForm({
   const mobilePassMode = mode === "mobile-pass";
   const previewDates = formatPreviewDates(startDate, endDate);
   const selectedCountryCode = countryCodeFromSelection(destinationSelection, destination);
+  const destinationPreviewLabel = destinationPreviewText(destinationSelection, destination, name);
+  const heroImageUrl = tripHeroImageUrl(destinationPreviewLabel);
   const canCreate = Boolean(
     name.trim() &&
       destination.trim() &&
@@ -71,12 +78,47 @@ export function TripCreateForm({
 
     setBudget(initialData.expense_budget == null ? "" : String(initialData.expense_budget));
     setDestination(initialData.destination || "");
+    setDestinationInputSource(initialData.destination ? "initial" : "name");
     setDestinationSelection(locationSelectionFromInitialData(initialData));
     setEndDate(initialData.end_date || "");
     setName(initialData.trip_name || "");
     setStartDate(initialData.start_date || "");
     setTravelStyle(initialData.travel_style || "balanced");
   }, [initialData]);
+
+  useEffect(() => {
+    if (!mobilePassMode || initialData) {
+      return;
+    }
+
+    if (destinationInputSource !== "name") {
+      return;
+    }
+
+    const inferredDestination = inferDestinationFromTripName(name);
+    setDestination(inferredDestination);
+    setDestinationSelection(null);
+
+    if (!inferredDestination || typeof window === "undefined") {
+      return;
+    }
+
+    let active = true;
+    const timer = window.setTimeout(async () => {
+      const resolvedLocation = await resolveLocationFromQuery(inferredDestination);
+      if (!active || !resolvedLocation) {
+        return;
+      }
+
+      setDestination(resolvedLocation.address);
+      setDestinationSelection(resolvedLocation);
+    }, 450);
+
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+    };
+  }, [destinationInputSource, initialData, mobilePassMode, name]);
 
   async function createTrip(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -129,6 +171,7 @@ export function TripCreateForm({
       const tripId = readCreatedTripId(result.data);
       setBudget("");
       setDestination("");
+      setDestinationInputSource("name");
       setDestinationSelection(null);
       setEndDate("");
       setName("");
@@ -165,7 +208,10 @@ export function TripCreateForm({
         >
           <div
             aria-hidden="true"
-            className="absolute inset-x-0 top-0 h-[27rem] bg-[linear-gradient(180deg,rgba(0,0,0,0.02)_0%,rgba(91,82,64,0.22)_58%,#807867_100%),url('https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=1200&q=80')] bg-cover bg-center"
+            className="absolute inset-x-0 top-0 h-[27rem] bg-cover bg-center transition-[background-image] duration-500"
+            style={{
+              backgroundImage: `linear-gradient(180deg,rgba(0,0,0,0.02)_0%,rgba(91,82,64,0.22)_58%,#807867_100%),url('${heroImageUrl}')`
+            }}
           />
           <div className="pointer-events-none absolute inset-x-0 top-[21rem] h-44 bg-gradient-to-b from-transparent via-[#807867]/90 to-[#807867]" />
 
@@ -194,7 +240,12 @@ export function TripCreateForm({
                   <input
                     aria-label="Trip name"
                     className="w-full border-0 bg-transparent p-0 text-center text-[3rem] font-semibold leading-none tracking-normal text-white outline-none placeholder:text-white/72 focus:ring-0 min-[390px]:text-[3.45rem]"
-                    onChange={(event) => setName(event.target.value)}
+                    onChange={(event) => {
+                      setName(event.target.value);
+                      if (destinationInputSource === "initial" && !destinationSelection) {
+                        setDestinationInputSource("name");
+                      }
+                    }}
                     placeholder="Trip name"
                     required
                     value={name}
@@ -237,13 +288,15 @@ export function TripCreateForm({
                         name="destination"
                         onInputChange={(value) => {
                           setDestination(value);
+                          setDestinationInputSource(value.trim() ? "manual" : "name");
                           setDestinationSelection(null);
                         }}
                         onSelect={(location) => {
                           setDestination(location.address);
+                          setDestinationInputSource("selected");
                           setDestinationSelection(location);
                         }}
-                        placeholder="Search Miami, Barcelona, Tokyo..."
+                        placeholder="Type a trip name or search Miami, Barcelona, Tokyo..."
                         required
                         value={destination}
                       />
@@ -520,6 +573,146 @@ function locationSelectionFromInitialData(
       ? { countryCode: initialData.country_code }
       : {}
   };
+}
+
+function destinationPreviewText(
+  destinationSelection: LocationSelection | null,
+  destination: string,
+  name: string
+) {
+  return (
+    destinationSelection?.name ||
+    destinationSelection?.formattedAddress ||
+    destinationSelection?.address ||
+    inferDestinationFromTripName(name) ||
+    destination.trim() ||
+    "travel destination"
+  );
+}
+
+function tripHeroImageUrl(locationText: string) {
+  const query = encodeURIComponent(`${locationText} landmark travel`);
+  return `https://source.unsplash.com/1200x900/?${query}`;
+}
+
+function inferDestinationFromTripName(value: string) {
+  const normalized = value
+    .replace(/[“”]/g, "\"")
+    .replace(/[‘’]/g, "'")
+    .trim();
+
+  if (!normalized) {
+    return "";
+  }
+
+  const patterns = [
+    /\b(?:trip|travel|vacation|holiday|getaway|weekend|honeymoon|visit|journey)\s+(?:to|in|at|for)\s+(.+)$/i,
+    /^(.+?)\s+(?:trip|travel|vacation|holiday|getaway|weekend|honeymoon|journey)$/i,
+    /^(.+?)\s+(?:itinerary|adventure|escape)$/i
+  ];
+
+  for (const pattern of patterns) {
+    const match = normalized.match(pattern);
+    const candidate = cleanDestinationCandidate(match?.[1] || "");
+    if (candidate) {
+      return candidate;
+    }
+  }
+
+  return cleanDestinationCandidate(normalized);
+}
+
+function cleanDestinationCandidate(value: string) {
+  return value
+    .replace(/\b(?:my|our|the|a|an|first|next|new|summer|winter|spring|fall|autumn)\b/gi, " ")
+    .replace(/[|/\\()[\]{}]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+async function resolveLocationFromQuery(query: string): Promise<LocationSelection | null> {
+  const places = await waitForGooglePlaces();
+
+  if (!places?.AutocompleteSuggestion?.fetchAutocompleteSuggestions) {
+    return null;
+  }
+
+  try {
+    const response = await places.AutocompleteSuggestion.fetchAutocompleteSuggestions({
+      input: query
+    });
+    const prediction = response.suggestions.find((suggestion) => suggestion.placePrediction)?.placePrediction;
+
+    if (!prediction) {
+      return null;
+    }
+
+    const place = prediction.toPlace();
+    const { place: resolvedPlace } = await place.fetchFields({
+      fields: ["id", "displayName", "formattedAddress", "location", "types", "googleMapsURI"]
+    });
+
+    return locationSelectionFromGooglePlace(
+      resolvedPlace,
+      prediction.mainText?.text || prediction.text?.text || query
+    );
+  } catch {
+    return null;
+  }
+}
+
+async function waitForGooglePlaces() {
+  for (let attempt = 0; attempt < 12; attempt += 1) {
+    if (window.google?.maps?.places?.AutocompleteSuggestion) {
+      return window.google.maps.places;
+    }
+
+    await new Promise((resolve) => window.setTimeout(resolve, 250));
+  }
+
+  return window.google?.maps?.places;
+}
+
+function locationSelectionFromGooglePlace(
+  place: google.maps.places.Place,
+  fallbackName: string
+): LocationSelection | null {
+  const lat = readGoogleCoordinate(place.location || undefined, "lat");
+  const lng = readGoogleCoordinate(place.location || undefined, "lng");
+  const address = place.formattedAddress || place.displayName || fallbackName;
+
+  if (!address || typeof lat !== "number" || typeof lng !== "number") {
+    return null;
+  }
+
+  return {
+    address,
+    formattedAddress: place.formattedAddress || null,
+    lat,
+    lng,
+    name: place.displayName || fallbackName,
+    placeId: place.id || null,
+    providerMetadata: {
+      address,
+      formattedAddress: place.formattedAddress || null,
+      formatted_address: place.formattedAddress || null,
+      googleMapsUri: place.googleMapsURI || null,
+      name: place.displayName || fallbackName,
+      provider: "google_places",
+      providerPlaceId: place.id || null,
+      source: "trip_name_autocomplete",
+      types: place.types || []
+    }
+  };
+}
+
+function readGoogleCoordinate(
+  location: { lat?: number | (() => number); lng?: number | (() => number) } | undefined,
+  key: "lat" | "lng"
+) {
+  const value = location?.[key];
+
+  return typeof value === "function" ? value() : value;
 }
 
 function readCreatedTripId(payload: unknown) {
