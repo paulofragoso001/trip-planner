@@ -305,7 +305,13 @@ export function TravelWalletSheet({
         ) : isSearch ? (
           <SearchOverlay onClose={closeSearch} />
         ) : (
-          <div id="mobile-launch-expanded-menu" className="px-4 pb-4 min-[390px]:px-5">
+          <div
+            id="mobile-launch-expanded-menu"
+            className={cn(
+              "px-4 pb-4 min-[390px]:px-5",
+              !isCollapsed && "pt-[max(2.25rem,calc(env(safe-area-inset-top)+0.75rem))]"
+            )}
+          >
             <header className="flex items-start justify-between gap-3">
               <button
                 type="button"
