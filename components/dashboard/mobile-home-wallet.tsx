@@ -1,10 +1,10 @@
 "use client";
 
-import { Globe2, MapPin } from "lucide-react";
+import { MapPin } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { MouseEvent } from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { DashboardData } from "@/app/dashboard/loader";
 import { AlmidyLaunchGlobe } from "@/components/dashboard/almidy-launch-globe";
 import { TravelWalletSheet } from "@/components/dashboard/travel-wallet-sheet";
@@ -13,7 +13,6 @@ import { dashboardActionRoutes } from "@/lib/dashboard/action-routes";
 import { unifiedMapSurfaceEnabled } from "@/lib/map/feature-flags";
 import { UnifiedMapProvider, useUnifiedMap } from "@/lib/map/unified-map-provider";
 import { countryCodeToFlag } from "@/lib/map/wayline-map-pins";
-import { canOpenNativeMap, openNativeMap, type NativeMapTrip } from "@/lib/native-map";
 
 type MobileHomeWalletProps = Pick<DashboardData, "metrics" | "recentTrips"> & {
   className?: string;
@@ -39,25 +38,6 @@ export function MobileHomeWallet({
   const primaryMeta = latestTrip
     ? `${latestTrip.name} · ${latestTrip.destination}`
     : "Start a new travel wallet.";
-  const nativeTrips = useMemo(() => recentTrips.map(mapRecentTripToNativeMapTrip), [recentTrips]);
-
-  useEffect(() => {
-    if (!canOpenNativeMap() || nativeTrips.length === 0) {
-      return;
-    }
-
-    const launchKey = `almidy:native-launch-opened:${nativeTrips[0]?.id ?? "latest"}`;
-    if (window.sessionStorage.getItem(launchKey)) {
-      return;
-    }
-
-    window.sessionStorage.setItem(launchKey, "true");
-    void openNativeMap(nativeTrips).catch((error) => {
-      console.error("Unable to open native launch map", error);
-      window.sessionStorage.removeItem(launchKey);
-    });
-  }, [nativeTrips]);
-
   const walletSurface = (
     <section
       className={cn(
@@ -77,7 +57,6 @@ export function MobileHomeWallet({
           showCountryPin={false}
           useLocationFocus
         />
-        <FloatingGlobeControls nativeTrips={nativeTrips} />
       </section>
       <div
         aria-hidden="true"
@@ -193,60 +172,5 @@ function LaunchFirstTripCard({
         </div>
       </div>
     </section>
-  );
-}
-
-function mapRecentTripToNativeMapTrip(trip: DashboardData["recentTrips"][number]): NativeMapTrip {
-  return {
-    dateRange: trip.dateRange,
-    destination: trip.destination,
-    href: trip.href,
-    id: trip.id,
-    name: trip.name,
-    status: trip.status
-  };
-}
-
-function FloatingGlobeControls({
-  nativeTrips
-}: {
-  nativeTrips: NativeMapTrip[];
-}) {
-  const [showNativeMapControl, setShowNativeMapControl] = useState(false);
-
-  useEffect(() => {
-    setShowNativeMapControl(canOpenNativeMap());
-  }, []);
-
-  return (
-    <div
-      aria-label="Globe controls"
-      className="absolute right-4 top-[max(12.25rem,calc(env(safe-area-inset-top)+9.25rem))] z-30 overflow-hidden rounded-full border border-white/10 bg-[#111]/82 p-1.5 text-white shadow-[0_18px_42px_rgba(0,0,0,0.42)] backdrop-blur-xl"
-      data-testid="mobile-home-globe-controls"
-      role="toolbar"
-    >
-      {showNativeMapControl ? (
-        <button
-          aria-label="Open native map"
-          className="grid h-12 w-12 place-items-center rounded-full text-white transition hover:bg-white/10 focus:outline-none focus:ring-4 focus:ring-orange-300/20"
-          onClick={() => {
-            void openNativeMap(nativeTrips).catch((error) => {
-              console.error("Unable to open native map", error);
-            });
-          }}
-          type="button"
-        >
-          <Globe2 aria-hidden="true" className="h-6 w-6" />
-        </button>
-      ) : (
-        <Link
-          aria-label="Open map"
-          className="grid h-12 w-12 place-items-center rounded-full text-white transition hover:bg-white/10 focus:outline-none focus:ring-4 focus:ring-orange-300/20"
-          href={dashboardActionRoutes.globe.openMap}
-        >
-          <Globe2 aria-hidden="true" className="h-6 w-6" />
-        </Link>
-      )}
-    </div>
   );
 }
