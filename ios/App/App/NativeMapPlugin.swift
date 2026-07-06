@@ -92,6 +92,12 @@ private final class NativeMapViewController: UIViewController, CLLocationManager
         case expanded
     }
 
+    private enum MapPresentationMode {
+        case hybrid
+        case imagery
+        case standard
+    }
+
     private let mapView = MKMapView()
     private let locationManager = CLLocationManager()
     private let trips: [NativeMapTrip]
@@ -110,6 +116,9 @@ private final class NativeMapViewController: UIViewController, CLLocationManager
     private var sheetHeightConstraint: NSLayoutConstraint?
     private var sheetState: SheetState
     private var panStartHeight: CGFloat = 0
+    private var hasPlayedIntroCamera = false
+    private var mapPresentationMode: MapPresentationMode = .hybrid
+    private var isRequestingLocationAuthorization = false
     private var reservationCardVisible = !UserDefaults.standard.bool(forKey: "almidy.native.reservationCardDismissed")
 
     init(trips: [NativeMapTrip], openRoute: @escaping (String) -> Void) {
@@ -134,17 +143,32 @@ private final class NativeMapViewController: UIViewController, CLLocationManager
         applySheetState(sheetState, animated: false)
     }
 
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        playIntroCameraIfNeeded()
+    }
+
     private func configureMap() {
         mapView.translatesAutoresizingMaskIntoConstraints = false
         mapView.delegate = self
         mapView.pointOfInterestFilter = .includingAll
         mapView.showsCompass = false
         mapView.showsScale = false
-        if #available(iOS 16.0, *) {
-            mapView.preferredConfiguration = MKHybridMapConfiguration(elevationStyle: .realistic)
-        } else {
-            mapView.mapType = .hybridFlyover
+        mapView.showsBuildings = true
+        mapView.showsTraffic = false
+        mapView.showsUserLocation = false
+        mapView.isScrollEnabled = true
+        mapView.isZoomEnabled = true
+        mapView.isRotateEnabled = true
+        mapView.isPitchEnabled = true
+        mapView.isMultipleTouchEnabled = true
+        if #available(iOS 11.0, *) {
+            mapView.insetsLayoutMarginsFromSafeArea = false
         }
+        if #available(iOS 13.0, *) {
+            mapView.setCameraZoomRange(MKMapView.CameraZoomRange(minCenterCoordinateDistance: 900, maxCenterCoordinateDistance: 18_000_000), animated: false)
+        }
+        applyMapPresentation(.hybrid)
         view.addSubview(mapView)
 
         NSLayoutConstraint.activate([
@@ -154,9 +178,55 @@ private final class NativeMapViewController: UIViewController, CLLocationManager
             mapView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
 
-        let northAmerica = CLLocationCoordinate2D(latitude: 42.0, longitude: -96.0)
-        let camera = MKMapCamera(lookingAtCenter: northAmerica, fromDistance: 7_400_000, pitch: 0, heading: 0)
-        mapView.setCamera(camera, animated: false)
+        mapView.setCamera(globeCamera(distance: 15_500_000, heading: 0), animated: false)
+    }
+
+    private func playIntroCameraIfNeeded() {
+        guard !hasPlayedIntroCamera else { return }
+        hasPlayedIntroCamera = true
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { [weak self] in
+            guard let self else { return }
+            self.mapView.setCamera(self.globeCamera(distance: 8_200_000, heading: 2), animated: true)
+        }
+    }
+
+    private func globeCamera(distance: CLLocationDistance, heading: CLLocationDirection) -> MKMapCamera {
+        MKMapCamera(
+            lookingAtCenter: CLLocationCoordinate2D(latitude: 42.5, longitude: -96.0),
+            fromDistance: distance,
+            pitch: 0,
+            heading: heading
+        )
+    }
+
+    private func applyMapPresentation(_ mode: MapPresentationMode) {
+        mapPresentationMode = mode
+        if #available(iOS 16.0, *) {
+            switch mode {
+            case .hybrid:
+                let configuration = MKHybridMapConfiguration(elevationStyle: .realistic)
+                configuration.pointOfInterestFilter = .includingAll
+                configuration.showsTraffic = false
+                mapView.preferredConfiguration = configuration
+            case .imagery:
+                mapView.preferredConfiguration = MKImageryMapConfiguration(elevationStyle: .realistic)
+            case .standard:
+                let configuration = MKStandardMapConfiguration(elevationStyle: .realistic, emphasisStyle: .default)
+                configuration.pointOfInterestFilter = .includingAll
+                configuration.showsTraffic = false
+                mapView.preferredConfiguration = configuration
+            }
+        } else {
+            switch mode {
+            case .hybrid:
+                mapView.mapType = .hybridFlyover
+            case .imagery:
+                mapView.mapType = .satelliteFlyover
+            case .standard:
+                mapView.mapType = .standard
+            }
+        }
     }
 
     private func configureMapControls() {
@@ -695,7 +765,7 @@ private final class NativeMapViewController: UIViewController, CLLocationManager
     private func addTripPins() {
         let annotations = trips.compactMap { trip -> NativeTripAnnotation? in
             guard let coordinate = trip.coordinate else { return nil }
-            return NativeTripAnnotation(coordinate: coordinate, title: trip.displayName)
+            return NativeTripAnnotation(trip: trip, coordinate: coordinate)
         }
         mapView.addAnnotations(annotations)
     }
@@ -705,6 +775,8 @@ private final class NativeMapViewController: UIViewController, CLLocationManager
         let identifier = "trip-pin"
         let annotationView = mapView.dequeueReusableAnnotationView(withIdentifier: identifier) ?? MKMarkerAnnotationView(annotation: annotation, reuseIdentifier: identifier)
         annotationView.annotation = annotation
+        annotationView.canShowCallout = true
+        annotationView.rightCalloutAccessoryView = UIButton(type: .detailDisclosure)
         if let marker = annotationView as? MKMarkerAnnotationView {
             marker.markerTintColor = UIColor(red: 1.0, green: 0.42, blue: 0.12, alpha: 1.0)
             marker.glyphImage = UIImage(systemName: "airplane")
@@ -712,21 +784,44 @@ private final class NativeMapViewController: UIViewController, CLLocationManager
         return annotationView
     }
 
+    func mapView(_ mapView: MKMapView, didSelect annotation: MKAnnotation) {
+        guard let tripAnnotation = annotation as? NativeTripAnnotation else { return }
+        mapView.setCamera(MKMapCamera(lookingAtCenter: tripAnnotation.coordinate, fromDistance: 90_000, pitch: 52, heading: mapView.camera.heading), animated: true)
+    }
+
+    func mapView(_ mapView: MKMapView, annotationView view: MKAnnotationView, calloutAccessoryControlTapped control: UIControl) {
+        guard let tripAnnotation = view.annotation as? NativeTripAnnotation else { return }
+        openRoute(tripAnnotation.trip.route)
+    }
+
     @objc private func toggleMapMode() {
-        if #available(iOS 16.0, *) {
-            let isHybrid = mapView.preferredConfiguration is MKHybridMapConfiguration
-            mapView.preferredConfiguration = isHybrid ? MKStandardMapConfiguration(elevationStyle: .realistic) : MKHybridMapConfiguration(elevationStyle: .realistic)
-        } else {
-            mapView.mapType = mapView.mapType == .hybridFlyover ? .standard : .hybridFlyover
+        let nextMode: MapPresentationMode
+        switch mapPresentationMode {
+        case .hybrid:
+            nextMode = .imagery
+        case .imagery:
+            nextMode = .standard
+        case .standard:
+            nextMode = .hybrid
+        }
+
+        applyMapPresentation(nextMode)
+        if nextMode == .hybrid || nextMode == .imagery {
+            mapView.setCamera(globeCamera(distance: max(mapView.camera.centerCoordinateDistance, 6_000_000), heading: mapView.camera.heading), animated: true)
         }
     }
 
     @objc private func requestCurrentLocation() {
+        guard !isRequestingLocationAuthorization else { return }
+
         locationManager.delegate = self
+        locationManager.desiredAccuracy = kCLLocationAccuracyBest
         switch locationManager.authorizationStatus {
         case .notDetermined:
+            isRequestingLocationAuthorization = true
             locationManager.requestWhenInUseAuthorization()
         case .authorizedAlways, .authorizedWhenInUse:
+            mapView.showsUserLocation = true
             locationManager.requestLocation()
         case .denied, .restricted:
             break
@@ -736,14 +831,19 @@ private final class NativeMapViewController: UIViewController, CLLocationManager
     }
 
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+        isRequestingLocationAuthorization = false
+
         if manager.authorizationStatus == .authorizedWhenInUse || manager.authorizationStatus == .authorizedAlways {
+            mapView.showsUserLocation = true
             manager.requestLocation()
         }
     }
 
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         guard let coordinate = locations.last?.coordinate else { return }
-        mapView.setCamera(MKMapCamera(lookingAtCenter: coordinate, fromDistance: 18_000, pitch: 58, heading: 0), animated: true)
+        mapView.showsUserLocation = true
+        mapView.setUserTrackingMode(.followWithHeading, animated: true)
+        mapView.setCamera(MKMapCamera(lookingAtCenter: coordinate, fromDistance: 18_000, pitch: 58, heading: mapView.camera.heading), animated: true)
     }
 
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {}
@@ -803,10 +903,12 @@ private final class NativeMapViewController: UIViewController, CLLocationManager
 private final class NativeTripAnnotation: NSObject, MKAnnotation {
     let coordinate: CLLocationCoordinate2D
     let title: String?
+    let trip: NativeMapTrip
 
-    init(coordinate: CLLocationCoordinate2D, title: String) {
+    init(trip: NativeMapTrip, coordinate: CLLocationCoordinate2D) {
+        self.trip = trip
         self.coordinate = coordinate
-        self.title = title
+        self.title = trip.displayName
     }
 }
 
