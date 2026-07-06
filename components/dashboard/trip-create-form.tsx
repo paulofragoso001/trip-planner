@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { CalendarDays, ImageIcon } from "lucide-react";
 import type { FormEvent } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import GoogleMapsProvider from "@/components/GoogleMapsProvider";
 import LocationAutocomplete, {
   type LocationSelection
@@ -43,6 +43,7 @@ export function TripCreateForm({
   const [budget, setBudget] = useState(() =>
     initialData?.expense_budget == null ? "" : String(initialData.expense_budget)
   );
+  const [customHeroImageUrl, setCustomHeroImageUrl] = useState("");
   const [destination, setDestination] = useState(() => initialData?.destination || "");
   const [destinationInputSource, setDestinationInputSource] = useState<DestinationInputSource>(
     () => initialData?.destination ? "initial" : "name"
@@ -58,11 +59,14 @@ export function TripCreateForm({
     () => initialData?.travel_style || "balanced"
   );
   const { isPending, run, state } = useAlmidyAction<{ trip?: { id: string } }>();
+  const backgroundInputRef = useRef<HTMLInputElement | null>(null);
+  const startDateInputRef = useRef<HTMLInputElement | null>(null);
+  const endDateInputRef = useRef<HTMLInputElement | null>(null);
   const mobilePassMode = mode === "mobile-pass";
   const previewDates = formatPreviewDates(startDate, endDate);
   const selectedCountryCode = countryCodeFromSelection(destinationSelection, destination);
   const destinationPreviewLabel = destinationPreviewText(destinationSelection, destination, name);
-  const heroImageUrl = tripHeroImageUrl(destinationSelection, destinationPreviewLabel);
+  const heroImageUrl = customHeroImageUrl || tripHeroImageUrl(destinationSelection, destinationPreviewLabel);
   const canCreate = Boolean(
     name.trim() &&
       destination.trim() &&
@@ -73,6 +77,14 @@ export function TripCreateForm({
   useEffect(() => {
     setHydrated(true);
   }, []);
+
+  useEffect(() => {
+    return () => {
+      if (customHeroImageUrl.startsWith("blob:")) {
+        URL.revokeObjectURL(customHeroImageUrl);
+      }
+    };
+  }, [customHeroImageUrl]);
 
   useEffect(() => {
     if (!initialData) return;
@@ -175,6 +187,7 @@ export function TripCreateForm({
     if (result.status === "success") {
       const tripId = readCreatedTripId(result.data);
       setBudget("");
+      setCustomHeroImageUrl("");
       setDestination("");
       setDestinationInputSource("name");
       setDestinationSelection(null);
@@ -201,26 +214,25 @@ export function TripCreateForm({
   if (mobilePassMode) {
     return (
       <form
-        className="flex min-h-0 flex-col"
+        className="flex min-h-0 flex-col outline-none focus:outline-none focus-visible:outline-none"
         data-hydrated={hydrated ? "true" : "false"}
         data-testid="mobile-trip-create-form"
         id={formId}
         onSubmit={createTrip}
       >
-        <GoogleMapsProvider>
-          <span className="sr-only">Preparing destination matching.</span>
-        </GoogleMapsProvider>
         <MobileFormShell
-          className="relative mx-auto flex h-[calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-1rem)] min-h-[38rem] w-full max-w-[31rem] flex-col overflow-hidden rounded-[2.15rem] border-0 bg-[#807867] shadow-[0_28px_80px_rgba(0,0,0,0.42)] outline-none"
+          className="relative mx-auto flex h-[calc(100dvh-0.75rem)] min-h-[38rem] w-full max-w-[31rem] flex-col overflow-hidden rounded-[2.15rem] border-0 bg-[#807867] shadow-[0_28px_80px_rgba(0,0,0,0.42)] outline-none"
           data-testid="mobile-trip-create-sheet"
         >
-          <div
-            aria-hidden="true"
-            className="absolute inset-x-0 top-0 h-[27rem] bg-cover bg-center transition-[background-image] duration-500"
-            style={{
-              backgroundImage: `linear-gradient(180deg,rgba(0,0,0,0.02)_0%,rgba(91,82,64,0.22)_58%,#807867_100%),url('${heroImageUrl}')`
-            }}
-          />
+          {heroImageUrl ? (
+            <img
+              alt=""
+              aria-hidden="true"
+              className="absolute inset-x-0 top-0 h-[27rem] w-full object-cover transition-opacity duration-500"
+              src={heroImageUrl}
+            />
+          ) : null}
+          <div aria-hidden="true" className="absolute inset-x-0 top-0 h-[27rem] bg-[linear-gradient(180deg,rgba(0,0,0,0.02)_0%,rgba(91,82,64,0.22)_58%,#807867_100%)]" />
           <div className="pointer-events-none absolute inset-x-0 top-[21rem] h-44 bg-gradient-to-b from-transparent via-[#807867]/90 to-[#807867]" />
 
           <div className="relative z-10 flex min-h-0 flex-1 flex-col">
@@ -265,6 +277,7 @@ export function TripCreateForm({
                 <div className="mt-9 grid w-full max-w-[23rem] grid-cols-[1fr_auto_1fr] items-center gap-8 text-white/78">
                   <button
                     className="grid place-items-center gap-2 text-white/78"
+                    onClick={() => openDatePicker(startDateInputRef.current)}
                     type="button"
                   >
                     <CalendarDays className="h-9 w-9 text-white/60" aria-hidden="true" />
@@ -273,12 +286,53 @@ export function TripCreateForm({
                   <div className="h-20 w-px bg-white/42" />
                   <button
                     className="grid place-items-center gap-2 text-white/78"
+                    onClick={() => backgroundInputRef.current?.click()}
                     type="button"
                   >
                     <ImageIcon className="h-9 w-9 text-white/60" aria-hidden="true" />
                     <span className="text-xl font-medium">Background</span>
                   </button>
                 </div>
+                <input
+                  aria-label="Start date"
+                  className="sr-only"
+                  onChange={(event) => {
+                    setStartDate(event.target.value);
+                    window.setTimeout(() => openDatePicker(endDateInputRef.current), 180);
+                  }}
+                  ref={startDateInputRef}
+                  tabIndex={-1}
+                  type="date"
+                  value={startDate}
+                />
+                <input
+                  aria-label="End date"
+                  className="sr-only"
+                  onChange={(event) => setEndDate(event.target.value)}
+                  ref={endDateInputRef}
+                  tabIndex={-1}
+                  type="date"
+                  value={endDate}
+                />
+                <input
+                  accept="image/*"
+                  aria-label="Choose background"
+                  className="sr-only"
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    if (!file) return;
+                    const nextUrl = URL.createObjectURL(file);
+                    setCustomHeroImageUrl((currentUrl) => {
+                      if (currentUrl.startsWith("blob:")) {
+                        URL.revokeObjectURL(currentUrl);
+                      }
+                      return nextUrl;
+                    });
+                  }}
+                  ref={backgroundInputRef}
+                  tabIndex={-1}
+                  type="file"
+                />
                 <p className="mt-8 max-w-[19rem] text-sm font-semibold leading-6 text-white/72">
                   Type a destination in the trip name, like Miami weekend or Paris Sep 12-15.
                 </p>
@@ -606,6 +660,11 @@ function dateInputValue(year: number, monthIndex: number, day: number) {
 }
 
 async function resolveLocationFromQuery(query: string): Promise<LocationSelection | null> {
+  const serverResolvedLocation = await resolveLocationFromServer(query);
+  if (serverResolvedLocation) {
+    return serverResolvedLocation;
+  }
+
   const places = await waitForGooglePlaces();
 
   if (!places?.AutocompleteSuggestion?.fetchAutocompleteSuggestions) {
@@ -631,6 +690,67 @@ async function resolveLocationFromQuery(query: string): Promise<LocationSelectio
       resolvedPlace,
       prediction.mainText?.text || prediction.text?.text || query
     );
+  } catch {
+    return null;
+  }
+}
+
+async function resolveLocationFromServer(query: string): Promise<LocationSelection | null> {
+  try {
+    const response = await fetch("/api/travel-data/resolve-place", {
+      body: JSON.stringify({
+        address: null,
+        city: null,
+        country: null,
+        locationHint: null,
+        name: query
+      }),
+      credentials: "same-origin",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      method: "POST"
+    });
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const payload = await response.json();
+    const resolved = payload?.data?.resolved;
+    const inventoryItem = resolved?.inventoryItem;
+    const lat = readNumber(resolved?.latitude ?? inventoryItem?.latitude);
+    const lng = readNumber(resolved?.longitude ?? inventoryItem?.longitude);
+    const address = readString(resolved?.address) || readString(inventoryItem?.address) || query;
+
+    if (typeof lat !== "number" || typeof lng !== "number") {
+      return null;
+    }
+
+    const metadata = isRecord(inventoryItem?.metadata) ? inventoryItem.metadata : {};
+    const title = readString(inventoryItem?.title) || query;
+
+    return {
+      address,
+      formattedAddress: readString(inventoryItem?.address) || address,
+      lat,
+      lng,
+      name: title,
+      placeId: readString(resolved?.placeId) || readString(inventoryItem?.providerItemId),
+      providerMetadata: {
+        ...metadata,
+        address,
+        formattedAddress: readString(inventoryItem?.address) || address,
+        formatted_address: readString(inventoryItem?.address) || address,
+        imageAlt: readString(inventoryItem?.imageAlt) || metadata.imageAlt || `Photo of ${title}`,
+        imageAttribution: readString(inventoryItem?.imageAttribution) || metadata.imageAttribution || null,
+        imageProvider: readString(inventoryItem?.imageProvider) || metadata.imageProvider || null,
+        name: title,
+        provider: resolved?.provider || inventoryItem?.provider || "google_places",
+        providerPlaceId: readString(resolved?.placeId) || readString(inventoryItem?.providerItemId) || metadata.providerPlaceId || null,
+        source: "trip_name_server_resolution"
+      }
+    };
   } catch {
     return null;
   }
@@ -694,6 +814,41 @@ function readGoogleCoordinate(
   const value = location?.[key];
 
   return typeof value === "function" ? value() : value;
+}
+
+function openDatePicker(input: HTMLInputElement | null) {
+  if (!input) {
+    return;
+  }
+
+  if (typeof input.showPicker === "function") {
+    input.showPicker();
+    return;
+  }
+
+  input.click();
+  input.focus();
+}
+
+function readNumber(value: unknown) {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (typeof value === "string" && value.trim()) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  return null;
+}
+
+function readString(value: unknown) {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value));
 }
 
 function readGooglePlacePhoto(place: google.maps.places.Place) {
