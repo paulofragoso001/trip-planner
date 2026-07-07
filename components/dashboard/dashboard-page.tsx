@@ -49,6 +49,7 @@ export default function DashboardPage({
   return (
     <>
       <MobileHomeWallet
+        heroImage={heroImage}
         initialSheetState={view === "trips" ? "expanded" : "collapsed"}
         metrics={metrics}
         recentTrips={recentTrips}

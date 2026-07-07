@@ -40,6 +40,7 @@ import type { CSSProperties, PointerEvent, ReactNode, TouchEvent } from "react";
 import type { DashboardRecentTripView } from "@/app/dashboard/loader";
 import { cn } from "@/components/trip-ui";
 import { dashboardActionRoutes } from "@/lib/dashboard/action-routes";
+import type { WalletHeroImage } from "@/lib/wallet/hero-image";
 
 type SheetState = "collapsed" | "expanded" | "settings" | "search";
 type TravelWalletSurface = "home" | "trips";
@@ -61,8 +62,8 @@ const SHEET_SNAP_THRESHOLD = 35;
 const SHEET_TOUCH_DRAG_THRESHOLD = 6;
 
 export function TravelWalletSheet({
+  featuredTripImage,
   forceExpanded = false,
-  ideasWaitingCount,
   initialSheetState = "collapsed",
   onCreateTrip,
   primaryHref,
@@ -71,8 +72,8 @@ export function TravelWalletSheet({
   recentTrips,
   surface = "home"
 }: {
+  featuredTripImage?: WalletHeroImage;
   forceExpanded?: boolean;
-  ideasWaitingCount: number;
   initialSheetState?: SheetState;
   onCreateTrip?: () => void;
   primaryHref: string;
@@ -100,6 +101,7 @@ export function TravelWalletSheet({
   const currentYear = new Date().getFullYear();
   const isTripsSurface = surface === "trips";
   const isEmptyHomeLaunch = !isTripsSurface && recentTrips.length === 0;
+  const hasHomeTrips = !isTripsSurface && recentTrips.length > 0;
   const sheetHandleLabel = isTripsSurface
     ? isCollapsed
       ? "Expand My Trips sheet"
@@ -273,7 +275,9 @@ export function TravelWalletSheet({
                 "rounded-t-[2rem] min-[390px]:rounded-t-[2.2rem]",
                 isEmptyHomeLaunch
                   ? "h-[clamp(18rem,32dvh,21rem)] max-h-[clamp(18rem,32dvh,21rem)]"
-                  : "h-[clamp(10.6rem,21dvh,12.1rem)] max-h-[clamp(10.6rem,21dvh,12.1rem)]"
+                  : hasHomeTrips
+                    ? "h-[clamp(13.75rem,24dvh,16rem)] max-h-[clamp(13.75rem,24dvh,16rem)]"
+                    : "h-[clamp(10.6rem,21dvh,12.1rem)] max-h-[clamp(10.6rem,21dvh,12.1rem)]"
               )
             : "h-[100dvh] min-h-[100dvh] max-h-[100dvh] rounded-t-[2rem] min-[390px]:rounded-t-[2.25rem]"
         )}
@@ -357,6 +361,7 @@ export function TravelWalletSheet({
                   primaryHref={primaryHref}
                   primaryLabel={primaryLabel}
                   primaryMeta={primaryMeta}
+                  hasTrips={recentTrips.length > 0}
                   surface={surface}
                 />
               )
@@ -373,14 +378,11 @@ export function TravelWalletSheet({
             ) : (
               <ExpandedTrips
                 currentYear={currentYear}
-                ideasWaitingCount={ideasWaitingCount}
+                featuredTripImage={featuredTripImage}
                 primaryHref={primaryHref}
                 primaryLabel={primaryLabel}
                 primaryMeta={primaryMeta}
                 recentTrips={recentTrips}
-                onOpenTrial={() =>
-                  setTrialSheetCopy("Your 15 day Almidy Pro trial will be available from billing settings soon.")
-                }
               />
             )}
           </div>
@@ -484,6 +486,7 @@ function TripScopeMenu() {
 }
 
 function CollapsedLauncher({
+  hasTrips,
   onCreateTrip,
   onOpenSearch,
   primaryHref,
@@ -492,6 +495,7 @@ function CollapsedLauncher({
   pinned = false,
   surface
 }: {
+  hasTrips: boolean;
   onCreateTrip?: () => void;
   onOpenSearch: () => void;
   pinned?: boolean;
@@ -502,6 +506,10 @@ function CollapsedLauncher({
 }) {
   const searchHref = surface === "trips" ? `${dashboardActionRoutes.trips.list}?view=list` : "/dashboard/search";
   const searchLabel = surface === "trips" ? "List" : "Search";
+  const primaryActionHref = hasTrips && surface === "home" ? dashboardActionRoutes.trips.stats : primaryHref;
+  const primaryActionLabel = hasTrips && surface === "home" ? "My Tripsy Book" : primaryLabel;
+  const primaryActionMeta = hasTrips && surface === "home" ? "" : primaryMeta;
+  const primaryActionIcon = hasTrips && surface === "home" ? <Globe2 className="h-5 w-5" aria-hidden="true" /> : <Plane className="h-5 w-5" aria-hidden="true" />;
 
   return (
     <div
@@ -519,22 +527,22 @@ function CollapsedLauncher({
           ) : (
             <CircleActionButton icon={<Search />} label={searchLabel} onClick={onOpenSearch} />
           )}
-          {onCreateTrip && primaryLabel.toLowerCase().includes("create") ? (
+          {onCreateTrip && primaryActionLabel.toLowerCase().includes("create") ? (
             <button
-              aria-label={primaryLabel}
+              aria-label={primaryActionLabel}
               className="grid h-14 min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-3 rounded-full bg-white px-4 text-left text-slate-950 shadow-[0_18px_44px_rgba(15,23,42,0.08)] ring-1 ring-slate-100 transition hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-orange-300/20"
               onClick={onCreateTrip}
               type="button"
             >
-              <CollapsedLauncherPrimaryContent primaryLabel={primaryLabel} primaryMeta={primaryMeta} />
+              <CollapsedLauncherPrimaryContent icon={primaryActionIcon} primaryLabel={primaryActionLabel} primaryMeta={primaryActionMeta} />
             </button>
           ) : (
             <Link
-              aria-label={primaryLabel}
+              aria-label={primaryActionLabel}
               className="grid h-14 min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-3 rounded-full bg-white px-4 text-left text-slate-950 shadow-[0_18px_44px_rgba(15,23,42,0.08)] ring-1 ring-slate-100 transition hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-orange-300/20"
-              href={primaryHref}
+              href={primaryActionHref}
             >
-              <CollapsedLauncherPrimaryContent primaryLabel={primaryLabel} primaryMeta={primaryMeta} />
+              <CollapsedLauncherPrimaryContent icon={primaryActionIcon} primaryLabel={primaryActionLabel} primaryMeta={primaryActionMeta} />
             </Link>
           )}
           {onCreateTrip ? (
@@ -549,21 +557,23 @@ function CollapsedLauncher({
 }
 
 function CollapsedLauncherPrimaryContent({
+  icon,
   primaryLabel,
   primaryMeta
 }: {
+  icon: ReactNode;
   primaryLabel: string;
   primaryMeta: string;
 }) {
   return (
     <>
-            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-orange-50 text-orange-500 shadow-sm">
-              <Plane className="h-5 w-5" aria-hidden="true" />
-            </span>
-            <span className="min-w-0">
-              <span className="block truncate text-[0.95rem] font-black">{primaryLabel}</span>
-              <span className="block truncate text-[0.72rem] font-bold text-slate-500">{primaryMeta}</span>
-            </span>
+      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-orange-50 text-orange-500 shadow-sm">
+        {icon}
+      </span>
+      <span className="min-w-0">
+        <span className="block truncate text-[0.95rem] font-black">{primaryLabel}</span>
+        {primaryMeta ? <span className="block truncate text-[0.72rem] font-bold text-slate-500">{primaryMeta}</span> : null}
+      </span>
     </>
   );
 }
@@ -668,16 +678,14 @@ function TripsNativeActions({ onCreateTrip }: { onCreateTrip?: () => void }) {
 
 function ExpandedTrips({
   currentYear,
-  ideasWaitingCount,
+  featuredTripImage,
   primaryHref,
   primaryLabel,
   primaryMeta,
-  recentTrips,
-  onOpenTrial
+  recentTrips
 }: {
   currentYear: number;
-  ideasWaitingCount: number;
-  onOpenTrial: () => void;
+  featuredTripImage?: WalletHeroImage;
   primaryHref: string;
   primaryLabel: string;
   primaryMeta: string;
@@ -685,7 +693,6 @@ function ExpandedTrips({
 }) {
   const featuredTrip = recentTrips[0] || null;
   const [showEmailAutomation, setShowEmailAutomation] = useState(true);
-  const [showProFeature, setShowProFeature] = useState(true);
 
   return (
     <div className="mt-5 h-[calc(100dvh-6.25rem)] overflow-y-auto pb-[calc(6.5rem+env(safe-area-inset-bottom))]" data-testid="ios-launch-sheet-expanded">
@@ -698,17 +705,12 @@ function ExpandedTrips({
       </div>
       <TripFeatureCard
         href={featuredTrip?.href || primaryHref}
+        imageAlt={featuredTripImage?.imageAlt}
+        imageUrl={featuredTripImage?.imageUrl}
         name={featuredTrip?.destination || featuredTrip?.name || stripPrimaryLabel(primaryMeta) || primaryLabel}
         dateRange={featuredTrip?.dateRange || primaryMeta}
-        status={featuredTrip?.status || ""}
+        status={featuredTrip ? tripRelativeStatus(featuredTrip) : ""}
       />
-      <PlanActionsGrid ideasWaitingCount={ideasWaitingCount} />
-      {showProFeature ? (
-        <ProFeatureCard
-          onDismiss={() => setShowProFeature(false)}
-          onOpenTrial={onOpenTrial}
-        />
-      ) : null}
       {showEmailAutomation ? (
         <EmailAutomationCard onDismiss={() => setShowEmailAutomation(false)} />
       ) : null}
@@ -719,7 +721,7 @@ function ExpandedTrips({
           href={dashboardActionRoutes.trips.stats}
         >
           <Globe2 className="h-5 w-5 shrink-0 text-slate-950" aria-hidden="true" />
-          <span className="truncate">Travel Book</span>
+          <span className="truncate">My Tripsy Book</span>
         </Link>
         <CircleAction href={dashboardActionRoutes.trips.create} icon={<Plus />} label="Add" primary />
       </div>
@@ -901,11 +903,15 @@ function SettingsPanel({
 function TripFeatureCard({
   dateRange,
   href,
+  imageAlt,
+  imageUrl,
   name,
   status
 }: {
   dateRange: string;
   href: string;
+  imageAlt?: string | null;
+  imageUrl?: string | null;
   name: string;
   status: string;
 }) {
@@ -915,7 +921,16 @@ function TripFeatureCard({
       href={href}
       data-testid="mobile-home-featured-trip"
     >
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_35%_12%,rgba(255,255,255,0.45),transparent_18%),radial-gradient(circle_at_80%_22%,rgba(14,165,233,0.48),transparent_28%),linear-gradient(180deg,transparent_26%,rgba(15,23,42,0.72)_100%)]" />
+      {imageUrl ? (
+        <img
+          alt={imageAlt || ""}
+          className="absolute inset-0 h-full w-full object-cover"
+          src={imageUrl}
+        />
+      ) : (
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_35%_12%,rgba(255,255,255,0.45),transparent_18%),radial-gradient(circle_at_80%_22%,rgba(14,165,233,0.48),transparent_28%),linear-gradient(135deg,#0891b2,#0f766e_45%,#1e293b)]" />
+      )}
+      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(15,23,42,0.03)_0%,rgba(15,23,42,0.14)_38%,rgba(15,23,42,0.70)_100%)]" />
       <div className="absolute inset-x-0 bottom-0 p-6">
         <h3 className="text-[2.35rem] font-black leading-none tracking-normal">{name}</h3>
         <p className="mt-3 text-xl font-medium text-white/86">{dateRange}</p>
@@ -1354,4 +1369,51 @@ function CircleActionButton({
 
 function stripPrimaryLabel(value: string) {
   return value.split("·")[0]?.trim();
+}
+
+function tripRelativeStatus(trip: DashboardRecentTripView) {
+  const startDate = parseLocalDate(trip.startDate);
+  const endDate = parseLocalDate(trip.endDate);
+
+  if (!startDate) {
+    return trip.status || "";
+  }
+
+  const today = startOfLocalDay(new Date());
+  const dayDifference = Math.round((startDate.getTime() - today.getTime()) / 86_400_000);
+
+  if (dayDifference === 0) {
+    return "Starts today";
+  }
+
+  if (dayDifference === 1) {
+    return "Starts tomorrow";
+  }
+
+  if (dayDifference > 1 && dayDifference < 14) {
+    return `Starts in ${dayDifference} days`;
+  }
+
+  if (dayDifference < 0 && (!endDate || endDate.getTime() >= today.getTime())) {
+    return "In progress";
+  }
+
+  return trip.status || "";
+}
+
+function parseLocalDate(value: string | null) {
+  if (!value) {
+    return null;
+  }
+
+  const [year, month, day] = value.split("-").map((part) => Number.parseInt(part, 10));
+  if (!year || !month || !day) {
+    return null;
+  }
+
+  return new Date(year, month - 1, day);
+}
+
+function startOfLocalDay(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
 }

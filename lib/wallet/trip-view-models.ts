@@ -74,9 +74,11 @@ export type WalletTripSegmentCounts = {
 export type WalletTripSummaryModel = {
   dateRange: string;
   destination: string;
+  endDate: string | null;
   href: string;
   id: string;
   name: string;
+  startDate: string | null;
   status: string;
 };
 
@@ -89,8 +91,6 @@ export type WalletTripPassModel = WalletTripSummaryModel & {
   mappedStops: number;
   nearbyIdeasCount: number;
   needsLocationStops: number;
-  endDate: string | null;
-  startDate: string | null;
   stopCount: number;
   travelStyle: TripTravelStyle;
   travelStyleLabel: string;
@@ -183,9 +183,11 @@ export function mapWalletTripSummary(row: WalletTripRecord): WalletTripSummaryMo
   return {
     dateRange: formatWalletDateRange(row.start_date ?? null, row.end_date ?? null),
     destination: cleanString(row.destination) || "Destination not set",
+    endDate: row.end_date ?? null,
     href: walletTripHref(row.id),
     id: row.id,
     name: cleanString(row.name) || cleanString(row.title) || "Untitled trip",
+    startDate: row.start_date ?? null,
     status: cleanString(row.status) || "Planning"
   };
 }

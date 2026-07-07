@@ -9,29 +9,26 @@ import { AlmidyLaunchGlobe } from "@/components/dashboard/almidy-launch-globe";
 import { TravelWalletSheet } from "@/components/dashboard/travel-wallet-sheet";
 import { TripCreateForm, type TripDraft, type WalletLayer } from "@/components/dashboard/trip-create-form";
 import { cn } from "@/components/trip-ui";
+import type { WalletHeroImage } from "@/lib/wallet/hero-image";
 import { unifiedMapSurfaceEnabled } from "@/lib/map/feature-flags";
 import { UnifiedMapProvider, useUnifiedMap } from "@/lib/map/unified-map-provider";
 import { countryCodeToFlag } from "@/lib/map/wayline-map-pins";
 
 type MobileHomeWalletProps = Pick<DashboardData, "metrics" | "recentTrips"> & {
   className?: string;
+  heroImage?: WalletHeroImage;
   initialSheetState?: "collapsed" | "expanded";
 };
 
 export function MobileHomeWallet({
   className,
+  heroImage,
   initialSheetState = "collapsed",
-  metrics,
   recentTrips
 }: MobileHomeWalletProps) {
   const latestTrip = recentTrips[0] || null;
   const resolvedInitialSheetState = initialSheetState;
   const [isCreatingFirstTrip, setIsCreatingFirstTrip] = useState(false);
-  const importsWaiting =
-    metrics.find((metric) => metric.label === "Ideas waiting")?.value ??
-    metrics.find((metric) => metric.label === "Imports waiting")?.value ??
-    "0";
-  const ideasWaitingCount = Number.parseInt(importsWaiting.replace(/[^\d]/g, ""), 10) || 0;
   const primaryHref = latestTrip ? latestTrip.href : "/dashboard/trips?view=list#new-trip";
   const primaryLabel = latestTrip ? "Continue trip" : "Create trip";
   const primaryMeta = latestTrip
@@ -89,8 +86,8 @@ export function MobileHomeWallet({
         data-testid="mobile-home-wallet-stage"
       >
         <TravelWalletSheet
-          ideasWaitingCount={ideasWaitingCount}
-          onCreateTrip={!latestTrip ? pushCreateTrip : undefined}
+          featuredTripImage={latestTrip ? heroImage : undefined}
+          onCreateTrip={pushCreateTrip}
           primaryHref={primaryHref}
           primaryLabel={primaryLabel}
           primaryMeta={primaryMeta}
