@@ -8,6 +8,7 @@ final class MainViewController: CAPBridgeViewController {
         super.capacitorDidLoad()
         installLocationOverlayBlocker()
         bridge?.registerPluginInstance(NativeMapPlugin())
+        bridge?.registerPluginInstance(AppleCalendarPlugin())
     }
 
     override func viewDidAppear(_ animated: Bool) {

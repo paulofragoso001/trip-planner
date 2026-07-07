@@ -1,5 +1,8 @@
 import Capacitor
+import CoreGraphics
 import CoreLocation
+import EventKit
+import Foundation
 import MapKit
 import UIKit
 
@@ -48,6 +51,447 @@ private struct NativeMapOptions: Decodable {
 
     init(trips: [NativeMapTrip]) {
         self.trips = trips
+    }
+}
+
+@objc(AppleCalendarPlugin)
+public class AppleCalendarPlugin: CAPPlugin, CAPBridgedPlugin {
+    public let identifier = "AppleCalendarPlugin"
+    public let jsName = "AppleCalendar"
+
+    public let pluginMethods: [CAPPluginMethod] = [
+        CAPPluginMethod(name: "requestCalendarAccess", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "getCalendarAuthorizationStatus", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "listCalendars", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "createTripCalendarEvent", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "updateTripCalendarEvent", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "deleteTripCalendarEvent", returnType: CAPPluginReturnPromise)
+    ]
+
+    private let eventStore = EKEventStore()
+    private let isoDateFormatter = ISO8601DateFormatter()
+
+    public override init() {
+        super.init()
+        isoDateFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+    }
+
+    @objc func getCalendarAuthorizationStatus(_ call: CAPPluginCall) {
+        call.resolve(["status": currentAuthorizationStatusString()])
+    }
+
+    @objc func requestCalendarAccess(_ call: CAPPluginCall) {
+        if #available(iOS 17.0, *) {
+            eventStore.requestFullAccessToEvents { [weak self] granted, error in
+                self?.resolveAccessRequest(call, granted: granted, error: error)
+            }
+        } else {
+            eventStore.requestAccess(to: .event) { [weak self] granted, error in
+                self?.resolveAccessRequest(call, granted: granted, error: error)
+            }
+        }
+    }
+
+    @objc func listCalendars(_ call: CAPPluginCall) {
+        guard hasFullCalendarAccess else {
+            call.reject("Apple Calendar full access is required to list calendars.", "calendar_access_required")
+            return
+        }
+
+        call.resolve([
+            "calendars": eventStore.calendars(for: .event)
+                .filter { $0.allowsContentModifications }
+                .map(calendarPayload),
+            "status": currentAuthorizationStatusString()
+        ])
+    }
+
+    @objc func createTripCalendarEvent(_ call: CAPPluginCall) {
+        guard hasFullCalendarAccess else {
+            call.reject("Apple Calendar access is required to create events.", "calendar_access_required")
+            return
+        }
+
+        do {
+            let payload = try calendarEventPayload(from: call)
+            let event = EKEvent(eventStore: eventStore)
+            try apply(payload, to: event)
+            try save(event)
+            call.resolve(eventPayload(event))
+        } catch {
+            call.reject(error.localizedDescription, "apple_calendar_create_failed")
+        }
+    }
+
+    @objc func updateTripCalendarEvent(_ call: CAPPluginCall) {
+        guard hasFullCalendarAccess else {
+            call.reject("Apple Calendar access is required to update events.", "calendar_access_required")
+            return
+        }
+
+        do {
+            let payload = try calendarEventPayload(from: call)
+            let event = findExistingEvent(for: payload) ?? EKEvent(eventStore: eventStore)
+            try apply(payload, to: event)
+            try save(event)
+            call.resolve(eventPayload(event, recovered: payload.eventIdentifier != nil && event.eventIdentifier != payload.eventIdentifier))
+        } catch {
+            call.reject(error.localizedDescription, "apple_calendar_update_failed")
+        }
+    }
+
+    @objc func deleteTripCalendarEvent(_ call: CAPPluginCall) {
+        guard hasFullCalendarAccess else {
+            call.reject("Apple Calendar access is required to delete events.", "calendar_access_required")
+            return
+        }
+
+        let identity = CalendarEventIdentity(
+            eventIdentifier: clean(call.getString("eventIdentifier")),
+            calendarItemIdentifier: clean(call.getString("calendarItemIdentifier")),
+            almidyId: clean(call.getString("almidyId")) ?? clean(call.getString("tripId")) ?? clean(call.getString("segmentId")),
+            startDate: parseDate(call.getString("startDate")),
+            endDate: parseDate(call.getString("endDate")),
+            title: clean(call.getString("title"))
+        )
+
+        guard let event = findExistingEvent(for: identity) else {
+            call.resolve([
+                "deleted": false,
+                "status": currentAuthorizationStatusString()
+            ])
+            return
+        }
+
+        do {
+            try eventStore.remove(event, span: .thisEvent, commit: true)
+            call.resolve([
+                "deleted": true,
+                "eventIdentifier": event.eventIdentifier as Any,
+                "calendarItemIdentifier": event.calendarItemIdentifier,
+                "status": currentAuthorizationStatusString()
+            ])
+        } catch {
+            call.reject(error.localizedDescription, "apple_calendar_delete_failed")
+        }
+    }
+
+    private func resolveAccessRequest(_ call: CAPPluginCall, granted: Bool, error: Error?) {
+        DispatchQueue.main.async { [weak self] in
+            if let error {
+                call.reject(error.localizedDescription, "apple_calendar_access_failed")
+                return
+            }
+
+            call.resolve([
+                "granted": granted,
+                "status": self?.currentAuthorizationStatusString() ?? "unknown"
+            ])
+        }
+    }
+
+    private var hasFullCalendarAccess: Bool {
+        let status = EKEventStore.authorizationStatus(for: .event)
+        if #available(iOS 17.0, *) {
+            return status == .fullAccess
+        }
+        return status == .authorized
+    }
+
+    private func currentAuthorizationStatusString() -> String {
+        let status = EKEventStore.authorizationStatus(for: .event)
+        if #available(iOS 17.0, *) {
+            switch status {
+            case .notDetermined:
+                return "notDetermined"
+            case .restricted:
+                return "restricted"
+            case .denied:
+                return "denied"
+            case .authorized, .fullAccess:
+                return "authorized"
+            case .writeOnly:
+                return "writeOnly"
+            @unknown default:
+                return "unknown"
+            }
+        }
+
+        switch status {
+        case .notDetermined:
+            return "notDetermined"
+        case .restricted:
+            return "restricted"
+        case .denied:
+            return "denied"
+        case .authorized:
+            return "authorized"
+        @unknown default:
+            return "unknown"
+        }
+    }
+
+    private func calendarEventPayload(from call: CAPPluginCall) throws -> CalendarEventPayload {
+        guard let title = clean(call.getString("title")) ?? clean(call.getString("tripName")) else {
+            throw AppleCalendarError.invalidPayload("Missing event title.")
+        }
+
+        guard let startDate = parseDate(call.getString("startDate")) else {
+            throw AppleCalendarError.invalidPayload("Missing or invalid startDate.")
+        }
+
+        let allDay = call.getBool("allDay") ?? isDateOnly(call.getString("startDate"))
+        let endDate = parseDate(call.getString("endDate")) ?? defaultEndDate(for: startDate, allDay: allDay)
+
+        guard endDate > startDate else {
+            throw AppleCalendarError.invalidPayload("endDate must be after startDate.")
+        }
+
+        return CalendarEventPayload(
+            title: title,
+            startDate: startDate,
+            endDate: endDate,
+            allDay: allDay,
+            calendarId: clean(call.getString("calendarId")),
+            location: clean(call.getString("location")),
+            notes: clean(call.getString("notes")),
+            url: parseURL(call.getString("url")),
+            eventIdentifier: clean(call.getString("eventIdentifier")),
+            calendarItemIdentifier: clean(call.getString("calendarItemIdentifier")),
+            almidyId: clean(call.getString("almidyId")) ?? clean(call.getString("tripId")) ?? clean(call.getString("segmentId")),
+            tripId: clean(call.getString("tripId")),
+            segmentId: clean(call.getString("segmentId"))
+        )
+    }
+
+    private func apply(_ payload: CalendarEventPayload, to event: EKEvent) throws {
+        event.title = payload.title
+        event.startDate = payload.startDate
+        event.endDate = payload.endDate
+        event.isAllDay = payload.allDay
+        event.location = payload.location
+        event.notes = notesWithMetadata(payload)
+        event.url = payload.url
+        event.calendar = try selectedCalendar(calendarId: payload.calendarId)
+    }
+
+    private func save(_ event: EKEvent) throws {
+        do {
+            try eventStore.save(event, span: .thisEvent, commit: true)
+        } catch {
+            eventStore.reset()
+            throw error
+        }
+    }
+
+    private func selectedCalendar(calendarId: String?) throws -> EKCalendar {
+        if let calendarId, let calendar = eventStore.calendar(withIdentifier: calendarId), calendar.allowsContentModifications {
+            return calendar
+        }
+
+        if let defaultCalendar = eventStore.defaultCalendarForNewEvents, defaultCalendar.allowsContentModifications {
+            return defaultCalendar
+        }
+
+        guard let firstWritable = eventStore.calendars(for: .event).first(where: { $0.allowsContentModifications }) else {
+            throw AppleCalendarError.noWritableCalendars
+        }
+
+        return firstWritable
+    }
+
+    private func findExistingEvent(for payload: CalendarEventPayload) -> EKEvent? {
+        findExistingEvent(
+            for: CalendarEventIdentity(
+                eventIdentifier: payload.eventIdentifier,
+                calendarItemIdentifier: payload.calendarItemIdentifier,
+                almidyId: payload.almidyId,
+                startDate: payload.startDate,
+                endDate: payload.endDate,
+                title: payload.title
+            )
+        )
+    }
+
+    private func findExistingEvent(for identity: CalendarEventIdentity) -> EKEvent? {
+        if let eventIdentifier = identity.eventIdentifier,
+           let event = eventStore.event(withIdentifier: eventIdentifier) {
+            return event
+        }
+
+        let searchStart = Calendar.current.date(byAdding: .day, value: -7, to: identity.startDate ?? Date()) ?? Date()
+        let searchEnd = Calendar.current.date(byAdding: .day, value: 7, to: identity.endDate ?? identity.startDate ?? Date()) ?? Date()
+        let predicate = eventStore.predicateForEvents(withStart: searchStart, end: searchEnd, calendars: nil)
+
+        return eventStore.events(matching: predicate).first { event in
+            if let calendarItemIdentifier = identity.calendarItemIdentifier,
+               event.calendarItemIdentifier == calendarItemIdentifier {
+                return true
+            }
+
+            if let almidyId = identity.almidyId,
+               event.notes?.contains(metadataLine(key: "Almidy ID", value: almidyId)) == true {
+                return true
+            }
+
+            if let title = identity.title, let startDate = identity.startDate {
+                return event.title == title && abs(event.startDate.timeIntervalSince(startDate)) < 60
+            }
+
+            return false
+        }
+    }
+
+    private func eventPayload(_ event: EKEvent, recovered: Bool = false) -> [String: Any] {
+        [
+            "eventIdentifier": event.eventIdentifier as Any,
+            "calendarItemIdentifier": event.calendarItemIdentifier,
+            "calendarId": event.calendar.calendarIdentifier,
+            "calendarTitle": event.calendar.title,
+            "startDate": formatDate(event.startDate),
+            "endDate": formatDate(event.endDate),
+            "allDay": event.isAllDay,
+            "recovered": recovered,
+            "status": currentAuthorizationStatusString()
+        ]
+    }
+
+    private func calendarPayload(_ calendar: EKCalendar) -> [String: Any] {
+        [
+            "id": calendar.calendarIdentifier,
+            "title": calendar.title,
+            "sourceTitle": calendar.source.title,
+            "allowsContentModifications": calendar.allowsContentModifications,
+            "color": calendar.cgColor?.hexString ?? ""
+        ]
+    }
+
+    private func notesWithMetadata(_ payload: CalendarEventPayload) -> String {
+        var lines: [String] = []
+        if let notes = payload.notes {
+            lines.append(notes)
+            lines.append("")
+        }
+
+        lines.append("Created by Almidy")
+        if let almidyId = payload.almidyId {
+            lines.append(metadataLine(key: "Almidy ID", value: almidyId))
+        }
+        if let tripId = payload.tripId {
+            lines.append(metadataLine(key: "Almidy Trip ID", value: tripId))
+        }
+        if let segmentId = payload.segmentId {
+            lines.append(metadataLine(key: "Almidy Segment ID", value: segmentId))
+        }
+
+        return lines.joined(separator: "\n")
+    }
+
+    private func metadataLine(key: String, value: String) -> String {
+        "\(key): \(value)"
+    }
+
+    private func parseDate(_ value: String?) -> Date? {
+        guard let value = clean(value) else { return nil }
+
+        if let date = isoDateFormatter.date(from: value) {
+            return date
+        }
+
+        let fallbackFormatter = ISO8601DateFormatter()
+        fallbackFormatter.formatOptions = [.withInternetDateTime]
+        if let date = fallbackFormatter.date(from: value) {
+            return date
+        }
+
+        if isDateOnly(value) {
+            let formatter = DateFormatter()
+            formatter.calendar = Calendar(identifier: .gregorian)
+            formatter.locale = Locale(identifier: "en_US_POSIX")
+            formatter.timeZone = TimeZone(secondsFromGMT: 0)
+            formatter.dateFormat = "yyyy-MM-dd"
+            return formatter.date(from: value)
+        }
+
+        return nil
+    }
+
+    private func formatDate(_ date: Date) -> String {
+        isoDateFormatter.string(from: date)
+    }
+
+    private func defaultEndDate(for startDate: Date, allDay: Bool) -> Date {
+        Calendar.current.date(byAdding: allDay ? .day : .hour, value: 1, to: startDate) ?? startDate.addingTimeInterval(allDay ? 86_400 : 3_600)
+    }
+
+    private func isDateOnly(_ value: String?) -> Bool {
+        guard let value else { return false }
+        return value.range(of: #"^\d{4}-\d{2}-\d{2}$"#, options: .regularExpression) != nil
+    }
+
+    private func parseURL(_ value: String?) -> URL? {
+        guard let value = clean(value) else { return nil }
+        return URL(string: value)
+    }
+
+    private func clean(_ value: String?) -> String? {
+        guard let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines), !trimmed.isEmpty else {
+            return nil
+        }
+        return trimmed
+    }
+}
+
+private struct CalendarEventPayload {
+    let title: String
+    let startDate: Date
+    let endDate: Date
+    let allDay: Bool
+    let calendarId: String?
+    let location: String?
+    let notes: String?
+    let url: URL?
+    let eventIdentifier: String?
+    let calendarItemIdentifier: String?
+    let almidyId: String?
+    let tripId: String?
+    let segmentId: String?
+}
+
+private struct CalendarEventIdentity {
+    let eventIdentifier: String?
+    let calendarItemIdentifier: String?
+    let almidyId: String?
+    let startDate: Date?
+    let endDate: Date?
+    let title: String?
+}
+
+private enum AppleCalendarError: LocalizedError {
+    case invalidPayload(String)
+    case noWritableCalendars
+
+    var errorDescription: String? {
+        switch self {
+        case .invalidPayload(let message):
+            return message
+        case .noWritableCalendars:
+            return "No writable Apple calendars are available on this device."
+        }
+    }
+}
+
+private extension CGColor {
+    var hexString: String? {
+        guard let components = converted(to: CGColorSpaceCreateDeviceRGB(), intent: .defaultIntent, options: nil)?.components,
+              components.count >= 3 else {
+            return nil
+        }
+
+        let red = Int(round(components[0] * 255))
+        let green = Int(round(components[1] * 255))
+        let blue = Int(round(components[2] * 255))
+        return String(format: "#%02X%02X%02X", red, green, blue)
     }
 }
 

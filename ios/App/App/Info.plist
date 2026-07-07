@@ -37,6 +37,10 @@
 	<true/>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Almidy uses your location to center the native travel map when you tap the current location control.</string>
+	<key>NSCalendarsUsageDescription</key>
+	<string>Almidy uses calendar access to add and update your trip dates and timed itinerary segments in Apple Calendar.</string>
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>Almidy uses full calendar access to list writable calendars and keep trip dates and timed itinerary segments updated in Apple Calendar.</string>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
