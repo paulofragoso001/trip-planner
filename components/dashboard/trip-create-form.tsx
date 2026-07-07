@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { CalendarDays, ImageIcon } from "lucide-react";
 import type { FormEvent } from "react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import GoogleMapsProvider from "@/components/GoogleMapsProvider";
 import LocationAutocomplete, {
   type LocationSelection
@@ -24,18 +24,39 @@ import {
 
 type DestinationInputSource = "initial" | "name" | "manual" | "selected";
 
+export type WalletLayer = "myTrips" | "createTrip" | "datePicker" | "backgroundPicker";
+
+export type TripDraft = {
+  name: string;
+  startDate: string | null;
+  endDate: string | null;
+  backgroundImageUrl: string | null;
+  backgroundColor: string | null;
+  destinationMetadata?: unknown;
+};
+
 type TripCreateFormProps = {
+  draft?: TripDraft;
   formId?: string;
   initialData?: TripFormInitialData;
   mode?: "default" | "mobile-pass";
+  onCancel?: () => void;
+  onDraftChange?: (draft: TripDraft) => void;
+  onOpenBackgroundPicker?: () => void;
+  onOpenDatePicker?: () => void;
   redirectOnSuccess?: boolean;
   successRedirectHref?: string;
 };
 
 export function TripCreateForm({
+  draft,
   formId = "new-trip",
   initialData,
   mode = "default",
+  onCancel,
+  onDraftChange,
+  onOpenBackgroundPicker,
+  onOpenDatePicker,
   redirectOnSuccess = false,
   successRedirectHref
 }: TripCreateFormProps) {
@@ -43,7 +64,7 @@ export function TripCreateForm({
   const [budget, setBudget] = useState(() =>
     initialData?.expense_budget == null ? "" : String(initialData.expense_budget)
   );
-  const [customHeroImageUrl, setCustomHeroImageUrl] = useState("");
+  const [customHeroImageUrl, setCustomHeroImageUrl] = useState(() => draft?.backgroundImageUrl || "");
   const [destination, setDestination] = useState(() => initialData?.destination || "");
   const [destinationInputSource, setDestinationInputSource] = useState<DestinationInputSource>(
     () => initialData?.destination ? "initial" : "name"
@@ -51,22 +72,20 @@ export function TripCreateForm({
   const [destinationSelection, setDestinationSelection] = useState<LocationSelection | null>(() =>
     locationSelectionFromInitialData(initialData)
   );
-  const [endDate, setEndDate] = useState(() => initialData?.end_date || "");
+  const [endDate, setEndDate] = useState(() => draft?.endDate || initialData?.end_date || "");
   const [hydrated, setHydrated] = useState(false);
-  const [name, setName] = useState(() => initialData?.trip_name || "");
-  const [startDate, setStartDate] = useState(() => initialData?.start_date || "");
+  const [name, setName] = useState(() => draft?.name || initialData?.trip_name || "");
+  const [startDate, setStartDate] = useState(() => draft?.startDate || initialData?.start_date || "");
   const [travelStyle, setTravelStyle] = useState<TripTravelStyle>(
     () => initialData?.travel_style || "balanced"
   );
   const { isPending, run, state } = useAlmidyAction<{ trip?: { id: string } }>();
-  const backgroundInputRef = useRef<HTMLInputElement | null>(null);
-  const startDateInputRef = useRef<HTMLInputElement | null>(null);
-  const endDateInputRef = useRef<HTMLInputElement | null>(null);
   const mobilePassMode = mode === "mobile-pass";
   const previewDates = formatPreviewDates(startDate, endDate);
   const selectedCountryCode = countryCodeFromSelection(destinationSelection, destination);
   const destinationPreviewLabel = destinationPreviewText(destinationSelection, destination, name);
   const heroImageUrl = customHeroImageUrl || tripHeroImageUrl(destinationSelection, destinationPreviewLabel);
+  const heroBackgroundColor = draft?.backgroundColor || "#807867";
   const canCreate = Boolean(
     name.trim() &&
       destination.trim() &&
@@ -77,6 +96,15 @@ export function TripCreateForm({
   useEffect(() => {
     setHydrated(true);
   }, []);
+
+  useEffect(() => {
+    if (!draft) return;
+
+    setName(draft.name);
+    setStartDate(draft.startDate || "");
+    setEndDate(draft.endDate || "");
+    setCustomHeroImageUrl(draft.backgroundImageUrl || "");
+  }, [draft]);
 
   useEffect(() => {
     return () => {
@@ -107,6 +135,10 @@ export function TripCreateForm({
     const inferredDates = inferDatesFromTripName(name);
     setStartDate(inferredDates.startDate);
     setEndDate(inferredDates.endDate);
+    updateDraft({
+      endDate: inferredDates.endDate || null,
+      startDate: inferredDates.startDate || null
+    });
 
     if (destinationInputSource !== "name") {
       return;
@@ -136,6 +168,22 @@ export function TripCreateForm({
       window.clearTimeout(timer);
     };
   }, [destinationInputSource, initialData, mobilePassMode, name]);
+
+  function updateDraft(nextValues: Partial<TripDraft>) {
+    if (!draft || !onDraftChange) {
+      return;
+    }
+
+    onDraftChange({
+      ...draft,
+      name,
+      startDate: startDate || null,
+      endDate: endDate || null,
+      backgroundImageUrl: customHeroImageUrl || null,
+      backgroundColor: draft.backgroundColor,
+      ...nextValues
+    });
+  }
 
   async function createTrip(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -188,6 +236,13 @@ export function TripCreateForm({
       const tripId = readCreatedTripId(result.data);
       setBudget("");
       setCustomHeroImageUrl("");
+      updateDraft({
+        backgroundColor: null,
+        backgroundImageUrl: null,
+        endDate: null,
+        name: "",
+        startDate: null
+      });
       setDestination("");
       setDestinationInputSource("name");
       setDestinationSelection(null);
@@ -211,6 +266,15 @@ export function TripCreateForm({
         ? "bg-red-400/12 text-red-100 ring-red-300/20 lg:bg-red-50 lg:text-red-700 lg:ring-transparent"
         : "bg-white/[0.06] text-white/70 ring-white/10 lg:bg-slate-50 lg:text-slate-600 lg:ring-transparent";
 
+  function cancelMobileCreate() {
+    if (onCancel) {
+      onCancel();
+      return;
+    }
+
+    window.location.assign("/dashboard");
+  }
+
   if (mobilePassMode) {
     return (
       <form
@@ -224,6 +288,11 @@ export function TripCreateForm({
           className="relative mx-auto flex h-[calc(100dvh-0.75rem)] min-h-[38rem] w-full max-w-[31rem] flex-col overflow-hidden rounded-[2.15rem] border-0 bg-[#807867] shadow-[0_28px_80px_rgba(0,0,0,0.42)] outline-none"
           data-testid="mobile-trip-create-sheet"
         >
+          <div
+            aria-hidden="true"
+            className="absolute inset-0"
+            style={{ backgroundColor: heroBackgroundColor }}
+          />
           {heroImageUrl ? (
             <img
               alt=""
@@ -232,17 +301,29 @@ export function TripCreateForm({
               src={heroImageUrl}
             />
           ) : null}
-          <div aria-hidden="true" className="absolute inset-x-0 top-0 h-[27rem] bg-[linear-gradient(180deg,rgba(0,0,0,0.02)_0%,rgba(91,82,64,0.22)_58%,#807867_100%)]" />
-          <div className="pointer-events-none absolute inset-x-0 top-[21rem] h-44 bg-gradient-to-b from-transparent via-[#807867]/90 to-[#807867]" />
+          <div
+            aria-hidden="true"
+            className="absolute inset-x-0 top-0 h-[27rem]"
+            style={{
+              background: `linear-gradient(180deg,rgba(0,0,0,0.02)_0%,rgba(91,82,64,0.22)_58%,${heroBackgroundColor}_100%)`
+            }}
+          />
+          <div
+            className="pointer-events-none absolute inset-x-0 top-[21rem] h-44"
+            style={{
+              background: `linear-gradient(180deg,transparent,${heroBackgroundColor}E6,${heroBackgroundColor})`
+            }}
+          />
 
           <div className="relative z-10 flex min-h-0 flex-1 flex-col">
             <div className="flex shrink-0 items-center justify-between px-5 pt-[calc(env(safe-area-inset-top)+1rem)]">
-              <a
+              <button
                 className="inline-flex min-h-12 items-center justify-center rounded-full border border-white/55 bg-white/70 px-5 text-[1.38rem] font-semibold text-black shadow-[0_10px_28px_rgba(0,0,0,0.18)] backdrop-blur-xl transition hover:bg-white/85 focus:outline-none focus:ring-4 focus:ring-white/30"
-                href="/dashboard"
+                onClick={cancelMobileCreate}
+                type="button"
               >
                 Cancel
-              </a>
+              </button>
               <button
                 aria-busy={isPending}
                 className="inline-flex min-h-12 items-center justify-center rounded-full bg-orange-500 px-7 text-[1.35rem] font-bold text-white shadow-[0_12px_32px_rgba(249,115,22,0.34)] transition hover:bg-orange-400 disabled:cursor-not-allowed disabled:opacity-65"
@@ -261,7 +342,9 @@ export function TripCreateForm({
                     aria-label="Trip name"
                     className="w-full border-0 bg-transparent p-0 text-center text-[3rem] font-semibold leading-none tracking-normal text-white outline-none placeholder:text-white/72 focus:ring-0 min-[390px]:text-[3.45rem]"
                     onChange={(event) => {
-                      setName(event.target.value);
+                      const nextName = event.target.value;
+                      setName(nextName);
+                      updateDraft({ name: nextName });
                       if (destinationInputSource === "initial" && !destinationSelection) {
                         setDestinationInputSource("name");
                       }
@@ -277,7 +360,7 @@ export function TripCreateForm({
                 <div className="mt-9 grid w-full max-w-[23rem] grid-cols-[1fr_auto_1fr] items-center gap-8 text-white/78">
                   <button
                     className="grid place-items-center gap-2 text-white/78"
-                    onClick={() => openDatePicker(startDateInputRef.current)}
+                    onClick={onOpenDatePicker}
                     type="button"
                   >
                     <CalendarDays className="h-9 w-9 text-white/60" aria-hidden="true" />
@@ -286,53 +369,13 @@ export function TripCreateForm({
                   <div className="h-20 w-px bg-white/42" />
                   <button
                     className="grid place-items-center gap-2 text-white/78"
-                    onClick={() => backgroundInputRef.current?.click()}
+                    onClick={onOpenBackgroundPicker}
                     type="button"
                   >
                     <ImageIcon className="h-9 w-9 text-white/60" aria-hidden="true" />
                     <span className="text-xl font-medium">Background</span>
                   </button>
                 </div>
-                <input
-                  aria-label="Start date"
-                  className="sr-only"
-                  onChange={(event) => {
-                    setStartDate(event.target.value);
-                    window.setTimeout(() => openDatePicker(endDateInputRef.current), 180);
-                  }}
-                  ref={startDateInputRef}
-                  tabIndex={-1}
-                  type="date"
-                  value={startDate}
-                />
-                <input
-                  aria-label="End date"
-                  className="sr-only"
-                  onChange={(event) => setEndDate(event.target.value)}
-                  ref={endDateInputRef}
-                  tabIndex={-1}
-                  type="date"
-                  value={endDate}
-                />
-                <input
-                  accept="image/*"
-                  aria-label="Choose background"
-                  className="sr-only"
-                  onChange={(event) => {
-                    const file = event.target.files?.[0];
-                    if (!file) return;
-                    const nextUrl = URL.createObjectURL(file);
-                    setCustomHeroImageUrl((currentUrl) => {
-                      if (currentUrl.startsWith("blob:")) {
-                        URL.revokeObjectURL(currentUrl);
-                      }
-                      return nextUrl;
-                    });
-                  }}
-                  ref={backgroundInputRef}
-                  tabIndex={-1}
-                  type="file"
-                />
                 <p className="mt-8 max-w-[19rem] text-sm font-semibold leading-6 text-white/72">
                   Type a destination in the trip name, like Miami weekend or Paris Sep 12-15.
                 </p>
@@ -568,8 +611,7 @@ function tripHeroImageUrl(
     return placePhotoUrl;
   }
 
-  const query = encodeURIComponent(`${locationText} landmark travel`);
-  return `https://source.unsplash.com/1200x900/?${query}`;
+  return "";
 }
 
 function inferDestinationFromTripName(value: string) {
@@ -814,20 +856,6 @@ function readGoogleCoordinate(
   const value = location?.[key];
 
   return typeof value === "function" ? value() : value;
-}
-
-function openDatePicker(input: HTMLInputElement | null) {
-  if (!input) {
-    return;
-  }
-
-  if (typeof input.showPicker === "function") {
-    input.showPicker();
-    return;
-  }
-
-  input.click();
-  input.focus();
 }
 
 function readNumber(value: unknown) {

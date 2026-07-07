@@ -680,10 +680,11 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByTestId("mobile-launch-welcome")).toBeVisible();
     await expect(page.getByText("Welcome")).toBeVisible();
     await expect(page.getByRole("heading", { name: "Get Started" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Create Your First Trip" })).toHaveAttribute(
-      "href",
-      "/dashboard/trips?view=list#new-trip"
-    );
+    const createFirstTrip = page.getByRole("button", { name: "Create Your First Trip" });
+    await expect(createFirstTrip).toBeVisible();
+    await createFirstTrip.click();
+    await expect(page).toHaveURL(`${baseUrl}/dashboard`);
+    await expect(page.getByTestId("dashboard-wallet-layer-stack")).toHaveAttribute("data-wallet-layer", "createTrip");
     await expect(page.getByRole("link", { name: "Forward Your Reservation" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Explore Sample Trip" })).toBeVisible();
   });

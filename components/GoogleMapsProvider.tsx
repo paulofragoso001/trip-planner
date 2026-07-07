@@ -28,6 +28,14 @@ type GoogleMapsAuthFailureHandler = (() => void) & {
 
 const GOOGLE_MAPS_AUTH_FAILURE_EVENT = "almidy:google-maps-auth-failure";
 
+function hasGoogleMapsRuntime() {
+  if (typeof window === "undefined") return false;
+  const googleWindow = window as Window & {
+    google?: { maps?: { importLibrary?: unknown } };
+  };
+  return typeof googleWindow.google?.maps?.importLibrary === "function";
+}
+
 function GoogleMapsLoader({
   apiKey,
   blockChildrenOnError = false,
@@ -43,6 +51,15 @@ function GoogleMapsLoader({
     libraries,
     version: "beta"
   });
+  const [hasPreloadedRuntime, setHasPreloadedRuntime] = useState(hasGoogleMapsRuntime);
+  const googleMapsReady = isLoaded || hasPreloadedRuntime;
+
+  useEffect(() => {
+    if (hasPreloadedRuntime) return;
+    if (hasGoogleMapsRuntime()) {
+      setHasPreloadedRuntime(true);
+    }
+  }, [hasPreloadedRuntime]);
 
   useEffect(() => {
     const googleWindow = window as GoogleMapsWindow;
@@ -84,7 +101,7 @@ function GoogleMapsLoader({
     );
   }
 
-  if (!isLoaded) {
+  if (!googleMapsReady) {
     if (blockChildrenUntilLoaded) {
       return loadingFallback ?? fallback ?? <GoogleMapsSurfaceFallback />;
     }

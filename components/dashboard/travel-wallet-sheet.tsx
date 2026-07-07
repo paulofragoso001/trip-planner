@@ -64,6 +64,7 @@ export function TravelWalletSheet({
   forceExpanded = false,
   ideasWaitingCount,
   initialSheetState = "collapsed",
+  onCreateTrip,
   primaryHref,
   primaryLabel,
   primaryMeta,
@@ -73,6 +74,7 @@ export function TravelWalletSheet({
   forceExpanded?: boolean;
   ideasWaitingCount: number;
   initialSheetState?: SheetState;
+  onCreateTrip?: () => void;
   primaryHref: string;
   primaryLabel: string;
   primaryMeta: string;
@@ -350,6 +352,7 @@ export function TravelWalletSheet({
             {isCollapsed ? (
               isEmptyHomeLaunch ? null : (
                 <CollapsedLauncher
+                  onCreateTrip={onCreateTrip}
                   onOpenSearch={openSearch}
                   primaryHref={primaryHref}
                   primaryLabel={primaryLabel}
@@ -358,9 +361,10 @@ export function TravelWalletSheet({
                 />
               )
             ) : recentTrips.length === 0 ? (
-              <WelcomeGetStarted />
+              <WelcomeGetStarted onCreateTrip={onCreateTrip} />
             ) : isTripsSurface ? (
               <ExpandedTripsNative
+                onCreateTrip={onCreateTrip}
                 primaryHref={primaryHref}
                 primaryLabel={primaryLabel}
                 primaryMeta={primaryMeta}
@@ -392,7 +396,9 @@ export function TravelWalletSheet({
   );
 }
 
-function WelcomeGetStarted() {
+function WelcomeGetStarted({ onCreateTrip }: { onCreateTrip?: () => void }) {
+  const createActionClassName = "inline-flex min-h-14 items-center justify-center rounded-full bg-orange-500 px-5 text-center text-lg font-black text-white shadow-[0_18px_42px_rgba(249,115,22,0.28)] transition hover:bg-orange-600 focus:outline-none focus:ring-4 focus:ring-orange-300/25";
+
   return (
     <div
       className="mt-5 h-[calc(100dvh-6.25rem)] overflow-y-auto pb-[calc(6.5rem+env(safe-area-inset-bottom))]"
@@ -407,12 +413,24 @@ function WelcomeGetStarted() {
           Create your next trip and plan your itinerary, expenses, documents, and more
         </p>
         <div className="mt-7 grid gap-3">
-          <Link
-            className="inline-flex min-h-14 items-center justify-center rounded-full bg-orange-500 px-5 text-center text-lg font-black text-white shadow-[0_18px_42px_rgba(249,115,22,0.28)] transition hover:bg-orange-600 focus:outline-none focus:ring-4 focus:ring-orange-300/25"
-            href={dashboardActionRoutes.trips.create}
-          >
-            Create Your First Trip
-          </Link>
+          {onCreateTrip ? (
+            <button
+              className={createActionClassName}
+              data-testid="mobile-launch-create-first-trip"
+              onClick={onCreateTrip}
+              type="button"
+            >
+              Create Your First Trip
+            </button>
+          ) : (
+            <Link
+              className={createActionClassName}
+              data-testid="mobile-launch-create-first-trip"
+              href={dashboardActionRoutes.trips.create}
+            >
+              Create Your First Trip
+            </Link>
+          )}
           <Link
             className="inline-flex min-h-14 items-center justify-center rounded-full bg-[#eadfd8] px-5 text-center text-lg font-black text-black transition hover:bg-[#dfd2ca] focus:outline-none focus:ring-4 focus:ring-orange-300/20"
             href={dashboardActionRoutes.imports.forwardReservation}
@@ -466,6 +484,7 @@ function TripScopeMenu() {
 }
 
 function CollapsedLauncher({
+  onCreateTrip,
   onOpenSearch,
   primaryHref,
   primaryLabel,
@@ -473,6 +492,7 @@ function CollapsedLauncher({
   pinned = false,
   surface
 }: {
+  onCreateTrip?: () => void;
   onOpenSearch: () => void;
   pinned?: boolean;
   primaryHref: string;
@@ -499,11 +519,44 @@ function CollapsedLauncher({
           ) : (
             <CircleActionButton icon={<Search />} label={searchLabel} onClick={onOpenSearch} />
           )}
-          <Link
-            aria-label={primaryLabel}
-            className="grid h-14 min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-3 rounded-full bg-white px-4 text-left text-slate-950 shadow-[0_18px_44px_rgba(15,23,42,0.08)] ring-1 ring-slate-100 transition hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-orange-300/20"
-            href={primaryHref}
-          >
+          {onCreateTrip && primaryLabel.toLowerCase().includes("create") ? (
+            <button
+              aria-label={primaryLabel}
+              className="grid h-14 min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-3 rounded-full bg-white px-4 text-left text-slate-950 shadow-[0_18px_44px_rgba(15,23,42,0.08)] ring-1 ring-slate-100 transition hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-orange-300/20"
+              onClick={onCreateTrip}
+              type="button"
+            >
+              <CollapsedLauncherPrimaryContent primaryLabel={primaryLabel} primaryMeta={primaryMeta} />
+            </button>
+          ) : (
+            <Link
+              aria-label={primaryLabel}
+              className="grid h-14 min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-3 rounded-full bg-white px-4 text-left text-slate-950 shadow-[0_18px_44px_rgba(15,23,42,0.08)] ring-1 ring-slate-100 transition hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-orange-300/20"
+              href={primaryHref}
+            >
+              <CollapsedLauncherPrimaryContent primaryLabel={primaryLabel} primaryMeta={primaryMeta} />
+            </Link>
+          )}
+          {onCreateTrip ? (
+            <CircleActionButton icon={<Plus />} label="Add" onClick={onCreateTrip} primary />
+          ) : (
+            <CircleAction href={dashboardActionRoutes.trips.create} icon={<Plus />} label="Add" primary />
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CollapsedLauncherPrimaryContent({
+  primaryLabel,
+  primaryMeta
+}: {
+  primaryLabel: string;
+  primaryMeta: string;
+}) {
+  return (
+    <>
             <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-orange-50 text-orange-500 shadow-sm">
               <Plane className="h-5 w-5" aria-hidden="true" />
             </span>
@@ -511,20 +564,18 @@ function CollapsedLauncher({
               <span className="block truncate text-[0.95rem] font-black">{primaryLabel}</span>
               <span className="block truncate text-[0.72rem] font-bold text-slate-500">{primaryMeta}</span>
             </span>
-          </Link>
-          <CircleAction href={dashboardActionRoutes.trips.create} icon={<Plus />} label="Add" primary />
-        </div>
-      </div>
-    </div>
+    </>
   );
 }
 
 function ExpandedTripsNative({
+  onCreateTrip,
   primaryHref,
   primaryLabel,
   primaryMeta,
   recentTrips
 }: {
+  onCreateTrip?: () => void;
   primaryHref: string;
   primaryLabel: string;
   primaryMeta: string;
@@ -551,7 +602,7 @@ function ExpandedTripsNative({
         dateRange={featuredTrip?.dateRange || primaryMeta}
         status={featuredTrip?.status || ""}
       />
-      <TripsNativeActions />
+      <TripsNativeActions onCreateTrip={onCreateTrip} />
       {secondaryTrips.length ? (
         <section className="mt-5 grid gap-3" aria-label="Recent trips">
           {secondaryTrips.map((trip) => (
@@ -575,15 +626,24 @@ function ExpandedTripsNative({
   );
 }
 
-function TripsNativeActions() {
+function TripsNativeActions({ onCreateTrip }: { onCreateTrip?: () => void }) {
   return (
     <div className="mt-5 grid grid-cols-2 gap-3" data-testid="mobile-trips-native-actions">
-      <SheetActionLink
-        href={dashboardActionRoutes.trips.create}
-        icon={<Plus />}
-        label="Create trip"
-        meta="Start a new pass"
-      />
+      {onCreateTrip ? (
+        <SheetActionButton
+          icon={<Plus />}
+          label="Create trip"
+          meta="Start a new pass"
+          onClick={onCreateTrip}
+        />
+      ) : (
+        <SheetActionLink
+          href={dashboardActionRoutes.trips.create}
+          icon={<Plus />}
+          label="Create trip"
+          meta="Start a new pass"
+        />
+      )}
       <SheetActionLink
         href={dashboardActionRoutes.trips.stats}
         icon={<Globe2 />}
@@ -715,6 +775,35 @@ function SheetActionLink({
       </span>
       <ChevronRight className="h-5 w-5 text-slate-400" aria-hidden="true" />
     </Link>
+  );
+}
+
+function SheetActionButton({
+  icon,
+  label,
+  meta,
+  onClick
+}: {
+  icon: ReactNode;
+  label: string;
+  meta: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      className="grid min-h-[5.5rem] grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-[1.45rem] bg-slate-50 px-4 text-left text-slate-950 ring-1 ring-slate-200 transition hover:bg-orange-50 hover:ring-orange-100 focus:outline-none focus:ring-4 focus:ring-orange-300/20"
+      onClick={onClick}
+      type="button"
+    >
+      <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-white text-orange-500 shadow-sm [&_svg]:h-6 [&_svg]:w-6" aria-hidden="true">
+        {icon}
+      </span>
+      <span className="min-w-0">
+        <span className="block truncate text-lg font-black">{label}</span>
+        <span className="block truncate text-sm font-bold text-slate-500">{meta}</span>
+      </span>
+      <ChevronRight className="h-5 w-5 text-slate-400" aria-hidden="true" />
+    </button>
   );
 }
 
@@ -1238,16 +1327,21 @@ function CircleAction({
 function CircleActionButton({
   icon,
   label,
-  onClick
+  onClick,
+  primary = false
 }: {
   icon: ReactNode;
   label: string;
   onClick: () => void;
+  primary?: boolean;
 }) {
   return (
     <button
       aria-label={label}
-      className="grid h-14 w-14 place-items-center rounded-full bg-white text-slate-950 shadow-[0_18px_44px_rgba(15,23,42,0.08)] ring-1 ring-slate-100 transition focus:outline-none focus:ring-4 focus:ring-orange-300/20"
+      className={cn(
+        "grid h-14 w-14 place-items-center rounded-full shadow-[0_18px_44px_rgba(15,23,42,0.08)] transition focus:outline-none focus:ring-4 focus:ring-orange-300/20",
+        primary ? "bg-orange-500 text-white" : "bg-white text-slate-950 ring-1 ring-slate-100"
+      )}
       onClick={onClick}
       type="button"
     >

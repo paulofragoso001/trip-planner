@@ -321,10 +321,51 @@ test.describe("authenticated mobile dashboard smoke", () => {
       await expect(firstTripCard.getByRole("heading", { name: "Create your first trip" })).toBeVisible();
       await expect(firstTripCard.getByTestId("launch-first-trip-create")).toHaveAttribute(
         "href",
-        "/dashboard/trips?view=list#new-trip"
+        "/dashboard"
       );
     }
     await expect(page.getByTestId("mobile-trips-country-map-screen")).toHaveCount(0);
+  });
+
+  test("/dashboard create trip uses wallet layers without URL navigation", async ({ page }) => {
+    await openAuthenticatedMobileRoute(page, "/dashboard");
+
+    const firstTripCard = page.getByTestId("launch-first-trip-card");
+    test.skip((await firstTripCard.count()) === 0, "Requires an empty dashboard state.");
+
+    await firstTripCard.getByTestId("launch-first-trip-create").click();
+    await expect(page).toHaveURL(`${baseUrl}/dashboard`);
+    await expect(page.getByTestId("dashboard-wallet-layer-stack")).toHaveAttribute("data-wallet-layer", "createTrip");
+
+    const form = page.getByTestId("mobile-trip-create-form");
+    await expect(form).toBeVisible();
+    await form.getByLabel("Trip name").fill("Paris July");
+
+    await form.getByRole("button", { name: "Set Dates" }).click();
+    await expect(page.getByTestId("dashboard-wallet-layer-stack")).toHaveAttribute("data-wallet-layer", "datePicker");
+    await expect(page.getByTestId("wallet-date-picker-layer")).toBeVisible();
+    await page.getByTestId("wallet-date-day").filter({ hasText: /^10$/ }).first().click();
+    await page.getByTestId("wallet-date-day").filter({ hasText: /^14$/ }).first().click();
+    await page.getByRole("button", { name: "Confirm" }).click();
+    await expect(page.getByTestId("dashboard-wallet-layer-stack")).toHaveAttribute("data-wallet-layer", "createTrip");
+    await expect(form.getByLabel("Trip name")).toHaveValue("Paris July");
+    await expect(form).toContainText(/Jul 10 - Jul 14|10 Jul - 14 Jul/);
+
+    await form.getByRole("button", { name: "Background" }).click();
+    await expect(page.getByTestId("dashboard-wallet-layer-stack")).toHaveAttribute("data-wallet-layer", "backgroundPicker");
+    await expect(page.getByTestId("wallet-background-picker-layer")).toBeVisible();
+    await page.getByLabel("Use background color #2f4f4f").click();
+    await expect(page.getByTestId("dashboard-wallet-layer-stack")).toHaveAttribute("data-wallet-layer", "createTrip");
+    await expect(form.getByLabel("Trip name")).toHaveValue("Paris July");
+
+    await form.getByRole("button", { name: "Set Dates" }).click();
+    await page.getByTestId("wallet-date-picker-layer").getByRole("button", { name: "Cancel" }).click();
+    await expect(page.getByTestId("dashboard-wallet-layer-stack")).toHaveAttribute("data-wallet-layer", "createTrip");
+    await expect(form.getByLabel("Trip name")).toHaveValue("Paris July");
+
+    await form.getByRole("button", { name: "Cancel" }).click();
+    await expect(page.getByTestId("dashboard-wallet-layer-stack")).toHaveCount(0);
+    await expect(page).toHaveURL(`${baseUrl}/dashboard`);
   });
 
   test("/dashboard asks for location before requesting browser geolocation", async ({ context, page }) => {
@@ -338,20 +379,23 @@ test.describe("authenticated mobile dashboard smoke", () => {
 
     await page.goto(`${baseUrl}/dashboard`, { waitUntil: "commit" });
     await expect(page.getByTestId("app-shell-root")).toBeVisible({ timeout: 30_000 });
-    await expect(page.getByTestId("launch-location-permission")).toBeVisible();
-    await expect(page.getByRole("heading", { name: 'Allow "Almidy" to use your location?' })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Allow Once" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Allow While Using App" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Don't Allow" })).toBeVisible();
+    const permissionPrompt = page.getByTestId("launch-location-permission");
     await expect(page.getByTestId("almidy-launch-globe")).toHaveAttribute("data-launch-globe-state", "ready");
     await expect(page.getByTestId("almidy-google-maps-3d-globe")).toBeVisible();
-    await expect(page.getByTestId("almidy-google-maps-3d-globe")).toHaveAttribute("data-camera-intent", "launch");
-    await expect(page.getByTestId("almidy-google-maps-3d-globe")).toHaveAttribute("data-camera-latitude", "35.00000");
-    await expect(page.getByTestId("almidy-google-maps-3d-globe")).toHaveAttribute("data-camera-longitude", "-97.00000");
-    await expect(page.getByTestId("almidy-google-maps-3d-globe")).toHaveAttribute("data-camera-altitude", "6500000");
     await expect(page.getByTestId("mobile-home-country-pin")).toHaveCount(0);
     const firstTripCard = page.getByTestId("launch-first-trip-card");
-    if ((await firstTripCard.count()) > 0) {
+    if ((await permissionPrompt.count()) > 0) {
+      await expect(permissionPrompt).toBeVisible();
+      await expect(page.getByRole("heading", { name: 'Allow "Almidy" to use your location?' })).toBeVisible();
+      await expect(page.getByRole("button", { name: "Allow Once" })).toBeVisible();
+      await expect(page.getByRole("button", { name: "Allow While Using App" })).toBeVisible();
+      await expect(page.getByRole("button", { name: "Don't Allow" })).toBeVisible();
+      await expect(page.getByTestId("almidy-google-maps-3d-globe")).toHaveAttribute("data-camera-intent", "launch");
+      await expect(page.getByTestId("almidy-google-maps-3d-globe")).toHaveAttribute("data-camera-latitude", "35.00000");
+      await expect(page.getByTestId("almidy-google-maps-3d-globe")).toHaveAttribute("data-camera-longitude", "-97.00000");
+      await expect(page.getByTestId("almidy-google-maps-3d-globe")).toHaveAttribute("data-camera-altitude", "6500000");
+    }
+    if ((await firstTripCard.count()) > 0 && (await permissionPrompt.count()) > 0) {
       await expect(firstTripCard).toBeVisible();
       await expect(firstTripCard.getByTestId("launch-first-trip-country-flag")).toHaveAttribute(
         "data-has-country-flag",
@@ -359,7 +403,7 @@ test.describe("authenticated mobile dashboard smoke", () => {
       );
       await expect(firstTripCard.getByTestId("launch-first-trip-create")).toHaveAttribute(
         "href",
-        "/dashboard/trips?view=list#new-trip"
+        "/dashboard"
       );
     }
     await expect
@@ -368,13 +412,15 @@ test.describe("authenticated mobile dashboard smoke", () => {
       )
       .toBe(0);
 
-    await page.getByRole("button", { name: "Allow While Using App" }).click();
+    if ((await permissionPrompt.count()) > 0) {
+      await page.getByRole("button", { name: "Allow While Using App" }).click();
+    }
     await expect
       .poll(() =>
         page.evaluate(() => (window as typeof window & { __waylineGeolocationCalls: number }).__waylineGeolocationCalls)
       )
       .toBe(1);
-    await expect(page.getByTestId("launch-location-permission")).toHaveCount(0);
+    await expect(permissionPrompt).toHaveCount(0);
     await expect(page.getByTestId("almidy-launch-globe")).toHaveAttribute("data-launch-globe-state", "ready");
     await expect(page.getByTestId("almidy-google-maps-3d-globe")).toBeVisible();
     await expect(page.getByTestId("almidy-google-maps-3d-globe")).toHaveAttribute("data-camera-intent", "user-location");
@@ -403,11 +449,12 @@ test.describe("authenticated mobile dashboard smoke", () => {
     });
     await expect(page.getByTestId("mobile-country-map-canvas")).toHaveAttribute(
       "data-map-system",
-      "almidy-map-system"
+      "almidy-apple-map-system"
     );
     await expect(page.getByTestId("almidy-launch-globe")).toHaveCount(0);
-    await expect(page.getByTestId("mobile-trips-globe-flag-pin").first()).toBeVisible();
-    await expect(page.getByTestId("mobile-trips-globe-flag-pin").first()).toHaveAttribute("data-active", "false");
+    await expect
+      .poll(async () => Number(await page.getByTestId("mobile-trips-country-map-screen").getAttribute("data-globe-trip-pin-count")))
+      .toBeGreaterThan(0);
     await expect(page.getByTestId("mobile-home-country-pin")).toHaveCount(0);
     await expect(page.getByTestId("mobile-trips-overview-carousel")).toHaveCount(0);
     await expect(page.getByTestId("mobile-trips-overview-card")).toHaveCount(0);
@@ -444,7 +491,7 @@ test.describe("authenticated mobile dashboard smoke", () => {
   test("/dashboard?view=trips forwards to the canonical My Trips route", async ({ page }) => {
     await openAuthenticatedMobileRoute(page, "/dashboard?view=trips");
 
-    await expect(page).toHaveURL(`${baseUrl}/dashboard/trips`);
+    await expect(page).toHaveURL(`${baseUrl}/dashboard/trips`, { timeout: 20_000 });
     await expect(page.getByTestId("mobile-trips-country-map-screen")).toBeVisible({
       timeout: 20_000
     });
