@@ -532,104 +532,6 @@ function MobileTripsMapCarousel({
   );
 }
 
-function MobileTripsOverviewPanel({
-  activeYear,
-  hydrated,
-  onQueryChange,
-  onYearChange,
-  query,
-  years
-}: {
-  activeYear: string;
-  hydrated: boolean;
-  onQueryChange: (query: string) => void;
-  onYearChange: (year: string) => void;
-  query: string;
-  years: string[];
-}) {
-  return (
-    <div
-      className="absolute inset-x-0 bottom-0 z-50 overflow-hidden rounded-t-[2rem] bg-black/94 px-5 pb-[calc(1.15rem+env(safe-area-inset-bottom))] pt-4 text-white shadow-[0_-18px_64px_rgba(0,0,0,0.46)] ring-1 ring-white/8 backdrop-blur-2xl"
-      data-testid="mobile-country-sheet"
-    >
-      <div
-        className="mx-auto grid w-full max-w-[31rem] gap-4"
-        data-testid="mobile-trips-overview-controls"
-      >
-        <div className="grid grid-cols-[3rem_minmax(0,1fr)_auto] items-center gap-3">
-          <Link
-            aria-label="Trip settings"
-            className="grid h-11 w-11 place-items-center rounded-full bg-orange-500/16 text-orange-400 ring-1 ring-orange-400/10 transition hover:bg-orange-500/22 focus:outline-none focus:ring-4 focus:ring-orange-400/20"
-            href={dashboardActionRoutes.settings.account}
-          >
-            <Settings className="h-5 w-5" aria-hidden="true" />
-          </Link>
-          <h1 className="truncate text-center text-[1.65rem] font-black tracking-tight text-white">
-            My Trips
-          </h1>
-          <div className="flex items-center justify-end gap-2">
-            <Link
-              aria-label="Open travel stats"
-              className="grid h-11 w-11 place-items-center rounded-full bg-orange-500/16 text-orange-400 ring-1 ring-orange-400/10 transition hover:bg-orange-500/22 focus:outline-none focus:ring-4 focus:ring-orange-400/20"
-              data-testid="mobile-trips-stats-link"
-              href={dashboardActionRoutes.trips.stats}
-            >
-              <BarChart3 className="h-5 w-5" aria-hidden="true" />
-            </Link>
-            <Link
-              aria-disabled={!hydrated}
-              aria-label="Create trip"
-              className={cn(
-                "grid h-11 w-11 place-items-center rounded-full bg-orange-500/18 text-orange-400 ring-1 ring-orange-400/10 transition hover:bg-orange-500/24 focus:outline-none focus:ring-4 focus:ring-orange-400/20",
-                !hydrated && "pointer-events-none opacity-60"
-              )}
-              href="/dashboard/trips?view=list#new-trip"
-            >
-              <Plus className="h-6 w-6" aria-hidden="true" />
-            </Link>
-          </div>
-        </div>
-
-        <label className="relative block">
-          <span className="sr-only">Search for trips</span>
-          <Search
-            className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-white/42"
-            aria-hidden="true"
-          />
-          <input
-            className="h-12 w-full rounded-full border border-white/[0.06] bg-white/[0.09] pl-12 pr-4 text-base font-semibold text-white outline-none placeholder:text-white/38 focus:border-orange-300/45 focus:ring-4 focus:ring-orange-400/15"
-            onChange={(event) => onQueryChange(event.target.value)}
-            placeholder="Search for trips"
-            type="search"
-            value={query}
-          />
-        </label>
-
-        <label className="inline-grid min-h-14 w-fit grid-cols-[auto_auto] items-center gap-2 rounded-full pr-1">
-          <span className="sr-only">Trip year</span>
-          <select
-            className="h-14 appearance-none rounded-full border border-transparent bg-transparent py-0 pl-0 pr-0 text-4xl font-black leading-[1.05] tracking-tight text-orange-500 outline-none focus:ring-4 focus:ring-orange-400/20"
-            data-testid="mobile-trips-overview-year-select"
-            onChange={(event) => onYearChange(event.target.value)}
-            value={activeYear}
-          >
-            {years.length ? years.map((year) => (
-              <option className="bg-black text-white" key={year} value={year}>
-                {year}
-              </option>
-            )) : (
-              <option className="bg-black text-white" value={activeYear}>
-                {activeYear}
-              </option>
-            )}
-          </select>
-          <ChevronDown className="pointer-events-none h-7 w-7 shrink-0 text-orange-500" aria-hidden="true" />
-        </label>
-      </div>
-    </div>
-  );
-}
-
 function MobileTripsGlobeCanvas({
   activeTripId,
   activeYear,
@@ -930,10 +832,15 @@ function tripToWalletSheetTrip(trip: Trip): MobileTripsWalletSheetTrip {
     countryCode: countryCodeFromDestinationText(trip.destination),
     date_range: trip.dateRange || "Dates pending",
     destination_name: trip.destination,
+    endDate: trip.endDate,
+    href: trip.href,
     id: trip.id,
     image: trip.imageUrl,
+    imageAlt: trip.imageAlt,
     lat: coordinate?.lat ?? null,
     lng: coordinate?.lng ?? null,
+    name: trip.name,
+    startDate: trip.startDate,
     statusText: tripStatusLabel(trip)
   };
 }

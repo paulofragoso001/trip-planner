@@ -507,7 +507,7 @@ function CollapsedLauncher({
   const searchHref = surface === "trips" ? `${dashboardActionRoutes.trips.list}?view=list` : "/dashboard/search";
   const searchLabel = surface === "trips" ? "List" : "Search";
   const primaryActionHref = hasTrips && surface === "home" ? dashboardActionRoutes.trips.stats : primaryHref;
-  const primaryActionLabel = hasTrips && surface === "home" ? "My Tripsy Book" : primaryLabel;
+  const primaryActionLabel = hasTrips && surface === "home" ? "My Almidy Book" : primaryLabel;
   const primaryActionMeta = hasTrips && surface === "home" ? "" : primaryMeta;
   const primaryActionIcon = hasTrips && surface === "home" ? <Globe2 className="h-5 w-5" aria-hidden="true" /> : <Plane className="h-5 w-5" aria-hidden="true" />;
 
@@ -721,7 +721,7 @@ function ExpandedTrips({
           href={dashboardActionRoutes.trips.stats}
         >
           <Globe2 className="h-5 w-5 shrink-0 text-slate-950" aria-hidden="true" />
-          <span className="truncate">My Tripsy Book</span>
+          <span className="truncate">My Almidy Book</span>
         </Link>
         <CircleAction href={dashboardActionRoutes.trips.create} icon={<Plus />} label="Add" primary />
       </div>
