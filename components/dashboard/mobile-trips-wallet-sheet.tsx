@@ -109,7 +109,7 @@ export default function MobileTripsWalletSheet({
   }, [resolvedQuery, trips]);
   const activeTrip = filteredTrips[0] || trips[0] || null;
   const visibleTrips = filteredTrips;
-  const showEmbeddedOverview = Boolean(isExpanded && activeTrip && !tripNeedsConfiguration(activeTrip));
+  const showEmbeddedOverview = Boolean(isExpanded && activeTrip);
 
   useEffect(() => {
     if (!showEmbeddedOverview || !activeTrip) {
