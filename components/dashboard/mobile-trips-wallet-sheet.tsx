@@ -3,7 +3,9 @@
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { BedDouble, CalendarPlus, ChevronDown, FileText, MapPin, MoreHorizontal, Plane, Route, Search, WalletCards, X } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import type { TripOverviewData } from "@/app/dashboard/trips/[tripId]/overview-loader";
+import TripOverviewPage from "@/components/trip/trip-overview-page";
 
 export interface MobileTripsWalletSheetTrip {
   id: string;
@@ -78,6 +80,9 @@ export default function MobileTripsWalletSheet({
 }: WalletSheetProps) {
   const [sheetState, setSheetState] = useState<TripsOverviewSheetState>("collapsed");
   const [searchQuery, setSearchQuery] = useState("");
+  const [overviewData, setOverviewData] = useState<TripOverviewData | null>(null);
+  const [overviewError, setOverviewError] = useState<string | null>(null);
+  const [overviewLoadingTripId, setOverviewLoadingTripId] = useState<string | null>(null);
   const reduceMotion = useReducedMotion();
   const resolvedQuery = query ?? searchQuery;
   const isCollapsed = sheetState === "collapsed";
@@ -104,6 +109,47 @@ export default function MobileTripsWalletSheet({
   }, [resolvedQuery, trips]);
   const activeTrip = filteredTrips[0] || trips[0] || null;
   const visibleTrips = filteredTrips;
+  const showEmbeddedOverview = Boolean(isExpanded && activeTrip && !tripNeedsConfiguration(activeTrip));
+
+  useEffect(() => {
+    if (!showEmbeddedOverview || !activeTrip) {
+      return;
+    }
+
+    if (overviewData?.tripId === activeTrip.id) {
+      return;
+    }
+
+    const controller = new AbortController();
+    setOverviewError(null);
+    setOverviewLoadingTripId(activeTrip.id);
+
+    fetch(`/api/trips/${encodeURIComponent(activeTrip.id)}/overview`, {
+      signal: controller.signal
+    })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error("Trip overview failed to load");
+        }
+        return response.json() as Promise<TripOverviewData>;
+      })
+      .then((data) => {
+        setOverviewData(data);
+      })
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") {
+          return;
+        }
+        setOverviewError("Could not load the trip overview.");
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) {
+          setOverviewLoadingTripId(null);
+        }
+      });
+
+    return () => controller.abort();
+  }, [activeTrip, overviewData?.tripId, showEmbeddedOverview]);
 
   function closeModalState() {
     setSheetState("collapsed");
@@ -190,6 +236,15 @@ export default function MobileTripsWalletSheet({
               initial={{ opacity: 0, y: 10 }}
               transition={reduceMotion ? { duration: 0 } : { duration: 0.18 }}
             >
+              {showEmbeddedOverview && activeTrip ? (
+                <EmbeddedTripOverview
+                  error={overviewError}
+                  isLoading={overviewLoadingTripId === activeTrip.id}
+                  overview={overviewData?.tripId === activeTrip.id ? overviewData : null}
+                  trip={activeTrip}
+                />
+              ) : (
+                <>
               <div className={isCollapsed ? "mb-3 grid grid-cols-[auto_1fr_auto] items-start gap-3" : "mb-4 grid grid-cols-[auto_1fr_auto] items-start gap-3"}>
                 <div className="flex items-center gap-2">
                   {activeTrip ? (
@@ -321,10 +376,54 @@ export default function MobileTripsWalletSheet({
                   </div>
                 </div>
               ) : null}
+                </>
+              )}
           </motion.div>
         </AnimatePresence>
       </motion.aside>
     </>
+  );
+}
+
+function EmbeddedTripOverview({
+  error,
+  isLoading,
+  overview,
+  trip
+}: {
+  error: string | null;
+  isLoading: boolean;
+  overview: TripOverviewData | null;
+  trip: MobileTripsWalletSheetTrip;
+}) {
+  if (overview) {
+    return (
+      <div className="-mx-5 -mt-3 min-h-0 flex-1 overflow-hidden rounded-t-[1.65rem] bg-[#05060a]">
+        <TripOverviewPage {...overview} />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="grid min-h-0 flex-1 content-start gap-4">
+        <div className="rounded-[1.35rem] border border-amber-300/20 bg-amber-300/10 p-4 text-sm font-bold leading-6 text-amber-50">
+          {error}
+        </div>
+        <ExistingOverviewLinks trip={trip} />
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid min-h-0 flex-1 place-items-center rounded-[1.65rem] bg-black/24 p-6 text-center">
+      <div>
+        <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+        <p className="mt-4 text-sm font-black text-white">
+          {isLoading ? "Loading trip overview..." : "Preparing trip overview..."}
+        </p>
+      </div>
+    </div>
   );
 }
 
