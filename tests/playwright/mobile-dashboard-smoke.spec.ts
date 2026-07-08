@@ -460,17 +460,9 @@ test.describe("authenticated mobile dashboard smoke", () => {
     await expect(page.getByTestId("mobile-trips-overview-card")).toHaveCount(0);
     await expect(page.getByTestId("mobile-country-sheet")).toBeVisible();
     await expect(page.getByTestId("mobile-trips-overview-controls")).toBeVisible();
-    await expect(page.getByPlaceholder("Search for trips")).toBeVisible();
-    await expect(page.getByTestId("mobile-trips-overview-year-select")).toBeVisible();
-    await expect(page.getByRole("link", { name: "Open travel stats" })).toHaveAttribute(
-      "href",
-      "/dashboard/profile/stats"
-    );
-    await expect(page.getByRole("link", { name: "Create trip" })).toHaveAttribute(
-      "href",
-      "/dashboard/trips?view=list#new-trip"
-    );
-    await expect(page.getByRole("heading", { name: "My Trips" })).toBeVisible();
+    await expect(page.getByTestId("mobile-trips-shortcut-rail")).toBeVisible();
+    await expect(page.getByRole("link", { name: "New Activity" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Flights" })).toBeVisible();
     await expect(page.getByTestId("mobile-home-wallet")).toHaveCount(0);
     await expect(page.getByTestId("mobile-home-wallet-content")).toHaveCount(0);
   });
