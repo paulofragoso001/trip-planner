@@ -8,6 +8,7 @@ async function openAuthenticatedMobileRoute(page: Page, path: string) {
   await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
   await page.emulateMedia({ reducedMotion: "reduce" });
   await installMockMobileLocation(page);
+  await installMockAppleMapKit(page);
   await installMockGoogleMaps3D(page);
   await page.goto(`${baseUrl}${path}`, { waitUntil: "commit" });
   await expect(page.getByTestId("app-shell-root")).toBeVisible({ timeout: 30_000 });
@@ -114,6 +115,206 @@ async function installMockMobileLocation(
       }
     });
   }, { mockedPermission: permission });
+}
+
+async function installMockAppleMapKit(page: Page) {
+  await page.route("**/api/mapkit-token", async (route) => {
+    await route.fulfill({
+      body: JSON.stringify({ token: "test-mapkit-token" }),
+      contentType: "application/json",
+      status: 200
+    });
+  });
+
+  await page.addInitScript(() => {
+    type MockMapKitCoordinate = {
+      latitude: number;
+      longitude: number;
+    };
+
+    type MockMapKitAnnotation = {
+      addEventListener: (eventName: string, handler: () => void) => void;
+      element?: HTMLElement;
+      selected?: boolean;
+    };
+
+    class MockCoordinate {
+      latitude: number;
+      longitude: number;
+
+      constructor(latitude: number, longitude: number) {
+        this.latitude = Number(latitude);
+        this.longitude = Number(longitude);
+      }
+    }
+
+    class MockCoordinateSpan {
+      constructor(
+        public latitudeDelta: number,
+        public longitudeDelta: number
+      ) {}
+    }
+
+    class MockCoordinateRegion {
+      center: MockMapKitCoordinate;
+      span: MockCoordinateSpan;
+
+      constructor(center: MockMapKitCoordinate, span: MockCoordinateSpan) {
+        this.center = center;
+        this.span = span;
+      }
+    }
+
+    class MockPadding {
+      constructor(
+        public top: number,
+        public right: number,
+        public bottom: number,
+        public left: number
+      ) {}
+    }
+
+    class MockAnnotation {
+      coordinate: MockMapKitCoordinate;
+      element: HTMLElement;
+      selected = false;
+      private handlers = new Map<string, () => void>();
+
+      constructor(
+        coordinate: MockMapKitCoordinate,
+        elementFactory: () => HTMLElement,
+        options?: Record<string, unknown>
+      ) {
+        this.coordinate = coordinate;
+        this.element = elementFactory();
+        this.selected = Boolean(options?.selected);
+      }
+
+      addEventListener(eventName: string, handler: () => void) {
+        this.handlers.set(eventName, handler);
+      }
+
+      trigger(eventName: string) {
+        this.handlers.get(eventName)?.();
+      }
+    }
+
+    class MockMarkerAnnotation extends MockAnnotation {
+      constructor(coordinate: MockMapKitCoordinate, options?: Record<string, unknown>) {
+        super(
+          coordinate,
+          () => {
+            const marker = document.createElement("button");
+            marker.type = "button";
+            marker.textContent = String(options?.title ?? "Map marker");
+            return marker;
+          },
+          options
+        );
+      }
+    }
+
+    class MockMap {
+      annotations: MockMapKitAnnotation[] = [];
+      center: MockMapKitCoordinate | null = null;
+      overlays: unknown[] = [];
+      private container: HTMLElement;
+
+      constructor(container: HTMLElement, options?: Record<string, unknown>) {
+        this.container = container;
+        this.container.dataset.mapkitMock = "ready";
+        this.container.dataset.mapkitMapType = String(options?.mapType ?? "");
+        this.container.dataset.mapkitHasRegion = options?.region ? "true" : "false";
+        this.container.style.position = "relative";
+      }
+
+      addAnnotation(annotation: MockMapKitAnnotation) {
+        this.addAnnotations([annotation]);
+      }
+
+      addAnnotations(annotations: MockMapKitAnnotation[]) {
+        this.annotations = [...this.annotations, ...annotations];
+        annotations.forEach((annotation) => {
+          if (annotation.element && !this.container.contains(annotation.element)) {
+            annotation.element.style.position = "relative";
+            annotation.element.style.zIndex = annotation.selected ? "50" : "40";
+            this.container.appendChild(annotation.element);
+          }
+        });
+      }
+
+      removeAnnotation(annotation: MockMapKitAnnotation) {
+        this.removeAnnotations([annotation]);
+      }
+
+      removeAnnotations(annotations: MockMapKitAnnotation[]) {
+        const removable = new Set(annotations);
+        annotations.forEach((annotation) => annotation.element?.remove());
+        this.annotations = this.annotations.filter((annotation) => !removable.has(annotation));
+      }
+
+      addOverlay(overlay: unknown) {
+        this.overlays.push(overlay);
+      }
+
+      removeOverlays(overlays: unknown[]) {
+        const removable = new Set(overlays);
+        this.overlays = this.overlays.filter((overlay) => !removable.has(overlay));
+      }
+
+      setCenterAnimated(coordinate: MockMapKitCoordinate) {
+        this.center = coordinate;
+        this.container.dataset.mapkitPanTo = `${coordinate.latitude.toFixed(5)},${coordinate.longitude.toFixed(5)}`;
+      }
+
+      showAnnotations(annotations: MockMapKitAnnotation[]) {
+        if (annotations[0]) {
+          this.center = (annotations[0] as MockAnnotation).coordinate;
+        }
+      }
+
+      showItems(items: MockMapKitAnnotation[]) {
+        this.showAnnotations(items);
+      }
+
+      setRegionAnimated() {}
+      destroy() {}
+    }
+
+    (MockMap as typeof MockMap & { MapTypes?: Record<string, string> }).MapTypes = {
+      Hybrid: "hybrid",
+      Satellite: "satellite"
+    };
+
+    class MockStyle {
+      constructor(public options?: Record<string, unknown>) {}
+    }
+
+    class MockPolylineOverlay {
+      constructor(
+        public coordinates: MockMapKitCoordinate[],
+        public options?: Record<string, unknown>
+      ) {}
+    }
+
+    (window as typeof window & { mapkit?: any; __almidyMapKitInitialized?: boolean }).mapkit = {
+      Annotation: MockAnnotation,
+      ColorScheme: { Dark: "dark" },
+      Coordinate: MockCoordinate,
+      CoordinateRegion: MockCoordinateRegion,
+      CoordinateSpan: MockCoordinateSpan,
+      FeatureVisibility: { Hidden: "hidden" },
+      init: () => {
+        (window as typeof window & { __almidyMapKitInitialized?: boolean }).__almidyMapKitInitialized = true;
+      },
+      initialized: true,
+      Map: MockMap,
+      MarkerAnnotation: MockMarkerAnnotation,
+      Padding: MockPadding,
+      PolylineOverlay: MockPolylineOverlay,
+      Style: MockStyle
+    };
+  });
 }
 
 async function installMockGoogleMaps3D(page: Page) {
