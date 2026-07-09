@@ -27,9 +27,9 @@ import type {
   TripRecommendationView,
   UnmappedMapSegment
 } from "@/app/dashboard/trips/[tripId]/map/loader";
-import GoogleMapsProvider, { GoogleMapsSurfaceFallback } from "@/components/GoogleMapsProvider";
+import { CustomGlobeRenderer } from "@/components/map/custom-globe-renderer";
 import { PlacePhoto } from "@/components/place-photo";
-import TripMap, { type TripMapDistanceRing, type TripMapItem } from "@/components/TripMap";
+import type { TripMapItem } from "@/components/TripMap";
 import {
   ActivityDetailSheet,
   type ActivityDetailRecommendation
@@ -43,6 +43,7 @@ import {
   type DistanceAnchorOption,
   type GeoPoint
 } from "@/lib/geo/distance";
+import type { AlmidyMapPin, AlmidyMapSurfaceState } from "@/lib/map/wayline-map-models";
 
 type TripIdeasPageProps = TripMapData;
 
@@ -463,6 +464,10 @@ function MobileActivitiesView({
     selectedAnchor && mapItemsWithAnchor.some((item) => item.id === selectedAnchor.id)
       ? selectedAnchor.id
       : mapItemsWithAnchor[0]?.id ?? null;
+  const mobileActivityMapSurface = useMemo(
+    () => buildAppleActivityMapSurface(mapItemsWithAnchor, selectedMapId),
+    [mapItemsWithAnchor, selectedMapId]
+  );
   const cityOptions = useMemo(
     () =>
       Array.from(
@@ -481,18 +486,6 @@ function MobileActivitiesView({
   }, [anchorPoint, rowsForCity, shouldShowSort]);
   const compactRows = expanded ? displayRows : displayRows.slice(0, 6);
   const visibleActivityCount = displayRows.length;
-  const distanceRings = useMemo<TripMapDistanceRing[]>(() => {
-    if (!shouldShowSort || !anchorPoint) return [];
-
-    const metersPerUnit = distanceUnit === "mi" ? 1609.344 : 1000;
-    return [1, 2, 3].map((value) => ({
-      center: anchorPoint,
-      id: `distance-${value}-${distanceUnit}`,
-      label: `${value}${distanceUnit}`,
-      radiusMeters: value * metersPerUnit
-    }));
-  }, [anchorPoint, distanceUnit, shouldShowSort]);
-
   useEffect(() => {
     if (!anchorOptions.length) {
       if (anchorId) setAnchorId(null);
@@ -557,25 +550,12 @@ function MobileActivitiesView({
           data-testid="mobile-activity-map"
         >
           {mapItems.length ? (
-            <GoogleMapsProvider
-              blockChildrenOnError
-              fallback={
-                <GoogleMapsSurfaceFallback
-                  height="48svh"
-                  message="Maps are temporarily unavailable. Nearby ideas are still available below."
-                />
-              }
-            >
-              <TripMap
-                distanceRings={distanceRings}
-                height="48svh"
-                items={mapItemsWithAnchor}
-                mapTheme="dark"
-                selectedId={selectedMapId}
-                showRouteDetails={false}
-                travelMode="WALKING"
-              />
-            </GoogleMapsProvider>
+            <CustomGlobeRenderer
+              className="absolute inset-0"
+              defaultFocusWhenEmpty
+              surfaceState={mobileActivityMapSurface}
+              useLocationFocus={false}
+            />
           ) : (
             <div className="relative h-full overflow-hidden bg-[radial-gradient(circle_at_30%_25%,rgba(37,99,235,0.45),transparent_28%),radial-gradient(circle_at_70%_50%,rgba(249,115,22,0.25),transparent_24%),linear-gradient(135deg,#052f3b,#07111f_52%,#17110b)]">
               <div className="absolute inset-0 opacity-35 [background-image:linear-gradient(rgba(255,255,255,.08)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.08)_1px,transparent_1px)] [background-size:44px_44px]" />
@@ -1135,6 +1115,58 @@ function buildMobileActivityMapItems(
     });
 
   return [...savedPlaces, ...recommendations];
+}
+
+function buildAppleActivityMapSurface(
+  items: TripMapItem[],
+  selectedId: string | null
+): AlmidyMapSurfaceState {
+  const pins = items.flatMap((item): AlmidyMapPin[] => {
+    const lat = Number(item.lat);
+    const lng = Number(item.lng);
+
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      return [];
+    }
+
+    return [{
+      address: item.address,
+      coordinate: { lat, lng },
+      id: item.id,
+      imageAlt: item.imageAlt,
+      imageAttribution: item.imageAttribution,
+      imageUrl: item.imageUrl,
+      kind: item.category === "anchor" ? "route-waypoint" : item.category === "flight" ? "transport" : "idea",
+      label: item.title,
+      order: item.routeOrder,
+      provider: item.provider,
+      providerPlaceId: item.providerPlaceId,
+      selected: item.id === selectedId,
+      subtitle: item.category ?? item.dayLabel ?? null,
+      tone: item.id === selectedId ? "orange" : "blue"
+    }];
+  });
+  const selectedPin = selectedId ? pins.find((pin) => pin.id === selectedId) ?? pins[0] : pins[0];
+  const center = selectedPin?.coordinate ?? { lat: 25.7617, lng: -80.1918 };
+
+  return {
+    camera: {
+      center,
+      intent: selectedPin ? "place" : "world",
+      selectedId: selectedPin?.id ?? null,
+      zoom: selectedPin ? 14 : 3
+    },
+    location: {
+      coordinate: null,
+      permission: "unknown",
+      source: "fallback"
+    },
+    mode: "place-picker",
+    pins,
+    renderer: "apple-mapkit",
+    routes: [],
+    selectedId: selectedPin?.id ?? null
+  };
 }
 
 function ActivitySection({

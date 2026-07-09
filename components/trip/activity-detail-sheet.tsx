@@ -13,7 +13,7 @@ import {
   X
 } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { GoogleMapRenderer } from "@/components/map/google-map-renderer";
+import { CustomGlobeRenderer } from "@/components/map/custom-globe-renderer";
 import type { TripMapItem } from "@/components/TripMap";
 import { DisplayAddressSheet } from "@/components/trip/display-address-sheet";
 import SegmentExpenseLedger, {
@@ -224,10 +224,11 @@ export function ActivityDetailSheet({
         data-testid="activity-detail-map"
       >
         {mapSurface ? (
-          <GoogleMapRenderer
-            height="42svh"
-            mapTheme="dark"
+          <CustomGlobeRenderer
+            className="absolute inset-0"
+            defaultFocusWhenEmpty
             surfaceState={mapSurface}
+            useLocationFocus={false}
           />
         ) : detail.imageUrl ? (
           <img
@@ -408,7 +409,7 @@ function tripItemToMapSurface(item: TripMapItem): AlmidyMapSurfaceState {
         tone: "orange"
       }
     ],
-    renderer: "google-2d",
+    renderer: "apple-mapkit",
     routes: [],
     selectedId: item.id
   };

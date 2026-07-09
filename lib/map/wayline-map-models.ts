@@ -15,7 +15,7 @@ export type AlmidyMapMode =
   | "place-picker"
   | "stats";
 
-export type AlmidyMapRenderer = "google-2d" | "google-3d" | "custom-globe";
+export type AlmidyMapRenderer = "apple-mapkit" | "google-2d" | "google-3d" | "custom-globe";
 
 export type AlmidyMapCameraIntent =
   | "world"

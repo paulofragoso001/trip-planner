@@ -7,6 +7,7 @@ import { useOptionalUnifiedMap } from "@/lib/map/unified-map-provider";
 import type {
   AlmidyCoordinate,
   AlmidyLaunchGlobeTripPin,
+  AlmidyMapPin,
   AlmidyMapSurfaceState
 } from "@/lib/map/wayline-map-models";
 
@@ -97,7 +98,7 @@ type AppleMapPin = {
   coordinate: AlmidyCoordinate;
   countryCode?: string | null;
   flag: string;
-  kind: "activity" | "trip" | "user-location";
+  kind: "activity" | "idea" | "place" | "route" | "transport" | "trip" | "user-location";
   label: string;
   subtitle?: string | null;
   tripId?: string | null;
@@ -136,18 +137,20 @@ export function CustomGlobeRenderer({
     () => buildAppleMapPins({
       location: activeSurface?.location,
       showCountryPin,
+      surfacePins: activeSurface?.pins ?? [],
       tripPins,
       useLocationFocus
     }),
-    [activeSurface?.location, showCountryPin, tripPins, useLocationFocus]
+    [activeSurface?.location, activeSurface?.pins, showCountryPin, tripPins, useLocationFocus]
   );
 
+  const selectedMapId = activeTripId ?? activeSurface?.selectedId ?? null;
   const selectedPin = useMemo(
     () =>
-      activeTripId
-        ? pins.find((pin) => pin.id === activeTripId || pin.tripId === activeTripId) ?? null
+      selectedMapId
+        ? pins.find((pin) => pin.id === selectedMapId || pin.tripId === selectedMapId) ?? null
         : null,
-    [activeTripId, pins]
+    [pins, selectedMapId]
   );
 
   const initializeMapKit = useCallback(async () => {
@@ -247,7 +250,7 @@ export function CustomGlobeRenderer({
 
     const annotations = pins.map((pin) =>
       createFlagAnnotation({
-        isActive: pin.id === activeTripId || pin.tripId === activeTripId,
+        isActive: Boolean(selectedMapId && (pin.id === selectedMapId || pin.tripId === selectedMapId)),
         mapkit,
         onSelect: () => onTripPinSelect?.(pin.tripId ?? pin.id),
         pin
@@ -284,7 +287,7 @@ export function CustomGlobeRenderer({
 
     const center = DEFAULT_WORLD_CENTER;
     map.setCenterAnimated?.(new mapkit.Coordinate(center.lat, center.lng), false);
-  }, [activeTripId, onTripPinSelect, pins, runtimeState, selectedPin, selectionRevision]);
+  }, [onTripPinSelect, pins, runtimeState, selectedMapId, selectedPin, selectionRevision]);
 
   if (runtimeState === "missing-token") {
     return (
@@ -305,7 +308,7 @@ export function CustomGlobeRenderer({
       data-map-renderer="apple-mapkit"
       data-map-runtime={runtimeState}
       data-map-system={APPLE_MAP_SYSTEM_ID}
-      data-selected-map-id={activeTripId ?? activeSurface?.selectedId ?? undefined}
+      data-selected-map-id={selectedMapId ?? undefined}
     >
       <div ref={mapContainerRef} className="absolute inset-0 h-full w-full" />
       {runtimeState === "loading" ? (
@@ -438,17 +441,29 @@ function createMapKitMap(
 function buildAppleMapPins({
   location,
   showCountryPin,
+  surfacePins,
   tripPins,
   useLocationFocus
 }: {
   location?: AlmidyMapSurfaceState["location"];
   showCountryPin: boolean;
+  surfacePins: AlmidyMapPin[];
   tripPins: AlmidyLaunchGlobeTripPin[];
   useLocationFocus: boolean;
 }) {
-  const pins = tripPins
+  const pins = surfacePins
+    .map(toAppleSurfacePin)
+    .filter((pin): pin is AppleMapPin => Boolean(pin));
+
+  const tripFlagPins = tripPins
     .map(toAppleTripPin)
     .filter((pin): pin is AppleMapPin => Boolean(pin));
+  const existingIds = new Set(pins.map((pin) => pin.id));
+  tripFlagPins.forEach((pin) => {
+    if (!existingIds.has(pin.id)) {
+      pins.push(pin);
+    }
+  });
 
   if (
     showCountryPin &&
@@ -468,6 +483,23 @@ function buildAppleMapPins({
   }
 
   return pins;
+}
+
+function toAppleSurfacePin(pin: AlmidyMapPin): AppleMapPin | null {
+  if (!Number.isFinite(pin.coordinate.lat) || !Number.isFinite(pin.coordinate.lng)) {
+    return null;
+  }
+
+  return {
+    coordinate: pin.coordinate,
+    countryCode: pin.countryCode,
+    flag: pin.flag || flagForMapPin(pin),
+    id: pin.id,
+    kind: appleKindForMapPin(pin),
+    label: pin.label,
+    subtitle: pin.subtitle ?? pin.address ?? null,
+    tripId: pin.tripId
+  };
 }
 
 function toAppleTripPin(pin: AlmidyLaunchGlobeTripPin): AppleMapPin | null {
@@ -572,6 +604,34 @@ function createFlagAnnotationElement({
   });
 
   return button;
+}
+
+function appleKindForMapPin(pin: AlmidyMapPin): AppleMapPin["kind"] {
+  if (pin.kind === "route-endpoint" || pin.kind === "route-waypoint") {
+    return "route";
+  }
+
+  if (pin.kind === "transport") {
+    return "transport";
+  }
+
+  if (pin.kind === "idea") {
+    return "idea";
+  }
+
+  if (pin.kind === "user-location") {
+    return "user-location";
+  }
+
+  return pin.kind === "trip" || pin.kind === "country" ? "trip" : "place";
+}
+
+function flagForMapPin(pin: AlmidyMapPin) {
+  if (pin.kind === "transport") return "✈";
+  if (pin.kind === "route-endpoint" || pin.kind === "route-waypoint") return "•";
+  if (pin.kind === "place" || pin.kind === "idea") return "⌖";
+  if (pin.countryCode) return countryCodeToFlag(pin.countryCode) ?? DEFAULT_LOCATION_FLAG;
+  return DEFAULT_LOCATION_FLAG;
 }
 
 function addMapAnnotations(map: MapKitMap, annotations: MapKitAnnotation[]) {

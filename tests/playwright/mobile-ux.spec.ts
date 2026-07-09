@@ -2078,9 +2078,10 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByRole("option", { name: /Flight Confirmation\.pdf/ })).toBeVisible();
   });
 
-  test("home launch uses the Google 3D globe before wallet actions", async ({ page }) => {
+  test("home launch uses the Apple globe before wallet actions", async ({ page }) => {
     await page.setViewportSize({ height: 900, width: 390 });
     await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
+    await installMockAppleMapKit(page);
     await installMockMobileLocation(page);
     await page.addInitScript(() => {
       Object.defineProperty(navigator, "language", { configurable: true, value: "en-US" });
@@ -2091,16 +2092,12 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByTestId("mobile-home-wallet")).toBeVisible();
     await expect(page.getByTestId("mobile-home-launch-globe")).toBeVisible();
     await expect(page.getByTestId("almidy-launch-globe")).toBeVisible();
-    await expect(page.getByTestId("almidy-launch-globe")).toHaveAttribute("data-hero-mode", "google-maps-3d");
+    await expect(page.getByTestId("almidy-launch-globe")).toHaveAttribute("data-hero-mode", "apple-mapkit");
     await expect(page.getByTestId("almidy-launch-globe")).toHaveAttribute(
       "data-map-system",
-      "almidy-google-maps-3d"
+      "almidy-apple-map-system"
     );
-    await expect(page.getByTestId("almidy-launch-globe")).toHaveAttribute(
-      "data-home-hero-mode",
-      "home-hero-mode: almidy-owned"
-    );
-    await expect(page.getByTestId("almidy-google-maps-3d-globe")).toBeVisible();
+    await expect(page.getByTestId("almidy-google-maps-3d-globe")).toHaveCount(0);
     await expect(page.getByTestId("almidy-launch-globe-diagnostic")).toHaveCount(0);
     await expect(page.getByTestId("earth-only-visual")).toHaveCount(0);
     await expect(page.getByTestId("almidy-custom-globe")).toHaveCount(0);
@@ -2129,18 +2126,18 @@ test.describe("mobile soft-launch UX", () => {
 
     const heroVisual = await page.getByTestId("almidy-launch-globe").evaluate((element) => {
       const style = window.getComputedStyle(element);
-      const google3D = element.querySelector<HTMLElement>('[data-testid="almidy-google-maps-3d-globe"]');
+      const appleMap = element.querySelector<HTMLElement>('[data-map-renderer="apple-mapkit"]');
 
       return {
-        googleRenderer: google3D?.getAttribute("data-map-renderer") ?? "",
+        appleRenderer: appleMap?.getAttribute("data-map-renderer") ?? "",
         mapSystem: element.getAttribute("data-map-system") ?? "",
         mode: element.getAttribute("data-hero-mode") ?? "",
         opacity: style.opacity
       };
     });
-    expect(heroVisual.mode).toBe("google-maps-3d");
-    expect(heroVisual.mapSystem).toBe("almidy-google-maps-3d");
-    expect(heroVisual.googleRenderer).toBe("google-maps-3d");
+    expect(heroVisual.mode).toBe("apple-mapkit");
+    expect(heroVisual.mapSystem).toBe("almidy-apple-map-system");
+    expect(heroVisual.appleRenderer).toBe("apple-mapkit");
     expect(Number(heroVisual.opacity), "home launch hero opacity").toBeGreaterThan(0.9);
     const homeLaunchLayout = await page.evaluate(() => {
       const launch = document.querySelector('[data-testid="mobile-home-launch-globe"]')?.getBoundingClientRect();
@@ -2600,12 +2597,13 @@ test.describe("mobile soft-launch UX", () => {
   test("mobile home launch globe uses granted browser location for pin", async ({ page }) => {
     await page.setViewportSize({ height: 900, width: 390 });
     await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
+    await installMockAppleMapKit(page);
     await installMockMobileLocation(page);
 
     await page.goto(baseUrl + "/dashboard", { waitUntil: "commit" });
     await expect(page.getByTestId("almidy-launch-globe")).toBeVisible();
-    await expect(page.getByTestId("almidy-launch-globe")).toHaveAttribute("data-hero-mode", "google-maps-3d");
-    await expect(page.getByTestId("almidy-launch-globe")).toHaveAttribute("data-map-system", "almidy-google-maps-3d");
+    await expect(page.getByTestId("almidy-launch-globe")).toHaveAttribute("data-hero-mode", "apple-mapkit");
+    await expect(page.getByTestId("almidy-launch-globe")).toHaveAttribute("data-map-system", "almidy-apple-map-system");
     await expectNoHomeGoogleMapsCopy(page);
     await expect(page.getByTestId("almidy-custom-globe")).toHaveCount(0);
     await expect(page.getByTestId("home-custom-globe")).toHaveCount(0);
@@ -2613,50 +2611,31 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByTestId("home-photorealistic-globe")).toHaveCount(0);
     await expect(page.getByTestId("home-photorealistic-globe-texture")).toHaveCount(0);
 
-    const google3DGlobe = page.getByTestId("almidy-google-maps-3d-globe");
-    await expect(google3DGlobe).toBeVisible();
+    const appleGlobe = page.locator('[data-map-renderer="apple-mapkit"]').first();
+    await expect(appleGlobe).toBeVisible();
     await expect(page.getByTestId("almidy-launch-globe-diagnostic")).toHaveCount(0);
-    await expect(page.getByTestId("almidy-launch-globe")).toHaveAttribute(
-      "data-map-system",
-      "almidy-google-maps-3d"
-    );
-    await expect(page.getByTestId("almidy-google-maps-3d-host")).toBeVisible();
-    await expect(google3DGlobe).toHaveAttribute("data-camera-intent", "user-location");
-    await expect(google3DGlobe).toHaveAttribute("data-camera-altitude", "15000");
-    await expect(google3DGlobe).toHaveAttribute("data-camera-latitude", "25.76170");
-    await expect(google3DGlobe).toHaveAttribute("data-camera-longitude", "-80.19180");
-    await expect(page.getByTestId("almidy-google-maps-3d-user-marker")).toBeVisible();
+    await expect(page.getByTestId("almidy-google-maps-3d-host")).toHaveCount(0);
+    await expect(page.getByTestId("mobile-current-location-pin")).toBeVisible();
     await expect(page.getByTestId("mobile-home-country-pin")).toHaveCount(0);
   });
 
-  test("mobile launch globe is draggable interactive 3D", async ({ page }) => {
+  test("mobile launch globe is an interactive Apple MapKit surface", async ({ page }) => {
     await page.setViewportSize({ height: 900, width: 390 });
     await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
+    await installMockAppleMapKit(page);
     await installMockMobileLocation(page);
 
     await page.goto(baseUrl + "/dashboard", { waitUntil: "commit" });
     await expect(page.getByTestId("mobile-home-wallet")).toBeVisible();
     const launchGlobe = page.getByTestId("almidy-launch-globe");
-    await expect(launchGlobe).toHaveAttribute("data-hero-mode", "google-maps-3d");
+    await expect(launchGlobe).toHaveAttribute("data-hero-mode", "apple-mapkit");
     const heroMode = await launchGlobe.getAttribute("data-hero-mode");
-    expect(heroMode).toBe("google-maps-3d");
-    const google3DGlobe = page.getByTestId("almidy-google-maps-3d-globe");
-    await expect(google3DGlobe).toBeVisible({ timeout: 20_000 });
+    expect(heroMode).toBe("apple-mapkit");
+    const appleGlobe = page.locator('[data-map-renderer="apple-mapkit"]').first();
+    await expect(appleGlobe).toBeVisible({ timeout: 20_000 });
     await expect(page.getByTestId("almidy-launch-globe-diagnostic")).toHaveCount(0);
-    await expect(google3DGlobe).toHaveAttribute("gesture-handling", "greedy");
-    await expect(google3DGlobe).toHaveAttribute("mode", "hybrid");
-    await expect(google3DGlobe).toHaveAttribute("data-camera-intent", "user-location");
-    await expect(google3DGlobe).toHaveAttribute("data-camera-altitude", "15000");
-    await expect(google3DGlobe).toHaveAttribute("data-camera-latitude", "25.76170");
-    await expect(google3DGlobe).toHaveAttribute("data-camera-longitude", "-80.19180");
-    await expect(google3DGlobe).toHaveAttribute("fov", "42");
-    await expect(google3DGlobe).toHaveAttribute("heading", "0");
-    await expect(google3DGlobe).toHaveAttribute("range", "0");
-    await expect(google3DGlobe).toHaveAttribute("tilt", "0");
-    await expect(google3DGlobe).toHaveAttribute("min-altitude", "180000");
-    await expect(google3DGlobe).toHaveAttribute("min-tilt", "0");
-    await expect(google3DGlobe).toHaveAttribute("max-altitude", "34000000");
-    await expect(page.getByTestId("almidy-google-maps-3d-user-marker")).toBeVisible();
+    await expect(page.getByTestId("almidy-google-maps-3d-globe")).toHaveCount(0);
+    await expect(page.getByTestId("mobile-current-location-pin")).toBeVisible();
     await expect(page.getByTestId("mobile-home-country-pin")).toHaveCount(0);
     await expect(page.getByTestId("home-custom-globe")).toHaveCount(0);
     await expectNoHomeGoogleMapsCopy(page);
@@ -2670,7 +2649,7 @@ test.describe("mobile soft-launch UX", () => {
     await page.goto(`${baseUrl}/dashboard`, { waitUntil: "commit" });
     await expect(page.getByTestId("app-shell-root")).toBeVisible({ timeout: 20_000 });
     await expect(page.getByTestId("mobile-home-wallet")).toBeVisible({ timeout: 30_000 });
-    await expect(page.getByTestId("almidy-launch-globe")).toHaveAttribute("data-hero-mode", "google-maps-3d");
+    await expect(page.getByTestId("almidy-launch-globe")).toHaveAttribute("data-hero-mode", "apple-mapkit");
     await expect(page.getByTestId("almidy-custom-globe")).toHaveCount(0);
 
     await page.goto(`${baseUrl}/dashboard/trips`, { waitUntil: "commit" });
@@ -2790,13 +2769,14 @@ test.describe("mobile soft-launch UX", () => {
     await page.setViewportSize({ height: 900, width: 390 });
     await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
     await page.emulateMedia({ reducedMotion: "reduce" });
+    await installMockAppleMapKit(page);
     await installMockMobileLocation(page, { permission: "denied" });
 
     await page.goto(`${baseUrl}/dashboard`, { waitUntil: "commit" });
-    await expect(page.getByTestId("almidy-launch-globe")).toHaveAttribute("data-hero-mode", "google-maps-3d");
+    await expect(page.getByTestId("almidy-launch-globe")).toHaveAttribute("data-hero-mode", "apple-mapkit");
     await expect(page.getByTestId("almidy-launch-globe")).toHaveAttribute("data-launch-globe-state", "ready");
-    await expect(page.getByTestId("almidy-google-maps-3d-globe")).toBeVisible();
-    await expect(page.getByTestId("almidy-google-maps-3d-globe")).toHaveAttribute("data-camera-intent", "launch");
+    await expect(page.getByTestId("almidy-google-maps-3d-globe")).toHaveCount(0);
+    await expect(page.locator('[data-map-renderer="apple-mapkit"]').first()).toBeVisible();
     await expect(page.getByTestId("earth-only-visual")).toHaveCount(0);
     await expect(page.getByTestId("almidy-photorealistic-globe")).toHaveCount(0);
     await expect(page.getByTestId("home-photorealistic-globe")).toHaveCount(0);
@@ -2829,6 +2809,7 @@ test.describe("mobile soft-launch UX", () => {
   test("Verify launch renders native Apple MapKit hybrid surface instead of canvas globe", async ({ page }) => {
     await page.setViewportSize({ height: 900, width: 390 });
     await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
+    await installMockAppleMapKit(page);
     await installMockMobileLocation(page);
 
     await page.goto(`${baseUrl}/dashboard`, { waitUntil: "commit" });
@@ -2897,6 +2878,7 @@ test.describe("mobile soft-launch UX", () => {
     await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
     await page.emulateMedia({ reducedMotion: "reduce" });
     await page.setViewportSize({ height: 900, width: 390 });
+    await installMockAppleMapKit(page);
     await page.addInitScript(() => {
       Object.defineProperty(navigator, "language", { configurable: true, value: "zz" });
       Object.defineProperty(navigator, "languages", { configurable: true, value: ["zz"] });
@@ -2921,11 +2903,7 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByTestId("almidy-launch-globe")).toBeVisible();
     await expect(page.getByTestId("mobile-home-globe")).toHaveCount(0);
     await expect(page.getByTestId("earth-only-visual")).toHaveCount(0);
-    await expect(page.getByTestId("almidy-launch-globe")).toHaveAttribute("data-hero-mode", "google-maps-3d");
-    await expect(page.getByTestId("almidy-launch-globe")).toHaveAttribute(
-      "data-home-hero-mode",
-      "home-hero-mode: reduced-motion"
-    );
+    await expect(page.getByTestId("almidy-launch-globe")).toHaveAttribute("data-hero-mode", "apple-mapkit");
     await expect(page.getByTestId("almidy-photorealistic-globe")).toHaveCount(0);
     await expect(page.getByTestId("home-photorealistic-globe")).toHaveCount(0);
     await expect(page.getByTestId("home-photorealistic-globe-texture")).toHaveCount(0);
@@ -2936,8 +2914,8 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByTestId("mobile-home-earth-texture")).toHaveCount(0);
     await expect(page.getByTestId("mobile-home-earth-continents")).toHaveCount(0);
     await expect(page.getByTestId("almidy-launch-globe")).toHaveAttribute("data-launch-globe-state", "ready");
-    await expect(page.getByTestId("almidy-google-maps-3d-globe")).toBeVisible();
-    await expect(page.getByTestId("almidy-google-maps-3d-globe")).toHaveAttribute("data-camera-intent", "launch");
+    await expect(page.getByTestId("almidy-google-maps-3d-globe")).toHaveCount(0);
+    await expect(page.locator('[data-map-renderer="apple-mapkit"]').first()).toBeVisible();
     await expect(page.getByTestId("mobile-home-country-pin")).toHaveCount(0);
     await expect(page.getByText("Globe runtime unavailable")).toHaveCount(0);
     await expectNoHomeGoogleMapsCopy(page);
@@ -2965,9 +2943,10 @@ test.describe("mobile soft-launch UX", () => {
     }
   });
 
-  test("mobile home launch uses Google 3D when ready without fallback visible", async ({ page }) => {
+  test("mobile home launch uses Apple MapKit when ready without fallback visible", async ({ page }) => {
     await page.setViewportSize({ height: 900, width: 390 });
     await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
+    await installMockAppleMapKit(page);
     await installMockMobileLocation(page);
     await page.addInitScript(() => {
       Object.defineProperty(navigator, "language", { configurable: true, value: "en-US" });
@@ -2976,23 +2955,23 @@ test.describe("mobile soft-launch UX", () => {
 
     await page.goto(baseUrl + "/dashboard", { waitUntil: "commit" });
     await expect(page.getByTestId("mobile-home-wallet")).toBeVisible();
-    await expect(page.getByTestId("almidy-launch-globe")).toHaveAttribute("data-hero-mode", "google-maps-3d");
-    await expect(page.getByTestId("almidy-launch-globe")).toHaveAttribute("data-map-system", "almidy-google-maps-3d");
+    await expect(page.getByTestId("almidy-launch-globe")).toHaveAttribute("data-hero-mode", "apple-mapkit");
+    await expect(page.getByTestId("almidy-launch-globe")).toHaveAttribute("data-map-system", "almidy-apple-map-system");
     await expect(page.getByTestId("almidy-launch-globe")).toHaveAttribute("data-launch-globe-state", "ready");
     await expect(page.getByTestId("almidy-custom-globe")).toHaveCount(0);
     await expect(page.getByTestId("home-custom-globe")).toHaveCount(0);
     await expect(page.getByTestId("home-custom-globe-texture")).toHaveCount(0);
     await expectNoHomeGoogleMapsCopy(page);
-    await expect(page.getByTestId("almidy-google-maps-3d-globe")).toBeVisible();
+    await expect(page.getByTestId("almidy-google-maps-3d-globe")).toHaveCount(0);
     await expect(page.getByTestId("almidy-launch-globe-diagnostic")).toHaveCount(0);
     await expect(page.getByRole("heading", { name: "My Trips" })).toHaveCount(1);
   });
 
-  test("mobile launch suppresses native Google 3D error UI before readiness", async ({ page }) => {
+  test("mobile launch does not mount native Google 3D error UI", async ({ page }) => {
     await page.setViewportSize({ height: 900, width: 390 });
     await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
+    await installMockAppleMapKit(page);
     await installMockMobileLocation(page);
-    await installMockGoogleMaps3DNativeError(page);
     await page.addInitScript(() => {
       Object.defineProperty(navigator, "language", { configurable: true, value: "en-US" });
       Object.defineProperty(navigator, "languages", { configurable: true, value: ["en-US", "en"] });
@@ -3000,9 +2979,8 @@ test.describe("mobile soft-launch UX", () => {
 
     await page.goto(baseUrl + "/dashboard", { waitUntil: "commit" });
     await expect(page.getByTestId("mobile-home-wallet")).toBeVisible();
-    await expect(page.getByTestId("almidy-launch-globe")).toHaveAttribute("data-hero-mode", "google-maps-3d");
-    await expect(page.getByTestId("almidy-launch-globe")).toHaveAttribute("data-launch-globe-state", "google-runtime-failed");
-    await expect(page.getByTestId("almidy-launch-globe-state")).toHaveAttribute("data-map-runtime", "google-runtime-failed");
+    await expect(page.getByTestId("almidy-launch-globe")).toHaveAttribute("data-hero-mode", "apple-mapkit");
+    await expect(page.getByTestId("almidy-launch-globe")).toHaveAttribute("data-launch-globe-state", "ready");
     await expect(page.getByTestId("earth-only-visual")).toHaveCount(0);
     await expect(page.getByTestId("almidy-photorealistic-globe")).toHaveCount(0);
     await expect(page.getByTestId("home-photorealistic-globe")).toHaveCount(0);

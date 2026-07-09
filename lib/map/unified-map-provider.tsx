@@ -427,7 +427,7 @@ export function UnifiedMapProvider({
       location,
       mode,
       pins: surfacePins,
-      renderer: mode === "globe" || mode === "launch-globe" ? "custom-globe" : "google-2d",
+      renderer: "apple-mapkit",
       routes,
       selectedId: selected.pinId ?? selected.placeId ?? selected.tripId
     }),
