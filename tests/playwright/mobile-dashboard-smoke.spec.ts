@@ -366,6 +366,15 @@ test.describe("authenticated mobile dashboard smoke", () => {
 
     await form.getByRole("button", { name: "Set Dates" }).click();
     await expect(page.getByTestId("dashboard-wallet-layer-stack")).toHaveAttribute("data-wallet-layer", "datePicker");
+    await expect(page.getByTestId("dashboard-wallet-layer-stack")).toHaveAttribute("data-wallet-stack-interaction", "slide");
+    await expect(page.getByTestId("wallet-date-layer-frame-handle")).toBeVisible();
+    await page.goBack();
+    await expect(page).toHaveURL(`${baseUrl}/dashboard`);
+    await expect(page.getByTestId("dashboard-wallet-layer-stack")).toHaveAttribute("data-wallet-layer", "createTrip");
+    await expect(form.getByLabel("Trip name")).toHaveValue("Paris July");
+
+    await form.getByRole("button", { name: "Set Dates" }).click();
+    await expect(page.getByTestId("dashboard-wallet-layer-stack")).toHaveAttribute("data-wallet-layer", "datePicker");
     await expect(page.getByTestId("wallet-date-picker-layer")).toBeVisible();
     await page.getByTestId("wallet-date-day").filter({ hasText: /^10$/ }).first().click();
     await page.getByTestId("wallet-date-day").filter({ hasText: /^14$/ }).first().click();
@@ -376,7 +385,14 @@ test.describe("authenticated mobile dashboard smoke", () => {
 
     await form.getByRole("button", { name: "Background" }).click();
     await expect(page.getByTestId("dashboard-wallet-layer-stack")).toHaveAttribute("data-wallet-layer", "backgroundPicker");
+    await expect(page.getByTestId("wallet-background-layer-frame-handle")).toBeVisible();
     await expect(page.getByTestId("wallet-background-picker-layer")).toBeVisible();
+    await page.getByTestId("wallet-background-layer-frame-handle").click();
+    await expect(page.getByTestId("dashboard-wallet-layer-stack")).toHaveAttribute("data-wallet-layer", "createTrip");
+    await expect(form.getByLabel("Trip name")).toHaveValue("Paris July");
+
+    await form.getByRole("button", { name: "Background" }).click();
+    await expect(page.getByTestId("dashboard-wallet-layer-stack")).toHaveAttribute("data-wallet-layer", "backgroundPicker");
     await page.getByLabel("Use background color #2f4f4f").click();
     await expect(page.getByTestId("dashboard-wallet-layer-stack")).toHaveAttribute("data-wallet-layer", "createTrip");
     await expect(form.getByLabel("Trip name")).toHaveValue("Paris July");

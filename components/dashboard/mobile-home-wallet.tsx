@@ -2,7 +2,7 @@
 
 import { Check, ImageIcon, MapPin, Upload } from "lucide-react";
 import Link from "next/link";
-import type { MouseEvent } from "react";
+import type { CSSProperties, MouseEvent, ReactNode, TouchEvent } from "react";
 import { useEffect, useRef, useState } from "react";
 import type { DashboardData } from "@/app/dashboard/loader";
 import { AlmidyLaunchGlobe } from "@/components/dashboard/almidy-launch-globe";
@@ -15,6 +15,19 @@ import { unifiedMapSurfaceEnabled } from "@/lib/map/feature-flags";
 import { useUnifiedMap } from "@/lib/map/unified-map-provider";
 import { countryCodeToFlag } from "@/lib/map/wayline-map-pins";
 import type { MobileWalletViewModel } from "@/lib/mobile-globe-wallet/view-model";
+
+const DASHBOARD_WALLET_HISTORY_KEY = "__almidyDashboardWalletLayer";
+
+function readWalletLayerFromHistory(state: unknown): WalletLayer {
+  if (!state || typeof state !== "object") {
+    return "myTrips";
+  }
+
+  const layer = (state as Record<string, unknown>)[DASHBOARD_WALLET_HISTORY_KEY];
+  return layer === "createTrip" || layer === "datePicker" || layer === "backgroundPicker"
+    ? layer
+    : "myTrips";
+}
 
 type MobileHomeWalletProps = Pick<DashboardData, "metrics" | "recentTrips"> & {
   className?: string;
@@ -40,19 +53,62 @@ export function MobileHomeWallet({
     : "Start a new travel wallet.";
   const [walletLayer, setWalletLayer] = useState<WalletLayer>("myTrips");
   const [draft, setDraft] = useState<TripDraft>(emptyTripDraft);
+  const walletHistoryDepth = useRef(0);
+
+  useEffect(() => {
+    const handlePopState = (event: PopStateEvent) => {
+      const nextLayer = readWalletLayerFromHistory(event.state);
+      walletHistoryDepth.current = Math.max(0, walletHistoryDepth.current - 1);
+      setWalletLayer(nextLayer);
+      setIsCreatingFirstTrip(nextLayer !== "myTrips");
+    };
+
+    window.addEventListener("popstate", handlePopState);
+
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, []);
+
+  function pushWalletLayer(nextLayer: Exclude<WalletLayer, "myTrips">) {
+    if (typeof window !== "undefined") {
+      const currentState =
+        window.history.state && typeof window.history.state === "object" ? window.history.state : {};
+      window.history.pushState(
+        {
+          ...currentState,
+          [DASHBOARD_WALLET_HISTORY_KEY]: nextLayer
+        },
+        "",
+        window.location.href
+      );
+      walletHistoryDepth.current += 1;
+    }
+
+    setIsCreatingFirstTrip(true);
+    setWalletLayer(nextLayer);
+  }
+
+  function popWalletLayer(fallbackLayer: WalletLayer) {
+    if (typeof window !== "undefined" && walletHistoryDepth.current > 0) {
+      window.history.back();
+      return;
+    }
+
+    setWalletLayer(fallbackLayer);
+    setIsCreatingFirstTrip(fallbackLayer !== "myTrips");
+  }
 
   function pushCreateTrip() {
-    setIsCreatingFirstTrip(true);
-    setWalletLayer("createTrip");
+    pushWalletLayer("createTrip");
   }
 
   function popToMyTrips() {
-    setWalletLayer("myTrips");
-    setIsCreatingFirstTrip(false);
+    popWalletLayer("myTrips");
   }
 
   function popToCreateTrip() {
-    setWalletLayer("createTrip");
+    popWalletLayer("createTrip");
   }
 
   const walletSurface = (
@@ -107,8 +163,8 @@ export function MobileHomeWallet({
         layer={walletLayer}
         onCancelCreate={popToMyTrips}
         onDraftChange={setDraft}
-        onOpenBackground={() => setWalletLayer("backgroundPicker")}
-        onOpenDates={() => setWalletLayer("datePicker")}
+        onOpenBackground={() => pushWalletLayer("backgroundPicker")}
+        onOpenDates={() => pushWalletLayer("datePicker")}
         onPopToCreate={popToCreateTrip}
       />
     </section>
@@ -233,15 +289,21 @@ function MobileHomeWalletLayerStack({
       className="pointer-events-none absolute inset-0 z-40 overflow-hidden"
       data-testid="dashboard-wallet-layer-stack"
       data-wallet-layer={layer}
+      data-wallet-stack-interaction="slide"
     >
       <div
         aria-hidden="true"
         className={cn(
-          "pointer-events-none absolute inset-x-3 bottom-0 top-[28dvh] rounded-t-[2rem] bg-white/16 shadow-[0_-24px_70px_rgba(0,0,0,0.24)] backdrop-blur-sm transition-transform duration-300",
-          layer === "createTrip" ? "translate-y-8" : "translate-y-4"
+          "pointer-events-none absolute inset-x-3 bottom-0 rounded-t-[2rem] bg-white/16 shadow-[0_-24px_70px_rgba(0,0,0,0.24)] backdrop-blur-sm transition-transform duration-300",
+          layer === "createTrip" ? "top-[30dvh] translate-y-8" : "top-[20dvh] translate-y-4"
         )}
       />
-      <div className="pointer-events-auto absolute inset-x-0 bottom-0 top-[7.5dvh] overflow-visible">
+      <WalletLayerFrame
+        className="inset-x-0 bottom-0 top-[7.5dvh]"
+        handleLabel="Dismiss create trip"
+        onDismiss={onCancelCreate}
+        testId="wallet-create-layer-frame"
+      >
         <TripCreateForm
           draft={draft}
           mode="mobile-pass"
@@ -252,7 +314,7 @@ function MobileHomeWalletLayerStack({
           redirectOnSuccess
           successRedirectHref="/dashboard/trips"
         />
-      </div>
+      </WalletLayerFrame>
       {layer === "datePicker" ? (
         <DatePickerLayer
           draft={draft}
@@ -269,6 +331,81 @@ function MobileHomeWalletLayerStack({
           onSelect={onPopToCreate}
         />
       ) : null}
+    </div>
+  );
+}
+
+function WalletLayerFrame({
+  children,
+  className,
+  handleLabel,
+  onDismiss,
+  testId
+}: {
+  children: ReactNode;
+  className: string;
+  handleLabel: string;
+  onDismiss: () => void;
+  testId: string;
+}) {
+  const touchStartY = useRef<number | null>(null);
+  const [dragOffset, setDragOffset] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const frameStyle: CSSProperties | undefined = dragOffset
+    ? { transform: `translateY(${dragOffset}px)` }
+    : undefined;
+
+  function handleTouchStart(event: TouchEvent<HTMLButtonElement>) {
+    touchStartY.current = event.touches[0]?.clientY ?? null;
+    setIsDragging(true);
+  }
+
+  function handleTouchMove(event: TouchEvent<HTMLButtonElement>) {
+    if (touchStartY.current === null) {
+      return;
+    }
+
+    const nextOffset = Math.max(0, event.touches[0].clientY - touchStartY.current);
+    setDragOffset(nextOffset);
+  }
+
+  function handleTouchEnd() {
+    const shouldDismiss = dragOffset > 72;
+
+    touchStartY.current = null;
+    setIsDragging(false);
+    setDragOffset(0);
+
+    if (shouldDismiss) {
+      onDismiss();
+    }
+  }
+
+  return (
+    <div
+      className={cn(
+        "wallet-layer-slide-up pointer-events-auto absolute overflow-visible transition-transform duration-300 ease-[cubic-bezier(0.25,1,0.5,1)]",
+        isDragging && "!transition-none",
+        className
+      )}
+      data-dragging={isDragging ? "true" : undefined}
+      data-testid={testId}
+      style={frameStyle}
+    >
+      <button
+        aria-label={handleLabel}
+        className="absolute left-1/2 top-3 z-20 grid h-8 w-28 -translate-x-1/2 touch-none place-items-center rounded-full focus:outline-none focus:ring-4 focus:ring-orange-300/20"
+        data-testid={`${testId}-handle`}
+        onClick={onDismiss}
+        onTouchCancel={handleTouchEnd}
+        onTouchEnd={handleTouchEnd}
+        onTouchMove={handleTouchMove}
+        onTouchStart={handleTouchStart}
+        type="button"
+      >
+        <span aria-hidden="true" className="h-1 w-11 rounded-full bg-white/55 shadow-[0_1px_3px_rgba(0,0,0,0.28)]" />
+      </button>
+      {children}
     </div>
   );
 }
@@ -314,10 +451,16 @@ function DatePickerLayer({
   }
 
   return (
-    <section
-      className="pointer-events-auto absolute inset-x-0 bottom-0 z-50 max-h-[72dvh] overflow-y-auto rounded-t-[2rem] bg-white px-5 pb-[calc(2rem+env(safe-area-inset-bottom))] pt-5 text-black shadow-[0_-28px_80px_rgba(0,0,0,0.38)]"
-      data-testid="wallet-date-picker-layer"
+    <WalletLayerFrame
+      className="inset-x-0 bottom-0 z-50 max-h-[72dvh]"
+      handleLabel="Dismiss date picker"
+      onDismiss={onCancel}
+      testId="wallet-date-layer-frame"
     >
+      <section
+        className="max-h-[72dvh] overflow-y-auto rounded-t-[2rem] bg-white px-5 pb-[calc(2rem+env(safe-area-inset-bottom))] pt-8 text-black shadow-[0_-28px_80px_rgba(0,0,0,0.38)]"
+        data-testid="wallet-date-picker-layer"
+      >
       <header className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3">
         <button className="inline-flex min-h-12 items-center rounded-full border border-slate-200 px-5 text-lg font-semibold" onClick={onCancel} type="button">
           Cancel
@@ -340,7 +483,8 @@ function DatePickerLayer({
           />
         ))}
       </div>
-    </section>
+      </section>
+    </WalletLayerFrame>
   );
 }
 
@@ -436,10 +580,16 @@ function BackgroundPickerLayer({
   }
 
   return (
-    <section
-      className="pointer-events-auto absolute inset-x-0 bottom-0 z-50 max-h-[72dvh] overflow-y-auto rounded-t-[2rem] bg-[#1b1b1d] px-5 pb-[calc(2rem+env(safe-area-inset-bottom))] pt-5 text-white shadow-[0_-28px_80px_rgba(0,0,0,0.42)]"
-      data-testid="wallet-background-picker-layer"
+    <WalletLayerFrame
+      className="inset-x-0 bottom-0 z-50 max-h-[72dvh]"
+      handleLabel="Dismiss background picker"
+      onDismiss={onCancel}
+      testId="wallet-background-layer-frame"
     >
+      <section
+        className="max-h-[72dvh] overflow-y-auto rounded-t-[2rem] bg-[#1b1b1d] px-5 pb-[calc(2rem+env(safe-area-inset-bottom))] pt-8 text-white shadow-[0_-28px_80px_rgba(0,0,0,0.42)]"
+        data-testid="wallet-background-picker-layer"
+      >
       <header className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3">
         <button className="inline-flex min-h-12 items-center rounded-full border border-white/10 px-5 text-lg font-semibold" onClick={onCancel} type="button">
           Cancel
@@ -484,7 +634,8 @@ function BackgroundPickerLayer({
         ref={fileInputRef}
         type="file"
       />
-    </section>
+      </section>
+    </WalletLayerFrame>
   );
 }
 
