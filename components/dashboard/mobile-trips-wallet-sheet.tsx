@@ -8,6 +8,15 @@ import type { TripOverviewData } from "@/app/dashboard/trips/[tripId]/overview-l
 import { MobileFlightRouteCard } from "@/components/trip/mobile-flight-route-card";
 import TripOverviewPage from "@/components/trip/trip-overview-page";
 
+export type MobileTripsOverviewFocus = {
+  id: string;
+  lat: number;
+  lng: number;
+  label: string;
+  tripId: string;
+  typeLabel?: string | null;
+};
+
 export interface MobileTripsWalletSheetTrip {
   id: string;
   city: string;
@@ -27,6 +36,7 @@ export interface MobileTripsWalletSheetTrip {
 
 interface WalletSheetProps {
   currentYear: string;
+  onOverviewFocusChange?: (focus: MobileTripsOverviewFocus | null) => void;
   onQueryChange?: (query: string) => void;
   onYearChange?: (year: string) => void;
   onOpenSettings?: () => void;
@@ -41,7 +51,7 @@ interface WalletSheetProps {
 type TripsOverviewSheetState = "collapsed" | "small" | "expanded";
 
 const sheetHeights: Record<TripsOverviewSheetState, number | string> = {
-  collapsed: "calc(16.5rem + env(safe-area-inset-bottom))",
+  collapsed: "calc(14.5rem + env(safe-area-inset-bottom))",
   small: "min(52dvh, calc(100dvh - env(safe-area-inset-top) - 1rem))",
   expanded: "calc(100dvh - env(safe-area-inset-top) - 0.75rem)"
 };
@@ -69,6 +79,7 @@ function tripCardHref(trip: MobileTripsWalletSheetTrip) {
 
 export default function MobileTripsWalletSheet({
   currentYear,
+  onOverviewFocusChange,
   onOpenSettings,
   query,
   settingsHref,
@@ -104,7 +115,7 @@ export default function MobileTripsWalletSheet({
   }, [resolvedQuery, trips]);
   const activeTrip = filteredTrips[0] || trips[0] || null;
   const showEmbeddedOverview = Boolean(isExpanded && activeTrip);
-  const shouldLoadOverview = Boolean(activeTrip && (isSmall || isExpanded));
+  const shouldLoadOverview = Boolean(activeTrip);
 
   useEffect(() => {
     if (!shouldLoadOverview || !activeTrip) {
@@ -145,6 +156,39 @@ export default function MobileTripsWalletSheet({
 
     return () => controller.abort();
   }, [activeTrip, overviewData?.tripId, shouldLoadOverview]);
+
+  useEffect(() => {
+    if (!onOverviewFocusChange) {
+      return;
+    }
+
+    if (!activeTrip) {
+      onOverviewFocusChange(null);
+      return;
+    }
+
+    if (overviewData?.tripId !== activeTrip.id) {
+      return;
+    }
+
+    const firstMappedItem = overviewData.mapPreviewItems.find((item) =>
+      Number.isFinite(item.lat) && Number.isFinite(item.lng)
+    );
+
+    if (!firstMappedItem) {
+      onOverviewFocusChange(null);
+      return;
+    }
+
+    onOverviewFocusChange({
+      id: `activity-${firstMappedItem.id}`,
+      label: firstMappedItem.title,
+      lat: firstMappedItem.lat,
+      lng: firstMappedItem.lng,
+      tripId: activeTrip.id,
+      typeLabel: firstMappedItem.category
+    });
+  }, [activeTrip, onOverviewFocusChange, overviewData]);
 
   function closeModalState() {
     setSheetState("collapsed");
@@ -219,7 +263,9 @@ export default function MobileTripsWalletSheet({
             className={
               isExpanded
                 ? "flex min-h-0 flex-1 flex-col overflow-hidden px-5 pb-[calc(1.5rem+env(safe-area-inset-bottom))]"
-                : "flex min-h-0 flex-1 flex-col overflow-hidden px-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))]"
+                : isCollapsed
+                  ? "flex min-h-0 flex-1 flex-col overflow-hidden px-5 pb-[calc(0.85rem+env(safe-area-inset-bottom))]"
+                  : "flex min-h-0 flex-1 flex-col overflow-hidden px-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))]"
             }
             data-testid="mobile-trips-overview-controls"
             exit={{ opacity: 0, y: -10 }}
@@ -238,7 +284,7 @@ export default function MobileTripsWalletSheet({
                 <div
                   className={
                     isCollapsed
-                      ? "mb-4 grid grid-cols-[auto_1fr_auto] items-start gap-3"
+                      ? "mb-3 grid grid-cols-[auto_1fr_auto] items-start gap-3"
                       : "mb-5 grid grid-cols-[auto_1fr_auto] items-start gap-3"
                   }
                 >
@@ -280,10 +326,10 @@ export default function MobileTripsWalletSheet({
                   </div>
 
                   <div className="min-w-0 pt-1 text-center">
-                    <h2 className="truncate text-[1.6rem] font-black leading-tight text-white">
+                    <h2 className={isCollapsed ? "truncate text-[1.35rem] font-black leading-tight text-white" : "truncate text-[1.6rem] font-black leading-tight text-white"}>
                       {activeTrip?.city || "My Trips"}
                     </h2>
-                    <p className="truncate text-base font-semibold leading-tight text-white/62">
+                    <p className={isCollapsed ? "truncate text-sm font-semibold leading-tight text-white/62" : "truncate text-base font-semibold leading-tight text-white/62"}>
                       {activeTrip?.date_range || currentYear}
                     </p>
                   </div>
@@ -382,6 +428,46 @@ function SmallTripOverview({
   overview: TripOverviewData | null;
   trip: MobileTripsWalletSheetTrip;
 }) {
+  const primaryItem = overview?.itineraryPreview[0] ?? null;
+
+  if (primaryItem && overview) {
+    return (
+      <div className="min-h-0 flex-1 overflow-y-auto pb-2" data-testid="mobile-trips-small-overview">
+        <Link
+          aria-label={`Open ${trip.city || "trip"} itinerary`}
+          className="block rounded-[28px] bg-white p-5 text-black shadow-[0_18px_45px_rgba(0,0,0,0.22)] transition active:scale-[0.99] focus:outline-none focus:ring-4 focus:ring-orange-400/20"
+          href={tripSectionHref(trip, "timeline")}
+        >
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex min-w-0 items-center gap-3">
+              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-orange-100 text-orange-500">
+                {iconForSmallOverviewItem(primaryItem.typeLabel)}
+              </span>
+              <div className="min-w-0">
+                <p className="truncate text-xl font-black">Itinerary</p>
+                <p className="mt-0.5 truncate text-sm font-semibold text-black/48">
+                  {overview.dateRange}
+                </p>
+              </div>
+            </div>
+            <span className="shrink-0 pt-1 text-sm font-black text-orange-500">Add</span>
+          </div>
+          <div className="mt-4 flex items-center justify-between gap-4 rounded-[20px] bg-black/[0.045] p-4">
+            <div className="min-w-0">
+              <p className="truncate text-lg font-black">{primaryItem.title}</p>
+              <p className="mt-1 truncate text-sm font-semibold text-black/46">
+                {primaryItem.location}
+              </p>
+            </div>
+            <span className="shrink-0 text-base font-semibold text-black/42">
+              {primaryItem.timeLabel}
+            </span>
+          </div>
+        </Link>
+      </div>
+    );
+  }
+
   if (overview?.flightPreview) {
     return (
       <div className="min-h-0 flex-1 overflow-y-auto pb-2" data-testid="mobile-trips-small-overview">
@@ -407,6 +493,15 @@ function SmallTripOverview({
       </Link>
     </div>
   );
+}
+
+function iconForSmallOverviewItem(typeLabel: string) {
+  const normalized = typeLabel.toLowerCase();
+  if (/flight|airport|plane/.test(normalized)) return <Plane className="h-6 w-6" aria-hidden="true" />;
+  if (/hotel|lodging|stay/.test(normalized)) return <BedDouble className="h-6 w-6" aria-hidden="true" />;
+  if (/route|transfer|drive|train|bus/.test(normalized)) return <Route className="h-6 w-6" aria-hidden="true" />;
+  if (/place|restaurant|activity|attraction/.test(normalized)) return <MapPin className="h-6 w-6" aria-hidden="true" />;
+  return <CalendarPlus className="h-6 w-6" aria-hidden="true" />;
 }
 
 function TripShortcutRail({ compact = false, trip }: { compact?: boolean; trip: MobileTripsWalletSheetTrip }) {
@@ -447,11 +542,11 @@ function TripShortcutRail({ compact = false, trip }: { compact?: boolean; trip: 
       {shortcuts.map((shortcut) => (
         <Link
           aria-label={shortcut.label}
-          className={compact ? "grid min-w-[4.5rem] snap-start gap-1.5 text-center text-white/70 transition hover:text-white focus:outline-none focus:ring-4 focus:ring-orange-400/20" : "grid min-w-[5.25rem] snap-start gap-2 text-center text-white/70 transition hover:text-white focus:outline-none focus:ring-4 focus:ring-orange-400/20"}
+          className={compact ? "grid min-w-[4.35rem] snap-start gap-1.5 text-center text-white/70 transition hover:text-white focus:outline-none focus:ring-4 focus:ring-orange-400/20" : "grid min-w-[5.25rem] snap-start gap-2 text-center text-white/70 transition hover:text-white focus:outline-none focus:ring-4 focus:ring-orange-400/20"}
           href={shortcut.href}
           key={shortcut.label}
         >
-          <span className={compact ? "grid h-16 w-16 place-items-center rounded-full bg-white/24 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.14)] [&_svg]:h-7 [&_svg]:w-7" : "grid h-[4.65rem] w-[4.65rem] place-items-center rounded-full bg-white/24 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.14)]"}>
+          <span className={compact ? "grid h-14 w-14 place-items-center rounded-full bg-white/24 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.14)] [&_svg]:h-7 [&_svg]:w-7" : "grid h-[4.65rem] w-[4.65rem] place-items-center rounded-full bg-white/24 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.14)]"}>
             {shortcut.icon}
           </span>
           <span className={compact ? "text-xs font-semibold leading-tight" : "text-sm font-semibold leading-tight"}>{shortcut.label}</span>

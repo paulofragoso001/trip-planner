@@ -97,7 +97,7 @@ type AppleMapPin = {
   coordinate: AlmidyCoordinate;
   countryCode?: string | null;
   flag: string;
-  kind: "trip" | "user-location";
+  kind: "activity" | "trip" | "user-location";
   label: string;
   subtitle?: string | null;
   tripId?: string | null;
@@ -145,7 +145,7 @@ export function CustomGlobeRenderer({
   const selectedPin = useMemo(
     () =>
       activeTripId
-        ? pins.find((pin) => (pin.tripId ?? pin.id) === activeTripId) ?? null
+        ? pins.find((pin) => pin.id === activeTripId || pin.tripId === activeTripId) ?? null
         : null,
     [activeTripId, pins]
   );
@@ -247,7 +247,7 @@ export function CustomGlobeRenderer({
 
     const annotations = pins.map((pin) =>
       createFlagAnnotation({
-        isActive: (pin.tripId ?? pin.id) === activeTripId,
+        isActive: pin.id === activeTripId || pin.tripId === activeTripId,
         mapkit,
         onSelect: () => onTripPinSelect?.(pin.tripId ?? pin.id),
         pin
@@ -258,10 +258,17 @@ export function CustomGlobeRenderer({
     addMapAnnotations(map, annotations);
 
     if (selectedPin) {
-      map.setCenterAnimated?.(
-        new mapkit.Coordinate(selectedPin.coordinate.lat, selectedPin.coordinate.lng),
-        true
-      );
+      const center = new mapkit.Coordinate(selectedPin.coordinate.lat, selectedPin.coordinate.lng);
+
+      if (selectedPin.kind === "activity") {
+        const region = buildMapKitCoordinateRegion(mapkit, center, 0.012, 0.012);
+        if (region && typeof map.setRegionAnimated === "function") {
+          map.setRegionAnimated(region, true);
+          return;
+        }
+      }
+
+      map.setCenterAnimated?.(center, true);
       return;
     }
 
@@ -476,7 +483,7 @@ function toAppleTripPin(pin: AlmidyLaunchGlobeTripPin): AppleMapPin | null {
     countryCode: pin.countryCode,
     flag: pin.flag || countryCodeToFlag(pin.countryCode) || DEFAULT_LOCATION_FLAG,
     id: pin.id,
-    kind: "trip",
+    kind: pin.id.startsWith("activity-") ? "activity" : "trip",
     label: pin.label,
     subtitle: pin.subtitle,
     tripId: pin.tripId
@@ -530,7 +537,12 @@ function createFlagAnnotationElement({
   button.dataset.countryCode = pin.countryCode ?? "";
   button.dataset.pinLatitude = pin.coordinate.lat.toFixed(5);
   button.dataset.pinLongitude = pin.coordinate.lng.toFixed(5);
-  button.dataset.testid = pin.kind === "trip" ? "mobile-trips-globe-flag-pin" : "mobile-current-location-pin";
+  button.dataset.testid =
+    pin.kind === "trip"
+      ? "mobile-trips-globe-flag-pin"
+      : pin.kind === "activity"
+        ? "mobile-trips-globe-activity-pin"
+        : "mobile-current-location-pin";
   button.dataset.tripId = tripId;
   button.style.pointerEvents = "auto";
   button.className = [

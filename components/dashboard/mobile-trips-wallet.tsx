@@ -3,10 +3,11 @@
 import { BarChart3, CalendarDays, ChevronDown, List, LocateFixed, MapPinned, Plus, Search, Settings, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { MutableRefObject, ReactNode, RefObject } from "react";
 import { TripCreateForm } from "@/components/dashboard/trip-create-form";
 import MobileTripsWalletSheet, {
+  type MobileTripsOverviewFocus,
   type MobileTripsWalletSheetTrip
 } from "@/components/dashboard/mobile-trips-wallet-sheet";
 import { CustomGlobeRenderer } from "@/components/map/custom-globe-renderer";
@@ -291,9 +292,30 @@ function MobileTripsCountriesMap({
   const carouselRef = useRef<HTMLDivElement | null>(null);
   const carouselCardRefs = useRef(new Map<string, HTMLButtonElement>());
   const [activeTripId, setActiveTripId] = useState<string | null>(null);
+  const [overviewFocus, setOverviewFocus] = useState<MobileTripsOverviewFocus | null>(null);
   const [selectedTripId, setSelectedTripId] = useState<string | null>(null);
   const markerTrips = useMemo(() => activeYearTrips.filter(hasTripCoordinates), [activeYearTrips]);
   const tripPins = useMemo(() => markerTrips.map(tripToMapPin), [markerTrips]);
+  const overviewFocusPin = useMemo<AlmidyMapPin | null>(() => {
+    if (!overviewFocus) {
+      return null;
+    }
+
+    return {
+      coordinate: { lat: overviewFocus.lat, lng: overviewFocus.lng },
+      id: overviewFocus.id,
+      kind: "place",
+      label: overviewFocus.label,
+      subtitle: overviewFocus.typeLabel,
+      tone: "purple",
+      tripId: overviewFocus.tripId
+    };
+  }, [overviewFocus]);
+  const mapPins = useMemo(
+    () => overviewFocusPin ? [...tripPins, overviewFocusPin] : tripPins,
+    [overviewFocusPin, tripPins]
+  );
+  const activeMapFocusId = activeTripId ?? overviewFocusPin?.id ?? null;
   const globeTripPins = useMemo(() => markerTrips.map(tripToGlobeFlagPin).filter(isGlobeTripPin), [markerTrips]);
   const sheetTrips = useMemo(() => activeYearTrips.map(tripToWalletSheetTrip), [activeYearTrips]);
   const carouselTrips = useMemo(() => {
@@ -308,8 +330,8 @@ function MobileTripsCountriesMap({
   const selectedPin = unifiedMap?.surfaceState.pins.find((pin) => pin.id === unifiedMap.surfaceState.selectedId) ?? null;
 
   useEffect(() => {
-    unifiedMap?.setPins(tripPins);
-  }, [tripPins, unifiedMap?.setPins]);
+    unifiedMap?.setPins(mapPins);
+  }, [mapPins, unifiedMap?.setPins]);
 
   useEffect(() => {
     if (!globeTripPins.length) {
@@ -333,6 +355,7 @@ function MobileTripsCountriesMap({
   }, [globeTripPins, selectedTripId]);
 
   function selectTripOnMap(tripId: string, options: { scrollCarousel?: boolean } = {}) {
+    setOverviewFocus(null);
     setActiveTripId(tripId);
     setSelectedTripId(tripId);
     unifiedMap?.selectPin(`trip-${tripId}`);
@@ -360,6 +383,21 @@ function MobileTripsCountriesMap({
     setActiveTripId(null);
     unifiedMap?.selectPin(null);
   }
+
+  const handleOverviewFocusChange = useCallback((nextFocus: MobileTripsOverviewFocus | null) => {
+    setOverviewFocus((currentFocus) => {
+      if (
+        currentFocus?.id === nextFocus?.id &&
+        currentFocus?.lat === nextFocus?.lat &&
+        currentFocus?.lng === nextFocus?.lng &&
+        currentFocus?.label === nextFocus?.label
+      ) {
+        return currentFocus;
+      }
+
+      return nextFocus;
+    });
+  }, []);
 
   function handleCarouselScroll() {
     const carousel = carouselRef.current;
@@ -395,6 +433,10 @@ function MobileTripsCountriesMap({
       data-globe-trip-pin-countries={globeTripPins.map((pin) => pin.countryCode).join(",")}
       data-globe-trip-pin-count={String(globeTripPins.length)}
       data-globe-trip-pin-ids={globeTripPins.map((pin) => pin.tripId ?? pin.id).join(",")}
+      data-overview-focus-id={overviewFocus?.id ?? undefined}
+      data-overview-focus-label={overviewFocus?.label ?? undefined}
+      data-overview-focus-latitude={overviewFocus ? overviewFocus.lat.toFixed(5) : undefined}
+      data-overview-focus-longitude={overviewFocus ? overviewFocus.lng.toFixed(5) : undefined}
       data-selected-map-id={unifiedMap?.surfaceState.selectedId ?? undefined}
       data-selected-pin-country-code={selectedPin?.countryCode ?? undefined}
       data-selected-pin-label={selectedPin?.label ?? undefined}
@@ -406,10 +448,10 @@ function MobileTripsCountriesMap({
       data-user-pin-source={unifiedMap?.surfaceState.location.coordinate ? unifiedMap.surfaceState.location.source : undefined}
     >
       <MobileTripsGlobeCanvas
-        activeTripId={activeTripId}
+        activeTripId={activeMapFocusId}
         activeYear={activeYear}
         hydrated={hydrated}
-        mapPins={tripPins}
+        mapPins={mapPins}
         onTripPinSelect={handleTripPinSelect}
       />
 
@@ -444,6 +486,7 @@ function MobileTripsCountriesMap({
 
       <MobileTripsWalletSheet
         currentYear={activeYear}
+        onOverviewFocusChange={handleOverviewFocusChange}
         onQueryChange={onQueryChange}
         onYearChange={onYearChange}
         query={query}
@@ -546,11 +589,16 @@ function MobileTripsGlobeCanvas({
   onTripPinSelect: (tripId: string) => void;
 }) {
   const hasTripPins = mapPins.length > 0;
-  const selectedPinId = activeTripId ? `trip-${activeTripId}` : null;
+  const selectedPinId =
+    activeTripId && /^(activity|trip)-/.test(activeTripId)
+      ? activeTripId
+      : activeTripId
+        ? `trip-${activeTripId}`
+        : null;
   const surfacePins = useMemo(
     () => mapPins.map((pin) => ({
       ...pin,
-      selected: pin.id === selectedPinId || pin.tripId === activeTripId
+      selected: pin.id === selectedPinId || pin.id === activeTripId || pin.tripId === activeTripId
     })),
     [activeTripId, mapPins, selectedPinId]
   );
