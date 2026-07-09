@@ -137,10 +137,12 @@ export function hrefForMobileGlobeWalletLayer(
     case "tripOverview":
       return encodedTripId ? `/dashboard/trips/${encodedTripId}` : "/dashboard/trips";
     case "itinerary":
-      return encodedTripId ? `/dashboard/trips/${encodedTripId}/timeline` : "/dashboard/trips";
+      return encodedTripId
+        ? appendWalletSelectionParam(`/dashboard/trips/${encodedTripId}/timeline`, "activity", layer.itemId)
+        : "/dashboard/trips";
     case "activityDetail":
       return encodedTripId && layer.itemId
-        ? `/dashboard/trips/${encodedTripId}/timeline/${encodeURIComponent(layer.itemId)}`
+        ? appendWalletSelectionParam(`/dashboard/trips/${encodedTripId}/timeline`, "activity", layer.itemId)
         : encodedTripId
           ? `/dashboard/trips/${encodedTripId}/timeline`
           : "/dashboard/trips";
@@ -149,9 +151,13 @@ export function hrefForMobileGlobeWalletLayer(
     case "stays":
       return encodedTripId ? `/dashboard/trips/${encodedTripId}/stays` : "/dashboard/trips";
     case "places":
-      return encodedTripId ? `/dashboard/trips/${encodedTripId}/ideas` : "/dashboard/trips";
+      return encodedTripId
+        ? appendWalletSelectionParam(`/dashboard/trips/${encodedTripId}/ideas`, "place", layer.itemId)
+        : "/dashboard/trips";
     case "routes":
-      return encodedTripId ? `/dashboard/trips/${encodedTripId}/map` : "/dashboard/trips";
+      return encodedTripId
+        ? appendWalletSelectionParam(`/dashboard/trips/${encodedTripId}/map`, "route", layer.itemId)
+        : "/dashboard/trips";
     case "budget":
       return encodedTripId ? `/dashboard/trips/${encodedTripId}/budget` : "/dashboard/trips";
     case "documents":
@@ -214,8 +220,10 @@ export function buildMobileGlobeWalletStack(
     ];
     const nestedLayer = mobileGlobeWalletLayerKindForTripSegment(segment);
     if (nestedLayer) {
+      const queryItemId = itemIdFromSearchParams(nestedLayer, searchParams);
       stack.push({
         id: `trip:${tripId}:${nestedLayer}`,
+        itemId: queryItemId,
         kind: nestedLayer,
         routeHref,
         tripId
@@ -272,6 +280,22 @@ export function selectionFromMobileGlobeWalletLayer(
   };
 }
 
+export function itemIdFromSearchParams(
+  kind: MobileGlobeWalletLayerKind,
+  searchParams: RouteSearchParamsLike
+): string | null {
+  switch (kind) {
+    case "itinerary":
+      return searchParams.get("activity");
+    case "places":
+      return searchParams.get("place");
+    case "routes":
+      return searchParams.get("route");
+    default:
+      return null;
+  }
+}
+
 export function mobileGlobeWalletLayerKindForTripSegment(segment: string): MobileGlobeWalletLayerKind | null {
   switch (segment) {
     case "budget":
@@ -298,6 +322,16 @@ export function mobileGlobeWalletLayerKindForTripSegment(segment: string): Mobil
 function routeHrefFor(pathname: string, searchParams: RouteSearchParamsLike) {
   const search = searchParams.toString();
   return search ? `${pathname}?${search}` : pathname;
+}
+
+function appendWalletSelectionParam(pathname: string, paramName: string, itemId?: string | null) {
+  if (!itemId) {
+    return pathname;
+  }
+
+  const searchParams = new URLSearchParams();
+  searchParams.set(paramName, itemId);
+  return `${pathname}?${searchParams.toString()}`;
 }
 
 function findLastTripId(stack: MobileGlobeWalletLayer[]) {

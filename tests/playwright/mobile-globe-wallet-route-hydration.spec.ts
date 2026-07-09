@@ -79,6 +79,30 @@ test.describe("mobile globe wallet route hydration", () => {
         stack: "myTrips>tripOverview>itinerary>activityDetail"
       },
       {
+        activeLayer: "itinerary",
+        path: "/dashboard/trips/demo/timeline",
+        search: "activity=segment-123",
+        selectedActivityId: "segment-123",
+        selectedTripId: "demo",
+        stack: "myTrips>tripOverview>itinerary"
+      },
+      {
+        activeLayer: "places",
+        path: "/dashboard/trips/demo/ideas",
+        search: "place=place-123",
+        selectedPlaceId: "place-123",
+        selectedTripId: "demo",
+        stack: "myTrips>tripOverview>places"
+      },
+      {
+        activeLayer: "routes",
+        path: "/dashboard/trips/demo/map",
+        search: "route=route-123",
+        selectedRouteId: "route-123",
+        selectedTripId: "demo",
+        stack: "myTrips>tripOverview>routes"
+      },
+      {
         activeLayer: "settings",
         path: "/dashboard/account",
         selectedTripId: null,
@@ -87,10 +111,15 @@ test.describe("mobile globe wallet route hydration", () => {
     ];
 
     for (const routeExpectation of routeExpectations) {
-      const hydration = hydrateMobileGlobeWalletRoute(routeExpectation.path);
+      const hydration = hydrateMobileGlobeWalletRoute(
+        routeExpectation.path,
+        new URLSearchParams(routeExpectation.search)
+      );
 
       expect(hydration.activeLayer.kind).toBe(routeExpectation.activeLayer);
       expect(hydration.selection.activityId).toBe(routeExpectation.selectedActivityId ?? null);
+      expect(hydration.selection.placeId).toBe(routeExpectation.selectedPlaceId ?? null);
+      expect(hydration.selection.routeId).toBe(routeExpectation.selectedRouteId ?? null);
       expect(hydration.selection.tripId).toBe(routeExpectation.selectedTripId);
       expect(hydration.stack.map((layer) => layer.kind).join(">")).toBe(routeExpectation.stack);
     }
@@ -121,17 +150,44 @@ test.describe("mobile globe wallet route hydration", () => {
       kind: "activityDetail",
       tripId: "demo"
     };
+    const selectedItineraryLayer: MobileGlobeWalletLayer = {
+      id: "trip:demo:itinerary:selected",
+      itemId: "segment-123",
+      kind: "itinerary",
+      tripId: "demo"
+    };
+    const selectedPlaceLayer: MobileGlobeWalletLayer = {
+      id: "trip:demo:places:selected",
+      itemId: "place-123",
+      kind: "places",
+      tripId: "demo"
+    };
+    const selectedRouteLayer: MobileGlobeWalletLayer = {
+      id: "trip:demo:routes:selected",
+      itemId: "route-123",
+      kind: "routes",
+      tripId: "demo"
+    };
 
     const itineraryStack = pushMobileGlobeWalletLayer(baseStack, itineraryLayer);
     expect(itineraryStack.map((layer) => layer.kind).join(">")).toBe("myTrips>tripOverview>itinerary");
     expect(syncUrlFromLayer(itineraryLayer, itineraryStack)).toBe("/dashboard/trips/demo/timeline");
+    expect(syncUrlFromLayer(selectedItineraryLayer, itineraryStack)).toBe(
+      "/dashboard/trips/demo/timeline?activity=segment-123"
+    );
+    expect(syncUrlFromLayer(selectedPlaceLayer, itineraryStack)).toBe(
+      "/dashboard/trips/demo/ideas?place=place-123"
+    );
+    expect(syncUrlFromLayer(selectedRouteLayer, itineraryStack)).toBe(
+      "/dashboard/trips/demo/map?route=route-123"
+    );
 
     const activityStack = pushMobileGlobeWalletLayer(itineraryStack, activityLayer);
     expect(activityStack.map((layer) => layer.kind).join(">")).toBe(
       "myTrips>tripOverview>itinerary>activityDetail"
     );
     expect(syncUrlFromLayer(activityLayer, activityStack)).toBe(
-      "/dashboard/trips/demo/timeline/segment-123"
+      "/dashboard/trips/demo/timeline?activity=segment-123"
     );
 
     const placesStack = replaceMobileGlobeWalletLayer(activityStack, {
