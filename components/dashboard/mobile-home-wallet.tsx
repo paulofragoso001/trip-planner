@@ -11,7 +11,7 @@ import { TravelWalletSheet } from "@/components/dashboard/travel-wallet-sheet";
 import { TripCreateForm, type TripDraft, type WalletLayer } from "@/components/dashboard/trip-create-form";
 import { cn } from "@/components/trip-ui";
 import type { WalletHeroImage } from "@/lib/wallet/hero-image";
-import { unifiedMapSurfaceEnabled } from "@/lib/map/feature-flags";
+import { mobileGlobeWalletEnabled, unifiedMapSurfaceEnabled } from "@/lib/map/feature-flags";
 import { useUnifiedMap } from "@/lib/map/unified-map-provider";
 import { countryCodeToFlag } from "@/lib/map/wayline-map-pins";
 import type { MobileWalletViewModel } from "@/lib/mobile-globe-wallet/view-model";
@@ -118,6 +118,7 @@ export function MobileHomeWallet({
         className
       )}
       data-mobile-wallet-active-layer={mobileWallet?.activeLayer.kind ?? "legacy-launch"}
+      data-mobile-globe-wallet-rollout={mobileGlobeWalletEnabled ? "enabled" : "disabled"}
       data-mobile-wallet-shared-model={mobileWallet ? "true" : "false"}
       data-testid="mobile-home-wallet"
       data-unified-map-surface={unifiedMapSurfaceEnabled ? "enabled" : "disabled"}
@@ -169,6 +170,10 @@ export function MobileHomeWallet({
       />
     </section>
   );
+
+  if (!mobileGlobeWalletEnabled) {
+    return walletSurface;
+  }
 
   return (
     <MobileGlobeWalletShell initialMode="globe" rootLayer="launch" rootRoute="/dashboard">

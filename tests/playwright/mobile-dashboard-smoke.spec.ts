@@ -358,6 +358,10 @@ test.describe("authenticated mobile dashboard smoke", () => {
       "data-wallet-stack",
       "launch"
     );
+    await expect(page.getByTestId("mobile-home-wallet")).toHaveAttribute(
+      "data-mobile-globe-wallet-rollout",
+      "enabled"
+    );
     await expect(page.getByTestId("mobile-home-wallet")).toBeVisible();
     await expect(page.getByTestId("mobile-home-wallet")).toHaveAttribute(
       "data-mobile-wallet-shared-model",
@@ -557,6 +561,10 @@ test.describe("authenticated mobile dashboard smoke", () => {
       "true"
     );
     await expect(page.getByTestId("mobile-trips-country-map-screen")).toHaveAttribute(
+      "data-mobile-globe-wallet-rollout",
+      "enabled"
+    );
+    await expect(page.getByTestId("mobile-trips-country-map-screen")).toHaveAttribute(
       "data-mobile-wallet-active-layer",
       "myTrips"
     );
@@ -641,6 +649,14 @@ test.describe("authenticated mobile dashboard smoke", () => {
       "demo"
     );
     await expect(page.getByTestId("trip-pass-shell")).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByTestId("trip-pass-shell")).toHaveAttribute(
+      "data-mobile-globe-wallet-rollout",
+      "enabled"
+    );
+    await expect(page.getByTestId("trip-pass-shell")).toHaveAttribute(
+      "data-mobile-route-hydration",
+      "globe-wallet"
+    );
     await expect(page.getByTestId("trip-workspace-layout")).toBeVisible();
     await expect(page.getByTestId("trip-overview-page")).toBeVisible();
     await expect(page.getByTestId("overview-small-pass")).toBeVisible({ timeout: 20_000 });
@@ -742,6 +758,10 @@ test.describe("authenticated mobile dashboard smoke", () => {
     await expect(page.getByTestId("app-shell-root")).toBeVisible({ timeout: 30_000 });
     await expect(page.getByTestId("app-shell-root")).toHaveAttribute("data-shell-variant", "desktop");
     await expect(page.getByTestId("app-shell-nav")).toBeVisible();
+    await expect(page.getByTestId("trip-pass-shell")).toHaveAttribute(
+      "data-mobile-globe-wallet-rollout",
+      "enabled"
+    );
     await expect(page.getByTestId("trip-compact-header")).toBeVisible({ timeout: 30_000 });
     await expect(page.getByRole("navigation", { name: "Trip tabs" })).toBeVisible();
     await expect(page.getByTestId("mobile-globe-wallet-shell")).toHaveAttribute(

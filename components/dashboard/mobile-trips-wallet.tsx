@@ -15,7 +15,7 @@ import { CustomGlobeRenderer } from "@/components/map/custom-globe-renderer";
 import { cn } from "@/components/trip-ui";
 import type { TripsData } from "@/app/dashboard/trips/loader";
 import { dashboardActionRoutes } from "@/lib/dashboard/action-routes";
-import { unifiedMapSurfaceEnabled } from "@/lib/map/feature-flags";
+import { mobileGlobeWalletEnabled, unifiedMapSurfaceEnabled } from "@/lib/map/feature-flags";
 import { useOptionalUnifiedMap } from "@/lib/map/unified-map-provider";
 import type { MobileWalletViewModel } from "@/lib/mobile-globe-wallet/view-model";
 import {
@@ -101,7 +101,7 @@ export function MobileTripsWallet({ error, mobileWallet, trips }: MobileTripsWal
     });
   }
 
-  if (unifiedMapSurfaceEnabled && !isListView) {
+  if (mobileGlobeWalletEnabled && unifiedMapSurfaceEnabled && !isListView) {
     return (
       <MobileGlobeWalletShell
         autoLocate
@@ -127,6 +127,7 @@ export function MobileTripsWallet({ error, mobileWallet, trips }: MobileTripsWal
     <section
       className="relative isolate -mx-3 -mt-4 min-h-[calc(100dvh-3.5rem)] overflow-hidden bg-black text-white sm:-mx-6 sm:-mt-6 lg:hidden"
       data-hydrated={hydrated ? "true" : "false"}
+      data-mobile-globe-wallet-rollout={mobileGlobeWalletEnabled ? "enabled" : "disabled"}
       data-mobile-wallet-active-layer={mobileWallet?.activeLayer.kind ?? "legacy-myTrips"}
       data-mobile-wallet-shared-model={mobileWallet ? "true" : "false"}
       data-testid="mobile-trips-wallet-screen"
@@ -276,6 +277,10 @@ export function MobileTripsWallet({ error, mobileWallet, trips }: MobileTripsWal
       </div>
     </section>
   );
+
+  if (!mobileGlobeWalletEnabled) {
+    return listSurface;
+  }
 
   return (
     <MobileGlobeWalletShell
@@ -452,6 +457,7 @@ function MobileTripsCountriesMap({
       data-camera-command={unifiedMap?.surfaceState.cameraCommand?.type ?? undefined}
       data-hydrated={hydrated ? "true" : "false"}
       data-map-mode={unifiedMap?.surfaceState.mode}
+      data-mobile-globe-wallet-rollout={mobileGlobeWalletEnabled ? "enabled" : "disabled"}
       data-mobile-wallet-active-layer={mobileWallet?.activeLayer.kind ?? "legacy-myTrips"}
       data-mobile-wallet-shared-model={mobileWallet ? "true" : "false"}
       data-globe-trip-pin-countries={globeTripPins.map((pin) => pin.countryCode).join(",")}

@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 import { MobileGlobeWalletShell } from "@/components/dashboard/mobile-globe-wallet-shell";
 import { TripTabs } from "@/components/trip/trip-tabs";
 import type { TripWorkspaceData } from "@/app/dashboard/trips/[tripId]/loader";
+import { mobileGlobeWalletEnabled } from "@/lib/map/feature-flags";
 
 type TripPassShellProps = {
   children: ReactNode;
@@ -29,15 +30,18 @@ export function TripPassShell({ children, trip, tripId }: TripPassShellProps) {
     pathname === `${basePath}/sharing`;
   const mobileImmersiveRoute = isOverviewRoute || isTimelineRoute;
   const mobileSheetRoute = mobileImmersiveRoute || isSecondaryRoute;
-  const wrapInMobileGlobeWallet = (content: ReactNode) => (
-    <MobileGlobeWalletShell
-      initialMode={isMapRoute ? "map" : "country-map"}
-      rootLayer="myTrips"
-      rootRoute="/dashboard/trips"
-    >
-      {content}
-    </MobileGlobeWalletShell>
-  );
+  const wrapInMobileGlobeWallet = (content: ReactNode) =>
+    mobileGlobeWalletEnabled ? (
+      <MobileGlobeWalletShell
+        initialMode={isMapRoute ? "map" : "country-map"}
+        rootLayer="myTrips"
+        rootRoute="/dashboard/trips"
+      >
+        {content}
+      </MobileGlobeWalletShell>
+    ) : (
+      content
+    );
 
   if (isMapRoute) {
     return wrapInMobileGlobeWallet(
@@ -45,6 +49,7 @@ export function TripPassShell({ children, trip, tripId }: TripPassShellProps) {
         className="relative isolate -mx-3 -mt-4 min-h-[100dvh] overflow-hidden bg-slate-950 sm:-mx-6 sm:-mt-6 lg:-mx-8 lg:-my-6"
         data-has-background-image="false"
         data-map-mode="true"
+        data-mobile-globe-wallet-rollout={mobileGlobeWalletEnabled ? "enabled" : "disabled"}
         data-mobile-route-hydration="globe-wallet"
         data-testid="trip-pass-shell"
       >
@@ -118,6 +123,7 @@ export function TripPassShell({ children, trip, tripId }: TripPassShellProps) {
         className="relative isolate -mx-3 -mt-4 min-h-[100dvh] overflow-hidden bg-slate-950 sm:-mx-6 sm:-mt-6 lg:-mx-8 lg:-my-6"
         data-has-background-image={hasPhoto ? "true" : "false"}
         data-ideas-mode="true"
+        data-mobile-globe-wallet-rollout={mobileGlobeWalletEnabled ? "enabled" : "disabled"}
         data-mobile-route-hydration="globe-wallet"
         data-testid="trip-pass-shell"
       >
@@ -140,6 +146,7 @@ export function TripPassShell({ children, trip, tripId }: TripPassShellProps) {
     <section
       className="relative isolate -mx-3 -mt-4 min-h-[100dvh] overflow-hidden bg-slate-950 sm:-mx-6 sm:-mt-6 lg:-mx-8 lg:-my-6"
       data-has-background-image={hasPhoto ? "desktop-only" : "false"}
+      data-mobile-globe-wallet-rollout={mobileGlobeWalletEnabled ? "enabled" : "disabled"}
       data-mobile-route-hydration="globe-wallet"
       data-testid="trip-pass-shell"
     >
