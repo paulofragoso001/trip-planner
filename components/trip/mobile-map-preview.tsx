@@ -25,11 +25,13 @@ export function MobileMapPreview({
   title
 }: MobileMapPreviewProps) {
   const mapPins = useMemo(() => tripItemsToApplePins(items), [items]);
+  const firstMappedItemId = mapPins[0]?.id ?? null;
 
   return (
     <section
       aria-label={title}
       className="relative min-h-[18rem] overflow-hidden bg-slate-950"
+      data-first-map-item-id={firstMappedItemId ?? undefined}
       data-map-theme="dark"
       data-testid="mobile-real-map-preview"
       style={{ minHeight: height }}
@@ -37,6 +39,7 @@ export function MobileMapPreview({
       {items.length ? (
         <CustomGlobeRenderer
           className="absolute inset-0"
+          activeTripId={firstMappedItemId}
           mapInstanceKey={`timeline-preview-${mapPins.map((pin) => pin.id).join("-")}`}
           showCountryPin={false}
           tripPins={mapPins}

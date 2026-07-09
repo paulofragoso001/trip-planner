@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
 
 const baseUrl = "http://127.0.0.1:3000";
 const mobileViewport = { height: 900, width: 390 };
@@ -14,6 +14,26 @@ async function openAuthenticatedMobileRoute(page: Page, path: string) {
   await expect(page.getByTestId("app-shell-root")).toHaveAttribute("data-shell-variant", "mobile");
   await expect(page.getByRole("navigation", { name: "Primary mobile navigation" })).toHaveCount(0);
   await expect(page.getByTestId("app-shell-mobile-bottom-nav")).toHaveCount(0);
+}
+
+async function deleteTripForTest(request: APIRequestContext, tripId: string | null | undefined) {
+  if (!tripId || tripId === "trips") return;
+
+  let lastError: unknown;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      const response = await request.delete(`${baseUrl}/api/trips/${encodeURIComponent(tripId)}`, {
+        headers: { "x-cypress-dashboard": "true" }
+      });
+      if (response.ok() || response.status() === 404) return;
+      lastError = new Error(`Delete trip failed with ${response.status()}`);
+    } catch (error) {
+      lastError = error;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 250 * (attempt + 1)));
+  }
+
+  throw lastError instanceof Error ? lastError : new Error("Delete trip failed");
 }
 
 type MockLocationPermission = "denied" | "granted" | "prompt";
@@ -290,8 +310,43 @@ async function expectNoNativeGoogleMapsErrorUi(page: Page) {
   expect(bodyText).not.toContain("This page didn’t load Google Maps correctly.");
 }
 
+function trackGoogleMapsScriptRequests(page: Page) {
+  const urls: string[] = [];
+
+  page.on("request", (request) => {
+    const url = request.url();
+    if (url.includes("maps.googleapis.com/maps/api/js") || url.includes("maps.gstatic.com")) {
+      urls.push(url);
+    }
+  });
+
+  return urls;
+}
+
 test.describe("authenticated mobile dashboard smoke", () => {
+  test("/dashboard and /dashboard/trips share the mobile globe shell without Google scripts", async ({ page }) => {
+    const googleScriptRequests = trackGoogleMapsScriptRequests(page);
+
+    await openAuthenticatedMobileRoute(page, "/dashboard");
+    const launchShell = page.getByTestId("mobile-globe-wallet-shell");
+    await expect(launchShell).toHaveAttribute("data-wallet-active-layer", "launch");
+    await expect(launchShell).toHaveAttribute("data-wallet-stack", "launch");
+    await expect(page.getByTestId("almidy-launch-globe")).toHaveAttribute("data-map-system", "almidy-apple-map-system");
+
+    await openAuthenticatedMobileRoute(page, "/dashboard/trips");
+    const tripsShell = page.getByTestId("mobile-globe-wallet-shell");
+    await expect(tripsShell).toHaveAttribute("data-wallet-active-layer", "myTrips");
+    await expect(tripsShell).toHaveAttribute("data-wallet-stack", "myTrips");
+    await expect(page.getByTestId("mobile-country-map-canvas")).toHaveAttribute(
+      "data-map-system",
+      "almidy-apple-map-system"
+    );
+    await expect(page.locator('[data-map-renderer="google-maps-3d"]')).toHaveCount(0);
+    expect(googleScriptRequests).toEqual([]);
+  });
+
   test("/dashboard renders the launch globe wallet hub", async ({ page }) => {
+    const googleScriptRequests = trackGoogleMapsScriptRequests(page);
     await openAuthenticatedMobileRoute(page, "/dashboard");
 
     await expect(page).toHaveURL(`${baseUrl}/dashboard`);
@@ -341,10 +396,14 @@ test.describe("authenticated mobile dashboard smoke", () => {
       expect(hasLatestTrip || (await page.getByRole("heading", { name: "My Trips" }).count()) > 0).toBeTruthy();
     }
     await expect(page.getByTestId("mobile-trips-country-map-screen")).toHaveCount(0);
+    expect(googleScriptRequests).toEqual([]);
   });
 
   test("/dashboard create trip uses wallet layers without URL navigation", async ({ page }) => {
     await openAuthenticatedMobileRoute(page, "/dashboard");
+    const launchGlobe = page.getByTestId("almidy-launch-globe");
+    await expect(launchGlobe).toBeVisible();
+    await expect(launchGlobe).toHaveAttribute("data-map-system", "almidy-apple-map-system");
 
     const firstTripCard = page.getByTestId("launch-first-trip-card");
     const emptyStateCreate = firstTripCard.getByTestId("launch-first-trip-create");
@@ -358,6 +417,7 @@ test.describe("authenticated mobile dashboard smoke", () => {
     }
 
     await expect(page).toHaveURL(`${baseUrl}/dashboard`);
+    await expect(launchGlobe).toBeVisible();
     await expect(page.getByTestId("dashboard-wallet-layer-stack")).toHaveAttribute("data-wallet-layer", "createTrip");
 
     const form = page.getByTestId("mobile-trip-create-form");
@@ -366,6 +426,7 @@ test.describe("authenticated mobile dashboard smoke", () => {
 
     await form.getByRole("button", { name: "Set Dates" }).click();
     await expect(page.getByTestId("dashboard-wallet-layer-stack")).toHaveAttribute("data-wallet-layer", "datePicker");
+    await expect(launchGlobe).toBeVisible();
     await expect(page.getByTestId("dashboard-wallet-layer-stack")).toHaveAttribute("data-wallet-stack-interaction", "slide");
     await expect(page.getByTestId("wallet-date-layer-frame-handle")).toBeVisible();
     await page.goBack();
@@ -385,6 +446,7 @@ test.describe("authenticated mobile dashboard smoke", () => {
 
     await form.getByRole("button", { name: "Background" }).click();
     await expect(page.getByTestId("dashboard-wallet-layer-stack")).toHaveAttribute("data-wallet-layer", "backgroundPicker");
+    await expect(launchGlobe).toBeVisible();
     await expect(page.getByTestId("wallet-background-layer-frame-handle")).toBeVisible();
     await expect(page.getByTestId("wallet-background-picker-layer")).toBeVisible();
     await page.getByTestId("wallet-background-layer-frame-handle").click();
@@ -475,6 +537,7 @@ test.describe("authenticated mobile dashboard smoke", () => {
   });
 
   test("/dashboard/trips renders the canonical My Trips globe sheet", async ({ page }) => {
+    const googleScriptRequests = trackGoogleMapsScriptRequests(page);
     await openAuthenticatedMobileRoute(page, "/dashboard/trips");
 
     await expect(page).toHaveURL(`${baseUrl}/dashboard/trips`);
@@ -515,6 +578,26 @@ test.describe("authenticated mobile dashboard smoke", () => {
     await expect(page.getByRole("link", { name: "Flights" })).toBeVisible();
     await expect(page.getByTestId("mobile-home-wallet")).toHaveCount(0);
     await expect(page.getByTestId("mobile-home-wallet-content")).toHaveCount(0);
+    expect(googleScriptRequests).toEqual([]);
+  });
+
+  test("/dashboard/trips overview sheet supports collapsed, small, and expanded states", async ({ page }) => {
+    await openAuthenticatedMobileRoute(page, "/dashboard/trips");
+
+    const sheet = page.getByTestId("mobile-country-sheet");
+    await expect(sheet).toHaveAttribute("data-sheet-state", "collapsed");
+    await expect(page.getByTestId("mobile-trips-small-overview")).toHaveCount(0);
+
+    await sheet.getByRole("button", { name: "Expand trips sheet" }).click();
+    await expect(sheet).toHaveAttribute("data-sheet-state", "small");
+    await expect(page.getByTestId("mobile-trips-small-overview")).toBeVisible({ timeout: 20_000 });
+
+    await sheet.getByRole("button", { name: "Expand trips sheet" }).click();
+    await expect(sheet).toHaveAttribute("data-sheet-state", "expanded");
+    await expect(page.getByTestId("trip-overview-page")).toBeVisible({ timeout: 20_000 });
+
+    await sheet.getByRole("button", { name: "Collapse trips sheet" }).click();
+    await expect(sheet).toHaveAttribute("data-sheet-state", "collapsed");
   });
 
   test("/dashboard/trips?view=list renders the secondary list/create flow", async ({ page }) => {
@@ -562,6 +645,110 @@ test.describe("authenticated mobile dashboard smoke", () => {
     await expect(page.getByTestId("trip-overview-page")).toBeVisible();
     await expect(page.getByTestId("overview-small-pass")).toBeVisible({ timeout: 20_000 });
     await expect(page.getByTestId("overview-quick-actions")).toBeVisible();
+  });
+
+  test("shareable mobile deep links hydrate selected wallet layers", async ({ page }) => {
+    const googleScriptRequests = trackGoogleMapsScriptRequests(page);
+
+    await openAuthenticatedMobileRoute(page, "/dashboard/trips/demo/timeline?activity=segment-123");
+    await expect(page.getByTestId("mobile-globe-wallet-shell")).toHaveAttribute(
+      "data-wallet-active-layer",
+      "itinerary"
+    );
+    await expect(page.getByTestId("mobile-globe-wallet-shell")).toHaveAttribute(
+      "data-wallet-stack",
+      "myTrips>tripOverview>itinerary"
+    );
+    await expect(page.getByTestId("mobile-globe-wallet-shell")).toHaveAttribute(
+      "data-wallet-selected-activity-id",
+      "segment-123"
+    );
+
+    await openAuthenticatedMobileRoute(page, "/dashboard/trips/demo/ideas?place=place-123");
+    await expect(page.getByTestId("mobile-globe-wallet-shell")).toHaveAttribute("data-wallet-active-layer", "places");
+    await expect(page.getByTestId("mobile-globe-wallet-shell")).toHaveAttribute(
+      "data-wallet-selected-place-id",
+      "place-123"
+    );
+
+    await openAuthenticatedMobileRoute(page, "/dashboard/trips/demo/map?route=route-123");
+    await expect(page.getByTestId("mobile-globe-wallet-shell")).toHaveAttribute("data-wallet-active-layer", "routes");
+    await expect(page.getByTestId("mobile-globe-wallet-shell")).toHaveAttribute(
+      "data-wallet-selected-route-id",
+      "route-123"
+    );
+    expect(googleScriptRequests).toEqual([]);
+  });
+
+  test("itinerary layer focuses the first mapped activity on the globe preview", async ({ page, request }) => {
+    const googleScriptRequests = trackGoogleMapsScriptRequests(page);
+    const suffix = Date.now();
+    const tripResponse = await request.post(`${baseUrl}/api/trips`, {
+      data: {
+        destination: "Miami, FL",
+        destination_lat: 25.7617,
+        destination_lng: -80.1918,
+        name: `Wallet focus trip ${suffix}`,
+        status: "Planning",
+        travel_style: "balanced"
+      },
+      headers: { "x-cypress-dashboard": "true" }
+    });
+    expect(tripResponse.status()).toBe(201);
+    const tripPayload = await tripResponse.json();
+    const tripId = tripPayload?.trip?.id;
+    expect(typeof tripId).toBe("string");
+
+    try {
+      const segmentResponse = await request.post(`${baseUrl}/api/trip-segments`, {
+        data: {
+          kind: "attraction",
+          lat: 25.801,
+          lng: -80.199,
+          location: "2516 NW 2nd Ave, Miami, FL 33127",
+          startTime: "2026-07-09T16:00:00.000Z",
+          title: `Wynwood focus activity ${suffix}`,
+          tripId
+        },
+        headers: { "x-cypress-dashboard": "true" }
+      });
+      expect(segmentResponse.status()).toBe(201);
+
+      await openAuthenticatedMobileRoute(page, `/dashboard/trips/${tripId}/timeline`);
+
+      await expect(page.getByTestId("mobile-globe-wallet-shell")).toHaveAttribute(
+        "data-wallet-active-layer",
+        "itinerary"
+      );
+      const preview = page.getByTestId("mobile-real-map-preview").first();
+      await expect(preview).toBeVisible({ timeout: 20_000 });
+      const firstMapItemId = await preview.getAttribute("data-first-map-item-id");
+      expect(firstMapItemId).toBeTruthy();
+      await expect(preview.locator('[data-map-renderer="apple-mapkit"]').first()).toHaveAttribute(
+        "data-selected-map-id",
+        firstMapItemId!
+      );
+      expect(googleScriptRequests).toEqual([]);
+    } finally {
+      await deleteTripForTest(request, tripId);
+    }
+  });
+
+  test("desktop dashboard routes keep conventional layouts with the shared shell wrapper", async ({ page }) => {
+    await page.setViewportSize({ height: 900, width: 1280 });
+    await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
+
+    await page.goto(`${baseUrl}/dashboard/trips/demo`, { waitUntil: "commit" });
+    await expect(page.getByTestId("app-shell-root")).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByTestId("app-shell-root")).toHaveAttribute("data-shell-variant", "desktop");
+    await expect(page.getByTestId("app-shell-nav")).toBeVisible();
+    await expect(page.getByTestId("trip-compact-header")).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByRole("navigation", { name: "Trip tabs" })).toBeVisible();
+    await expect(page.getByTestId("mobile-globe-wallet-shell")).toHaveAttribute(
+      "data-wallet-active-layer",
+      "tripOverview"
+    );
+    await expect(page.getByTestId("itinerary-map-aware-mode")).toHaveCount(0);
   });
 
 });

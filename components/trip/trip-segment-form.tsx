@@ -105,6 +105,7 @@ export function TripSegmentForm({
   const [timeZone] = useState(() => Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC");
   const [title, setTitle] = useState(defaultTitle);
   const [hydrated, setHydrated] = useState(false);
+  const [isMobileViewport, setIsMobileViewport] = useState(false);
   const { isPending, run, state } = useAlmidyAction();
   const formType = formTypeForKind(kind);
   const copy = formCopyForType(formType);
@@ -117,6 +118,23 @@ export function TripSegmentForm({
 
   useEffect(() => {
     setHydrated(true);
+    const mobileQuery = window.matchMedia("(max-width: 1023px)");
+    const updateMobileViewport = () => setIsMobileViewport(mobileQuery.matches);
+
+    updateMobileViewport();
+    if (typeof mobileQuery.addEventListener === "function") {
+      mobileQuery.addEventListener("change", updateMobileViewport);
+    } else {
+      mobileQuery.addListener(updateMobileViewport);
+    }
+
+    return () => {
+      if (typeof mobileQuery.removeEventListener === "function") {
+        mobileQuery.removeEventListener("change", updateMobileViewport);
+      } else {
+        mobileQuery.removeListener(updateMobileViewport);
+      }
+    };
   }, []);
 
   function handleLocationInputChange(nextLocation: string) {
@@ -305,6 +323,7 @@ export function TripSegmentForm({
   const fieldClass = mobileInputClassName;
   const selectClass = mobileSelectClassName;
   const textareaClass = mobileTextareaClassName;
+  const shouldUseGoogleAutocomplete = hydrated && !isMobileViewport;
   const groupClass =
     "divide-y divide-zinc-800/60 overflow-visible rounded-xl border border-zinc-800 bg-[#1e1e24] shadow-xl lg:border-slate-200 lg:bg-slate-50";
   const labelClass =
@@ -419,37 +438,57 @@ export function TripSegmentForm({
               <div className="grid gap-0 divide-y divide-zinc-800/60 sm:grid-cols-2 sm:divide-x sm:divide-y-0">
                 <label className={labelClass}>
                   From
-                  <GoogleMapsProvider>
-                    <LocationAutocomplete
-                      ariaLabel="Route origin"
-                      inputClassName={fieldClass}
-                      loadingMessage="Places autocomplete is loading. You can still type an origin."
-                      manualWarning="Select a suggested place to map this route."
-                      onInputChange={(value) => handleRouteEndpointInputChange("origin", value)}
-                      onSelect={(selection) => handleRouteEndpointSelect("origin", selection)}
+                  {shouldUseGoogleAutocomplete ? (
+                    <GoogleMapsProvider>
+                      <LocationAutocomplete
+                        ariaLabel="Route origin"
+                        inputClassName={fieldClass}
+                        loadingMessage="Places autocomplete is loading. You can still type an origin."
+                        manualWarning="Select a suggested place to map this route."
+                        onInputChange={(value) => handleRouteEndpointInputChange("origin", value)}
+                        onSelect={(selection) => handleRouteEndpointSelect("origin", selection)}
+                        placeholder="Barcelona, Spain or BCN"
+                        resolveErrorMessage="Almidy could not map that origin. Try another location."
+                        unresolvedMessage="Select a mapped origin."
+                        value={routeOriginInput}
+                      />
+                    </GoogleMapsProvider>
+                  ) : (
+                    <input
+                      aria-label="Route origin"
+                      className={fieldClass}
+                      onChange={(event) => handleRouteEndpointInputChange("origin", event.target.value)}
                       placeholder="Barcelona, Spain or BCN"
-                      resolveErrorMessage="Almidy could not map that origin. Try another location."
-                      unresolvedMessage="Select a mapped origin."
                       value={routeOriginInput}
                     />
-                  </GoogleMapsProvider>
+                  )}
                 </label>
                 <label className={labelClass}>
                   To
-                  <GoogleMapsProvider>
-                    <LocationAutocomplete
-                      ariaLabel="Route destination"
-                      inputClassName={fieldClass}
-                      loadingMessage="Places autocomplete is loading. You can still type a destination."
-                      manualWarning="Select a suggested place to map this route."
-                      onInputChange={(value) => handleRouteEndpointInputChange("destination", value)}
-                      onSelect={(selection) => handleRouteEndpointSelect("destination", selection)}
+                  {shouldUseGoogleAutocomplete ? (
+                    <GoogleMapsProvider>
+                      <LocationAutocomplete
+                        ariaLabel="Route destination"
+                        inputClassName={fieldClass}
+                        loadingMessage="Places autocomplete is loading. You can still type a destination."
+                        manualWarning="Select a suggested place to map this route."
+                        onInputChange={(value) => handleRouteEndpointInputChange("destination", value)}
+                        onSelect={(selection) => handleRouteEndpointSelect("destination", selection)}
+                        placeholder="Miami, FL or MIA"
+                        resolveErrorMessage="Almidy could not map that destination. Try another location."
+                        unresolvedMessage="Select a mapped destination."
+                        value={routeDestinationInput}
+                      />
+                    </GoogleMapsProvider>
+                  ) : (
+                    <input
+                      aria-label="Route destination"
+                      className={fieldClass}
+                      onChange={(event) => handleRouteEndpointInputChange("destination", event.target.value)}
                       placeholder="Miami, FL or MIA"
-                      resolveErrorMessage="Almidy could not map that destination. Try another location."
-                      unresolvedMessage="Select a mapped destination."
                       value={routeDestinationInput}
                     />
-                  </GoogleMapsProvider>
+                  )}
                 </label>
               </div>
               <div className="grid gap-0 divide-y divide-zinc-800/60 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
@@ -493,20 +532,30 @@ export function TripSegmentForm({
             <div className={groupClass}>
               <label className={labelClass}>
                 {copy.locationLabel}
-                <GoogleMapsProvider>
-                  <LocationAutocomplete
-                    ariaLabel="Stop location"
-                    inputClassName={fieldClass}
-                    loadingMessage="Places autocomplete is loading. You can still type a location."
-                    manualWarning="Select a suggested place to map this item."
-                    onInputChange={handleLocationInputChange}
-                    onSelect={handleLocationSelect}
+                {shouldUseGoogleAutocomplete ? (
+                  <GoogleMapsProvider>
+                    <LocationAutocomplete
+                      ariaLabel="Stop location"
+                      inputClassName={fieldClass}
+                      loadingMessage="Places autocomplete is loading. You can still type a location."
+                      manualWarning="Select a suggested place to map this item."
+                      onInputChange={handleLocationInputChange}
+                      onSelect={handleLocationSelect}
+                      placeholder={copy.locationPlaceholder}
+                      resolveErrorMessage="Almidy could not map that Google result. Try another location."
+                      unresolvedMessage="Select a suggested place with a mapped location."
+                      value={location}
+                    />
+                  </GoogleMapsProvider>
+                ) : (
+                  <input
+                    aria-label="Stop location"
+                    className={fieldClass}
+                    onChange={(event) => handleLocationInputChange(event.target.value)}
                     placeholder={copy.locationPlaceholder}
-                    resolveErrorMessage="Almidy could not map that Google result. Try another location."
-                    unresolvedMessage="Select a suggested place with a mapped location."
                     value={location}
                   />
-                </GoogleMapsProvider>
+                )}
                 {location.trim() && !locationSelected ? (
                   <p className="mt-2 text-xs font-semibold text-orange-200/76 lg:text-amber-700">
                     Select a suggested place to map this.
