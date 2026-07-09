@@ -1,6 +1,6 @@
 "use client";
 
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   createContext,
   useCallback,
@@ -17,22 +17,31 @@ import {
 import type { AlmidyMapMode } from "@/lib/map/wayline-map-models";
 import {
   buildMobileGlobeWalletRootLayer,
+  getActiveMobileGlobeWalletLayer,
+  hydrateFromRoute as hydrateMobileGlobeWalletFromRoute,
   EMPTY_MOBILE_GLOBE_WALLET_SELECTION,
   hydrateMobileGlobeWalletRoute,
+  popMobileGlobeWalletLayer,
+  pushMobileGlobeWalletLayer,
+  replaceMobileGlobeWalletLayer,
   selectionFromMobileGlobeWalletLayer,
+  syncUrlFromLayer as hrefFromMobileGlobeWalletLayer,
   type MobileGlobeWalletLayer,
   type MobileGlobeWalletLayerKind,
-  type MobileGlobeWalletSelection
+  type MobileGlobeWalletSelection,
+  type MobileGlobeWalletUrlSyncMode
 } from "@/lib/mobile-globe-wallet/route-hydration";
 
 export type MobileGlobeWalletContextValue = {
   activeLayer: MobileGlobeWalletLayer;
+  hydrateFromRoute: (nextPathname?: string, nextSearchParams?: URLSearchParams | string) => void;
   popLayer: () => void;
   pushLayer: (layer: MobileGlobeWalletLayer) => void;
   replaceLayer: (layer: MobileGlobeWalletLayer) => void;
   selection: MobileGlobeWalletSelection;
   setSelection: (selection: MobileGlobeWalletSelection) => void;
   stack: MobileGlobeWalletLayer[];
+  syncUrlFromLayer: (layer?: MobileGlobeWalletLayer, mode?: MobileGlobeWalletUrlSyncMode) => string;
 };
 
 type MobileGlobeWalletShellProps = {
@@ -56,6 +65,7 @@ export function MobileGlobeWalletShell({
   rootLayer = "launch",
   rootRoute = "/dashboard"
 }: MobileGlobeWalletShellProps) {
+  const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const searchParamString = searchParams.toString();
@@ -76,17 +86,13 @@ export function MobileGlobeWalletShell({
   }, [routeHydration]);
 
   const pushLayer = useCallback((layer: MobileGlobeWalletLayer) => {
-    setStack((current) => [...current, layer]);
+    setStack((current) => pushMobileGlobeWalletLayer(current, layer));
     setSelection((current) => selectionFromMobileGlobeWalletLayer(layer, current));
   }, []);
 
   const popLayer = useCallback(() => {
     setStack((current) => {
-      if (current.length <= 1) {
-        return current;
-      }
-
-      const nextStack = current.slice(0, -1);
+      const nextStack = popMobileGlobeWalletLayer(current);
       setSelection(hydrateSelectionFromStack(nextStack));
       return nextStack;
     });
@@ -94,24 +100,57 @@ export function MobileGlobeWalletShell({
 
   const replaceLayer = useCallback((layer: MobileGlobeWalletLayer) => {
     setStack((current) => {
-      const nextStack = current.length ? [...current.slice(0, -1), layer] : [layer];
+      const nextStack = replaceMobileGlobeWalletLayer(current, layer);
       setSelection(hydrateSelectionFromStack(nextStack));
       return nextStack;
     });
   }, []);
 
-  const activeLayer = stack[stack.length - 1] ?? buildMobileGlobeWalletRootLayer(rootLayer, rootRoute);
+  const hydrateFromRoute = useCallback(
+    (nextPathname = pathname, nextSearchParams: URLSearchParams | string = routeSearchParams) => {
+      const searchParamsForHydration =
+        typeof nextSearchParams === "string" ? new URLSearchParams(nextSearchParams) : nextSearchParams;
+      const nextHydration = hydrateMobileGlobeWalletFromRoute(
+        nextPathname,
+        searchParamsForHydration,
+        rootLayer,
+        rootRoute
+      );
+      setStack(nextHydration.stack);
+      setSelection(nextHydration.selection);
+    },
+    [pathname, rootLayer, rootRoute, routeSearchParams]
+  );
+
+  const activeLayer = getActiveMobileGlobeWalletLayer(
+    stack,
+    buildMobileGlobeWalletRootLayer(rootLayer, rootRoute)
+  );
+  const syncUrlFromLayer = useCallback(
+    (layer = activeLayer, mode: MobileGlobeWalletUrlSyncMode = "push") => {
+      const href = hrefFromMobileGlobeWalletLayer(layer, stack);
+      if (mode === "replace") {
+        router.replace(href, { scroll: false });
+      } else {
+        router.push(href, { scroll: false });
+      }
+      return href;
+    },
+    [activeLayer, router, stack]
+  );
   const contextValue = useMemo<MobileGlobeWalletContextValue>(
     () => ({
       activeLayer,
+      hydrateFromRoute,
       popLayer,
       pushLayer,
       replaceLayer,
       selection,
       setSelection,
-      stack
+      stack,
+      syncUrlFromLayer
     }),
-    [activeLayer, popLayer, pushLayer, replaceLayer, selection, stack]
+    [activeLayer, hydrateFromRoute, popLayer, pushLayer, replaceLayer, selection, stack, syncUrlFromLayer]
   );
 
   return (
