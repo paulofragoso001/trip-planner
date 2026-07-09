@@ -15,38 +15,15 @@ import {
   type UnifiedMapProviderProps
 } from "@/lib/map/unified-map-provider";
 import type { AlmidyMapMode } from "@/lib/map/wayline-map-models";
-
-export type MobileGlobeWalletLayerKind =
-  | "launch"
-  | "myTrips"
-  | "tripOverview"
-  | "itinerary"
-  | "flights"
-  | "stays"
-  | "places"
-  | "routes"
-  | "budget"
-  | "documents"
-  | "createTrip"
-  | "datePicker"
-  | "backgroundPicker"
-  | "settings";
-
-export type MobileGlobeWalletLayer = {
-  id: string;
-  kind: MobileGlobeWalletLayerKind;
-  itemId?: string | null;
-  routeHref?: string;
-  title?: string | null;
-  tripId?: string | null;
-};
-
-export type MobileGlobeWalletSelection = {
-  activityId: string | null;
-  placeId: string | null;
-  routeId: string | null;
-  tripId: string | null;
-};
+import {
+  buildMobileGlobeWalletRootLayer,
+  EMPTY_MOBILE_GLOBE_WALLET_SELECTION,
+  hydrateMobileGlobeWalletRoute,
+  selectionFromMobileGlobeWalletLayer,
+  type MobileGlobeWalletLayer,
+  type MobileGlobeWalletLayerKind,
+  type MobileGlobeWalletSelection
+} from "@/lib/mobile-globe-wallet/route-hydration";
 
 export type MobileGlobeWalletContextValue = {
   activeLayer: MobileGlobeWalletLayer;
@@ -68,13 +45,6 @@ type MobileGlobeWalletShellProps = {
   rootRoute?: string;
 };
 
-const EMPTY_SELECTION: MobileGlobeWalletSelection = {
-  activityId: null,
-  placeId: null,
-  routeId: null,
-  tripId: null
-};
-
 const MobileGlobeWalletContext = createContext<MobileGlobeWalletContextValue | null>(null);
 
 export function MobileGlobeWalletShell({
@@ -89,30 +59,25 @@ export function MobileGlobeWalletShell({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const searchParamString = searchParams.toString();
-  const routeHref = searchParamString ? `${pathname}?${searchParamString}` : pathname;
   const routeSearchParams = useMemo(
     () => new URLSearchParams(searchParamString),
     [searchParamString]
   );
-  const routeStack = useMemo(
-    () => buildWalletStackFromRoute(pathname, routeSearchParams, rootLayer, rootRoute),
+  const routeHydration = useMemo(
+    () => hydrateMobileGlobeWalletRoute(pathname, routeSearchParams, rootLayer, rootRoute),
     [pathname, rootLayer, rootRoute, routeSearchParams]
   );
-  const routeSelection = useMemo(
-    () => buildSelectionFromStack(routeStack),
-    [routeStack]
-  );
-  const [stack, setStack] = useState<MobileGlobeWalletLayer[]>(routeStack);
-  const [selection, setSelection] = useState<MobileGlobeWalletSelection>(routeSelection);
+  const [stack, setStack] = useState<MobileGlobeWalletLayer[]>(routeHydration.stack);
+  const [selection, setSelection] = useState<MobileGlobeWalletSelection>(routeHydration.selection);
 
   useEffect(() => {
-    setStack(routeStack);
-    setSelection(routeSelection);
-  }, [routeHref, routeSelection, routeStack]);
+    setStack(routeHydration.stack);
+    setSelection(routeHydration.selection);
+  }, [routeHydration]);
 
   const pushLayer = useCallback((layer: MobileGlobeWalletLayer) => {
     setStack((current) => [...current, layer]);
-    setSelection((current) => selectionFromLayer(layer, current));
+    setSelection((current) => selectionFromMobileGlobeWalletLayer(layer, current));
   }, []);
 
   const popLayer = useCallback(() => {
@@ -122,7 +87,7 @@ export function MobileGlobeWalletShell({
       }
 
       const nextStack = current.slice(0, -1);
-      setSelection(buildSelectionFromStack(nextStack));
+      setSelection(hydrateSelectionFromStack(nextStack));
       return nextStack;
     });
   }, []);
@@ -130,12 +95,12 @@ export function MobileGlobeWalletShell({
   const replaceLayer = useCallback((layer: MobileGlobeWalletLayer) => {
     setStack((current) => {
       const nextStack = current.length ? [...current.slice(0, -1), layer] : [layer];
-      setSelection(buildSelectionFromStack(nextStack));
+      setSelection(hydrateSelectionFromStack(nextStack));
       return nextStack;
     });
   }, []);
 
-  const activeLayer = stack[stack.length - 1] ?? buildRootLayer(rootLayer, rootRoute);
+  const activeLayer = stack[stack.length - 1] ?? buildMobileGlobeWalletRootLayer(rootLayer, rootRoute);
   const contextValue = useMemo<MobileGlobeWalletContextValue>(
     () => ({
       activeLayer,
@@ -183,114 +148,9 @@ export function useMobileGlobeWallet() {
   return context;
 }
 
-function buildWalletStackFromRoute(
-  pathname: string,
-  searchParams: URLSearchParams | ReadonlyURLSearchParams,
-  rootLayer: MobileGlobeWalletLayerKind,
-  rootRoute: string
-) {
-  const routeHref = searchParams.toString() ? `${pathname}?${searchParams.toString()}` : pathname;
-
-  if (pathname === "/dashboard") {
-    return [buildRootLayer("launch", routeHref)];
-  }
-
-  if (pathname === "/dashboard/trips") {
-    const view = searchParams.get("view");
-    const stack: MobileGlobeWalletLayer[] = [buildRootLayer("myTrips", "/dashboard/trips")];
-    if (view === "list") {
-      stack.push({
-        id: "myTrips:list",
-        kind: "myTrips",
-        routeHref,
-        title: "Trip list"
-      });
-    }
-
-    return stack;
-  }
-
-  const tripRoute = pathname.match(/^\/dashboard\/trips\/([^/]+)(?:\/([^/]+))?/);
-  if (tripRoute) {
-    const tripId = decodeURIComponent(tripRoute[1] ?? "");
-    const segment = tripRoute[2] ?? "";
-    const stack: MobileGlobeWalletLayer[] = [
-      buildRootLayer("myTrips", "/dashboard/trips"),
-      {
-        id: `trip:${tripId}:overview`,
-        kind: "tripOverview",
-        routeHref: `/dashboard/trips/${encodeURIComponent(tripId)}`,
-        title: "Trip overview",
-        tripId
-      }
-    ];
-    const nestedLayer = layerKindForTripSegment(segment);
-    if (nestedLayer) {
-      stack.push({
-        id: `trip:${tripId}:${nestedLayer}`,
-        kind: nestedLayer,
-        routeHref,
-        tripId
-      });
-    }
-
-    return stack;
-  }
-
-  return [buildRootLayer(rootLayer, rootRoute)];
-}
-
-function buildRootLayer(kind: MobileGlobeWalletLayerKind, routeHref: string): MobileGlobeWalletLayer {
-  return {
-    id: kind,
-    kind,
-    routeHref
-  };
-}
-
-function buildSelectionFromStack(stack: MobileGlobeWalletLayer[]) {
+function hydrateSelectionFromStack(stack: MobileGlobeWalletLayer[]) {
   return stack.reduce<MobileGlobeWalletSelection>(
-    (selection, layer) => selectionFromLayer(layer, selection),
-    EMPTY_SELECTION
+    (selection, layer) => selectionFromMobileGlobeWalletLayer(layer, selection),
+    EMPTY_MOBILE_GLOBE_WALLET_SELECTION
   );
 }
-
-function selectionFromLayer(
-  layer: MobileGlobeWalletLayer,
-  currentSelection: MobileGlobeWalletSelection
-): MobileGlobeWalletSelection {
-  return {
-    activityId: layer.kind === "itinerary" ? layer.itemId ?? currentSelection.activityId : currentSelection.activityId,
-    placeId: layer.kind === "places" ? layer.itemId ?? currentSelection.placeId : currentSelection.placeId,
-    routeId: layer.kind === "routes" ? layer.itemId ?? currentSelection.routeId : currentSelection.routeId,
-    tripId: layer.tripId ?? currentSelection.tripId
-  };
-}
-
-function layerKindForTripSegment(segment: string): MobileGlobeWalletLayerKind | null {
-  switch (segment) {
-    case "budget":
-      return "budget";
-    case "documents":
-      return "documents";
-    case "flights":
-      return "flights";
-    case "ideas":
-    case "places":
-      return "places";
-    case "map":
-    case "routes":
-      return "routes";
-    case "stays":
-      return "stays";
-    case "timeline":
-      return "itinerary";
-    default:
-      return null;
-  }
-}
-
-type ReadonlyURLSearchParams = {
-  get: (name: string) => string | null;
-  toString: () => string;
-};

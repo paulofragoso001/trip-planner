@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { ArrowLeft, Search, Share2 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { MobileGlobeWalletShell } from "@/components/dashboard/mobile-globe-wallet-shell";
 import { TripTabs } from "@/components/trip/trip-tabs";
 import type { TripWorkspaceData } from "@/app/dashboard/trips/[tripId]/loader";
 
@@ -28,13 +29,23 @@ export function TripPassShell({ children, trip, tripId }: TripPassShellProps) {
     pathname === `${basePath}/sharing`;
   const mobileImmersiveRoute = isOverviewRoute || isTimelineRoute;
   const mobileSheetRoute = mobileImmersiveRoute || isSecondaryRoute;
+  const wrapInMobileGlobeWallet = (content: ReactNode) => (
+    <MobileGlobeWalletShell
+      initialMode={isMapRoute ? "map" : "country-map"}
+      rootLayer="myTrips"
+      rootRoute="/dashboard/trips"
+    >
+      {content}
+    </MobileGlobeWalletShell>
+  );
 
   if (isMapRoute) {
-    return (
+    return wrapInMobileGlobeWallet(
       <section
         className="relative isolate -mx-3 -mt-4 min-h-[100dvh] overflow-hidden bg-slate-950 sm:-mx-6 sm:-mt-6 lg:-mx-8 lg:-my-6"
         data-has-background-image="false"
         data-map-mode="true"
+        data-mobile-route-hydration="globe-wallet"
         data-testid="trip-pass-shell"
       >
         <div className="relative z-10 mx-auto w-full max-w-none px-0 py-0 pb-[env(safe-area-inset-bottom)] lg:px-6 lg:py-6 lg:pb-6">
@@ -102,11 +113,12 @@ export function TripPassShell({ children, trip, tripId }: TripPassShellProps) {
   );
 
   if (isIdeasRoute) {
-    return (
+    return wrapInMobileGlobeWallet(
       <section
         className="relative isolate -mx-3 -mt-4 min-h-[100dvh] overflow-hidden bg-slate-950 sm:-mx-6 sm:-mt-6 lg:-mx-8 lg:-my-6"
         data-has-background-image={hasPhoto ? "true" : "false"}
         data-ideas-mode="true"
+        data-mobile-route-hydration="globe-wallet"
         data-testid="trip-pass-shell"
       >
         <div className="relative z-10 mx-auto w-full max-w-none px-0 py-0 pb-[env(safe-area-inset-bottom)] lg:px-6 lg:py-6 lg:pb-6">
@@ -124,10 +136,11 @@ export function TripPassShell({ children, trip, tripId }: TripPassShellProps) {
     );
   }
 
-  return (
+  return wrapInMobileGlobeWallet(
     <section
       className="relative isolate -mx-3 -mt-4 min-h-[100dvh] overflow-hidden bg-slate-950 sm:-mx-6 sm:-mt-6 lg:-mx-8 lg:-my-6"
       data-has-background-image={hasPhoto ? "desktop-only" : "false"}
+      data-mobile-route-hydration="globe-wallet"
       data-testid="trip-pass-shell"
     >
       {standardTripPass}

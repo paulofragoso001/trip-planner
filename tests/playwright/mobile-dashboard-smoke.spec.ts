@@ -511,10 +511,23 @@ test.describe("authenticated mobile dashboard smoke", () => {
     await openAuthenticatedMobileRoute(page, "/dashboard/trips/demo");
 
     await expect(page).toHaveURL(`${baseUrl}/dashboard/trips/demo`);
+    await expect(page.getByTestId("mobile-globe-wallet-shell")).toHaveAttribute(
+      "data-wallet-active-layer",
+      "tripOverview"
+    );
+    await expect(page.getByTestId("mobile-globe-wallet-shell")).toHaveAttribute(
+      "data-wallet-stack",
+      "myTrips>tripOverview"
+    );
+    await expect(page.getByTestId("mobile-globe-wallet-shell")).toHaveAttribute(
+      "data-wallet-selected-trip-id",
+      "demo"
+    );
     await expect(page.getByTestId("trip-pass-shell")).toBeVisible({ timeout: 30_000 });
     await expect(page.getByTestId("trip-workspace-layout")).toBeVisible();
     await expect(page.getByTestId("trip-overview-page")).toBeVisible();
     await expect(page.getByTestId("overview-small-pass")).toBeVisible({ timeout: 20_000 });
     await expect(page.getByTestId("overview-quick-actions")).toBeVisible();
   });
+
 });
