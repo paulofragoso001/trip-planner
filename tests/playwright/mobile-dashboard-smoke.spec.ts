@@ -657,10 +657,23 @@ test.describe("authenticated mobile dashboard smoke", () => {
       "data-mobile-route-hydration",
       "globe-wallet"
     );
-    await expect(page.getByTestId("trip-workspace-layout")).toBeVisible();
-    await expect(page.getByTestId("trip-overview-page")).toBeVisible();
-    await expect(page.getByTestId("overview-small-pass")).toBeVisible({ timeout: 20_000 });
-    await expect(page.getByTestId("overview-quick-actions")).toBeVisible();
+    await expect(page.getByTestId("mobile-trips-country-map-screen")).toBeVisible();
+    await expect(page.getByTestId("mobile-country-sheet")).toBeVisible();
+    await expect(page.getByTestId("mobile-country-sheet")).toHaveAttribute("data-sheet-state", "expanded");
+    await expect(page.getByTestId("mobile-country-sheet").getByTestId("trip-overview-page")).toBeVisible({
+      timeout: 20_000
+    });
+    await expect(page.getByTestId("mobile-country-sheet").getByTestId("overview-small-pass")).toBeVisible();
+    await expect(page.getByTestId("mobile-country-sheet").getByTestId("overview-quick-actions")).toBeVisible();
+    await expect(page.getByTestId("desktop-trip-overview-host")).toBeHidden();
+    const visibleDetachedOverviewCount = await page.locator('[data-testid="trip-overview-page"]').evaluateAll((nodes) =>
+      nodes.filter((node) => {
+        const element = node as HTMLElement;
+        const isVisible = Boolean(element.offsetParent || element.getClientRects().length);
+        return isVisible && !element.closest('[data-testid="mobile-country-sheet"]');
+      }).length
+    );
+    expect(visibleDetachedOverviewCount).toBe(0);
   });
 
   test("shareable mobile deep links hydrate selected wallet layers", async ({ page }) => {

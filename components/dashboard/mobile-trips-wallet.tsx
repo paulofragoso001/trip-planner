@@ -9,6 +9,7 @@ import { TripCreateForm } from "@/components/dashboard/trip-create-form";
 import { MobileGlobeWalletShell } from "@/components/dashboard/mobile-globe-wallet-shell";
 import MobileTripsWalletSheet, {
   type MobileTripsOverviewFocus,
+  type TripsOverviewSheetState,
   type MobileTripsWalletSheetTrip
 } from "@/components/dashboard/mobile-trips-wallet-sheet";
 import { CustomGlobeRenderer } from "@/components/map/custom-globe-renderer";
@@ -29,13 +30,21 @@ import type {
 } from "@/lib/map/wayline-map-models";
 
 type MobileTripsWalletProps = Pick<TripsData, "error" | "trips"> & {
+  initialSelectedTripId?: string | null;
+  initialSheetState?: TripsOverviewSheetState;
   mobileWallet?: MobileWalletViewModel;
 };
 type Trip = TripsData["trips"][number];
 
 const ALMIDY_APPLE_MAP_SYSTEM_ID = "almidy-apple-map-system";
 
-export function MobileTripsWallet({ error, mobileWallet, trips }: MobileTripsWalletProps) {
+export function MobileTripsWallet({
+  error,
+  initialSelectedTripId = null,
+  initialSheetState,
+  mobileWallet,
+  trips
+}: MobileTripsWalletProps) {
   const searchParams = useSearchParams();
   const [query, setQuery] = useState("");
   const [createOpen, setCreateOpen] = useState(trips.length === 0);
@@ -53,9 +62,14 @@ export function MobileTripsWallet({ error, mobileWallet, trips }: MobileTripsWal
 
   const groupedTrips = useMemo(() => groupTripsByYear(filteredTrips), [filteredTrips]);
   const years = useMemo(() => groupedTrips.map((group) => group.year), [groupedTrips]);
+  const initialSelectedTripYear = initialSelectedTripId
+    ? tripYear(trips.find((trip) => trip.id === initialSelectedTripId) ?? null)
+    : null;
   const activeYear = selectedYear && years.includes(selectedYear)
     ? selectedYear
-    : years[0] || String(new Date().getFullYear());
+    : initialSelectedTripYear && years.includes(initialSelectedTripYear)
+      ? initialSelectedTripYear
+      : years[0] || String(new Date().getFullYear());
   const activeYearTrips = groupedTrips.find((group) => group.year === activeYear)?.trips || [];
   const hasSearchQuery = query.trim().length > 0;
   const countryMapTrips = hasSearchQuery ? filteredTrips : activeYearTrips;
@@ -113,6 +127,9 @@ export function MobileTripsWallet({ error, mobileWallet, trips }: MobileTripsWal
           activeYearTrips={countryMapTrips}
           activeYear={activeYear}
           hydrated={hydrated}
+          initialOverviewData={mobileWallet?.selectedTrip?.overview ?? null}
+          initialSelectedTripId={initialSelectedTripId}
+          initialSheetState={initialSheetState}
           mobileWallet={mobileWallet}
           onQueryChange={setQuery}
           onYearChange={setSelectedYear}
@@ -298,6 +315,9 @@ type MobileTripsCountriesMapProps = {
   activeYearTrips: Trip[];
   activeYear: string;
   hydrated: boolean;
+  initialOverviewData?: NonNullable<MobileWalletViewModel["selectedTrip"]>["overview"] | null;
+  initialSelectedTripId?: string | null;
+  initialSheetState?: TripsOverviewSheetState;
   mobileWallet?: MobileWalletViewModel;
   onQueryChange: (query: string) => void;
   onYearChange: (year: string) => void;
@@ -305,10 +325,13 @@ type MobileTripsCountriesMapProps = {
   years: string[];
 };
 
-function MobileTripsCountriesMap({
+export function MobileTripsCountriesMap({
   activeYearTrips,
   activeYear,
   hydrated,
+  initialOverviewData = null,
+  initialSelectedTripId = null,
+  initialSheetState,
   mobileWallet,
   onQueryChange,
   onYearChange,
@@ -318,9 +341,9 @@ function MobileTripsCountriesMap({
   const unifiedMap = useOptionalUnifiedMap();
   const carouselRef = useRef<HTMLDivElement | null>(null);
   const carouselCardRefs = useRef(new Map<string, HTMLButtonElement>());
-  const [activeTripId, setActiveTripId] = useState<string | null>(null);
+  const [activeTripId, setActiveTripId] = useState<string | null>(initialSelectedTripId);
   const [overviewFocus, setOverviewFocus] = useState<MobileTripsOverviewFocus | null>(null);
-  const [selectedTripId, setSelectedTripId] = useState<string | null>(null);
+  const [selectedTripId, setSelectedTripId] = useState<string | null>(initialSelectedTripId);
   const markerTrips = useMemo(() => activeYearTrips.filter(hasTripCoordinates), [activeYearTrips]);
   const tripPins = useMemo(() => markerTrips.map(tripToMapPin), [markerTrips]);
   const overviewFocusPin = useMemo<AlmidyMapPin | null>(() => {
@@ -344,7 +367,10 @@ function MobileTripsCountriesMap({
   );
   const activeMapFocusId = activeTripId ?? overviewFocusPin?.id ?? null;
   const globeTripPins = useMemo(() => markerTrips.map(tripToGlobeFlagPin).filter(isGlobeTripPin), [markerTrips]);
-  const sheetTrips = useMemo(() => activeYearTrips.map(tripToWalletSheetTrip), [activeYearTrips]);
+  const sheetTrips = useMemo(
+    () => orderSelectedTripFirst(activeYearTrips, initialSelectedTripId).map(tripToWalletSheetTrip),
+    [activeYearTrips, initialSelectedTripId]
+  );
   const carouselTrips = useMemo(() => {
     const pinTripIds = new Set(globeTripPins.map((pin) => pin.tripId ?? pin.id));
     return activeYearTrips.filter((trip) => pinTripIds.has(trip.id));
@@ -516,6 +542,9 @@ function MobileTripsCountriesMap({
 
       <MobileTripsWalletSheet
         currentYear={activeYear}
+        initialOverviewData={initialOverviewData}
+        initialSelectedTripId={initialSelectedTripId}
+        initialSheetState={initialSheetState}
         onOverviewFocusChange={handleOverviewFocusChange}
         onQueryChange={onQueryChange}
         onYearChange={onYearChange}
@@ -938,7 +967,23 @@ function isGlobeTripPin(pin: AlmidyLaunchGlobeTripPin | null): pin is AlmidyLaun
   return Boolean(pin);
 }
 
-function tripYear(trip: Trip) {
+function orderSelectedTripFirst(trips: Trip[], selectedTripId: string | null) {
+  if (!selectedTripId) {
+    return trips;
+  }
+
+  const selectedTrip = trips.find((trip) => trip.id === selectedTripId);
+  if (!selectedTrip) {
+    return trips;
+  }
+
+  return [selectedTrip, ...trips.filter((trip) => trip.id !== selectedTripId)];
+}
+
+function tripYear(trip: Trip): string;
+function tripYear(trip: Trip | null): string | null;
+function tripYear(trip: Trip | null) {
+  if (!trip) return null;
   const date = trip.startDate || trip.endDate;
   if (!date) return String(new Date().getFullYear());
   const year = new Date(`${date}T00:00:00.000Z`).getUTCFullYear();

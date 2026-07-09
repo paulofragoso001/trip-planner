@@ -34,8 +34,13 @@ export interface MobileTripsWalletSheetTrip {
   lng: number | null;
 }
 
+export type TripsOverviewSheetState = "collapsed" | "small" | "expanded";
+
 interface WalletSheetProps {
   currentYear: string;
+  initialOverviewData?: TripOverviewData | null;
+  initialSelectedTripId?: string | null;
+  initialSheetState?: TripsOverviewSheetState;
   onOverviewFocusChange?: (focus: MobileTripsOverviewFocus | null) => void;
   onQueryChange?: (query: string) => void;
   onYearChange?: (year: string) => void;
@@ -47,8 +52,6 @@ interface WalletSheetProps {
   trips?: MobileTripsWalletSheetTrip[];
   years?: string[];
 }
-
-type TripsOverviewSheetState = "collapsed" | "small" | "expanded";
 
 const sheetHeights: Record<TripsOverviewSheetState, number | string> = {
   collapsed: "calc(14.5rem + env(safe-area-inset-bottom))",
@@ -79,14 +82,17 @@ function tripCardHref(trip: MobileTripsWalletSheetTrip) {
 
 export default function MobileTripsWalletSheet({
   currentYear,
+  initialOverviewData = null,
+  initialSelectedTripId = null,
+  initialSheetState = "collapsed",
   onOverviewFocusChange,
   onOpenSettings,
   query,
   settingsHref,
   trips = []
 }: WalletSheetProps) {
-  const [sheetState, setSheetState] = useState<TripsOverviewSheetState>("collapsed");
-  const [overviewData, setOverviewData] = useState<TripOverviewData | null>(null);
+  const [sheetState, setSheetState] = useState<TripsOverviewSheetState>(initialSheetState);
+  const [overviewData, setOverviewData] = useState<TripOverviewData | null>(initialOverviewData);
   const [overviewError, setOverviewError] = useState<string | null>(null);
   const [overviewLoadingTripId, setOverviewLoadingTripId] = useState<string | null>(null);
   const reduceMotion = useReducedMotion();
@@ -113,7 +119,14 @@ export default function MobileTripsWalletSheet({
         .includes(normalizedQuery)
     );
   }, [resolvedQuery, trips]);
-  const activeTrip = filteredTrips[0] || trips[0] || null;
+  const activeTrip =
+    (initialSelectedTripId
+      ? filteredTrips.find((trip) => trip.id === initialSelectedTripId) ||
+        trips.find((trip) => trip.id === initialSelectedTripId)
+      : null) ||
+    filteredTrips[0] ||
+    trips[0] ||
+    null;
   const showEmbeddedOverview = Boolean(isExpanded && activeTrip);
   const shouldLoadOverview = Boolean(activeTrip);
 
