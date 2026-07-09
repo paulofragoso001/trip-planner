@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { MutableRefObject, ReactNode, RefObject } from "react";
 import { TripCreateForm } from "@/components/dashboard/trip-create-form";
+import { MobileGlobeWalletShell } from "@/components/dashboard/mobile-globe-wallet-shell";
 import MobileTripsWalletSheet, {
   type MobileTripsOverviewFocus,
   type MobileTripsWalletSheetTrip
@@ -15,10 +16,7 @@ import { cn } from "@/components/trip-ui";
 import type { TripsData } from "@/app/dashboard/trips/loader";
 import { dashboardActionRoutes } from "@/lib/dashboard/action-routes";
 import { unifiedMapSurfaceEnabled } from "@/lib/map/feature-flags";
-import {
-  UnifiedMapProvider,
-  useOptionalUnifiedMap
-} from "@/lib/map/unified-map-provider";
+import { useOptionalUnifiedMap } from "@/lib/map/unified-map-provider";
 import {
   buildTripPin,
   countryCodeFromDestinationText,
@@ -102,7 +100,12 @@ export function MobileTripsWallet({ error, trips }: MobileTripsWalletProps) {
 
   if (unifiedMapSurfaceEnabled && !isListView) {
     return (
-      <UnifiedMapProvider autoLocate initialMode="country-map">
+      <MobileGlobeWalletShell
+        autoLocate
+        initialMode="country-map"
+        rootLayer="myTrips"
+        rootRoute="/dashboard/trips"
+      >
         <MobileTripsCountriesMap
           activeYearTrips={countryMapTrips}
           activeYear={activeYear}
@@ -112,11 +115,11 @@ export function MobileTripsWallet({ error, trips }: MobileTripsWalletProps) {
           query={query}
           years={years}
         />
-      </UnifiedMapProvider>
+      </MobileGlobeWalletShell>
     );
   }
 
-  return (
+  const listSurface = (
     <section
       className="relative isolate -mx-3 -mt-4 min-h-[calc(100dvh-3.5rem)] overflow-hidden bg-black text-white sm:-mx-6 sm:-mt-6 lg:hidden"
       data-hydrated={hydrated ? "true" : "false"}
@@ -266,6 +269,17 @@ export function MobileTripsWallet({ error, trips }: MobileTripsWalletProps) {
         </section>
       </div>
     </section>
+  );
+
+  return (
+    <MobileGlobeWalletShell
+      autoLocate
+      initialMode="country-map"
+      rootLayer="myTrips"
+      rootRoute="/dashboard/trips"
+    >
+      {listSurface}
+    </MobileGlobeWalletShell>
   );
 }
 

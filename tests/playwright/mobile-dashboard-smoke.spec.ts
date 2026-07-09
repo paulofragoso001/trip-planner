@@ -295,6 +295,14 @@ test.describe("authenticated mobile dashboard smoke", () => {
     await openAuthenticatedMobileRoute(page, "/dashboard");
 
     await expect(page).toHaveURL(`${baseUrl}/dashboard`);
+    await expect(page.getByTestId("mobile-globe-wallet-shell")).toHaveAttribute(
+      "data-wallet-active-layer",
+      "launch"
+    );
+    await expect(page.getByTestId("mobile-globe-wallet-shell")).toHaveAttribute(
+      "data-wallet-stack",
+      "launch"
+    );
     await expect(page.getByTestId("mobile-home-wallet")).toBeVisible();
     await expect(page.getByTestId("almidy-launch-globe")).toHaveAttribute("data-hero-mode", "google-maps-3d");
     await expect(page.getByTestId("almidy-launch-globe")).toHaveAttribute("data-launch-globe-state", "ready");
@@ -444,6 +452,14 @@ test.describe("authenticated mobile dashboard smoke", () => {
     await openAuthenticatedMobileRoute(page, "/dashboard/trips");
 
     await expect(page).toHaveURL(`${baseUrl}/dashboard/trips`);
+    await expect(page.getByTestId("mobile-globe-wallet-shell")).toHaveAttribute(
+      "data-wallet-active-layer",
+      "myTrips"
+    );
+    await expect(page.getByTestId("mobile-globe-wallet-shell")).toHaveAttribute(
+      "data-wallet-stack",
+      "myTrips"
+    );
     await expect(page.getByTestId("mobile-trips-country-map-screen")).toBeVisible({
       timeout: 20_000
     });

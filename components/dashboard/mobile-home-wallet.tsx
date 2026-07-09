@@ -6,12 +6,13 @@ import type { MouseEvent } from "react";
 import { useEffect, useRef, useState } from "react";
 import type { DashboardData } from "@/app/dashboard/loader";
 import { AlmidyLaunchGlobe } from "@/components/dashboard/almidy-launch-globe";
+import { MobileGlobeWalletShell } from "@/components/dashboard/mobile-globe-wallet-shell";
 import { TravelWalletSheet } from "@/components/dashboard/travel-wallet-sheet";
 import { TripCreateForm, type TripDraft, type WalletLayer } from "@/components/dashboard/trip-create-form";
 import { cn } from "@/components/trip-ui";
 import type { WalletHeroImage } from "@/lib/wallet/hero-image";
 import { unifiedMapSurfaceEnabled } from "@/lib/map/feature-flags";
-import { UnifiedMapProvider, useUnifiedMap } from "@/lib/map/unified-map-provider";
+import { useUnifiedMap } from "@/lib/map/unified-map-provider";
 import { countryCodeToFlag } from "@/lib/map/wayline-map-pins";
 
 type MobileHomeWalletProps = Pick<DashboardData, "metrics" | "recentTrips"> & {
@@ -108,11 +109,11 @@ export function MobileHomeWallet({
     </section>
   );
 
-  if (!unifiedMapSurfaceEnabled) {
-    return walletSurface;
-  }
-
-  return <UnifiedMapProvider initialMode="globe">{walletSurface}</UnifiedMapProvider>;
+  return (
+    <MobileGlobeWalletShell initialMode="globe" rootLayer="launch" rootRoute="/dashboard">
+      {walletSurface}
+    </MobileGlobeWalletShell>
+  );
 }
 
 function LaunchFirstTripCard({
