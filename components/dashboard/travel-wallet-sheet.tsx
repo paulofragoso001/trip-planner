@@ -546,7 +546,13 @@ function CollapsedLauncher({
             </Link>
           )}
           {onCreateTrip ? (
-            <CircleActionButton icon={<Plus />} label="Add" onClick={onCreateTrip} primary />
+            <CircleActionButton
+              icon={<Plus />}
+              label="Add"
+              onClick={onCreateTrip}
+              primary
+              testId="mobile-launch-add-trip"
+            />
           ) : (
             <CircleAction href={dashboardActionRoutes.trips.create} icon={<Plus />} label="Add" primary />
           )}
@@ -1343,12 +1349,14 @@ function CircleActionButton({
   icon,
   label,
   onClick,
-  primary = false
+  primary = false,
+  testId
 }: {
   icon: ReactNode;
   label: string;
   onClick: () => void;
   primary?: boolean;
+  testId?: string;
 }) {
   return (
     <button
@@ -1357,6 +1365,7 @@ function CircleActionButton({
         "grid h-14 w-14 place-items-center rounded-full shadow-[0_18px_44px_rgba(15,23,42,0.08)] transition focus:outline-none focus:ring-4 focus:ring-orange-300/20",
         primary ? "bg-orange-500 text-white" : "bg-white text-slate-950 ring-1 ring-slate-100"
       )}
+      data-testid={testId}
       onClick={onClick}
       type="button"
     >

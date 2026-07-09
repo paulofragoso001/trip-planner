@@ -1,5 +1,6 @@
 import type { TripMapItem } from "@/components/TripMap";
 import type { MobileFlightRoutePreview } from "@/components/trip/mobile-flight-route-card";
+import type { DashboardData } from "@/app/dashboard/loader";
 import type { TripBudgetData } from "@/app/dashboard/trips/[tripId]/budget/types";
 import type { TripMapData } from "@/app/dashboard/trips/[tripId]/map/loader";
 import type { TripOverviewData } from "@/app/dashboard/trips/[tripId]/overview-loader";
@@ -47,6 +48,7 @@ export type MobileWalletSelectedTripView = {
 
 export type MobileWalletViewModel = {
   activeLayer: MobileGlobeWalletLayer;
+  dashboard: DashboardData | null;
   error: string | null;
   heroImagery: WalletHeroImage;
   routeHref: string;
@@ -58,6 +60,7 @@ export type MobileWalletViewModel = {
 
 export type BuildMobileWalletViewModelInput = {
   budget: TripBudgetData | null;
+  dashboard: DashboardData | null;
   mapData: TripMapData | null;
   overview: TripOverviewData | null;
   routeHydration: MobileGlobeWalletRouteHydration;
@@ -77,7 +80,9 @@ export function buildMobileWalletViewModel(input: BuildMobileWalletViewModelInpu
 
   return {
     activeLayer: input.routeHydration.activeLayer,
+    dashboard: input.dashboard,
     error:
+      input.dashboard?.error ||
       input.tripsData.error ||
       selectedTrip?.overview.error ||
       selectedTrip?.timeline?.error ||

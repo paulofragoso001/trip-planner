@@ -304,6 +304,14 @@ test.describe("authenticated mobile dashboard smoke", () => {
       "launch"
     );
     await expect(page.getByTestId("mobile-home-wallet")).toBeVisible();
+    await expect(page.getByTestId("mobile-home-wallet")).toHaveAttribute(
+      "data-mobile-wallet-shared-model",
+      "true"
+    );
+    await expect(page.getByTestId("mobile-home-wallet")).toHaveAttribute(
+      "data-mobile-wallet-active-layer",
+      "launch"
+    );
     await expect(page.getByTestId("almidy-launch-globe")).toHaveAttribute("data-hero-mode", "apple-mapkit");
     await expect(page.getByTestId("almidy-launch-globe")).toHaveAttribute("data-launch-globe-state", "ready");
     await expect(page.getByTestId("almidy-google-maps-3d-globe")).toHaveCount(0);
@@ -339,9 +347,16 @@ test.describe("authenticated mobile dashboard smoke", () => {
     await openAuthenticatedMobileRoute(page, "/dashboard");
 
     const firstTripCard = page.getByTestId("launch-first-trip-card");
-    test.skip((await firstTripCard.count()) === 0, "Requires an empty dashboard state.");
+    const emptyStateCreate = firstTripCard.getByTestId("launch-first-trip-create");
+    const launchSheetAdd = page.getByTestId("mobile-launch-add-trip");
 
-    await firstTripCard.getByTestId("launch-first-trip-create").click();
+    if ((await emptyStateCreate.count()) > 0) {
+      await emptyStateCreate.click();
+    } else {
+      await expect(launchSheetAdd).toBeVisible({ timeout: 20_000 });
+      await launchSheetAdd.click();
+    }
+
     await expect(page).toHaveURL(`${baseUrl}/dashboard`);
     await expect(page.getByTestId("dashboard-wallet-layer-stack")).toHaveAttribute("data-wallet-layer", "createTrip");
 
@@ -458,6 +473,14 @@ test.describe("authenticated mobile dashboard smoke", () => {
     await expect(page.getByTestId("mobile-trips-country-map-screen")).toBeVisible({
       timeout: 20_000
     });
+    await expect(page.getByTestId("mobile-trips-country-map-screen")).toHaveAttribute(
+      "data-mobile-wallet-shared-model",
+      "true"
+    );
+    await expect(page.getByTestId("mobile-trips-country-map-screen")).toHaveAttribute(
+      "data-mobile-wallet-active-layer",
+      "myTrips"
+    );
     await expect(page.getByTestId("mobile-country-map-canvas")).toHaveAttribute(
       "data-map-system",
       "almidy-apple-map-system"

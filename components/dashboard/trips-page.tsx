@@ -8,13 +8,16 @@ import { PlacePhoto } from "@/components/place-photo";
 import { WalletActionLink, WalletCard } from "@/components/wallet/wallet-card";
 import { WalletPageShell } from "@/components/wallet/wallet-page-shell";
 import { dashboardActionRoutes } from "@/lib/dashboard/action-routes";
+import type { MobileWalletViewModel } from "@/lib/mobile-globe-wallet/view-model";
 
-type TripsPageProps = TripsData;
+type TripsPageProps = TripsData & {
+  mobileWallet?: MobileWalletViewModel;
+};
 
-export default function TripsPage({ error, heroImage, trips }: TripsPageProps) {
+export default function TripsPage({ error, heroImage, mobileWallet, trips }: TripsPageProps) {
   return (
     <>
-      <MobileTripsWallet error={error} trips={trips} />
+      <MobileTripsWallet error={error} mobileWallet={mobileWallet} trips={trips} />
       <div className="hidden lg:block">
         <WalletPageShell
           actions={

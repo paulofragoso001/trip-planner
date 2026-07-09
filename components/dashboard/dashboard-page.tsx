@@ -14,8 +14,10 @@ import { tripUi } from "@/components/trip-ui";
 import { WalletActionLink, WalletCard } from "@/components/wallet/wallet-card";
 import { WalletPageShell } from "@/components/wallet/wallet-page-shell";
 import { dashboardActionRoutes } from "@/lib/dashboard/action-routes";
+import type { MobileWalletViewModel } from "@/lib/mobile-globe-wallet/view-model";
 
 type DashboardPageProps = DashboardData & {
+  mobileWallet?: MobileWalletViewModel;
   view?: string;
 };
 
@@ -23,6 +25,7 @@ export default function DashboardPage({
   error,
   heroImage,
   metrics,
+  mobileWallet,
   recentTrips,
   view
 }: DashboardPageProps) {
@@ -52,6 +55,7 @@ export default function DashboardPage({
         heroImage={heroImage}
         initialSheetState={view === "trips" ? "expanded" : "collapsed"}
         metrics={metrics}
+        mobileWallet={mobileWallet}
         recentTrips={recentTrips}
       />
       <div

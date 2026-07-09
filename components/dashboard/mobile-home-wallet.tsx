@@ -14,17 +14,20 @@ import type { WalletHeroImage } from "@/lib/wallet/hero-image";
 import { unifiedMapSurfaceEnabled } from "@/lib/map/feature-flags";
 import { useUnifiedMap } from "@/lib/map/unified-map-provider";
 import { countryCodeToFlag } from "@/lib/map/wayline-map-pins";
+import type { MobileWalletViewModel } from "@/lib/mobile-globe-wallet/view-model";
 
 type MobileHomeWalletProps = Pick<DashboardData, "metrics" | "recentTrips"> & {
   className?: string;
   heroImage?: WalletHeroImage;
   initialSheetState?: "collapsed" | "expanded";
+  mobileWallet?: MobileWalletViewModel;
 };
 
 export function MobileHomeWallet({
   className,
   heroImage,
   initialSheetState = "collapsed",
+  mobileWallet,
   recentTrips
 }: MobileHomeWalletProps) {
   const latestTrip = recentTrips[0] || null;
@@ -58,6 +61,8 @@ export function MobileHomeWallet({
         "mobile-launch-globe relative isolate h-[100dvh] overflow-hidden bg-black text-white lg:hidden",
         className
       )}
+      data-mobile-wallet-active-layer={mobileWallet?.activeLayer.kind ?? "legacy-launch"}
+      data-mobile-wallet-shared-model={mobileWallet ? "true" : "false"}
       data-testid="mobile-home-wallet"
       data-unified-map-surface={unifiedMapSurfaceEnabled ? "enabled" : "disabled"}
     >

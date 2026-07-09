@@ -17,6 +17,7 @@ import type { TripsData } from "@/app/dashboard/trips/loader";
 import { dashboardActionRoutes } from "@/lib/dashboard/action-routes";
 import { unifiedMapSurfaceEnabled } from "@/lib/map/feature-flags";
 import { useOptionalUnifiedMap } from "@/lib/map/unified-map-provider";
+import type { MobileWalletViewModel } from "@/lib/mobile-globe-wallet/view-model";
 import {
   buildTripPin,
   countryCodeFromDestinationText,
@@ -27,12 +28,14 @@ import type {
   AlmidyMapPin
 } from "@/lib/map/wayline-map-models";
 
-type MobileTripsWalletProps = Pick<TripsData, "error" | "trips">;
+type MobileTripsWalletProps = Pick<TripsData, "error" | "trips"> & {
+  mobileWallet?: MobileWalletViewModel;
+};
 type Trip = TripsData["trips"][number];
 
 const ALMIDY_APPLE_MAP_SYSTEM_ID = "almidy-apple-map-system";
 
-export function MobileTripsWallet({ error, trips }: MobileTripsWalletProps) {
+export function MobileTripsWallet({ error, mobileWallet, trips }: MobileTripsWalletProps) {
   const searchParams = useSearchParams();
   const [query, setQuery] = useState("");
   const [createOpen, setCreateOpen] = useState(trips.length === 0);
@@ -110,6 +113,7 @@ export function MobileTripsWallet({ error, trips }: MobileTripsWalletProps) {
           activeYearTrips={countryMapTrips}
           activeYear={activeYear}
           hydrated={hydrated}
+          mobileWallet={mobileWallet}
           onQueryChange={setQuery}
           onYearChange={setSelectedYear}
           query={query}
@@ -123,6 +127,8 @@ export function MobileTripsWallet({ error, trips }: MobileTripsWalletProps) {
     <section
       className="relative isolate -mx-3 -mt-4 min-h-[calc(100dvh-3.5rem)] overflow-hidden bg-black text-white sm:-mx-6 sm:-mt-6 lg:hidden"
       data-hydrated={hydrated ? "true" : "false"}
+      data-mobile-wallet-active-layer={mobileWallet?.activeLayer.kind ?? "legacy-myTrips"}
+      data-mobile-wallet-shared-model={mobileWallet ? "true" : "false"}
       data-testid="mobile-trips-wallet-screen"
       data-unified-map-surface={unifiedMapSurfaceEnabled ? "enabled" : "disabled"}
     >
@@ -287,6 +293,7 @@ type MobileTripsCountriesMapProps = {
   activeYearTrips: Trip[];
   activeYear: string;
   hydrated: boolean;
+  mobileWallet?: MobileWalletViewModel;
   onQueryChange: (query: string) => void;
   onYearChange: (year: string) => void;
   query: string;
@@ -297,6 +304,7 @@ function MobileTripsCountriesMap({
   activeYearTrips,
   activeYear,
   hydrated,
+  mobileWallet,
   onQueryChange,
   onYearChange,
   query,
@@ -444,6 +452,8 @@ function MobileTripsCountriesMap({
       data-camera-command={unifiedMap?.surfaceState.cameraCommand?.type ?? undefined}
       data-hydrated={hydrated ? "true" : "false"}
       data-map-mode={unifiedMap?.surfaceState.mode}
+      data-mobile-wallet-active-layer={mobileWallet?.activeLayer.kind ?? "legacy-myTrips"}
+      data-mobile-wallet-shared-model={mobileWallet ? "true" : "false"}
       data-globe-trip-pin-countries={globeTripPins.map((pin) => pin.countryCode).join(",")}
       data-globe-trip-pin-count={String(globeTripPins.length)}
       data-globe-trip-pin-ids={globeTripPins.map((pin) => pin.tripId ?? pin.id).join(",")}

@@ -1,7 +1,7 @@
 import DashboardPage from "@/components/dashboard/dashboard-page";
 import { resolveDashboardCompatibilityRedirect } from "@/lib/dashboard/route-contracts";
 import { redirect } from "next/navigation";
-import { loadDashboardData } from "./loader";
+import { loadMobileWalletViewModel } from "./mobile-wallet-loader";
 
 export default async function Page({
   searchParams
@@ -14,7 +14,20 @@ export default async function Page({
     redirect(compatibilityRedirect);
   }
 
-  const data = await loadDashboardData();
+  const mobileWalletSearchParams = new URLSearchParams();
+  if (params.view) {
+    mobileWalletSearchParams.set("view", params.view);
+  }
 
-  return <DashboardPage {...data} view={params.view} />;
+  const wallet = await loadMobileWalletViewModel({
+    pathname: "/dashboard",
+    searchParams: mobileWalletSearchParams
+  });
+  const data = wallet.dashboard;
+
+  if (!data) {
+    throw new Error("Dashboard wallet data did not hydrate.");
+  }
+
+  return <DashboardPage {...data} mobileWallet={wallet} view={params.view} />;
 }
