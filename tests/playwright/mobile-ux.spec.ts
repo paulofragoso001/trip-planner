@@ -2828,7 +2828,7 @@ test.describe("mobile soft-launch UX", () => {
     await expect(appleCanvas).toBeVisible();
   });
 
-  test("Verify launch renders the Apple MapKit hybrid globe surface", async ({ page }) => {
+  test("Verify launch renders the honest rectangular Apple MapKit web surface", async ({ page }) => {
     await page.setViewportSize({ height: 900, width: 390 });
     await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
     await installMockAppleMapKit(page);
@@ -2839,11 +2839,17 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByTestId("apple-canvas-globe")).toHaveCount(0);
     await expect(page.locator("[data-globe-transition-state]")).toHaveCount(0);
 
-    const appleMapContainer = page.locator('[data-map-system="almidy-apple-map-system"]').first();
+    await expect(page.getByTestId("almidy-launch-globe")).toHaveAttribute(
+      "data-map-presentation",
+      "platform-apple-map"
+    );
+    const appleMapContainer = page
+      .locator('[data-map-system="almidy-apple-map-system"][data-map-projection="mercator"]')
+      .first();
     await expect(appleMapContainer).toBeVisible({ timeout: 30_000 });
     await expect(appleMapContainer).toHaveAttribute("data-map-renderer", "apple-mapkit");
-    await expect(appleMapContainer).toHaveAttribute("data-map-presentation", "apple-globe");
-    await expect(appleMapContainer.getByTestId("almidy-apple-globe-sphere")).toBeVisible();
+    await expect(appleMapContainer).toHaveAttribute("data-map-presentation", "apple-map");
+    await expect(appleMapContainer.getByTestId("almidy-apple-globe-sphere")).toHaveCount(0);
     const mapKitCanvas = appleMapContainer.locator('[data-mapkit-mock="ready"]').first();
     await expect(mapKitCanvas).toHaveAttribute("data-mapkit-map-type", "hybrid");
     await expect(mapKitCanvas).toHaveAttribute("data-mapkit-camera-distance", "10000000");
@@ -2851,7 +2857,38 @@ test.describe("mobile soft-launch UX", () => {
     await expect(mapKitCanvas).toHaveAttribute("data-mapkit-rotation-enabled", "true");
   });
 
-  test("Apple globe falls back offline and recovers when connectivity returns", async ({ page }) => {
+  test("Capacitor launch reserves a transparent native MapKit underlay without loading MapKit JS", async ({ page }) => {
+    await page.setViewportSize({ height: 900, width: 390 });
+    await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
+    await page.addInitScript(() => {
+      let capacitorValue: Record<string, unknown> = {};
+      Object.defineProperty(window, "Capacitor", {
+        configurable: true,
+        get: () => ({
+          ...capacitorValue,
+          getPlatform: () => "ios",
+          isNativePlatform: () => true
+        }),
+        set: (value: unknown) => {
+          capacitorValue = value && typeof value === "object"
+            ? value as Record<string, unknown>
+            : {};
+        },
+      });
+    });
+
+    await page.goto(`${baseUrl}/dashboard`, { waitUntil: "commit" });
+
+    const nativeHost = page.getByTestId("native-mapkit-underlay-host").first();
+    await expect(nativeHost).toHaveAttribute("data-map-renderer", "native-mapkit-underlay");
+    await expect(nativeHost).toHaveAttribute("data-map-presentation", "native-apple-globe");
+    await expect(page.locator('[data-map-projection="mercator"]')).toHaveCount(0);
+    await expect.poll(async () => page.evaluate(() =>
+      Array.from(document.scripts).filter((script) => script.src.includes("apple-mapkit.com")).length
+    )).toBe(0);
+  });
+
+  test("Apple web map falls back offline and recovers when connectivity returns", async ({ page }) => {
     await page.setViewportSize({ height: 900, width: 390 });
     await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
     await page.addInitScript(() => {
@@ -2882,7 +2919,7 @@ test.describe("mobile soft-launch UX", () => {
     await expect(fallback).toHaveCount(0);
   });
 
-  test("Apple globe reports authorization errors and retries with a fresh token", async ({ page }) => {
+  test("Apple web map reports authorization errors and retries with a fresh token", async ({ page }) => {
     await page.setViewportSize({ height: 900, width: 390 });
     await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
     await installMockAppleMapKit(page);

@@ -9,6 +9,7 @@ import {
   clearAppleMapKitTokenCache,
   loadAppleMapKitToken
 } from "@/lib/map/apple-mapkit-token";
+import { isNativeCapacitorRuntime } from "@/lib/native/capacitor-runtime";
 import { useOptionalUnifiedMap } from "@/lib/map/unified-map-provider";
 import type {
   AlmidyCoordinate,
@@ -118,14 +119,15 @@ type AppleMapPin = {
 };
 
 type AppleMapRuntimeState = "loading" | "ready" | "offline" | "error" | "missing-token";
+type MapRendererTarget = "checking" | "native" | "web";
 
 const APPLE_MAPKIT_SCRIPT_ID = "almidy-apple-mapkit-js";
 const APPLE_MAPKIT_SCRIPT_SRC = "https://cdn.apple-mapkit.com/mk/5.x.x/mapkit.js";
 const APPLE_MAPKIT_SCRIPT_TIMEOUT_MS = 15_000;
 const APPLE_MAP_SYSTEM_ID = "almidy-apple-map-system";
 const APPLE_MAPKIT_LOG_PREFIX = "ALMIDY MAPKIT";
-const APPLE_GLOBE_CAMERA_DISTANCE_METERS = 10_000_000;
-const APPLE_GLOBE_FOCUS_DISTANCE_METERS = 2_600_000;
+const APPLE_WORLD_CAMERA_DISTANCE_METERS = 10_000_000;
+const APPLE_MAP_FOCUS_DISTANCE_METERS = 2_600_000;
 const DEFAULT_WORLD_CENTER: AlmidyCoordinate = { lat: 28.5, lng: -81.5 };
 const DEFAULT_LOCATION_FLAG = "•";
 
@@ -157,6 +159,11 @@ export function CustomGlobeRenderer({
   const [runtimeState, setRuntimeState] = useState<AppleMapRuntimeState>("loading");
   const [runtimeError, setRuntimeError] = useState<string | null>(null);
   const [retryRevision, setRetryRevision] = useState(0);
+  const [rendererTarget, setRendererTarget] = useState<MapRendererTarget>("checking");
+
+  useEffect(() => {
+    setRendererTarget(isNativeCapacitorRuntime() ? "native" : "web");
+  }, []);
 
   const pins = useMemo(
     () => buildAppleMapPins({
@@ -171,7 +178,7 @@ export function CustomGlobeRenderer({
 
   const selectedMapId = activeTripId ?? activeSurface?.selectedId ?? null;
   const mapMode = activeSurface?.mode ?? (defaultFocusWhenEmpty ? "launch-globe" : "country-map");
-  const isGlobePresentation = defaultFocusWhenEmpty || mapMode === "globe" || mapMode === "launch-globe";
+  const usesWorldCamera = defaultFocusWhenEmpty || mapMode === "globe" || mapMode === "launch-globe";
   const selectedPin = useMemo(
     () =>
       selectedMapId
@@ -190,7 +197,7 @@ export function CustomGlobeRenderer({
     const status = event.status?.trim() || "Unknown";
 
     if (!navigator.onLine) {
-      transitionRuntime("offline", "Reconnect to restore the interactive Apple globe.");
+      transitionRuntime("offline", "Reconnect to restore the interactive Apple map.");
       return;
     }
 
@@ -201,9 +208,13 @@ export function CustomGlobeRenderer({
   const initializeMapKit = useCallback(async (generation: number) => {
     const isCurrentGeneration = () => initializationGenerationRef.current === generation;
 
+    if (rendererTarget !== "web") {
+      return;
+    }
+
     if (!navigator.onLine) {
       if (isCurrentGeneration()) {
-        transitionRuntime("offline", "Reconnect to restore the interactive Apple globe.");
+        transitionRuntime("offline", "Reconnect to restore the interactive Apple map.");
       }
       return;
     }
@@ -215,7 +226,7 @@ export function CustomGlobeRenderer({
 
       if (!token) {
         if (!navigator.onLine) {
-          transitionRuntime("offline", "Reconnect to restore the interactive Apple globe.");
+          transitionRuntime("offline", "Reconnect to restore the interactive Apple map.");
           return;
         }
         console.error(`${APPLE_MAPKIT_LOG_PREFIX} TOKEN MISSING: /api/mapkit-token returned no usable token.`);
@@ -274,14 +285,14 @@ export function CustomGlobeRenderer({
         mapOptions.mapType = mapType;
       }
 
-      if (isGlobePresentation) {
-        mapOptions.cameraDistance = APPLE_GLOBE_CAMERA_DISTANCE_METERS;
+      if (usesWorldCamera) {
+        mapOptions.cameraDistance = APPLE_WORLD_CAMERA_DISTANCE_METERS;
       }
 
       const map = createMapKitMap(mapkit, mapContainerRef.current, mapOptions);
 
-      if (isGlobePresentation) {
-        map.setCameraDistanceAnimated?.(APPLE_GLOBE_CAMERA_DISTANCE_METERS, false);
+      if (usesWorldCamera) {
+        map.setCameraDistanceAnimated?.(APPLE_WORLD_CAMERA_DISTANCE_METERS, false);
       }
 
       mapRef.current = map;
@@ -289,13 +300,13 @@ export function CustomGlobeRenderer({
     } catch (initError) {
       if (!isCurrentGeneration()) return;
       if (!navigator.onLine) {
-        transitionRuntime("offline", "Reconnect to restore the interactive Apple globe.");
+        transitionRuntime("offline", "Reconnect to restore the interactive Apple map.");
         return;
       }
       console.error(`${APPLE_MAPKIT_LOG_PREFIX} CONTEXT CRASH:`, initError);
       transitionRuntime("error", "Apple Maps could not start. Check the connection and try again.");
     }
-  }, [handleMapKitConfigurationError, isGlobePresentation, transitionRuntime]);
+  }, [handleMapKitConfigurationError, rendererTarget, transitionRuntime, usesWorldCamera]);
 
   useEffect(() => {
     const generation = initializationGenerationRef.current + 1;
@@ -320,7 +331,7 @@ export function CustomGlobeRenderer({
 
   useEffect(() => {
     const goOffline = () => {
-      transitionRuntime("offline", "Reconnect to restore the interactive Apple globe.");
+      transitionRuntime("offline", "Reconnect to restore the interactive Apple map.");
     };
     const goOnline = () => {
       if (runtimeStateRef.current !== "offline") return;
@@ -343,7 +354,7 @@ export function CustomGlobeRenderer({
 
   const retryMapKit = useCallback(() => {
     if (!navigator.onLine) {
-      transitionRuntime("offline", "Reconnect to restore the interactive Apple globe.");
+      transitionRuntime("offline", "Reconnect to restore the interactive Apple map.");
       return;
     }
 
@@ -388,7 +399,7 @@ export function CustomGlobeRenderer({
 
       map.setCenterAnimated?.(center, true);
       map.setCameraDistanceAnimated?.(
-        activeSurface?.camera.rangeMeters ?? APPLE_GLOBE_FOCUS_DISTANCE_METERS,
+        activeSurface?.camera.rangeMeters ?? APPLE_MAP_FOCUS_DISTANCE_METERS,
         true
       );
       return;
@@ -401,18 +412,18 @@ export function CustomGlobeRenderer({
       } else {
         map.showAnnotations?.(annotations, { animate: true, padding });
       }
-      if (isGlobePresentation) {
-        map.setCameraDistanceAnimated?.(APPLE_GLOBE_CAMERA_DISTANCE_METERS, true);
+      if (usesWorldCamera) {
+        map.setCameraDistanceAnimated?.(APPLE_WORLD_CAMERA_DISTANCE_METERS, true);
       }
       return;
     }
 
     const center = DEFAULT_WORLD_CENTER;
     map.setCenterAnimated?.(new mapkit.Coordinate(center.lat, center.lng), false);
-    if (isGlobePresentation) {
-      map.setCameraDistanceAnimated?.(APPLE_GLOBE_CAMERA_DISTANCE_METERS, false);
+    if (usesWorldCamera) {
+      map.setCameraDistanceAnimated?.(APPLE_WORLD_CAMERA_DISTANCE_METERS, false);
     }
-  }, [activeSurface?.camera.rangeMeters, isGlobePresentation, onTripPinSelect, pins, runtimeState, selectedMapId, selectedPin, selectionRevision]);
+  }, [activeSurface?.camera.rangeMeters, onTripPinSelect, pins, runtimeState, selectedMapId, selectedPin, selectionRevision, usesWorldCamera]);
 
   useEffect(() => {
     const mapkit = window.mapkit;
@@ -430,6 +441,23 @@ export function CustomGlobeRenderer({
     );
     map.setCameraDistanceAnimated?.(nativeSyncPayload.camera.altitude, true);
   }, [nativeSyncPayload, runtimeState]);
+
+  if (rendererTarget !== "web") {
+    return (
+      <div
+        aria-hidden="true"
+        className={["pointer-events-none absolute inset-0 h-full w-full bg-transparent", className]
+          .filter(Boolean)
+          .join(" ")}
+        data-map-instance-key={mapInstanceKey}
+        data-map-presentation="native-apple-globe"
+        data-map-renderer="native-mapkit-underlay"
+        data-map-runtime={rendererTarget}
+        data-map-system={APPLE_MAP_SYSTEM_ID}
+        data-testid="native-mapkit-underlay-host"
+      />
+    );
+  }
 
   if (runtimeState === "missing-token") {
     return (
@@ -449,7 +477,8 @@ export function CustomGlobeRenderer({
       className={["absolute inset-0 overflow-hidden bg-[#16202c]", className].filter(Boolean).join(" ")}
       data-map-instance-key={mapInstanceKey}
       data-map-mode={mapMode}
-      data-map-presentation={isGlobePresentation ? "apple-globe" : "apple-map"}
+      data-map-presentation="apple-map"
+      data-map-projection="mercator"
       data-map-renderer="apple-mapkit"
       data-map-runtime={runtimeState}
       data-map-system={APPLE_MAP_SYSTEM_ID}
@@ -457,21 +486,8 @@ export function CustomGlobeRenderer({
       data-wallet-route-id={mobileGlobeWallet?.selection.routeId ?? undefined}
       data-wallet-trip-id={mobileGlobeWallet?.selection.tripId ?? undefined}
     >
-      <div
-        className={
-          isGlobePresentation
-            ? "absolute left-1/2 top-[6%] aspect-square w-[178vw] max-w-[62rem] -translate-x-1/2 overflow-hidden rounded-full border border-sky-100/20 bg-black shadow-[0_0_26px_rgba(186,230,253,0.24),0_0_100px_rgba(56,189,248,0.16)]"
-            : "absolute inset-0 h-full w-full"
-        }
-        data-testid={isGlobePresentation ? "almidy-apple-globe-sphere" : undefined}
-      >
+      <div className="absolute inset-0 h-full w-full">
         <div ref={mapContainerRef} className="absolute inset-0 h-full w-full" />
-        {isGlobePresentation ? (
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-0 rounded-full bg-[radial-gradient(circle_at_38%_18%,rgba(255,255,255,0.18),transparent_22%),linear-gradient(112deg,transparent_44%,rgba(0,0,0,0.68)_100%)] ring-1 ring-inset ring-sky-100/24"
-          />
-        ) : null}
       </div>
       {runtimeState === "loading" ? (
         <div className="absolute inset-0 grid place-items-center text-center text-xs font-bold uppercase tracking-[0.22em] text-white/52">
@@ -492,7 +508,7 @@ export function CustomGlobeRenderer({
         <AppleMapFallback
           className="absolute inset-0"
           mapInstanceKey={mapInstanceKey}
-          message={runtimeError ?? "Reconnect to restore the interactive Apple globe."}
+          message={runtimeError ?? "Reconnect to restore the interactive Apple map."}
           state="offline"
           title="You are offline"
         />

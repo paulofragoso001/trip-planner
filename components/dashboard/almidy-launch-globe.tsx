@@ -177,7 +177,7 @@ export function AlmidyLaunchGlobe({
       className={["absolute inset-0 overflow-hidden bg-black", className].filter(Boolean).join(" ")}
       data-hero-mode="apple-mapkit"
       data-launch-globe-state={locationStatus === "loading" ? "loading-location" : "ready"}
-      data-map-presentation="apple-globe"
+      data-map-presentation="platform-apple-map"
       data-map-renderer="apple-mapkit"
       data-map-system={APPLE_MAP_SYSTEM_ID}
       data-testid="almidy-launch-globe"
