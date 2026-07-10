@@ -251,7 +251,7 @@ export default function MobileTripsWalletSheet({
         animate={{
           height: sheetHeights[sheetState]
         }}
-        className="fixed inset-x-0 bottom-0 z-50 flex max-h-[calc(100dvh-env(safe-area-inset-top)-0.75rem)] flex-col overflow-hidden rounded-t-[28px] border-t border-white/10 bg-[#4d4942]/92 text-white shadow-[0_-8px_32px_rgba(0,0,0,0.5)] backdrop-blur-2xl"
+        className="native-map-web-interactive fixed inset-x-0 bottom-0 z-50 flex max-h-[calc(100dvh-env(safe-area-inset-top)-0.75rem)] flex-col overflow-hidden rounded-t-[28px] border-t border-white/10 bg-[#4d4942]/92 text-white shadow-[0_-8px_32px_rgba(0,0,0,0.5)] backdrop-blur-2xl"
         data-sheet-state={sheetState}
         data-testid="mobile-country-sheet"
         drag="y"

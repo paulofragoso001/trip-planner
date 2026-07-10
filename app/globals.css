@@ -24,6 +24,14 @@ body {
   background-color: transparent !important;
 }
 
+:root[data-native-map-underlay="active"] .native-map-pointer-passthrough {
+  pointer-events: none !important;
+}
+
+:root[data-native-map-underlay="active"] .native-map-web-interactive {
+  pointer-events: auto !important;
+}
+
 input,
 select,
 textarea {

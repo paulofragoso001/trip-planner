@@ -129,7 +129,7 @@ export function MobileHomeWallet({
       data-unified-map-surface={unifiedMapSurfaceEnabled ? "enabled" : "disabled"}
     >
       <section
-        className="globe-layer native-map-surface-shell absolute inset-x-0 bottom-0 top-0 overflow-hidden bg-black"
+        className="globe-layer native-map-pointer-passthrough native-map-surface-shell absolute inset-x-0 bottom-0 top-0 overflow-hidden bg-black"
         data-testid="mobile-home-launch-globe"
       >
         <AlmidyLaunchGlobe
@@ -139,7 +139,7 @@ export function MobileHomeWallet({
           useLocationFocus
         />
         <div
-          className="absolute right-4 top-[max(1rem,env(safe-area-inset-top))] z-30 flex flex-col gap-2"
+          className="native-map-web-interactive absolute right-4 top-[max(1rem,env(safe-area-inset-top))] z-30 flex flex-col gap-2"
           data-testid="mobile-home-globe-controls"
         >
           <Link
@@ -170,7 +170,7 @@ export function MobileHomeWallet({
       ) : null}
 
       <section
-        className="launch-bottom-sheet pointer-events-none absolute inset-x-0 bottom-0 z-30"
+        className="launch-bottom-sheet native-map-web-interactive pointer-events-none absolute inset-x-0 bottom-0 z-30"
         data-testid="mobile-home-wallet-stage"
       >
         <TravelWalletSheet
@@ -250,7 +250,7 @@ function LaunchFirstTripCard({
     >
       <div
         className={cn(
-          "grid min-h-[6.75rem] grid-cols-[3.25rem_minmax(0,1fr)] gap-3 rounded-[1.4rem] bg-white px-3.5 py-3 text-slate-950 shadow-[0_18px_46px_rgba(0,0,0,0.24)] ring-1 ring-black/5 min-[390px]:min-h-[7.15rem] min-[390px]:grid-cols-[3.5rem_minmax(0,1fr)] min-[390px]:rounded-[1.55rem] min-[390px]:px-4",
+          "native-map-web-interactive grid min-h-[6.75rem] grid-cols-[3.25rem_minmax(0,1fr)] gap-3 rounded-[1.4rem] bg-white px-3.5 py-3 text-slate-950 shadow-[0_18px_46px_rgba(0,0,0,0.24)] ring-1 ring-black/5 min-[390px]:min-h-[7.15rem] min-[390px]:grid-cols-[3.5rem_minmax(0,1fr)] min-[390px]:rounded-[1.55rem] min-[390px]:px-4",
           isSlidingOut ? "pointer-events-none" : "pointer-events-auto"
         )}
       >

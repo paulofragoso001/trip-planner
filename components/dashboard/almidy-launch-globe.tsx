@@ -65,7 +65,7 @@ export default function AlmidyLaunchGlobeHub({
 
   return (
     <div className="native-map-surface-shell fixed inset-0 flex h-screen w-screen flex-col justify-between overflow-hidden bg-[#121214]">
-      <div className="absolute inset-0 z-10 h-full w-full pb-[240px]">
+      <div className="native-map-pointer-passthrough absolute inset-0 z-10 h-full w-full pb-[240px]">
         <CustomGlobeRenderer
           activeTripId={activeTripId}
           defaultFocusWhenEmpty
@@ -80,7 +80,7 @@ export default function AlmidyLaunchGlobeHub({
       {showNativeMapControl ? (
         <button
           aria-label="Open native map"
-          className="absolute right-4 top-[max(16px,env(safe-area-inset-top))] z-30 grid h-11 w-11 place-items-center rounded-full border border-white/15 bg-black/70 text-white shadow-[0_10px_28px_rgba(0,0,0,0.45)] backdrop-blur-md transition hover:bg-black/80 focus:outline-none focus:ring-4 focus:ring-orange-400/25"
+          className="native-map-web-interactive absolute right-4 top-[max(16px,env(safe-area-inset-top))] z-30 grid h-11 w-11 place-items-center rounded-full border border-white/15 bg-black/70 text-white shadow-[0_10px_28px_rgba(0,0,0,0.45)] backdrop-blur-md transition hover:bg-black/80 focus:outline-none focus:ring-4 focus:ring-orange-400/25"
           data-testid="ios-native-map-open"
           onClick={handleOpenNativeMap}
           type="button"
@@ -90,7 +90,7 @@ export default function AlmidyLaunchGlobeHub({
       ) : null}
 
       {activeTripId && activeTripData ? (
-        <div className="absolute bottom-[280px] left-4 right-4 z-20 flex animate-in items-center justify-between rounded-xl border border-zinc-800/80 bg-[#1e1e24]/90 p-4 shadow-[0_12px_32px_rgba(0,0,0,0.6)] backdrop-blur-md fade-in slide-in-from-bottom-3 duration-200">
+        <div className="native-map-web-interactive absolute bottom-[280px] left-4 right-4 z-20 flex animate-in items-center justify-between rounded-xl border border-zinc-800/80 bg-[#1e1e24]/90 p-4 shadow-[0_12px_32px_rgba(0,0,0,0.6)] backdrop-blur-md fade-in slide-in-from-bottom-3 duration-200">
           <div className="min-w-0 flex-1">
             <span className="mb-0.5 block text-[9px] font-extrabold uppercase tracking-wider text-zinc-500">
               Selected Trip
@@ -110,7 +110,7 @@ export default function AlmidyLaunchGlobeHub({
 
       <div className="flex-1 pointer-events-none" />
 
-      <div className="relative z-30 w-full shrink-0">
+      <div className="native-map-web-interactive relative z-30 w-full shrink-0">
         <MobileTripsWalletSheet
           currentYear="2026"
           onOpenSettings={() => {}}
@@ -174,7 +174,7 @@ export function AlmidyLaunchGlobe({
 
   return (
     <section
-      className={["native-map-surface-shell absolute inset-0 overflow-hidden bg-black", className].filter(Boolean).join(" ")}
+      className={["native-map-pointer-passthrough native-map-surface-shell absolute inset-0 overflow-hidden bg-black", className].filter(Boolean).join(" ")}
       data-hero-mode="apple-mapkit"
       data-launch-globe-state={locationStatus === "loading" ? "loading-location" : "ready"}
       data-map-presentation="platform-apple-map"

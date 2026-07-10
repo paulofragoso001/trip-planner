@@ -511,7 +511,7 @@ export function MobileTripsCountriesMap({
         onTripPinSelect={handleTripPinSelect}
       />
 
-      <div className="absolute right-4 top-[calc(4.5rem+env(safe-area-inset-top))] z-30 overflow-hidden rounded-[1.45rem] border border-white/10 bg-black/86 text-orange-400 shadow-[0_18px_50px_rgba(0,0,0,0.45)] backdrop-blur-xl">
+      <div className="native-map-web-interactive absolute right-4 top-[calc(4.5rem+env(safe-area-inset-top))] z-30 overflow-hidden rounded-[1.45rem] border border-white/10 bg-black/86 text-orange-400 shadow-[0_18px_50px_rgba(0,0,0,0.45)] backdrop-blur-xl">
         <Link
           aria-label="Open trip list"
           className="grid h-12 w-12 place-items-center border-b border-white/10 transition hover:bg-white/10 focus:outline-none focus:ring-4 focus:ring-orange-400/20"
@@ -578,7 +578,7 @@ function MobileTripsMapCarousel({
   }
 
   return (
-    <div className="absolute inset-x-0 bottom-[calc(20rem+env(safe-area-inset-bottom))] z-20">
+    <div className="native-map-web-interactive absolute inset-x-0 bottom-[calc(20rem+env(safe-area-inset-bottom))] z-20">
       <div
         className="no-scrollbar flex snap-x snap-mandatory gap-3 overflow-x-auto px-5 pb-1"
         data-testid="mobile-trips-overview-carousel"
@@ -689,7 +689,7 @@ function MobileTripsGlobeCanvas({
   if (!hydrated) {
     return (
       <div
-        className="absolute inset-0 z-0 flex h-full w-full items-center justify-center overflow-visible bg-[#252832] [transform-style:preserve-3d]"
+        className="native-map-pointer-passthrough absolute inset-0 z-0 flex h-full w-full items-center justify-center overflow-visible bg-[#252832] [transform-style:preserve-3d]"
         data-map-instance-key="trips-globe-loading"
         data-map-system={ALMIDY_APPLE_MAP_SYSTEM_ID}
         data-map-trip-state="loading"
@@ -702,7 +702,7 @@ function MobileTripsGlobeCanvas({
 
   return (
     <div
-      className="native-map-surface-shell absolute inset-0 z-0 h-full w-full overflow-visible bg-[#252832] [transform-style:preserve-3d]"
+      className="native-map-pointer-passthrough native-map-surface-shell absolute inset-0 z-0 h-full w-full overflow-visible bg-[#252832] [transform-style:preserve-3d]"
       data-map-instance-key={mapInstanceKey}
       data-map-system={ALMIDY_APPLE_MAP_SYSTEM_ID}
       data-map-trip-state={hasTripPins ? "ready" : "empty"}

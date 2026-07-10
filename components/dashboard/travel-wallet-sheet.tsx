@@ -253,7 +253,7 @@ export function TravelWalletSheet({
   return (
     <section
       className={cn(
-        "wayline-home-content-reveal bottom-sheet-container pointer-events-auto relative z-10 w-full transform-gpu transition-transform duration-500 ease-[cubic-bezier(0.25,1,0.5,1)]",
+        "wayline-home-content-reveal bottom-sheet-container native-map-web-interactive pointer-events-auto relative z-10 w-full transform-gpu transition-transform duration-500 ease-[cubic-bezier(0.25,1,0.5,1)]",
         forceExpanded && !isTouchDragging && "sheet-expand-up -translate-y-[15%]",
         isTouchDragging && "is-dragging !transition-none"
       )}

@@ -2843,6 +2843,7 @@ test.describe("mobile soft-launch UX", () => {
       "data-map-presentation",
       "platform-apple-map"
     );
+    await expect(page.getByTestId("almidy-launch-globe")).toHaveCSS("pointer-events", "auto");
     const appleMapContainer = page
       .locator('[data-map-system="almidy-apple-map-system"][data-map-projection="mercator"]')
       .first();
@@ -2932,6 +2933,9 @@ test.describe("mobile soft-launch UX", () => {
     const nativeHost = page.getByTestId("native-mapkit-underlay-host").first();
     await expect(nativeHost).toHaveAttribute("data-map-renderer", "native-mapkit-underlay");
     await expect(nativeHost).toHaveAttribute("data-map-presentation", "native-apple-globe");
+    await expect(page.getByTestId("almidy-launch-globe")).toHaveCSS("pointer-events", "none");
+    await expect(page.getByTestId("mobile-home-globe-controls")).toHaveCSS("pointer-events", "auto");
+    await expect(page.getByTestId("mobile-home-wallet-content")).toHaveCSS("pointer-events", "auto");
     await expect(page.locator('[data-map-projection="mercator"]')).toHaveCount(0);
     await expect.poll(async () => page.evaluate(() =>
       (window as typeof window & { __almidyNativeUnderlayInitCalls?: number })
