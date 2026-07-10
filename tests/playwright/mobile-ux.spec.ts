@@ -446,6 +446,9 @@ async function installMockAppleMapKit(page: Page) {
       __emitConfigurationError(status: string) {
         mapkitEventHandlers.get("error")?.forEach((handler) => handler({ status }));
       },
+      __errorHandlerCount() {
+        return mapkitEventHandlers.get("error")?.size ?? 0;
+      },
       Style: MockStyle
     };
     (window as typeof window & { mapkit?: any; __almidyMapKitInitialized?: boolean }).mapkit = mapkitRuntime;
@@ -2887,18 +2890,34 @@ test.describe("mobile soft-launch UX", () => {
     await page.goto(`${baseUrl}/dashboard`, { waitUntil: "commit" });
     await expect(page.locator('[data-map-runtime="ready"]').first()).toBeVisible({ timeout: 30_000 });
 
-    await page.evaluate(() => {
-      (window as typeof window & { mapkit?: { __emitConfigurationError?: (status: string) => void } })
-        .mapkit?.__emitConfigurationError?.("Unauthorized");
-    });
+    const initialLifecycle = await page.evaluate(() => ({
+      errorHandlers:
+        (window as typeof window & { mapkit?: { __errorHandlerCount?: () => number } })
+          .mapkit?.__errorHandlerCount?.() ?? 0,
+      scripts: document.querySelectorAll("#almidy-apple-mapkit-js").length
+    }));
 
-    const fallback = page.getByTestId("almidy-apple-map-fallback").first();
-    await expect(fallback).toHaveAttribute("data-map-runtime", "runtime-error");
-    await expect(fallback).toContainText("authorization expired");
-    await fallback.getByRole("button", { name: "Try again" }).click();
+    for (let retry = 0; retry < 2; retry += 1) {
+      await page.evaluate(() => {
+        (window as typeof window & { mapkit?: { __emitConfigurationError?: (status: string) => void } })
+          .mapkit?.__emitConfigurationError?.("Unauthorized");
+      });
 
-    await expect(page.locator('[data-map-runtime="ready"]').first()).toBeVisible({ timeout: 30_000 });
-    await expect(fallback).toHaveCount(0);
+      const fallback = page.getByTestId("almidy-apple-map-fallback").first();
+      await expect(fallback).toHaveAttribute("data-map-runtime", "runtime-error");
+      await expect(fallback).toContainText("authorization expired");
+      await fallback.getByRole("button", { name: "Try again" }).click();
+
+      await expect(page.locator('[data-map-runtime="ready"]').first()).toBeVisible({ timeout: 30_000 });
+      await expect(fallback).toHaveCount(0);
+    }
+
+    await expect.poll(async () => page.evaluate(() => ({
+      errorHandlers:
+        (window as typeof window & { mapkit?: { __errorHandlerCount?: () => number } })
+          .mapkit?.__errorHandlerCount?.() ?? 0,
+      scripts: document.querySelectorAll("#almidy-apple-mapkit-js").length
+    }))).toEqual(initialLifecycle);
   });
 
   test("Verify itinerary timeline workspace page fully replaces Google layers with Apple MapKit", async ({

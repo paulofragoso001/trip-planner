@@ -120,6 +120,7 @@ type AppleMapRuntimeState = "loading" | "ready" | "offline" | "error" | "missing
 
 const APPLE_MAPKIT_SCRIPT_ID = "almidy-apple-mapkit-js";
 const APPLE_MAPKIT_SCRIPT_SRC = "https://cdn.apple-mapkit.com/mk/5.x.x/mapkit.js";
+const APPLE_MAPKIT_SCRIPT_TIMEOUT_MS = 15_000;
 const APPLE_MAP_SYSTEM_ID = "almidy-apple-map-system";
 const APPLE_MAPKIT_LOG_PREFIX = "ALMIDY MAPKIT";
 const APPLE_GLOBE_CAMERA_DISTANCE_METERS = 10_000_000;
@@ -147,6 +148,7 @@ export function CustomGlobeRenderer({
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MapKitMap | null>(null);
   const annotationRefs = useRef<MapKitAnnotation[]>([]);
+  const initializationGenerationRef = useRef(0);
   const mapKitRuntimeRef = useRef<MapKitRuntime | null>(null);
   const runtimeStateRef = useRef<AppleMapRuntimeState>("loading");
   const [runtimeState, setRuntimeState] = useState<AppleMapRuntimeState>("loading");
@@ -193,14 +195,19 @@ export function CustomGlobeRenderer({
     transitionRuntime("error", mapKitErrorMessage(status));
   }, [transitionRuntime]);
 
-  const initializeMapKit = useCallback(async () => {
+  const initializeMapKit = useCallback(async (generation: number) => {
+    const isCurrentGeneration = () => initializationGenerationRef.current === generation;
+
     if (!navigator.onLine) {
-      transitionRuntime("offline", "Reconnect to restore the interactive Apple globe.");
+      if (isCurrentGeneration()) {
+        transitionRuntime("offline", "Reconnect to restore the interactive Apple globe.");
+      }
       return;
     }
 
     try {
       const rawToken = await loadAppleMapKitToken();
+      if (!isCurrentGeneration()) return;
       const token = sanitizeRuntimeMapKitToken(rawToken ?? "");
 
       if (!token) {
@@ -218,6 +225,7 @@ export function CustomGlobeRenderer({
       }
 
       await loadMapKitScript();
+      if (!isCurrentGeneration()) return;
       const mapkit = window.mapkit;
 
       if (!mapkit) {
@@ -276,6 +284,7 @@ export function CustomGlobeRenderer({
       mapRef.current = map;
       transitionRuntime("ready");
     } catch (initError) {
+      if (!isCurrentGeneration()) return;
       if (!navigator.onLine) {
         transitionRuntime("offline", "Reconnect to restore the interactive Apple globe.");
         return;
@@ -286,9 +295,14 @@ export function CustomGlobeRenderer({
   }, [handleMapKitConfigurationError, isGlobePresentation, transitionRuntime]);
 
   useEffect(() => {
-    void initializeMapKit();
+    const generation = initializationGenerationRef.current + 1;
+    initializationGenerationRef.current = generation;
+    void initializeMapKit(generation);
 
     return () => {
+      if (initializationGenerationRef.current === generation) {
+        initializationGenerationRef.current += 1;
+      }
       mapKitRuntimeRef.current?.removeEventListener?.("error", handleMapKitConfigurationError);
       mapKitRuntimeRef.current = null;
       const map = mapRef.current;
@@ -479,54 +493,67 @@ function loadMapKitScript() {
   }
 
   const scriptPromise = new Promise<void>((resolve, reject) => {
-    const existingScript = document.getElementById(APPLE_MAPKIT_SCRIPT_ID) as HTMLScriptElement | null;
+    let script = document.getElementById(APPLE_MAPKIT_SCRIPT_ID) as HTMLScriptElement | null;
 
-    if (existingScript) {
-      if (existingScript.dataset.mapkitLoadState === "failed") {
-        existingScript.remove();
+    if (script) {
+      if (script.dataset.mapkitLoadState === "failed") {
+        disposeMapKitScript(script, true);
+        script = null;
       } else {
-        existingScript.crossOrigin = "anonymous";
-        existingScript.setAttribute("crossorigin", "anonymous");
+        script.crossOrigin = "anonymous";
+        script.setAttribute("crossorigin", "anonymous");
 
-        if (existingScript.dataset.mapkitLoadState === "loaded") {
+        if (script.dataset.mapkitLoadState === "loaded") {
           if (window.mapkit) {
             resolve();
             return;
           }
 
+          script.dataset.mapkitLoadState = "failed";
+          disposeMapKitScript(script, true);
           reject(new Error("MapKit script loaded without exposing window.mapkit."));
           return;
         }
-
-        existingScript.addEventListener("load", () => resolve(), { once: true });
-        existingScript.addEventListener(
-          "error",
-          () => {
-            console.error(`${APPLE_MAPKIT_LOG_PREFIX} SCRIPT LOAD FAILED`, { src: APPLE_MAPKIT_SCRIPT_SRC });
-            reject(new Error("MapKit script failed."));
-          },
-          { once: true }
-        );
-        return;
       }
     }
 
-    const script = document.createElement("script");
-    script.async = true;
-    script.crossOrigin = "anonymous";
-    script.setAttribute("crossorigin", "anonymous");
-    script.id = APPLE_MAPKIT_SCRIPT_ID;
-    script.src = APPLE_MAPKIT_SCRIPT_SRC;
-    script.onload = () => {
-      script.dataset.mapkitLoadState = "loaded";
+    const targetScript = script ?? document.createElement("script");
+    const cleanupListeners = () => {
+      window.clearTimeout(timeoutId);
+      targetScript.removeEventListener("load", handleLoad);
+      targetScript.removeEventListener("error", handleError);
+    };
+    const handleLoad = () => {
+      cleanupListeners();
+      targetScript.dataset.mapkitLoadState = "loaded";
       resolve();
     };
-    script.onerror = () => {
-      script.dataset.mapkitLoadState = "failed";
+    const handleError = () => {
+      cleanupListeners();
+      targetScript.dataset.mapkitLoadState = "failed";
       console.error(`${APPLE_MAPKIT_LOG_PREFIX} SCRIPT LOAD FAILED`, { src: APPLE_MAPKIT_SCRIPT_SRC });
+      disposeMapKitScript(targetScript, true);
       reject(new Error("MapKit script failed."));
     };
-    document.head.appendChild(script);
+    const timeoutId = window.setTimeout(() => {
+      cleanupListeners();
+      targetScript.dataset.mapkitLoadState = "failed";
+      disposeMapKitScript(targetScript, true);
+      reject(new Error("MapKit script load timed out."));
+    }, APPLE_MAPKIT_SCRIPT_TIMEOUT_MS);
+
+    targetScript.addEventListener("load", handleLoad, { once: true });
+    targetScript.addEventListener("error", handleError, { once: true });
+
+    if (!script) {
+      targetScript.async = true;
+      targetScript.crossOrigin = "anonymous";
+      targetScript.setAttribute("crossorigin", "anonymous");
+      targetScript.id = APPLE_MAPKIT_SCRIPT_ID;
+      targetScript.src = APPLE_MAPKIT_SCRIPT_SRC;
+      targetScript.dataset.mapkitLoadState = "loading";
+      document.head.appendChild(targetScript);
+    }
   });
 
   mapKitScriptPromise = scriptPromise;
@@ -537,6 +564,14 @@ function loadMapKitScript() {
   });
 
   return scriptPromise;
+}
+
+function disposeMapKitScript(script: HTMLScriptElement, removeFromDocument: boolean) {
+  script.onload = null;
+  script.onerror = null;
+  if (removeFromDocument) {
+    script.remove();
+  }
 }
 
 function sanitizeRuntimeMapKitToken(value: string) {
