@@ -610,7 +610,7 @@ private final class NativeMapViewController: UIViewController, CLLocationManager
             mapView.insetsLayoutMarginsFromSafeArea = false
         }
         if #available(iOS 13.0, *) {
-            mapView.setCameraZoomRange(MKMapView.CameraZoomRange(minCenterCoordinateDistance: 900, maxCenterCoordinateDistance: 18_000_000), animated: false)
+            mapView.setCameraZoomRange(MKMapView.CameraZoomRange(minCenterCoordinateDistance: 900, maxCenterCoordinateDistance: 20_000_000), animated: false)
         }
         applyMapPresentation(.hybrid)
         view.addSubview(mapView)
@@ -622,7 +622,7 @@ private final class NativeMapViewController: UIViewController, CLLocationManager
             mapView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
 
-        mapView.setCamera(globeCamera(distance: 15_500_000, heading: 0), animated: false)
+        mapView.setCamera(globeCamera(distance: 10_000_000, heading: 0), animated: false)
     }
 
     private func playIntroCameraIfNeeded() {
@@ -631,7 +631,7 @@ private final class NativeMapViewController: UIViewController, CLLocationManager
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { [weak self] in
             guard let self else { return }
-            self.mapView.setCamera(self.globeCamera(distance: 8_200_000, heading: 2), animated: true)
+            self.mapView.setCamera(self.globeCamera(distance: 7_800_000, heading: 2), animated: true)
         }
     }
 

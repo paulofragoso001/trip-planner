@@ -339,8 +339,10 @@ async function installMockAppleMapKit(page: Page) {
       constructor(container: HTMLElement, options?: Record<string, unknown>) {
         this.container = container;
         this.container.dataset.mapkitMock = "ready";
+        this.container.dataset.mapkitCameraDistance = String(options?.cameraDistance ?? "");
         this.container.dataset.mapkitMapType = String(options?.mapType ?? "");
         this.container.dataset.mapkitHasRegion = options?.region ? "true" : "false";
+        this.container.dataset.mapkitRotationEnabled = String(options?.isRotationEnabled ?? false);
         this.container.style.position = "relative";
       }
 
@@ -381,6 +383,10 @@ async function installMockAppleMapKit(page: Page) {
       setCenterAnimated(coordinate: MockMapKitCoordinate) {
         this.center = coordinate;
         this.container.dataset.mapkitPanTo = `${coordinate.latitude.toFixed(5)},${coordinate.longitude.toFixed(5)}`;
+      }
+
+      setCameraDistanceAnimated(distance: number) {
+        this.container.dataset.mapkitCameraDistance = String(distance);
       }
 
       showAnnotations(annotations: MockMapKitAnnotation[]) {
@@ -2806,7 +2812,7 @@ test.describe("mobile soft-launch UX", () => {
     await expect(appleCanvas).toBeVisible();
   });
 
-  test("Verify launch renders native Apple MapKit hybrid surface instead of canvas globe", async ({ page }) => {
+  test("Verify launch renders the Apple MapKit hybrid globe surface", async ({ page }) => {
     await page.setViewportSize({ height: 900, width: 390 });
     await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
     await installMockAppleMapKit(page);
@@ -2820,9 +2826,13 @@ test.describe("mobile soft-launch UX", () => {
     const appleMapContainer = page.locator('[data-map-system="almidy-apple-map-system"]').first();
     await expect(appleMapContainer).toBeVisible({ timeout: 30_000 });
     await expect(appleMapContainer).toHaveAttribute("data-map-renderer", "apple-mapkit");
+    await expect(appleMapContainer).toHaveAttribute("data-map-presentation", "apple-globe");
+    await expect(appleMapContainer.getByTestId("almidy-apple-globe-sphere")).toBeVisible();
     const mapKitCanvas = appleMapContainer.locator('[data-mapkit-mock="ready"]').first();
     await expect(mapKitCanvas).toHaveAttribute("data-mapkit-map-type", "hybrid");
-    await expect(mapKitCanvas).toHaveAttribute("data-mapkit-has-region", "true");
+    await expect(mapKitCanvas).toHaveAttribute("data-mapkit-camera-distance", "10000000");
+    await expect(mapKitCanvas).toHaveAttribute("data-mapkit-has-region", "false");
+    await expect(mapKitCanvas).toHaveAttribute("data-mapkit-rotation-enabled", "true");
   });
 
   test("Verify itinerary timeline workspace page fully replaces Google layers with Apple MapKit", async ({

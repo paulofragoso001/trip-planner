@@ -223,8 +223,10 @@ async function installMockAppleMapKit(page: Page) {
       constructor(container: HTMLElement, options?: Record<string, unknown>) {
         this.container = container;
         this.container.dataset.mapkitMock = "ready";
+        this.container.dataset.mapkitCameraDistance = String(options?.cameraDistance ?? "");
         this.container.dataset.mapkitMapType = String(options?.mapType ?? "");
         this.container.dataset.mapkitHasRegion = options?.region ? "true" : "false";
+        this.container.dataset.mapkitRotationEnabled = String(options?.isRotationEnabled ?? false);
         this.container.style.position = "relative";
       }
 
@@ -265,6 +267,10 @@ async function installMockAppleMapKit(page: Page) {
       setCenterAnimated(coordinate: MockMapKitCoordinate) {
         this.center = coordinate;
         this.container.dataset.mapkitPanTo = `${coordinate.latitude.toFixed(5)},${coordinate.longitude.toFixed(5)}`;
+      }
+
+      setCameraDistanceAnimated(distance: number) {
+        this.container.dataset.mapkitCameraDistance = String(distance);
       }
 
       showAnnotations(annotations: MockMapKitAnnotation[]) {

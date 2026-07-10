@@ -44,6 +44,7 @@ type MapKitMap = {
   destroy?: () => void;
   removeAnnotation?: (annotation: MapKitAnnotation) => void;
   removeAnnotations?: (annotations: MapKitAnnotation[]) => void;
+  setCameraDistanceAnimated?: (distance: number, animate?: boolean) => void;
   setRegionAnimated?: (region: unknown, animate?: boolean) => void;
   setCenterAnimated?: (coordinate: MapKitCoordinate, animate?: boolean) => void;
   showAnnotations?: (
@@ -108,6 +109,8 @@ const APPLE_MAPKIT_SCRIPT_ID = "almidy-apple-mapkit-js";
 const APPLE_MAPKIT_SCRIPT_SRC = "https://cdn.apple-mapkit.com/mk/5.x.x/mapkit.js";
 const APPLE_MAP_SYSTEM_ID = "almidy-apple-map-system";
 const APPLE_MAPKIT_LOG_PREFIX = "ALMIDY MAPKIT";
+const APPLE_GLOBE_CAMERA_DISTANCE_METERS = 10_000_000;
+const APPLE_GLOBE_FOCUS_DISTANCE_METERS = 2_600_000;
 const DEFAULT_WORLD_CENTER: AlmidyCoordinate = { lat: 28.5, lng: -81.5 };
 const DEFAULT_LOCATION_FLAG = "•";
 
@@ -145,6 +148,8 @@ export function CustomGlobeRenderer({
   );
 
   const selectedMapId = activeTripId ?? activeSurface?.selectedId ?? null;
+  const mapMode = activeSurface?.mode ?? (defaultFocusWhenEmpty ? "launch-globe" : "country-map");
+  const isGlobePresentation = defaultFocusWhenEmpty || mapMode === "globe" || mapMode === "launch-globe";
   const selectedPin = useMemo(
     () =>
       selectedMapId
@@ -194,11 +199,10 @@ export function CustomGlobeRenderer({
       const initialCenter = new mapkit.Coordinate(DEFAULT_WORLD_CENTER.lat, DEFAULT_WORLD_CENTER.lng);
       const mapConstructor = mapkit.Map as MapKitMapConstructor;
       const mapType = mapConstructor.MapTypes?.Hybrid ?? mapConstructor.MapTypes?.Satellite;
-      const initialRegion = buildMapKitCoordinateRegion(mapkit, initialCenter, 90, 180);
       const mapOptions: Record<string, unknown> = {
         center: initialCenter,
         colorScheme: mapkit.ColorScheme?.Dark,
-        isRotationEnabled: false,
+        isRotationEnabled: true,
         showsCompass: mapkit.FeatureVisibility?.Hidden,
         showsMapTypeControl: false,
         showsScale: mapkit.FeatureVisibility?.Hidden,
@@ -210,11 +214,15 @@ export function CustomGlobeRenderer({
         mapOptions.mapType = mapType;
       }
 
-      if (initialRegion) {
-        mapOptions.region = initialRegion;
+      if (isGlobePresentation) {
+        mapOptions.cameraDistance = APPLE_GLOBE_CAMERA_DISTANCE_METERS;
       }
 
       const map = createMapKitMap(mapkit, mapContainerRef.current, mapOptions);
+
+      if (isGlobePresentation) {
+        map.setCameraDistanceAnimated?.(APPLE_GLOBE_CAMERA_DISTANCE_METERS, false);
+      }
 
       mapRef.current = map;
       setRuntimeState("ready");
@@ -222,7 +230,7 @@ export function CustomGlobeRenderer({
       console.error(`${APPLE_MAPKIT_LOG_PREFIX} CONTEXT CRASH:`, initError);
       setRuntimeState("error");
     }
-  }, []);
+  }, [isGlobePresentation]);
 
   useEffect(() => {
     void initializeMapKit();
@@ -272,6 +280,10 @@ export function CustomGlobeRenderer({
       }
 
       map.setCenterAnimated?.(center, true);
+      map.setCameraDistanceAnimated?.(
+        activeSurface?.camera.rangeMeters ?? APPLE_GLOBE_FOCUS_DISTANCE_METERS,
+        true
+      );
       return;
     }
 
@@ -282,12 +294,18 @@ export function CustomGlobeRenderer({
       } else {
         map.showAnnotations?.(annotations, { animate: true, padding });
       }
+      if (isGlobePresentation) {
+        map.setCameraDistanceAnimated?.(APPLE_GLOBE_CAMERA_DISTANCE_METERS, true);
+      }
       return;
     }
 
     const center = DEFAULT_WORLD_CENTER;
     map.setCenterAnimated?.(new mapkit.Coordinate(center.lat, center.lng), false);
-  }, [onTripPinSelect, pins, runtimeState, selectedMapId, selectedPin, selectionRevision]);
+    if (isGlobePresentation) {
+      map.setCameraDistanceAnimated?.(APPLE_GLOBE_CAMERA_DISTANCE_METERS, false);
+    }
+  }, [activeSurface?.camera.rangeMeters, isGlobePresentation, onTripPinSelect, pins, runtimeState, selectedMapId, selectedPin, selectionRevision]);
 
   if (runtimeState === "missing-token") {
     return (
@@ -304,13 +322,29 @@ export function CustomGlobeRenderer({
     <div
       className={["absolute inset-0 overflow-hidden bg-[#16202c]", className].filter(Boolean).join(" ")}
       data-map-instance-key={mapInstanceKey}
-      data-map-mode={activeSurface?.mode ?? (defaultFocusWhenEmpty ? "launch-globe" : "country-map")}
+      data-map-mode={mapMode}
+      data-map-presentation={isGlobePresentation ? "apple-globe" : "apple-map"}
       data-map-renderer="apple-mapkit"
       data-map-runtime={runtimeState}
       data-map-system={APPLE_MAP_SYSTEM_ID}
       data-selected-map-id={selectedMapId ?? undefined}
     >
-      <div ref={mapContainerRef} className="absolute inset-0 h-full w-full" />
+      <div
+        className={
+          isGlobePresentation
+            ? "absolute left-1/2 top-[6%] aspect-square w-[178vw] max-w-[62rem] -translate-x-1/2 overflow-hidden rounded-full border border-sky-100/20 bg-black shadow-[0_0_26px_rgba(186,230,253,0.24),0_0_100px_rgba(56,189,248,0.16)]"
+            : "absolute inset-0 h-full w-full"
+        }
+        data-testid={isGlobePresentation ? "almidy-apple-globe-sphere" : undefined}
+      >
+        <div ref={mapContainerRef} className="absolute inset-0 h-full w-full" />
+        {isGlobePresentation ? (
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 rounded-full bg-[radial-gradient(circle_at_38%_18%,rgba(255,255,255,0.18),transparent_22%),linear-gradient(112deg,transparent_44%,rgba(0,0,0,0.68)_100%)] ring-1 ring-inset ring-sky-100/24"
+          />
+        ) : null}
+      </div>
       {runtimeState === "loading" ? (
         <div className="absolute inset-0 grid place-items-center text-center text-xs font-bold uppercase tracking-[0.22em] text-white/52">
           Preparing Apple Maps
