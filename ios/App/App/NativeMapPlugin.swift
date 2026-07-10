@@ -4,6 +4,7 @@ import CoreLocation
 import EventKit
 import Foundation
 import MapKit
+import Network
 import UIKit
 
 @objc(NativeMapPlugin)
@@ -495,7 +496,7 @@ private extension CGColor {
     }
 }
 
-private struct NativeMapTrip: Decodable {
+struct NativeMapTrip: Decodable {
     let dateRange: String?
     let destination: String?
     let href: String?
@@ -529,7 +530,7 @@ private struct NativeMapTrip: Decodable {
     }
 }
 
-private final class NativeMapViewController: UIViewController, CLLocationManagerDelegate, MKMapViewDelegate {
+final class NativeMapViewController: UIViewController, CLLocationManagerDelegate, MKMapViewDelegate {
     private enum SheetState: CaseIterable {
         case collapsed
         case medium
@@ -542,8 +543,16 @@ private final class NativeMapViewController: UIViewController, CLLocationManager
         case standard
     }
 
+    private enum MapFallbackReason {
+        case offline
+        case serviceUnavailable
+    }
+
     private let mapView = MKMapView()
     private let locationManager = CLLocationManager()
+    private let networkMonitor = NWPathMonitor()
+    private let networkMonitorQueue = DispatchQueue(label: "app.almidy.native-map.network-monitor", qos: .utility)
+    private let monitorsNetworkConnectivity: Bool
     private let trips: [NativeMapTrip]
     private let openRoute: (String) -> Void
     private let sheetView = UIView()
@@ -561,12 +570,23 @@ private final class NativeMapViewController: UIViewController, CLLocationManager
     private var sheetState: SheetState
     private var panStartHeight: CGFloat = 0
     private var hasPlayedIntroCamera = false
+    private var isConnected: Bool?
+    private var isNetworkMonitorRunning = false
     private var mapPresentationMode: MapPresentationMode = .hybrid
+    private var mapFallbackReason: MapFallbackReason?
+    private var offlineOverlayView: UIView?
+    private weak var offlineRetryButton: UIButton?
+    private var preservedCamera: MKMapCamera?
     private var isRequestingLocationAuthorization = false
     private var reservationCardVisible = !UserDefaults.standard.bool(forKey: "almidy.native.reservationCardDismissed")
 
-    init(trips: [NativeMapTrip], openRoute: @escaping (String) -> Void) {
+    init(
+        trips: [NativeMapTrip],
+        monitorsNetworkConnectivity: Bool = true,
+        openRoute: @escaping (String) -> Void
+    ) {
         self.trips = trips
+        self.monitorsNetworkConnectivity = monitorsNetworkConnectivity
         self.openRoute = openRoute
         self.sheetState = trips.isEmpty ? .medium : .collapsed
         super.init(nibName: nil, bundle: nil)
@@ -585,11 +605,19 @@ private final class NativeMapViewController: UIViewController, CLLocationManager
         renderSheetContent()
         addTripPins()
         applySheetState(sheetState, animated: false)
+        if monitorsNetworkConnectivity {
+            startNetworkMonitoring()
+        }
     }
 
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
         playIntroCameraIfNeeded()
+    }
+
+    deinit {
+        networkMonitor.pathUpdateHandler = nil
+        networkMonitor.cancel()
     }
 
     private func configureMap() {
@@ -672,6 +700,218 @@ private final class NativeMapViewController: UIViewController, CLLocationManager
             }
         }
     }
+
+    private func startNetworkMonitoring() {
+        guard !isNetworkMonitorRunning else { return }
+        isNetworkMonitorRunning = true
+
+        networkMonitor.pathUpdateHandler = { [weak self] path in
+            let activeConnection = path.status == .satisfied
+
+            DispatchQueue.main.async { [weak self] in
+                guard let self else { return }
+                let previousConnection = self.isConnected
+                self.isConnected = activeConnection
+
+                if activeConnection {
+                    if previousConnection == false || self.mapFallbackReason == .offline {
+                        self.restoreOnlineMap()
+                    }
+                } else if previousConnection != false {
+                    self.showMapFallback(reason: .offline)
+                }
+            }
+        }
+        networkMonitor.start(queue: networkMonitorQueue)
+    }
+
+    private func showMapFallback(reason: MapFallbackReason) {
+        mapFallbackReason = reason
+        preservedCamera = mapView.camera.copy() as? MKMapCamera ?? mapView.camera
+        mapControlStack.isUserInteractionEnabled = false
+        mapControlStack.alpha = 0.46
+
+        if offlineOverlayView != nil {
+            updateMapFallbackCopy(reason: reason)
+            return
+        }
+
+        let overlay = UIView()
+        overlay.translatesAutoresizingMaskIntoConstraints = false
+        overlay.backgroundColor = UIColor(red: 0.02, green: 0.035, blue: 0.055, alpha: 0.96)
+        overlay.alpha = 0
+        overlay.accessibilityViewIsModal = false
+
+        let globeImageView = UIImageView(image: UIImage(named: "AlmidyOfflineGlobe") ?? UIImage(systemName: "globe.americas.fill"))
+        globeImageView.contentMode = .scaleAspectFit
+        globeImageView.tintColor = UIColor(red: 0.3, green: 0.66, blue: 0.92, alpha: 1)
+        globeImageView.translatesAutoresizingMaskIntoConstraints = false
+        globeImageView.accessibilityElementsHidden = true
+
+        let statusImageView = UIImageView(image: UIImage(systemName: reason == .offline ? "wifi.slash" : "exclamationmark.triangle"))
+        statusImageView.contentMode = .scaleAspectFit
+        statusImageView.tintColor = .white
+        statusImageView.translatesAutoresizingMaskIntoConstraints = false
+        statusImageView.accessibilityElementsHidden = true
+
+        let titleLabel = UILabel()
+        titleLabel.font = .systemFont(ofSize: 20, weight: .bold)
+        titleLabel.textColor = .white
+        titleLabel.textAlignment = .center
+        titleLabel.translatesAutoresizingMaskIntoConstraints = false
+        titleLabel.accessibilityTraits = .header
+        titleLabel.tag = 4101
+
+        let descriptionLabel = UILabel()
+        descriptionLabel.font = .systemFont(ofSize: 14, weight: .regular)
+        descriptionLabel.textColor = UIColor.white.withAlphaComponent(0.68)
+        descriptionLabel.numberOfLines = 0
+        descriptionLabel.textAlignment = .center
+        descriptionLabel.translatesAutoresizingMaskIntoConstraints = false
+        descriptionLabel.tag = 4102
+
+        let retryButton = UIButton(type: .system)
+        var retryConfiguration = UIButton.Configuration.filled()
+        retryConfiguration.title = "Try again"
+        retryConfiguration.image = UIImage(systemName: "arrow.clockwise")
+        retryConfiguration.imagePadding = 8
+        retryConfiguration.baseBackgroundColor = .white
+        retryConfiguration.baseForegroundColor = .black
+        retryConfiguration.cornerStyle = .capsule
+        retryButton.configuration = retryConfiguration
+        retryButton.titleLabel?.font = .systemFont(ofSize: 14, weight: .bold)
+        retryButton.translatesAutoresizingMaskIntoConstraints = false
+        retryButton.addTarget(self, action: #selector(triggerManualMapRetry), for: .touchUpInside)
+
+        overlay.addSubview(globeImageView)
+        overlay.addSubview(statusImageView)
+        overlay.addSubview(titleLabel)
+        overlay.addSubview(descriptionLabel)
+        overlay.addSubview(retryButton)
+        view.insertSubview(overlay, aboveSubview: mapView)
+
+        NSLayoutConstraint.activate([
+            overlay.topAnchor.constraint(equalTo: view.topAnchor),
+            overlay.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            overlay.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            overlay.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+
+            globeImageView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 28),
+            globeImageView.centerXAnchor.constraint(equalTo: overlay.centerXAnchor),
+            globeImageView.widthAnchor.constraint(equalTo: overlay.widthAnchor, multiplier: 0.82),
+            globeImageView.heightAnchor.constraint(equalTo: globeImageView.widthAnchor, multiplier: 0.68),
+
+            statusImageView.topAnchor.constraint(equalTo: globeImageView.bottomAnchor, constant: -10),
+            statusImageView.centerXAnchor.constraint(equalTo: overlay.centerXAnchor),
+            statusImageView.widthAnchor.constraint(equalToConstant: 28),
+            statusImageView.heightAnchor.constraint(equalToConstant: 28),
+
+            titleLabel.topAnchor.constraint(equalTo: statusImageView.bottomAnchor, constant: 12),
+            titleLabel.leadingAnchor.constraint(equalTo: overlay.leadingAnchor, constant: 32),
+            titleLabel.trailingAnchor.constraint(equalTo: overlay.trailingAnchor, constant: -32),
+
+            descriptionLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 8),
+            descriptionLabel.leadingAnchor.constraint(equalTo: overlay.leadingAnchor, constant: 32),
+            descriptionLabel.trailingAnchor.constraint(equalTo: overlay.trailingAnchor, constant: -32),
+
+            retryButton.topAnchor.constraint(equalTo: descriptionLabel.bottomAnchor, constant: 18),
+            retryButton.centerXAnchor.constraint(equalTo: overlay.centerXAnchor),
+            retryButton.heightAnchor.constraint(greaterThanOrEqualToConstant: 44)
+        ])
+
+        offlineOverlayView = overlay
+        offlineRetryButton = retryButton
+        updateMapFallbackCopy(reason: reason)
+        UIAccessibility.post(notification: .announcement, argument: titleLabel.text)
+
+        UIView.animate(withDuration: 0.28) {
+            overlay.alpha = 1
+        }
+    }
+
+    private func updateMapFallbackCopy(reason: MapFallbackReason) {
+        guard let overlay = offlineOverlayView,
+              let titleLabel = overlay.viewWithTag(4101) as? UILabel,
+              let descriptionLabel = overlay.viewWithTag(4102) as? UILabel else { return }
+
+        switch reason {
+        case .offline:
+            titleLabel.text = "You are offline"
+            descriptionLabel.text = "Your globe position and wallet remain saved. Reconnect to restore Apple Maps."
+        case .serviceUnavailable:
+            titleLabel.text = "Apple Maps unavailable"
+            descriptionLabel.text = "The map service could not finish loading. Your globe position and wallet remain saved."
+        }
+    }
+
+    private func restoreOnlineMap(animated: Bool = true) {
+        guard let overlay = offlineOverlayView else {
+            mapFallbackReason = nil
+            return
+        }
+
+        mapFallbackReason = nil
+        mapControlStack.isUserInteractionEnabled = true
+        mapControlStack.alpha = 1
+        applyMapPresentation(mapPresentationMode)
+        mapView.setNeedsLayout()
+        mapView.setNeedsDisplay()
+
+        if let preservedCamera {
+            mapView.setCamera(preservedCamera, animated: true)
+        }
+
+        let cleanup = { [weak self, weak overlay] in
+            overlay?.removeFromSuperview()
+            guard let self, self.offlineOverlayView === overlay else { return }
+            self.offlineOverlayView = nil
+            self.offlineRetryButton = nil
+        }
+
+        if animated {
+            UIView.animate(withDuration: 0.28, animations: {
+                overlay.alpha = 0
+            }) { _ in
+                cleanup()
+            }
+        } else {
+            overlay.alpha = 0
+            cleanup()
+        }
+    }
+
+    @objc private func triggerManualMapRetry() {
+        if networkMonitor.currentPath.status == .satisfied {
+            isConnected = true
+            restoreOnlineMap()
+            return
+        }
+
+        let feedback = UINotificationFeedbackGenerator()
+        feedback.notificationOccurred(.warning)
+        let shake = CABasicAnimation(keyPath: "transform.translation.x")
+        shake.duration = 0.07
+        shake.repeatCount = 3
+        shake.autoreverses = true
+        shake.fromValue = -8
+        shake.toValue = 8
+        offlineRetryButton?.layer.add(shake, forKey: "almidy-offline-retry-shake")
+    }
+
+#if DEBUG
+    var isShowingMapFallbackForTesting: Bool {
+        offlineOverlayView != nil
+    }
+
+    func setNetworkAvailabilityForTesting(_ isAvailable: Bool) {
+        isConnected = isAvailable
+        if isAvailable {
+            restoreOnlineMap(animated: false)
+        } else {
+            showMapFallback(reason: .offline)
+        }
+    }
+#endif
 
     private func configureMapControls() {
         mapControlStack.axis = .vertical
@@ -1212,6 +1452,23 @@ private final class NativeMapViewController: UIViewController, CLLocationManager
             return NativeTripAnnotation(trip: trip, coordinate: coordinate)
         }
         mapView.addAnnotations(annotations)
+    }
+
+    func mapViewDidFinishLoadingMap(_ mapView: MKMapView) {
+        if mapFallbackReason == .serviceUnavailable && isConnected != false {
+            restoreOnlineMap()
+        }
+    }
+
+    func mapViewDidFailLoadingMap(_ mapView: MKMapView, withError error: Error) {
+        let mapError = error as NSError
+        guard mapError.code != NSURLErrorCancelled else { return }
+
+        if isConnected == false {
+            showMapFallback(reason: .offline)
+        } else {
+            showMapFallback(reason: .serviceUnavailable)
+        }
     }
 
     func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
