@@ -6,6 +6,7 @@ import Foundation
 import MapKit
 import Network
 import UIKit
+import WebKit
 
 @objc(NativeMapPlugin)
 public class NativeMapPlugin: CAPPlugin, CAPBridgedPlugin {
@@ -169,12 +170,107 @@ struct NativeMapRevisionGate {
     }
 }
 
+private struct NativeMapInteractiveRegionPayload: Decodable {
+    let regions: [NativeMapInteractiveRegion]
+}
+
+private struct NativeMapInteractiveRegion: Decodable {
+    let x: CGFloat
+    let y: CGFloat
+    let width: CGFloat
+    let height: CGFloat
+
+    var rect: CGRect {
+        CGRect(x: x, y: y, width: width, height: height)
+    }
+}
+
+private final class NativeMapTouchForwardingView: UIView, UIGestureRecognizerDelegate {
+    weak var mapView: MKMapView?
+    var excludedRegions: [CGRect] = []
+
+    private lazy var panGesture = UIPanGestureRecognizer(target: self, action: #selector(handlePan(_:)))
+    private lazy var pinchGesture = UIPinchGestureRecognizer(target: self, action: #selector(handlePinch(_:)))
+    private lazy var rotationGesture = UIRotationGestureRecognizer(target: self, action: #selector(handleRotation(_:)))
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        backgroundColor = .clear
+        isOpaque = false
+        isUserInteractionEnabled = true
+        isMultipleTouchEnabled = true
+        [panGesture, pinchGesture, rotationGesture].forEach { gesture in
+            gesture.delegate = self
+            gesture.cancelsTouchesInView = true
+            addGestureRecognizer(gesture)
+        }
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("NativeMapTouchForwardingView does not support storyboard initialization.")
+    }
+
+    override func point(inside point: CGPoint, with event: UIEvent?) -> Bool {
+        guard bounds.contains(point) else { return false }
+        return !excludedRegions.contains { $0.insetBy(dx: -8, dy: -8).contains(point) }
+    }
+
+    func gestureRecognizer(
+        _ gestureRecognizer: UIGestureRecognizer,
+        shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer
+    ) -> Bool {
+        true
+    }
+
+    @objc private func handlePan(_ gesture: UIPanGestureRecognizer) {
+        guard let mapView, gesture.state == .began || gesture.state == .changed else { return }
+
+        let translation = gesture.translation(in: self)
+        let centerPoint = CGPoint(x: bounds.midX, y: bounds.midY)
+        let translatedPoint = CGPoint(
+            x: centerPoint.x - translation.x,
+            y: centerPoint.y - translation.y
+        )
+        let nextCenter = mapView.convert(translatedPoint, toCoordinateFrom: self)
+        let camera = mapView.camera.copy() as? MKMapCamera ?? mapView.camera
+        camera.centerCoordinate = nextCenter
+        mapView.setCamera(camera, animated: false)
+        gesture.setTranslation(.zero, in: self)
+    }
+
+    @objc private func handlePinch(_ gesture: UIPinchGestureRecognizer) {
+        guard let mapView, gesture.state == .began || gesture.state == .changed else { return }
+
+        let nextDistance = mapView.camera.centerCoordinateDistance / Double(gesture.scale)
+        let zoomRange = mapView.cameraZoomRange
+        let clampedDistance = min(
+            max(nextDistance, zoomRange?.minCenterCoordinateDistance ?? 500),
+            zoomRange?.maxCenterCoordinateDistance ?? 30_000_000
+        )
+        let camera = mapView.camera.copy() as? MKMapCamera ?? mapView.camera
+        camera.centerCoordinateDistance = clampedDistance
+        mapView.setCamera(camera, animated: false)
+        gesture.scale = 1
+    }
+
+    @objc private func handleRotation(_ gesture: UIRotationGestureRecognizer) {
+        guard let mapView, gesture.state == .began || gesture.state == .changed else { return }
+
+        let camera = mapView.camera.copy() as? MKMapCamera ?? mapView.camera
+        camera.heading -= CLLocationDirection(gesture.rotation * 180 / .pi)
+        mapView.setCamera(camera, animated: false)
+        gesture.rotation = 0
+    }
+}
+
 @objc(MapGatewayPlugin)
 public final class MapGatewayPlugin: CAPPlugin, CAPBridgedPlugin {
     public let identifier = "MapGatewayPlugin"
     public let jsName = "MapGateway"
     public let pluginMethods: [CAPPluginMethod] = [
         CAPPluginMethod(name: "initializeNativeMapUnderlay", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "setNativeMapInteractiveRegions", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "syncPayloadToNative", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "acknowledgeReceipt", returnType: CAPPluginReturnPromise)
     ]
@@ -186,6 +282,9 @@ public final class MapGatewayPlugin: CAPPlugin, CAPBridgedPlugin {
     private var lastAcknowledgedRevisionId: Int64?
     private weak var activeMapController: NativeMapViewController?
     private weak var nativeMapUnderlay: MKMapView?
+    private weak var nativeMapHostView: UIView?
+    private weak var nativeMapTouchForwarder: NativeMapTouchForwardingView?
+    private var nativeMapInteractiveRegions: [CGRect] = []
 
     @objc func initializeNativeMapUnderlay(_ call: CAPPluginCall) {
         DispatchQueue.main.async { [weak self] in
@@ -197,6 +296,8 @@ public final class MapGatewayPlugin: CAPPlugin, CAPBridgedPlugin {
                 return
             }
 
+            let mapHostView = rootView.window ?? rootView
+            mapHostView.backgroundColor = .clear
             rootView.backgroundColor = .clear
             self.makeSubviewsTransparent(view: rootView)
             webView.isOpaque = false
@@ -210,12 +311,20 @@ public final class MapGatewayPlugin: CAPPlugin, CAPBridgedPlugin {
             let mapView: MKMapView
             if let nativeMapUnderlay = self.nativeMapUnderlay {
                 mapView = nativeMapUnderlay
+                if mapView.superview !== mapHostView {
+                    self.attachNativeUnderlay(mapView, to: mapHostView)
+                }
             } else {
-                mapView = self.attachNativeUnderlay(to: rootView)
+                mapView = self.makeNativeUnderlayMap(frame: mapHostView.bounds)
+                self.attachNativeUnderlay(mapView, to: mapHostView)
                 self.nativeMapUnderlay = mapView
             }
+            self.nativeMapHostView = mapHostView
+            self.installNativeMapTouchForwarder(in: rootView, webView: webView, mapView: mapView)
 
-            rootView.sendSubviewToBack(mapView)
+            mapHostView.sendSubviewToBack(mapView)
+            mapHostView.setNeedsLayout()
+            mapHostView.layoutIfNeeded()
             rootView.setNeedsLayout()
             rootView.layoutIfNeeded()
             mapView.setNeedsLayout()
@@ -223,9 +332,9 @@ public final class MapGatewayPlugin: CAPPlugin, CAPBridgedPlugin {
             if let payload = self.stateQueue.sync(execute: { self.cachedPayload }) {
                 mapView.setCamera(self.mapCamera(from: payload.camera), animated: false)
             }
-            let resolvedSize = self.resolvedUnderlaySize(for: mapView, in: rootView)
+            let resolvedSize = self.resolvedUnderlaySize(for: mapView, in: mapHostView)
             call.resolve([
-                "success": mapView.superview === rootView,
+                "success": mapView.superview === mapHostView,
                 "height": resolvedSize.height,
                 "width": resolvedSize.width
             ])
@@ -246,6 +355,22 @@ public final class MapGatewayPlugin: CAPPlugin, CAPBridgedPlugin {
 
         applyCamera(payload.camera)
         call.resolve(["success": true])
+    }
+
+    @objc func setNativeMapInteractiveRegions(_ call: CAPPluginCall) {
+        guard let jsonString = call.getString("jsonString"),
+              let data = jsonString.data(using: .utf8),
+              let payload = try? JSONDecoder().decode(NativeMapInteractiveRegionPayload.self, from: data) else {
+            call.reject("Malformed native map interactive region payload.", "invalid_native_map_interactive_regions")
+            return
+        }
+
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            self.nativeMapInteractiveRegions = payload.regions.map(\.rect)
+            self.updateNativeMapTouchExclusions()
+            call.resolve(["success": true])
+        }
     }
 
     @objc func acknowledgeReceipt(_ call: CAPPluginCall) {
@@ -330,19 +455,51 @@ public final class MapGatewayPlugin: CAPPlugin, CAPBridgedPlugin {
         return mapView
     }
 
-    private func attachNativeUnderlay(to rootView: UIView) -> MKMapView {
-        let mapView = makeNativeUnderlayMap(frame: rootView.bounds)
+    private func attachNativeUnderlay(_ mapView: MKMapView, to hostView: UIView) {
+        mapView.removeFromSuperview()
         mapView.translatesAutoresizingMaskIntoConstraints = false
-        rootView.insertSubview(mapView, at: 0)
+        hostView.insertSubview(mapView, at: 0)
         NSLayoutConstraint.activate([
-            mapView.topAnchor.constraint(equalTo: rootView.topAnchor),
-            mapView.leadingAnchor.constraint(equalTo: rootView.leadingAnchor),
-            mapView.trailingAnchor.constraint(equalTo: rootView.trailingAnchor),
-            mapView.bottomAnchor.constraint(equalTo: rootView.bottomAnchor)
+            mapView.topAnchor.constraint(equalTo: hostView.topAnchor),
+            mapView.leadingAnchor.constraint(equalTo: hostView.leadingAnchor),
+            mapView.trailingAnchor.constraint(equalTo: hostView.trailingAnchor),
+            mapView.bottomAnchor.constraint(equalTo: hostView.bottomAnchor)
         ])
-        rootView.setNeedsLayout()
-        rootView.layoutIfNeeded()
-        return mapView
+        hostView.setNeedsLayout()
+        hostView.layoutIfNeeded()
+    }
+
+    private func installNativeMapTouchForwarder(in rootView: UIView, webView: WKWebView, mapView: MKMapView) {
+        let forwarder: NativeMapTouchForwardingView
+        if let nativeMapTouchForwarder {
+            forwarder = nativeMapTouchForwarder
+        } else {
+            forwarder = NativeMapTouchForwardingView(frame: rootView.bounds)
+            forwarder.translatesAutoresizingMaskIntoConstraints = false
+            forwarder.backgroundColor = .clear
+            forwarder.isOpaque = false
+            forwarder.isAccessibilityElement = false
+            rootView.addSubview(forwarder)
+            NSLayoutConstraint.activate([
+                forwarder.topAnchor.constraint(equalTo: rootView.topAnchor),
+                forwarder.leadingAnchor.constraint(equalTo: rootView.leadingAnchor),
+                forwarder.trailingAnchor.constraint(equalTo: rootView.trailingAnchor),
+                forwarder.bottomAnchor.constraint(equalTo: rootView.bottomAnchor)
+            ])
+            nativeMapTouchForwarder = forwarder
+        }
+
+        forwarder.mapView = mapView
+        rootView.bringSubviewToFront(forwarder)
+        updateNativeMapTouchExclusions(webView: webView)
+    }
+
+    private func updateNativeMapTouchExclusions(webView: WKWebView? = nil) {
+        guard let forwarder = nativeMapTouchForwarder,
+              let webView = webView ?? bridge?.webView else { return }
+        forwarder.excludedRegions = nativeMapInteractiveRegions.map { region in
+            webView.convert(region, to: forwarder)
+        }
     }
 
     private func resolvedUnderlaySize(for mapView: MKMapView, in rootView: UIView) -> CGSize {
@@ -398,7 +555,21 @@ public final class MapGatewayPlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     func attachNativeUnderlayForTesting(to rootView: UIView) -> MKMapView {
-        attachNativeUnderlay(to: rootView)
+        let mapView = makeNativeUnderlayMap(frame: rootView.bounds)
+        attachNativeUnderlay(mapView, to: rootView)
+        return mapView
+    }
+
+    func nativeMapTouchTargetForTesting(
+        mapView: MKMapView,
+        frame: CGRect,
+        excludedRegions: [CGRect],
+        point: CGPoint
+    ) -> UIView? {
+        let forwarder = NativeMapTouchForwardingView(frame: frame)
+        forwarder.mapView = mapView
+        forwarder.excludedRegions = excludedRegions
+        return forwarder.hitTest(point, with: nil)
     }
 
     func resolvedUnderlaySizeForTesting(mapView: MKMapView, rootView: UIView) -> CGSize {

@@ -58,6 +58,29 @@ final class NativeMapConnectivityTests: XCTestCase {
         XCTAssertGreaterThan(mapView.bounds.height, 0)
     }
 
+    func testNativeMapTouchForwarderRoutesMapSpaceAndProtectsWalletRegions() {
+        let plugin = MapGatewayPlugin()
+        let mapView = plugin.makeNativeUnderlayMapForTesting()
+        let frame = CGRect(x: 0, y: 0, width: 390, height: 844)
+        let walletRegion = CGRect(x: 0, y: 560, width: 390, height: 284)
+
+        let mapTarget = plugin.nativeMapTouchTargetForTesting(
+            mapView: mapView,
+            frame: frame,
+            excludedRegions: [walletRegion],
+            point: CGPoint(x: 180, y: 280)
+        )
+        let walletTarget = plugin.nativeMapTouchTargetForTesting(
+            mapView: mapView,
+            frame: frame,
+            excludedRegions: [walletRegion],
+            point: CGPoint(x: 180, y: 700)
+        )
+
+        XCTAssertNotNil(mapTarget)
+        XCTAssertNil(walletTarget)
+    }
+
     func testNativeUnderlayReportsUsableSizeBeforeRootViewHasLaidOut() {
         let plugin = MapGatewayPlugin()
         let rootView = UIView(frame: .zero)

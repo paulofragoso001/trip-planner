@@ -10,7 +10,10 @@ import {
   loadAppleMapKitToken
 } from "@/lib/map/apple-mapkit-token";
 import { isNativeCapacitorRuntime } from "@/lib/native/capacitor-runtime";
-import { initializeNativeMapUnderlay } from "@/lib/native/use-wallet-route-sync";
+import {
+  initializeNativeMapUnderlay,
+  syncNativeMapInteractiveRegions
+} from "@/lib/native/use-wallet-route-sync";
 import { useOptionalUnifiedMap } from "@/lib/map/unified-map-provider";
 import type {
   AlmidyCoordinate,
@@ -201,6 +204,45 @@ export function CustomGlobeRenderer({
       if (nativeUnderlayHostCount === 0) {
         delete document.documentElement.dataset.nativeMapUnderlay;
       }
+    };
+  }, [rendererTarget]);
+
+  useEffect(() => {
+    if (rendererTarget !== "native") return;
+
+    let animationFrame = 0;
+
+    const scheduleRegionSync = () => {
+      window.cancelAnimationFrame(animationFrame);
+      animationFrame = window.requestAnimationFrame(() => {
+        void syncNativeMapInteractiveRegions();
+      });
+    };
+
+    scheduleRegionSync();
+
+    const observer = new MutationObserver(scheduleRegionSync);
+    if (document.body) {
+      observer.observe(document.body, {
+        attributeFilter: ["aria-hidden", "class", "data-state", "style"],
+        attributes: true,
+        childList: true,
+        subtree: true
+      });
+    }
+
+    window.addEventListener("resize", scheduleRegionSync);
+    window.addEventListener("orientationchange", scheduleRegionSync);
+    window.addEventListener("scroll", scheduleRegionSync, true);
+    const intervalId = window.setInterval(scheduleRegionSync, 1000);
+
+    return () => {
+      window.cancelAnimationFrame(animationFrame);
+      observer.disconnect();
+      window.removeEventListener("resize", scheduleRegionSync);
+      window.removeEventListener("orientationchange", scheduleRegionSync);
+      window.removeEventListener("scroll", scheduleRegionSync, true);
+      window.clearInterval(intervalId);
     };
   }, [rendererTarget]);
 

@@ -46,7 +46,7 @@ export function TripPassShell({ children, trip, tripId }: TripPassShellProps) {
   if (isMapRoute) {
     return wrapInMobileGlobeWallet(
       <section
-        className="relative isolate -mx-3 -mt-4 min-h-[100dvh] overflow-hidden bg-slate-950 sm:-mx-6 sm:-mt-6 lg:-mx-8 lg:-my-6"
+        className="native-map-surface-shell relative isolate -mx-3 -mt-4 min-h-[100dvh] overflow-hidden bg-slate-950 sm:-mx-6 sm:-mt-6 lg:-mx-8 lg:-my-6"
         data-has-background-image="false"
         data-map-mode="true"
         data-mobile-globe-wallet-rollout={mobileGlobeWalletEnabled ? "enabled" : "disabled"}
@@ -120,7 +120,7 @@ export function TripPassShell({ children, trip, tripId }: TripPassShellProps) {
   if (isIdeasRoute) {
     return wrapInMobileGlobeWallet(
       <section
-        className="relative isolate -mx-3 -mt-4 min-h-[100dvh] overflow-hidden bg-slate-950 sm:-mx-6 sm:-mt-6 lg:-mx-8 lg:-my-6"
+        className="native-map-surface-shell relative isolate -mx-3 -mt-4 min-h-[100dvh] overflow-hidden bg-slate-950 sm:-mx-6 sm:-mt-6 lg:-mx-8 lg:-my-6"
         data-has-background-image={hasPhoto ? "true" : "false"}
         data-ideas-mode="true"
         data-mobile-globe-wallet-rollout={mobileGlobeWalletEnabled ? "enabled" : "disabled"}
@@ -144,7 +144,7 @@ export function TripPassShell({ children, trip, tripId }: TripPassShellProps) {
 
   return wrapInMobileGlobeWallet(
     <section
-      className="relative isolate -mx-3 -mt-4 min-h-[100dvh] overflow-hidden bg-slate-950 sm:-mx-6 sm:-mt-6 lg:-mx-8 lg:-my-6"
+      className="native-map-surface-shell relative isolate -mx-3 -mt-4 min-h-[100dvh] overflow-hidden bg-slate-950 sm:-mx-6 sm:-mt-6 lg:-mx-8 lg:-my-6"
       data-has-background-image={hasPhoto ? "desktop-only" : "false"}
       data-mobile-globe-wallet-rollout={mobileGlobeWalletEnabled ? "enabled" : "disabled"}
       data-mobile-route-hydration="globe-wallet"

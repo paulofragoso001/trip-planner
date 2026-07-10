@@ -42,6 +42,11 @@ body {
   pointer-events: auto !important;
 }
 
+:root[data-native-map-underlay="active"] [data-native-map-visual-overlay="true"],
+:root[data-native-map-underlay="active"] [data-testid="mobile-trips-empty-year-map-state"] {
+  display: none !important;
+}
+
 input,
 select,
 textarea {

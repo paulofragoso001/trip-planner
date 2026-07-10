@@ -23,6 +23,7 @@ interface MapGatewayPlugin {
   ): Promise<PluginListenerHandle>;
   acknowledgeReceipt(options: { revisionId: number }): Promise<void>;
   initializeNativeMapUnderlay(): Promise<{ height?: number; success: boolean; width?: number }>;
+  setNativeMapInteractiveRegions(options: { jsonString: string }): Promise<{ success: boolean }>;
   syncPayloadToNative(options: { jsonString: string }): Promise<{ success: boolean }>;
 }
 
@@ -58,6 +59,44 @@ function delayNativeMapUnderlayRetry() {
   return new Promise((resolve) => {
     window.setTimeout(resolve, NATIVE_MAP_UNDERLAY_INITIALIZATION_DELAY_MS);
   });
+}
+
+export async function syncNativeMapInteractiveRegions() {
+  if (!Capacitor.isNativePlatform() || typeof document === "undefined") {
+    return false;
+  }
+
+  const viewportWidth = window.innerWidth;
+  const viewportHeight = window.innerHeight;
+  const regions = Array.from(
+    document.querySelectorAll<HTMLElement>(".native-map-web-interactive, .native-map-web-opaque")
+  )
+    .map((element) => element.getBoundingClientRect())
+    .filter((rect) => rect.width > 0 && rect.height > 0 && rect.bottom >= 0 && rect.right >= 0)
+    .map((rect) => {
+      const x = Math.max(0, Math.min(viewportWidth, rect.left));
+      const y = Math.max(0, Math.min(viewportHeight, rect.top));
+      const right = Math.max(0, Math.min(viewportWidth, rect.right));
+      const bottom = Math.max(0, Math.min(viewportHeight, rect.bottom));
+
+      return {
+        height: Math.max(0, bottom - y),
+        width: Math.max(0, right - x),
+        x,
+        y
+      };
+    })
+    .filter((rect) => rect.width > 0 && rect.height > 0);
+
+  try {
+    const response = await MapGateway.setNativeMapInteractiveRegions({
+      jsonString: JSON.stringify({ regions })
+    });
+    return response.success;
+  } catch (error) {
+    console.error("Failed to sync native map interactive regions:", error);
+    return false;
+  }
 }
 
 export function useWalletRouteSync() {

@@ -2870,12 +2870,14 @@ test.describe("mobile soft-launch UX", () => {
         }
       };
       let nativeUnderlayInitCalls = 0;
+      let nativeInteractiveRegionSyncCalls = 0;
       let capacitorValue: Record<string, unknown> = {
         PluginHeaders: [
           {
             methods: [
               { name: "addListener", rtype: "callback" },
               { name: "initializeNativeMapUnderlay", rtype: "promise" },
+              { name: "setNativeMapInteractiveRegions", rtype: "promise" },
               { name: "acknowledgeReceipt", rtype: "promise" },
               { name: "syncPayloadToNative", rtype: "promise" }
             ],
@@ -2904,6 +2906,10 @@ test.describe("mobile soft-launch UX", () => {
             nativeUnderlayInitCalls += 1;
             return { height: 900, success: true, width: 390 };
           }
+          if (methodName === "setNativeMapInteractiveRegions") {
+            nativeInteractiveRegionSyncCalls += 1;
+            return { success: true };
+          }
           if (methodName === "get") return { value: null };
           if (methodName === "getLaunchUrl") return { url: null };
           return {};
@@ -2912,6 +2918,10 @@ test.describe("mobile soft-launch UX", () => {
       Object.defineProperty(window, "__almidyNativeUnderlayInitCalls", {
         configurable: true,
         get: () => nativeUnderlayInitCalls
+      });
+      Object.defineProperty(window, "__almidyNativeInteractiveRegionSyncCalls", {
+        configurable: true,
+        get: () => nativeInteractiveRegionSyncCalls
       });
       Object.defineProperty(window, "Capacitor", {
         configurable: true,
@@ -2946,6 +2956,10 @@ test.describe("mobile soft-launch UX", () => {
     await expect.poll(async () => page.evaluate(() =>
       (window as typeof window & { __almidyNativeUnderlayInitCalls?: number })
         .__almidyNativeUnderlayInitCalls ?? 0
+    )).toBeGreaterThan(0);
+    await expect.poll(async () => page.evaluate(() =>
+      (window as typeof window & { __almidyNativeInteractiveRegionSyncCalls?: number })
+        .__almidyNativeInteractiveRegionSyncCalls ?? 0
     )).toBeGreaterThan(0);
     await expect.poll(async () => page.evaluate(() =>
       Array.from(document.scripts).filter((script) => script.src.includes("apple-mapkit.com")).length

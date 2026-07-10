@@ -479,7 +479,7 @@ export function MobileTripsCountriesMap({
 
   return (
     <section
-      className="relative isolate -mx-3 -mt-4 h-[100dvh] min-h-[100dvh] max-h-[100dvh] overflow-hidden bg-black text-white sm:-mx-6 sm:-mt-6 lg:hidden"
+      className="native-map-surface-shell relative isolate -mx-3 -mt-4 h-[100dvh] min-h-[100dvh] max-h-[100dvh] overflow-hidden bg-black text-white sm:-mx-6 sm:-mt-6 lg:hidden"
       data-camera-command={unifiedMap?.surfaceState.cameraCommand?.type ?? undefined}
       data-hydrated={hydrated ? "true" : "false"}
       data-map-mode={unifiedMap?.surfaceState.mode}
@@ -727,10 +727,14 @@ function MobileTripsGlobeCanvas({
           No trips saved for {activeYear}
         </div>
       ) : null}
-      <div className="pointer-events-none absolute inset-0 z-10 bg-[linear-gradient(180deg,rgba(0,0,0,0.04),rgba(4,10,20,0.10)_38%,rgba(0,0,0,0.34)_100%)]" />
+      <div
+        className="pointer-events-none absolute inset-0 z-10 bg-[linear-gradient(180deg,rgba(0,0,0,0.04),rgba(4,10,20,0.10)_38%,rgba(0,0,0,0.34)_100%)]"
+        data-native-map-visual-overlay="true"
+      />
       <div
         className="pointer-events-none absolute inset-0 z-10 bg-[#020617]/8"
         aria-hidden="true"
+        data-native-map-visual-overlay="true"
       />
     </div>
   );
