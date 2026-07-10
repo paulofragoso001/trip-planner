@@ -448,8 +448,11 @@ public final class MapGatewayPlugin: CAPPlugin, CAPBridgedPlugin {
     private func updateNativeMapTouchExclusions(webView: WKWebView? = nil) {
         guard let forwarder = nativeMapTouchForwarder,
               let webView = webView ?? bridge?.webView else { return }
-        forwarder.excludedRegions = nativeMapInteractiveRegions.map { region in
-            webView.convert(region, to: forwarder)
+        // DOM rects are viewport coordinates. Keep both the direct root-space
+        // rect and UIKit's converted rect because Capacitor can inset the
+        // WKWebView independently during safe-area/layout transitions.
+        forwarder.excludedRegions = nativeMapInteractiveRegions.flatMap { region in
+            [region, webView.convert(region, to: forwarder)]
         }
     }
 
