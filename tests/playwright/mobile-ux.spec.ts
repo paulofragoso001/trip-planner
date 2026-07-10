@@ -2946,6 +2946,83 @@ test.describe("mobile soft-launch UX", () => {
     )).toBe(0);
   });
 
+  test("Capacitor launch falls back to MapKit JS when the installed shell lacks the native underlay", async ({ page }) => {
+    await page.setViewportSize({ height: 900, width: 390 });
+    await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
+    await installMockAppleMapKit(page);
+    await page.addInitScript(() => {
+      (window as typeof window & { webkit?: unknown }).webkit = {
+        messageHandlers: {
+          bridge: {
+            postMessage: () => {}
+          }
+        }
+      };
+      let capacitorValue: Record<string, unknown> = {
+        PluginHeaders: [
+          {
+            methods: [
+              { name: "addListener", rtype: "callback" },
+              { name: "initializeNativeMapUnderlay", rtype: "promise" },
+              { name: "acknowledgeReceipt", rtype: "promise" },
+              { name: "syncPayloadToNative", rtype: "promise" }
+            ],
+            name: "MapGateway"
+          },
+          {
+            methods: [
+              { name: "get", rtype: "promise" },
+              { name: "remove", rtype: "promise" },
+              { name: "set", rtype: "promise" }
+            ],
+            name: "Preferences"
+          },
+          {
+            methods: [
+              { name: "addListener", rtype: "callback" },
+              { name: "getLaunchUrl", rtype: "promise" },
+              { name: "removeListener", rtype: "callback" }
+            ],
+            name: "App"
+          }
+        ],
+        nativeCallback: () => "legacy-map-gateway-listener",
+        nativePromise: async (_pluginName: string, methodName: string) => {
+          if (methodName === "initializeNativeMapUnderlay") {
+            throw new Error("Native underlay method unavailable in installed shell");
+          }
+          if (methodName === "get") return { value: null };
+          if (methodName === "getLaunchUrl") return { url: null };
+          return {};
+        }
+      };
+      Object.defineProperty(window, "Capacitor", {
+        configurable: true,
+        get: () => ({
+          ...capacitorValue,
+          getPlatform: () => "ios",
+          isNativePlatform: () => true
+        }),
+        set: (value: unknown) => {
+          capacitorValue = value && typeof value === "object"
+            ? value as Record<string, unknown>
+            : {};
+        }
+      });
+    });
+
+    await page.goto(`${baseUrl}/dashboard`, { waitUntil: "commit" });
+
+    const appleMapContainer = page
+      .locator('[data-map-system="almidy-apple-map-system"][data-map-projection="mercator"]')
+      .first();
+    await expect(appleMapContainer).toBeVisible({ timeout: 30_000 });
+    await expect(appleMapContainer).toHaveAttribute("data-map-renderer", "apple-mapkit");
+    await expect(page.getByTestId("native-mapkit-underlay-host")).toHaveCount(0);
+    await expect(page.locator("html")).not.toHaveAttribute("data-native-map-underlay", "active");
+    await expect(page.getByTestId("almidy-launch-globe")).toHaveCSS("pointer-events", "auto");
+  });
+
   test("Apple web map falls back offline and recovers when connectivity returns", async ({ page }) => {
     await page.setViewportSize({ height: 900, width: 390 });
     await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });

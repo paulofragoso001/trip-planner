@@ -164,23 +164,38 @@ export function CustomGlobeRenderer({
   const [rendererTarget, setRendererTarget] = useState<MapRendererTarget>("checking");
 
   useEffect(() => {
-    setRendererTarget(isNativeCapacitorRuntime() ? "native" : "web");
+    let disposed = false;
+
+    if (!isNativeCapacitorRuntime()) {
+      setRendererTarget("web");
+      return;
+    }
+
+    void initializeNativeMapUnderlay()
+      .then((success) => {
+        if (!disposed) {
+          setRendererTarget(success ? "native" : "web");
+        }
+      })
+      .catch((error) => {
+        if (!disposed) {
+          console.warn("Native MapKit underlay unavailable; using MapKit JS:", error);
+          setRendererTarget("web");
+        }
+      });
+
+    return () => {
+      disposed = true;
+    };
   }, []);
 
   useEffect(() => {
     if (rendererTarget !== "native") return;
 
-    let disposed = false;
     nativeUnderlayHostCount += 1;
     document.documentElement.dataset.nativeMapUnderlay = "active";
-    void initializeNativeMapUnderlay().catch((error) => {
-      if (!disposed) {
-        console.error("Unable to initialize native MapKit underlay:", error);
-      }
-    });
 
     return () => {
-      disposed = true;
       nativeUnderlayHostCount = Math.max(0, nativeUnderlayHostCount - 1);
       if (nativeUnderlayHostCount === 0) {
         delete document.documentElement.dataset.nativeMapUnderlay;
