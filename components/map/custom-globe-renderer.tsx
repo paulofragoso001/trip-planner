@@ -120,7 +120,7 @@ type AppleMapPin = {
 };
 
 type AppleMapRuntimeState = "loading" | "ready" | "offline" | "error" | "missing-token";
-type MapRendererTarget = "checking" | "native" | "web";
+type MapRendererTarget = "checking" | "native" | "native-unavailable" | "web";
 
 const APPLE_MAPKIT_SCRIPT_ID = "almidy-apple-mapkit-js";
 const APPLE_MAPKIT_SCRIPT_SRC = "https://cdn.apple-mapkit.com/mk/5.x.x/mapkit.js";
@@ -161,6 +161,7 @@ export function CustomGlobeRenderer({
   const [runtimeState, setRuntimeState] = useState<AppleMapRuntimeState>("loading");
   const [runtimeError, setRuntimeError] = useState<string | null>(null);
   const [retryRevision, setRetryRevision] = useState(0);
+  const [nativeInitializationRevision, setNativeInitializationRevision] = useState(0);
   const [rendererTarget, setRendererTarget] = useState<MapRendererTarget>("checking");
 
   useEffect(() => {
@@ -174,20 +175,20 @@ export function CustomGlobeRenderer({
     void initializeNativeMapUnderlay()
       .then((success) => {
         if (!disposed) {
-          setRendererTarget(success ? "native" : "web");
+          setRendererTarget(success ? "native" : "native-unavailable");
         }
       })
       .catch((error) => {
         if (!disposed) {
-          console.warn("Native MapKit underlay unavailable; using MapKit JS:", error);
-          setRendererTarget("web");
+          console.error("Native MapKit globe unavailable:", error);
+          setRendererTarget("native-unavailable");
         }
       });
 
     return () => {
       disposed = true;
     };
-  }, []);
+  }, [nativeInitializationRevision]);
 
   useEffect(() => {
     if (rendererTarget !== "native") return;
@@ -479,6 +480,23 @@ export function CustomGlobeRenderer({
     );
     map.setCameraDistanceAnimated?.(nativeSyncPayload.camera.altitude, true);
   }, [nativeSyncPayload, runtimeState]);
+
+  if (rendererTarget === "native-unavailable") {
+    return (
+      <AppleMapFallback
+        className={className}
+        mapInstanceKey={mapInstanceKey}
+        message="The installed app could not start its native 3D Apple globe. Rebuild or update the iOS app, then try again."
+        onRetry={() => {
+          setRendererTarget("checking");
+          setNativeInitializationRevision((current) => current + 1);
+        }}
+        renderer="native-mapkit-underlay"
+        state="native-unavailable"
+        title="3D globe unavailable"
+      />
+    );
+  }
 
   if (rendererTarget !== "web") {
     return (
@@ -938,6 +956,7 @@ function AppleMapFallback({
   mapInstanceKey,
   message,
   onRetry,
+  renderer = "apple-mapkit",
   state,
   title
 }: {
@@ -945,6 +964,7 @@ function AppleMapFallback({
   mapInstanceKey?: string;
   message: string;
   onRetry?: () => void;
+  renderer?: "apple-mapkit" | "native-mapkit-underlay";
   state: string;
   title: string;
 }) {
@@ -958,7 +978,8 @@ function AppleMapFallback({
         className
       ].filter(Boolean).join(" ")}
       data-map-instance-key={mapInstanceKey}
-      data-map-renderer="apple-mapkit"
+      data-map-presentation={renderer === "native-mapkit-underlay" ? "native-apple-globe" : "apple-map"}
+      data-map-renderer={renderer}
       data-map-runtime={state}
       data-map-system={APPLE_MAP_SYSTEM_ID}
       data-testid="almidy-apple-map-fallback"

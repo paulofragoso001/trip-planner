@@ -2952,10 +2952,9 @@ test.describe("mobile soft-launch UX", () => {
     )).toBe(0);
   });
 
-  test("Capacitor launch falls back to MapKit JS when the installed shell cannot confirm a visible native underlay", async ({ page }) => {
+  test("Capacitor launch never downgrades to a flat web map when the native globe is unavailable", async ({ page }) => {
     await page.setViewportSize({ height: 900, width: 390 });
     await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
-    await installMockAppleMapKit(page);
     await page.addInitScript(() => {
       (window as typeof window & { webkit?: unknown }).webkit = {
         messageHandlers: {
@@ -3019,14 +3018,18 @@ test.describe("mobile soft-launch UX", () => {
 
     await page.goto(`${baseUrl}/dashboard`, { waitUntil: "commit" });
 
-    const appleMapContainer = page
-      .locator('[data-map-system="almidy-apple-map-system"][data-map-projection="mercator"]')
-      .first();
-    await expect(appleMapContainer).toBeVisible({ timeout: 30_000 });
-    await expect(appleMapContainer).toHaveAttribute("data-map-renderer", "apple-mapkit");
+    const unavailableGlobe = page.getByTestId("almidy-apple-map-fallback").first();
+    await expect(unavailableGlobe).toBeVisible({ timeout: 30_000 });
+    await expect(unavailableGlobe).toHaveAttribute("data-map-renderer", "native-mapkit-underlay");
+    await expect(unavailableGlobe).toHaveAttribute("data-map-presentation", "native-apple-globe");
+    await expect(unavailableGlobe).toHaveAttribute("data-map-runtime", "native-unavailable");
+    await expect(unavailableGlobe.getByText("3D globe unavailable")).toBeVisible();
     await expect(page.getByTestId("native-mapkit-underlay-host")).toHaveCount(0);
+    await expect(page.locator('[data-map-projection="mercator"]')).toHaveCount(0);
     await expect(page.locator("html")).not.toHaveAttribute("data-native-map-underlay", "active");
-    await expect(page.getByTestId("almidy-launch-globe")).toHaveCSS("pointer-events", "auto");
+    await expect.poll(async () => page.evaluate(() =>
+      Array.from(document.scripts).filter((script) => script.src.includes("apple-mapkit.com")).length
+    )).toBe(0);
   });
 
   test("Apple web map falls back offline and recovers when connectivity returns", async ({ page }) => {
