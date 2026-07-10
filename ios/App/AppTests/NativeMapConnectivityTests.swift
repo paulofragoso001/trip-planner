@@ -58,6 +58,17 @@ final class NativeMapConnectivityTests: XCTestCase {
         XCTAssertGreaterThan(mapView.bounds.height, 0)
     }
 
+    func testNativeUnderlayReportsUsableSizeBeforeRootViewHasLaidOut() {
+        let plugin = MapGatewayPlugin()
+        let rootView = UIView(frame: .zero)
+        let mapView = plugin.attachNativeUnderlayForTesting(to: rootView)
+
+        let resolvedSize = plugin.resolvedUnderlaySizeForTesting(mapView: mapView, rootView: rootView)
+
+        XCTAssertGreaterThan(resolvedSize.width, 0)
+        XCTAssertGreaterThan(resolvedSize.height, 0)
+    }
+
     func testMapGatewayRejectsLegacyTimestampThroughPluginCall() {
         let plugin = MapGatewayPlugin()
         var acceptedResponse: [String: Any]?

@@ -223,10 +223,11 @@ public final class MapGatewayPlugin: CAPPlugin, CAPBridgedPlugin {
             if let payload = self.stateQueue.sync(execute: { self.cachedPayload }) {
                 mapView.setCamera(self.mapCamera(from: payload.camera), animated: false)
             }
+            let resolvedSize = self.resolvedUnderlaySize(for: mapView, in: rootView)
             call.resolve([
                 "success": mapView.superview === rootView,
-                "height": mapView.bounds.height,
-                "width": mapView.bounds.width
+                "height": resolvedSize.height,
+                "width": resolvedSize.width
             ])
         }
     }
@@ -344,6 +345,18 @@ public final class MapGatewayPlugin: CAPPlugin, CAPBridgedPlugin {
         return mapView
     }
 
+    private func resolvedUnderlaySize(for mapView: MKMapView, in rootView: UIView) -> CGSize {
+        if mapView.bounds.width > 0, mapView.bounds.height > 0 {
+            return mapView.bounds.size
+        }
+
+        if rootView.bounds.width > 0, rootView.bounds.height > 0 {
+            return rootView.bounds.size
+        }
+
+        return UIScreen.main.bounds.size
+    }
+
     private func nativeUnderlayGlobeCamera() -> MKMapCamera {
         MKMapCamera(
             lookingAtCenter: CLLocationCoordinate2D(latitude: 37.7749, longitude: -122.4194),
@@ -386,6 +399,10 @@ public final class MapGatewayPlugin: CAPPlugin, CAPBridgedPlugin {
 
     func attachNativeUnderlayForTesting(to rootView: UIView) -> MKMapView {
         attachNativeUnderlay(to: rootView)
+    }
+
+    func resolvedUnderlaySizeForTesting(mapView: MKMapView, rootView: UIView) -> CGSize {
+        resolvedUnderlaySize(for: mapView, in: rootView)
     }
 #endif
 }

@@ -28,15 +28,36 @@ interface MapGatewayPlugin {
 
 export const MapGateway = registerPlugin<MapGatewayPlugin>("MapGateway");
 
+const NATIVE_MAP_UNDERLAY_INITIALIZATION_ATTEMPTS = 5;
+const NATIVE_MAP_UNDERLAY_INITIALIZATION_DELAY_MS = 180;
+
 export async function initializeNativeMapUnderlay() {
   if (!Capacitor.isNativePlatform()) {
     return false;
   }
 
-  const response = await MapGateway.initializeNativeMapUnderlay();
-  return response.success &&
-    typeof response.width === "number" && response.width > 0 &&
-    typeof response.height === "number" && response.height > 0;
+  for (let attempt = 1; attempt <= NATIVE_MAP_UNDERLAY_INITIALIZATION_ATTEMPTS; attempt += 1) {
+    const response = await MapGateway.initializeNativeMapUnderlay();
+    const hasUsableSurface = response.success &&
+      typeof response.width === "number" && response.width > 0 &&
+      typeof response.height === "number" && response.height > 0;
+
+    if (hasUsableSurface) {
+      return true;
+    }
+
+    if (attempt < NATIVE_MAP_UNDERLAY_INITIALIZATION_ATTEMPTS) {
+      await delayNativeMapUnderlayRetry();
+    }
+  }
+
+  return false;
+}
+
+function delayNativeMapUnderlayRetry() {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, NATIVE_MAP_UNDERLAY_INITIALIZATION_DELAY_MS);
+  });
 }
 
 export function useWalletRouteSync() {
