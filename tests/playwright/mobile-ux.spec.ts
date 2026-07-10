@@ -2902,7 +2902,7 @@ test.describe("mobile soft-launch UX", () => {
         nativePromise: async (_pluginName: string, methodName: string) => {
           if (methodName === "initializeNativeMapUnderlay") {
             nativeUnderlayInitCalls += 1;
-            return { success: true };
+            return { height: 900, success: true, width: 390 };
           }
           if (methodName === "get") return { value: null };
           if (methodName === "getLaunchUrl") return { url: null };
@@ -2946,7 +2946,7 @@ test.describe("mobile soft-launch UX", () => {
     )).toBe(0);
   });
 
-  test("Capacitor launch falls back to MapKit JS when the installed shell lacks the native underlay", async ({ page }) => {
+  test("Capacitor launch falls back to MapKit JS when the installed shell cannot confirm a visible native underlay", async ({ page }) => {
     await page.setViewportSize({ height: 900, width: 390 });
     await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
     await installMockAppleMapKit(page);
@@ -2989,7 +2989,7 @@ test.describe("mobile soft-launch UX", () => {
         nativeCallback: () => "legacy-map-gateway-listener",
         nativePromise: async (_pluginName: string, methodName: string) => {
           if (methodName === "initializeNativeMapUnderlay") {
-            throw new Error("Native underlay method unavailable in installed shell");
+            return { success: true };
           }
           if (methodName === "get") return { value: null };
           if (methodName === "getLaunchUrl") return { url: null };

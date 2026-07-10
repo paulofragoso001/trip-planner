@@ -22,7 +22,7 @@ interface MapGatewayPlugin {
     listener: (event: { jsonString?: unknown }) => void
   ): Promise<PluginListenerHandle>;
   acknowledgeReceipt(options: { revisionId: number }): Promise<void>;
-  initializeNativeMapUnderlay(): Promise<{ success: boolean }>;
+  initializeNativeMapUnderlay(): Promise<{ height?: number; success: boolean; width?: number }>;
   syncPayloadToNative(options: { jsonString: string }): Promise<{ success: boolean }>;
 }
 
@@ -34,7 +34,9 @@ export async function initializeNativeMapUnderlay() {
   }
 
   const response = await MapGateway.initializeNativeMapUnderlay();
-  return response.success;
+  return response.success &&
+    typeof response.width === "number" && response.width > 0 &&
+    typeof response.height === "number" && response.height > 0;
 }
 
 export function useWalletRouteSync() {

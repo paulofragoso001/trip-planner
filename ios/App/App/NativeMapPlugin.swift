@@ -197,33 +197,37 @@ public final class MapGatewayPlugin: CAPPlugin, CAPBridgedPlugin {
                 return
             }
 
+            rootView.backgroundColor = .clear
+            self.makeSubviewsTransparent(view: rootView)
             webView.isOpaque = false
             webView.backgroundColor = .clear
+            webView.scrollView.isOpaque = false
             webView.scrollView.backgroundColor = .clear
-            webView.superview?.backgroundColor = .clear
+
+            rootView.setNeedsLayout()
+            rootView.layoutIfNeeded()
 
             let mapView: MKMapView
             if let nativeMapUnderlay = self.nativeMapUnderlay {
                 mapView = nativeMapUnderlay
             } else {
-                mapView = self.makeNativeUnderlayMap(frame: rootView.bounds)
-                mapView.translatesAutoresizingMaskIntoConstraints = false
-                mapView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-                rootView.insertSubview(mapView, at: 0)
-                NSLayoutConstraint.activate([
-                    mapView.topAnchor.constraint(equalTo: rootView.topAnchor),
-                    mapView.leadingAnchor.constraint(equalTo: rootView.leadingAnchor),
-                    mapView.trailingAnchor.constraint(equalTo: rootView.trailingAnchor),
-                    mapView.bottomAnchor.constraint(equalTo: rootView.bottomAnchor)
-                ])
+                mapView = self.attachNativeUnderlay(to: rootView)
                 self.nativeMapUnderlay = mapView
             }
 
             rootView.sendSubviewToBack(mapView)
+            rootView.setNeedsLayout()
+            rootView.layoutIfNeeded()
+            mapView.setNeedsLayout()
+            mapView.layoutIfNeeded()
             if let payload = self.stateQueue.sync(execute: { self.cachedPayload }) {
                 mapView.setCamera(self.mapCamera(from: payload.camera), animated: false)
             }
-            call.resolve(["success": true])
+            call.resolve([
+                "success": mapView.superview === rootView,
+                "height": mapView.bounds.height,
+                "width": mapView.bounds.width
+            ])
         }
     }
 
@@ -328,6 +332,21 @@ public final class MapGatewayPlugin: CAPPlugin, CAPBridgedPlugin {
         return mapView
     }
 
+    private func attachNativeUnderlay(to rootView: UIView) -> MKMapView {
+        let mapView = makeNativeUnderlayMap(frame: rootView.bounds)
+        mapView.translatesAutoresizingMaskIntoConstraints = false
+        rootView.insertSubview(mapView, at: 0)
+        NSLayoutConstraint.activate([
+            mapView.topAnchor.constraint(equalTo: rootView.topAnchor),
+            mapView.leadingAnchor.constraint(equalTo: rootView.leadingAnchor),
+            mapView.trailingAnchor.constraint(equalTo: rootView.trailingAnchor),
+            mapView.bottomAnchor.constraint(equalTo: rootView.bottomAnchor)
+        ])
+        rootView.setNeedsLayout()
+        rootView.layoutIfNeeded()
+        return mapView
+    }
+
     private func nativeUnderlayGlobeCamera() -> MKMapCamera {
         MKMapCamera(
             lookingAtCenter: CLLocationCoordinate2D(latitude: 28.5, longitude: -81.5),
@@ -349,9 +368,27 @@ public final class MapGatewayPlugin: CAPPlugin, CAPBridgedPlugin {
         )
     }
 
+    private func makeSubviewsTransparent(view: UIView) {
+        guard !(view is MKMapView) else { return }
+
+        view.isOpaque = false
+        view.backgroundColor = .clear
+        for subview in view.subviews {
+            makeSubviewsTransparent(view: subview)
+        }
+    }
+
 #if DEBUG
     func makeNativeUnderlayMapForTesting() -> MKMapView {
         makeNativeUnderlayMap(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
+    }
+
+    func makeSubviewsTransparentForTesting(view: UIView) {
+        makeSubviewsTransparent(view: view)
+    }
+
+    func attachNativeUnderlayForTesting(to rootView: UIView) -> MKMapView {
+        attachNativeUnderlay(to: rootView)
     }
 #endif
 }

@@ -22,6 +22,45 @@ final class NativeMapConnectivityTests: XCTestCase {
         }
     }
 
+    func testNativeUnderlayTransparencySweepClearsContainersButPreservesMap() {
+        let plugin = MapGatewayPlugin()
+        let rootView = UIView(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
+        let hostingView = UIView(frame: rootView.bounds)
+        let mapView = plugin.makeNativeUnderlayMapForTesting()
+        rootView.backgroundColor = .black
+        rootView.isOpaque = true
+        hostingView.backgroundColor = .white
+        hostingView.isOpaque = true
+        mapView.backgroundColor = .systemRed
+        mapView.isOpaque = true
+        rootView.addSubview(mapView)
+        rootView.addSubview(hostingView)
+
+        plugin.makeSubviewsTransparentForTesting(view: rootView)
+
+        XCTAssertEqual(rootView.backgroundColor, .clear)
+        XCTAssertFalse(rootView.isOpaque)
+        XCTAssertEqual(hostingView.backgroundColor, .clear)
+        XCTAssertFalse(hostingView.isOpaque)
+        XCTAssertEqual(mapView.backgroundColor, .systemRed)
+        XCTAssertTrue(mapView.isOpaque)
+    }
+
+    func testNativeUnderlayPinsToNonzeroRootBoundsBehindHostingContent() {
+        let plugin = MapGatewayPlugin()
+        let rootView = UIView(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
+        let hostingView = UIView(frame: rootView.bounds)
+        rootView.addSubview(hostingView)
+
+        let mapView = plugin.attachNativeUnderlayForTesting(to: rootView)
+
+        XCTAssertTrue(rootView.subviews.first === mapView)
+        XCTAssertTrue(rootView.subviews.last === hostingView)
+        XCTAssertEqual(mapView.frame, rootView.bounds)
+        XCTAssertGreaterThan(mapView.bounds.width, 0)
+        XCTAssertGreaterThan(mapView.bounds.height, 0)
+    }
+
     func testMapGatewayRejectsLegacyTimestampThroughPluginCall() {
         let plugin = MapGatewayPlugin()
         var acceptedResponse: [String: Any]?
