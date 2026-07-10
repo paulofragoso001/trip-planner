@@ -360,7 +360,7 @@ public final class MapGatewayPlugin: CAPPlugin, CAPBridgedPlugin {
     private func nativeUnderlayGlobeCamera() -> MKMapCamera {
         MKMapCamera(
             lookingAtCenter: CLLocationCoordinate2D(latitude: 37.7749, longitude: -122.4194),
-            fromDistance: 11_000_000,
+            fromDistance: 24_000_000,
             pitch: 0,
             heading: 0
         )
