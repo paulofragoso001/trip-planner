@@ -1,8 +1,13 @@
 "use client";
 
+import Image from "next/image";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { RotateCcw, TriangleAlert, WifiOff } from "lucide-react";
 import { countryCodeToFlag } from "@/lib/map/wayline-map-pins";
-import { loadAppleMapKitToken } from "@/lib/map/apple-mapkit-token";
+import {
+  clearAppleMapKitTokenCache,
+  loadAppleMapKitToken
+} from "@/lib/map/apple-mapkit-token";
 import { useOptionalUnifiedMap } from "@/lib/map/unified-map-provider";
 import type {
   AlmidyCoordinate,
@@ -77,8 +82,14 @@ type MapKitRuntime = {
   };
   Map: new (container: HTMLElement, options?: Record<string, unknown>) => MapKitMap;
   Padding?: new (top: number, right: number, bottom: number, left: number) => unknown;
+  addEventListener?: (eventName: string, handler: (event: MapKitConfigurationErrorEvent) => void) => boolean | void;
   init: (options: { authorizationCallback: (done: (token: string) => void) => void }) => void;
   initialized?: boolean;
+  removeEventListener?: (eventName: string, handler: (event: MapKitConfigurationErrorEvent) => void) => boolean | void;
+};
+
+type MapKitConfigurationErrorEvent = {
+  status?: string | null;
 };
 
 type MapKitMapConstructor = MapKitRuntime["Map"] & {
@@ -104,6 +115,8 @@ type AppleMapPin = {
   subtitle?: string | null;
   tripId?: string | null;
 };
+
+type AppleMapRuntimeState = "loading" | "ready" | "offline" | "error" | "missing-token";
 
 const APPLE_MAPKIT_SCRIPT_ID = "almidy-apple-mapkit-js";
 const APPLE_MAPKIT_SCRIPT_SRC = "https://cdn.apple-mapkit.com/mk/5.x.x/mapkit.js";
@@ -134,7 +147,11 @@ export function CustomGlobeRenderer({
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MapKitMap | null>(null);
   const annotationRefs = useRef<MapKitAnnotation[]>([]);
-  const [runtimeState, setRuntimeState] = useState<"loading" | "ready" | "error" | "missing-token">("loading");
+  const mapKitRuntimeRef = useRef<MapKitRuntime | null>(null);
+  const runtimeStateRef = useRef<AppleMapRuntimeState>("loading");
+  const [runtimeState, setRuntimeState] = useState<AppleMapRuntimeState>("loading");
+  const [runtimeError, setRuntimeError] = useState<string | null>(null);
+  const [retryRevision, setRetryRevision] = useState(0);
 
   const pins = useMemo(
     () => buildAppleMapPins({
@@ -158,14 +175,41 @@ export function CustomGlobeRenderer({
     [pins, selectedMapId]
   );
 
+  const transitionRuntime = useCallback((state: AppleMapRuntimeState, message?: string | null) => {
+    runtimeStateRef.current = state;
+    setRuntimeState(state);
+    setRuntimeError(message ?? null);
+  }, []);
+
+  const handleMapKitConfigurationError = useCallback((event: MapKitConfigurationErrorEvent) => {
+    const status = event.status?.trim() || "Unknown";
+
+    if (!navigator.onLine) {
+      transitionRuntime("offline", "Reconnect to restore the interactive Apple globe.");
+      return;
+    }
+
+    console.error(`${APPLE_MAPKIT_LOG_PREFIX} CONFIGURATION FAILED:`, { status });
+    transitionRuntime("error", mapKitErrorMessage(status));
+  }, [transitionRuntime]);
+
   const initializeMapKit = useCallback(async () => {
+    if (!navigator.onLine) {
+      transitionRuntime("offline", "Reconnect to restore the interactive Apple globe.");
+      return;
+    }
+
     try {
       const rawToken = await loadAppleMapKitToken();
       const token = sanitizeRuntimeMapKitToken(rawToken ?? "");
 
       if (!token) {
+        if (!navigator.onLine) {
+          transitionRuntime("offline", "Reconnect to restore the interactive Apple globe.");
+          return;
+        }
         console.error(`${APPLE_MAPKIT_LOG_PREFIX} TOKEN MISSING: /api/mapkit-token returned no usable token.`);
-        setRuntimeState("missing-token");
+        transitionRuntime("missing-token", "Apple Maps authorization is unavailable in this environment.");
         return;
       }
 
@@ -178,16 +222,21 @@ export function CustomGlobeRenderer({
 
       if (!mapkit) {
         console.error(`${APPLE_MAPKIT_LOG_PREFIX} SCRIPT READY WITHOUT RUNTIME: window.mapkit was unavailable after script load.`);
-        setRuntimeState("error");
+        transitionRuntime("error", "The Apple Maps library did not finish loading.");
         return;
       }
+
+      mapKitRuntimeRef.current?.removeEventListener?.("error", handleMapKitConfigurationError);
+      mapkit.removeEventListener?.("error", handleMapKitConfigurationError);
+      mapkit.addEventListener?.("error", handleMapKitConfigurationError);
+      mapKitRuntimeRef.current = mapkit;
 
       if (!mapContainerRef.current || mapRef.current) {
-        setRuntimeState("ready");
+        transitionRuntime("ready");
         return;
       }
 
-      if (!mapKitInitialized && !mapkit.initialized) {
+      if (!mapKitInitialized) {
         mapkit.init({
           authorizationCallback: (done) => {
             done(token);
@@ -225,17 +274,23 @@ export function CustomGlobeRenderer({
       }
 
       mapRef.current = map;
-      setRuntimeState("ready");
+      transitionRuntime("ready");
     } catch (initError) {
+      if (!navigator.onLine) {
+        transitionRuntime("offline", "Reconnect to restore the interactive Apple globe.");
+        return;
+      }
       console.error(`${APPLE_MAPKIT_LOG_PREFIX} CONTEXT CRASH:`, initError);
-      setRuntimeState("error");
+      transitionRuntime("error", "Apple Maps could not start. Check the connection and try again.");
     }
-  }, [isGlobePresentation]);
+  }, [handleMapKitConfigurationError, isGlobePresentation, transitionRuntime]);
 
   useEffect(() => {
     void initializeMapKit();
 
     return () => {
+      mapKitRuntimeRef.current?.removeEventListener?.("error", handleMapKitConfigurationError);
+      mapKitRuntimeRef.current = null;
       const map = mapRef.current;
       if (map && annotationRefs.current.length) {
         removeMapAnnotations(map, annotationRefs.current);
@@ -244,7 +299,42 @@ export function CustomGlobeRenderer({
       mapRef.current = null;
       annotationRefs.current = [];
     };
-  }, [initializeMapKit]);
+  }, [handleMapKitConfigurationError, initializeMapKit, retryRevision]);
+
+  useEffect(() => {
+    const goOffline = () => {
+      transitionRuntime("offline", "Reconnect to restore the interactive Apple globe.");
+    };
+    const goOnline = () => {
+      if (runtimeStateRef.current !== "offline") return;
+      transitionRuntime("loading");
+      setRetryRevision((revision) => revision + 1);
+    };
+
+    window.addEventListener("offline", goOffline);
+    window.addEventListener("online", goOnline);
+
+    if (!navigator.onLine) {
+      goOffline();
+    }
+
+    return () => {
+      window.removeEventListener("offline", goOffline);
+      window.removeEventListener("online", goOnline);
+    };
+  }, [transitionRuntime]);
+
+  const retryMapKit = useCallback(() => {
+    if (!navigator.onLine) {
+      transitionRuntime("offline", "Reconnect to restore the interactive Apple globe.");
+      return;
+    }
+
+    clearAppleMapKitTokenCache();
+    mapKitInitialized = false;
+    transitionRuntime("loading");
+    setRetryRevision((revision) => revision + 1);
+  }, [transitionRuntime]);
 
   useEffect(() => {
     const mapkit = window.mapkit;
@@ -312,8 +402,10 @@ export function CustomGlobeRenderer({
       <AppleMapFallback
         className={className}
         mapInstanceKey={mapInstanceKey}
-        message="Apple Maps is not configured for this environment."
+        message={runtimeError ?? "Apple Maps is not configured for this environment."}
+        onRetry={retryMapKit}
         state="missing-token"
+        title="Apple Maps unavailable"
       />
     );
   }
@@ -354,8 +446,19 @@ export function CustomGlobeRenderer({
         <AppleMapFallback
           className="absolute inset-0"
           mapInstanceKey={mapInstanceKey}
-          message="Apple Maps is temporarily unavailable."
+          message={runtimeError ?? "Apple Maps is temporarily unavailable."}
+          onRetry={retryMapKit}
           state="runtime-error"
+          title="Map loading failed"
+        />
+      ) : null}
+      {runtimeState === "offline" ? (
+        <AppleMapFallback
+          className="absolute inset-0"
+          mapInstanceKey={mapInstanceKey}
+          message={runtimeError ?? "Reconnect to restore the interactive Apple globe."}
+          state="offline"
+          title="You are offline"
         />
       ) : null}
     </div>
@@ -375,34 +478,37 @@ function loadMapKitScript() {
     return mapKitScriptPromise;
   }
 
-  mapKitScriptPromise = new Promise<void>((resolve, reject) => {
+  const scriptPromise = new Promise<void>((resolve, reject) => {
     const existingScript = document.getElementById(APPLE_MAPKIT_SCRIPT_ID) as HTMLScriptElement | null;
 
     if (existingScript) {
-      existingScript.crossOrigin = "anonymous";
-      existingScript.setAttribute("crossorigin", "anonymous");
+      if (existingScript.dataset.mapkitLoadState === "failed") {
+        existingScript.remove();
+      } else {
+        existingScript.crossOrigin = "anonymous";
+        existingScript.setAttribute("crossorigin", "anonymous");
 
-      if (existingScript.dataset.mapkitLoadState === "loaded") {
-        if (window.mapkit) {
-          resolve();
+        if (existingScript.dataset.mapkitLoadState === "loaded") {
+          if (window.mapkit) {
+            resolve();
+            return;
+          }
+
+          reject(new Error("MapKit script loaded without exposing window.mapkit."));
           return;
         }
 
-        reject(new Error("MapKit script loaded without exposing window.mapkit."));
+        existingScript.addEventListener("load", () => resolve(), { once: true });
+        existingScript.addEventListener(
+          "error",
+          () => {
+            console.error(`${APPLE_MAPKIT_LOG_PREFIX} SCRIPT LOAD FAILED`, { src: APPLE_MAPKIT_SCRIPT_SRC });
+            reject(new Error("MapKit script failed."));
+          },
+          { once: true }
+        );
         return;
       }
-
-      existingScript.addEventListener("load", () => resolve(), { once: true });
-      existingScript.addEventListener(
-        "error",
-        () => {
-          mapKitScriptPromise = null;
-          console.error(`${APPLE_MAPKIT_LOG_PREFIX} SCRIPT LOAD FAILED`, { src: APPLE_MAPKIT_SCRIPT_SRC });
-          reject(new Error("MapKit script failed."));
-        },
-        { once: true }
-      );
-      return;
     }
 
     const script = document.createElement("script");
@@ -417,14 +523,20 @@ function loadMapKitScript() {
     };
     script.onerror = () => {
       script.dataset.mapkitLoadState = "failed";
-      mapKitScriptPromise = null;
       console.error(`${APPLE_MAPKIT_LOG_PREFIX} SCRIPT LOAD FAILED`, { src: APPLE_MAPKIT_SCRIPT_SRC });
       reject(new Error("MapKit script failed."));
     };
     document.head.appendChild(script);
   });
 
-  return mapKitScriptPromise;
+  mapKitScriptPromise = scriptPromise;
+  void scriptPromise.catch(() => {
+    if (mapKitScriptPromise === scriptPromise) {
+      mapKitScriptPromise = null;
+    }
+  });
+
+  return scriptPromise;
 }
 
 function sanitizeRuntimeMapKitToken(value: string) {
@@ -433,6 +545,26 @@ function sanitizeRuntimeMapKitToken(value: string) {
     .replace(/[\r\n\t ]+/g, "")
     .replace(/^["']+|["']+$/g, "")
     .trim();
+}
+
+function mapKitErrorMessage(status: string) {
+  if (status === "Unauthorized") {
+    return "Apple Maps authorization expired. Try again to request a fresh token.";
+  }
+
+  if (status === "Too Many Requests") {
+    return "Apple Maps is temporarily at capacity. Please try again shortly.";
+  }
+
+  if (status === "Network Error" || status === "Timeout") {
+    return "Apple Maps could not reach the network. Check the connection and try again.";
+  }
+
+  if (status === "Bad Request" || status === "Malformed Response") {
+    return "Apple Maps returned an invalid configuration response.";
+  }
+
+  return "Apple Maps could not initialize. Please try again.";
 }
 
 function buildMapKitCoordinateRegion(
@@ -694,26 +826,58 @@ function AppleMapFallback({
   className,
   mapInstanceKey,
   message,
-  state
+  onRetry,
+  state,
+  title
 }: {
   className?: string;
   mapInstanceKey?: string;
   message: string;
+  onRetry?: () => void;
   state: string;
+  title: string;
 }) {
+  const isOffline = state === "offline";
+  const StatusIcon = isOffline ? WifiOff : TriangleAlert;
+
   return (
     <div
       className={[
-        "absolute inset-0 grid place-items-center bg-[#16202c] px-8 text-center text-xs font-bold uppercase tracking-[0.18em] text-white/56",
+        "absolute inset-0 isolate overflow-hidden bg-[#05080d] px-8 text-center text-white",
         className
       ].filter(Boolean).join(" ")}
       data-map-instance-key={mapInstanceKey}
       data-map-renderer="apple-mapkit"
       data-map-runtime={state}
       data-map-system={APPLE_MAP_SYSTEM_ID}
-      data-testid="almidy-apple-map-preflight"
+      data-testid="almidy-apple-map-fallback"
     >
-      {message}
+      <Image
+        alt=""
+        aria-hidden="true"
+        className="absolute left-1/2 top-[8%] -z-10 h-auto w-[178vw] max-w-[62rem] -translate-x-1/2 opacity-42 grayscale-[0.2]"
+        height={820}
+        loading="eager"
+        sizes="(max-width: 1023px) 178vw, 62rem"
+        src="/globe/wayline-earth-3d-fallback.png"
+        width={1200}
+      />
+      <div aria-hidden="true" className="absolute inset-0 -z-10 bg-[linear-gradient(180deg,rgba(5,8,13,0.18),rgba(5,8,13,0.58)_52%,rgba(5,8,13,0.96)_100%)]" />
+      <div className="absolute inset-x-8 top-[18%] mx-auto flex max-w-sm flex-col items-center">
+        <StatusIcon aria-hidden="true" className="mb-4 h-7 w-7 text-white/72" strokeWidth={1.8} />
+        <h2 className="text-lg font-bold text-white">{title}</h2>
+        <p className="mt-2 text-sm leading-6 text-white/62">{message}</p>
+        {onRetry ? (
+          <button
+            className="mt-5 inline-flex h-11 items-center gap-2 rounded-full border border-white/16 bg-white px-5 text-sm font-bold text-black shadow-lg transition hover:bg-white/90 focus:outline-none focus:ring-4 focus:ring-orange-400/30"
+            onClick={onRetry}
+            type="button"
+          >
+            <RotateCcw aria-hidden="true" className="h-4 w-4" />
+            Try again
+          </button>
+        ) : null}
+      </div>
     </div>
   );
 }

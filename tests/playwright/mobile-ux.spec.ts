@@ -419,8 +419,14 @@ async function installMockAppleMapKit(page: Page) {
       ) {}
     }
 
-    (window as typeof window & { mapkit?: any; __almidyMapKitInitialized?: boolean }).mapkit = {
+    const mapkitEventHandlers = new Map<string, Set<(event: { status?: string }) => void>>();
+    const mapkitRuntime = {
       Annotation: MockAnnotation,
+      addEventListener(eventName: string, handler: (event: { status?: string }) => void) {
+        const handlers = mapkitEventHandlers.get(eventName) ?? new Set();
+        handlers.add(handler);
+        mapkitEventHandlers.set(eventName, handlers);
+      },
       ColorScheme: { Dark: "dark" },
       Coordinate: MockCoordinate,
       CoordinateRegion: MockCoordinateRegion,
@@ -434,8 +440,15 @@ async function installMockAppleMapKit(page: Page) {
       MarkerAnnotation: MockMarkerAnnotation,
       Padding: MockPadding,
       PolylineOverlay: MockPolylineOverlay,
+      removeEventListener(eventName: string, handler: (event: { status?: string }) => void) {
+        mapkitEventHandlers.get(eventName)?.delete(handler);
+      },
+      __emitConfigurationError(status: string) {
+        mapkitEventHandlers.get("error")?.forEach((handler) => handler({ status }));
+      },
       Style: MockStyle
     };
+    (window as typeof window & { mapkit?: any; __almidyMapKitInitialized?: boolean }).mapkit = mapkitRuntime;
   });
 }
 
@@ -2833,6 +2846,59 @@ test.describe("mobile soft-launch UX", () => {
     await expect(mapKitCanvas).toHaveAttribute("data-mapkit-camera-distance", "10000000");
     await expect(mapKitCanvas).toHaveAttribute("data-mapkit-has-region", "false");
     await expect(mapKitCanvas).toHaveAttribute("data-mapkit-rotation-enabled", "true");
+  });
+
+  test("Apple globe falls back offline and recovers when connectivity returns", async ({ page }) => {
+    await page.setViewportSize({ height: 900, width: 390 });
+    await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
+    await page.addInitScript(() => {
+      let online = false;
+      Object.defineProperty(navigator, "onLine", {
+        configurable: true,
+        get: () => online
+      });
+      (window as typeof window & { __setAlmidyOnline?: (value: boolean) => void }).__setAlmidyOnline = (value) => {
+        online = value;
+        window.dispatchEvent(new Event(value ? "online" : "offline"));
+      };
+    });
+    await installMockAppleMapKit(page);
+
+    await page.goto(`${baseUrl}/dashboard`, { waitUntil: "commit" });
+
+    const fallback = page.getByTestId("almidy-apple-map-fallback").first();
+    await expect(fallback).toBeVisible({ timeout: 30_000 });
+    await expect(fallback).toHaveAttribute("data-map-runtime", "offline");
+    await expect(fallback.getByRole("heading", { name: "You are offline" })).toBeVisible();
+
+    await page.evaluate(() => {
+      (window as typeof window & { __setAlmidyOnline?: (value: boolean) => void }).__setAlmidyOnline?.(true);
+    });
+
+    await expect(page.locator('[data-map-runtime="ready"]').first()).toBeVisible({ timeout: 30_000 });
+    await expect(fallback).toHaveCount(0);
+  });
+
+  test("Apple globe reports authorization errors and retries with a fresh token", async ({ page }) => {
+    await page.setViewportSize({ height: 900, width: 390 });
+    await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
+    await installMockAppleMapKit(page);
+
+    await page.goto(`${baseUrl}/dashboard`, { waitUntil: "commit" });
+    await expect(page.locator('[data-map-runtime="ready"]').first()).toBeVisible({ timeout: 30_000 });
+
+    await page.evaluate(() => {
+      (window as typeof window & { mapkit?: { __emitConfigurationError?: (status: string) => void } })
+        .mapkit?.__emitConfigurationError?.("Unauthorized");
+    });
+
+    const fallback = page.getByTestId("almidy-apple-map-fallback").first();
+    await expect(fallback).toHaveAttribute("data-map-runtime", "runtime-error");
+    await expect(fallback).toContainText("authorization expired");
+    await fallback.getByRole("button", { name: "Try again" }).click();
+
+    await expect(page.locator('[data-map-runtime="ready"]').first()).toBeVisible({ timeout: 30_000 });
+    await expect(fallback).toHaveCount(0);
   });
 
   test("Verify itinerary timeline workspace page fully replaces Google layers with Apple MapKit", async ({

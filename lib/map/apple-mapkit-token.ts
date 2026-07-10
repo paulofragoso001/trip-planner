@@ -41,9 +41,11 @@ export function loadAppleMapKitToken() {
   return appleMapKitTokenPromise;
 }
 
-export function resetAppleMapKitTokenCacheForTests() {
+export function clearAppleMapKitTokenCache() {
   appleMapKitTokenPromise = null;
 }
+
+export const resetAppleMapKitTokenCacheForTests = clearAppleMapKitTokenCache;
 
 function sanitizeAppleMapKitToken(value: string) {
   return value
