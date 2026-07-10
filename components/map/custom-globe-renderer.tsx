@@ -454,6 +454,8 @@ export function CustomGlobeRenderer({
       data-map-runtime={runtimeState}
       data-map-system={APPLE_MAP_SYSTEM_ID}
       data-selected-map-id={selectedMapId ?? undefined}
+      data-wallet-route-id={mobileGlobeWallet?.selection.routeId ?? undefined}
+      data-wallet-trip-id={mobileGlobeWallet?.selection.tripId ?? undefined}
     >
       <div
         className={

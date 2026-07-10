@@ -1,9 +1,32 @@
+import Capacitor
 import MapKit
 import XCTest
 @testable import App
 
 @MainActor
 final class NativeMapConnectivityTests: XCTestCase {
+    func testMapGatewayRejectsLegacyTimestampThroughPluginCall() {
+        let plugin = MapGatewayPlugin()
+        var acceptedResponse: [String: Any]?
+        var staleResponse: [String: Any]?
+
+        plugin.syncPayloadToNative(makeSyncPluginCall(jsonString: syncPayloadFixture) { result in
+            acceptedResponse = result
+        })
+
+        let legacyPayload = syncPayloadFixture.replacingOccurrences(
+            of: "1714312800000",
+            with: "946684800000"
+        )
+        plugin.syncPayloadToNative(makeSyncPluginCall(jsonString: legacyPayload) { result in
+            staleResponse = result
+        })
+
+        XCTAssertEqual(acceptedResponse?["success"] as? Bool, true)
+        XCTAssertEqual(staleResponse?["success"] as? Bool, false)
+        XCTAssertEqual(staleResponse?["reason"] as? String, "Stale revision ignored")
+    }
+
     func testSyncPayloadDecodesAndRejectsStaleRevisions() throws {
         let payloadData = try XCTUnwrap(syncPayloadFixture.data(using: .utf8))
         let payload = try JSONDecoder().decode(NativeMapSyncPayload.self, from: payloadData)
@@ -76,6 +99,23 @@ final class NativeMapConnectivityTests: XCTestCase {
         XCTAssertEqual(controller.mapCameraForTesting.pitch, 12, accuracy: 0.1)
         XCTAssertEqual(controller.preservedCameraForTesting?.heading ?? -1, 24, accuracy: 0.1)
     }
+}
+
+private func makeSyncPluginCall(
+    jsonString: String,
+    onSuccess: @escaping ([String: Any]) -> Void
+) -> CAPPluginCall {
+    CAPPluginCall(
+        callbackId: UUID().uuidString,
+        methodName: "syncPayloadToNative",
+        options: ["jsonString": jsonString],
+        success: { result, _ in
+            onSuccess(result?.data ?? [:])
+        },
+        error: { error in
+            XCTFail("MapGateway plugin call failed: \(error?.message ?? "Unknown error")")
+        }
+    )
 }
 
 private let syncPayloadFixture = """

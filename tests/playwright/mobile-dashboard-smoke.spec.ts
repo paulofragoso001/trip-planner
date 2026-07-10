@@ -913,6 +913,13 @@ test.describe("authenticated mobile dashboard smoke", () => {
       "data-wallet-selected-route-id",
       "route-123"
     );
+    const routeMapContainer = page
+      .locator('[data-map-system="almidy-apple-map-system"][data-map-renderer="apple-mapkit"]')
+      .first();
+    await expect(routeMapContainer).toHaveAttribute("data-map-renderer", "apple-mapkit");
+    await expect(routeMapContainer).toHaveAttribute("data-map-runtime", "ready");
+    await expect(routeMapContainer).toHaveAttribute("data-wallet-trip-id", "demo");
+    await expect(routeMapContainer).toHaveAttribute("data-wallet-route-id", "route-123");
     expect(googleScriptRequests).toEqual([]);
   });
 
