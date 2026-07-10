@@ -15,7 +15,7 @@ export function MobileDashboardShell({ children }: { children: ReactNode }) {
 
   return (
     <div
-      className="h-dvh overflow-hidden bg-slate-950 text-slate-100"
+      className="native-map-surface-shell h-dvh overflow-hidden bg-slate-950 text-slate-100"
       data-shell-variant="mobile"
       data-wallet-shell="true"
       data-testid="app-shell-root"
@@ -28,7 +28,7 @@ export function MobileDashboardShell({ children }: { children: ReactNode }) {
       </a>
       <main
         className={cn(
-          "h-dvh overflow-y-auto text-slate-950",
+          "native-map-surface-shell h-dvh overflow-y-auto text-slate-950",
           isDashboardLaunch ? "px-0 pt-0" : "px-3 pt-4 sm:px-6 sm:pt-6",
           tripWorkspaceContent || isDashboardLaunch
             ? "pb-0"
@@ -39,7 +39,7 @@ export function MobileDashboardShell({ children }: { children: ReactNode }) {
         id="main-content"
       >
         <div
-          className={cn("mx-auto w-full", fullBleedContent ? "max-w-none" : "max-w-[1440px]")}
+          className={cn("native-map-surface-shell mx-auto w-full", fullBleedContent ? "max-w-none" : "max-w-[1440px]")}
           data-testid="app-shell-content"
         >
           {children}

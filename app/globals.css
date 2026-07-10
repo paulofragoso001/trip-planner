@@ -20,7 +20,12 @@ body {
 
 :root[data-native-map-underlay="active"],
 :root[data-native-map-underlay="active"] body,
+:root[data-native-map-underlay="active"] #__next,
+:root[data-native-map-underlay="active"] [data-shell-variant="mobile"],
+:root[data-native-map-underlay="active"] [data-testid="app-shell-main"],
+:root[data-native-map-underlay="active"] [data-testid="app-shell-content"],
 :root[data-native-map-underlay="active"] .native-map-surface-shell {
+  background: transparent !important;
   background-color: transparent !important;
 }
 
@@ -29,6 +34,11 @@ body {
 }
 
 :root[data-native-map-underlay="active"] .native-map-web-interactive {
+  pointer-events: auto !important;
+}
+
+:root[data-native-map-underlay="active"] .native-map-web-opaque {
+  opacity: 1 !important;
   pointer-events: auto !important;
 }
 

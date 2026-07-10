@@ -2936,6 +2936,12 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page.getByTestId("almidy-launch-globe")).toHaveCSS("pointer-events", "none");
     await expect(page.getByTestId("mobile-home-globe-controls")).toHaveCSS("pointer-events", "auto");
     await expect(page.getByTestId("mobile-home-wallet-content")).toHaveCSS("pointer-events", "auto");
+    await expect(page.locator("html")).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+    await expect(page.locator("body")).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+    await expect(page.getByTestId("app-shell-root")).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+    await expect(page.getByTestId("app-shell-main")).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+    await expect(page.getByTestId("app-shell-content")).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+    await expect(page.getByTestId("ios-launch-sheet")).toHaveCSS("background-color", "rgb(255, 255, 255)");
     await expect(page.locator('[data-map-projection="mercator"]')).toHaveCount(0);
     await expect.poll(async () => page.evaluate(() =>
       (window as typeof window & { __almidyNativeUnderlayInitCalls?: number })

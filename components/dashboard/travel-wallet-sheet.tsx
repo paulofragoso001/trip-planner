@@ -269,7 +269,7 @@ export function TravelWalletSheet({
       {isEmptyHomeLaunch && isCollapsed && showTripScopeMenu ? <TripScopeMenu /> : null}
       <div
         className={cn(
-          "relative mx-0 w-full overflow-hidden bg-white text-slate-950 shadow-[0_-24px_70px_rgba(0,0,0,0.34)] transition-[height,max-height,border-radius] duration-300 ease-out",
+          "native-map-web-opaque relative mx-0 w-full overflow-hidden bg-white text-slate-950 shadow-[0_-24px_70px_rgba(0,0,0,0.34)] transition-[height,max-height,border-radius] duration-300 ease-out",
           isCollapsed
             ? cn(
                 "rounded-t-[2rem] min-[390px]:rounded-t-[2.2rem]",
