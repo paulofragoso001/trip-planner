@@ -5,21 +5,18 @@ import XCTest
 
 @MainActor
 final class NativeMapConnectivityTests: XCTestCase {
-    func testNativeUnderlayUsesRealisticHybridGlobeConfiguration() {
+    func testNativeUnderlayUsesHybridFlyoverPlanetScaleConfiguration() {
         let mapView = MapGatewayPlugin().makeNativeUnderlayMapForTesting()
 
         XCTAssertTrue(mapView.isPitchEnabled)
         XCTAssertTrue(mapView.isRotateEnabled)
         XCTAssertTrue(mapView.isScrollEnabled)
         XCTAssertTrue(mapView.isZoomEnabled)
-        XCTAssertEqual(mapView.camera.centerCoordinateDistance, 10_000_000, accuracy: 1)
-        if #available(iOS 16.0, *) {
-            let configuration = mapView.preferredConfiguration as? MKHybridMapConfiguration
-            XCTAssertNotNil(configuration)
-            XCTAssertEqual(configuration?.elevationStyle, .realistic)
-        } else {
-            XCTAssertEqual(mapView.mapType, .hybridFlyover)
-        }
+        XCTAssertEqual(mapView.mapType, .hybridFlyover)
+        XCTAssertEqual(mapView.camera.centerCoordinate.latitude, 37.7749, accuracy: 0.0001)
+        XCTAssertEqual(mapView.camera.centerCoordinate.longitude, -122.4194, accuracy: 0.0001)
+        XCTAssertEqual(mapView.camera.centerCoordinateDistance, 11_000_000, accuracy: 1)
+        XCTAssertEqual(mapView.cameraZoomRange.maxCenterCoordinateDistance, 30_000_000, accuracy: 1)
     }
 
     func testNativeUnderlayTransparencySweepClearsContainersButPreservesMap() {

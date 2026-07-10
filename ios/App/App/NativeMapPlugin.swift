@@ -311,14 +311,11 @@ public final class MapGatewayPlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     private func configureNativeUnderlayPresentation(_ mapView: MKMapView) {
-        if #available(iOS 16.0, *) {
-            let configuration = MKHybridMapConfiguration(elevationStyle: .realistic)
-            configuration.pointOfInterestFilter = .includingAll
-            configuration.showsTraffic = false
-            mapView.preferredConfiguration = configuration
-        } else {
-            mapView.mapType = .hybridFlyover
-        }
+        mapView.mapType = .hybridFlyover
+        mapView.cameraZoomRange = MKMapView.CameraZoomRange(
+            minCenterCoordinateDistance: 500,
+            maxCenterCoordinateDistance: 30_000_000
+        )
     }
 
     private func makeNativeUnderlayMap(frame: CGRect) -> MKMapView {
@@ -349,8 +346,8 @@ public final class MapGatewayPlugin: CAPPlugin, CAPBridgedPlugin {
 
     private func nativeUnderlayGlobeCamera() -> MKMapCamera {
         MKMapCamera(
-            lookingAtCenter: CLLocationCoordinate2D(latitude: 28.5, longitude: -81.5),
-            fromDistance: 10_000_000,
+            lookingAtCenter: CLLocationCoordinate2D(latitude: 37.7749, longitude: -122.4194),
+            fromDistance: 11_000_000,
             pitch: 0,
             heading: 0
         )
