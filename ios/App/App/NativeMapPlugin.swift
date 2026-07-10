@@ -174,6 +174,7 @@ public final class MapGatewayPlugin: CAPPlugin, CAPBridgedPlugin {
     public let identifier = "MapGatewayPlugin"
     public let jsName = "MapGateway"
     public let pluginMethods: [CAPPluginMethod] = [
+        CAPPluginMethod(name: "initializeNativeMapUnderlay", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "syncPayloadToNative", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "acknowledgeReceipt", returnType: CAPPluginReturnPromise)
     ]
@@ -184,6 +185,47 @@ public final class MapGatewayPlugin: CAPPlugin, CAPBridgedPlugin {
     private var cachedPayloadJson: String?
     private var lastAcknowledgedRevisionId: Int64?
     private weak var activeMapController: NativeMapViewController?
+    private weak var nativeMapUnderlay: MKMapView?
+
+    @objc func initializeNativeMapUnderlay(_ call: CAPPluginCall) {
+        DispatchQueue.main.async { [weak self] in
+            guard let self,
+                  let bridge = self.bridge,
+                  let webView = bridge.webView,
+                  let rootView = bridge.viewController?.view else {
+                call.reject("Unable to initialize the native map underlay.", "native_map_underlay_unavailable")
+                return
+            }
+
+            webView.isOpaque = false
+            webView.backgroundColor = .clear
+            webView.scrollView.backgroundColor = .clear
+            webView.superview?.backgroundColor = .clear
+
+            let mapView: MKMapView
+            if let nativeMapUnderlay = self.nativeMapUnderlay {
+                mapView = nativeMapUnderlay
+            } else {
+                mapView = self.makeNativeUnderlayMap(frame: rootView.bounds)
+                mapView.translatesAutoresizingMaskIntoConstraints = false
+                mapView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+                rootView.insertSubview(mapView, at: 0)
+                NSLayoutConstraint.activate([
+                    mapView.topAnchor.constraint(equalTo: rootView.topAnchor),
+                    mapView.leadingAnchor.constraint(equalTo: rootView.leadingAnchor),
+                    mapView.trailingAnchor.constraint(equalTo: rootView.trailingAnchor),
+                    mapView.bottomAnchor.constraint(equalTo: rootView.bottomAnchor)
+                ])
+                self.nativeMapUnderlay = mapView
+            }
+
+            rootView.sendSubviewToBack(mapView)
+            if let payload = self.stateQueue.sync(execute: { self.cachedPayload }) {
+                mapView.setCamera(self.mapCamera(from: payload.camera), animated: false)
+            }
+            call.resolve(["success": true])
+        }
+    }
 
     @objc func syncPayloadToNative(_ call: CAPPluginCall) {
         guard let jsonString = call.getString("jsonString"),
@@ -257,18 +299,61 @@ public final class MapGatewayPlugin: CAPPlugin, CAPBridgedPlugin {
 
     private func applyCamera(_ cameraPayload: NativeMapCameraPayload) {
         DispatchQueue.main.async { [weak self] in
-            let camera = MKMapCamera(
-                lookingAtCenter: CLLocationCoordinate2D(
-                    latitude: cameraPayload.center.lat,
-                    longitude: cameraPayload.center.lng
-                ),
-                fromDistance: cameraPayload.altitude,
-                pitch: cameraPayload.pitch,
-                heading: cameraPayload.heading
-            )
-            self?.activeMapController?.applyCameraTelemetry(camera)
+            guard let self else { return }
+            let camera = self.mapCamera(from: cameraPayload)
+            self.activeMapController?.applyCameraTelemetry(camera)
+            self.nativeMapUnderlay?.setCamera(camera, animated: true)
         }
     }
+
+    private func configureNativeUnderlayPresentation(_ mapView: MKMapView) {
+        if #available(iOS 16.0, *) {
+            let configuration = MKHybridMapConfiguration(elevationStyle: .realistic)
+            configuration.pointOfInterestFilter = .includingAll
+            configuration.showsTraffic = false
+            mapView.preferredConfiguration = configuration
+        } else {
+            mapView.mapType = .hybridFlyover
+        }
+    }
+
+    private func makeNativeUnderlayMap(frame: CGRect) -> MKMapView {
+        let mapView = MKMapView(frame: frame)
+        mapView.isPitchEnabled = true
+        mapView.isRotateEnabled = true
+        mapView.isScrollEnabled = true
+        mapView.isZoomEnabled = true
+        configureNativeUnderlayPresentation(mapView)
+        mapView.setCamera(nativeUnderlayGlobeCamera(), animated: false)
+        return mapView
+    }
+
+    private func nativeUnderlayGlobeCamera() -> MKMapCamera {
+        MKMapCamera(
+            lookingAtCenter: CLLocationCoordinate2D(latitude: 28.5, longitude: -81.5),
+            fromDistance: 10_000_000,
+            pitch: 0,
+            heading: 0
+        )
+    }
+
+    private func mapCamera(from payload: NativeMapCameraPayload) -> MKMapCamera {
+        MKMapCamera(
+            lookingAtCenter: CLLocationCoordinate2D(
+                latitude: payload.center.lat,
+                longitude: payload.center.lng
+            ),
+            fromDistance: payload.altitude,
+            pitch: payload.pitch,
+            heading: payload.heading
+        )
+    }
+
+#if DEBUG
+    func makeNativeUnderlayMapForTesting() -> MKMapView {
+        makeNativeUnderlayMap(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
+    }
+#endif
 }
 
 @objc(AppleCalendarPlugin)

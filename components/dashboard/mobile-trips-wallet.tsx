@@ -702,7 +702,7 @@ function MobileTripsGlobeCanvas({
 
   return (
     <div
-      className="absolute inset-0 z-0 h-full w-full overflow-visible bg-[#252832] [transform-style:preserve-3d]"
+      className="native-map-surface-shell absolute inset-0 z-0 h-full w-full overflow-visible bg-[#252832] [transform-style:preserve-3d]"
       data-map-instance-key={mapInstanceKey}
       data-map-system={ALMIDY_APPLE_MAP_SYSTEM_ID}
       data-map-trip-state={hasTripPins ? "ready" : "empty"}

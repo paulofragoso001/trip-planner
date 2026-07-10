@@ -22,10 +22,20 @@ interface MapGatewayPlugin {
     listener: (event: { jsonString?: unknown }) => void
   ): Promise<PluginListenerHandle>;
   acknowledgeReceipt(options: { revisionId: number }): Promise<void>;
+  initializeNativeMapUnderlay(): Promise<{ success: boolean }>;
   syncPayloadToNative(options: { jsonString: string }): Promise<{ success: boolean }>;
 }
 
 export const MapGateway = registerPlugin<MapGatewayPlugin>("MapGateway");
+
+export async function initializeNativeMapUnderlay() {
+  if (!Capacitor.isNativePlatform()) {
+    return false;
+  }
+
+  const response = await MapGateway.initializeNativeMapUnderlay();
+  return response.success;
+}
 
 export function useWalletRouteSync() {
   const [currentPayload, setCurrentPayload] = useState<NativeMapSyncPayload | null>(null);

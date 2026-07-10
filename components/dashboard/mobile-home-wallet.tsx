@@ -119,7 +119,7 @@ export function MobileHomeWallet({
   const walletSurface = (
     <section
       className={cn(
-        "mobile-launch-globe relative isolate h-[100dvh] overflow-hidden bg-black text-white lg:hidden",
+        "mobile-launch-globe native-map-surface-shell relative isolate h-[100dvh] overflow-hidden bg-black text-white lg:hidden",
         className
       )}
       data-mobile-wallet-active-layer={mobileWallet?.activeLayer.kind ?? "legacy-launch"}
@@ -129,7 +129,7 @@ export function MobileHomeWallet({
       data-unified-map-surface={unifiedMapSurfaceEnabled ? "enabled" : "disabled"}
     >
       <section
-        className="globe-layer absolute inset-x-0 bottom-0 top-0 overflow-hidden bg-black"
+        className="globe-layer native-map-surface-shell absolute inset-x-0 bottom-0 top-0 overflow-hidden bg-black"
         data-testid="mobile-home-launch-globe"
       >
         <AlmidyLaunchGlobe

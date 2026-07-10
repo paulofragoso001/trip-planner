@@ -64,7 +64,7 @@ export default function AlmidyLaunchGlobeHub({
   }, []);
 
   return (
-    <div className="fixed inset-0 flex h-screen w-screen flex-col justify-between overflow-hidden bg-[#121214]">
+    <div className="native-map-surface-shell fixed inset-0 flex h-screen w-screen flex-col justify-between overflow-hidden bg-[#121214]">
       <div className="absolute inset-0 z-10 h-full w-full pb-[240px]">
         <CustomGlobeRenderer
           activeTripId={activeTripId}
@@ -174,7 +174,7 @@ export function AlmidyLaunchGlobe({
 
   return (
     <section
-      className={["absolute inset-0 overflow-hidden bg-black", className].filter(Boolean).join(" ")}
+      className={["native-map-surface-shell absolute inset-0 overflow-hidden bg-black", className].filter(Boolean).join(" ")}
       data-hero-mode="apple-mapkit"
       data-launch-globe-state={locationStatus === "loading" ? "loading-location" : "ready"}
       data-map-presentation="platform-apple-map"

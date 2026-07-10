@@ -5,6 +5,23 @@ import XCTest
 
 @MainActor
 final class NativeMapConnectivityTests: XCTestCase {
+    func testNativeUnderlayUsesRealisticHybridGlobeConfiguration() {
+        let mapView = MapGatewayPlugin().makeNativeUnderlayMapForTesting()
+
+        XCTAssertTrue(mapView.isPitchEnabled)
+        XCTAssertTrue(mapView.isRotateEnabled)
+        XCTAssertTrue(mapView.isScrollEnabled)
+        XCTAssertTrue(mapView.isZoomEnabled)
+        XCTAssertEqual(mapView.camera.centerCoordinateDistance, 10_000_000, accuracy: 1)
+        if #available(iOS 16.0, *) {
+            let configuration = mapView.preferredConfiguration as? MKHybridMapConfiguration
+            XCTAssertNotNil(configuration)
+            XCTAssertEqual(configuration?.elevationStyle, .realistic)
+        } else {
+            XCTAssertEqual(mapView.mapType, .hybridFlyover)
+        }
+    }
+
     func testMapGatewayRejectsLegacyTimestampThroughPluginCall() {
         let plugin = MapGatewayPlugin()
         var acceptedResponse: [String: Any]?

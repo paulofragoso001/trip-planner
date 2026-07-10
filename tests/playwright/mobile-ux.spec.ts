@@ -2861,7 +2861,57 @@ test.describe("mobile soft-launch UX", () => {
     await page.setViewportSize({ height: 900, width: 390 });
     await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
     await page.addInitScript(() => {
-      let capacitorValue: Record<string, unknown> = {};
+      (window as typeof window & { webkit?: unknown }).webkit = {
+        messageHandlers: {
+          bridge: {
+            postMessage: () => {}
+          }
+        }
+      };
+      let nativeUnderlayInitCalls = 0;
+      let capacitorValue: Record<string, unknown> = {
+        PluginHeaders: [
+          {
+            methods: [
+              { name: "addListener", rtype: "callback" },
+              { name: "initializeNativeMapUnderlay", rtype: "promise" },
+              { name: "acknowledgeReceipt", rtype: "promise" },
+              { name: "syncPayloadToNative", rtype: "promise" }
+            ],
+            name: "MapGateway"
+          },
+          {
+            methods: [
+              { name: "get", rtype: "promise" },
+              { name: "remove", rtype: "promise" },
+              { name: "set", rtype: "promise" }
+            ],
+            name: "Preferences"
+          },
+          {
+            methods: [
+              { name: "addListener", rtype: "callback" },
+              { name: "getLaunchUrl", rtype: "promise" },
+              { name: "removeListener", rtype: "callback" }
+            ],
+            name: "App"
+          }
+        ],
+        nativeCallback: () => "map-gateway-listener",
+        nativePromise: async (_pluginName: string, methodName: string) => {
+          if (methodName === "initializeNativeMapUnderlay") {
+            nativeUnderlayInitCalls += 1;
+            return { success: true };
+          }
+          if (methodName === "get") return { value: null };
+          if (methodName === "getLaunchUrl") return { url: null };
+          return {};
+        }
+      };
+      Object.defineProperty(window, "__almidyNativeUnderlayInitCalls", {
+        configurable: true,
+        get: () => nativeUnderlayInitCalls
+      });
       Object.defineProperty(window, "Capacitor", {
         configurable: true,
         get: () => ({
@@ -2883,6 +2933,10 @@ test.describe("mobile soft-launch UX", () => {
     await expect(nativeHost).toHaveAttribute("data-map-renderer", "native-mapkit-underlay");
     await expect(nativeHost).toHaveAttribute("data-map-presentation", "native-apple-globe");
     await expect(page.locator('[data-map-projection="mercator"]')).toHaveCount(0);
+    await expect.poll(async () => page.evaluate(() =>
+      (window as typeof window & { __almidyNativeUnderlayInitCalls?: number })
+        .__almidyNativeUnderlayInitCalls ?? 0
+    )).toBeGreaterThan(0);
     await expect.poll(async () => page.evaluate(() =>
       Array.from(document.scripts).filter((script) => script.src.includes("apple-mapkit.com")).length
     )).toBe(0);

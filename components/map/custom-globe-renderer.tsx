@@ -10,6 +10,7 @@ import {
   loadAppleMapKitToken
 } from "@/lib/map/apple-mapkit-token";
 import { isNativeCapacitorRuntime } from "@/lib/native/capacitor-runtime";
+import { initializeNativeMapUnderlay } from "@/lib/native/use-wallet-route-sync";
 import { useOptionalUnifiedMap } from "@/lib/map/unified-map-provider";
 import type {
   AlmidyCoordinate,
@@ -133,6 +134,7 @@ const DEFAULT_LOCATION_FLAG = "•";
 
 let mapKitScriptPromise: Promise<void> | null = null;
 let mapKitInitialized = false;
+let nativeUnderlayHostCount = 0;
 
 export function CustomGlobeRenderer({
   activeTripId,
@@ -164,6 +166,27 @@ export function CustomGlobeRenderer({
   useEffect(() => {
     setRendererTarget(isNativeCapacitorRuntime() ? "native" : "web");
   }, []);
+
+  useEffect(() => {
+    if (rendererTarget !== "native") return;
+
+    let disposed = false;
+    nativeUnderlayHostCount += 1;
+    document.documentElement.dataset.nativeMapUnderlay = "active";
+    void initializeNativeMapUnderlay().catch((error) => {
+      if (!disposed) {
+        console.error("Unable to initialize native MapKit underlay:", error);
+      }
+    });
+
+    return () => {
+      disposed = true;
+      nativeUnderlayHostCount = Math.max(0, nativeUnderlayHostCount - 1);
+      if (nativeUnderlayHostCount === 0) {
+        delete document.documentElement.dataset.nativeMapUnderlay;
+      }
+    };
+  }, [rendererTarget]);
 
   const pins = useMemo(
     () => buildAppleMapPins({
