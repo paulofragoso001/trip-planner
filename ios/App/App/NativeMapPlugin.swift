@@ -15,6 +15,7 @@ public class NativeMapPlugin: CAPPlugin, CAPBridgedPlugin {
     public let pluginMethods: [CAPPluginMethod] = [
         CAPPluginMethod(name: "open", returnType: CAPPluginReturnPromise)
     ]
+    weak var mapGatewayPlugin: MapGatewayPlugin?
 
     @objc func open(_ call: CAPPluginCall) {
         DispatchQueue.main.async {
@@ -22,6 +23,7 @@ public class NativeMapPlugin: CAPPlugin, CAPBridgedPlugin {
             let mapViewController = NativeMapViewController(trips: options.trips) { [weak self] route in
                 self?.openWebRoute(route)
             }
+            self.mapGatewayPlugin?.attach(mapViewController)
             mapViewController.modalPresentationStyle = .fullScreen
 
             guard let presenter = self.bridge?.viewController else {
@@ -42,6 +44,7 @@ public class NativeMapPlugin: CAPPlugin, CAPBridgedPlugin {
         let script = "window.location.assign('\(escapedRoute)')"
 
         viewController.dismiss(animated: true) { [weak self] in
+            self?.mapGatewayPlugin?.detachActiveMapController()
             self?.bridge?.webView?.evaluateJavaScript(script)
         }
     }
@@ -52,6 +55,219 @@ private struct NativeMapOptions: Decodable {
 
     init(trips: [NativeMapTrip]) {
         self.trips = trips
+    }
+}
+
+enum NativeMapRouteStatus: String, Codable {
+    case active
+    case paused
+    case completed
+    case cancelled
+}
+
+struct NativeMapCoordinatePayload: Codable, Equatable {
+    let lat: Double
+    let lng: Double
+}
+
+struct NativeMapNamedCoordinatePayload: Codable, Equatable {
+    let lat: Double
+    let lng: Double
+    let name: String
+}
+
+struct NativeMapTripPayload: Codable, Equatable {
+    let tripId: String
+    let origin: NativeMapNamedCoordinatePayload
+    let destination: NativeMapNamedCoordinatePayload
+}
+
+struct NativeMapWalletPayload: Codable, Equatable {
+    let passId: String
+    let isPassInstalled: Bool
+    let balance: String
+    let currency: String
+}
+
+struct NativeMapCameraPayload: Codable, Equatable {
+    let center: NativeMapCoordinatePayload
+    let altitude: Double
+    let pitch: Double
+    let heading: Double
+}
+
+struct NativeMapSyncPayload: Codable, Equatable {
+    let revisionId: Int64
+    let routeId: String
+    let status: NativeMapRouteStatus
+    let trip: NativeMapTripPayload
+    let wallet: NativeMapWalletPayload
+    let camera: NativeMapCameraPayload
+
+    init(
+        revisionId: Int64,
+        routeId: String,
+        status: NativeMapRouteStatus,
+        trip: NativeMapTripPayload,
+        wallet: NativeMapWalletPayload,
+        camera: NativeMapCameraPayload
+    ) {
+        self.revisionId = revisionId
+        self.routeId = routeId
+        self.status = status
+        self.trip = trip
+        self.wallet = wallet
+        self.camera = camera
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        revisionId = try container.decode(Int64.self, forKey: .revisionId)
+        routeId = try container.decode(String.self, forKey: .routeId)
+        status = try container.decode(NativeMapRouteStatus.self, forKey: .status)
+        trip = try container.decode(NativeMapTripPayload.self, forKey: .trip)
+        wallet = try container.decode(NativeMapWalletPayload.self, forKey: .wallet)
+        camera = try container.decode(NativeMapCameraPayload.self, forKey: .camera)
+
+        guard revisionId >= 0, revisionId <= 9_007_199_254_740_991,
+              isNonempty(routeId), isNonempty(trip.tripId),
+              isValidCoordinate(lat: trip.origin.lat, lng: trip.origin.lng),
+              isValidCoordinate(lat: trip.destination.lat, lng: trip.destination.lng),
+              isNonempty(trip.origin.name), isNonempty(trip.destination.name),
+              isNonempty(wallet.passId),
+              wallet.balance.range(of: #"^\d+(?:\.\d{1,2})?$"#, options: .regularExpression) != nil,
+              wallet.currency.range(of: #"^[A-Z]{3}$"#, options: .regularExpression) != nil,
+              isValidCoordinate(lat: camera.center.lat, lng: camera.center.lng),
+              camera.altitude.isFinite, camera.altitude >= 0,
+              camera.pitch.isFinite, (0...180).contains(camera.pitch),
+              camera.heading.isFinite, (0...360).contains(camera.heading) else {
+            throw DecodingError.dataCorrupted(
+                .init(codingPath: decoder.codingPath, debugDescription: "Invalid native map synchronization payload.")
+            )
+        }
+    }
+
+    private func isNonempty(_ value: String) -> Bool {
+        !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    private func isValidCoordinate(lat: Double, lng: Double) -> Bool {
+        lat.isFinite && lng.isFinite && (-90...90).contains(lat) && (-180...180).contains(lng)
+    }
+}
+
+struct NativeMapRevisionGate {
+    private(set) var latestRevisionId: Int64?
+
+    mutating func accept(_ payload: NativeMapSyncPayload) -> Bool {
+        if let latestRevisionId, payload.revisionId <= latestRevisionId {
+            return false
+        }
+
+        latestRevisionId = payload.revisionId
+        return true
+    }
+}
+
+@objc(MapGatewayPlugin)
+public final class MapGatewayPlugin: CAPPlugin, CAPBridgedPlugin {
+    public let identifier = "MapGatewayPlugin"
+    public let jsName = "MapGateway"
+    public let pluginMethods: [CAPPluginMethod] = [
+        CAPPluginMethod(name: "syncPayloadToNative", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "acknowledgeReceipt", returnType: CAPPluginReturnPromise)
+    ]
+
+    private let stateQueue = DispatchQueue(label: "app.almidy.map-gateway.state")
+    private var revisionGate = NativeMapRevisionGate()
+    private var cachedPayload: NativeMapSyncPayload?
+    private var cachedPayloadJson: String?
+    private var lastAcknowledgedRevisionId: Int64?
+    private weak var activeMapController: NativeMapViewController?
+
+    @objc func syncPayloadToNative(_ call: CAPPluginCall) {
+        guard let jsonString = call.getString("jsonString"),
+              let payload = decodePayload(jsonString) else {
+            call.reject("Malformed native map synchronization payload.", "invalid_map_sync_payload")
+            return
+        }
+
+        guard accept(payload, jsonString: jsonString) else {
+            call.resolve(["success": false, "reason": "Stale revision ignored"])
+            return
+        }
+
+        applyCamera(payload.camera)
+        call.resolve(["success": true])
+    }
+
+    @objc func acknowledgeReceipt(_ call: CAPPluginCall) {
+        guard let revisionValue = call.getInt("revisionId") else {
+            call.reject("Synchronization acknowledgment requires a revision ID.", "missing_revision_id")
+            return
+        }
+
+        let revisionId = Int64(revisionValue)
+        stateQueue.sync {
+            if let lastAcknowledgedRevisionId, revisionId <= lastAcknowledgedRevisionId {
+                return
+            } else {
+                lastAcknowledgedRevisionId = revisionId
+            }
+        }
+        call.resolve()
+    }
+
+    public func broadcastStateToWeb(updatedJsonPayload: String) {
+        guard let payload = decodePayload(updatedJsonPayload),
+              accept(payload, jsonString: updatedJsonPayload) else {
+            return
+        }
+
+        DispatchQueue.main.async { [weak self] in
+            self?.notifyListeners("onNativeStateSync", data: ["jsonString": updatedJsonPayload])
+        }
+    }
+
+    func attach(_ controller: NativeMapViewController) {
+        activeMapController = controller
+        let payload = stateQueue.sync { cachedPayload }
+        if let payload {
+            applyCamera(payload.camera)
+        }
+    }
+
+    func detachActiveMapController() {
+        activeMapController = nil
+    }
+
+    private func decodePayload(_ jsonString: String) -> NativeMapSyncPayload? {
+        guard let data = jsonString.data(using: .utf8) else { return nil }
+        return try? JSONDecoder().decode(NativeMapSyncPayload.self, from: data)
+    }
+
+    private func accept(_ payload: NativeMapSyncPayload, jsonString: String) -> Bool {
+        stateQueue.sync {
+            guard revisionGate.accept(payload) else { return false }
+            cachedPayload = payload
+            cachedPayloadJson = jsonString
+            return true
+        }
+    }
+
+    private func applyCamera(_ cameraPayload: NativeMapCameraPayload) {
+        DispatchQueue.main.async { [weak self] in
+            let camera = MKMapCamera(
+                lookingAtCenter: CLLocationCoordinate2D(
+                    latitude: cameraPayload.center.lat,
+                    longitude: cameraPayload.center.lng
+                ),
+                fromDistance: cameraPayload.altitude,
+                pitch: cameraPayload.pitch,
+                heading: cameraPayload.heading
+            )
+            self?.activeMapController?.applyCameraTelemetry(camera)
+        }
     }
 }
 
@@ -576,6 +792,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
     private var mapFallbackReason: MapFallbackReason?
     private var offlineOverlayView: UIView?
     private weak var offlineRetryButton: UIButton?
+    private var pendingCameraTelemetry: MKMapCamera?
     private var preservedCamera: MKMapCamera?
     private var isRequestingLocationAuthorization = false
     private var reservationCardVisible = !UserDefaults.standard.bool(forKey: "almidy.native.reservationCardDismissed")
@@ -651,6 +868,10 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         ])
 
         mapView.setCamera(globeCamera(distance: 10_000_000, heading: 0), animated: false)
+        if let pendingCameraTelemetry {
+            applyCameraTelemetry(pendingCameraTelemetry)
+            self.pendingCameraTelemetry = nil
+        }
     }
 
     private func playIntroCameraIfNeeded() {
@@ -670,6 +891,19 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
             pitch: 0,
             heading: heading
         )
+    }
+
+    func applyCameraTelemetry(_ camera: MKMapCamera) {
+        hasPlayedIntroCamera = true
+        preservedCamera = camera.copy() as? MKMapCamera ?? camera
+
+        guard isViewLoaded else {
+            pendingCameraTelemetry = preservedCamera
+            return
+        }
+
+        guard mapFallbackReason == nil else { return }
+        mapView.setCamera(camera, animated: true)
     }
 
     private func applyMapPresentation(_ mode: MapPresentationMode) {
@@ -901,6 +1135,14 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
 #if DEBUG
     var isShowingMapFallbackForTesting: Bool {
         offlineOverlayView != nil
+    }
+
+    var mapCameraForTesting: MKMapCamera {
+        mapView.camera
+    }
+
+    var preservedCameraForTesting: MKMapCamera? {
+        preservedCamera
     }
 
     func setNetworkAvailabilityForTesting(_ isAvailable: Bool) {

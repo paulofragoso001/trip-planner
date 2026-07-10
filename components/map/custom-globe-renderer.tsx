@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { RotateCcw, TriangleAlert, WifiOff } from "lucide-react";
+import { useOptionalMobileGlobeWallet } from "@/components/dashboard/mobile-globe-wallet-shell";
 import { countryCodeToFlag } from "@/lib/map/wayline-map-pins";
 import {
   clearAppleMapKitTokenCache,
@@ -144,6 +145,8 @@ export function CustomGlobeRenderer({
   useLocationFocus = true
 }: CustomGlobeRendererProps) {
   const unifiedMap = useOptionalUnifiedMap();
+  const mobileGlobeWallet = useOptionalMobileGlobeWallet();
+  const nativeSyncPayload = mobileGlobeWallet?.walletRouteSync.currentPayload ?? null;
   const activeSurface = surfaceState ?? unifiedMap?.surfaceState;
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MapKitMap | null>(null);
@@ -410,6 +413,23 @@ export function CustomGlobeRenderer({
       map.setCameraDistanceAnimated?.(APPLE_GLOBE_CAMERA_DISTANCE_METERS, false);
     }
   }, [activeSurface?.camera.rangeMeters, isGlobePresentation, onTripPinSelect, pins, runtimeState, selectedMapId, selectedPin, selectionRevision]);
+
+  useEffect(() => {
+    const mapkit = window.mapkit;
+    const map = mapRef.current;
+    if (runtimeState !== "ready" || !mapkit || !map || !nativeSyncPayload) {
+      return;
+    }
+
+    map.setCenterAnimated?.(
+      new mapkit.Coordinate(
+        nativeSyncPayload.camera.center.lat,
+        nativeSyncPayload.camera.center.lng
+      ),
+      true
+    );
+    map.setCameraDistanceAnimated?.(nativeSyncPayload.camera.altitude, true);
+  }, [nativeSyncPayload, runtimeState]);
 
   if (runtimeState === "missing-token") {
     return (

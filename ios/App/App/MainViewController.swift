@@ -7,7 +7,11 @@ final class MainViewController: CAPBridgeViewController {
     override func capacitorDidLoad() {
         super.capacitorDidLoad()
         installLocationOverlayBlocker()
-        bridge?.registerPluginInstance(NativeMapPlugin())
+        let mapGatewayPlugin = MapGatewayPlugin()
+        let nativeMapPlugin = NativeMapPlugin()
+        nativeMapPlugin.mapGatewayPlugin = mapGatewayPlugin
+        bridge?.registerPluginInstance(mapGatewayPlugin)
+        bridge?.registerPluginInstance(nativeMapPlugin)
         bridge?.registerPluginInstance(AppleCalendarPlugin())
     }
 

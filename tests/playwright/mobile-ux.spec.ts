@@ -2920,6 +2920,60 @@ test.describe("mobile soft-launch UX", () => {
     }))).toEqual(initialLifecycle);
   });
 
+  test("native map sync updates wallet selection and globe camera while rejecting stale revisions", async ({ page }) => {
+    await page.setViewportSize({ height: 900, width: 390 });
+    await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
+    await installMockAppleMapKit(page);
+
+    await page.goto(`${baseUrl}/dashboard`, { waitUntil: "commit" });
+    const mapKitCanvas = page.locator('[data-mapkit-mock="ready"]').first();
+    await expect(mapKitCanvas).toBeVisible({ timeout: 30_000 });
+
+    const dispatchPayload = async (revisionId: number, routeId: string, tripId: string, altitude: number) => {
+      await page.evaluate(({ altitude, revisionId, routeId, tripId }) => {
+        window.dispatchEvent(new CustomEvent("onNativeStateSync", {
+          detail: {
+            jsonString: JSON.stringify({
+              revisionId,
+              routeId,
+              status: "active",
+              trip: {
+                tripId,
+                origin: { lat: 37.7749, lng: -122.4194, name: "SF Transit Hub" },
+                destination: { lat: 34.0522, lng: -118.2437, name: "LA Terminal" }
+              },
+              wallet: {
+                passId: "pass_wallet_881",
+                isPassInstalled: true,
+                balance: "42.50",
+                currency: "USD"
+              },
+              camera: {
+                center: { lat: 36, lng: -120 },
+                altitude,
+                pitch: 0,
+                heading: 0
+              }
+            })
+          }
+        }));
+      }, { altitude, revisionId, routeId, tripId });
+    };
+
+    await dispatchPayload(1_714_312_800_000, "rte_9f82c4", "trp_alpha_01", 8_000_000);
+
+    const walletShell = page.getByTestId("mobile-globe-wallet-shell");
+    await expect(walletShell).toHaveAttribute("data-wallet-selected-route-id", "rte_9f82c4");
+    await expect(walletShell).toHaveAttribute("data-wallet-selected-trip-id", "trp_alpha_01");
+    await expect(mapKitCanvas).toHaveAttribute("data-mapkit-pan-to", "36.00000,-120.00000");
+    await expect(mapKitCanvas).toHaveAttribute("data-mapkit-camera-distance", "8000000");
+
+    await dispatchPayload(1_714_312_799_999, "rte_stale", "trp_stale", 2_000_000);
+    await expect(walletShell).toHaveAttribute("data-wallet-selected-route-id", "rte_9f82c4");
+    await expect(walletShell).toHaveAttribute("data-wallet-selected-trip-id", "trp_alpha_01");
+    await expect(mapKitCanvas).toHaveAttribute("data-mapkit-camera-distance", "8000000");
+  });
+
   test("Verify itinerary timeline workspace page fully replaces Google layers with Apple MapKit", async ({
     page,
     request

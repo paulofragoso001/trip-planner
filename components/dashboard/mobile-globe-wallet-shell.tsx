@@ -15,6 +15,7 @@ import {
   type UnifiedMapProviderProps
 } from "@/lib/map/unified-map-provider";
 import type { AlmidyMapMode } from "@/lib/map/wayline-map-models";
+import { useWalletRouteSync, type WalletRouteSync } from "@/lib/native/use-wallet-route-sync";
 import {
   buildMobileGlobeWalletRootLayer,
   getActiveMobileGlobeWalletLayer,
@@ -42,6 +43,7 @@ export type MobileGlobeWalletContextValue = {
   setSelection: (selection: MobileGlobeWalletSelection) => void;
   stack: MobileGlobeWalletLayer[];
   syncUrlFromLayer: (layer?: MobileGlobeWalletLayer, mode?: MobileGlobeWalletUrlSyncMode) => string;
+  walletRouteSync: WalletRouteSync;
 };
 
 type MobileGlobeWalletShellProps = {
@@ -79,11 +81,23 @@ export function MobileGlobeWalletShell({
   );
   const [stack, setStack] = useState<MobileGlobeWalletLayer[]>(routeHydration.stack);
   const [selection, setSelection] = useState<MobileGlobeWalletSelection>(routeHydration.selection);
+  const walletRouteSync = useWalletRouteSync();
 
   useEffect(() => {
     setStack(routeHydration.stack);
     setSelection(routeHydration.selection);
   }, [routeHydration]);
+
+  useEffect(() => {
+    const payload = walletRouteSync.currentPayload;
+    if (!payload) return;
+
+    setSelection((current) => ({
+      ...current,
+      routeId: payload.routeId,
+      tripId: payload.trip.tripId
+    }));
+  }, [walletRouteSync.currentPayload]);
 
   const pushLayer = useCallback((layer: MobileGlobeWalletLayer) => {
     setStack((current) => pushMobileGlobeWalletLayer(current, layer));
@@ -148,9 +162,10 @@ export function MobileGlobeWalletShell({
       selection,
       setSelection,
       stack,
-      syncUrlFromLayer
+      syncUrlFromLayer,
+      walletRouteSync
     }),
-    [activeLayer, hydrateFromRoute, popLayer, pushLayer, replaceLayer, selection, stack, syncUrlFromLayer]
+    [activeLayer, hydrateFromRoute, popLayer, pushLayer, replaceLayer, selection, stack, syncUrlFromLayer, walletRouteSync]
   );
 
   return (
@@ -185,6 +200,10 @@ export function useMobileGlobeWallet() {
   }
 
   return context;
+}
+
+export function useOptionalMobileGlobeWallet() {
+  return useContext(MobileGlobeWalletContext);
 }
 
 function hydrateSelectionFromStack(stack: MobileGlobeWalletLayer[]) {
