@@ -2243,9 +2243,9 @@ test.describe("mobile soft-launch UX", () => {
     await expect(launchSheet.getByRole("heading", { name: "My Trips" })).toBeVisible();
     await expect(launchSheet.getByRole("button", { name: "Open My Trips" })).toBeVisible();
     await expect(launchSheet.getByRole("button", { name: "Open settings" })).toBeVisible();
-    await expect(launchSheet.getByRole("link", { name: /Continue trip|Create trip/ })).toBeVisible();
+    await expect(launchSheet.getByRole("link", { name: /Continue trip|Create trip|My Almidy Book/ })).toBeVisible();
     await expect(launchSheet.getByRole("button", { name: /Search/ })).toBeVisible();
-    await expect(launchSheet.getByRole("link", { name: /Add/ })).toBeVisible();
+    await expect(launchSheet.getByRole("button", { name: /Add/ })).toBeVisible();
     await expect(launchSheet.getByRole("link", { name: /Travel Book/ })).toBeHidden();
     await expect(launchSheet.getByRole("link", { name: /Add idea/ })).toBeHidden();
     await expect(launchSheet.getByRole("link", { name: /Open map/ })).toBeHidden();

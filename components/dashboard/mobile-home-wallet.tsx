@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, ImageIcon, MapPin, Upload } from "lucide-react";
+import { Check, LocateFixed, Map, ImageIcon, MapPin, Upload } from "lucide-react";
 import Link from "next/link";
 import type { CSSProperties, MouseEvent, ReactNode, TouchEvent } from "react";
 import { useEffect, useRef, useState } from "react";
@@ -10,6 +10,7 @@ import { MobileGlobeWalletShell } from "@/components/dashboard/mobile-globe-wall
 import { TravelWalletSheet } from "@/components/dashboard/travel-wallet-sheet";
 import { TripCreateForm, type TripDraft, type WalletLayer } from "@/components/dashboard/trip-create-form";
 import { cn } from "@/components/trip-ui";
+import { dashboardActionRoutes } from "@/lib/dashboard/action-routes";
 import type { WalletHeroImage } from "@/lib/wallet/hero-image";
 import { mobileGlobeWalletEnabled, unifiedMapSurfaceEnabled } from "@/lib/map/feature-flags";
 import { useUnifiedMap } from "@/lib/map/unified-map-provider";
@@ -111,6 +112,10 @@ export function MobileHomeWallet({
     popWalletLayer("createTrip");
   }
 
+  function requestCurrentLocation() {
+    window.dispatchEvent(new Event(dashboardActionRoutes.globe.locateUserEvent));
+  }
+
   const walletSurface = (
     <section
       className={cn(
@@ -133,6 +138,26 @@ export function MobileHomeWallet({
           showCountryPin={false}
           useLocationFocus
         />
+        <div
+          className="absolute right-4 top-[max(1rem,env(safe-area-inset-top))] z-30 flex flex-col gap-2"
+          data-testid="mobile-home-globe-controls"
+        >
+          <Link
+            aria-label="Open map"
+            className="grid h-11 w-11 place-items-center rounded-full border border-white/15 bg-black/72 text-white shadow-[0_10px_28px_rgba(0,0,0,0.45)] backdrop-blur-md transition hover:bg-black/82 focus:outline-none focus:ring-4 focus:ring-orange-400/25"
+            href={dashboardActionRoutes.globe.openMap}
+          >
+            <Map className="h-5 w-5" aria-hidden="true" />
+          </Link>
+          <button
+            aria-label="Use current location"
+            className="grid h-11 w-11 place-items-center rounded-full border border-white/15 bg-black/72 text-white shadow-[0_10px_28px_rgba(0,0,0,0.45)] backdrop-blur-md transition hover:bg-black/82 focus:outline-none focus:ring-4 focus:ring-orange-400/25"
+            onClick={requestCurrentLocation}
+            type="button"
+          >
+            <LocateFixed className="h-5 w-5" aria-hidden="true" />
+          </button>
+        </div>
       </section>
       <div
         aria-hidden="true"
