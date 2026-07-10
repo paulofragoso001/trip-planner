@@ -185,25 +185,15 @@ private struct NativeMapInteractiveRegion: Decodable {
     }
 }
 
-private final class NativeMapTouchForwardingView: UIView, UIGestureRecognizerDelegate {
+private final class NativeMapTouchForwardingView: UIView {
     weak var mapView: MKMapView?
     var excludedRegions: [CGRect] = []
-
-    private lazy var panGesture = UIPanGestureRecognizer(target: self, action: #selector(handlePan(_:)))
-    private lazy var pinchGesture = UIPinchGestureRecognizer(target: self, action: #selector(handlePinch(_:)))
-    private lazy var rotationGesture = UIRotationGestureRecognizer(target: self, action: #selector(handleRotation(_:)))
 
     override init(frame: CGRect) {
         super.init(frame: frame)
         backgroundColor = .clear
         isOpaque = false
         isUserInteractionEnabled = true
-        isMultipleTouchEnabled = true
-        [panGesture, pinchGesture, rotationGesture].forEach { gesture in
-            gesture.delegate = self
-            gesture.cancelsTouchesInView = true
-            addGestureRecognizer(gesture)
-        }
     }
 
     @available(*, unavailable)
@@ -216,51 +206,10 @@ private final class NativeMapTouchForwardingView: UIView, UIGestureRecognizerDel
         return !excludedRegions.contains { $0.insetBy(dx: -8, dy: -8).contains(point) }
     }
 
-    func gestureRecognizer(
-        _ gestureRecognizer: UIGestureRecognizer,
-        shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer
-    ) -> Bool {
-        true
-    }
-
-    @objc private func handlePan(_ gesture: UIPanGestureRecognizer) {
-        guard let mapView, gesture.state == .began || gesture.state == .changed else { return }
-
-        let translation = gesture.translation(in: self)
-        let centerPoint = CGPoint(x: bounds.midX, y: bounds.midY)
-        let translatedPoint = CGPoint(
-            x: centerPoint.x - translation.x,
-            y: centerPoint.y - translation.y
-        )
-        let nextCenter = mapView.convert(translatedPoint, toCoordinateFrom: self)
-        let camera = mapView.camera.copy() as? MKMapCamera ?? mapView.camera
-        camera.centerCoordinate = nextCenter
-        mapView.setCamera(camera, animated: false)
-        gesture.setTranslation(.zero, in: self)
-    }
-
-    @objc private func handlePinch(_ gesture: UIPinchGestureRecognizer) {
-        guard let mapView, gesture.state == .began || gesture.state == .changed else { return }
-
-        let nextDistance = mapView.camera.centerCoordinateDistance / Double(gesture.scale)
-        let zoomRange = mapView.cameraZoomRange
-        let clampedDistance = min(
-            max(nextDistance, zoomRange?.minCenterCoordinateDistance ?? 500),
-            zoomRange?.maxCenterCoordinateDistance ?? 30_000_000
-        )
-        let camera = mapView.camera.copy() as? MKMapCamera ?? mapView.camera
-        camera.centerCoordinateDistance = clampedDistance
-        mapView.setCamera(camera, animated: false)
-        gesture.scale = 1
-    }
-
-    @objc private func handleRotation(_ gesture: UIRotationGestureRecognizer) {
-        guard let mapView, gesture.state == .began || gesture.state == .changed else { return }
-
-        let camera = mapView.camera.copy() as? MKMapCamera ?? mapView.camera
-        camera.heading -= CLLocationDirection(gesture.rotation * 180 / .pi)
-        mapView.setCamera(camera, animated: false)
-        gesture.rotation = 0
+    override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
+        guard self.point(inside: point, with: event), let mapView else { return nil }
+        let mapPoint = convert(point, to: mapView)
+        return mapView.hitTest(mapPoint, with: event) ?? mapView
     }
 }
 
@@ -296,7 +245,9 @@ public final class MapGatewayPlugin: CAPPlugin, CAPBridgedPlugin {
                 return
             }
 
-            let mapHostView = rootView.window ?? rootView
+            // Keep the map in the same hit-test tree as the WebView. This lets
+            // the forwarding view return MapKit's own gesture target directly.
+            let mapHostView = rootView
             mapHostView.backgroundColor = .clear
             rootView.backgroundColor = .clear
             self.makeSubviewsTransparent(view: rootView)

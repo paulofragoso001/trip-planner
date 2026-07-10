@@ -77,7 +77,7 @@ final class NativeMapConnectivityTests: XCTestCase {
             point: CGPoint(x: 180, y: 700)
         )
 
-        XCTAssertNotNil(mapTarget)
+        XCTAssertIdentical(mapTarget, mapView)
         XCTAssertNil(walletTarget)
     }
 
