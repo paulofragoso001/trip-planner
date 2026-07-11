@@ -174,11 +174,6 @@ export function TravelWalletSheet({
   }
 
   function handleTripsTitleClick() {
-    if (isEmptyHomeLaunch && isCollapsed) {
-      setShowTripScopeMenu((isVisible) => !isVisible);
-      return;
-    }
-
     setShowTripScopeMenu(false);
     setSheetState(isCollapsed ? "expanded" : "collapsed");
   }
