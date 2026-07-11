@@ -2199,38 +2199,38 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
 
         let stack = UIStackView()
         stack.axis = .vertical
-        stack.spacing = 16
+        stack.spacing = 10
         stack.translatesAutoresizingMaskIntoConstraints = false
         card.addSubview(stack)
 
         let eyebrow = UILabel()
         eyebrow.text = "WELCOME"
         eyebrow.textColor = UIColor(red: 1.0, green: 0.42, blue: 0.12, alpha: 1.0)
-        eyebrow.font = .systemFont(ofSize: 16, weight: .black)
+        eyebrow.font = .systemFont(ofSize: 14, weight: .semibold)
 
         let title = UILabel()
         title.text = "Get Started"
-        title.font = .systemFont(ofSize: 36, weight: .black)
-        title.textColor = .black
+        title.font = .systemFont(ofSize: 30, weight: .bold)
+        title.textColor = UIColor(white: 0.08, alpha: 1.0)
 
         let body = UILabel()
         body.text = "Create your next trip and plan your itinerary, expenses, documents, and more"
         body.numberOfLines = 0
-        body.textColor = .systemGray
-        body.font = .systemFont(ofSize: 23, weight: .regular)
+        body.textColor = UIColor(white: 0.42, alpha: 1.0)
+        body.font = .systemFont(ofSize: 17, weight: .regular)
 
         stack.addArrangedSubview(eyebrow)
         stack.addArrangedSubview(title)
         stack.addArrangedSubview(body)
-        stack.addArrangedSubview(actionButton(title: "Create Your First Trip", backgroundColor: UIColor(red: 1.0, green: 0.36, blue: 0.03, alpha: 1.0), textColor: .white, action: #selector(createTrip)))
-        stack.addArrangedSubview(actionButton(title: "Forward Your Reservation", backgroundColor: UIColor(red: 0.9, green: 0.84, blue: 0.8, alpha: 1.0), textColor: .black, action: #selector(forwardReservation)))
-        stack.addArrangedSubview(actionButton(title: "Explore Sample Trip", backgroundColor: UIColor(red: 0.9, green: 0.84, blue: 0.8, alpha: 1.0), textColor: .black, action: #selector(openSampleTrip)))
+        stack.addArrangedSubview(actionButton(title: "Create Your First Trip", backgroundColor: UIColor(red: 1.0, green: 0.36, blue: 0.03, alpha: 1.0), textColor: .white, action: #selector(createTrip), fontSize: 16, minHeight: 46, cornerRadius: 22))
+        stack.addArrangedSubview(actionButton(title: "Forward Your Reservation", backgroundColor: UIColor(red: 0.9, green: 0.84, blue: 0.8, alpha: 1.0), textColor: UIColor(white: 0.12, alpha: 1.0), action: #selector(forwardReservation), fontSize: 16, minHeight: 46, cornerRadius: 22))
+        stack.addArrangedSubview(actionButton(title: "Explore Sample Trip", backgroundColor: UIColor(red: 0.9, green: 0.84, blue: 0.8, alpha: 1.0), textColor: UIColor(white: 0.12, alpha: 1.0), action: #selector(openSampleTrip), fontSize: 16, minHeight: 46, cornerRadius: 22))
 
         NSLayoutConstraint.activate([
-            stack.topAnchor.constraint(equalTo: card.topAnchor, constant: 28),
-            stack.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 24),
-            stack.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -24),
-            stack.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -24)
+            stack.topAnchor.constraint(equalTo: card.topAnchor, constant: 20),
+            stack.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 20),
+            stack.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -20),
+            stack.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -20)
         ])
         expandedContentStack.addArrangedSubview(card)
     }
@@ -2425,16 +2425,24 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         return button
     }
 
-    private func actionButton(title: String, backgroundColor: UIColor, textColor: UIColor, action: Selector) -> UIButton {
+    private func actionButton(
+        title: String,
+        backgroundColor: UIColor,
+        textColor: UIColor,
+        action: Selector,
+        fontSize: CGFloat = 20,
+        minHeight: CGFloat = 54,
+        cornerRadius: CGFloat = 25
+    ) -> UIButton {
         let button = UIButton(type: .system)
         button.setTitle(title, for: .normal)
         button.setTitleColor(textColor, for: .normal)
-        button.titleLabel?.font = .systemFont(ofSize: 20, weight: .bold)
+        button.titleLabel?.font = .systemFont(ofSize: fontSize, weight: .semibold)
         button.backgroundColor = backgroundColor
-        button.layer.cornerRadius = 25
-        button.contentEdgeInsets = UIEdgeInsets(top: 14, left: 18, bottom: 14, right: 18)
+        button.layer.cornerRadius = cornerRadius
+        button.contentEdgeInsets = UIEdgeInsets(top: 10, left: 14, bottom: 10, right: 14)
         button.addTarget(self, action: action, for: .touchUpInside)
-        NSLayoutConstraint.activate([button.heightAnchor.constraint(greaterThanOrEqualToConstant: 54)])
+        NSLayoutConstraint.activate([button.heightAnchor.constraint(greaterThanOrEqualToConstant: minHeight)])
         return button
     }
 
