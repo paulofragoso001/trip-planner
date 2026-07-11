@@ -1543,7 +1543,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         self.monitorsNetworkConnectivity = monitorsNetworkConnectivity
         self.tripStore = tripStore
         self.openRoute = openRoute
-        self.sheetState = trips.isEmpty ? .medium : .collapsed
+        self.sheetState = .collapsed
         super.init(nibName: nil, bundle: nil)
     }
 
