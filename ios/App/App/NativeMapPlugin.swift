@@ -1517,6 +1517,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
     private let expandedScrollView = UIScrollView()
     private let expandedContentStack = UIStackView()
     private let mapControlStack = UIStackView()
+    private var firstTripCard: UIView?
     private var sheetBottomConstraint: NSLayoutConstraint?
     private var sheetHeightConstraint: NSLayoutConstraint?
     private var sheetState: SheetState
@@ -1543,7 +1544,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         self.monitorsNetworkConnectivity = monitorsNetworkConnectivity
         self.tripStore = tripStore
         self.openRoute = openRoute
-        self.sheetState = trips.isEmpty ? .medium : .collapsed
+        self.sheetState = .collapsed
         super.init(nibName: nil, bundle: nil)
     }
 
@@ -2122,7 +2123,10 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
 
         if trips.isEmpty {
             renderWelcomeContent()
+            installFirstTripCard()
         } else {
+            firstTripCard?.removeFromSuperview()
+            firstTripCard = nil
             renderCollapsedActions()
             renderTripContent()
         }
@@ -2190,6 +2194,25 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
     }
 
     private func renderWelcomeContent() {
+        expandedContentStack.addArrangedSubview(makeWelcomeCard())
+    }
+
+    private func installFirstTripCard() {
+        firstTripCard?.removeFromSuperview()
+
+        let card = makeWelcomeCard()
+        card.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(card)
+        firstTripCard = card
+
+        NSLayoutConstraint.activate([
+            card.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 28),
+            card.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -28),
+            card.bottomAnchor.constraint(equalTo: sheetView.topAnchor, constant: -18)
+        ])
+    }
+
+    private func makeWelcomeCard() -> UIView {
         let card = UIView()
         card.backgroundColor = UIColor(red: 1.0, green: 0.95, blue: 0.91, alpha: 1.0)
         card.layer.cornerRadius = 28
@@ -2232,7 +2255,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
             stack.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -24),
             stack.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -24)
         ])
-        expandedContentStack.addArrangedSubview(card)
+        return card
     }
 
     private func tripCard(for trip: NativeMapTrip) -> UIView {
@@ -2453,6 +2476,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
     private func syncSheetVisibility() {
         collapsedActions.isHidden = sheetState != .collapsed || trips.isEmpty
         expandedScrollView.isHidden = sheetState == .collapsed
+        firstTripCard?.isHidden = !(trips.isEmpty && sheetState == .collapsed)
         chevronImageView.transform = sheetState == .collapsed ? .identity : CGAffineTransform(rotationAngle: .pi)
     }
 
