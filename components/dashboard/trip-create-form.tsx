@@ -5,6 +5,7 @@ import { CalendarDays, ImageIcon } from "lucide-react";
 import type { FormEvent } from "react";
 import { useEffect, useState } from "react";
 import GoogleMapsProvider from "@/components/GoogleMapsProvider";
+import { AppleLocationAutocomplete } from "@/components/AppleLocationAutocomplete";
 import LocationAutocomplete, {
   type LocationSelection
 } from "@/components/LocationAutocomplete";
@@ -13,6 +14,7 @@ import {
 } from "@/components/ui/mobile-form";
 import { useAlmidyAction } from "@/hooks/use-wayline-action";
 import { countryCodeFromDestinationText } from "@/lib/map/wayline-map-pins";
+import { isNativeCapacitorRuntime } from "@/lib/native/capacitor-runtime";
 import { buildPlacePhotoUrl } from "@/lib/travel-data/photo-url";
 import {
   TRIP_TRAVEL_STYLES,
@@ -79,6 +81,7 @@ export function TripCreateForm({
   const [travelStyle, setTravelStyle] = useState<TripTravelStyle>(
     () => initialData?.travel_style || "balanced"
   );
+  const [useAppleAutocomplete, setUseAppleAutocomplete] = useState(false);
   const { isPending, run, state } = useAlmidyAction<{ trip?: { id: string } }>();
   const mobilePassMode = mode === "mobile-pass";
   const previewDates = formatPreviewDates(startDate, endDate);
@@ -92,6 +95,12 @@ export function TripCreateForm({
       !isPending &&
       (!mobilePassMode || (destinationSelection && selectedCountryCode))
   );
+
+  useEffect(() => {
+    setUseAppleAutocomplete(
+      isNativeCapacitorRuntime() || window.matchMedia("(pointer: coarse)").matches
+    );
+  }, []);
 
   useEffect(() => {
     setHydrated(true);
@@ -379,6 +388,53 @@ export function TripCreateForm({
                 <p className="mt-8 max-w-[19rem] text-sm font-semibold leading-6 text-white/72">
                   Type a destination in the trip name, like Miami weekend or Paris Sep 12-15.
                 </p>
+                <div className="mt-5 grid w-full max-w-[22rem] gap-2 text-left">
+                  <label className="text-xs font-black uppercase tracking-[0.14em] text-white/70" htmlFor="mobile-trip-destination">
+                    Destination
+                  </label>
+                  {useAppleAutocomplete ? (
+                    <AppleLocationAutocomplete
+                      ariaLabel="Destination"
+                      id="mobile-trip-destination"
+                      inputClassName="min-h-12 w-full rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-base font-semibold text-white outline-none placeholder:text-white/50 focus:border-white/40 focus:ring-4 focus:ring-orange-300/20"
+                      name="destination"
+                      onInputChange={(value) => {
+                        setDestination(value);
+                        setDestinationInputSource("manual");
+                        setDestinationSelection(null);
+                      }}
+                      onSelect={(location) => {
+                        setDestination(location.address);
+                        setDestinationInputSource("selected");
+                        setDestinationSelection(location);
+                      }}
+                      placeholder="Search Miami, Barcelona, Tokyo..."
+                      required
+                      value={destination}
+                    />
+                  ) : (
+                    <GoogleMapsProvider>
+                      <LocationAutocomplete
+                        ariaLabel="Destination"
+                        inputClassName="min-h-12 w-full rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-base font-semibold text-white outline-none placeholder:text-white/50 focus:border-white/40 focus:ring-4 focus:ring-orange-300/20"
+                        name="destination"
+                        onInputChange={(value) => {
+                          setDestination(value);
+                          setDestinationInputSource("manual");
+                          setDestinationSelection(null);
+                        }}
+                        onSelect={(location) => {
+                          setDestination(location.address);
+                          setDestinationInputSource("selected");
+                          setDestinationSelection(location);
+                        }}
+                        placeholder="Search Miami, Barcelona, Tokyo..."
+                        required
+                        value={destination}
+                      />
+                    </GoogleMapsProvider>
+                  )}
+                </div>
               </section>
               {state.status !== "idle" && message ? (
                 <p
@@ -414,8 +470,8 @@ export function TripCreateForm({
       </label>
       <div className="grid gap-2 text-sm font-black text-slate-800">
         <span>Destination</span>
-        <GoogleMapsProvider>
-          <LocationAutocomplete
+        {useAppleAutocomplete ? (
+          <AppleLocationAutocomplete
             ariaLabel="Destination"
             inputClassName="w-full min-h-12 rounded-2xl border border-slate-200 px-4 py-3 font-semibold outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
             name="destination"
@@ -431,7 +487,26 @@ export function TripCreateForm({
             required
             value={destination}
           />
-        </GoogleMapsProvider>
+        ) : (
+          <GoogleMapsProvider>
+            <LocationAutocomplete
+              ariaLabel="Destination"
+              inputClassName="w-full min-h-12 rounded-2xl border border-slate-200 px-4 py-3 font-semibold outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+              name="destination"
+              onInputChange={(value) => {
+                setDestination(value);
+                setDestinationSelection(null);
+              }}
+              onSelect={(location) => {
+                setDestination(location.address);
+                setDestinationSelection(location);
+              }}
+              placeholder="Search Miami, Barcelona, Tokyo..."
+              required
+              value={destination}
+            />
+          </GoogleMapsProvider>
+        )}
       </div>
       {destination.trim() && !destinationSelection ? (
         <p className="rounded-2xl bg-amber-50 px-4 py-3 text-xs font-semibold text-amber-800">

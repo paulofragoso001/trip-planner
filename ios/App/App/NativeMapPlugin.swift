@@ -213,6 +213,23 @@ private final class NativeMapTouchForwardingView: UIView {
     }
 }
 
+private final class NativeMapAutocompleteDelegate: NSObject, MKLocalSearchCompleterDelegate {
+    let onResults: ([MKLocalSearchCompletion]?, Error?) -> Void
+
+    init(onResults: @escaping ([MKLocalSearchCompletion]?, Error?) -> Void) {
+        self.onResults = onResults
+        super.init()
+    }
+
+    func completerDidUpdateResults(_ completer: MKLocalSearchCompleter) {
+        onResults(completer.results, nil)
+    }
+
+    func completer(_ completer: MKLocalSearchCompleter, didFailWithError error: Error) {
+        onResults(nil, error)
+    }
+}
+
 @objc(MapGatewayPlugin)
 public final class MapGatewayPlugin: CAPPlugin, CAPBridgedPlugin {
     public let identifier = "MapGatewayPlugin"
@@ -220,6 +237,8 @@ public final class MapGatewayPlugin: CAPPlugin, CAPBridgedPlugin {
     public let pluginMethods: [CAPPluginMethod] = [
         CAPPluginMethod(name: "initializeNativeMapUnderlay", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "setNativeMapInteractiveRegions", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "autocomplete", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "resolveAutocomplete", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "syncPayloadToNative", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "acknowledgeReceipt", returnType: CAPPluginReturnPromise)
     ]
@@ -234,6 +253,8 @@ public final class MapGatewayPlugin: CAPPlugin, CAPBridgedPlugin {
     private weak var nativeMapHostView: UIView?
     private weak var nativeMapTouchForwarder: NativeMapTouchForwardingView?
     private var nativeMapInteractiveRegions: [CGRect] = []
+    private var autocompleteCompleter: MKLocalSearchCompleter?
+    private var autocompleteDelegate: NativeMapAutocompleteDelegate?
 
     @objc func initializeNativeMapUnderlay(_ call: CAPPluginCall) {
         DispatchQueue.main.async { [weak self] in
@@ -321,6 +342,89 @@ public final class MapGatewayPlugin: CAPPlugin, CAPBridgedPlugin {
             self.nativeMapInteractiveRegions = payload.regions.map(\.rect)
             self.updateNativeMapTouchExclusions()
             call.resolve(["success": true])
+        }
+    }
+
+    @objc func autocomplete(_ call: CAPPluginCall) {
+        guard let query = call.getString("query")?.trimmingCharacters(in: .whitespacesAndNewlines),
+              query.count >= 2 else {
+            call.resolve(["results": []])
+            return
+        }
+
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+
+            self.autocompleteCompleter?.cancel()
+            let completer = MKLocalSearchCompleter()
+            let delegate = NativeMapAutocompleteDelegate { [weak self] results, error in
+                guard let self else { return }
+                if let error {
+                    call.reject(error.localizedDescription, "native_map_autocomplete_failed")
+                } else {
+                    let suggestions = (results ?? []).prefix(6).map { completion in
+                        [
+                            "id": "\(completion.title)|\(completion.subtitle)",
+                            "title": completion.title,
+                            "subtitle": completion.subtitle
+                        ]
+                    }
+                    call.resolve(["results": Array(suggestions)])
+                }
+
+                self.autocompleteCompleter = nil
+                self.autocompleteDelegate = nil
+            }
+
+            completer.delegate = delegate
+            if let mapView = self.nativeMapUnderlay {
+                completer.region = mapView.region
+            }
+            self.autocompleteCompleter = completer
+            self.autocompleteDelegate = delegate
+            completer.queryFragment = query
+        }
+    }
+
+    @objc func resolveAutocomplete(_ call: CAPPluginCall) {
+        guard let title = call.getString("title"),
+              let subtitle = call.getString("subtitle") else {
+            call.reject("Autocomplete selection is missing its title or subtitle.", "invalid_native_map_autocomplete_selection")
+            return
+        }
+
+        DispatchQueue.main.async {
+            let request = MKLocalSearch.Request()
+            request.naturalLanguageQuery = [title, subtitle].filter { !$0.isEmpty }.joined(separator: ", ")
+            MKLocalSearch(request: request).start { response, error in
+                if let error {
+                    call.reject(error.localizedDescription, "native_map_autocomplete_resolve_failed")
+                    return
+                }
+
+                guard let item = response?.mapItems.first else {
+                    call.reject("Apple Maps returned no destination for that suggestion.", "native_map_autocomplete_empty")
+                    return
+                }
+
+                let placemark = item.placemark
+                let coordinate = placemark.coordinate
+                let address = placemark.title ?? item.name ?? [title, subtitle].filter { !$0.isEmpty }.joined(separator: ", ")
+                call.resolve([
+                    "address": address,
+                    "formattedAddress": address,
+                    "lat": coordinate.latitude,
+                    "lng": coordinate.longitude,
+                    "name": item.name ?? title,
+                    "placeId": "",
+                    "providerMetadata": [
+                        "provider": "apple_mapkit",
+                        "source": "local_search_completer",
+                        "title": title,
+                        "subtitle": subtitle
+                    ]
+                ])
+            }
         }
     }
 

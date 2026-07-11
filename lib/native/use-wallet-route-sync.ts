@@ -22,12 +22,41 @@ interface MapGatewayPlugin {
     listener: (event: { jsonString?: unknown }) => void
   ): Promise<PluginListenerHandle>;
   acknowledgeReceipt(options: { revisionId: number }): Promise<void>;
+  autocomplete(options: { query: string }): Promise<{ results: NativeMapAutocompleteSuggestion[] }>;
   initializeNativeMapUnderlay(): Promise<{ height?: number; success: boolean; width?: number }>;
+  resolveAutocomplete(options: { subtitle: string; title: string }): Promise<NativeMapLocationSelection>;
   setNativeMapInteractiveRegions(options: { jsonString: string }): Promise<{ success: boolean }>;
   syncPayloadToNative(options: { jsonString: string }): Promise<{ success: boolean }>;
 }
 
+export type NativeMapAutocompleteSuggestion = {
+  id: string;
+  subtitle: string;
+  title: string;
+};
+
+export type NativeMapLocationSelection = {
+  address: string;
+  formattedAddress?: string | null;
+  lat: number;
+  lng: number;
+  name?: string | null;
+  placeId?: string | null;
+  providerMetadata?: Record<string, unknown>;
+};
+
 export const MapGateway = registerPlugin<MapGatewayPlugin>("MapGateway");
+
+export async function autocompleteNativeMap(query: string) {
+  if (!Capacitor.isNativePlatform()) return [];
+  const response = await MapGateway.autocomplete({ query });
+  return response.results;
+}
+
+export async function resolveNativeMapAutocomplete(title: string, subtitle: string) {
+  if (!Capacitor.isNativePlatform()) return null;
+  return MapGateway.resolveAutocomplete({ subtitle, title });
+}
 
 const NATIVE_MAP_UNDERLAY_INITIALIZATION_ATTEMPTS = 5;
 const NATIVE_MAP_UNDERLAY_INITIALIZATION_DELAY_MS = 180;
