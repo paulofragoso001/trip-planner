@@ -2554,7 +2554,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
 
     func mapView(_ mapView: MKMapView, annotationView view: MKAnnotationView, calloutAccessoryControlTapped control: UIControl) {
         guard let tripAnnotation = view.annotation as? NativeTripAnnotation else { return }
-        openRoute(tripAnnotation.trip.route)
+        focusTrip(tripAnnotation.trip)
     }
 
     @objc private func toggleMapMode() {
@@ -2624,7 +2624,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
     }
 
     @objc private func openTripsyBook() {
-        openRoute("/dashboard/trips")
+        applySheetState(.expanded, animated: true)
     }
 
     @objc private func createTrip() {
@@ -2737,12 +2737,34 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
     }
 
     @objc private func openSampleTrip() {
-        openRoute("/dashboard/plan")
+        let sampleTrip = NativeMapTrip(
+            id: "native-sample-trip",
+            name: "Barcelona Sample Trip",
+            destination: "Barcelona",
+            latitude: 41.3874,
+            longitude: 2.1686,
+            dateRange: "May 29 – May 31",
+            status: "Sample"
+        )
+        addNativeTrip(sampleTrip)
+        applySheetState(.expanded, animated: true)
     }
 
     @objc private func openLatestTrip() {
         guard let trip = trips.first else { return }
-        openRoute(trip.route)
+        focusTrip(trip)
+    }
+
+    private func focusTrip(_ trip: NativeMapTrip) {
+        guard let coordinate = trip.coordinate else {
+            applySheetState(.expanded, animated: true)
+            return
+        }
+        mapView.setCamera(
+            MKMapCamera(lookingAtCenter: coordinate, fromDistance: 120_000, pitch: 42, heading: mapView.camera.heading),
+            animated: true
+        )
+        applySheetState(.expanded, animated: true)
     }
 
     @objc private func dismissReservationCard() {
