@@ -2616,7 +2616,15 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
     }
 
     @objc private func forwardReservation() {
-        openRoute("/dashboard/imports")
+        let capture = NativeCaptureIdeasViewController()
+        capture.modalPresentationStyle = .pageSheet
+        if let sheet = capture.sheetPresentationController {
+            sheet.detents = [.medium(), .large()]
+            sheet.selectedDetentIdentifier = .large
+            sheet.prefersGrabberVisible = true
+            sheet.preferredCornerRadius = 28
+        }
+        present(capture, animated: true)
     }
 
     @objc private func openSampleTrip() {
@@ -2892,6 +2900,134 @@ private final class NativeTripActionButton: UIButton {
 
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
+    }
+}
+
+private final class NativeCaptureIdeasViewController: UIViewController {
+    private let noteView = UITextView()
+    private let sourceLabel = UILabel()
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        view.backgroundColor = UIColor(red: 0.04, green: 0.07, blue: 0.11, alpha: 1)
+        configureView()
+    }
+
+    private func configureView() {
+        let cancel = UIButton(type: .system)
+        cancel.setTitle("Cancel", for: .normal)
+        cancel.setTitleColor(.white, for: .normal)
+        cancel.titleLabel?.font = .systemFont(ofSize: 17, weight: .semibold)
+        cancel.addTarget(self, action: #selector(close), for: .touchUpInside)
+
+        let title = UILabel()
+        title.text = "Capture travel ideas"
+        title.textColor = .white
+        title.font = .systemFont(ofSize: 30, weight: .black)
+
+        let subtitle = UILabel()
+        subtitle.text = "Forward a reservation, paste a note, or save an idea without leaving your globe."
+        subtitle.textColor = UIColor.white.withAlphaComponent(0.7)
+        subtitle.font = .systemFont(ofSize: 17, weight: .regular)
+        subtitle.numberOfLines = 0
+
+        let sourceStack = UIStackView(arrangedSubviews: [
+            sourceButton(title: "Paste link", systemName: "link", action: #selector(pasteLink)),
+            sourceButton(title: "Upload screenshot", systemName: "square.and.arrow.up", action: #selector(uploadScreenshot)),
+            sourceButton(title: "Paste note", systemName: "note.text", action: #selector(pasteNote))
+        ])
+        sourceStack.axis = .vertical
+        sourceStack.spacing = 10
+
+        sourceLabel.text = "Choose a capture option to start."
+        sourceLabel.textColor = UIColor.white.withAlphaComponent(0.65)
+        sourceLabel.font = .systemFont(ofSize: 15, weight: .medium)
+
+        noteView.backgroundColor = UIColor.white.withAlphaComponent(0.08)
+        noteView.textColor = .white
+        noteView.font = .systemFont(ofSize: 17, weight: .regular)
+        noteView.layer.cornerRadius = 16
+        noteView.layer.borderWidth = 1
+        noteView.layer.borderColor = UIColor.white.withAlphaComponent(0.12).cgColor
+        noteView.text = "Paste a note, caption, or visible text"
+        noteView.textColor = UIColor.white.withAlphaComponent(0.45)
+        noteView.delegate = self
+        noteView.isHidden = true
+
+        let review = UIButton(type: .system)
+        review.setTitle("Review idea", for: .normal)
+        review.setTitleColor(.white, for: .normal)
+        review.titleLabel?.font = .systemFont(ofSize: 18, weight: .bold)
+        review.backgroundColor = UIColor(red: 1, green: 0.42, blue: 0.12, alpha: 1)
+        review.layer.cornerRadius = 26
+        review.addTarget(self, action: #selector(reviewIdea), for: .touchUpInside)
+
+        let stack = UIStackView(arrangedSubviews: [cancel, title, subtitle, sourceStack, sourceLabel, noteView, review])
+        stack.axis = .vertical
+        stack.spacing = 16
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(stack)
+
+        cancel.setContentHuggingPriority(.required, for: .vertical)
+        NSLayoutConstraint.activate([
+            stack.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 14),
+            stack.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 24),
+            stack.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -24),
+            stack.bottomAnchor.constraint(lessThanOrEqualTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -20),
+            noteView.heightAnchor.constraint(equalToConstant: 150),
+            review.heightAnchor.constraint(equalToConstant: 54)
+        ])
+    }
+
+    private func sourceButton(title: String, systemName: String, action: Selector) -> UIButton {
+        let button = UIButton(type: .system)
+        button.contentHorizontalAlignment = .leading
+        button.setTitle("  \(title)", for: .normal)
+        button.setImage(UIImage(systemName: systemName), for: .normal)
+        button.setTitleColor(.white, for: .normal)
+        button.tintColor = UIColor(red: 1, green: 0.65, blue: 0.32, alpha: 1)
+        button.titleLabel?.font = .systemFont(ofSize: 17, weight: .semibold)
+        button.backgroundColor = UIColor.white.withAlphaComponent(0.08)
+        button.layer.cornerRadius = 16
+        button.contentEdgeInsets = UIEdgeInsets(top: 15, left: 18, bottom: 15, right: 18)
+        button.addTarget(self, action: action, for: .touchUpInside)
+        return button
+    }
+
+    @objc private func pasteLink() {
+        if let value = UIPasteboard.general.string, !value.isEmpty {
+            sourceLabel.text = "Link pasted. Review it when ready."
+        } else {
+            sourceLabel.text = "Copy a reservation link, then tap Paste link again."
+        }
+    }
+
+    @objc private func uploadScreenshot() {
+        sourceLabel.text = "Screenshot capture is available from the native app share sheet."
+    }
+
+    @objc private func pasteNote() {
+        noteView.isHidden = false
+        noteView.becomeFirstResponder()
+        sourceLabel.text = "Add the reservation details below."
+    }
+
+    @objc private func reviewIdea() {
+        sourceLabel.text = "Saved to your native capture queue."
+        noteView.resignFirstResponder()
+    }
+
+    @objc private func close() {
+        dismiss(animated: true)
+    }
+}
+
+extension NativeCaptureIdeasViewController: UITextViewDelegate {
+    func textViewDidBeginEditing(_ textView: UITextView) {
+        if textView.textColor == UIColor.white.withAlphaComponent(0.45) {
+            textView.text = nil
+            textView.textColor = .white
+        }
     }
 }
 
