@@ -2301,7 +2301,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         NSLayoutConstraint.activate([
             card.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 34),
             card.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -34),
-            card.topAnchor.constraint(greaterThanOrEqualTo: view.safeAreaLayoutGuide.topAnchor, constant: 88),
+            card.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 88),
             card.bottomAnchor.constraint(lessThanOrEqualTo: sheetView.topAnchor, constant: -24),
 
             iconView.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 24),
@@ -2728,7 +2728,20 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
     }
 
     @objc private func openSettings() {
-        openRoute("/dashboard/account")
+        let settings = UIAlertController(
+            title: "Settings",
+            message: "Native settings stay with your globe and wallet session.",
+            preferredStyle: .actionSheet
+        )
+        settings.addAction(UIAlertAction(title: "Refresh trips", style: .default) { [weak self] _ in
+            self?.refreshTripsFromServer()
+        })
+        settings.addAction(UIAlertAction(title: "Close", style: .cancel))
+        if let popover = settings.popoverPresentationController {
+            popover.sourceView = settingsButton
+            popover.sourceRect = settingsButton.bounds
+        }
+        present(settings, animated: true)
     }
 
     @objc private func openSearch() {
