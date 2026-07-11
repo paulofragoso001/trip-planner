@@ -6,7 +6,9 @@ final class MainViewController: CAPBridgeViewController {
 
     override func capacitorDidLoad() {
         super.capacitorDidLoad()
-        bridge?.webView?.customUserAgent = "AlmidyNativeApp/1.0"
+        // Preserve the mobile signal used by the server route guard while
+        // adding a stable marker for native-only wallet presentation.
+        bridge?.webView?.customUserAgent = "AlmidyNativeApp/1.0 Mobile iPhone"
         installLocationOverlayBlocker()
         let mapGatewayPlugin = MapGatewayPlugin()
         let nativeMapPlugin = NativeMapPlugin()
