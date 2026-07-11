@@ -1123,6 +1123,10 @@ public class AppleCalendarPlugin: CAPPlugin, CAPBridgedPlugin {
             return "denied"
         case .authorized:
             return "authorized"
+        case .fullAccess:
+            return "authorized"
+        case .writeOnly:
+            return "writeOnly"
         @unknown default:
             return "unknown"
         }
@@ -2291,6 +2295,9 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         create.translatesAutoresizingMaskIntoConstraints = false
         card.addSubview(create)
 
+        view.addSubview(card)
+        view.bringSubviewToFront(card)
+
         NSLayoutConstraint.activate([
             card.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 34),
             card.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -34),
@@ -2316,9 +2323,6 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
             create.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -24),
             create.heightAnchor.constraint(equalToConstant: 30)
         ])
-
-        view.addSubview(card)
-        view.bringSubviewToFront(card)
         firstTripCard = card
     }
 
