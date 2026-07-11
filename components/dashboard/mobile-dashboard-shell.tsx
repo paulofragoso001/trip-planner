@@ -10,7 +10,11 @@ export function MobileDashboardShell({ children }: { children: ReactNode }) {
   const view = searchParams.get("view");
   const tripWorkspaceContent = /^\/dashboard\/trips\/[^/]+/.test(pathname);
   const fullBleedContent =
-    tripWorkspaceContent || pathname.includes("/map") || pathname.startsWith("/dashboard/layout-simulator");
+    tripWorkspaceContent ||
+    pathname.includes("/map") ||
+    pathname === "/dashboard/imports" ||
+    pathname === "/dashboard/plan" ||
+    pathname.startsWith("/dashboard/layout-simulator");
   const isDashboardLaunch = pathname === "/dashboard" && (!view || view === "trips");
 
   return (

@@ -6,6 +6,7 @@ final class MainViewController: CAPBridgeViewController {
 
     override func capacitorDidLoad() {
         super.capacitorDidLoad()
+        bridge?.webView?.customUserAgent = "AlmidyNativeApp/1.0"
         installLocationOverlayBlocker()
         let mapGatewayPlugin = MapGatewayPlugin()
         let nativeMapPlugin = NativeMapPlugin()

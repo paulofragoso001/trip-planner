@@ -25,6 +25,7 @@ type WalletPageShellProps = {
   title: string;
   titleClassName?: string;
   variant?: "public" | "app" | "trip";
+  walletMounted?: boolean;
 };
 
 export function WalletPageShell({
@@ -39,7 +40,8 @@ export function WalletPageShell({
   subtitle,
   title,
   titleClassName,
-  variant = "app"
+  variant = "app",
+  walletMounted = false
 }: WalletPageShellProps) {
   const imageUrl = heroImage?.src || heroImage?.imageUrl || null;
   const attribution = heroImage?.attribution || heroImage?.imageAttribution || heroImage?.imageSourceLabel || null;
@@ -48,8 +50,9 @@ export function WalletPageShell({
   return (
     <div
       className={cn(
-        "relative isolate -mx-3 -mt-4 overflow-hidden sm:-mx-6 sm:-mt-6 lg:-mx-8 lg:-my-6",
-        variant === "public" ? "bg-white" : "bg-slate-950"
+        "relative isolate overflow-hidden",
+        walletMounted ? "w-full bg-transparent" : "-mx-3 -mt-4 sm:-mx-6 sm:-mt-6 lg:-mx-8 lg:-my-6",
+        !walletMounted && (variant === "public" ? "bg-white" : "bg-slate-950")
       )}
       data-testid="wallet-page-shell"
     >
@@ -74,7 +77,10 @@ export function WalletPageShell({
         />
       </div>
 
-      <div className="relative z-10 mx-auto grid w-full max-w-[1180px] gap-3 px-3 py-3 pb-3 sm:px-6 sm:py-6 lg:px-8 lg:py-8 lg:pb-8">
+      <div className={cn(
+        "relative z-10 mx-auto grid w-full max-w-[1180px] gap-3 px-3 py-3 pb-3 sm:px-6 sm:py-6 lg:px-8 lg:py-8 lg:pb-8",
+        walletMounted && "max-w-none px-3 pb-[calc(1.5rem+env(safe-area-inset-bottom))] pt-3"
+      )}>
         <section
           className={cn(
             "relative isolate overflow-hidden rounded-[2.35rem] bg-slate-950 text-white shadow-[0_26px_80px_rgba(2,6,23,0.28)] ring-1 ring-white/20",

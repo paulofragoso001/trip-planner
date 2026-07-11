@@ -14,6 +14,7 @@ import type { AlmidySampleKey } from "@/lib/wayline-onboarding";
 import { waylineCopy } from "@/lib/copy/wayline-copy";
 
 type ImportsPageProps = ImportsData & {
+  walletMounted?: boolean;
   sampleInspiration?: {
     key: AlmidySampleKey;
     text: string;
@@ -30,7 +31,8 @@ export default function ImportsPage({
   sources,
   tripDrafts,
   trips,
-  unfiledItems
+  unfiledItems,
+  walletMounted = false
 }: ImportsPageProps) {
   const defaultReviewTitle = reviewQueuePrefix
     ? `${reviewQueuePrefix} United confirmation email`
@@ -48,6 +50,7 @@ export default function ImportsPage({
       subtitleClassName="mt-2 text-[0.9rem] leading-5 text-white/82 sm:mt-4 sm:text-base"
       title="Capture travel ideas"
       titleClassName="text-[2.35rem] sm:text-6xl"
+      walletMounted={walletMounted}
     >
       <div
         className="grid gap-4 pb-[calc(7rem+env(safe-area-inset-bottom))] lg:gap-5 lg:pb-0"
