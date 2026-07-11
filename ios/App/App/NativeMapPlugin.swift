@@ -231,7 +231,7 @@ final class NativeTripStore {
         request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
         request.setValue(baseURL.absoluteString, forHTTPHeaderField: "Origin")
         request.setValue(baseURL.absoluteString + "/dashboard/imports", forHTTPHeaderField: "Referer")
-        sendWithWebViewCookies(request) { result in
+        sendWithWebViewCookies(request, completion: { result in
             completion(result.flatMap { data in
                 do {
                     let response = try JSONDecoder().decode(NativeImportResponse.self, from: data)
@@ -243,7 +243,7 @@ final class NativeTripStore {
                     return .failure(error)
                 }
             })
-        }
+        })
     }
 
     private func send(
