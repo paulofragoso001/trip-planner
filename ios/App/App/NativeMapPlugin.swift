@@ -2254,33 +2254,34 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
 
         let card = UIView()
         card.backgroundColor = .white
-        card.layer.cornerRadius = 30
+        card.layer.cornerRadius = 24
         card.layer.shadowColor = UIColor.black.cgColor
         card.layer.shadowOpacity = 0.18
         card.layer.shadowRadius = 24
         card.layer.shadowOffset = CGSize(width: 0, height: 12)
         card.translatesAutoresizingMaskIntoConstraints = false
 
-        let iconView = UIImageView(image: UIImage(systemName: "mappin.circle.fill"))
-        iconView.tintColor = UIColor(red: 0.54, green: 0.62, blue: 0.72, alpha: 1.0)
-        iconView.contentMode = .scaleAspectFit
+        let iconView = UILabel()
+        iconView.text = regionFlagEmoji()
+        iconView.font = .systemFont(ofSize: 38)
+        iconView.textAlignment = .center
         iconView.backgroundColor = UIColor(red: 0.94, green: 0.96, blue: 0.98, alpha: 1.0)
-        iconView.layer.cornerRadius = 54
+        iconView.layer.cornerRadius = 28
+        iconView.clipsToBounds = true
         iconView.translatesAutoresizingMaskIntoConstraints = false
         card.addSubview(iconView)
 
         let title = UILabel()
         title.text = "Create your first trip"
-        title.font = .systemFont(ofSize: 27, weight: .bold)
+        title.font = .systemFont(ofSize: 20, weight: .bold)
         title.textColor = UIColor(white: 0.04, alpha: 1.0)
-        title.adjustsFontSizeToFitWidth = true
-        title.minimumScaleFactor = 0.78
+        title.numberOfLines = 2
         title.translatesAutoresizingMaskIntoConstraints = false
         card.addSubview(title)
 
         let body = UILabel()
         body.text = "After creating a trip, a country flag will appear on the map to mark its location."
-        body.font = .systemFont(ofSize: 17, weight: .regular)
+        body.font = .systemFont(ofSize: 15, weight: .regular)
         body.textColor = UIColor(red: 0.52, green: 0.60, blue: 0.70, alpha: 1.0)
         body.numberOfLines = 0
         body.translatesAutoresizingMaskIntoConstraints = false
@@ -2289,7 +2290,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         let create = UIButton(type: .system)
         create.setTitle("Create Trip", for: .normal)
         create.setTitleColor(UIColor(red: 1.0, green: 0.38, blue: 0.08, alpha: 1.0), for: .normal)
-        create.titleLabel?.font = .systemFont(ofSize: 20, weight: .semibold)
+        create.titleLabel?.font = .systemFont(ofSize: 18, weight: .semibold)
         create.contentHorizontalAlignment = .left
         create.addTarget(self, action: #selector(createTrip), for: .touchUpInside)
         create.translatesAutoresizingMaskIntoConstraints = false
@@ -2299,31 +2300,41 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         view.bringSubviewToFront(card)
 
         NSLayoutConstraint.activate([
-            card.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 34),
-            card.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -34),
-            card.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 88),
+            card.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+            card.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            card.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 28),
+            card.heightAnchor.constraint(equalToConstant: 150),
             card.bottomAnchor.constraint(lessThanOrEqualTo: sheetView.topAnchor, constant: -24),
 
-            iconView.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 24),
-            iconView.topAnchor.constraint(equalTo: card.topAnchor, constant: 24),
-            iconView.widthAnchor.constraint(equalToConstant: 108),
-            iconView.heightAnchor.constraint(equalToConstant: 108),
+            iconView.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 18),
+            iconView.topAnchor.constraint(equalTo: card.topAnchor, constant: 18),
+            iconView.widthAnchor.constraint(equalToConstant: 56),
+            iconView.heightAnchor.constraint(equalToConstant: 56),
 
-            title.leadingAnchor.constraint(equalTo: iconView.trailingAnchor, constant: 22),
-            title.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -24),
-            title.topAnchor.constraint(equalTo: card.topAnchor, constant: 30),
+            title.leadingAnchor.constraint(equalTo: iconView.trailingAnchor, constant: 14),
+            title.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -18),
+            title.topAnchor.constraint(equalTo: card.topAnchor, constant: 20),
 
             body.leadingAnchor.constraint(equalTo: title.leadingAnchor),
             body.trailingAnchor.constraint(equalTo: title.trailingAnchor),
-            body.topAnchor.constraint(equalTo: title.bottomAnchor, constant: 12),
+            body.topAnchor.constraint(equalTo: title.bottomAnchor, constant: 6),
 
             create.leadingAnchor.constraint(equalTo: title.leadingAnchor),
             create.trailingAnchor.constraint(equalTo: title.trailingAnchor),
-            create.topAnchor.constraint(equalTo: body.bottomAnchor, constant: 16),
-            create.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -24),
-            create.heightAnchor.constraint(equalToConstant: 30)
+            create.topAnchor.constraint(equalTo: body.bottomAnchor, constant: 6),
+            create.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -12),
+            create.heightAnchor.constraint(equalToConstant: 26)
         ])
         firstTripCard = card
+    }
+
+    private func regionFlagEmoji() -> String {
+        let regionCode = Locale.current.regionCode?.uppercased() ?? "US"
+        guard regionCode.count == 2 else { return "🇺🇸" }
+        return regionCode.unicodeScalars.reduce(into: "") { result, scalar in
+            guard let regionalIndicator = UnicodeScalar(127397 + scalar.value) else { return }
+            result.unicodeScalars.append(regionalIndicator)
+        }
     }
 
     private func tripCard(for trip: NativeMapTrip) -> UIView {
