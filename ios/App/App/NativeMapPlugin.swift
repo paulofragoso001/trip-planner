@@ -5,8 +5,10 @@ import EventKit
 import Foundation
 import MapKit
 import Network
+import PhotosUI
 import UIKit
 import WebKit
+import UniformTypeIdentifiers
 
 @objc(NativeMapPlugin)
 public class NativeMapPlugin: CAPPlugin, CAPBridgedPlugin {
@@ -91,6 +93,11 @@ enum NativeTripStoreError: LocalizedError {
             return message
         }
     }
+}
+
+struct NativeImportResult {
+    let extractedPlaceCount: Int
+    let status: String
 }
 
 final class NativeTripStore {
@@ -193,6 +200,52 @@ final class NativeTripStore {
         }
     }
 
+    func submitSocialImport(
+        sourceURL: String?,
+        rawText: String?,
+        imageData: Data?,
+        completion: @escaping (Result<NativeImportResult, Error>) -> Void
+    ) {
+        let boundary = "Boundary-\(UUID().uuidString)"
+        var body = Data()
+        appendMultipartField(&body, boundary: boundary, name: "processNow", value: "true")
+        appendMultipartField(&body, boundary: boundary, name: "sourcePlatform", value: imageData == nil ? "manual" : "screenshot")
+        if let sourceURL, !sourceURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            appendMultipartField(&body, boundary: boundary, name: "sourceUrl", value: sourceURL)
+        }
+        if let rawText, !rawText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            appendMultipartField(&body, boundary: boundary, name: "rawText", value: rawText)
+        }
+        if let imageData {
+            appendMultipartFile(&body, boundary: boundary, name: "file", filename: "capture.jpg", mimeType: "image/jpeg", data: imageData)
+        }
+        body.append(Data("--\(boundary)--\r\n".utf8))
+
+        guard let url = URL(string: "/api/social-imports", relativeTo: baseURL) else {
+            completion(.failure(NativeTripStoreError.invalidResponse))
+            return
+        }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.httpBody = body
+        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+        request.setValue(baseURL.absoluteString, forHTTPHeaderField: "Origin")
+        request.setValue(baseURL.absoluteString + "/dashboard/imports", forHTTPHeaderField: "Referer")
+        sendWithWebViewCookies(request) { result in
+            completion(result.flatMap { data in
+                do {
+                    let response = try JSONDecoder().decode(NativeImportResponse.self, from: data)
+                    return .success(NativeImportResult(
+                        extractedPlaceCount: response.data.extractedPlaces.count,
+                        status: response.data.socialImport.status
+                    ))
+                } catch {
+                    return .failure(error)
+                }
+            })
+        }
+    }
+
     private func send(
         path: String,
         method: String,
@@ -243,19 +296,56 @@ final class NativeTripStore {
             }.resume()
         }
 
-        guard let cookieStore = webView?.configuration.websiteDataStore.httpCookieStore else {
-            sendRequest(request)
-            return
+        sendWithWebViewCookies(request, sendRequest: sendRequest)
+    }
+
+    private func sendWithWebViewCookies(
+        _ request: URLRequest,
+        sendRequest: ((URLRequest) -> Void)? = nil,
+        completion: ((Result<Data, Error>) -> Void)? = nil
+    ) {
+        let perform: (URLRequest) -> Void = sendRequest ?? { [session] request in
+            session.dataTask(with: request) { data, response, error in
+                if let error {
+                    DispatchQueue.main.async { completion?(.failure(error)) }
+                    return
+                }
+                guard let httpResponse = response as? HTTPURLResponse else {
+                    DispatchQueue.main.async { completion?(.failure(NativeTripStoreError.invalidResponse)) }
+                    return
+                }
+                guard (200...299).contains(httpResponse.statusCode), let data else {
+                    let error: Error = httpResponse.statusCode == 401
+                        ? NativeTripStoreError.unauthorized
+                        : NativeTripStoreError.requestFailed("Import request failed (\(httpResponse.statusCode)).")
+                    DispatchQueue.main.async { completion?(.failure(error)) }
+                    return
+                }
+                DispatchQueue.main.async { completion?(.success(data)) }
+            }.resume()
         }
 
+        guard let cookieStore = webView?.configuration.websiteDataStore.httpCookieStore else {
+            perform(request)
+            return
+        }
         cookieStore.getAllCookies { cookies in
             var request = request
-            let cookieFields = HTTPCookie.requestHeaderFields(with: cookies)
-            if let cookieHeader = cookieFields["Cookie"] {
+            if let cookieHeader = HTTPCookie.requestHeaderFields(with: cookies)["Cookie"] {
                 request.setValue(cookieHeader, forHTTPHeaderField: "Cookie")
             }
-            sendRequest(request)
+            perform(request)
         }
+    }
+
+    private func appendMultipartField(_ body: inout Data, boundary: String, name: String, value: String) {
+        body.append(Data("--\(boundary)\r\nContent-Disposition: form-data; name=\"\(name)\"\r\n\r\n\(value)\r\n".utf8))
+    }
+
+    private func appendMultipartFile(_ body: inout Data, boundary: String, name: String, filename: String, mimeType: String, data: Data) {
+        body.append(Data("--\(boundary)\r\nContent-Disposition: form-data; name=\"\(name)\"; filename=\"\(filename)\"\r\nContent-Type: \(mimeType)\r\n\r\n".utf8))
+        body.append(data)
+        body.append(Data("\r\n".utf8))
     }
 }
 
@@ -265,6 +355,23 @@ private struct NativeTripListResponse: Decodable {
 
 private struct NativeTripResponse: Decodable {
     let trip: NativeMapTrip
+}
+
+private struct NativeImportResponse: Decodable {
+    let data: NativeImportData
+}
+
+private struct NativeImportData: Decodable {
+    let extractedPlaces: [NativeImportedPlace]
+    let socialImport: NativeImportedPost
+}
+
+private struct NativeImportedPlace: Decodable {
+    let id: String?
+}
+
+private struct NativeImportedPost: Decodable {
+    let status: String
 }
 
 enum NativeMapRouteStatus: String, Codable {
@@ -2616,7 +2723,9 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
     }
 
     @objc private func forwardReservation() {
-        let capture = NativeCaptureIdeasViewController()
+        let capture = NativeCaptureIdeasViewController(tripStore: tripStore) { [weak self] in
+            self?.refreshTripsFromServer()
+        }
         capture.modalPresentationStyle = .pageSheet
         if let sheet = capture.sheetPresentationController {
             sheet.detents = [.medium(), .large()]
@@ -2903,9 +3012,23 @@ private final class NativeTripActionButton: UIButton {
     }
 }
 
-private final class NativeCaptureIdeasViewController: UIViewController {
+private final class NativeCaptureIdeasViewController: UIViewController, PHPickerViewControllerDelegate {
+    private let tripStore: NativeTripStore?
+    private let onImportFinished: () -> Void
     private let noteView = UITextView()
+    private let linkField = UITextField()
     private let sourceLabel = UILabel()
+    private var imageData: Data?
+
+    init(tripStore: NativeTripStore?, onImportFinished: @escaping () -> Void) {
+        self.tripStore = tripStore
+        self.onImportFinished = onImportFinished
+        super.init(nibName: nil, bundle: nil)
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -2954,6 +3077,12 @@ private final class NativeCaptureIdeasViewController: UIViewController {
         noteView.delegate = self
         noteView.isHidden = true
 
+        linkField.placeholder = "Paste a travel link"
+        linkField.textColor = .white
+        linkField.font = .systemFont(ofSize: 17, weight: .regular)
+        linkField.borderStyle = .roundedRect
+        linkField.isHidden = true
+
         let review = UIButton(type: .system)
         review.setTitle("Review idea", for: .normal)
         review.setTitleColor(.white, for: .normal)
@@ -2962,7 +3091,7 @@ private final class NativeCaptureIdeasViewController: UIViewController {
         review.layer.cornerRadius = 26
         review.addTarget(self, action: #selector(reviewIdea), for: .touchUpInside)
 
-        let stack = UIStackView(arrangedSubviews: [cancel, title, subtitle, sourceStack, sourceLabel, noteView, review])
+        let stack = UIStackView(arrangedSubviews: [cancel, title, subtitle, sourceStack, sourceLabel, linkField, noteView, review])
         stack.axis = .vertical
         stack.spacing = 16
         stack.translatesAutoresizingMaskIntoConstraints = false
@@ -2996,6 +3125,9 @@ private final class NativeCaptureIdeasViewController: UIViewController {
 
     @objc private func pasteLink() {
         if let value = UIPasteboard.general.string, !value.isEmpty {
+            linkField.text = value
+            linkField.isHidden = false
+            linkField.becomeFirstResponder()
             sourceLabel.text = "Link pasted. Review it when ready."
         } else {
             sourceLabel.text = "Copy a reservation link, then tap Paste link again."
@@ -3003,7 +3135,10 @@ private final class NativeCaptureIdeasViewController: UIViewController {
     }
 
     @objc private func uploadScreenshot() {
-        sourceLabel.text = "Screenshot capture is available from the native app share sheet."
+        var configuration = PHPickerConfiguration(photoLibrary: .shared())
+        configuration.filter = .images
+        configuration.selectionLimit = 1
+        present(PHPickerViewController(configuration: configuration), animated: true)
     }
 
     @objc private func pasteNote() {
@@ -3013,8 +3148,32 @@ private final class NativeCaptureIdeasViewController: UIViewController {
     }
 
     @objc private func reviewIdea() {
-        sourceLabel.text = "Saved to your native capture queue."
         noteView.resignFirstResponder()
+        linkField.resignFirstResponder()
+        let rawText = noteView.textColor == .white ? noteView.text : nil
+        let sourceURL = linkField.text
+        guard imageData != nil || !(rawText?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true) || !(sourceURL?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true) else {
+            sourceLabel.text = "Paste a link, note, or screenshot first."
+            return
+        }
+        guard let tripStore else {
+            sourceLabel.text = "Import service is unavailable."
+            return
+        }
+        sourceLabel.text = "Reviewing idea…"
+        tripStore.submitSocialImport(sourceURL: sourceURL, rawText: rawText, imageData: imageData) { [weak self] result in
+            guard let self else { return }
+            switch result {
+            case .success(let importResult):
+                self.sourceLabel.text = importResult.extractedPlaceCount > 0
+                    ? "Review ready: \(importResult.extractedPlaceCount) place(s) found."
+                    : "Import \(importResult.status). Add more detail if no places appeared."
+                self.imageData = nil
+                self.onImportFinished()
+            case .failure(let error):
+                self.sourceLabel.text = error.localizedDescription
+            }
+        }
     }
 
     @objc private func close() {
@@ -3027,6 +3186,24 @@ extension NativeCaptureIdeasViewController: UITextViewDelegate {
         if textView.textColor == UIColor.white.withAlphaComponent(0.45) {
             textView.text = nil
             textView.textColor = .white
+        }
+    }
+}
+
+extension NativeCaptureIdeasViewController {
+    func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult]) {
+        dismiss(animated: true)
+        guard let provider = results.first?.itemProvider,
+              provider.canLoadObject(ofClass: UIImage.self) else {
+            sourceLabel.text = "Choose an image to upload."
+            return
+        }
+        provider.loadDataRepresentation(forTypeIdentifier: UTType.image.identifier) { [weak self] data, _ in
+            DispatchQueue.main.async {
+                guard let self else { return }
+                self.imageData = data
+                self.sourceLabel.text = data == nil ? "Could not read that screenshot." : "Screenshot ready to review."
+            }
         }
     }
 }
