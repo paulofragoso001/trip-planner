@@ -71,6 +71,13 @@ export function MobileHomeWallet({
     };
   }, []);
 
+  useEffect(() => {
+    if (window.location.hash !== "#new-trip") return;
+
+    setWalletLayer("createTrip");
+    setIsCreatingFirstTrip(true);
+  }, []);
+
   function pushWalletLayer(nextLayer: Exclude<WalletLayer, "myTrips">) {
     if (typeof window !== "undefined") {
       const currentState =

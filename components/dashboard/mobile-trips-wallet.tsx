@@ -2,7 +2,7 @@
 
 import { BarChart3, CalendarDays, ChevronDown, List, LocateFixed, MapPinned, Plus, Search, Settings, Sparkles } from "lucide-react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { MutableRefObject, ReactNode, RefObject } from "react";
 import { TripCreateForm } from "@/components/dashboard/trip-create-form";
@@ -17,6 +17,7 @@ import { cn } from "@/components/trip-ui";
 import type { TripsData } from "@/app/dashboard/trips/loader";
 import { dashboardActionRoutes } from "@/lib/dashboard/action-routes";
 import { mobileGlobeWalletEnabled, unifiedMapSurfaceEnabled } from "@/lib/map/feature-flags";
+import { isNativeCapacitorRuntime } from "@/lib/native/capacitor-runtime";
 import { useOptionalUnifiedMap } from "@/lib/map/unified-map-provider";
 import type { MobileWalletViewModel } from "@/lib/mobile-globe-wallet/view-model";
 import {
@@ -45,11 +46,13 @@ export function MobileTripsWallet({
   mobileWallet,
   trips
 }: MobileTripsWalletProps) {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const [query, setQuery] = useState("");
   const [createOpen, setCreateOpen] = useState(trips.length === 0);
   const [hydrated, setHydrated] = useState(false);
   const [selectedYear, setSelectedYear] = useState<string | null>(null);
+  const [nativeCreateHandoff, setNativeCreateHandoff] = useState(false);
   const createRef = useRef<HTMLDivElement | null>(null);
   const isListView = searchParams.get("view") === "list";
   const focusedCreateOnly = isListView && createOpen && trips.length === 0;
@@ -84,6 +87,15 @@ export function MobileTripsWallet({
   }, []);
 
   useEffect(() => {
+    if (!isNativeCapacitorRuntime() || !isListView || window.location.hash !== "#new-trip") {
+      return;
+    }
+
+    setNativeCreateHandoff(true);
+    router.replace("/dashboard#new-trip", { scroll: false });
+  }, [isListView, router]);
+
+  useEffect(() => {
     if (!hydrated || !isListView) {
       return;
     }
@@ -113,6 +125,10 @@ export function MobileTripsWallet({
     window.requestAnimationFrame(() => {
       createRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
+  }
+
+  if (nativeCreateHandoff) {
+    return null;
   }
 
   if (mobileGlobeWalletEnabled && unifiedMapSurfaceEnabled && !isListView) {
