@@ -2661,7 +2661,10 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
     @objc private func openTripAction(_ sender: UIButton) {
         guard let id = sender.accessibilityIdentifier,
               let trip = trips.first(where: { $0.id == id }) else { return }
-        openRoute(trip.route)
+        // Keep trip navigation inside the native globe and wallet. The WebView
+        // route can still be opened by dedicated web navigation, but a native
+        // wallet card must not dismiss this shell into the legacy trip form.
+        focusTrip(trip)
     }
 
     @objc private func editTripAction(_ sender: NativeTripActionButton) {
