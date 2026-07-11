@@ -1531,6 +1531,8 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
     private var pendingCameraTelemetry: MKMapCamera?
     private var preservedCamera: MKMapCamera?
     private var isRequestingLocationAuthorization = false
+    private var hasRequestedInitialLocation = false
+    private var hasCenteredInitialLocation = false
     private var reservationCardVisible = !UserDefaults.standard.bool(forKey: "almidy.native.reservationCardDismissed")
 
     init(
@@ -1568,6 +1570,10 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
         playIntroCameraIfNeeded()
+        if !hasRequestedInitialLocation {
+            hasRequestedInitialLocation = true
+            requestCurrentLocation()
+        }
         refreshTripsFromServer()
     }
 
@@ -2613,8 +2619,20 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         guard let coordinate = locations.last?.coordinate else { return }
         mapView.showsUserLocation = true
-        mapView.setUserTrackingMode(.followWithHeading, animated: true)
-        mapView.setCamera(MKMapCamera(lookingAtCenter: coordinate, fromDistance: 18_000, pitch: 58, heading: mapView.camera.heading), animated: true)
+        if !hasCenteredInitialLocation {
+            hasCenteredInitialLocation = true
+            mapView.setUserTrackingMode(.none, animated: false)
+            mapView.setCamera(
+                MKMapCamera(lookingAtCenter: coordinate, fromDistance: 3_600_000, pitch: 0, heading: 0),
+                animated: true
+            )
+        } else {
+            mapView.setUserTrackingMode(.followWithHeading, animated: true)
+            mapView.setCamera(
+                MKMapCamera(lookingAtCenter: coordinate, fromDistance: 18_000, pitch: 58, heading: mapView.camera.heading),
+                animated: true
+            )
+        }
     }
 
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {}
