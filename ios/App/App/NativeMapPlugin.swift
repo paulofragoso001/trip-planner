@@ -21,7 +21,8 @@ public class NativeMapPlugin: CAPPlugin, CAPBridgedPlugin {
     @objc func open(_ call: CAPPluginCall) {
         DispatchQueue.main.async {
             let options = (try? call.decode(NativeMapOptions.self)) ?? NativeMapOptions(trips: [])
-            let mapViewController = NativeMapViewController(trips: options.trips) { [weak self] route in
+            let tripStore = NativeTripStore(webView: self.bridge?.webView)
+            let mapViewController = NativeMapViewController(trips: options.trips, tripStore: tripStore) { [weak self] route in
                 self?.openWebRoute(route)
             }
             self.mapGatewayPlugin?.attach(mapViewController)
@@ -57,6 +58,213 @@ private struct NativeMapOptions: Decodable {
     init(trips: [NativeMapTrip]) {
         self.trips = trips
     }
+}
+
+struct NativeTripDraft {
+    let name: String
+    let destination: String
+    let coordinate: CLLocationCoordinate2D
+
+    func asNativeTrip() -> NativeMapTrip {
+        NativeMapTrip(
+            id: "native-\(UUID().uuidString)",
+            name: name,
+            destination: destination,
+            latitude: coordinate.latitude,
+            longitude: coordinate.longitude
+        )
+    }
+}
+
+enum NativeTripStoreError: LocalizedError {
+    case invalidResponse
+    case unauthorized
+    case requestFailed(String)
+
+    var errorDescription: String? {
+        switch self {
+        case .invalidResponse:
+            return "Almidy returned an invalid trip response."
+        case .unauthorized:
+            return "Your Almidy session has expired."
+        case .requestFailed(let message):
+            return message
+        }
+    }
+}
+
+final class NativeTripStore {
+    private let webView: WKWebView?
+    private let baseURL: URL
+    private let session: URLSession
+
+    init(
+        webView: WKWebView?,
+        baseURL: URL = URL(string: "https://almidy.app")!,
+        session: URLSession = .shared
+    ) {
+        self.webView = webView
+        self.baseURL = baseURL
+        self.session = session
+    }
+
+    func loadTrips(completion: @escaping (Result<[NativeMapTrip], Error>) -> Void) {
+        send(path: "/api/trips", method: "GET", body: nil) { result in
+            completion(result.flatMap { data in
+                do {
+                    let response = try JSONDecoder().decode(NativeTripListResponse.self, from: data)
+                    return .success(response.trips)
+                } catch {
+                    return .failure(error)
+                }
+            })
+        }
+    }
+
+    func createTrip(_ draft: NativeTripDraft, completion: @escaping (Result<NativeMapTrip, Error>) -> Void) {
+        let payload: [String: Any] = [
+            "name": draft.name,
+            "destination": draft.destination,
+            "destination_status": "resolved",
+            "destination_lat": draft.coordinate.latitude,
+            "destination_lng": draft.coordinate.longitude,
+            "destination_formatted_address": draft.destination,
+            "start_date": NSNull(),
+            "end_date": NSNull(),
+            "status": "Planning",
+            "travel_style": "balanced",
+            "budget": 0,
+            "notes": NSNull()
+        ]
+
+        guard JSONSerialization.isValidJSONObject(payload),
+              let data = try? JSONSerialization.data(withJSONObject: payload) else {
+            completion(.failure(NativeTripStoreError.requestFailed("Could not prepare the trip request.")))
+            return
+        }
+
+        send(path: "/api/trips", method: "POST", body: data) { result in
+            completion(result.flatMap { data in
+                do {
+                    let response = try JSONDecoder().decode(NativeTripResponse.self, from: data)
+                    return .success(response.trip)
+                } catch {
+                    return .failure(error)
+                }
+            })
+        }
+    }
+
+    func updateTrip(
+        id: String,
+        draft: NativeTripDraft,
+        completion: @escaping (Result<NativeMapTrip, Error>) -> Void
+    ) {
+        let payload: [String: Any] = [
+            "name": draft.name,
+            "destination": draft.destination,
+            "destination_status": "resolved",
+            "destination_lat": draft.coordinate.latitude,
+            "destination_lng": draft.coordinate.longitude,
+            "destination_formatted_address": draft.destination,
+            "status": "Planning",
+            "travel_style": "balanced",
+            "budget": 0
+        ]
+        guard let data = try? JSONSerialization.data(withJSONObject: payload) else {
+            completion(.failure(NativeTripStoreError.requestFailed("Could not prepare the trip request.")))
+            return
+        }
+
+        send(path: "/api/trips/\(id)", method: "PATCH", body: data) { result in
+            completion(result.flatMap { data in
+                do {
+                    return .success(try JSONDecoder().decode(NativeTripResponse.self, from: data).trip)
+                } catch {
+                    return .failure(error)
+                }
+            })
+        }
+    }
+
+    func deleteTrip(id: String, completion: @escaping (Result<Void, Error>) -> Void) {
+        send(path: "/api/trips/\(id)", method: "DELETE", body: nil) { result in
+            completion(result.map { _ in () })
+        }
+    }
+
+    private func send(
+        path: String,
+        method: String,
+        body: Data?,
+        completion: @escaping (Result<Data, Error>) -> Void
+    ) {
+        guard let url = URL(string: path, relativeTo: baseURL) else {
+            completion(.failure(NativeTripStoreError.invalidResponse))
+            return
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = method
+        request.httpBody = body
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        if body != nil {
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.setValue(baseURL.absoluteString, forHTTPHeaderField: "Origin")
+            request.setValue(baseURL.absoluteString + "/dashboard/trips", forHTTPHeaderField: "Referer")
+        }
+
+        let finish: (Result<Data, Error>) -> Void = { result in
+            DispatchQueue.main.async {
+                completion(result)
+            }
+        }
+
+        let sendRequest: (URLRequest) -> Void = { [session] request in
+            session.dataTask(with: request) { data, response, error in
+                if let error {
+                    finish(.failure(error))
+                    return
+                }
+                guard let httpResponse = response as? HTTPURLResponse else {
+                    finish(.failure(NativeTripStoreError.invalidResponse))
+                    return
+                }
+                guard (200...299).contains(httpResponse.statusCode), let data else {
+                    if httpResponse.statusCode == 401 {
+                        finish(.failure(NativeTripStoreError.unauthorized))
+                    } else {
+                        let message = data.flatMap { String(data: $0, encoding: .utf8) } ?? "Trip request failed."
+                        finish(.failure(NativeTripStoreError.requestFailed(message)))
+                    }
+                    return
+                }
+                finish(.success(data))
+            }.resume()
+        }
+
+        guard let cookieStore = webView?.configuration.websiteDataStore.httpCookieStore else {
+            sendRequest(request)
+            return
+        }
+
+        cookieStore.getAllCookies { cookies in
+            var request = request
+            let cookieFields = HTTPCookie.requestHeaderFields(with: cookies)
+            if let cookieHeader = cookieFields["Cookie"] {
+                request.setValue(cookieHeader, forHTTPHeaderField: "Cookie")
+            }
+            sendRequest(request)
+        }
+    }
+}
+
+private struct NativeTripListResponse: Decodable {
+    let trips: [NativeMapTrip]
+}
+
+private struct NativeTripResponse: Decodable {
+    let trip: NativeMapTrip
 }
 
 enum NativeMapRouteStatus: String, Codable {
@@ -1088,6 +1296,61 @@ struct NativeMapTrip: Decodable {
     let name: String?
     let status: String?
 
+    private enum CodingKeys: String, CodingKey {
+        case dateRange, destination, destinationLat = "destination_lat", destinationLng = "destination_lng"
+        case endDate = "end_date", href, id, imageUrl, latitude, longitude, name, route, startDate = "start_date", status
+    }
+
+    init(
+        id: String,
+        name: String,
+        destination: String,
+        latitude: Double,
+        longitude: Double,
+        dateRange: String? = nil,
+        href: String? = nil,
+        imageUrl: String? = nil,
+        status: String? = "Planning"
+    ) {
+        self.dateRange = dateRange
+        self.destination = destination
+        self.href = href
+        self.id = id
+        self.imageUrl = imageUrl
+        self.latitude = latitude
+        self.longitude = longitude
+        self.name = name
+        self.status = status
+    }
+
+    init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        let decodedStart = try values.decodeIfPresent(String.self, forKey: .startDate)
+        let decodedEnd = try values.decodeIfPresent(String.self, forKey: .endDate)
+        let decodedDateRange = try values.decodeIfPresent(String.self, forKey: .dateRange)
+
+        self.dateRange = decodedDateRange ?? Self.dateRange(start: decodedStart, end: decodedEnd)
+        self.destination = try values.decodeIfPresent(String.self, forKey: .destination)
+        self.href = try values.decodeIfPresent(String.self, forKey: .href) ?? values.decodeIfPresent(String.self, forKey: .route)
+        self.id = try values.decode(String.self, forKey: .id)
+        self.imageUrl = try values.decodeIfPresent(String.self, forKey: .imageUrl)
+        self.latitude = try values.decodeIfPresent(Double.self, forKey: .latitude)
+            ?? values.decodeIfPresent(Double.self, forKey: .destinationLat)
+        self.longitude = try values.decodeIfPresent(Double.self, forKey: .longitude)
+            ?? values.decodeIfPresent(Double.self, forKey: .destinationLng)
+        self.name = try values.decodeIfPresent(String.self, forKey: .name)
+        self.status = try values.decodeIfPresent(String.self, forKey: .status)
+    }
+
+    private static func dateRange(start: String?, end: String?) -> String? {
+        switch (start, end) {
+        case let (start?, end?): return "\(start) – \(end)"
+        case let (start?, nil): return start
+        case let (nil, end?): return end
+        case (nil, nil): return nil
+        }
+    }
+
     var displayName: String {
         clean(name) ?? clean(destination) ?? "Untitled trip"
     }
@@ -1134,7 +1397,8 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
     private let networkMonitor = NWPathMonitor()
     private let networkMonitorQueue = DispatchQueue(label: "app.almidy.native-map.network-monitor", qos: .utility)
     private let monitorsNetworkConnectivity: Bool
-    private let trips: [NativeMapTrip]
+    private var trips: [NativeMapTrip]
+    private let tripStore: NativeTripStore?
     private let openRoute: (String) -> Void
     private let sheetView = UIView()
     private let sheetHandle = UIView()
@@ -1165,10 +1429,12 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
     init(
         trips: [NativeMapTrip],
         monitorsNetworkConnectivity: Bool = true,
+        tripStore: NativeTripStore? = nil,
         openRoute: @escaping (String) -> Void
     ) {
         self.trips = trips
         self.monitorsNetworkConnectivity = monitorsNetworkConnectivity
+        self.tripStore = tripStore
         self.openRoute = openRoute
         self.sheetState = trips.isEmpty ? .medium : .collapsed
         super.init(nibName: nil, bundle: nil)
@@ -1195,6 +1461,61 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
         playIntroCameraIfNeeded()
+        refreshTripsFromServer()
+    }
+
+    func refreshTripsFromServer() {
+        tripStore?.loadTrips { [weak self] result in
+            guard let self else { return }
+            if case .success(let trips) = result {
+                self.replaceTrips(trips)
+            }
+        }
+    }
+
+    func updateTripFromServer(
+        id: String,
+        draft: NativeTripDraft,
+        completion: ((Result<Void, Error>) -> Void)? = nil
+    ) {
+        guard let tripStore else {
+            completion?(.failure(NativeTripStoreError.requestFailed("Native trip persistence is unavailable.")))
+            return
+        }
+        tripStore.updateTrip(id: id, draft: draft) { [weak self] result in
+            switch result {
+            case .success:
+                self?.refreshTripsFromServer()
+                completion?(.success(()))
+            case .failure(let error):
+                completion?(.failure(error))
+            }
+        }
+    }
+
+    func deleteTripFromServer(
+        id: String,
+        completion: ((Result<Void, Error>) -> Void)? = nil
+    ) {
+        guard let tripStore else {
+            completion?(.failure(NativeTripStoreError.requestFailed("Native trip persistence is unavailable.")))
+            return
+        }
+        tripStore.deleteTrip(id: id) { [weak self] result in
+            switch result {
+            case .success:
+                self?.refreshTripsFromServer()
+                completion?(.success(()))
+            case .failure(let error):
+                completion?(.failure(error))
+            }
+        }
+    }
+
+    private func replaceTrips(_ nextTrips: [NativeMapTrip]) {
+        trips = nextTrips
+        addTripPins()
+        renderSheetContent()
     }
 
     deinit {
@@ -1808,11 +2129,16 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
     }
 
     private func tripCard(for trip: NativeMapTrip) -> UIView {
+        let card = UIView()
+        card.layer.cornerRadius = 28
+        card.clipsToBounds = true
+        card.backgroundColor = UIColor(white: 0.2, alpha: 1.0)
+
         let button = UIButton(type: .custom)
-        button.layer.cornerRadius = 28
-        button.clipsToBounds = true
-        button.backgroundColor = UIColor(white: 0.2, alpha: 1.0)
-        button.addTarget(self, action: #selector(openLatestTrip), for: .touchUpInside)
+        button.accessibilityIdentifier = trip.id
+        button.addTarget(self, action: #selector(openTripAction(_:)), for: .touchUpInside)
+        button.translatesAutoresizingMaskIntoConstraints = false
+        card.addSubview(button)
 
         let imageView = UIImageView()
         imageView.contentMode = .scaleAspectFill
@@ -1831,6 +2157,17 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         textStack.spacing = 3
         textStack.translatesAutoresizingMaskIntoConstraints = false
         button.addSubview(textStack)
+
+        let edit = NativeTripActionButton(tripId: trip.id, systemName: "pencil")
+        edit.addTarget(self, action: #selector(editTripAction(_:)), for: .touchUpInside)
+        let delete = NativeTripActionButton(tripId: trip.id, systemName: "trash")
+        delete.tintColor = .systemRed
+        delete.addTarget(self, action: #selector(deleteTripAction(_:)), for: .touchUpInside)
+        let actions = UIStackView(arrangedSubviews: [edit, delete])
+        actions.axis = .horizontal
+        actions.spacing = 8
+        actions.translatesAutoresizingMaskIntoConstraints = false
+        card.addSubview(actions)
 
         let title = UILabel()
         title.text = trip.displayName
@@ -1854,19 +2191,29 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         textStack.addArrangedSubview(status)
 
         NSLayoutConstraint.activate([
-            button.heightAnchor.constraint(equalToConstant: 340),
+            card.heightAnchor.constraint(equalToConstant: 340),
+            button.topAnchor.constraint(equalTo: card.topAnchor),
+            button.leadingAnchor.constraint(equalTo: card.leadingAnchor),
+            button.trailingAnchor.constraint(equalTo: card.trailingAnchor),
+            button.bottomAnchor.constraint(equalTo: card.bottomAnchor),
             imageView.topAnchor.constraint(equalTo: button.topAnchor),
             imageView.leadingAnchor.constraint(equalTo: button.leadingAnchor),
             imageView.trailingAnchor.constraint(equalTo: button.trailingAnchor),
             imageView.bottomAnchor.constraint(equalTo: button.bottomAnchor),
             textStack.leadingAnchor.constraint(equalTo: button.leadingAnchor, constant: 24),
             textStack.trailingAnchor.constraint(equalTo: button.trailingAnchor, constant: -24),
-            textStack.bottomAnchor.constraint(equalTo: button.bottomAnchor, constant: -26)
+            textStack.bottomAnchor.constraint(equalTo: button.bottomAnchor, constant: -26),
+            actions.topAnchor.constraint(equalTo: card.topAnchor, constant: 18),
+            actions.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -18),
+            edit.widthAnchor.constraint(equalToConstant: 42),
+            edit.heightAnchor.constraint(equalToConstant: 42),
+            delete.widthAnchor.constraint(equalToConstant: 42),
+            delete.heightAnchor.constraint(equalToConstant: 42)
         ])
 
         button.layoutIfNeeded()
         gradient.frame = CGRect(x: 0, y: 0, width: UIScreen.main.bounds.width - 56, height: 340)
-        return button
+        return card
     }
 
     private func loadTripImage(into imageView: UIImageView, trip: NativeMapTrip) {
@@ -2054,6 +2401,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
     }
 
     private func addTripPins() {
+        mapView.removeAnnotations(mapView.annotations.filter { $0 is NativeTripAnnotation })
         let annotations = trips.compactMap { trip -> NativeTripAnnotation? in
             guard let coordinate = trip.coordinate else { return nil }
             return NativeTripAnnotation(trip: trip, coordinate: coordinate)
@@ -2173,7 +2521,98 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
     }
 
     @objc private func createTrip() {
-        openRoute("/dashboard/trips?view=list#new-trip")
+        let form = NativeCreateTripViewController { [weak self] draft, completion in
+            guard let self else { return }
+            let finish: (Result<NativeMapTrip, Error>) -> Void = { [weak self] result in
+                if case .success(let trip) = result {
+                    self?.replaceTrip(trip)
+                }
+                completion(result)
+            }
+            if let tripStore = self.tripStore {
+                tripStore.createTrip(draft, completion: finish)
+            } else {
+                finish(.success(draft.asNativeTrip()))
+            }
+        }
+        presentTripForm(form)
+    }
+
+    private func addNativeTrip(_ trip: NativeMapTrip) {
+        guard !trips.contains(where: { $0.id == trip.id }) else { return }
+        trips.insert(trip, at: 0)
+        addTripPins()
+        renderSheetContent()
+        if let coordinate = trip.coordinate {
+            mapView.setCamera(
+                MKMapCamera(lookingAtCenter: coordinate, fromDistance: 120_000, pitch: 42, heading: mapView.camera.heading),
+                animated: true
+            )
+        }
+    }
+
+    @objc private func openTripAction(_ sender: UIButton) {
+        guard let id = sender.accessibilityIdentifier,
+              let trip = trips.first(where: { $0.id == id }) else { return }
+        openRoute(trip.route)
+    }
+
+    @objc private func editTripAction(_ sender: NativeTripActionButton) {
+        guard let trip = trips.first(where: { $0.id == sender.tripId }) else { return }
+        let form = NativeCreateTripViewController(existingTrip: trip) { [weak self] draft, completion in
+            guard let self else { return }
+            guard let tripStore = self.tripStore else {
+                completion(.success(draft.asNativeTrip()))
+                return
+            }
+            tripStore.updateTrip(id: trip.id, draft: draft) { [weak self] result in
+                if case .success(let updatedTrip) = result {
+                    self?.replaceTrip(updatedTrip)
+                }
+                completion(result)
+            }
+        }
+        presentTripForm(form)
+    }
+
+    @objc private func deleteTripAction(_ sender: NativeTripActionButton) {
+        guard let trip = trips.first(where: { $0.id == sender.tripId }) else { return }
+        let alert = UIAlertController(
+            title: "Delete \(trip.displayName)?",
+            message: "This removes the trip from your wallet and globe.",
+            preferredStyle: .alert
+        )
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        alert.addAction(UIAlertAction(title: "Delete", style: .destructive) { [weak self] _ in
+            guard let self else { return }
+            self.tripStore?.deleteTrip(id: trip.id) { [weak self] result in
+                guard case .success = result else { return }
+                self?.refreshTripsFromServer()
+            }
+        })
+        present(alert, animated: true)
+    }
+
+    private func replaceTrip(_ updatedTrip: NativeMapTrip) {
+        if let index = trips.firstIndex(where: { $0.id == updatedTrip.id }) {
+            trips[index] = updatedTrip
+        } else {
+            trips.insert(updatedTrip, at: 0)
+        }
+        addTripPins()
+        renderSheetContent()
+        refreshTripsFromServer()
+    }
+
+    private func presentTripForm(_ form: UIViewController) {
+        form.modalPresentationStyle = .pageSheet
+        if let sheet = form.sheetPresentationController {
+            sheet.detents = [.medium(), .large()]
+            sheet.selectedDetentIdentifier = .large
+            sheet.prefersGrabberVisible = true
+            sheet.preferredCornerRadius = 28
+        }
+        present(form, animated: true)
     }
 
     @objc private func forwardReservation() {
@@ -2205,6 +2644,254 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
             let gradient = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: colors as CFArray, locations: [0, 1])!
             context.cgContext.drawLinearGradient(gradient, start: CGPoint(x: 0, y: 0), end: CGPoint(x: 720, y: 520), options: [])
         }
+    }
+}
+
+private final class NativeCreateTripViewController: UIViewController, MKLocalSearchCompleterDelegate, UITableViewDataSource, UITableViewDelegate, UITextFieldDelegate {
+    private let onCreate: (NativeTripDraft, @escaping (Result<NativeMapTrip, Error>) -> Void) -> Void
+    private let existingTrip: NativeMapTrip?
+    private let completer = MKLocalSearchCompleter()
+    private var completions: [MKLocalSearchCompletion] = []
+    private var selectedLocation: (title: String, coordinate: CLLocationCoordinate2D)?
+
+    private let nameField = UITextField()
+    private let destinationField = UITextField()
+    private let suggestionTable = UITableView(frame: .zero, style: .plain)
+    private let createButton = UIButton(type: .system)
+    private let locationStatus = UILabel()
+
+    init(
+        existingTrip: NativeMapTrip? = nil,
+        onCreate: @escaping (NativeTripDraft, @escaping (Result<NativeMapTrip, Error>) -> Void) -> Void
+    ) {
+        self.onCreate = onCreate
+        self.existingTrip = existingTrip
+        super.init(nibName: nil, bundle: nil)
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        view.backgroundColor = .systemBackground
+        completer.delegate = self
+        configureForm()
+    }
+
+    private func configureForm() {
+        let closeButton = UIButton(type: .system)
+        closeButton.setTitle("Cancel", for: .normal)
+        closeButton.titleLabel?.font = .systemFont(ofSize: 17, weight: .semibold)
+        closeButton.addTarget(self, action: #selector(cancel), for: .touchUpInside)
+
+        let title = UILabel()
+        title.text = existingTrip == nil ? "Create Trip" : "Edit Trip"
+        title.font = .systemFont(ofSize: 30, weight: .black)
+        title.textColor = .label
+
+        let subtitle = UILabel()
+        subtitle.text = "Add one destination to your trip."
+        subtitle.font = .systemFont(ofSize: 17, weight: .regular)
+        subtitle.textColor = .secondaryLabel
+
+        configureField(nameField, placeholder: "Trip name")
+        configureField(destinationField, placeholder: "Destination")
+        nameField.text = existingTrip?.displayName
+        destinationField.text = existingTrip?.destination
+        if let existingTrip, let coordinate = existingTrip.coordinate {
+            selectedLocation = (existingTrip.destination ?? existingTrip.displayName, coordinate)
+            locationStatus.text = "Destination selected"
+        }
+        nameField.addTarget(self, action: #selector(nameChanged), for: .editingChanged)
+        destinationField.addTarget(self, action: #selector(destinationChanged), for: .editingChanged)
+
+        locationStatus.font = .systemFont(ofSize: 14, weight: .medium)
+        locationStatus.textColor = .secondaryLabel
+        locationStatus.numberOfLines = 0
+
+        suggestionTable.register(UITableViewCell.self, forCellReuseIdentifier: "suggestion")
+        suggestionTable.dataSource = self
+        suggestionTable.delegate = self
+        suggestionTable.isHidden = true
+        suggestionTable.layer.cornerRadius = 14
+        suggestionTable.layer.borderWidth = 1
+        suggestionTable.layer.borderColor = UIColor.separator.cgColor
+        suggestionTable.rowHeight = 54
+
+        createButton.setTitle(existingTrip == nil ? "Create Trip" : "Save Changes", for: .normal)
+        createButton.setTitleColor(.white, for: .normal)
+        createButton.titleLabel?.font = .systemFont(ofSize: 18, weight: .bold)
+        createButton.backgroundColor = UIColor(red: 1.0, green: 0.42, blue: 0.12, alpha: 1)
+        createButton.layer.cornerRadius = 24
+        createButton.isEnabled = existingTrip != nil && selectedLocation != nil
+        createButton.alpha = createButton.isEnabled ? 1 : 0.45
+        createButton.addTarget(self, action: #selector(create), for: .touchUpInside)
+
+        let fields = UIStackView(arrangedSubviews: [nameField, destinationField, locationStatus, suggestionTable, createButton])
+        fields.axis = .vertical
+        fields.spacing = 12
+        fields.translatesAutoresizingMaskIntoConstraints = false
+
+        view.addSubview(closeButton)
+        view.addSubview(title)
+        view.addSubview(subtitle)
+        view.addSubview(fields)
+        closeButton.translatesAutoresizingMaskIntoConstraints = false
+        title.translatesAutoresizingMaskIntoConstraints = false
+        subtitle.translatesAutoresizingMaskIntoConstraints = false
+
+        NSLayoutConstraint.activate([
+            closeButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 10),
+            closeButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 24),
+            title.topAnchor.constraint(equalTo: closeButton.bottomAnchor, constant: 22),
+            title.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 24),
+            subtitle.topAnchor.constraint(equalTo: title.bottomAnchor, constant: 5),
+            subtitle.leadingAnchor.constraint(equalTo: title.leadingAnchor),
+            fields.topAnchor.constraint(equalTo: subtitle.bottomAnchor, constant: 24),
+            fields.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 24),
+            fields.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -24),
+            fields.bottomAnchor.constraint(lessThanOrEqualTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -20),
+            nameField.heightAnchor.constraint(equalToConstant: 54),
+            destinationField.heightAnchor.constraint(equalToConstant: 54),
+            suggestionTable.heightAnchor.constraint(equalToConstant: 216),
+            createButton.heightAnchor.constraint(equalToConstant: 54)
+        ])
+    }
+
+    private func configureField(_ field: UITextField, placeholder: String) {
+        field.placeholder = placeholder
+        field.font = .systemFont(ofSize: 18, weight: .medium)
+        field.borderStyle = .roundedRect
+        field.clearButtonMode = .whileEditing
+        field.returnKeyType = .next
+        field.delegate = self
+    }
+
+    @objc private func destinationChanged() {
+        selectedLocation = nil
+        updateCreateState()
+        let query = destinationField.text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        completer.queryFragment = query
+        suggestionTable.isHidden = query.count < 2
+        if query.count < 2 {
+            completions = []
+            suggestionTable.reloadData()
+        }
+    }
+
+    @objc private func nameChanged() {
+        updateCreateState()
+    }
+
+    func completerDidUpdateResults(_ completer: MKLocalSearchCompleter) {
+        completions = Array(completer.results.prefix(5))
+        suggestionTable.isHidden = completions.isEmpty
+        suggestionTable.reloadData()
+    }
+
+    func completer(_ completer: MKLocalSearchCompleter, didFailWithError error: Error) {
+        completions = []
+        suggestionTable.isHidden = true
+        locationStatus.text = "Could not load destination suggestions."
+    }
+
+    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        completions.count
+    }
+
+    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        let cell = tableView.dequeueReusableCell(withIdentifier: "suggestion", for: indexPath)
+        let completion = completions[indexPath.row]
+        var content = cell.defaultContentConfiguration()
+        content.text = completion.title
+        content.secondaryText = completion.subtitle
+        content.textProperties.font = .systemFont(ofSize: 16, weight: .semibold)
+        content.secondaryTextProperties.font = .systemFont(ofSize: 13, weight: .regular)
+        cell.contentConfiguration = content
+        return cell
+    }
+
+    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        let completion = completions[indexPath.row]
+        destinationField.text = completion.title
+        destinationField.resignFirstResponder()
+        suggestionTable.isHidden = true
+        locationStatus.text = "Finding \(completion.title)…"
+
+        let request = MKLocalSearch.Request()
+        request.naturalLanguageQuery = [completion.title, completion.subtitle]
+            .filter { !$0.isEmpty }
+            .joined(separator: ", ")
+        MKLocalSearch(request: request).start { [weak self] response, error in
+            DispatchQueue.main.async {
+                guard let self else { return }
+                guard let item = response?.mapItems.first, error == nil else {
+                    self.locationStatus.text = "Could not resolve that destination."
+                    self.selectedLocation = nil
+                    self.updateCreateState()
+                    return
+                }
+                self.selectedLocation = (completion.title, item.placemark.coordinate)
+                self.locationStatus.text = item.placemark.title ?? "Destination selected"
+                self.updateCreateState()
+            }
+        }
+    }
+
+    private func updateCreateState() {
+        let hasName = !(nameField.text?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
+        let enabled = hasName && selectedLocation != nil
+        createButton.isEnabled = enabled
+        createButton.alpha = enabled ? 1 : 0.45
+    }
+
+    @objc private func create() {
+        guard let selectedLocation,
+              let name = nameField.text?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !name.isEmpty else { return }
+        createButton.isEnabled = false
+        locationStatus.text = "Saving trip…"
+        let draft = NativeTripDraft(
+            name: name,
+            destination: selectedLocation.title,
+            coordinate: selectedLocation.coordinate
+        )
+        onCreate(draft) { [weak self] result in
+            DispatchQueue.main.async {
+                guard let self else { return }
+                switch result {
+                case .success:
+                    self.dismiss(animated: true)
+                case .failure(let error):
+                    self.locationStatus.text = error.localizedDescription
+                    self.updateCreateState()
+                }
+            }
+        }
+    }
+
+    @objc private func cancel() {
+        dismiss(animated: true)
+    }
+}
+
+private final class NativeTripActionButton: UIButton {
+    let tripId: String
+
+    init(tripId: String, systemName: String) {
+        self.tripId = tripId
+        super.init(frame: .zero)
+        backgroundColor = UIColor.black.withAlphaComponent(0.48)
+        tintColor = .white
+        layer.cornerRadius = 21
+        setImage(UIImage(systemName: systemName), for: .normal)
+        accessibilityLabel = systemName == "trash" ? "Delete trip" : "Edit trip"
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
     }
 }
 

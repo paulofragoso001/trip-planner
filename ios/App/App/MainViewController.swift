@@ -3,6 +3,9 @@ import WebKit
 
 final class MainViewController: CAPBridgeViewController {
     private var didInstallLocationOverlayBlocker = false
+    private var nativeDashboardController: NativeMapViewController?
+    private var didPresentNativeDashboard = false
+    private var nativeTripStore: NativeTripStore?
 
     override func capacitorDidLoad() {
         super.capacitorDidLoad()
@@ -13,6 +16,7 @@ final class MainViewController: CAPBridgeViewController {
         let mapGatewayPlugin = MapGatewayPlugin()
         let nativeMapPlugin = NativeMapPlugin()
         nativeMapPlugin.mapGatewayPlugin = mapGatewayPlugin
+        nativeTripStore = NativeTripStore(webView: bridge?.webView)
         bridge?.registerPluginInstance(mapGatewayPlugin)
         bridge?.registerPluginInstance(nativeMapPlugin)
         bridge?.registerPluginInstance(AppleCalendarPlugin())
@@ -22,6 +26,31 @@ final class MainViewController: CAPBridgeViewController {
         super.viewDidAppear(animated)
         installLocationOverlayBlocker()
         applyLocationOverlayBlocker()
+        presentNativeDashboardIfNeeded()
+    }
+
+    private func presentNativeDashboardIfNeeded() {
+        guard !didPresentNativeDashboard,
+              presentedViewController == nil,
+              bridge != nil else { return }
+
+        didPresentNativeDashboard = true
+        let dashboard = NativeMapViewController(trips: [], tripStore: nativeTripStore) { [weak self] route in
+            self?.openWebRouteFromNativeDashboard(route)
+        }
+        dashboard.modalPresentationStyle = .fullScreen
+        nativeDashboardController = dashboard
+        present(dashboard, animated: false)
+    }
+
+    private func openWebRouteFromNativeDashboard(_ route: String) {
+        nativeDashboardController?.dismiss(animated: true) { [weak self] in
+            self?.nativeDashboardController = nil
+            let escapedRoute = route
+                .replacingOccurrences(of: "\\", with: "\\\\")
+                .replacingOccurrences(of: "'", with: "\\'")
+            self?.bridge?.webView?.evaluateJavaScript("window.location.assign('\(escapedRoute)')")
+        }
     }
 
     private func installLocationOverlayBlocker() {

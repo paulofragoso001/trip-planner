@@ -1,4 +1,5 @@
 import Capacitor
+import Foundation
 import MapKit
 import XCTest
 @testable import App
@@ -185,6 +186,107 @@ final class NativeMapConnectivityTests: XCTestCase {
         XCTAssertEqual(controller.mapCameraForTesting.centerCoordinateDistance, 8_000_000, accuracy: 1)
         XCTAssertEqual(controller.mapCameraForTesting.pitch, 12, accuracy: 0.1)
         XCTAssertEqual(controller.preservedCameraForTesting?.heading ?? -1, 24, accuracy: 0.1)
+    }
+
+    func testNativeTripStoreHydratesTripsFromAuthenticatedApiResponse() {
+        NativeTripStoreURLProtocol.handler = { request in
+            let response = NativeTripStoreURLProtocol.response(for: request, statusCode: 200)
+            let body = """
+            {"trips":[{"id":"trip-1","name":"Miami Weekend","destination":"Miami","destination_lat":25.7617,"destination_lng":-80.1918,"start_date":"2026-05-29","end_date":"2026-05-31","status":"Planning"}]}
+            """.data(using: .utf8)!
+            return (response, body)
+        }
+        defer { NativeTripStoreURLProtocol.handler = nil }
+
+        let expectation = expectation(description: "trip hydration")
+        let store = NativeTripStore(webView: nil, baseURL: URL(string: "https://almidy.app")!, session: nativeTripStoreSession())
+        store.loadTrips { result in
+            guard case .success(let trips) = result else {
+                XCTFail("Expected hydrated trips")
+                expectation.fulfill()
+                return
+            }
+            XCTAssertEqual(trips.count, 1)
+            XCTAssertEqual(trips[0].id, "trip-1")
+            XCTAssertEqual(trips[0].displayName, "Miami Weekend")
+            XCTAssertEqual(trips[0].coordinate?.latitude ?? 0, 25.7617, accuracy: 0.0001)
+            XCTAssertEqual(trips[0].displayDateRange, "2026-05-29 – 2026-05-31")
+            expectation.fulfill()
+        }
+        wait(for: [expectation], timeout: 2)
+    }
+
+    func testNativeTripStorePersistsCreatedTripWithSessionOriginAndPayload() {
+        NativeTripStoreURLProtocol.handler = { request in
+            XCTAssertEqual(request.httpMethod, "POST")
+            XCTAssertEqual(request.value(forHTTPHeaderField: "Origin"), "https://almidy.app")
+            let body = try! XCTUnwrap(request.httpBody)
+            let json = try! XCTUnwrap(JSONSerialization.jsonObject(with: body) as? [String: Any])
+            XCTAssertEqual(json["name"] as? String, "Paris Weekend")
+            XCTAssertEqual(json["destination"] as? String, "Paris")
+            XCTAssertEqual(json["destination_status"] as? String, "resolved")
+
+            let response = NativeTripStoreURLProtocol.response(for: request, statusCode: 201)
+            let responseBody = """
+            {"trip":{"id":"trip-created","name":"Paris Weekend","destination":"Paris","destination_lat":48.8566,"destination_lng":2.3522,"status":"Planning"}}
+            """.data(using: .utf8)!
+            return (response, responseBody)
+        }
+        defer { NativeTripStoreURLProtocol.handler = nil }
+
+        let expectation = expectation(description: "trip persistence")
+        let store = NativeTripStore(webView: nil, baseURL: URL(string: "https://almidy.app")!, session: nativeTripStoreSession())
+        let draft = NativeTripDraft(
+            name: "Paris Weekend",
+            destination: "Paris",
+            coordinate: CLLocationCoordinate2D(latitude: 48.8566, longitude: 2.3522)
+        )
+        store.createTrip(draft) { result in
+            guard case .success(let trip) = result else {
+                XCTFail("Expected persisted trip")
+                expectation.fulfill()
+                return
+            }
+            XCTAssertEqual(trip.id, "trip-created")
+            XCTAssertEqual(trip.coordinate?.longitude ?? 0, 2.3522, accuracy: 0.0001)
+            expectation.fulfill()
+        }
+        wait(for: [expectation], timeout: 2)
+    }
+}
+
+private func nativeTripStoreSession() -> URLSession {
+    let configuration = URLSessionConfiguration.ephemeral
+    configuration.protocolClasses = [NativeTripStoreURLProtocol.self]
+    return URLSession(configuration: configuration)
+}
+
+private final class NativeTripStoreURLProtocol: URLProtocol {
+    static var handler: ((URLRequest) -> (HTTPURLResponse, Data))?
+
+    override class func canInit(with request: URLRequest) -> Bool { true }
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+
+    override func startLoading() {
+        guard let handler = Self.handler else {
+            client?.urlProtocolDidFinishLoading(self)
+            return
+        }
+        let (response, body) = handler(request)
+        client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+        client?.urlProtocol(self, didLoad: body)
+        client?.urlProtocolDidFinishLoading(self)
+    }
+
+    override func stopLoading() {}
+
+    static func response(for request: URLRequest, statusCode: Int) -> HTTPURLResponse {
+        HTTPURLResponse(
+            url: request.url!,
+            statusCode: statusCode,
+            httpVersion: nil,
+            headerFields: ["Content-Type": "application/json"]
+        )!
     }
 }
 
