@@ -26,6 +26,12 @@ enum NativeWebRoutePolicy {
     }
 }
 
+enum NativeWebFeatureResult {
+    case dismissed
+    case tripDataChanged
+    case importCompleted
+}
+
 final class MainViewController: CAPBridgeViewController {
     private var didInstallLocationOverlayBlocker = false
     private var nativeDashboardController: NativeMapViewController?
@@ -172,10 +178,10 @@ final class MainViewController: CAPBridgeViewController {
     }
 }
 
-final class NativeWebFeatureViewController: UIViewController, WKNavigationDelegate {
+final class NativeWebFeatureViewController: UIViewController, WKNavigationDelegate, WKScriptMessageHandler {
     private let route: String
     private let featureTitle: String
-    private let onFinish: () -> Void
+    private let onFinish: (NativeWebFeatureResult) -> Void
     private let monitor = NWPathMonitor()
     private let monitorQueue = DispatchQueue(label: "app.almidy.native-web-feature.network")
     private let webView: WKWebView
@@ -183,8 +189,10 @@ final class NativeWebFeatureViewController: UIViewController, WKNavigationDelega
     private let statusLabel = UILabel()
     private let retryButton = UIButton(type: .system)
     private var isOffline = false
+    private var didFinish = false
+    private var pendingResult: NativeWebFeatureResult = .dismissed
 
-    init(route: String, title: String, onFinish: @escaping () -> Void = {}) {
+    init(route: String, title: String, onFinish: @escaping (NativeWebFeatureResult) -> Void = { _ in }) {
         self.route = route
         self.featureTitle = title
         self.onFinish = onFinish
@@ -194,7 +202,7 @@ final class NativeWebFeatureViewController: UIViewController, WKNavigationDelega
         super.init(nibName: nil, bundle: nil)
     }
 
-    static func wrapped(route: String, title: String, onFinish: @escaping () -> Void = {}) -> UINavigationController {
+    static func wrapped(route: String, title: String, onFinish: @escaping (NativeWebFeatureResult) -> Void = { _ in }) -> UINavigationController {
         let controller = NativeWebFeatureViewController(route: route, title: title, onFinish: onFinish)
         let navigationController = UINavigationController(rootViewController: controller)
         navigationController.modalPresentationStyle = .pageSheet
@@ -223,8 +231,13 @@ final class NativeWebFeatureViewController: UIViewController, WKNavigationDelega
         super.viewDidDisappear(animated)
         if isBeingDismissed || navigationController?.isBeingDismissed == true {
             monitor.cancel()
-            onFinish()
+            finish(pendingResult)
         }
+    }
+
+    deinit {
+        webView.configuration.userContentController.removeScriptMessageHandler(forName: "nativeWebFeature")
+        monitor.cancel()
     }
 
     private func configureNavigation() {
@@ -239,6 +252,7 @@ final class NativeWebFeatureViewController: UIViewController, WKNavigationDelega
     private func configureWebView() {
         webView.navigationDelegate = self
         webView.allowsBackForwardNavigationGestures = true
+        webView.configuration.userContentController.add(self, name: "nativeWebFeature")
         webView.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(webView)
         NSLayoutConstraint.activate([
@@ -322,7 +336,7 @@ final class NativeWebFeatureViewController: UIViewController, WKNavigationDelega
         if webView.canGoBack {
             webView.goBack()
         } else {
-            dismiss(animated: true)
+            finish(.dismissed)
         }
     }
 
@@ -370,5 +384,30 @@ final class NativeWebFeatureViewController: UIViewController, WKNavigationDelega
             return
         }
         decisionHandler(NativeWebRoutePolicy.allows(url) ? .allow : .cancel)
+    }
+
+    func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+        guard message.name == "nativeWebFeature",
+              let payload = message.body as? [String: Any],
+              let type = payload["type"] as? String else { return }
+        switch type {
+        case "tripDataChanged":
+            pendingResult = .tripDataChanged
+        case "importCompleted":
+            pendingResult = .importCompleted
+        case "dismiss":
+            finish(.dismissed)
+        default:
+            break
+        }
+    }
+
+    private func finish(_ result: NativeWebFeatureResult) {
+        guard !didFinish else { return }
+        didFinish = true
+        pendingResult = result
+        dismiss(animated: true) { [onFinish] in
+            onFinish(result)
+        }
     }
 }

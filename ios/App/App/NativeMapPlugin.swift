@@ -2781,6 +2781,22 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         present(settings, animated: true)
     }
 
+    func presentNativeWebFeature(route: String, title: String) {
+        guard NativeWebRoutePolicy.allows(route) else { return }
+        let previousSheetState = sheetState
+        let feature = NativeWebFeatureViewController.wrapped(route: route, title: title) { [weak self] result in
+            guard let self else { return }
+            switch result {
+            case .dismissed, .tripDataChanged, .importCompleted:
+                self.refreshTripsFromServer()
+                self.addTripPins()
+                self.renderSheetContent()
+                self.applySheetState(previousSheetState, animated: false)
+            }
+        }
+        present(feature, animated: true)
+    }
+
     @objc private func openSearch() {
         let search = NativeMapSearchViewController { [weak self] coordinate in
             guard let self else { return }
