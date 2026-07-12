@@ -2739,18 +2739,14 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
     }
 
     @objc private func openSettings() {
-        let settings = UIAlertController(
-            title: "Settings",
-            message: "Native settings stay with your globe and wallet session.",
-            preferredStyle: .actionSheet
-        )
-        settings.addAction(UIAlertAction(title: "Refresh trips", style: .default) { [weak self] _ in
+        let settings = NativeSettingsViewController { [weak self] in
             self?.refreshTripsFromServer()
-        })
-        settings.addAction(UIAlertAction(title: "Close", style: .cancel))
-        if let popover = settings.popoverPresentationController {
-            popover.sourceView = settingsButton
-            popover.sourceRect = settingsButton.bounds
+        }
+        settings.modalPresentationStyle = .pageSheet
+        if let sheet = settings.sheetPresentationController {
+            sheet.detents = [.large()]
+            sheet.prefersGrabberVisible = true
+            sheet.preferredCornerRadius = 28
         }
         present(settings, animated: true)
     }
@@ -2941,6 +2937,126 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
             let gradient = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: colors as CFArray, locations: [0, 1])!
             context.cgContext.drawLinearGradient(gradient, start: CGPoint(x: 0, y: 0), end: CGPoint(x: 720, y: 520), options: [])
         }
+    }
+}
+
+private final class NativeSettingsViewController: UIViewController, UITableViewDataSource, UITableViewDelegate {
+    private let onRefreshTrips: () -> Void
+    private let tableView = UITableView(frame: .zero, style: .insetGrouped)
+
+    private let sections: [(title: String, rows: [String])] = [
+        ("Account", ["Account settings", "Your Membership"]),
+        ("Automations", ["Add Reservations via Email", "Calendar Feed", "Connect with Claude / MCP", "Shortcuts", "TripIt Importer"]),
+        ("Customize", ["Currency · US Dollar", "Distance Unit · Miles", "Language · English", "Trips Timeline", "My Almidy Book", "Notifications", "Widgets", "Storage and Data"]),
+        ("Help Center", ["Need help?", "Talk to us", "Review the App", "App Updates"]),
+        ("About", ["About Almidy", "Terms of Service", "Privacy Policy", "Share to a Friend"])
+    ]
+
+    init(onRefreshTrips: @escaping () -> Void) {
+        self.onRefreshTrips = onRefreshTrips
+        super.init(nibName: nil, bundle: nil)
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        view.backgroundColor = .systemGroupedBackground
+        configureTable()
+    }
+
+    private func configureTable() {
+        let closeButton = UIButton(type: .system)
+        closeButton.setTitle("Done", for: .normal)
+        closeButton.titleLabel?.font = .systemFont(ofSize: 17, weight: .semibold)
+        closeButton.addTarget(self, action: #selector(close), for: .touchUpInside)
+
+        let title = UILabel()
+        title.text = "Settings"
+        title.font = .systemFont(ofSize: 34, weight: .black)
+        title.textColor = .label
+
+        let subtitle = UILabel()
+        subtitle.text = "Your Almidy workspace"
+        subtitle.font = .systemFont(ofSize: 17, weight: .regular)
+        subtitle.textColor = .secondaryLabel
+
+        tableView.dataSource = self
+        tableView.delegate = self
+        tableView.register(UITableViewCell.self, forCellReuseIdentifier: "native-settings-row")
+        tableView.backgroundColor = .clear
+        tableView.translatesAutoresizingMaskIntoConstraints = false
+        closeButton.translatesAutoresizingMaskIntoConstraints = false
+        title.translatesAutoresizingMaskIntoConstraints = false
+        subtitle.translatesAutoresizingMaskIntoConstraints = false
+
+        view.addSubview(closeButton)
+        view.addSubview(title)
+        view.addSubview(subtitle)
+        view.addSubview(tableView)
+
+        NSLayoutConstraint.activate([
+            closeButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 10),
+            closeButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -24),
+            title.topAnchor.constraint(equalTo: closeButton.bottomAnchor, constant: 18),
+            title.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
+            subtitle.topAnchor.constraint(equalTo: title.bottomAnchor, constant: 4),
+            subtitle.leadingAnchor.constraint(equalTo: title.leadingAnchor),
+            tableView.topAnchor.constraint(equalTo: subtitle.bottomAnchor, constant: 14),
+            tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
+        ])
+    }
+
+    @objc private func close() {
+        dismiss(animated: true)
+    }
+
+    func numberOfSections(in tableView: UITableView) -> Int {
+        sections.count
+    }
+
+    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        sections[section].rows.count
+    }
+
+    func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
+        sections[section].title
+    }
+
+    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        let cell = tableView.dequeueReusableCell(withIdentifier: "native-settings-row", for: indexPath)
+        var content = cell.defaultContentConfiguration()
+        content.text = sections[indexPath.section].rows[indexPath.row]
+        content.textProperties.font = .systemFont(ofSize: 17, weight: .medium)
+        content.textProperties.color = .label
+        cell.contentConfiguration = content
+        cell.accessoryType = .disclosureIndicator
+        return cell
+    }
+
+    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        tableView.deselectRow(at: indexPath, animated: true)
+        let row = sections[indexPath.section].rows[indexPath.row]
+        if row == "Trips Timeline" || row == "My Almidy Book" {
+            onRefreshTrips()
+            showMessage(title: row, message: "This native view stays connected to your current globe and wallet.")
+            return
+        }
+        if row == "Account settings" {
+            showMessage(title: row, message: "Account controls are being brought into the native app.")
+            return
+        }
+        showMessage(title: row, message: "This setting is available in the native app and will stay in the current session.")
+    }
+
+    private func showMessage(title: String, message: String) {
+        let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "Done", style: .default))
+        present(alert, animated: true)
     }
 }
 
