@@ -2756,7 +2756,26 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
     }
 
     @objc private func openSearch() {
-        openRoute("/dashboard/search")
+        let search = NativeMapSearchViewController { [weak self] coordinate in
+            guard let self else { return }
+            self.mapView.setCamera(
+                MKMapCamera(
+                    lookingAtCenter: coordinate,
+                    fromDistance: 120_000,
+                    pitch: 42,
+                    heading: self.mapView.camera.heading
+                ),
+                animated: true
+            )
+            self.applySheetState(.collapsed, animated: true)
+        }
+        search.modalPresentationStyle = .pageSheet
+        if let sheet = search.sheetPresentationController {
+            sheet.detents = [.medium(), .large()]
+            sheet.prefersGrabberVisible = true
+            sheet.preferredCornerRadius = 28
+        }
+        present(search, animated: true)
     }
 
     @objc private func openTripsyBook() {
@@ -2922,6 +2941,172 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
             let gradient = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: colors as CFArray, locations: [0, 1])!
             context.cgContext.drawLinearGradient(gradient, start: CGPoint(x: 0, y: 0), end: CGPoint(x: 720, y: 520), options: [])
         }
+    }
+}
+
+private final class NativeMapSearchViewController: UIViewController, MKLocalSearchCompleterDelegate, UITableViewDataSource, UITableViewDelegate, UITextFieldDelegate {
+    private let onSelect: (CLLocationCoordinate2D) -> Void
+    private let completer = MKLocalSearchCompleter()
+    private var completions: [MKLocalSearchCompletion] = []
+
+    private let queryField = UITextField()
+    private let suggestionTable = UITableView(frame: .zero, style: .plain)
+    private let statusLabel = UILabel()
+
+    init(onSelect: @escaping (CLLocationCoordinate2D) -> Void) {
+        self.onSelect = onSelect
+        super.init(nibName: nil, bundle: nil)
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        view.backgroundColor = .systemBackground
+        completer.delegate = self
+        completer.resultTypes = [.address, .pointOfInterest, .query]
+        configureSearch()
+    }
+
+    private func configureSearch() {
+        let cancelButton = UIButton(type: .system)
+        cancelButton.setTitle("Cancel", for: .normal)
+        cancelButton.titleLabel?.font = .systemFont(ofSize: 17, weight: .semibold)
+        cancelButton.addTarget(self, action: #selector(cancel), for: .touchUpInside)
+
+        let title = UILabel()
+        title.text = "Search the globe"
+        title.font = .systemFont(ofSize: 30, weight: .black)
+        title.textColor = .label
+
+        let subtitle = UILabel()
+        subtitle.text = "Find a place and move the globe there."
+        subtitle.font = .systemFont(ofSize: 17, weight: .regular)
+        subtitle.textColor = .secondaryLabel
+
+        queryField.placeholder = "Search a city or place"
+        queryField.font = .systemFont(ofSize: 18, weight: .medium)
+        queryField.borderStyle = .roundedRect
+        queryField.clearButtonMode = .whileEditing
+        queryField.returnKeyType = .search
+        queryField.delegate = self
+        queryField.addTarget(self, action: #selector(queryChanged), for: .editingChanged)
+
+        statusLabel.font = .systemFont(ofSize: 14, weight: .medium)
+        statusLabel.textColor = .secondaryLabel
+        statusLabel.numberOfLines = 0
+
+        suggestionTable.register(UITableViewCell.self, forCellReuseIdentifier: "map-search-suggestion")
+        suggestionTable.dataSource = self
+        suggestionTable.delegate = self
+        suggestionTable.isHidden = true
+        suggestionTable.rowHeight = 58
+        suggestionTable.layer.cornerRadius = 14
+        suggestionTable.layer.borderWidth = 1
+        suggestionTable.layer.borderColor = UIColor.separator.cgColor
+
+        [cancelButton, title, subtitle, queryField, statusLabel, suggestionTable].forEach {
+            $0.translatesAutoresizingMaskIntoConstraints = false
+            view.addSubview($0)
+        }
+
+        NSLayoutConstraint.activate([
+            cancelButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 10),
+            cancelButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 24),
+            title.topAnchor.constraint(equalTo: cancelButton.bottomAnchor, constant: 22),
+            title.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 24),
+            title.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -24),
+            subtitle.topAnchor.constraint(equalTo: title.bottomAnchor, constant: 5),
+            subtitle.leadingAnchor.constraint(equalTo: title.leadingAnchor),
+            subtitle.trailingAnchor.constraint(equalTo: title.trailingAnchor),
+            queryField.topAnchor.constraint(equalTo: subtitle.bottomAnchor, constant: 24),
+            queryField.leadingAnchor.constraint(equalTo: title.leadingAnchor),
+            queryField.trailingAnchor.constraint(equalTo: title.trailingAnchor),
+            queryField.heightAnchor.constraint(equalToConstant: 54),
+            statusLabel.topAnchor.constraint(equalTo: queryField.bottomAnchor, constant: 10),
+            statusLabel.leadingAnchor.constraint(equalTo: title.leadingAnchor),
+            statusLabel.trailingAnchor.constraint(equalTo: title.trailingAnchor),
+            suggestionTable.topAnchor.constraint(equalTo: statusLabel.bottomAnchor, constant: 10),
+            suggestionTable.leadingAnchor.constraint(equalTo: title.leadingAnchor),
+            suggestionTable.trailingAnchor.constraint(equalTo: title.trailingAnchor),
+            suggestionTable.heightAnchor.constraint(equalToConstant: 250),
+            suggestionTable.bottomAnchor.constraint(lessThanOrEqualTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -20)
+        ])
+
+        queryField.becomeFirstResponder()
+    }
+
+    @objc private func cancel() {
+        dismiss(animated: true)
+    }
+
+    @objc private func queryChanged() {
+        let query = queryField.text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        completions = []
+        suggestionTable.reloadData()
+        suggestionTable.isHidden = query.count < 2
+        if query.count >= 2 {
+            completer.queryFragment = query
+        }
+    }
+
+    func completerDidUpdateResults(_ completer: MKLocalSearchCompleter) {
+        completions = Array(completer.results.prefix(6))
+        suggestionTable.isHidden = completions.isEmpty
+        suggestionTable.reloadData()
+    }
+
+    func completer(_ completer: MKLocalSearchCompleter, didFailWithError error: Error) {
+        completions = []
+        suggestionTable.isHidden = true
+        statusLabel.text = "Could not load search suggestions."
+    }
+
+    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        completions.count
+    }
+
+    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        let cell = tableView.dequeueReusableCell(withIdentifier: "map-search-suggestion", for: indexPath)
+        let completion = completions[indexPath.row]
+        var content = cell.defaultContentConfiguration()
+        content.text = completion.title
+        content.secondaryText = completion.subtitle
+        content.textProperties.font = .systemFont(ofSize: 16, weight: .semibold)
+        content.secondaryTextProperties.font = .systemFont(ofSize: 13, weight: .regular)
+        cell.contentConfiguration = content
+        return cell
+    }
+
+    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        let completion = completions[indexPath.row]
+        queryField.resignFirstResponder()
+        suggestionTable.isHidden = true
+        statusLabel.text = "Finding \(completion.title)…"
+
+        let request = MKLocalSearch.Request()
+        request.naturalLanguageQuery = [completion.title, completion.subtitle]
+            .filter { !$0.isEmpty }
+            .joined(separator: ", ")
+        MKLocalSearch(request: request).start { [weak self] response, error in
+            DispatchQueue.main.async {
+                guard let self else { return }
+                guard let coordinate = response?.mapItems.first?.placemark.coordinate, error == nil else {
+                    self.statusLabel.text = "Could not resolve that place."
+                    return
+                }
+                self.onSelect(coordinate)
+                self.dismiss(animated: true)
+            }
+        }
+    }
+
+    func textFieldShouldReturn(_ textField: UITextField) -> Bool {
+        guard !completions.isEmpty else { return false }
+        tableView(suggestionTable, didSelectRowAt: IndexPath(row: 0, section: 0))
+        return true
     }
 }
 
