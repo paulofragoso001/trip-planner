@@ -24,9 +24,7 @@ public class NativeMapPlugin: CAPPlugin, CAPBridgedPlugin {
         DispatchQueue.main.async {
             let options = (try? call.decode(NativeMapOptions.self)) ?? NativeMapOptions(trips: [])
             let tripStore = NativeTripStore(webView: self.bridge?.webView)
-            let mapViewController = NativeMapViewController(trips: options.trips, tripStore: tripStore) { [weak self] route in
-                self?.openWebRoute(route)
-            }
+            let mapViewController = NativeMapViewController(trips: options.trips, tripStore: tripStore)
             self.mapGatewayPlugin?.attach(mapViewController)
             mapViewController.modalPresentationStyle = .fullScreen
 
@@ -40,19 +38,6 @@ public class NativeMapPlugin: CAPPlugin, CAPBridgedPlugin {
         }
     }
 
-    private func openWebRoute(_ route: String) {
-        guard NativeWebRoutePolicy.allows(route) else { return }
-        guard let viewController = bridge?.viewController else { return }
-        let escapedRoute = route
-            .replacingOccurrences(of: "\\", with: "\\\\")
-            .replacingOccurrences(of: "'", with: "\\'")
-        let script = "window.location.assign('\(escapedRoute)')"
-
-        viewController.dismiss(animated: true) { [weak self] in
-            self?.mapGatewayPlugin?.detachActiveMapController()
-            self?.bridge?.webView?.evaluateJavaScript(script)
-        }
-    }
 }
 
 private struct NativeMapOptions: Decodable {
@@ -1540,7 +1525,6 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
     private let monitorsNetworkConnectivity: Bool
     private var trips: [NativeMapTrip]
     private let tripStore: NativeTripStore?
-    private let openRoute: (String) -> Void
     private let sheetView = UIView()
     private let sheetHandle = UIView()
     private let headerStack = UIStackView()
@@ -1573,13 +1557,11 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
     init(
         trips: [NativeMapTrip],
         monitorsNetworkConnectivity: Bool = true,
-        tripStore: NativeTripStore? = nil,
-        openRoute: @escaping (String) -> Void
+        tripStore: NativeTripStore? = nil
     ) {
         self.trips = trips
         self.monitorsNetworkConnectivity = monitorsNetworkConnectivity
         self.tripStore = tripStore
-        self.openRoute = openRoute
         self.sheetState = .collapsed
         super.init(nibName: nil, bundle: nil)
     }
@@ -2769,9 +2751,16 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
     }
 
     @objc private func openSettings() {
-        let settings = NativeSettingsViewController { [weak self] in
-            self?.refreshTripsFromServer()
-        }
+        let settings = NativeSettingsViewController(
+            onRefreshTrips: { [weak self] in
+                self?.refreshTripsFromServer()
+            },
+            onOpenHelp: { [weak self] in
+                self?.dismiss(animated: true) { [weak self] in
+                    self?.presentNativeWebFeature(route: "/dashboard/help", title: "Help")
+                }
+            }
+        )
         settings.modalPresentationStyle = .pageSheet
         if let sheet = settings.sheetPresentationController {
             sheet.detents = [.large()]
@@ -3000,6 +2989,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
 
 private final class NativeSettingsViewController: UIViewController, UITableViewDataSource, UITableViewDelegate {
     private let onRefreshTrips: () -> Void
+    private let onOpenHelp: () -> Void
     private let tableView = UITableView(frame: .zero, style: .insetGrouped)
 
     private let sections: [(title: String, rows: [String])] = [
@@ -3010,8 +3000,9 @@ private final class NativeSettingsViewController: UIViewController, UITableViewD
         ("About", ["About Almidy", "Terms of Service", "Privacy Policy", "Share to a Friend"])
     ]
 
-    init(onRefreshTrips: @escaping () -> Void) {
+    init(onRefreshTrips: @escaping () -> Void, onOpenHelp: @escaping () -> Void) {
         self.onRefreshTrips = onRefreshTrips
+        self.onOpenHelp = onOpenHelp
         super.init(nibName: nil, bundle: nil)
     }
 
@@ -3106,6 +3097,10 @@ private final class NativeSettingsViewController: UIViewController, UITableViewD
         }
         if row == "Account settings" {
             showMessage(title: row, message: "Account controls are being brought into the native app.")
+            return
+        }
+        if row == "Need help?" || row == "Talk to us" {
+            onOpenHelp()
             return
         }
         showMessage(title: row, message: "This setting is available in the native app and will stay in the current session.")

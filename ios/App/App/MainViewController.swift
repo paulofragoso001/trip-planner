@@ -76,27 +76,10 @@ final class MainViewController: CAPBridgeViewController {
               bridge != nil else { return }
 
         didPresentNativeDashboard = true
-        let dashboard = NativeMapViewController(trips: [], tripStore: nativeTripStore) { [weak self] route in
-            self?.openWebRouteFromNativeDashboard(route)
-        }
+        let dashboard = NativeMapViewController(trips: [], tripStore: nativeTripStore)
         dashboard.modalPresentationStyle = .fullScreen
         nativeDashboardController = dashboard
         present(dashboard, animated: false)
-    }
-
-    private func openWebRouteFromNativeDashboard(_ route: String) {
-        guard NativeWebRoutePolicy.allows(route) else {
-            assertionFailure("Blocked native WebView route: \(route)")
-            return
-        }
-
-        nativeDashboardController?.dismiss(animated: true) { [weak self] in
-            self?.nativeDashboardController = nil
-            let escapedRoute = route
-                .replacingOccurrences(of: "\\", with: "\\\\")
-                .replacingOccurrences(of: "'", with: "\\'")
-            self?.bridge?.webView?.evaluateJavaScript("window.location.assign('\(escapedRoute)')")
-        }
     }
 
     private func installLocationOverlayBlocker() {
