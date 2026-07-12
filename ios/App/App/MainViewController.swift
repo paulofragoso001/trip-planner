@@ -24,6 +24,16 @@ enum NativeWebRoutePolicy {
         }
         return allowedPrefixes.contains { url.path.hasPrefix($0) }
     }
+
+    static func isNativeOwned(_ url: URL) -> Bool {
+        guard url.host == nil || url.host == "almidy.app" else { return false }
+        let path = url.path
+        return path == "/dashboard" ||
+            path.hasPrefix("/dashboard/trips") ||
+            path.hasPrefix("/dashboard/search") ||
+            path.hasPrefix("/dashboard/globe") ||
+            path.hasPrefix("/dashboard/wallet")
+    }
 }
 
 enum NativeWebFeatureResult {
@@ -182,6 +192,7 @@ final class NativeWebFeatureViewController: UIViewController, WKNavigationDelega
     private let route: String
     private let featureTitle: String
     private let onFinish: (NativeWebFeatureResult) -> Void
+    private let onNativeRoute: (String) -> Void
     private let monitor = NWPathMonitor()
     private let monitorQueue = DispatchQueue(label: "app.almidy.native-web-feature.network")
     private let webView: WKWebView
@@ -191,19 +202,36 @@ final class NativeWebFeatureViewController: UIViewController, WKNavigationDelega
     private var isOffline = false
     private var didFinish = false
     private var pendingResult: NativeWebFeatureResult = .dismissed
+    private var pendingNativeRoute: String?
 
-    init(route: String, title: String, onFinish: @escaping (NativeWebFeatureResult) -> Void = { _ in }) {
+    init(
+        route: String,
+        title: String,
+        onFinish: @escaping (NativeWebFeatureResult) -> Void = { _ in },
+        onNativeRoute: @escaping (String) -> Void = { _ in }
+    ) {
         self.route = route
         self.featureTitle = title
         self.onFinish = onFinish
+        self.onNativeRoute = onNativeRoute
         let configuration = WKWebViewConfiguration()
         configuration.websiteDataStore = .default()
         self.webView = WKWebView(frame: .zero, configuration: configuration)
         super.init(nibName: nil, bundle: nil)
     }
 
-    static func wrapped(route: String, title: String, onFinish: @escaping (NativeWebFeatureResult) -> Void = { _ in }) -> UINavigationController {
-        let controller = NativeWebFeatureViewController(route: route, title: title, onFinish: onFinish)
+    static func wrapped(
+        route: String,
+        title: String,
+        onFinish: @escaping (NativeWebFeatureResult) -> Void = { _ in },
+        onNativeRoute: @escaping (String) -> Void = { _ in }
+    ) -> UINavigationController {
+        let controller = NativeWebFeatureViewController(
+            route: route,
+            title: title,
+            onFinish: onFinish,
+            onNativeRoute: onNativeRoute
+        )
         let navigationController = UINavigationController(rootViewController: controller)
         navigationController.modalPresentationStyle = .pageSheet
         if let sheet = navigationController.sheetPresentationController {
@@ -379,6 +407,12 @@ final class NativeWebFeatureViewController: UIViewController, WKNavigationDelega
             decisionHandler(.cancel)
             return
         }
+        if NativeWebRoutePolicy.isNativeOwned(url) {
+            pendingNativeRoute = url.path
+            finish(.dismissed)
+            decisionHandler(.cancel)
+            return
+        }
         guard url.host == nil || url.host == "almidy.app" else {
             decisionHandler(.cancel)
             return
@@ -408,6 +442,9 @@ final class NativeWebFeatureViewController: UIViewController, WKNavigationDelega
         pendingResult = result
         dismiss(animated: true) { [onFinish] in
             onFinish(result)
+            if let nativeRoute = self.pendingNativeRoute {
+                self.onNativeRoute(nativeRoute)
+            }
         }
     }
 }

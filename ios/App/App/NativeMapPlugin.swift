@@ -2784,7 +2784,10 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
     func presentNativeWebFeature(route: String, title: String) {
         guard NativeWebRoutePolicy.allows(route) else { return }
         let previousSheetState = sheetState
-        let feature = NativeWebFeatureViewController.wrapped(route: route, title: title) { [weak self] result in
+        let feature = NativeWebFeatureViewController.wrapped(
+            route: route,
+            title: title,
+            onFinish: { [weak self] result in
             guard let self else { return }
             switch result {
             case .dismissed, .tripDataChanged, .importCompleted:
@@ -2793,7 +2796,16 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
                 self.renderSheetContent()
                 self.applySheetState(previousSheetState, animated: false)
             }
-        }
+            },
+            onNativeRoute: { [weak self] path in
+                guard let self else { return }
+                if path.hasPrefix("/dashboard/search") {
+                    self.openSearch()
+                } else if path.hasPrefix("/dashboard/trips") || path.hasPrefix("/dashboard/wallet") {
+                    self.applySheetState(.expanded, animated: true)
+                }
+            }
+        )
         present(feature, animated: true)
     }
 
