@@ -37,6 +37,32 @@ export async function authorizeDashboardApi<TClient = SupabaseClient>(): Promise
   }
 
   const supabase = await createClient();
+  const authorization = requestHeaders.get("authorization");
+  const bearerToken = authorization?.match(/^Bearer\s+(.+)$/i)?.[1];
+  if (bearerToken) {
+    const {
+      data: { user },
+      error
+    } = await withTimeout(
+      supabase.auth.getUser(bearerToken),
+      dashboardAuthTimeoutMs,
+      "Supabase native dashboard auth lookup timed out."
+    ).catch((error) => {
+      if (process.env.NODE_ENV !== "production") {
+        console.warn(error instanceof Error ? error.message : error);
+      }
+
+      return {
+        data: { user: null },
+        error
+      };
+    });
+
+    if (!error && user) {
+      return { supabase: supabase as TClient, userId: user.id };
+    }
+  }
+
   const {
     data: { user },
     error
