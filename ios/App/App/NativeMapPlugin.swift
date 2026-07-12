@@ -325,16 +325,45 @@ final class NativeTripStore {
             }.resume()
         }
 
-        guard let cookieStore = webView?.configuration.websiteDataStore.httpCookieStore else {
+        guard let webView else {
             perform(request)
             return
         }
-        cookieStore.getAllCookies { cookies in
+
+        let attachCredentials: ([HTTPCookie]) -> Void = { cookies in
             var request = request
             if let cookieHeader = HTTPCookie.requestHeaderFields(with: cookies)["Cookie"] {
                 request.setValue(cookieHeader, forHTTPHeaderField: "Cookie")
             }
-            perform(request)
+
+            // Supabase's browser client persists the active session in WebView
+            // localStorage rather than an HTTP cookie. Forward its access token
+            // so native trip mutations use the same authenticated session.
+            let accessTokenScript = """
+            (() => {
+                for (const key of Object.keys(localStorage)) {
+                    if (!key.includes('-auth-token')) continue;
+                    try {
+                        const value = JSON.parse(localStorage.getItem(key) || 'null');
+                        if (value && typeof value.access_token === 'string') return value.access_token;
+                    } catch (_) {}
+                }
+                return null;
+            })()
+            """
+            webView.evaluateJavaScript(accessTokenScript) { result, _ in
+                if let accessToken = result as? String, !accessToken.isEmpty {
+                    request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
+                }
+                perform(request)
+            }
+        }
+
+        let cookieStore = webView.configuration.websiteDataStore.httpCookieStore
+        cookieStore.getAllCookies { cookies in
+            DispatchQueue.main.async {
+                attachCredentials(cookies)
+            }
         }
     }
 
