@@ -333,6 +333,10 @@ final class NativeWebFeatureViewController: UIViewController, WKNavigationDelega
         loadRoute()
     }
 
+    private func showSessionExpired() {
+        showState("Your Almidy session has expired. Sign in again to continue.", loading: false, retry: false)
+    }
+
     func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
         showState(nil, loading: true, retry: false)
     }
@@ -356,6 +360,15 @@ final class NativeWebFeatureViewController: UIViewController, WKNavigationDelega
         decisionHandler: @escaping (WKNavigationActionPolicy) -> Void
     ) {
         guard let url = navigationAction.request.url else {
+            decisionHandler(.cancel)
+            return
+        }
+        if url.path == "/login" {
+            showSessionExpired()
+            decisionHandler(.cancel)
+            return
+        }
+        guard url.host == nil || url.host == "almidy.app" else {
             decisionHandler(.cancel)
             return
         }
