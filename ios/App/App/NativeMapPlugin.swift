@@ -24,7 +24,11 @@ public class NativeMapPlugin: CAPPlugin, CAPBridgedPlugin {
         DispatchQueue.main.async {
             let options = (try? call.decode(NativeMapOptions.self)) ?? NativeMapOptions(trips: [])
             let tripStore = NativeTripStore(webView: self.bridge?.webView)
-            let mapViewController = NativeMapViewController(trips: options.trips, tripStore: tripStore)
+            let mapViewController = NativeMapViewController(
+                trips: options.trips,
+                tripStore: tripStore,
+                sourceWebView: self.bridge?.webView
+            )
             self.mapGatewayPlugin?.attach(mapViewController)
             mapViewController.modalPresentationStyle = .fullScreen
 
@@ -1525,6 +1529,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
     private let monitorsNetworkConnectivity: Bool
     private var trips: [NativeMapTrip]
     private let tripStore: NativeTripStore?
+    private let sourceWebView: WKWebView?
     private let sheetView = UIView()
     private let sheetHandle = UIView()
     private let headerStack = UIStackView()
@@ -1557,11 +1562,13 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
     init(
         trips: [NativeMapTrip],
         monitorsNetworkConnectivity: Bool = true,
-        tripStore: NativeTripStore? = nil
+        tripStore: NativeTripStore? = nil,
+        sourceWebView: WKWebView? = nil
     ) {
         self.trips = trips
         self.monitorsNetworkConnectivity = monitorsNetworkConnectivity
         self.tripStore = tripStore
+        self.sourceWebView = sourceWebView
         self.sheetState = .collapsed
         super.init(nibName: nil, bundle: nil)
     }
@@ -2765,7 +2772,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
             },
             onOpenHelp: { [weak self] in
                 self?.dismiss(animated: true) { [weak self] in
-                    self?.presentNativeWebFeature(route: "/dashboard/help", title: "Help")
+                    self?.presentNativeWebFeature(route: "/dashboard/account#help", title: "Help")
                 }
             }
         )
@@ -2781,10 +2788,12 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
     func presentNativeWebFeature(route: String, title: String) {
         guard NativeWebRoutePolicy.allows(route) else { return }
         let previousSheetState = sheetState
-        let feature = NativeWebFeatureViewController.wrapped(
-            route: route,
-            title: title,
-            onFinish: { [weak self] result in
+        let presentFeature: (NativeWebAuthStorage?) -> Void = { [weak self] authStorage in
+            guard let self else { return }
+            let feature = NativeWebFeatureViewController.wrapped(
+                route: route,
+                title: title,
+                onFinish: { [weak self] result in
             guard let self else { return }
             switch result {
             case .dismissed, .tripDataChanged, .importCompleted:
@@ -2794,16 +2803,27 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
                 self.applySheetState(previousSheetState, animated: false)
             }
             },
-            onNativeRoute: { [weak self] path in
+                onNativeRoute: { [weak self] path in
                 guard let self else { return }
                 if path.hasPrefix("/dashboard/search") {
                     self.openSearch()
                 } else if path.hasPrefix("/dashboard/trips") || path.hasPrefix("/dashboard/wallet") {
                     self.applySheetState(.expanded, animated: true)
                 }
+                },
+                authStorage: authStorage
+            )
+            self.present(feature, animated: true)
+        }
+        if let sourceWebView {
+            NativeWebFeatureViewController.exportAuthStorage(from: sourceWebView) { authStorage in
+                DispatchQueue.main.async {
+                    presentFeature(authStorage)
+                }
             }
-        )
-        present(feature, animated: true)
+        } else {
+            presentFeature(nil)
+        }
     }
 
     @objc private func openSearch() {
