@@ -253,6 +253,36 @@ final class NativeMapConnectivityTests: XCTestCase {
         }
         wait(for: [expectation], timeout: 2)
     }
+
+    func testNativeWebRoutePolicyAllowsOnlySecondaryPages() {
+        XCTAssertTrue(NativeWebRoutePolicy.allows("/dashboard/help"))
+        XCTAssertTrue(NativeWebRoutePolicy.allows("/dashboard/imports/forward-reservation"))
+        XCTAssertTrue(NativeWebRoutePolicy.allows("/dashboard/account/profile"))
+        XCTAssertFalse(NativeWebRoutePolicy.allows("/dashboard"))
+        XCTAssertFalse(NativeWebRoutePolicy.allows("/dashboard/trips"))
+        XCTAssertFalse(NativeWebRoutePolicy.allows("/dashboard/search"))
+        XCTAssertFalse(NativeWebRoutePolicy.allows("https://example.com/dashboard/help"))
+    }
+
+    func testNativeWebRoutePolicyIdentifiesNativeOwnedRoutes() {
+        XCTAssertTrue(NativeWebRoutePolicy.isNativeOwned(URL(string: "https://almidy.app/dashboard/trips")!))
+        XCTAssertTrue(NativeWebRoutePolicy.isNativeOwned(URL(string: "https://almidy.app/dashboard/search")!))
+        XCTAssertTrue(NativeWebRoutePolicy.isNativeOwned(URL(string: "https://almidy.app/dashboard/wallet")!))
+        XCTAssertFalse(NativeWebRoutePolicy.isNativeOwned(URL(string: "https://almidy.app/dashboard/help")!))
+        XCTAssertFalse(NativeWebRoutePolicy.isNativeOwned(URL(string: "https://example.com/dashboard/trips")!))
+    }
+
+    func testNativeWebFeatureResultsCoverDismissalAndRefreshCallbacks() {
+        let results: [NativeWebFeatureResult] = [.dismissed, .tripDataChanged, .importCompleted]
+        XCTAssertEqual(results.count, 3)
+
+        for result in results {
+            switch result {
+            case .dismissed, .tripDataChanged, .importCompleted:
+                continue
+            }
+        }
+    }
 }
 
 private func nativeTripStoreSession() -> URLSession {
