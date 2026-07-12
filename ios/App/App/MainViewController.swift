@@ -4,7 +4,7 @@ import WebKit
 
 enum NativeWebRoutePolicy {
     static let allowedPrefixes = [
-        "/dashboard/imports/",
+        "/dashboard/imports",
         "/dashboard/help",
         "/dashboard/account/",
     ]

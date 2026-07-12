@@ -2755,6 +2755,14 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
             onRefreshTrips: { [weak self] in
                 self?.refreshTripsFromServer()
             },
+            onOpenReservationImport: { [weak self] in
+                self?.dismiss(animated: true) { [weak self] in
+                    self?.presentNativeWebFeature(
+                        route: "/dashboard/imports#reservation-forwarding",
+                        title: "Add Reservation"
+                    )
+                }
+            },
             onOpenHelp: { [weak self] in
                 self?.dismiss(animated: true) { [weak self] in
                     self?.presentNativeWebFeature(route: "/dashboard/help", title: "Help")
@@ -2924,17 +2932,10 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
     }
 
     @objc private func forwardReservation() {
-        let capture = NativeCaptureIdeasViewController(tripStore: tripStore) { [weak self] in
-            self?.refreshTripsFromServer()
-        }
-        capture.modalPresentationStyle = .pageSheet
-        if let sheet = capture.sheetPresentationController {
-            sheet.detents = [.medium(), .large()]
-            sheet.selectedDetentIdentifier = .large
-            sheet.prefersGrabberVisible = true
-            sheet.preferredCornerRadius = 28
-        }
-        present(capture, animated: true)
+        presentNativeWebFeature(
+            route: "/dashboard/imports#reservation-forwarding",
+            title: "Add Reservation"
+        )
     }
 
     @objc private func openSampleTrip() {
@@ -2989,6 +2990,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
 
 private final class NativeSettingsViewController: UIViewController, UITableViewDataSource, UITableViewDelegate {
     private let onRefreshTrips: () -> Void
+    private let onOpenReservationImport: () -> Void
     private let onOpenHelp: () -> Void
     private let tableView = UITableView(frame: .zero, style: .insetGrouped)
 
@@ -3000,8 +3002,13 @@ private final class NativeSettingsViewController: UIViewController, UITableViewD
         ("About", ["About Almidy", "Terms of Service", "Privacy Policy", "Share to a Friend"])
     ]
 
-    init(onRefreshTrips: @escaping () -> Void, onOpenHelp: @escaping () -> Void) {
+    init(
+        onRefreshTrips: @escaping () -> Void,
+        onOpenReservationImport: @escaping () -> Void,
+        onOpenHelp: @escaping () -> Void
+    ) {
         self.onRefreshTrips = onRefreshTrips
+        self.onOpenReservationImport = onOpenReservationImport
         self.onOpenHelp = onOpenHelp
         super.init(nibName: nil, bundle: nil)
     }
@@ -3097,6 +3104,10 @@ private final class NativeSettingsViewController: UIViewController, UITableViewD
         }
         if row == "Account settings" {
             showMessage(title: row, message: "Account controls are being brought into the native app.")
+            return
+        }
+        if row == "Add Reservations via Email" {
+            onOpenReservationImport()
             return
         }
         if row == "Need help?" || row == "Talk to us" {
