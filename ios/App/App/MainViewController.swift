@@ -3,29 +3,26 @@ import Network
 import WebKit
 
 enum NativeWebRoutePolicy {
-    private static let allowedExactRoutes: Set<String> = [
-        "/dashboard/help"
-    ]
-
-    private static let allowedRoutePrefixes = [
+    static let allowedPrefixes = [
         "/dashboard/imports/",
+        "/dashboard/help",
         "/dashboard/account/",
-        "/dashboard/settings/"
     ]
 
     static func allows(_ route: String) -> Bool {
         guard route.hasPrefix("/") && !route.hasPrefix("//"),
-              let url = URL(string: route),
-              let path = url.path.isEmpty ? nil : url.path,
-              path.hasPrefix("/dashboard/") else {
+              let url = URL(string: route) else {
             return false
         }
+        return allows(url)
+    }
 
-        if allowedExactRoutes.contains(path) {
-            return true
+    static func allows(_ url: URL) -> Bool {
+        guard url.host == nil || url.host == "almidy.app",
+              url.path.hasPrefix("/dashboard/") else {
+            return false
         }
-
-        return allowedRoutePrefixes.contains { path.hasPrefix($0) }
+        return allowedPrefixes.contains { url.path.hasPrefix($0) }
     }
 }
 
@@ -372,7 +369,6 @@ final class NativeWebFeatureViewController: UIViewController, WKNavigationDelega
             decisionHandler(.cancel)
             return
         }
-        let route = url.path + (url.query.map { "?\($0)" } ?? "")
-        decisionHandler(NativeWebRoutePolicy.allows(route) ? .allow : .cancel)
+        decisionHandler(NativeWebRoutePolicy.allows(url) ? .allow : .cancel)
     }
 }
