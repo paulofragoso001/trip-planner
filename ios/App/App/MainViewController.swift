@@ -1,6 +1,33 @@
 import Capacitor
 import WebKit
 
+enum NativeWebRoutePolicy {
+    private static let allowedExactRoutes: Set<String> = [
+        "/dashboard/help"
+    ]
+
+    private static let allowedRoutePrefixes = [
+        "/dashboard/imports/",
+        "/dashboard/account/",
+        "/dashboard/settings/"
+    ]
+
+    static func allows(_ route: String) -> Bool {
+        guard route.hasPrefix("/") && !route.hasPrefix("//"),
+              let url = URL(string: route),
+              let path = url.path.isEmpty ? nil : url.path,
+              path.hasPrefix("/dashboard/") else {
+            return false
+        }
+
+        if allowedExactRoutes.contains(path) {
+            return true
+        }
+
+        return allowedRoutePrefixes.contains { path.hasPrefix($0) }
+    }
+}
+
 final class MainViewController: CAPBridgeViewController {
     private var didInstallLocationOverlayBlocker = false
     private var nativeDashboardController: NativeMapViewController?
@@ -44,6 +71,11 @@ final class MainViewController: CAPBridgeViewController {
     }
 
     private func openWebRouteFromNativeDashboard(_ route: String) {
+        guard NativeWebRoutePolicy.allows(route) else {
+            assertionFailure("Blocked native WebView route: \(route)")
+            return
+        }
+
         nativeDashboardController?.dismiss(animated: true) { [weak self] in
             self?.nativeDashboardController = nil
             let escapedRoute = route

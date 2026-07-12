@@ -41,6 +41,7 @@ public class NativeMapPlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     private func openWebRoute(_ route: String) {
+        guard NativeWebRoutePolicy.allows(route) else { return }
         guard let viewController = bridge?.viewController else { return }
         let escapedRoute = route
             .replacingOccurrences(of: "\\", with: "\\\\")
