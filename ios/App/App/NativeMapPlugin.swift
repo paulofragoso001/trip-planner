@@ -3813,7 +3813,7 @@ private final class NativeAuthViewController: UIViewController, ASAuthorizationC
         contentView.translatesAutoresizingMaskIntoConstraints = false
         bodyStack.axis = .vertical
         bodyStack.alignment = .fill
-        bodyStack.spacing = 22
+        bodyStack.spacing = 16
         bodyStack.translatesAutoresizingMaskIntoConstraints = false
         statusLabel.font = .systemFont(ofSize: 15, weight: .medium)
         statusLabel.textColor = .systemRed
@@ -3836,8 +3836,8 @@ private final class NativeAuthViewController: UIViewController, ASAuthorizationC
             contentView.widthAnchor.constraint(equalTo: scrollView.frameLayoutGuide.widthAnchor),
             bodyStack.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 24),
             bodyStack.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -24),
-            bodyStack.topAnchor.constraint(equalTo: contentView.safeAreaLayoutGuide.topAnchor, constant: 18),
-            bodyStack.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -32)
+            bodyStack.topAnchor.constraint(equalTo: contentView.safeAreaLayoutGuide.topAnchor, constant: 14),
+            bodyStack.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -24)
         ])
     }
 
@@ -3853,27 +3853,27 @@ private final class NativeAuthViewController: UIViewController, ASAuthorizationC
         header.axis = .horizontal
         header.alignment = .center
         header.distribution = .fill
-        header.heightAnchor.constraint(equalToConstant: 56).isActive = true
+        header.heightAnchor.constraint(equalToConstant: 48).isActive = true
 
         let leading = UIButton(type: .system)
-        leading.titleLabel?.font = .systemFont(ofSize: 20, weight: .semibold)
+        leading.titleLabel?.font = .systemFont(ofSize: 19, weight: .regular)
         leading.setTitle(screen == .choices ? "Cancel" : "‹", for: .normal)
         leading.setTitleColor(.label, for: .normal)
         leading.addTarget(self, action: #selector(handleLeadingAction), for: .touchUpInside)
         let trailing = UIButton(type: .system)
-        trailing.titleLabel?.font = .systemFont(ofSize: 18, weight: .semibold)
+        trailing.titleLabel?.font = .systemFont(ofSize: 17, weight: .medium)
         trailing.setTitle(screen == .signup ? "Signup" : screen == .login ? "Login" : "", for: .normal)
         trailing.setTitleColor(.white, for: .normal)
         trailing.backgroundColor = screen == .choices ? .clear : orange
-        trailing.layer.cornerRadius = 30
-        trailing.contentEdgeInsets = UIEdgeInsets(top: 14, left: 22, bottom: 14, right: 22)
+        trailing.layer.cornerRadius = 24
+        trailing.contentEdgeInsets = UIEdgeInsets(top: 11, left: 18, bottom: 11, right: 18)
         trailing.addTarget(self, action: #selector(submit), for: .touchUpInside)
         trailing.isHidden = screen == .choices
         let leftSpacer = UIView()
         let rightSpacer = UIView()
         let headerTitle = UILabel()
         headerTitle.text = screen == .signup ? "Create an Account" : screen == .login ? "Have an account?" : ""
-        headerTitle.font = .systemFont(ofSize: 24, weight: .semibold)
+        headerTitle.font = .systemFont(ofSize: 22, weight: .medium)
         headerTitle.textAlignment = .center
         header.addArrangedSubview(leading)
         header.addArrangedSubview(leftSpacer)
@@ -3901,17 +3901,17 @@ private final class NativeAuthViewController: UIViewController, ASAuthorizationC
             image.tintColor = index == 1 ? .systemPink : .systemIndigo
             image.backgroundColor = UIColor.white.withAlphaComponent(0.7)
             image.contentMode = .scaleAspectFit
-            image.layer.cornerRadius = index == 1 ? 72 : 56
+            image.layer.cornerRadius = index == 1 ? 58 : 46
             image.clipsToBounds = true
             avatars.addArrangedSubview(image)
-            image.widthAnchor.constraint(equalToConstant: index == 1 ? 144 : 112).isActive = true
+            image.widthAnchor.constraint(equalToConstant: index == 1 ? 116 : 92).isActive = true
             image.heightAnchor.constraint(equalTo: image.widthAnchor).isActive = true
         }
         bodyStack.addArrangedSubview(avatars)
 
-        let title = makeLabel("Create Account", size: 40, weight: .black, color: .label, alignment: .center)
+        let title = makeLabel("Create Account", size: 34, weight: .medium, color: .label, alignment: .center)
         bodyStack.addArrangedSubview(title)
-        let copy = makeLabel("Store your data on the cloud to have access from other devices.\n\nYou can delete your account at any time from the app.", size: 19, weight: .regular, color: .secondaryLabel, alignment: .center)
+        let copy = makeLabel("Store your data on the cloud to have access from other devices.\n\nYou can delete your account at any time from the app.", size: 17, weight: .regular, color: .secondaryLabel, alignment: .center)
         bodyStack.addArrangedSubview(copy)
         bodyStack.addArrangedSubview(makeButton("  Sign in with Apple", background: .black, action: #selector(signInWithApple)))
         bodyStack.addArrangedSubview(makeButton("G  Continue with Google", background: .white, titleColor: .label, border: true, action: #selector(signInWithGoogle)))
@@ -3919,7 +3919,7 @@ private final class NativeAuthViewController: UIViewController, ASAuthorizationC
         let login = UIButton(type: .system)
         login.setTitle("Have an account?", for: .normal)
         login.setTitleColor(orange, for: .normal)
-        login.titleLabel?.font = .systemFont(ofSize: 21, weight: .semibold)
+        login.titleLabel?.font = .systemFont(ofSize: 19, weight: .medium)
         login.addTarget(self, action: #selector(showLogin), for: .touchUpInside)
         bodyStack.addArrangedSubview(statusLabel)
         bodyStack.addArrangedSubview(login)
@@ -3992,14 +3992,14 @@ private final class NativeAuthViewController: UIViewController, ASAuthorizationC
         let button = UIButton(type: .system)
         button.setTitle(title, for: .normal)
         button.setTitleColor(titleColor, for: .normal)
-        button.titleLabel?.font = .systemFont(ofSize: 19, weight: .semibold)
+        button.titleLabel?.font = .systemFont(ofSize: 17, weight: .medium)
         button.backgroundColor = background
-        button.layer.cornerRadius = 30
+        button.layer.cornerRadius = 27
         if border {
             button.layer.borderWidth = 1
             button.layer.borderColor = UIColor.separator.cgColor
         }
-        button.heightAnchor.constraint(equalToConstant: 60).isActive = true
+        button.heightAnchor.constraint(equalToConstant: 54).isActive = true
         button.addTarget(self, action: action, for: .touchUpInside)
         actionButtons.append(button)
         return button
