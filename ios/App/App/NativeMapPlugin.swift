@@ -184,7 +184,7 @@ struct NativeImportResult {
     let status: String
 }
 
-final class NativeTripStore {
+final class NativeVercelAPIClient {
     private let webView: WKWebView?
     private let baseURL: URL
     private let session: URLSession
@@ -197,6 +197,114 @@ final class NativeTripStore {
         self.webView = webView
         self.baseURL = baseURL
         self.session = session
+    }
+
+    func request(
+        path: String,
+        method: String,
+        body: Data?,
+        completion: @escaping (Result<Data, Error>) -> Void
+    ) {
+        guard let url = URL(string: path, relativeTo: baseURL) else {
+            completion(.failure(NativeTripStoreError.invalidResponse))
+            return
+        }
+        var request = URLRequest(url: url)
+        request.httpMethod = method
+        request.httpBody = body
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        if body != nil {
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        }
+        request.setValue(baseURL.originString, forHTTPHeaderField: "Origin")
+        request.setValue(baseURL.absoluteString + "/dashboard/trips", forHTTPHeaderField: "Referer")
+        attachCredentials(to: request, completion: completion)
+    }
+
+    private func attachCredentials(
+        to request: URLRequest,
+        completion: @escaping (Result<Data, Error>) -> Void
+    ) {
+        let finish: (Result<Data, Error>) -> Void = { result in
+            DispatchQueue.main.async { completion(result) }
+        }
+        let perform: (URLRequest) -> Void = { [session] request in
+            session.dataTask(with: request) { data, response, error in
+                if let error {
+                    finish(.failure(error))
+                    return
+                }
+                guard let response = response as? HTTPURLResponse else {
+                    finish(.failure(NativeTripStoreError.invalidResponse))
+                    return
+                }
+                guard (200...299).contains(response.statusCode), let data else {
+                    if response.statusCode == 401 {
+                        finish(.failure(NativeTripStoreError.unauthorized))
+                    } else {
+                        let message = data.flatMap { String(data: $0, encoding: .utf8) } ?? "Vercel API request failed."
+                        finish(.failure(NativeTripStoreError.requestFailed(message)))
+                    }
+                    return
+                }
+                finish(.success(data))
+            }.resume()
+        }
+
+        var authenticatedRequest = request
+        if let accessToken = NativeAuthSessionStore.shared.session?.accessToken {
+            authenticatedRequest.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
+        }
+        guard let webView else {
+            perform(authenticatedRequest)
+            return
+        }
+
+        let cookieStore = webView.configuration.websiteDataStore.httpCookieStore
+        cookieStore.getAllCookies { cookies in
+            if let cookieHeader = HTTPCookie.requestHeaderFields(with: cookies)["Cookie"] {
+                authenticatedRequest.setValue(cookieHeader, forHTTPHeaderField: "Cookie")
+            }
+            let tokenScript = """
+            (() => {
+                for (const store of [localStorage, sessionStorage]) {
+                    for (const key of Object.keys(store)) {
+                        if (!key.includes('auth-token')) continue;
+                        try {
+                            const value = JSON.parse(store.getItem(key) || 'null');
+                            if (typeof value?.access_token === 'string') return value.access_token;
+                        } catch (_) {}
+                    }
+                }
+                return null;
+            })()
+            """
+            webView.evaluateJavaScript(tokenScript) { result, _ in
+                if let accessToken = result as? String, !accessToken.isEmpty {
+                    NativeAuthSessionStore.shared.save(NativeAuthSession(accessToken: accessToken, refreshToken: nil, expiresAt: nil))
+                    authenticatedRequest.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
+                }
+                perform(authenticatedRequest)
+            }
+        }
+    }
+}
+
+final class NativeTripStore {
+    private let webView: WKWebView?
+    private let baseURL: URL
+    private let session: URLSession
+    private let apiClient: NativeVercelAPIClient
+
+    init(
+        webView: WKWebView?,
+        baseURL: URL = NativeServiceConfiguration.appBaseURL,
+        session: URLSession = .shared
+    ) {
+        self.webView = webView
+        self.baseURL = baseURL
+        self.session = session
+        self.apiClient = NativeVercelAPIClient(webView: webView, baseURL: baseURL, session: session)
     }
 
     func loadTrips(completion: @escaping (Result<[NativeMapTrip], Error>) -> Void) {
@@ -336,51 +444,7 @@ final class NativeTripStore {
         body: Data?,
         completion: @escaping (Result<Data, Error>) -> Void
     ) {
-        guard let url = URL(string: path, relativeTo: baseURL) else {
-            completion(.failure(NativeTripStoreError.invalidResponse))
-            return
-        }
-
-        var request = URLRequest(url: url)
-        request.httpMethod = method
-        request.httpBody = body
-        request.setValue("application/json", forHTTPHeaderField: "Accept")
-        if body != nil {
-            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-            request.setValue(baseURL.absoluteString, forHTTPHeaderField: "Origin")
-            request.setValue(baseURL.absoluteString + "/dashboard/trips", forHTTPHeaderField: "Referer")
-        }
-
-        let finish: (Result<Data, Error>) -> Void = { result in
-            DispatchQueue.main.async {
-                completion(result)
-            }
-        }
-
-        let sendRequest: (URLRequest) -> Void = { [session] request in
-            session.dataTask(with: request) { data, response, error in
-                if let error {
-                    finish(.failure(error))
-                    return
-                }
-                guard let httpResponse = response as? HTTPURLResponse else {
-                    finish(.failure(NativeTripStoreError.invalidResponse))
-                    return
-                }
-                guard (200...299).contains(httpResponse.statusCode), let data else {
-                    if httpResponse.statusCode == 401 {
-                        finish(.failure(NativeTripStoreError.unauthorized))
-                    } else {
-                        let message = data.flatMap { String(data: $0, encoding: .utf8) } ?? "Trip request failed."
-                        finish(.failure(NativeTripStoreError.requestFailed(message)))
-                    }
-                    return
-                }
-                finish(.success(data))
-            }.resume()
-        }
-
-        sendWithWebViewCookies(request, sendRequest: sendRequest)
+        apiClient.request(path: path, method: method, body: body, completion: completion)
     }
 
     private func sendWithWebViewCookies(
