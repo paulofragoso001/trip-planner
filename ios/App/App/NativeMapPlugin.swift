@@ -3896,16 +3896,36 @@ private final class NativeAuthViewController: UIViewController, ASAuthorizationC
         avatars.axis = .horizontal
         avatars.alignment = .center
         avatars.distribution = .equalSpacing
-        ["person.crop.circle.fill", "face.smiling.fill", "person.crop.circle.fill"].enumerated().forEach { index, name in
-            let image = UIImageView(image: UIImage(systemName: name))
-            image.tintColor = index == 1 ? .systemPink : .systemIndigo
-            image.backgroundColor = UIColor.white.withAlphaComponent(0.7)
-            image.contentMode = .scaleAspectFit
-            image.layer.cornerRadius = index == 1 ? 58 : 46
-            image.clipsToBounds = true
-            avatars.addArrangedSubview(image)
-            image.widthAnchor.constraint(equalToConstant: index == 1 ? 116 : 92).isActive = true
-            image.heightAnchor.constraint(equalTo: image.widthAnchor).isActive = true
+        let avatarSpecs: [(emoji: String, background: UIColor, size: CGFloat)] = [
+            ("👨🏻‍🦰", UIColor(red: 1.0, green: 0.84, blue: 0.85, alpha: 1.0), 92),
+            ("🧑🏼‍🎨", UIColor(red: 1.0, green: 0.87, blue: 0.80, alpha: 1.0), 116),
+            ("👩🏾‍🦱", UIColor(red: 0.96, green: 0.79, blue: 0.94, alpha: 1.0), 92)
+        ]
+        avatarSpecs.forEach { spec in
+            let badge = UIView()
+            badge.backgroundColor = spec.background
+            badge.layer.cornerRadius = spec.size / 2
+            badge.layer.borderWidth = 7
+            badge.layer.borderColor = UIColor.white.withAlphaComponent(0.92).cgColor
+            badge.clipsToBounds = true
+            badge.isAccessibilityElement = true
+            badge.accessibilityLabel = "Apple avatar"
+
+            let face = UILabel()
+            face.text = spec.emoji
+            face.font = .systemFont(ofSize: spec.size * 0.58)
+            face.textAlignment = .center
+            face.translatesAutoresizingMaskIntoConstraints = false
+            badge.addSubview(face)
+            NSLayoutConstraint.activate([
+                face.leadingAnchor.constraint(equalTo: badge.leadingAnchor),
+                face.trailingAnchor.constraint(equalTo: badge.trailingAnchor),
+                face.centerYAnchor.constraint(equalTo: badge.centerYAnchor, constant: 2)
+            ])
+
+            avatars.addArrangedSubview(badge)
+            badge.widthAnchor.constraint(equalToConstant: spec.size).isActive = true
+            badge.heightAnchor.constraint(equalTo: badge.widthAnchor).isActive = true
         }
         bodyStack.addArrangedSubview(avatars)
 
