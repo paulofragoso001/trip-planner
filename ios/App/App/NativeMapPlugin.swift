@@ -2772,7 +2772,10 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
                 self?.refreshTripsFromServer()
             },
             onOpenAccount: { [weak self] in
-                self?.presentNativeAccount()
+                guard let self else { return }
+                self.dismiss(animated: true) { [weak self] in
+                    self?.presentNativeAccount()
+                }
             },
             onOpenReservationImport: { [weak self] in
                 self?.dismiss(animated: true) { [weak self] in
