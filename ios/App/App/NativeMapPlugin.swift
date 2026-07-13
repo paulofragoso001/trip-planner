@@ -6,6 +6,7 @@ import Foundation
 import MapKit
 import Network
 import PhotosUI
+import Security
 import UIKit
 import WebKit
 import UniformTypeIdentifiers
@@ -33,6 +34,73 @@ private extension URL {
     var originString: String {
         guard let scheme, let host else { return absoluteString }
         return scheme + "://" + host + (port.map { ":\($0)" } ?? "")
+    }
+}
+
+struct NativeAuthSession: Codable {
+    let accessToken: String
+    let refreshToken: String?
+    let expiresAt: Int?
+}
+
+final class NativeAuthSessionStore {
+    static let shared = NativeAuthSessionStore()
+
+    private let service = "app.almidy.premium.supabase-session"
+    private let account = "current"
+
+    var session: NativeAuthSession? {
+        guard let data = readData() else { return nil }
+        return try? JSONDecoder().decode(NativeAuthSession.self, from: data)
+    }
+
+    func save(_ session: NativeAuthSession) {
+        guard let data = try? JSONEncoder().encode(session) else { return }
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: account
+        ]
+        let status = SecItemUpdate(query as CFDictionary, [kSecValueData as String: data] as CFDictionary)
+        if status == errSecItemNotFound {
+            var item = query
+            item[kSecValueData as String] = data
+            SecItemAdd(item as CFDictionary, nil)
+        }
+    }
+
+    func update(from rawValue: String) {
+        guard let data = rawValue.data(using: .utf8),
+              let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let accessToken = object["access_token"] as? String,
+              !accessToken.isEmpty else { return }
+        save(NativeAuthSession(
+            accessToken: accessToken,
+            refreshToken: object["refresh_token"] as? String,
+            expiresAt: object["expires_at"] as? Int
+        ))
+    }
+
+    func clear() {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: account
+        ]
+        SecItemDelete(query as CFDictionary)
+    }
+
+    private func readData() -> Data? {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: account,
+            kSecReturnData as String: true,
+            kSecMatchLimit as String: kSecMatchLimitOne
+        ]
+        var result: CFTypeRef?
+        guard SecItemCopyMatching(query as CFDictionary, &result) == errSecSuccess else { return nil }
+        return result as? Data
     }
 }
 
@@ -342,7 +410,11 @@ final class NativeTripStore {
         }
 
         guard let webView else {
-            perform(request)
+            var authenticatedRequest = request
+            if let accessToken = NativeAuthSessionStore.shared.session?.accessToken {
+                authenticatedRequest.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
+            }
+            perform(authenticatedRequest)
             return
         }
 
@@ -366,7 +438,13 @@ final class NativeTripStore {
                             const token = value?.access_token
                                 || value?.currentSession?.access_token
                                 || value?.session?.access_token;
-                            if (typeof token === 'string' && token.length > 0) return token;
+                            if (typeof token === 'string' && token.length > 0) {
+                                return JSON.stringify({
+                                    accessToken: token,
+                                    refreshToken: value?.refresh_token || value?.currentSession?.refresh_token || value?.session?.refresh_token || null,
+                                    expiresAt: value?.expires_at || value?.currentSession?.expires_at || value?.session?.expires_at || null
+                                });
+                            }
                         } catch (_) {}
                     }
                 }
@@ -374,8 +452,16 @@ final class NativeTripStore {
             })()
             """
             webView.evaluateJavaScript(accessTokenScript) { result, _ in
-                if let accessToken = result as? String, !accessToken.isEmpty {
-                    request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
+                if let sessionJSON = result as? String,
+                   let data = sessionJSON.data(using: .utf8),
+                   let session = try? JSONDecoder().decode(NativeAuthSessionPayload.self, from: data),
+                   !session.accessToken.isEmpty {
+                    NativeAuthSessionStore.shared.save(NativeAuthSession(
+                        accessToken: session.accessToken,
+                        refreshToken: session.refreshToken,
+                        expiresAt: session.expiresAt
+                    ))
+                    request.setValue("Bearer \(session.accessToken)", forHTTPHeaderField: "Authorization")
                 }
                 perform(request)
             }
@@ -402,6 +488,12 @@ final class NativeTripStore {
 
 private struct NativeTripListResponse: Decodable {
     let trips: [NativeMapTrip]
+}
+
+private struct NativeAuthSessionPayload: Decodable {
+    let accessToken: String
+    let refreshToken: String?
+    let expiresAt: Int?
 }
 
 private struct NativeTripResponse: Decodable {
@@ -2828,8 +2920,11 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
     private func presentNativeAccount() {
         let presentAccount: (NativeWebAuthStorage?) -> Void = { [weak self] authStorage in
             guard let self else { return }
+            if let authStorage {
+                NativeAuthSessionStore.shared.update(from: authStorage.value)
+            }
             let account = NativeAccountViewController(
-                isSignedIn: authStorage != nil,
+                isSignedIn: authStorage != nil || NativeAuthSessionStore.shared.session != nil,
                 onSignIn: { [weak self] in
                     guard let self else { return }
                     self.dismiss(animated: true) { [weak self] in
@@ -2859,8 +2954,9 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
     }
 
     private func clearNativeSession(completion: @escaping (Bool) -> Void) {
+        NativeAuthSessionStore.shared.clear()
         guard let sourceWebView else {
-            completion(false)
+            completion(true)
             return
         }
         let script = """
@@ -2895,6 +2991,9 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         let previousSheetState = sheetState
         let presentFeature: (NativeWebAuthStorage?) -> Void = { [weak self] authStorage in
             guard let self else { return }
+            if let authStorage {
+                NativeAuthSessionStore.shared.update(from: authStorage.value)
+            }
             let feature = NativeWebFeatureViewController.wrapped(
                 route: route,
                 title: title,
