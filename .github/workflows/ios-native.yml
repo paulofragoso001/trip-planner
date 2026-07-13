@@ -1,0 +1,45 @@
+name: Native iOS CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "ios/**"
+      - "capacitor.config.ts"
+      - ".github/workflows/ios-native.yml"
+  pull_request:
+    paths:
+      - "ios/**"
+      - "capacitor.config.ts"
+      - ".github/workflows/ios-native.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  native-build:
+    runs-on: macos-14
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Reject credentials in the native bundle
+        shell: bash
+        run: |
+          if rg -n -i --glob '!*.xcuserstate' \
+            '(gh[pousr]_[A-Za-z0-9_]+|github_pat_[A-Za-z0-9_]+|x-access-token:|BEGIN (RSA|OPENSSH|EC|DSA) PRIVATE KEY|GITHUB_TOKEN|GH_TOKEN)' \
+            ios/App; then
+            echo "GitHub credentials or private key material must never ship in the iOS app."
+            exit 1
+          fi
+
+      - name: Build native app
+        run: >-
+          xcodebuild
+          -project ios/App/App.xcodeproj
+          -scheme App
+          -sdk iphonesimulator
+          -configuration Debug
+          -derivedDataPath /tmp/almidy-derived-data
+          CODE_SIGNING_ALLOWED=NO
+          build
