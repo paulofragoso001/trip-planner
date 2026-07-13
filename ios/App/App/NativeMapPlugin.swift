@@ -1,3 +1,4 @@
+ios/App/App/NativeMapPlugin.swift
 import Capacitor
 import CoreGraphics
 import CoreLocation
@@ -3789,8 +3790,8 @@ private final class NativeAuthViewController: UIViewController, ASAuthorizationC
     private var passwordField: UITextField?
     private var actionButtons: [UIButton] = []
 
-    private let orange = UIColor(red: 1, green: 0.42, blue: 0.12, alpha: 1)
-    private let warmBackground = UIColor(red: 0.99, green: 0.97, blue: 0.95, alpha: 1)
+    private let orange = UIColor(red: 1, green: 0.45, blue: 0.16, alpha: 1)
+    private let warmBackground = UIColor(red: 1.0, green: 0.98, blue: 0.96, alpha: 1)
 
     init(onFinish: @escaping (NativeAuthResult) -> Void) {
         self.onFinish = onFinish
@@ -3859,6 +3860,14 @@ private final class NativeAuthViewController: UIViewController, ASAuthorizationC
         leading.titleLabel?.font = .systemFont(ofSize: 19, weight: .regular)
         leading.setTitle(screen == .choices ? "Cancel" : "‹", for: .normal)
         leading.setTitleColor(.label, for: .normal)
+        if screen == .choices {
+            leading.backgroundColor = UIColor.white.withAlphaComponent(0.72)
+            leading.layer.cornerRadius = 25
+            leading.layer.borderWidth = 1
+            leading.layer.borderColor = UIColor.white.withAlphaComponent(0.95).cgColor
+            leading.contentEdgeInsets = UIEdgeInsets(top: 0, left: 22, bottom: 0, right: 22)
+            leading.heightAnchor.constraint(equalToConstant: 50).isActive = true
+        }
         leading.addTarget(self, action: #selector(handleLeadingAction), for: .touchUpInside)
         let trailing = UIButton(type: .system)
         trailing.titleLabel?.font = .systemFont(ofSize: 17, weight: .medium)
@@ -3892,53 +3901,69 @@ private final class NativeAuthViewController: UIViewController, ASAuthorizationC
     }
 
     private func buildChoices() {
-        let avatars = UIStackView()
-        avatars.axis = .horizontal
-        avatars.alignment = .center
-        avatars.distribution = .fillEqually
-        avatars.spacing = 12
+        bodyStack.addArrangedSubview(makeSpacer(height: 88))
+        let avatars = UIView()
         avatars.translatesAutoresizingMaskIntoConstraints = false
+        avatars.heightAnchor.constraint(equalToConstant: 164).isActive = true
         avatars.widthAnchor.constraint(equalToConstant: 306).isActive = true
-        let avatarSpecs: [(emoji: String, background: UIColor, size: CGFloat)] = [
-            ("👨🏻‍🦰", UIColor(red: 1.0, green: 0.84, blue: 0.85, alpha: 1.0), 84),
-            ("🧑🏼‍🎨", UIColor(red: 1.0, green: 0.87, blue: 0.80, alpha: 1.0), 106),
-            ("👩🏾‍🦱", UIColor(red: 0.96, green: 0.79, blue: 0.94, alpha: 1.0), 84)
-        ]
-        avatarSpecs.forEach { spec in
-            let badge = UIView()
-            badge.backgroundColor = spec.background
-            badge.layer.cornerRadius = spec.size / 2
-            badge.layer.borderWidth = 7
-            badge.layer.borderColor = UIColor.white.withAlphaComponent(0.92).cgColor
-            badge.clipsToBounds = true
-            badge.isAccessibilityElement = true
-            badge.accessibilityLabel = "Apple avatar"
+        let avatarContainer = UIView()
+        avatarContainer.addSubview(avatars)
+        NSLayoutConstraint.activate([
+            avatars.centerXAnchor.constraint(equalTo: avatarContainer.centerXAnchor),
+            avatars.topAnchor.constraint(equalTo: avatarContainer.topAnchor),
+            avatars.bottomAnchor.constraint(equalTo: avatarContainer.bottomAnchor)
+        ])
 
-            let face = UIImageView(image: emojiImage(spec.emoji, size: spec.size * 0.58))
-            face.contentMode = .scaleAspectFit
-            face.translatesAutoresizingMaskIntoConstraints = false
-            badge.addSubview(face)
-            NSLayoutConstraint.activate([
-                face.leadingAnchor.constraint(equalTo: badge.leadingAnchor),
-                face.trailingAnchor.constraint(equalTo: badge.trailingAnchor),
-                face.topAnchor.constraint(equalTo: badge.topAnchor, constant: 8),
-                face.bottomAnchor.constraint(equalTo: badge.bottomAnchor, constant: -4)
-            ])
+        let left = makeAvatarBadge(
+            emoji: "👨🏻‍🦰",
+            background: UIColor(red: 1.0, green: 0.84, blue: 0.85, alpha: 1.0),
+            size: 96
+        )
+        let center = makeAvatarBadge(
+            emoji: "🧑🏼‍🎨",
+            background: UIColor(red: 1.0, green: 0.87, blue: 0.80, alpha: 1.0),
+            size: 144
+        )
+        let right = makeAvatarBadge(
+            emoji: "👩🏾‍🦱",
+            background: UIColor(red: 0.96, green: 0.79, blue: 0.94, alpha: 1.0),
+            size: 96
+        )
+        avatars.addSubview(left)
+        avatars.addSubview(right)
+        avatars.addSubview(center)
+        NSLayoutConstraint.activate([
+            left.leadingAnchor.constraint(equalTo: avatars.leadingAnchor, constant: 4),
+            left.topAnchor.constraint(equalTo: avatars.topAnchor, constant: 22),
+            left.widthAnchor.constraint(equalToConstant: 96),
+            left.heightAnchor.constraint(equalTo: left.widthAnchor),
+            right.trailingAnchor.constraint(equalTo: avatars.trailingAnchor, constant: -4),
+            right.topAnchor.constraint(equalTo: avatars.topAnchor, constant: 22),
+            right.widthAnchor.constraint(equalToConstant: 96),
+            right.heightAnchor.constraint(equalTo: right.widthAnchor),
+            center.centerXAnchor.constraint(equalTo: avatars.centerXAnchor),
+            center.topAnchor.constraint(equalTo: avatars.topAnchor, constant: 4),
+            center.widthAnchor.constraint(equalToConstant: 144),
+            center.heightAnchor.constraint(equalTo: center.widthAnchor)
+        ])
+        bodyStack.addArrangedSubview(avatarContainer)
 
-            avatars.addArrangedSubview(badge)
-            badge.widthAnchor.constraint(equalToConstant: spec.size).isActive = true
-            badge.heightAnchor.constraint(equalTo: badge.widthAnchor).isActive = true
-        }
-        bodyStack.addArrangedSubview(avatars)
-        avatars.centerXAnchor.constraint(equalTo: bodyStack.centerXAnchor).isActive = true
-
-        let title = makeLabel("Create Account", size: 34, weight: .medium, color: .label, alignment: .center)
+        let title = makeLabel("Create Account", size: 36, weight: .semibold, color: .label, alignment: .center)
         bodyStack.addArrangedSubview(title)
+        let copyContainer = UIView()
         let copy = makeLabel("Store your data on the cloud to have access from other devices.\n\nYou can delete your account at any time from the app.", size: 17, weight: .regular, color: .secondaryLabel, alignment: .center)
-        bodyStack.addArrangedSubview(copy)
+        copyContainer.addSubview(copy)
+        copy.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            copy.topAnchor.constraint(equalTo: copyContainer.topAnchor),
+            copy.bottomAnchor.constraint(equalTo: copyContainer.bottomAnchor),
+            copy.leadingAnchor.constraint(equalTo: copyContainer.leadingAnchor, constant: 8),
+            copy.trailingAnchor.constraint(equalTo: copyContainer.trailingAnchor, constant: -8)
+        ])
+        bodyStack.addArrangedSubview(copyContainer)
         bodyStack.addArrangedSubview(makeButton("  Sign in with Apple", background: .black, action: #selector(signInWithApple)))
         bodyStack.addArrangedSubview(makeGoogleButton())
-        bodyStack.addArrangedSubview(makeButton("Signup with email", background: orange, action: #selector(showSignup)))
+        bodyStack.addArrangedSubview(makeButton("Sign up with email", background: orange, action: #selector(showSignup)))
         let login = UIButton(type: .system)
         login.setTitle("Have an account?", for: .normal)
         login.setTitleColor(orange, for: .normal)
@@ -3946,6 +3971,48 @@ private final class NativeAuthViewController: UIViewController, ASAuthorizationC
         login.addTarget(self, action: #selector(showLogin), for: .touchUpInside)
         bodyStack.addArrangedSubview(statusLabel)
         bodyStack.addArrangedSubview(login)
+    }
+
+    private func makeAvatarBadge(emoji: String, background: UIColor, size: CGFloat) -> UIView {
+        let wrapper = UIView()
+        wrapper.translatesAutoresizingMaskIntoConstraints = false
+        wrapper.layer.shadowColor = UIColor.black.withAlphaComponent(0.12).cgColor
+        wrapper.layer.shadowOpacity = 1
+        wrapper.layer.shadowRadius = 10
+        wrapper.layer.shadowOffset = CGSize(width: 0, height: 5)
+        wrapper.isAccessibilityElement = true
+        wrapper.accessibilityLabel = "Apple avatar"
+
+        let circle = UIView()
+        circle.backgroundColor = background
+        circle.layer.cornerRadius = size / 2
+        circle.layer.borderWidth = 7
+        circle.layer.borderColor = UIColor.white.withAlphaComponent(0.96).cgColor
+        circle.clipsToBounds = true
+        circle.translatesAutoresizingMaskIntoConstraints = false
+        wrapper.addSubview(circle)
+
+        let face = UIImageView(image: emojiImage(emoji, size: size * 0.58))
+        face.contentMode = .scaleAspectFit
+        face.translatesAutoresizingMaskIntoConstraints = false
+        circle.addSubview(face)
+        NSLayoutConstraint.activate([
+            circle.leadingAnchor.constraint(equalTo: wrapper.leadingAnchor),
+            circle.trailingAnchor.constraint(equalTo: wrapper.trailingAnchor),
+            circle.topAnchor.constraint(equalTo: wrapper.topAnchor),
+            circle.bottomAnchor.constraint(equalTo: wrapper.bottomAnchor),
+            face.leadingAnchor.constraint(equalTo: circle.leadingAnchor),
+            face.trailingAnchor.constraint(equalTo: circle.trailingAnchor),
+            face.topAnchor.constraint(equalTo: circle.topAnchor, constant: 8),
+            face.bottomAnchor.constraint(equalTo: circle.bottomAnchor, constant: -4)
+        ])
+        return wrapper
+    }
+
+    private func makeSpacer(height: CGFloat) -> UIView {
+        let spacer = UIView()
+        spacer.heightAnchor.constraint(equalToConstant: height).isActive = true
+        return spacer
     }
 
     private func emojiImage(_ emoji: String, size: CGFloat) -> UIImage? {
