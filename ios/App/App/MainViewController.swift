@@ -5,6 +5,7 @@ import WebKit
 
 enum NativeWebRoutePolicy {
     static let allowedPrefixes = [
+        "/login",
         "/dashboard/imports",
         "/dashboard/help",
         "/dashboard/account",
@@ -20,9 +21,10 @@ enum NativeWebRoutePolicy {
 
     static func allows(_ url: URL) -> Bool {
         guard url.host == nil || url.host == "almidy.app",
-              url.path.hasPrefix("/dashboard/") else {
+              url.path == "/login" || url.path.hasPrefix("/dashboard/") else {
             return false
         }
+        if url.path == "/login" { return true }
         return allowedPrefixes.contains { url.path.hasPrefix($0) }
     }
 

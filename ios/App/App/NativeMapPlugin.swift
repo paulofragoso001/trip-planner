@@ -2567,7 +2567,10 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         button.titleLabel?.font = .systemFont(ofSize: fontSize, weight: .semibold)
         button.backgroundColor = backgroundColor
         button.layer.cornerRadius = cornerRadius
-        button.contentEdgeInsets = UIEdgeInsets(top: 10, left: 14, bottom: 10, right: 14)
+        var configuration = UIButton.Configuration.plain()
+        configuration.contentInsets = NSDirectionalEdgeInsets(top: 10, leading: 14, bottom: 10, trailing: 14)
+        configuration.baseForegroundColor = textColor
+        button.configuration = configuration
         button.addTarget(self, action: action, for: .touchUpInside)
         NSLayoutConstraint.activate([button.heightAnchor.constraint(greaterThanOrEqualToConstant: minHeight)])
         return button
@@ -2768,6 +2771,9 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
             onRefreshTrips: { [weak self] in
                 self?.refreshTripsFromServer()
             },
+            onOpenAccount: { [weak self] in
+                self?.presentNativeAccount()
+            },
             onOpenReservationImport: { [weak self] in
                 self?.dismiss(animated: true) { [weak self] in
                     self?.presentNativeWebFeature(
@@ -2789,6 +2795,71 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
             sheet.preferredCornerRadius = 28
         }
         present(settings, animated: true)
+    }
+
+    private func presentNativeAccount() {
+        let presentAccount: (NativeWebAuthStorage?) -> Void = { [weak self] authStorage in
+            guard let self else { return }
+            let account = NativeAccountViewController(
+                isSignedIn: authStorage != nil,
+                onSignIn: { [weak self] in
+                    guard let self else { return }
+                    self.dismiss(animated: true) { [weak self] in
+                        self?.presentNativeWebFeature(route: "/login", title: "Sign In")
+                    }
+                },
+                onSignOut: { [weak self] completion in
+                    self?.clearNativeSession(completion: completion)
+                }
+            )
+            account.modalPresentationStyle = .pageSheet
+            if let sheet = account.sheetPresentationController {
+                sheet.detents = [.medium()]
+                sheet.prefersGrabberVisible = true
+                sheet.preferredCornerRadius = 28
+            }
+            self.present(account, animated: true)
+        }
+
+        if let sourceWebView {
+            NativeWebFeatureViewController.exportAuthStorage(from: sourceWebView) { authStorage in
+                DispatchQueue.main.async { presentAccount(authStorage) }
+            }
+        } else {
+            presentAccount(nil)
+        }
+    }
+
+    private func clearNativeSession(completion: @escaping (Bool) -> Void) {
+        guard let sourceWebView else {
+            completion(false)
+            return
+        }
+        let script = """
+        (() => {
+            for (const store of [localStorage, sessionStorage]) {
+                for (const key of Object.keys(store)) {
+                    if (key.includes('auth-token')) store.removeItem(key);
+                }
+            }
+            return true;
+        })()
+        """
+        sourceWebView.evaluateJavaScript(script) { [weak self] _, error in
+            guard let self else { return }
+            let cookieStore = sourceWebView.configuration.websiteDataStore.httpCookieStore
+            cookieStore.getAllCookies { cookies in
+                let group = DispatchGroup()
+                for cookie in cookies where cookie.domain.contains("almidy") || cookie.domain.contains("supabase") {
+                    group.enter()
+                    cookieStore.delete(cookie) { group.leave() }
+                }
+                group.notify(queue: .main) {
+                    completion(error == nil)
+                    self.refreshTripsFromServer()
+                }
+            }
+        }
     }
 
     func presentNativeWebFeature(route: String, title: String) {
@@ -3016,6 +3087,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
 
 private final class NativeSettingsViewController: UIViewController, UITableViewDataSource, UITableViewDelegate {
     private let onRefreshTrips: () -> Void
+    private let onOpenAccount: () -> Void
     private let onOpenReservationImport: () -> Void
     private let onOpenHelp: () -> Void
     private let tableView = UITableView(frame: .zero, style: .insetGrouped)
@@ -3030,10 +3102,12 @@ private final class NativeSettingsViewController: UIViewController, UITableViewD
 
     init(
         onRefreshTrips: @escaping () -> Void,
+        onOpenAccount: @escaping () -> Void,
         onOpenReservationImport: @escaping () -> Void,
         onOpenHelp: @escaping () -> Void
     ) {
         self.onRefreshTrips = onRefreshTrips
+        self.onOpenAccount = onOpenAccount
         self.onOpenReservationImport = onOpenReservationImport
         self.onOpenHelp = onOpenHelp
         super.init(nibName: nil, bundle: nil)
@@ -3129,7 +3203,7 @@ private final class NativeSettingsViewController: UIViewController, UITableViewD
             return
         }
         if row == "Account settings" {
-            showMessage(title: row, message: "Account controls are being brought into the native app.")
+            onOpenAccount()
             return
         }
         if row == "Add Reservations via Email" {
@@ -3147,6 +3221,106 @@ private final class NativeSettingsViewController: UIViewController, UITableViewD
         let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: "Done", style: .default))
         present(alert, animated: true)
+    }
+}
+
+private final class NativeAccountViewController: UIViewController {
+    private let isSignedIn: Bool
+    private let onSignIn: () -> Void
+    private let onSignOut: (@escaping (Bool) -> Void) -> Void
+    private let statusLabel = UILabel()
+    private let actionButton = UIButton(type: .system)
+
+    init(
+        isSignedIn: Bool,
+        onSignIn: @escaping () -> Void,
+        onSignOut: @escaping (@escaping (Bool) -> Void) -> Void
+    ) {
+        self.isSignedIn = isSignedIn
+        self.onSignIn = onSignIn
+        self.onSignOut = onSignOut
+        super.init(nibName: nil, bundle: nil)
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        view.backgroundColor = .systemBackground
+
+        let closeButton = UIButton(type: .system)
+        closeButton.setTitle("Done", for: .normal)
+        closeButton.titleLabel?.font = .systemFont(ofSize: 17, weight: .semibold)
+        closeButton.addTarget(self, action: #selector(close), for: .touchUpInside)
+
+        let title = UILabel()
+        title.text = "Account"
+        title.font = .systemFont(ofSize: 32, weight: .black)
+        title.textColor = .label
+
+        let subtitle = UILabel()
+        subtitle.text = isSignedIn ? "Your Almidy session is active." : "Sign in to create and manage trips."
+        subtitle.font = .systemFont(ofSize: 17, weight: .regular)
+        subtitle.textColor = .secondaryLabel
+        subtitle.numberOfLines = 0
+
+        statusLabel.text = isSignedIn ? "Signed in" : "Not signed in"
+        statusLabel.font = .systemFont(ofSize: 20, weight: .semibold)
+        statusLabel.textColor = isSignedIn ? .systemGreen : .secondaryLabel
+
+        actionButton.setTitle(isSignedIn ? "Sign Out" : "Sign In", for: .normal)
+        actionButton.setTitleColor(.white, for: .normal)
+        actionButton.titleLabel?.font = .systemFont(ofSize: 18, weight: .bold)
+        actionButton.backgroundColor = isSignedIn ? .systemRed : UIColor(red: 1, green: 0.42, blue: 0.12, alpha: 1)
+        actionButton.layer.cornerRadius = 26
+        actionButton.addTarget(self, action: #selector(action), for: .touchUpInside)
+
+        [closeButton, title, subtitle, statusLabel, actionButton].forEach {
+            $0.translatesAutoresizingMaskIntoConstraints = false
+            view.addSubview($0)
+        }
+
+        NSLayoutConstraint.activate([
+            closeButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 10),
+            closeButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -24),
+            title.topAnchor.constraint(equalTo: closeButton.bottomAnchor, constant: 26),
+            title.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 24),
+            subtitle.topAnchor.constraint(equalTo: title.bottomAnchor, constant: 8),
+            subtitle.leadingAnchor.constraint(equalTo: title.leadingAnchor),
+            subtitle.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -24),
+            statusLabel.topAnchor.constraint(equalTo: subtitle.bottomAnchor, constant: 30),
+            statusLabel.leadingAnchor.constraint(equalTo: title.leadingAnchor),
+            actionButton.topAnchor.constraint(equalTo: statusLabel.bottomAnchor, constant: 22),
+            actionButton.leadingAnchor.constraint(equalTo: title.leadingAnchor),
+            actionButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -24),
+            actionButton.heightAnchor.constraint(equalToConstant: 54)
+        ])
+    }
+
+    @objc private func close() {
+        dismiss(animated: true)
+    }
+
+    @objc private func action() {
+        if isSignedIn {
+            actionButton.isEnabled = false
+            actionButton.setTitle("Signing Out…", for: .normal)
+            onSignOut { [weak self] success in
+                guard let self else { return }
+                if success {
+                    self.dismiss(animated: true)
+                } else {
+                    self.actionButton.isEnabled = true
+                    self.actionButton.setTitle("Sign Out", for: .normal)
+                    self.statusLabel.text = "Could not sign out. Try again."
+                    self.statusLabel.textColor = .systemRed
+                }
+            }
+        } else {
+            onSignIn()
+        }
     }
 }
 
@@ -3674,7 +3848,11 @@ private final class NativeCaptureIdeasViewController: UIViewController, PHPicker
         button.titleLabel?.font = .systemFont(ofSize: 17, weight: .semibold)
         button.backgroundColor = UIColor.white.withAlphaComponent(0.08)
         button.layer.cornerRadius = 16
-        button.contentEdgeInsets = UIEdgeInsets(top: 15, left: 18, bottom: 15, right: 18)
+        var configuration = UIButton.Configuration.plain()
+        configuration.contentInsets = NSDirectionalEdgeInsets(top: 15, leading: 18, bottom: 15, trailing: 18)
+        configuration.baseForegroundColor = .white
+        configuration.imagePadding = 6
+        button.configuration = configuration
         button.addTarget(self, action: action, for: .touchUpInside)
         return button
     }
