@@ -3895,11 +3895,14 @@ private final class NativeAuthViewController: UIViewController, ASAuthorizationC
         let avatars = UIStackView()
         avatars.axis = .horizontal
         avatars.alignment = .center
-        avatars.distribution = .equalSpacing
+        avatars.distribution = .fillEqually
+        avatars.spacing = 12
+        avatars.translatesAutoresizingMaskIntoConstraints = false
+        avatars.widthAnchor.constraint(equalToConstant: 306).isActive = true
         let avatarSpecs: [(emoji: String, background: UIColor, size: CGFloat)] = [
-            ("👨🏻‍🦰", UIColor(red: 1.0, green: 0.84, blue: 0.85, alpha: 1.0), 92),
-            ("🧑🏼‍🎨", UIColor(red: 1.0, green: 0.87, blue: 0.80, alpha: 1.0), 116),
-            ("👩🏾‍🦱", UIColor(red: 0.96, green: 0.79, blue: 0.94, alpha: 1.0), 92)
+            ("👨🏻‍🦰", UIColor(red: 1.0, green: 0.84, blue: 0.85, alpha: 1.0), 84),
+            ("🧑🏼‍🎨", UIColor(red: 1.0, green: 0.87, blue: 0.80, alpha: 1.0), 106),
+            ("👩🏾‍🦱", UIColor(red: 0.96, green: 0.79, blue: 0.94, alpha: 1.0), 84)
         ]
         avatarSpecs.forEach { spec in
             let badge = UIView()
@@ -3911,16 +3914,15 @@ private final class NativeAuthViewController: UIViewController, ASAuthorizationC
             badge.isAccessibilityElement = true
             badge.accessibilityLabel = "Apple avatar"
 
-            let face = UILabel()
-            face.text = spec.emoji
-            face.font = .systemFont(ofSize: spec.size * 0.58)
-            face.textAlignment = .center
+            let face = UIImageView(image: emojiImage(spec.emoji, size: spec.size * 0.58))
+            face.contentMode = .scaleAspectFit
             face.translatesAutoresizingMaskIntoConstraints = false
             badge.addSubview(face)
             NSLayoutConstraint.activate([
                 face.leadingAnchor.constraint(equalTo: badge.leadingAnchor),
                 face.trailingAnchor.constraint(equalTo: badge.trailingAnchor),
-                face.centerYAnchor.constraint(equalTo: badge.centerYAnchor, constant: 2)
+                face.topAnchor.constraint(equalTo: badge.topAnchor, constant: 8),
+                face.bottomAnchor.constraint(equalTo: badge.bottomAnchor, constant: -4)
             ])
 
             avatars.addArrangedSubview(badge)
@@ -3928,13 +3930,14 @@ private final class NativeAuthViewController: UIViewController, ASAuthorizationC
             badge.heightAnchor.constraint(equalTo: badge.widthAnchor).isActive = true
         }
         bodyStack.addArrangedSubview(avatars)
+        avatars.centerXAnchor.constraint(equalTo: bodyStack.centerXAnchor).isActive = true
 
         let title = makeLabel("Create Account", size: 34, weight: .medium, color: .label, alignment: .center)
         bodyStack.addArrangedSubview(title)
         let copy = makeLabel("Store your data on the cloud to have access from other devices.\n\nYou can delete your account at any time from the app.", size: 17, weight: .regular, color: .secondaryLabel, alignment: .center)
         bodyStack.addArrangedSubview(copy)
         bodyStack.addArrangedSubview(makeButton("  Sign in with Apple", background: .black, action: #selector(signInWithApple)))
-        bodyStack.addArrangedSubview(makeButton("G  Continue with Google", background: .white, titleColor: .label, border: true, action: #selector(signInWithGoogle)))
+        bodyStack.addArrangedSubview(makeGoogleButton())
         bodyStack.addArrangedSubview(makeButton("Signup with email", background: orange, action: #selector(showSignup)))
         let login = UIButton(type: .system)
         login.setTitle("Have an account?", for: .normal)
@@ -3943,6 +3946,57 @@ private final class NativeAuthViewController: UIViewController, ASAuthorizationC
         login.addTarget(self, action: #selector(showLogin), for: .touchUpInside)
         bodyStack.addArrangedSubview(statusLabel)
         bodyStack.addArrangedSubview(login)
+    }
+
+    private func emojiImage(_ emoji: String, size: CGFloat) -> UIImage? {
+        let canvas = CGSize(width: size * 1.35, height: size * 1.35)
+        let renderer = UIGraphicsImageRenderer(size: canvas)
+        return renderer.image { _ in
+            let paragraph = NSMutableParagraphStyle()
+            paragraph.alignment = .center
+            let attributes: [NSAttributedString.Key: Any] = [
+                .font: UIFont.systemFont(ofSize: size),
+                .paragraphStyle: paragraph
+            ]
+            let rect = CGRect(x: 0, y: (canvas.height - size * 1.15) / 2, width: canvas.width, height: size * 1.15)
+            (emoji as NSString).draw(in: rect, withAttributes: attributes)
+        }
+    }
+
+    private func makeGoogleButton() -> UIButton {
+        let button = UIButton(type: .system)
+        button.backgroundColor = .white
+        button.layer.cornerRadius = 27
+        button.layer.borderWidth = 1
+        button.layer.borderColor = UIColor.separator.cgColor
+        button.heightAnchor.constraint(equalToConstant: 54).isActive = true
+        button.addTarget(self, action: #selector(signInWithGoogle), for: .touchUpInside)
+        actionButtons.append(button)
+
+        let content = UIStackView()
+        content.axis = .horizontal
+        content.alignment = .center
+        content.spacing = 10
+        content.translatesAutoresizingMaskIntoConstraints = false
+        button.addSubview(content)
+
+        let logo = GoogleLogoView()
+        logo.translatesAutoresizingMaskIntoConstraints = false
+        logo.widthAnchor.constraint(equalToConstant: 21).isActive = true
+        logo.heightAnchor.constraint(equalTo: logo.widthAnchor).isActive = true
+        content.addArrangedSubview(logo)
+
+        let title = UILabel()
+        title.text = "Continue with Google"
+        title.textColor = .label
+        title.font = .systemFont(ofSize: 17, weight: .medium)
+        content.addArrangedSubview(title)
+
+        NSLayoutConstraint.activate([
+            content.centerXAnchor.constraint(equalTo: button.centerXAnchor),
+            content.centerYAnchor.constraint(equalTo: button.centerYAnchor)
+        ])
+        return button
     }
 
     private func buildEmailForm(signingUp: Bool) {
@@ -4159,6 +4213,35 @@ private final class NativeAuthViewController: UIViewController, ASAuthorizationC
 
     private func sha256(_ input: String) -> String {
         SHA256.hash(data: Data(input.utf8)).map { String(format: "%02x", $0) }.joined()
+    }
+}
+
+private final class GoogleLogoView: UIView {
+    override func draw(_ rect: CGRect) {
+        let center = CGPoint(x: rect.midX, y: rect.midY)
+        let radius = min(rect.width, rect.height) * 0.37
+        let lineWidth = min(rect.width, rect.height) * 0.22
+        let segments: [(UIColor, CGFloat, CGFloat)] = [
+            (UIColor(red: 0.26, green: 0.52, blue: 0.96, alpha: 1), -.15, 1.55),
+            (UIColor(red: 0.92, green: 0.25, blue: 0.20, alpha: 1), 1.55, 3.05),
+            (UIColor(red: 0.98, green: 0.75, blue: 0.12, alpha: 1), 3.05, 4.05),
+            (UIColor(red: 0.20, green: 0.66, blue: 0.33, alpha: 1), 4.05, 6.13)
+        ]
+        segments.forEach { color, start, end in
+            let path = UIBezierPath(arcCenter: center, radius: radius, startAngle: start, endAngle: end, clockwise: true)
+            color.setStroke()
+            path.lineWidth = lineWidth
+            path.lineCapStyle = .butt
+            path.stroke()
+        }
+
+        let bar = UIBezierPath()
+        bar.move(to: CGPoint(x: center.x, y: center.y))
+        bar.addLine(to: CGPoint(x: rect.maxX - 1, y: center.y))
+        UIColor(red: 0.26, green: 0.52, blue: 0.96, alpha: 1).setStroke()
+        bar.lineWidth = lineWidth
+        bar.lineCapStyle = .butt
+        bar.stroke()
     }
 }
 
