@@ -331,12 +331,18 @@ final class NativeTripStore {
             // so native trip mutations use the same authenticated session.
             let accessTokenScript = """
             (() => {
-                for (const key of Object.keys(localStorage)) {
-                    if (!key.includes('-auth-token')) continue;
-                    try {
-                        const value = JSON.parse(localStorage.getItem(key) || 'null');
-                        if (value && typeof value.access_token === 'string') return value.access_token;
-                    } catch (_) {}
+                const stores = [localStorage, sessionStorage];
+                for (const store of stores) {
+                    for (const key of Object.keys(store)) {
+                        if (!key.includes('auth-token')) continue;
+                        try {
+                            const value = JSON.parse(store.getItem(key) || 'null');
+                            const token = value?.access_token
+                                || value?.currentSession?.access_token
+                                || value?.session?.access_token;
+                            if (typeof token === 'string' && token.length > 0) return token;
+                        } catch (_) {}
+                    }
                 }
                 return null;
             })()
@@ -3202,7 +3208,7 @@ private final class NativeMapSearchViewController: UIViewController, MKLocalSear
         suggestionTable.dataSource = self
         suggestionTable.delegate = self
         suggestionTable.isHidden = true
-        suggestionTable.rowHeight = 58
+        suggestionTable.rowHeight = 68
         suggestionTable.layer.cornerRadius = 14
         suggestionTable.layer.borderWidth = 1
         suggestionTable.layer.borderColor = UIColor.separator.cgColor
@@ -3231,7 +3237,7 @@ private final class NativeMapSearchViewController: UIViewController, MKLocalSear
             suggestionTable.topAnchor.constraint(equalTo: statusLabel.bottomAnchor, constant: 10),
             suggestionTable.leadingAnchor.constraint(equalTo: title.leadingAnchor),
             suggestionTable.trailingAnchor.constraint(equalTo: title.trailingAnchor),
-            suggestionTable.heightAnchor.constraint(equalToConstant: 250),
+            suggestionTable.heightAnchor.constraint(equalToConstant: 272),
             suggestionTable.bottomAnchor.constraint(lessThanOrEqualTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -20)
         ])
 
@@ -3253,7 +3259,7 @@ private final class NativeMapSearchViewController: UIViewController, MKLocalSear
     }
 
     func completerDidUpdateResults(_ completer: MKLocalSearchCompleter) {
-        completions = Array(completer.results.prefix(6))
+        completions = Array(completer.results.prefix(4))
         suggestionTable.isHidden = completions.isEmpty
         suggestionTable.reloadData()
     }
@@ -3276,6 +3282,8 @@ private final class NativeMapSearchViewController: UIViewController, MKLocalSear
         content.secondaryText = completion.subtitle
         content.textProperties.font = .systemFont(ofSize: 16, weight: .semibold)
         content.secondaryTextProperties.font = .systemFont(ofSize: 13, weight: .regular)
+        content.textProperties.numberOfLines = 1
+        content.secondaryTextProperties.numberOfLines = 1
         cell.contentConfiguration = content
         return cell
     }
@@ -3381,7 +3389,7 @@ private final class NativeCreateTripViewController: UIViewController, MKLocalSea
         suggestionTable.layer.cornerRadius = 14
         suggestionTable.layer.borderWidth = 1
         suggestionTable.layer.borderColor = UIColor.separator.cgColor
-        suggestionTable.rowHeight = 54
+        suggestionTable.rowHeight = 68
 
         createButton.setTitle(existingTrip == nil ? "Create Trip" : "Save Changes", for: .normal)
         createButton.setTitleColor(.white, for: .normal)
@@ -3418,7 +3426,7 @@ private final class NativeCreateTripViewController: UIViewController, MKLocalSea
             fields.bottomAnchor.constraint(lessThanOrEqualTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -20),
             nameField.heightAnchor.constraint(equalToConstant: 54),
             destinationField.heightAnchor.constraint(equalToConstant: 54),
-            suggestionTable.heightAnchor.constraint(equalToConstant: 216),
+            suggestionTable.heightAnchor.constraint(equalToConstant: 272),
             createButton.heightAnchor.constraint(equalToConstant: 54)
         ])
     }
@@ -3449,7 +3457,7 @@ private final class NativeCreateTripViewController: UIViewController, MKLocalSea
     }
 
     func completerDidUpdateResults(_ completer: MKLocalSearchCompleter) {
-        completions = Array(completer.results.prefix(5))
+        completions = Array(completer.results.prefix(4))
         suggestionTable.isHidden = completions.isEmpty
         suggestionTable.reloadData()
     }
@@ -3472,6 +3480,8 @@ private final class NativeCreateTripViewController: UIViewController, MKLocalSea
         content.secondaryText = completion.subtitle
         content.textProperties.font = .systemFont(ofSize: 16, weight: .semibold)
         content.secondaryTextProperties.font = .systemFont(ofSize: 13, weight: .regular)
+        content.textProperties.numberOfLines = 1
+        content.secondaryTextProperties.numberOfLines = 1
         cell.contentConfiguration = content
         return cell
     }

@@ -1,5 +1,6 @@
 import Capacitor
 import Network
+import os
 import WebKit
 
 enum NativeWebRoutePolicy {
@@ -182,6 +183,7 @@ final class MainViewController: CAPBridgeViewController {
 }
 
 final class NativeWebFeatureViewController: UIViewController, WKNavigationDelegate, WKScriptMessageHandler {
+    private let logger = Logger(subsystem: "app.almidy", category: "native-web-feature")
     private let route: String
     private let featureTitle: String
     private let onFinish: (NativeWebFeatureResult) -> Void
@@ -197,6 +199,7 @@ final class NativeWebFeatureViewController: UIViewController, WKNavigationDelega
     private var didFinish = false
     private var pendingResult: NativeWebFeatureResult = .dismissed
     private var pendingNativeRoute: String?
+    private var contentDiagnosticWorkItem: DispatchWorkItem?
 
     init(
         route: String,
@@ -263,6 +266,7 @@ final class NativeWebFeatureViewController: UIViewController, WKNavigationDelega
 
     deinit {
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "nativeWebFeature")
+        contentDiagnosticWorkItem?.cancel()
         monitor.cancel()
     }
 
@@ -342,22 +346,19 @@ final class NativeWebFeatureViewController: UIViewController, WKNavigationDelega
             return
         }
         showState(nil, loading: true, retry: false)
+        logger.info("Loading secondary route: \(self.route, privacy: .public)")
         guard let authStorage else {
             webView.load(URLRequest(url: url))
             return
         }
-        let keyJSON = try? JSONSerialization.data(withJSONObject: authStorage.key).base64EncodedString()
-        let valueJSON = try? JSONSerialization.data(withJSONObject: authStorage.value).base64EncodedString()
-        let cookieJSON = try? JSONSerialization.data(withJSONObject: authStorage.cookieHeader).base64EncodedString()
-        guard let keyJSON, let valueJSON, let cookieJSON else {
-            webView.load(URLRequest(url: url))
-            return
-        }
+        let keyBase64 = Data(authStorage.key.utf8).base64EncodedString()
+        let valueBase64 = Data(authStorage.value.utf8).base64EncodedString()
+        let cookieBase64 = Data(authStorage.cookieHeader.utf8).base64EncodedString()
         let script = """
         (() => {
             const decode = (value) => decodeURIComponent(escape(atob(value)));
-            localStorage.setItem(decode('\(keyJSON)'), decode('\(valueJSON)'));
-            const cookies = decode('\(cookieJSON)').split(';');
+            localStorage.setItem(decode('\(keyBase64)'), decode('\(valueBase64)'));
+            const cookies = decode('\(cookieBase64)').split(';');
             for (const cookie of cookies) {
                 const separator = cookie.indexOf('=');
                 if (separator > 0) document.cookie = cookie.trim() + '; path=/';
@@ -373,10 +374,13 @@ final class NativeWebFeatureViewController: UIViewController, WKNavigationDelega
         let script = """
         (() => {
             const storage = (() => {
-                for (const key of Object.keys(localStorage)) {
-                    if (!key.includes('-auth-token')) continue;
-                    const value = localStorage.getItem(key);
-                    if (value) return { key, value };
+                const stores = [localStorage, sessionStorage];
+                for (const store of stores) {
+                    for (const key of Object.keys(store)) {
+                        if (!key.includes('auth-token')) continue;
+                        const value = store.getItem(key);
+                        if (value) return { key, value };
+                    }
                 }
                 return { key: '', value: '' };
             })();
@@ -429,24 +433,76 @@ final class NativeWebFeatureViewController: UIViewController, WKNavigationDelega
     }
 
     private func showSessionExpired() {
+        logger.warning("Secondary route redirected to login")
         showState("Your Almidy session has expired. Sign in again to continue.", loading: false, retry: false)
     }
 
+    private func scheduleContentDiagnostic() {
+        contentDiagnosticWorkItem?.cancel()
+        let workItem = DispatchWorkItem { [weak self] in
+            self?.diagnoseLoadedDocument()
+        }
+        contentDiagnosticWorkItem = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0, execute: workItem)
+    }
+
+    private func diagnoseLoadedDocument() {
+        let script = """
+        JSON.stringify({
+            readyState: document.readyState,
+            href: window.location.href,
+            title: document.title,
+            bodyTextLength: (document.body?.innerText || '').trim().length,
+            bodyHTMLLength: (document.body?.innerHTML || '').length
+        })
+        """
+        webView.evaluateJavaScript(script) { [weak self] result, error in
+            guard let self else { return }
+            if let error {
+                self.logger.error("Document diagnostic failed: \(error.localizedDescription, privacy: .public)")
+                return
+            }
+            self.logger.info("Document diagnostic: \(String(describing: result), privacy: .public)")
+            guard let json = result as? String,
+                  let data = json.data(using: .utf8),
+                  let diagnostic = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let textLength = diagnostic["bodyTextLength"] as? Int,
+                  let htmlLength = diagnostic["bodyHTMLLength"] as? Int else { return }
+            if textLength == 0 && htmlLength < 100 {
+                self.logger.error("Secondary route finished with an empty document")
+                self.showState("This page loaded without content.", loading: false, retry: true)
+            }
+        }
+    }
+
     func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
+        logger.info("Secondary navigation started: \(webView.url?.absoluteString ?? "unknown", privacy: .public)")
         showState(nil, loading: true, retry: false)
     }
 
+    func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) {
+        logger.info("Secondary navigation committed: \(webView.url?.absoluteString ?? "unknown", privacy: .public)")
+    }
+
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        logger.info("Secondary navigation finished: \(webView.url?.absoluteString ?? "unknown", privacy: .public)")
         showState(nil, loading: false, retry: false)
+        scheduleContentDiagnostic()
     }
 
     func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
+        logger.error("Secondary navigation failed: \(error.localizedDescription, privacy: .public)")
         showState("This page could not be loaded.", loading: false, retry: true)
     }
 
     func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
         guard (error as NSError).code != NSURLErrorCancelled else { return }
+        logger.error("Secondary provisional navigation failed: \(error.localizedDescription, privacy: .public)")
         showState("This page could not be loaded.", loading: false, retry: true)
+    }
+
+    func webView(_ webView: WKWebView, didReceiveServerRedirectForProvisionalNavigation navigation: WKNavigation!) {
+        logger.info("Secondary server redirect: \(webView.url?.absoluteString ?? "unknown", privacy: .public)")
     }
 
     func webView(
