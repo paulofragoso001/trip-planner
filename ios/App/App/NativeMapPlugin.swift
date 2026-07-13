@@ -1,6 +1,7 @@
 import Capacitor
 import CoreGraphics
 import CoreLocation
+import CryptoKit
 import EventKit
 import Foundation
 import MapKit
@@ -10,6 +11,7 @@ import Security
 import UIKit
 import WebKit
 import UniformTypeIdentifiers
+import AuthenticationServices
 
 enum NativeServiceConfiguration {
     static let appBaseURL = URL(string: "https://almidy.app")!
@@ -150,6 +152,105 @@ final class NativeAuthSessionStore {
         }
     }
 
+    func authenticate(
+        email: String,
+        password: String,
+        signingUp: Bool,
+        using urlSession: URLSession = .shared,
+        completion: @escaping (Result<NativeAuthSession?, Error>) -> Void
+    ) {
+        guard let supabaseURL,
+              let publishableKey,
+              let url = URL(string: signingUp ? "auth/v1/signup" : "auth/v1/token?grant_type=password", relativeTo: supabaseURL) else {
+            completion(.failure(NativeAuthError.configurationMissing))
+            return
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue(publishableKey, forHTTPHeaderField: "apikey")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try? JSONSerialization.data(withJSONObject: [
+            "email": email,
+            "password": password
+        ])
+
+        urlSession.dataTask(with: request) { [weak self] data, response, _ in
+            guard let httpResponse = response as? HTTPURLResponse, let data else {
+                DispatchQueue.main.async { completion(.failure(NativeAuthError.network)) }
+                return
+            }
+            guard (200...299).contains(httpResponse.statusCode) else {
+                let responseError = try? JSONDecoder().decode(NativeAuthErrorResponse.self, from: data)
+                let message = responseError?.message ?? responseError?.errorDescription
+                    ?? "Almidy could not authenticate this account."
+                DispatchQueue.main.async { completion(.failure(NativeAuthError.server(message))) }
+                return
+            }
+
+            guard let payload = try? JSONDecoder().decode(NativeAuthSessionPayload.self, from: data) else {
+                DispatchQueue.main.async { completion(.success(nil)) }
+                return
+            }
+            let session = NativeAuthSession(
+                accessToken: payload.accessToken,
+                refreshToken: payload.refreshToken,
+                expiresAt: payload.expiresAt ?? Int(Date().timeIntervalSince1970) + (payload.expiresIn ?? 3600)
+            )
+            self?.save(session)
+            DispatchQueue.main.async { completion(.success(session)) }
+        }.resume()
+    }
+
+    func authenticateWithApple(
+        identityToken: String,
+        nonce: String,
+        using urlSession: URLSession = .shared,
+        completion: @escaping (Result<NativeAuthSession, Error>) -> Void
+    ) {
+        guard let supabaseURL,
+              let publishableKey,
+              let url = URL(string: "auth/v1/token?grant_type=id_token", relativeTo: supabaseURL) else {
+            completion(.failure(NativeAuthError.configurationMissing))
+            return
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue(publishableKey, forHTTPHeaderField: "apikey")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try? JSONSerialization.data(withJSONObject: [
+            "provider": "apple",
+            "id_token": identityToken,
+            "nonce": nonce
+        ])
+
+        urlSession.dataTask(with: request) { [weak self] data, response, _ in
+            guard let httpResponse = response as? HTTPURLResponse, let data else {
+                DispatchQueue.main.async { completion(.failure(NativeAuthError.network)) }
+                return
+            }
+            guard (200...299).contains(httpResponse.statusCode) else {
+                let responseError = try? JSONDecoder().decode(NativeAuthErrorResponse.self, from: data)
+                let message = responseError?.message ?? responseError?.errorDescription
+                    ?? "Apple sign-in could not be completed."
+                DispatchQueue.main.async { completion(.failure(NativeAuthError.server(message))) }
+                return
+            }
+            guard let payload = try? JSONDecoder().decode(NativeAuthSessionPayload.self, from: data) else {
+                DispatchQueue.main.async { completion(.failure(NativeAuthError.network)) }
+                return
+            }
+            let session = NativeAuthSession(
+                accessToken: payload.accessToken,
+                refreshToken: payload.refreshToken,
+                expiresAt: payload.expiresAt ?? Int(Date().timeIntervalSince1970) + (payload.expiresIn ?? 3600)
+            )
+            self?.save(session)
+            DispatchQueue.main.async { completion(.success(session)) }
+        }.resume()
+    }
+
     func clear() {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
@@ -184,6 +285,30 @@ private struct NativeSupabaseRefreshResponse: Decodable {
         case refreshToken = "refresh_token"
         case expiresIn = "expires_in"
         case expiresAt = "expires_at"
+    }
+}
+
+private enum NativeAuthError: LocalizedError {
+    case configurationMissing
+    case network
+    case server(String)
+
+    var errorDescription: String? {
+        switch self {
+        case .configurationMissing: return "Native authentication is not configured yet."
+        case .network: return "Check your connection and try again."
+        case .server(let message): return message
+        }
+    }
+}
+
+private struct NativeAuthErrorResponse: Decodable {
+    let message: String?
+    let errorDescription: String?
+
+    enum CodingKeys: String, CodingKey {
+        case message
+        case errorDescription = "error_description"
     }
 }
 
@@ -665,6 +790,14 @@ private struct NativeAuthSessionPayload: Decodable {
     let accessToken: String
     let refreshToken: String?
     let expiresAt: Int?
+    let expiresIn: Int?
+
+    enum CodingKeys: String, CodingKey {
+        case accessToken = "access_token"
+        case refreshToken = "refresh_token"
+        case expiresAt = "expires_at"
+        case expiresIn = "expires_in"
+    }
 }
 
 private struct NativeTripResponse: Decodable {
@@ -3097,9 +3230,8 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
             let account = NativeAccountViewController(
                 isSignedIn: authStorage != nil || NativeAuthSessionStore.shared.session != nil,
                 onSignIn: { [weak self] in
-                    guard let self else { return }
-                    self.dismiss(animated: true) { [weak self] in
-                        self?.presentNativeWebFeature(route: "/login", title: "Sign In")
+                    self?.dismiss(animated: true) { [weak self] in
+                        self?.presentNativeAuth()
                     }
                 },
                 onSignOut: { [weak self] completion in
@@ -3122,6 +3254,33 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         } else {
             presentAccount(nil)
         }
+    }
+
+    private func presentNativeAuth() {
+        let auth = NativeAuthViewController { [weak self] result in
+            guard let self else { return }
+            switch result {
+            case .authenticated:
+                self.dismiss(animated: true) { [weak self] in
+                    self?.refreshTripsFromServer()
+                    self?.renderSheetContent()
+                }
+            case .createdPendingConfirmation:
+                self.showMessage(
+                    title: "Check your email",
+                    message: "Your account was created. Confirm your email, then sign in to sync your trips."
+                )
+            case .cancelled:
+                break
+            }
+        }
+        auth.modalPresentationStyle = .pageSheet
+        if let sheet = auth.sheetPresentationController {
+            sheet.detents = [.large()]
+            sheet.prefersGrabberVisible = true
+            sheet.preferredCornerRadius = 28
+        }
+        present(auth, animated: true)
     }
 
     private func clearNativeSession(completion: @escaping (Bool) -> Void) {
@@ -3519,6 +3678,308 @@ private final class NativeSettingsViewController: UIViewController, UITableViewD
         let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: "Done", style: .default))
         present(alert, animated: true)
+    }
+}
+
+private enum NativeAuthResult {
+    case authenticated
+    case createdPendingConfirmation
+    case cancelled
+}
+
+private final class NativeAuthViewController: UIViewController, ASAuthorizationControllerDelegate, ASAuthorizationControllerPresentationContextProviding {
+    private let onFinish: (NativeAuthResult) -> Void
+    private var isSignUp = false
+    private var currentNonce: String?
+
+    private let scrollView = UIScrollView()
+    private let contentView = UIView()
+    private let titleLabel = UILabel()
+    private let subtitleLabel = UILabel()
+    private let emailField = UITextField()
+    private let passwordField = UITextField()
+    private let primaryButton = UIButton(type: .system)
+    private let appleButton = UIButton(type: .system)
+    private let modeButton = UIButton(type: .system)
+    private let statusLabel = UILabel()
+    private let activity = UIActivityIndicatorView(style: .medium)
+
+    init(onFinish: @escaping (NativeAuthResult) -> Void) {
+        self.onFinish = onFinish
+        super.init(nibName: nil, bundle: nil)
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        view.backgroundColor = UIColor(red: 0.99, green: 0.97, blue: 0.95, alpha: 1)
+        configureView()
+        updateMode()
+    }
+
+    private func configureView() {
+        let cancelButton = UIButton(type: .system)
+        cancelButton.setTitle("Cancel", for: .normal)
+        cancelButton.titleLabel?.font = .systemFont(ofSize: 18, weight: .semibold)
+        cancelButton.addTarget(self, action: #selector(cancel), for: .touchUpInside)
+
+        let avatarRow = UIStackView()
+        avatarRow.axis = .horizontal
+        avatarRow.alignment = .center
+        avatarRow.distribution = .equalSpacing
+        avatarRow.spacing = 18
+        ["person.crop.circle.fill", "face.smiling.fill", "person.crop.circle.fill"].enumerated().forEach { index, name in
+            let avatar = UIImageView(image: UIImage(systemName: name))
+            avatar.tintColor = index == 1 ? UIColor.systemPink : UIColor.systemIndigo
+            avatar.backgroundColor = UIColor.white.withAlphaComponent(0.65)
+            avatar.contentMode = .scaleAspectFit
+            avatar.layer.cornerRadius = index == 1 ? 74 : 58
+            avatar.clipsToBounds = true
+            avatar.translatesAutoresizingMaskIntoConstraints = false
+            avatarRow.addArrangedSubview(avatar)
+            avatar.widthAnchor.constraint(equalToConstant: index == 1 ? 148 : 116).isActive = true
+            avatar.heightAnchor.constraint(equalTo: avatar.widthAnchor).isActive = true
+        }
+
+        titleLabel.font = .systemFont(ofSize: 40, weight: .black)
+        titleLabel.textColor = .label
+        titleLabel.textAlignment = .center
+
+        subtitleLabel.font = .systemFont(ofSize: 19, weight: .regular)
+        subtitleLabel.textColor = .secondaryLabel
+        subtitleLabel.numberOfLines = 0
+        subtitleLabel.textAlignment = .center
+
+        configureField(emailField, placeholder: "Email", contentType: .emailAddress)
+        configureField(passwordField, placeholder: "Password", contentType: .password)
+        passwordField.isSecureTextEntry = true
+
+        appleButton.setTitle("  Sign in with Apple", for: .normal)
+        appleButton.setTitleColor(.white, for: .normal)
+        appleButton.titleLabel?.font = .systemFont(ofSize: 19, weight: .semibold)
+        appleButton.backgroundColor = .black
+        appleButton.layer.cornerRadius = 30
+        appleButton.addTarget(self, action: #selector(signInWithApple), for: .touchUpInside)
+
+        primaryButton.setTitleColor(.white, for: .normal)
+        primaryButton.titleLabel?.font = .systemFont(ofSize: 19, weight: .semibold)
+        primaryButton.backgroundColor = UIColor(red: 1, green: 0.42, blue: 0.12, alpha: 1)
+        primaryButton.layer.cornerRadius = 30
+        primaryButton.addTarget(self, action: #selector(submit), for: .touchUpInside)
+
+        modeButton.setTitleColor(UIColor(red: 1, green: 0.42, blue: 0.12, alpha: 1), for: .normal)
+        modeButton.titleLabel?.font = .systemFont(ofSize: 19, weight: .semibold)
+        modeButton.addTarget(self, action: #selector(toggleMode), for: .touchUpInside)
+
+        statusLabel.font = .systemFont(ofSize: 15, weight: .medium)
+        statusLabel.textColor = .systemRed
+        statusLabel.numberOfLines = 0
+        statusLabel.textAlignment = .center
+
+        activity.hidesWhenStopped = true
+
+        scrollView.alwaysBounceVertical = true
+        scrollView.translatesAutoresizingMaskIntoConstraints = false
+        contentView.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(scrollView)
+        scrollView.addSubview(contentView)
+        [cancelButton, avatarRow, titleLabel, subtitleLabel, appleButton, emailField, passwordField, statusLabel, primaryButton, modeButton, activity].forEach {
+            $0.translatesAutoresizingMaskIntoConstraints = false
+            contentView.addSubview($0)
+        }
+
+        NSLayoutConstraint.activate([
+            scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            scrollView.topAnchor.constraint(equalTo: view.topAnchor),
+            scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            contentView.leadingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.leadingAnchor),
+            contentView.trailingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.trailingAnchor),
+            contentView.topAnchor.constraint(equalTo: scrollView.contentLayoutGuide.topAnchor),
+            contentView.bottomAnchor.constraint(equalTo: scrollView.contentLayoutGuide.bottomAnchor),
+            contentView.widthAnchor.constraint(equalTo: scrollView.frameLayoutGuide.widthAnchor),
+            cancelButton.topAnchor.constraint(equalTo: contentView.safeAreaLayoutGuide.topAnchor, constant: 18),
+            cancelButton.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 24),
+            avatarRow.topAnchor.constraint(equalTo: cancelButton.bottomAnchor, constant: 46),
+            avatarRow.centerXAnchor.constraint(equalTo: contentView.centerXAnchor),
+            titleLabel.topAnchor.constraint(equalTo: avatarRow.bottomAnchor, constant: 34),
+            titleLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 20),
+            titleLabel.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -20),
+            subtitleLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 20),
+            subtitleLabel.leadingAnchor.constraint(equalTo: titleLabel.leadingAnchor, constant: 18),
+            subtitleLabel.trailingAnchor.constraint(equalTo: titleLabel.trailingAnchor, constant: -18),
+            appleButton.topAnchor.constraint(equalTo: subtitleLabel.bottomAnchor, constant: 34),
+            appleButton.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 42),
+            appleButton.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -42),
+            appleButton.heightAnchor.constraint(equalToConstant: 60),
+            emailField.topAnchor.constraint(equalTo: appleButton.bottomAnchor, constant: 22),
+            emailField.leadingAnchor.constraint(equalTo: appleButton.leadingAnchor),
+            emailField.trailingAnchor.constraint(equalTo: appleButton.trailingAnchor),
+            emailField.heightAnchor.constraint(equalToConstant: 58),
+            passwordField.topAnchor.constraint(equalTo: emailField.bottomAnchor, constant: 12),
+            passwordField.leadingAnchor.constraint(equalTo: emailField.leadingAnchor),
+            passwordField.trailingAnchor.constraint(equalTo: emailField.trailingAnchor),
+            passwordField.heightAnchor.constraint(equalToConstant: 58),
+            statusLabel.topAnchor.constraint(equalTo: passwordField.bottomAnchor, constant: 12),
+            statusLabel.leadingAnchor.constraint(equalTo: emailField.leadingAnchor),
+            statusLabel.trailingAnchor.constraint(equalTo: emailField.trailingAnchor),
+            primaryButton.topAnchor.constraint(equalTo: statusLabel.bottomAnchor, constant: 16),
+            primaryButton.leadingAnchor.constraint(equalTo: emailField.leadingAnchor),
+            primaryButton.trailingAnchor.constraint(equalTo: emailField.trailingAnchor),
+            primaryButton.heightAnchor.constraint(equalToConstant: 60),
+            modeButton.topAnchor.constraint(equalTo: primaryButton.bottomAnchor, constant: 24),
+            modeButton.centerXAnchor.constraint(equalTo: contentView.centerXAnchor),
+            activity.centerXAnchor.constraint(equalTo: contentView.centerXAnchor),
+            activity.topAnchor.constraint(equalTo: modeButton.bottomAnchor, constant: 18),
+            contentView.bottomAnchor.constraint(equalTo: activity.bottomAnchor, constant: 32)
+        ])
+    }
+
+    private func configureField(_ field: UITextField, placeholder: String, contentType: UITextContentType) {
+        field.placeholder = placeholder
+        field.font = .systemFont(ofSize: 18, weight: .regular)
+        field.textColor = .label
+        field.backgroundColor = .white
+        field.layer.cornerRadius = 16
+        field.layer.borderWidth = 1
+        field.layer.borderColor = UIColor.separator.cgColor
+        field.setPadding(16)
+        field.autocapitalizationType = .none
+        field.autocorrectionType = .no
+        field.textContentType = contentType
+    }
+
+    private func updateMode() {
+        titleLabel.text = isSignUp ? "Create Account" : "Welcome back"
+        subtitleLabel.text = isSignUp
+            ? "Store your trips securely in the cloud and access them from any device."
+            : "Sign in to sync your trips, wallet, and globe pins."
+        primaryButton.setTitle(isSignUp ? "Sign up with email" : "Sign in with email", for: .normal)
+        modeButton.setTitle(isSignUp ? "Have an account? Sign in" : "New to Almidy? Create account", for: .normal)
+        appleButton.setTitle(isSignUp ? "  Sign up with Apple" : "  Sign in with Apple", for: .normal)
+        statusLabel.text = nil
+    }
+
+    @objc private func cancel() {
+        onFinish(.cancelled)
+        dismiss(animated: true)
+    }
+
+    @objc private func toggleMode() {
+        isSignUp.toggle()
+        updateMode()
+    }
+
+    @objc private func submit() {
+        let email = emailField.text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let password = passwordField.text ?? ""
+        guard email.contains("@"), password.count >= 6 else {
+            statusLabel.text = "Enter a valid email and a password with at least 6 characters."
+            return
+        }
+        setLoading(true)
+        NativeAuthSessionStore.shared.authenticate(email: email, password: password, signingUp: isSignUp) { [weak self] result in
+            guard let self else { return }
+            self.setLoading(false)
+            switch result {
+            case .success(let session):
+                if session == nil && self.isSignUp {
+                    self.onFinish(.createdPendingConfirmation)
+                } else if session != nil {
+                    self.onFinish(.authenticated)
+                    self.dismiss(animated: true)
+                }
+            case .failure(let error):
+                self.statusLabel.text = error.localizedDescription
+            }
+        }
+    }
+
+    @objc private func signInWithApple() {
+        let nonce = randomNonce()
+        currentNonce = nonce
+        let request = ASAuthorizationAppleIDProvider().createRequest()
+        request.requestedScopes = [.email, .fullName]
+        request.nonce = sha256(nonce)
+        let controller = ASAuthorizationController(authorizationRequests: [request])
+        controller.delegate = self
+        controller.presentationContextProvider = self
+        setLoading(true)
+        controller.performRequests()
+    }
+
+    func authorizationController(controller: ASAuthorizationController, didCompleteWithAuthorization authorization: ASAuthorization) {
+        guard let credential = authorization.credential as? ASAuthorizationAppleIDCredential,
+              let tokenData = credential.identityToken,
+              let token = String(data: tokenData, encoding: .utf8),
+              let nonce = currentNonce else {
+            setLoading(false)
+            statusLabel.text = "Apple sign-in returned an invalid credential."
+            return
+        }
+        NativeAuthSessionStore.shared.authenticateWithApple(identityToken: token, nonce: nonce) { [weak self] result in
+            guard let self else { return }
+            self.setLoading(false)
+            switch result {
+            case .success:
+                self.onFinish(.authenticated)
+                self.dismiss(animated: true)
+            case .failure(let error):
+                self.statusLabel.text = error.localizedDescription
+            }
+        }
+    }
+
+    func authorizationController(controller: ASAuthorizationController, didCompleteWithError error: Error) {
+        setLoading(false)
+        let nsError = error as NSError
+        if nsError.code != ASAuthorizationError.canceled.rawValue {
+            statusLabel.text = error.localizedDescription
+        }
+    }
+
+    func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
+        view.window ?? UIWindow()
+    }
+
+    private func setLoading(_ loading: Bool) {
+        primaryButton.isEnabled = !loading
+        appleButton.isEnabled = !loading
+        modeButton.isEnabled = !loading
+        loading ? activity.startAnimating() : activity.stopAnimating()
+    }
+
+    private func randomNonce(length: Int = 32) -> String {
+        let charset = Array("0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._")
+        var result = ""
+        var remaining = length
+        while remaining > 0 {
+            var random: UInt8 = 0
+            let status = SecRandomCopyBytes(kSecRandomDefault, 1, &random)
+            if status == errSecSuccess && random < charset.count {
+                result.append(charset[Int(random)])
+                remaining -= 1
+            }
+        }
+        return result
+    }
+
+    private func sha256(_ input: String) -> String {
+        SHA256.hash(data: Data(input.utf8)).map { String(format: "%02x", $0) }.joined()
+    }
+}
+
+private extension UITextField {
+    func setPadding(_ padding: CGFloat) {
+        let left = UIView(frame: CGRect(x: 0, y: 0, width: padding, height: 1))
+        let right = UIView(frame: CGRect(x: 0, y: 0, width: padding, height: 1))
+        leftView = left
+        rightView = right
+        leftViewMode = .always
+        rightViewMode = .always
     }
 }
 
