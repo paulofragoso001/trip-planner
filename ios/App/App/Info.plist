@@ -43,6 +43,10 @@
 	<string>Almidy uses full calendar access to list writable calendars and keep trip dates and timed itinerary segments updated in Apple Calendar.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Almidy uses photo access when you choose a travel screenshot to review in your native wallet.</string>
+	<key>SupabaseURL</key>
+	<string>$(SUPABASE_URL)</string>
+	<key>SupabasePublishableKey</key>
+	<string>$(SUPABASE_PUBLISHABLE_KEY)</string>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>

@@ -1,7 +1,5 @@
 #include? "Secrets.xcconfig"
 
-CAPACITOR_DEBUG = true
-
 // Values are supplied by the ignored Secrets.xcconfig file or by xcodebuild
 // settings in CI. Never commit the actual Supabase project values here.
 SUPABASE_URL = $(inherited)

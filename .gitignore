@@ -3,6 +3,7 @@ node_modules
 out
 .env.local
 .vercel
+ios/Secrets.xcconfig
 *.log
 .DS_Store
 tsconfig.tsbuildinfo
