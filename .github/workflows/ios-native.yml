@@ -17,6 +17,13 @@ on:
 permissions:
   contents: read
 
+env:
+  ALMIDY_DERIVED_DATA: ${{ runner.temp }}/almidy-derived-data
+  ALMIDY_SOURCE_PACKAGES: ${{ runner.temp }}/almidy-source-packages
+  ALMIDY_PACKAGE_CACHE: ${{ runner.temp }}/almidy-package-cache
+  CLANG_MODULE_CACHE_PATH: ${{ runner.temp }}/almidy-clang-module-cache
+  SWIFT_MODULECACHE_PATH: ${{ runner.temp }}/almidy-swift-module-cache
+
 jobs:
   native-build:
     runs-on: macos-14
@@ -34,6 +41,12 @@ jobs:
             exit 1
           fi
 
+      - name: Prepare writable Xcode caches
+        shell: bash
+        run: |
+          mkdir -p "$ALMIDY_DERIVED_DATA" "$ALMIDY_SOURCE_PACKAGES" \
+            "$ALMIDY_PACKAGE_CACHE" "$CLANG_MODULE_CACHE_PATH" "$SWIFT_MODULECACHE_PATH"
+
       - name: Build native app
         run: >-
           xcodebuild
@@ -41,8 +54,12 @@ jobs:
           -scheme App
           -sdk iphonesimulator
           -configuration Debug
-          -derivedDataPath /tmp/almidy-derived-data
+          -derivedDataPath "$ALMIDY_DERIVED_DATA"
+          -clonedSourcePackagesDirPath "$ALMIDY_SOURCE_PACKAGES"
+          -packageCachePath "$ALMIDY_PACKAGE_CACHE"
           CODE_SIGNING_ALLOWED=NO
+          CLANG_MODULE_CACHE_PATH="$CLANG_MODULE_CACHE_PATH"
+          SWIFT_MODULECACHE_PATH="$SWIFT_MODULECACHE_PATH"
           build
 
       - name: Run native XCTest suite
@@ -51,6 +68,10 @@ jobs:
           -project ios/App/App.xcodeproj
           -scheme App
           -destination 'platform=iOS Simulator,name=iPhone 15,OS=latest'
-          -derivedDataPath /tmp/almidy-derived-data
+          -derivedDataPath "$ALMIDY_DERIVED_DATA"
+          -clonedSourcePackagesDirPath "$ALMIDY_SOURCE_PACKAGES"
+          -packageCachePath "$ALMIDY_PACKAGE_CACHE"
           CODE_SIGNING_ALLOWED=NO
+          CLANG_MODULE_CACHE_PATH="$CLANG_MODULE_CACHE_PATH"
+          SWIFT_MODULECACHE_PATH="$SWIFT_MODULECACHE_PATH"
           test
