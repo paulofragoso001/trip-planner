@@ -1,4 +1,3 @@
-ios/App/App/NativeMapPlugin.swift
 import Capacitor
 import CoreGraphics
 import CoreLocation
