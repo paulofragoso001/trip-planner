@@ -20,7 +20,7 @@ enum NativeWebRoutePolicy {
     }
 
     static func allows(_ url: URL) -> Bool {
-        guard url.host == nil || url.host == "almidy.app",
+        guard url.host == nil || url.host == NativeServiceConfiguration.appHost,
               url.path == "/login" || url.path.hasPrefix("/dashboard/") else {
             return false
         }
@@ -29,7 +29,7 @@ enum NativeWebRoutePolicy {
     }
 
     static func isNativeOwned(_ url: URL) -> Bool {
-        guard url.host == nil || url.host == "almidy.app" else { return false }
+        guard url.host == nil || url.host == NativeServiceConfiguration.appHost else { return false }
         let path = url.path
         return path == "/dashboard" ||
             path.hasPrefix("/dashboard/trips") ||
@@ -343,7 +343,7 @@ final class NativeWebFeatureViewController: UIViewController, WKNavigationDelega
 
     private func loadRoute() {
         guard NativeWebRoutePolicy.allows(route), !isOffline else { return }
-        guard let url = URL(string: route, relativeTo: URL(string: "https://almidy.app")) else {
+        guard let url = URL(string: route, relativeTo: NativeServiceConfiguration.appBaseURL) else {
             showState("This page could not be opened.", loading: false, retry: false)
             return
         }
@@ -527,7 +527,7 @@ final class NativeWebFeatureViewController: UIViewController, WKNavigationDelega
             decisionHandler(.cancel)
             return
         }
-        guard url.host == nil || url.host == "almidy.app" else {
+        guard url.host == nil || url.host == NativeServiceConfiguration.appHost else {
             decisionHandler(.cancel)
             return
         }

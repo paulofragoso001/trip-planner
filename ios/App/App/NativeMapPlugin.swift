@@ -10,6 +10,32 @@ import UIKit
 import WebKit
 import UniformTypeIdentifiers
 
+enum NativeServiceConfiguration {
+    static let appBaseURL = URL(string: "https://almidy.app")!
+    static let appHost = appBaseURL.host!
+    static let appOrigin = appBaseURL.originString
+
+    // These are optional build-time values. The publishable key is safe for a
+    // client bundle; service-role credentials must remain server-side.
+    static var supabaseURL: URL? {
+        guard let value = Bundle.main.object(forInfoDictionaryKey: "SupabaseURL") as? String else {
+            return nil
+        }
+        return URL(string: value)
+    }
+
+    static var supabasePublishableKey: String? {
+        Bundle.main.object(forInfoDictionaryKey: "SupabasePublishableKey") as? String
+    }
+}
+
+private extension URL {
+    var originString: String {
+        guard let scheme, let host else { return absoluteString }
+        return scheme + "://" + host + (port.map { ":\($0)" } ?? "")
+    }
+}
+
 @objc(NativeMapPlugin)
 public class NativeMapPlugin: CAPPlugin, CAPBridgedPlugin {
     public let identifier = "NativeMapPlugin"
@@ -97,7 +123,7 @@ final class NativeTripStore {
 
     init(
         webView: WKWebView?,
-        baseURL: URL = URL(string: "https://almidy.app")!,
+        baseURL: URL = NativeServiceConfiguration.appBaseURL,
         session: URLSession = .shared
     ) {
         self.webView = webView
@@ -2329,7 +2355,6 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
             card.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
             card.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 28),
             card.heightAnchor.constraint(equalToConstant: 150),
-            card.bottomAnchor.constraint(lessThanOrEqualTo: sheetView.topAnchor, constant: -24),
 
             iconView.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 18),
             iconView.topAnchor.constraint(equalTo: card.topAnchor, constant: 18),
