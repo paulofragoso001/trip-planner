@@ -254,6 +254,52 @@ final class NativeMapConnectivityTests: XCTestCase {
         wait(for: [expectation], timeout: 2)
     }
 
+    func testKeychainSessionRestoresAndAutomaticallyRefreshesBeforeUse() {
+        let service = "app.almidy.tests.supabase-session-\(UUID().uuidString)"
+        let store = NativeAuthSessionStore(
+            service: service,
+            supabaseURL: URL(string: "https://supabase.test")!,
+            publishableKey: "test-publishable-key"
+        )
+        store.save(NativeAuthSession(
+            accessToken: "expired-access-token",
+            refreshToken: "refresh-token",
+            expiresAt: Int(Date().timeIntervalSince1970) - 1
+        ))
+        defer { store.clear() }
+
+        XCTAssertEqual(store.session?.accessToken, "expired-access-token")
+        XCTAssertTrue(store.isExpiringSoon)
+
+        NativeAuthSessionURLProtocol.handler = { request in
+            XCTAssertEqual(request.httpMethod, "POST")
+            XCTAssertEqual(request.value(forHTTPHeaderField: "apikey"), "test-publishable-key")
+            let body = try! XCTUnwrap(request.httpBody)
+            let json = try! XCTUnwrap(JSONSerialization.jsonObject(with: body) as? [String: Any])
+            XCTAssertEqual(json["refresh_token"] as? String, "refresh-token")
+            let response = NativeAuthSessionURLProtocol.response(for: request, statusCode: 200)
+            let responseBody = """
+            {"access_token":"refreshed-access-token","refresh_token":"rotated-refresh-token","expires_in":3600}
+            """.data(using: .utf8)!
+            return (response, responseBody)
+        }
+        defer { NativeAuthSessionURLProtocol.handler = nil }
+
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [NativeAuthSessionURLProtocol.self]
+        let session = URLSession(configuration: configuration)
+        let expectation = expectation(description: "automatic session refresh")
+
+        store.accessToken(using: session) { accessToken in
+            XCTAssertEqual(accessToken, "refreshed-access-token")
+            XCTAssertEqual(store.session?.refreshToken, "rotated-refresh-token")
+            XCTAssertFalse(store.isExpiringSoon)
+            expectation.fulfill()
+        }
+
+        wait(for: [expectation], timeout: 2)
+    }
+
     func testNativeWebRoutePolicyAllowsOnlySecondaryPages() {
         XCTAssertTrue(NativeWebRoutePolicy.allows("/dashboard/help"))
         XCTAssertTrue(NativeWebRoutePolicy.allows("/dashboard/imports/forward-reservation"))
@@ -292,6 +338,35 @@ private func nativeTripStoreSession() -> URLSession {
 }
 
 private final class NativeTripStoreURLProtocol: URLProtocol {
+    static var handler: ((URLRequest) -> (HTTPURLResponse, Data))?
+
+    override class func canInit(with request: URLRequest) -> Bool { true }
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+
+    override func startLoading() {
+        guard let handler = Self.handler else {
+            client?.urlProtocolDidFinishLoading(self)
+            return
+        }
+        let (response, body) = handler(request)
+        client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+        client?.urlProtocol(self, didLoad: body)
+        client?.urlProtocolDidFinishLoading(self)
+    }
+
+    override func stopLoading() {}
+
+    static func response(for request: URLRequest, statusCode: Int) -> HTTPURLResponse {
+        HTTPURLResponse(
+            url: request.url!,
+            statusCode: statusCode,
+            httpVersion: nil,
+            headerFields: ["Content-Type": "application/json"]
+        )!
+    }
+}
+
+private final class NativeAuthSessionURLProtocol: URLProtocol {
     static var handler: ((URLRequest) -> (HTTPURLResponse, Data))?
 
     override class func canInit(with request: URLRequest) -> Bool { true }

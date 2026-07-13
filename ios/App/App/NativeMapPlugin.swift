@@ -46,8 +46,22 @@ struct NativeAuthSession: Codable {
 final class NativeAuthSessionStore {
     static let shared = NativeAuthSessionStore()
 
-    private let service = "app.almidy.premium.supabase-session"
-    private let account = "current"
+    private let service: String
+    private let account: String
+    private let supabaseURL: URL?
+    private let publishableKey: String?
+
+    init(
+        service: String = "app.almidy.premium.supabase-session",
+        account: String = "current",
+        supabaseURL: URL? = NativeServiceConfiguration.supabaseURL,
+        publishableKey: String? = NativeServiceConfiguration.supabasePublishableKey
+    ) {
+        self.service = service
+        self.account = account
+        self.supabaseURL = supabaseURL
+        self.publishableKey = publishableKey
+    }
 
     var session: NativeAuthSession? {
         guard let data = readData() else { return nil }
@@ -61,8 +75,8 @@ final class NativeAuthSessionStore {
 
     func refresh(using urlSession: URLSession, completion: @escaping (Bool) -> Void) {
         guard let refreshToken = session?.refreshToken,
-              let supabaseURL = NativeServiceConfiguration.supabaseURL,
-              let publishableKey = NativeServiceConfiguration.supabasePublishableKey,
+              let supabaseURL,
+              let publishableKey,
               let url = URL(string: "auth/v1/token?grant_type=refresh_token", relativeTo: supabaseURL) else {
             DispatchQueue.main.async { completion(false) }
             return
@@ -119,48 +133,21 @@ final class NativeAuthSessionStore {
         ))
     }
 
-    func accessToken(completion: @escaping (String?) -> Void) {
+    func accessToken(using urlSession: URLSession = .shared, completion: @escaping (String?) -> Void) {
         guard let current = session else {
             completion(nil)
             return
         }
-        let refreshWindow = Int(Date().timeIntervalSince1970) + 60
-        guard let expiresAt = current.expiresAt, expiresAt <= refreshWindow,
-              let refreshToken = current.refreshToken,
-              let supabaseURL = NativeServiceConfiguration.supabaseURL,
-              let publishableKey = NativeServiceConfiguration.supabasePublishableKey else {
+        guard isExpiringSoon else {
             completion(current.accessToken)
             return
         }
 
-        var components = URLComponents(url: supabaseURL.appendingPathComponent("auth/v1/token"), resolvingAgainstBaseURL: false)
-        components?.queryItems = [URLQueryItem(name: "grant_type", value: "refresh_token")]
-        guard let url = components?.url else {
-            completion(current.accessToken)
-            return
-        }
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue(publishableKey, forHTTPHeaderField: "apikey")
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = try? JSONSerialization.data(withJSONObject: ["refresh_token": refreshToken])
-
-        URLSession.shared.dataTask(with: request) { data, response, _ in
-            guard let data,
-                  let httpResponse = response as? HTTPURLResponse,
-                  (200...299).contains(httpResponse.statusCode),
-                  let refreshed = try? JSONDecoder().decode(NativeAuthRefreshResponse.self, from: data) else {
-                DispatchQueue.main.async { completion(current.accessToken) }
-                return
+        refresh(using: urlSession) { [weak self] _ in
+            DispatchQueue.main.async {
+                completion(self?.session?.accessToken ?? current.accessToken)
             }
-            let session = NativeAuthSession(
-                accessToken: refreshed.accessToken,
-                refreshToken: refreshed.refreshToken ?? refreshToken,
-                expiresAt: Int(Date().timeIntervalSince1970) + (refreshed.expiresIn ?? 3600)
-            )
-            self.save(session)
-            DispatchQueue.main.async { completion(session.accessToken) }
-        }.resume()
+        }
     }
 
     func clear() {
@@ -199,8 +186,6 @@ private struct NativeSupabaseRefreshResponse: Decodable {
         case expiresAt = "expires_at"
     }
 }
-
-private typealias NativeAuthRefreshResponse = NativeSupabaseRefreshResponse
 
 @objc(NativeMapPlugin)
 public class NativeMapPlugin: CAPPlugin, CAPBridgedPlugin {
