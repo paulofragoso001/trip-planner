@@ -3236,6 +3236,9 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
                 },
                 onSignOut: { [weak self] completion in
                     self?.clearNativeSession(completion: completion)
+                },
+                onSignedOut: { [weak self] in
+                    self?.presentNativeAuth()
                 }
             )
             account.modalPresentationStyle = .pageSheet
@@ -3274,13 +3277,19 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
                 break
             }
         }
-        auth.modalPresentationStyle = .pageSheet
+        auth.modalPresentationStyle = UIModalPresentationStyle.pageSheet
         if let sheet = auth.sheetPresentationController {
-            sheet.detents = [.large()]
+            sheet.detents = [UISheetPresentationController.Detent.large()]
             sheet.prefersGrabberVisible = true
             sheet.preferredCornerRadius = 28
         }
         present(auth, animated: true)
+    }
+
+    private func showMessage(title: String, message: String) {
+        let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "Done", style: .default))
+        present(alert, animated: true)
     }
 
     private func clearNativeSession(completion: @escaping (Bool) -> Void) {
@@ -3310,7 +3319,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
                 }
                 group.notify(queue: .main) {
                     completion(error == nil)
-                    self.refreshTripsFromServer()
+                    self.replaceTrips([])
                 }
             }
         }
@@ -3987,17 +3996,20 @@ private final class NativeAccountViewController: UIViewController {
     private let isSignedIn: Bool
     private let onSignIn: () -> Void
     private let onSignOut: (@escaping (Bool) -> Void) -> Void
+    private let onSignedOut: () -> Void
     private let statusLabel = UILabel()
     private let actionButton = UIButton(type: .system)
 
     init(
         isSignedIn: Bool,
         onSignIn: @escaping () -> Void,
-        onSignOut: @escaping (@escaping (Bool) -> Void) -> Void
+        onSignOut: @escaping (@escaping (Bool) -> Void) -> Void,
+        onSignedOut: @escaping () -> Void = {}
     ) {
         self.isSignedIn = isSignedIn
         self.onSignIn = onSignIn
         self.onSignOut = onSignOut
+        self.onSignedOut = onSignedOut
         super.init(nibName: nil, bundle: nil)
     }
 
@@ -4069,7 +4081,9 @@ private final class NativeAccountViewController: UIViewController {
             onSignOut { [weak self] success in
                 guard let self else { return }
                 if success {
-                    self.dismiss(animated: true)
+                    self.dismiss(animated: true) {
+                        self.onSignedOut()
+                    }
                 } else {
                     self.actionButton.isEnabled = true
                     self.actionButton.setTitle("Sign Out", for: .normal)
