@@ -54,6 +54,44 @@ final class NativeAuthSessionStore {
         return try? JSONDecoder().decode(NativeAuthSession.self, from: data)
     }
 
+    var isExpiringSoon: Bool {
+        guard let expiresAt = session?.expiresAt else { return false }
+        return Date().timeIntervalSince1970 >= Double(expiresAt - 60)
+    }
+
+    func refresh(using urlSession: URLSession, completion: @escaping (Bool) -> Void) {
+        guard let refreshToken = session?.refreshToken,
+              let supabaseURL = NativeServiceConfiguration.supabaseURL,
+              let publishableKey = NativeServiceConfiguration.supabasePublishableKey,
+              let url = URL(string: "auth/v1/token?grant_type=refresh_token", relativeTo: supabaseURL) else {
+            DispatchQueue.main.async { completion(false) }
+            return
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue(publishableKey, forHTTPHeaderField: "apikey")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try? JSONSerialization.data(withJSONObject: ["refresh_token": refreshToken])
+
+        urlSession.dataTask(with: request) { [weak self] data, response, _ in
+            guard let self,
+                  let httpResponse = response as? HTTPURLResponse,
+                  (200...299).contains(httpResponse.statusCode),
+                  let data,
+                  let refreshed = try? JSONDecoder().decode(NativeSupabaseRefreshResponse.self, from: data) else {
+                DispatchQueue.main.async { completion(false) }
+                return
+            }
+            self.save(NativeAuthSession(
+                accessToken: refreshed.accessToken,
+                refreshToken: refreshed.refreshToken ?? refreshToken,
+                expiresAt: refreshed.expiresAt ?? Int(Date().timeIntervalSince1970) + (refreshed.expiresIn ?? 3600)
+            ))
+            DispatchQueue.main.async { completion(true) }
+        }.resume()
+    }
+
     func save(_ session: NativeAuthSession) {
         guard let data = try? JSONEncoder().encode(session) else { return }
         let query: [String: Any] = [
@@ -81,6 +119,50 @@ final class NativeAuthSessionStore {
         ))
     }
 
+    func accessToken(completion: @escaping (String?) -> Void) {
+        guard let current = session else {
+            completion(nil)
+            return
+        }
+        let refreshWindow = Int(Date().timeIntervalSince1970) + 60
+        guard let expiresAt = current.expiresAt, expiresAt <= refreshWindow,
+              let refreshToken = current.refreshToken,
+              let supabaseURL = NativeServiceConfiguration.supabaseURL,
+              let publishableKey = NativeServiceConfiguration.supabasePublishableKey else {
+            completion(current.accessToken)
+            return
+        }
+
+        var components = URLComponents(url: supabaseURL.appendingPathComponent("auth/v1/token"), resolvingAgainstBaseURL: false)
+        components?.queryItems = [URLQueryItem(name: "grant_type", value: "refresh_token")]
+        guard let url = components?.url else {
+            completion(current.accessToken)
+            return
+        }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue(publishableKey, forHTTPHeaderField: "apikey")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try? JSONSerialization.data(withJSONObject: ["refresh_token": refreshToken])
+
+        URLSession.shared.dataTask(with: request) { data, response, _ in
+            guard let data,
+                  let httpResponse = response as? HTTPURLResponse,
+                  (200...299).contains(httpResponse.statusCode),
+                  let refreshed = try? JSONDecoder().decode(NativeAuthRefreshResponse.self, from: data) else {
+                DispatchQueue.main.async { completion(current.accessToken) }
+                return
+            }
+            let session = NativeAuthSession(
+                accessToken: refreshed.accessToken,
+                refreshToken: refreshed.refreshToken ?? refreshToken,
+                expiresAt: Int(Date().timeIntervalSince1970) + (refreshed.expiresIn ?? 3600)
+            )
+            self.save(session)
+            DispatchQueue.main.async { completion(session.accessToken) }
+        }.resume()
+    }
+
     func clear() {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
@@ -103,6 +185,22 @@ final class NativeAuthSessionStore {
         return result as? Data
     }
 }
+
+private struct NativeSupabaseRefreshResponse: Decodable {
+    let accessToken: String
+    let refreshToken: String?
+    let expiresIn: Int?
+    let expiresAt: Int?
+
+    enum CodingKeys: String, CodingKey {
+        case accessToken = "access_token"
+        case refreshToken = "refresh_token"
+        case expiresIn = "expires_in"
+        case expiresAt = "expires_at"
+    }
+}
+
+private typealias NativeAuthRefreshResponse = NativeSupabaseRefreshResponse
 
 @objc(NativeMapPlugin)
 public class NativeMapPlugin: CAPPlugin, CAPBridgedPlugin {
@@ -251,41 +349,65 @@ final class NativeVercelAPIClient {
             }.resume()
         }
 
-        var authenticatedRequest = request
-        if let accessToken = NativeAuthSessionStore.shared.session?.accessToken {
-            authenticatedRequest.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
-        }
-        guard let webView else {
-            perform(authenticatedRequest)
-            return
+        let continueWithCurrentSession: () -> Void = { [weak self] in
+            guard let self else { return }
+            var authenticatedRequest = request
+            if let accessToken = NativeAuthSessionStore.shared.session?.accessToken {
+                authenticatedRequest.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
+            }
+            guard let webView = self.webView else {
+                perform(authenticatedRequest)
+                return
+            }
+
+            let cookieStore = webView.configuration.websiteDataStore.httpCookieStore
+            cookieStore.getAllCookies { cookies in
+                if let cookieHeader = HTTPCookie.requestHeaderFields(with: cookies)["Cookie"] {
+                    authenticatedRequest.setValue(cookieHeader, forHTTPHeaderField: "Cookie")
+                }
+                let tokenScript = """
+                (() => {
+                    for (const store of [localStorage, sessionStorage]) {
+                        for (const key of Object.keys(store)) {
+                            if (!key.includes('auth-token')) continue;
+                            try {
+                                const value = JSON.parse(store.getItem(key) || 'null');
+                                if (typeof value?.access_token === 'string') {
+                                    return JSON.stringify({
+                                        accessToken: value.access_token,
+                                        refreshToken: value.refresh_token || null,
+                                        expiresAt: value.expires_at || null
+                                    });
+                                }
+                            } catch (_) {}
+                        }
+                    }
+                    return null;
+                })()
+                """
+                webView.evaluateJavaScript(tokenScript) { result, _ in
+                    if let sessionJSON = result as? String,
+                       let data = sessionJSON.data(using: .utf8),
+                       let session = try? JSONDecoder().decode(NativeAuthSessionPayload.self, from: data),
+                       !session.accessToken.isEmpty {
+                        NativeAuthSessionStore.shared.save(NativeAuthSession(
+                            accessToken: session.accessToken,
+                            refreshToken: session.refreshToken,
+                            expiresAt: session.expiresAt
+                        ))
+                        authenticatedRequest.setValue("Bearer \(session.accessToken)", forHTTPHeaderField: "Authorization")
+                    }
+                    perform(authenticatedRequest)
+                }
+            }
         }
 
-        let cookieStore = webView.configuration.websiteDataStore.httpCookieStore
-        cookieStore.getAllCookies { cookies in
-            if let cookieHeader = HTTPCookie.requestHeaderFields(with: cookies)["Cookie"] {
-                authenticatedRequest.setValue(cookieHeader, forHTTPHeaderField: "Cookie")
+        if NativeAuthSessionStore.shared.isExpiringSoon {
+            NativeAuthSessionStore.shared.refresh(using: session) { _ in
+                continueWithCurrentSession()
             }
-            let tokenScript = """
-            (() => {
-                for (const store of [localStorage, sessionStorage]) {
-                    for (const key of Object.keys(store)) {
-                        if (!key.includes('auth-token')) continue;
-                        try {
-                            const value = JSON.parse(store.getItem(key) || 'null');
-                            if (typeof value?.access_token === 'string') return value.access_token;
-                        } catch (_) {}
-                    }
-                }
-                return null;
-            })()
-            """
-            webView.evaluateJavaScript(tokenScript) { result, _ in
-                if let accessToken = result as? String, !accessToken.isEmpty {
-                    NativeAuthSessionStore.shared.save(NativeAuthSession(accessToken: accessToken, refreshToken: nil, expiresAt: nil))
-                    authenticatedRequest.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
-                }
-                perform(authenticatedRequest)
-            }
+        } else {
+            continueWithCurrentSession()
         }
     }
 }
