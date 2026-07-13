@@ -4222,7 +4222,7 @@ private final class GoogleLogoView: UIView {
         let radius = min(rect.width, rect.height) * 0.37
         let lineWidth = min(rect.width, rect.height) * 0.22
         let segments: [(UIColor, CGFloat, CGFloat)] = [
-            (UIColor(red: 0.26, green: 0.52, blue: 0.96, alpha: 1), -.15, 1.55),
+            (UIColor(red: 0.26, green: 0.52, blue: 0.96, alpha: 1), -0.15, 1.55),
             (UIColor(red: 0.92, green: 0.25, blue: 0.20, alpha: 1), 1.55, 3.05),
             (UIColor(red: 0.98, green: 0.75, blue: 0.12, alpha: 1), 3.05, 4.05),
             (UIColor(red: 0.20, green: 0.66, blue: 0.33, alpha: 1), 4.05, 6.13)
