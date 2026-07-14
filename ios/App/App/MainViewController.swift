@@ -3,13 +3,51 @@ import Network
 import os
 import WebKit
 
+enum NativeRouteOwner: String {
+    case native
+    case controlledWebView
+    case webAPI
+    case external
+}
+
 enum NativeWebRoutePolicy {
     static let allowedPrefixes = [
-        "/login",
         "/dashboard/imports",
         "/dashboard/help",
-        "/dashboard/account",
+        "/dashboard/account/",
+        "/dashboard/settings/",
     ]
+
+    private static let allowedAccountFragments = ["help", "membership", "preferences", "sync"]
+
+    static func owner(for route: String) -> NativeRouteOwner {
+        guard route.hasPrefix("/"), let url = URL(string: route) else { return .external }
+        return owner(for: url)
+    }
+
+    static func owner(for url: URL) -> NativeRouteOwner {
+        guard url.host == nil || url.host == NativeServiceConfiguration.appHost else { return .external }
+        let path = url.path
+        if path == "/dashboard" ||
+            path.hasPrefix("/dashboard/trips") ||
+            path.hasPrefix("/dashboard/search") ||
+            path.hasPrefix("/dashboard/globe") ||
+            path.hasPrefix("/dashboard/wallet") ||
+            path == "/dashboard/account" ||
+            path == "/dashboard/settings" ||
+            path == "/dashboard/plan" ||
+            path == "/dashboard/map" {
+            return .native
+        }
+        if path.hasPrefix("/dashboard/imports") ||
+            path == "/dashboard/help" ||
+            path.hasPrefix("/dashboard/account/") ||
+            path.hasPrefix("/dashboard/settings/") ||
+            (path == "/dashboard/account" && allowedAccountFragments.contains(url.fragment ?? "")) {
+            return .controlledWebView
+        }
+        return .external
+    }
 
     static func allows(_ route: String) -> Bool {
         guard route.hasPrefix("/") && !route.hasPrefix("//"),
@@ -20,22 +58,11 @@ enum NativeWebRoutePolicy {
     }
 
     static func allows(_ url: URL) -> Bool {
-        guard url.host == nil || url.host == NativeServiceConfiguration.appHost,
-              url.path == "/login" || url.path.hasPrefix("/dashboard/") else {
-            return false
-        }
-        if url.path == "/login" { return true }
-        return allowedPrefixes.contains { url.path.hasPrefix($0) }
+        owner(for: url) == .controlledWebView
     }
 
     static func isNativeOwned(_ url: URL) -> Bool {
-        guard url.host == nil || url.host == NativeServiceConfiguration.appHost else { return false }
-        let path = url.path
-        return path == "/dashboard" ||
-            path.hasPrefix("/dashboard/trips") ||
-            path.hasPrefix("/dashboard/search") ||
-            path.hasPrefix("/dashboard/globe") ||
-            path.hasPrefix("/dashboard/wallet")
+        owner(for: url) == .native
     }
 }
 

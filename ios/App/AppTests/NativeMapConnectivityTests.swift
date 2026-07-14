@@ -149,7 +149,7 @@ final class NativeMapConnectivityTests: XCTestCase {
         weak var releasedController: NativeMapViewController?
 
         autoreleasepool {
-            var controller: NativeMapViewController? = NativeMapViewController(trips: []) { _ in }
+            var controller: NativeMapViewController? = NativeMapViewController(trips: [])
             controller?.loadViewIfNeeded()
             releasedController = controller
             controller = nil
@@ -162,7 +162,7 @@ final class NativeMapConnectivityTests: XCTestCase {
         let controller = NativeMapViewController(
             trips: [],
             monitorsNetworkConnectivity: false
-        ) { _ in }
+        )
         controller.loadViewIfNeeded()
 
         UIView.setAnimationsEnabled(false)
@@ -304,10 +304,24 @@ final class NativeMapConnectivityTests: XCTestCase {
         XCTAssertTrue(NativeWebRoutePolicy.allows("/dashboard/help"))
         XCTAssertTrue(NativeWebRoutePolicy.allows("/dashboard/imports/forward-reservation"))
         XCTAssertTrue(NativeWebRoutePolicy.allows("/dashboard/account/profile"))
+        XCTAssertTrue(NativeWebRoutePolicy.allows("/dashboard/account#help"))
+        XCTAssertTrue(NativeWebRoutePolicy.allows("/dashboard/settings/preferences"))
         XCTAssertFalse(NativeWebRoutePolicy.allows("/dashboard"))
         XCTAssertFalse(NativeWebRoutePolicy.allows("/dashboard/trips"))
         XCTAssertFalse(NativeWebRoutePolicy.allows("/dashboard/search"))
+        XCTAssertFalse(NativeWebRoutePolicy.allows("/dashboard/account"))
+        XCTAssertFalse(NativeWebRoutePolicy.allows("/dashboard/account#unknown"))
         XCTAssertFalse(NativeWebRoutePolicy.allows("https://example.com/dashboard/help"))
+    }
+
+    func testNativeRouteOwnershipIsExplicit() {
+        XCTAssertEqual(NativeWebRoutePolicy.owner(for: "/dashboard/trips"), .native)
+        XCTAssertEqual(NativeWebRoutePolicy.owner(for: "/dashboard/search"), .native)
+        XCTAssertEqual(NativeWebRoutePolicy.owner(for: "/dashboard/account"), .native)
+        XCTAssertEqual(NativeWebRoutePolicy.owner(for: "/dashboard/imports#reservation-forwarding"), .controlledWebView)
+        XCTAssertEqual(NativeWebRoutePolicy.owner(for: "/dashboard/account#help"), .controlledWebView)
+        XCTAssertEqual(NativeWebRoutePolicy.owner(for: "/dashboard/settings/preferences"), .controlledWebView)
+        XCTAssertEqual(NativeWebRoutePolicy.owner(for: "https://example.com/dashboard/help"), .external)
     }
 
     func testNativeWebRoutePolicyIdentifiesNativeOwnedRoutes() {
