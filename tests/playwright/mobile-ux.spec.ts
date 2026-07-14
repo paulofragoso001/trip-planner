@@ -698,6 +698,8 @@ test.describe("mobile soft-launch UX", () => {
     await expect(page).not.toHaveURL(/\/login/);
     await expect(page.getByTestId("app-shell-root")).toHaveAttribute("data-shell-variant", "mobile");
     await expect(page.getByTestId("mobile-home-wallet")).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByTestId("mobile-home-wallet-content")).toHaveAttribute("data-sheet-state", "collapsed");
+    await page.getByTestId("ios-launch-sheet-handle").click();
     await expect(page.getByTestId("mobile-home-wallet-content")).toHaveAttribute("data-sheet-state", "expanded");
     await expect(page.getByTestId("mobile-launch-welcome")).toBeVisible();
     await expect(page.getByText("Welcome")).toBeVisible();

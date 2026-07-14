@@ -1,12 +1,13 @@
 "use client";
 
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { BedDouble, CalendarPlus, MapPin, MoreHorizontal, Plane, Route, Search, X } from "lucide-react";
+import { BedDouble, CalendarPlus, MapPin, MoreHorizontal, Plane, Plus, Route, Search, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import type { TripOverviewData } from "@/app/dashboard/trips/[tripId]/overview-loader";
 import { MobileFlightRouteCard } from "@/components/trip/mobile-flight-route-card";
 import TripOverviewPage from "@/components/trip/trip-overview-page";
+import { dashboardActionRoutes } from "@/lib/dashboard/action-routes";
 
 export type MobileTripsOverviewFocus = {
   id: string;
@@ -87,9 +88,11 @@ export default function MobileTripsWalletSheet({
   initialSheetState = "collapsed",
   onOverviewFocusChange,
   onOpenSettings,
+  onYearChange,
   query,
   settingsHref,
-  trips = []
+  trips = [],
+  years = []
 }: WalletSheetProps) {
   const [sheetState, setSheetState] = useState<TripsOverviewSheetState>(initialSheetState);
   const [overviewData, setOverviewData] = useState<TripOverviewData | null>(initialOverviewData);
@@ -342,20 +345,61 @@ export default function MobileTripsWalletSheet({
                     <h2 className={isCollapsed ? "truncate text-[1.35rem] font-black leading-tight text-white" : "truncate text-[1.6rem] font-black leading-tight text-white"}>
                       {activeTrip?.city || "My Trips"}
                     </h2>
-                    <p className={isCollapsed ? "truncate text-sm font-semibold leading-tight text-white/62" : "truncate text-base font-semibold leading-tight text-white/62"}>
-                      {activeTrip?.date_range || currentYear}
-                    </p>
+                    {years.length ? (
+                      <select
+                        aria-label="Trips year"
+                        className={isCollapsed ? "mt-0.5 max-w-full bg-transparent text-sm font-semibold leading-tight text-white/62 outline-none" : "mt-0.5 max-w-full bg-transparent text-base font-semibold leading-tight text-white/62 outline-none"}
+                        data-testid="mobile-trips-overview-year-select"
+                        onChange={(event) => onYearChange?.(event.target.value)}
+                        value={currentYear}
+                      >
+                        {years.map((year) => (
+                          <option className="bg-zinc-900 text-white" key={year} value={year}>
+                            {year}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <p className={isCollapsed ? "truncate text-sm font-semibold leading-tight text-white/62" : "truncate text-base font-semibold leading-tight text-white/62"}>
+                        {activeTrip?.date_range || currentYear}
+                      </p>
+                    )}
                   </div>
 
-                  <button
-                    aria-label="Collapse trips sheet"
-                    className="grid h-12 w-12 place-items-center rounded-full bg-white/70 text-black shadow-[inset_0_1px_0_rgba(255,255,255,0.65)] transition hover:bg-white/80 focus:outline-none focus:ring-4 focus:ring-orange-400/20"
-                    onClick={closeModalState}
-                    type="button"
-                  >
-                    <X className="h-8 w-8" aria-hidden="true" />
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <Link
+                      aria-label="Create trip"
+                      className="grid h-12 w-12 place-items-center rounded-full bg-orange-500 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.2)] transition hover:bg-orange-400 focus:outline-none focus:ring-4 focus:ring-orange-400/20"
+                      data-testid="mobile-trips-wallet-create-trigger"
+                      href={`${dashboardActionRoutes.trips.list}?view=list#new-trip`}
+                    >
+                      <Plus className="h-7 w-7" aria-hidden="true" />
+                    </Link>
+                    <button
+                      aria-label="Collapse trips sheet"
+                      className="grid h-12 w-12 place-items-center rounded-full bg-white/70 text-black shadow-[inset_0_1px_0_rgba(255,255,255,0.65)] transition hover:bg-white/80 focus:outline-none focus:ring-4 focus:ring-orange-400/20"
+                      onClick={closeModalState}
+                      type="button"
+                    >
+                      <X className="h-8 w-8" aria-hidden="true" />
+                    </button>
+                  </div>
                 </div>
+
+                {activeTrip ? (
+                  <Link
+                    className="mb-3 block rounded-2xl bg-white/12 px-4 py-3 text-left transition hover:bg-white/18 focus:outline-none focus:ring-4 focus:ring-orange-400/20"
+                    data-testid="mobile-trips-wallet-card"
+                    href={tripCardHref(activeTrip)}
+                  >
+                    <span className="block truncate text-base font-black text-white">
+                      {activeTrip.name || activeTrip.city || "Trip"}
+                    </span>
+                    <span className="mt-0.5 block truncate text-sm font-semibold text-white/62">
+                      {activeTrip.destination_name}
+                    </span>
+                  </Link>
+                ) : null}
 
                 {activeTrip ? <TripShortcutRail compact={isCollapsed} trip={activeTrip} /> : null}
 

@@ -51,7 +51,9 @@ function GoogleMapsLoader({
     libraries,
     version: "beta"
   });
-  const [hasPreloadedRuntime, setHasPreloadedRuntime] = useState(hasGoogleMapsRuntime);
+  // Keep the first client render identical to the server render. A preloaded
+  // Google runtime is discovered after hydration by the effect below.
+  const [hasPreloadedRuntime, setHasPreloadedRuntime] = useState(false);
   const googleMapsReady = isLoaded || hasPreloadedRuntime;
 
   useEffect(() => {

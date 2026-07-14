@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useSyncExternalStore } from "react";
 import { DesktopDashboardShell } from "@/components/dashboard/desktop-dashboard-shell";
 import { MobileDashboardShell } from "@/components/dashboard/mobile-dashboard-shell";
 
@@ -38,26 +38,13 @@ export function AppShell({
 }
 
 function useIsDesktopDashboardShell() {
-  const [isDesktop, setIsDesktop] = useState(false);
-
-  useEffect(() => {
-    const widthQuery = window.matchMedia("(min-width: 1024px)");
-    const hoverQuery = window.matchMedia("(hover: hover)");
-    const pointerQuery = window.matchMedia("(pointer: fine)");
-    const sync = () => {
-      setIsDesktop(widthQuery.matches && hoverQuery.matches && pointerQuery.matches);
-    };
-
-    sync();
-    widthQuery.addEventListener("change", sync);
-    hoverQuery.addEventListener("change", sync);
-    pointerQuery.addEventListener("change", sync);
-    return () => {
-      widthQuery.removeEventListener("change", sync);
-      hoverQuery.removeEventListener("change", sync);
-      pointerQuery.removeEventListener("change", sync);
-    };
-  }, []);
-
-  return isDesktop;
+  return useSyncExternalStore(
+    (onStoreChange) => {
+      const widthQuery = window.matchMedia("(min-width: 1024px)");
+      widthQuery.addEventListener("change", onStoreChange);
+      return () => widthQuery.removeEventListener("change", onStoreChange);
+    },
+    () => window.matchMedia("(min-width: 1024px)").matches,
+    () => false
+  );
 }
