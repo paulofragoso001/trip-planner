@@ -39,10 +39,50 @@ private extension URL {
     }
 }
 
-struct NativeAuthSession: Codable {
+enum NativeAuthSessionEvent: String, Codable {
+    case signedIn = "SIGNED_IN"
+    case signedOut = "SIGNED_OUT"
+    case tokenRefreshed = "TOKEN_REFRESHED"
+}
+
+struct NativeAuthSession: Codable, Equatable {
     let accessToken: String
     let refreshToken: String?
     let expiresAt: Int?
+    let userId: String?
+
+    init(accessToken: String, refreshToken: String?, expiresAt: Int?, userId: String? = nil) {
+        self.accessToken = accessToken
+        self.refreshToken = refreshToken
+        self.expiresAt = expiresAt
+        self.userId = userId
+    }
+}
+
+struct NativeAuthSessionContract: Codable, Equatable {
+    let event: NativeAuthSessionEvent
+    let revisionId: Int64
+    let accessToken: String?
+    let refreshToken: String?
+    let expiresAt: Int?
+    let userId: String?
+    let isSignedIn: Bool
+
+    static func signedOut(revisionId: Int64) -> NativeAuthSessionContract {
+        NativeAuthSessionContract(
+            event: .signedOut,
+            revisionId: revisionId,
+            accessToken: nil,
+            refreshToken: nil,
+            expiresAt: nil,
+            userId: nil,
+            isSignedIn: false
+        )
+    }
+}
+
+extension Notification.Name {
+    static let nativeAuthSessionChanged = Notification.Name("app.almidy.nativeAuthSessionChanged")
 }
 
 private let nativeAuthCallbackURL = URL(string: "app.almidy.premium://auth/callback")!
@@ -54,6 +94,8 @@ final class NativeAuthSessionStore {
     private let account: String
     private let supabaseURL: URL?
     private let publishableKey: String?
+    private static let revisionQueue = DispatchQueue(label: "app.almidy.auth.revisions")
+    private static var lastRevisionId: Int64 = 0
 
     init(
         service: String = "app.almidy.premium.supabase-session",
@@ -104,14 +146,24 @@ final class NativeAuthSessionStore {
             self.save(NativeAuthSession(
                 accessToken: refreshed.accessToken,
                 refreshToken: refreshed.refreshToken ?? refreshToken,
-                expiresAt: refreshed.expiresAt ?? Int(Date().timeIntervalSince1970) + (refreshed.expiresIn ?? 3600)
-            ))
+                expiresAt: refreshed.expiresAt ?? Int(Date().timeIntervalSince1970) + (refreshed.expiresIn ?? 3600),
+                userId: self.session?.userId
+            ), event: .tokenRefreshed)
             DispatchQueue.main.async { completion(true) }
         }.resume()
     }
 
-    func save(_ session: NativeAuthSession) {
-        guard let data = try? JSONEncoder().encode(session) else { return }
+    func save(_ session: NativeAuthSession, event: NativeAuthSessionEvent = .tokenRefreshed) {
+        let previous = self.session
+        let sessionToSave = session.userId == nil && previous?.userId != nil
+            ? NativeAuthSession(
+                accessToken: session.accessToken,
+                refreshToken: session.refreshToken,
+                expiresAt: session.expiresAt,
+                userId: previous?.userId
+            )
+            : session
+        guard let data = try? JSONEncoder().encode(sessionToSave) else { return }
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
@@ -123,6 +175,9 @@ final class NativeAuthSessionStore {
             item[kSecValueData as String] = data
             SecItemAdd(item as CFDictionary, nil)
         }
+
+        guard previous != sessionToSave else { return }
+        postChange(event: event, session: sessionToSave)
     }
 
     func update(from rawValue: String) {
@@ -130,11 +185,13 @@ final class NativeAuthSessionStore {
               let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let accessToken = object["access_token"] as? String,
               !accessToken.isEmpty else { return }
+        let user = object["user"] as? [String: Any]
         save(NativeAuthSession(
             accessToken: accessToken,
             refreshToken: object["refresh_token"] as? String,
-            expiresAt: object["expires_at"] as? Int
-        ))
+            expiresAt: object["expires_at"] as? Int,
+            userId: object["user_id"] as? String ?? user?["id"] as? String ?? Self.userId(fromAccessToken: accessToken)
+        ), event: .signedIn)
     }
 
     func accessToken(using urlSession: URLSession = .shared, completion: @escaping (String?) -> Void) {
@@ -202,9 +259,10 @@ final class NativeAuthSessionStore {
             let session = NativeAuthSession(
                 accessToken: payload.accessToken,
                 refreshToken: payload.refreshToken,
-                expiresAt: payload.expiresAt ?? Int(Date().timeIntervalSince1970) + (payload.expiresIn ?? 3600)
+                expiresAt: payload.expiresAt ?? Int(Date().timeIntervalSince1970) + (payload.expiresIn ?? 3600),
+                userId: payload.userId ?? payload.user?.id ?? Self.userId(fromAccessToken: payload.accessToken)
             )
-            self?.save(session)
+            self?.save(session, event: .signedIn)
             DispatchQueue.main.async { completion(.success(session)) }
         }.resume()
     }
@@ -248,8 +306,13 @@ final class NativeAuthSessionStore {
             }
             let expiresAt = tokens["expires_at"] as? Int
                 ?? ((tokens["expires_in"] as? Int).map { Int(Date().timeIntervalSince1970) + $0 })
-            let nativeSession = NativeAuthSession(accessToken: accessToken, refreshToken: refreshToken, expiresAt: expiresAt)
-            self.save(nativeSession)
+            let nativeSession = NativeAuthSession(
+                accessToken: accessToken,
+                refreshToken: refreshToken,
+                expiresAt: expiresAt,
+                userId: Self.userId(fromAccessToken: accessToken)
+            )
+            self.save(nativeSession, event: .signedIn)
             DispatchQueue.main.async { completion(.success(nativeSession)) }
         }
         session.presentationContextProvider = presentationContext
@@ -319,20 +382,58 @@ final class NativeAuthSessionStore {
             let session = NativeAuthSession(
                 accessToken: payload.accessToken,
                 refreshToken: payload.refreshToken,
-                expiresAt: payload.expiresAt ?? Int(Date().timeIntervalSince1970) + (payload.expiresIn ?? 3600)
+                expiresAt: payload.expiresAt ?? Int(Date().timeIntervalSince1970) + (payload.expiresIn ?? 3600),
+                userId: payload.userId ?? payload.user?.id ?? Self.userId(fromAccessToken: payload.accessToken)
             )
-            self?.save(session)
+            self?.save(session, event: .signedIn)
             DispatchQueue.main.async { completion(.success(session)) }
         }.resume()
     }
 
-    func clear() {
+    func clear(emitEvent: Bool = true) {
+        let hadSession = session != nil
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
             kSecAttrAccount as String: account
         ]
         SecItemDelete(query as CFDictionary)
+        if emitEvent && hadSession {
+            postChange(event: .signedOut, session: nil)
+        }
+    }
+
+    private func postChange(event: NativeAuthSessionEvent, session: NativeAuthSession?) {
+        let revisionId = Self.nextRevisionId()
+        let contract = NativeAuthSessionContract(
+            event: event,
+            revisionId: revisionId,
+            accessToken: session?.accessToken,
+            refreshToken: session?.refreshToken,
+            expiresAt: session?.expiresAt,
+            userId: session?.userId,
+            isSignedIn: session != nil
+        )
+        NotificationCenter.default.post(name: .nativeAuthSessionChanged, object: contract)
+    }
+
+    private static func nextRevisionId() -> Int64 {
+        revisionQueue.sync {
+            let timestamp = Int64(Date().timeIntervalSince1970 * 1000)
+            lastRevisionId = max(timestamp, lastRevisionId + 1)
+            return lastRevisionId
+        }
+    }
+
+    private static func userId(fromAccessToken accessToken: String) -> String? {
+        let parts = accessToken.split(separator: ".")
+        guard parts.count >= 2 else { return nil }
+        var encoded = String(parts[1]).replacingOccurrences(of: "-", with: "+")
+            .replacingOccurrences(of: "_", with: "/")
+        encoded += String(repeating: "=", count: (4 - encoded.count % 4) % 4)
+        guard let data = Data(base64Encoded: encoded),
+              let payload = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return nil }
+        return payload["sub"] as? String
     }
 
     private func readData() -> Data? {
@@ -866,13 +967,21 @@ private struct NativeAuthSessionPayload: Decodable {
     let refreshToken: String?
     let expiresAt: Int?
     let expiresIn: Int?
+    let userId: String?
+    let user: NativeAuthUserPayload?
 
     enum CodingKeys: String, CodingKey {
         case accessToken = "access_token"
         case refreshToken = "refresh_token"
         case expiresAt = "expires_at"
         case expiresIn = "expires_in"
+        case userId = "user_id"
+        case user
     }
+}
+
+private struct NativeAuthUserPayload: Decodable {
+    let id: String
 }
 
 private struct NativeTripResponse: Decodable {
@@ -1077,7 +1186,10 @@ public final class MapGatewayPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "autocomplete", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "resolveAutocomplete", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "syncPayloadToNative", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "acknowledgeReceipt", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "acknowledgeReceipt", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "getNativeAuthSession", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "syncNativeAuthSession", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "clearNativeAuthSession", returnType: CAPPluginReturnPromise)
     ]
 
     private let stateQueue = DispatchQueue(label: "app.almidy.map-gateway.state")
@@ -1092,6 +1204,25 @@ public final class MapGatewayPlugin: CAPPlugin, CAPBridgedPlugin {
     private var nativeMapInteractiveRegions: [CGRect] = []
     private var autocompleteCompleter: MKLocalSearchCompleter?
     private var autocompleteDelegate: NativeMapAutocompleteDelegate?
+    private var authObserver: NSObjectProtocol?
+
+    public override func load() {
+        super.load()
+        authObserver = NotificationCenter.default.addObserver(
+            forName: .nativeAuthSessionChanged,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            guard let contract = notification.object as? NativeAuthSessionContract else { return }
+            self?.notifyAuthStateChanged(contract)
+        }
+    }
+
+    deinit {
+        if let authObserver {
+            NotificationCenter.default.removeObserver(authObserver)
+        }
+    }
 
     @objc func initializeNativeMapUnderlay(_ call: CAPPluginCall) {
         DispatchQueue.main.async { [weak self] in
@@ -1282,6 +1413,52 @@ public final class MapGatewayPlugin: CAPPlugin, CAPBridgedPlugin {
         call.resolve()
     }
 
+    @objc func getNativeAuthSession(_ call: CAPPluginCall) {
+        let session = NativeAuthSessionStore.shared.session
+        let contract = NativeAuthSessionContract(
+            event: session == nil ? .signedOut : .signedIn,
+            revisionId: Int64(Date().timeIntervalSince1970 * 1000),
+            accessToken: session?.accessToken,
+            refreshToken: session?.refreshToken,
+            expiresAt: session?.expiresAt,
+            userId: session?.userId,
+            isSignedIn: session != nil
+        )
+        call.resolve(contractDictionary(contract))
+    }
+
+    @objc func syncNativeAuthSession(_ call: CAPPluginCall) {
+        guard let jsonString = call.getString("jsonString"),
+              let data = jsonString.data(using: .utf8),
+              let contract = try? JSONDecoder().decode(NativeAuthSessionContract.self, from: data) else {
+            call.reject("Malformed native authentication session contract.", "invalid_native_auth_session")
+            return
+        }
+
+        if contract.event == .signedOut || !contract.isSignedIn {
+            NativeAuthSessionStore.shared.clear()
+            call.resolve(["success": true])
+            return
+        }
+
+        guard let accessToken = contract.accessToken, !accessToken.isEmpty else {
+            call.reject("Signed-in authentication state is missing an access token.", "invalid_native_auth_session")
+            return
+        }
+        NativeAuthSessionStore.shared.save(NativeAuthSession(
+            accessToken: accessToken,
+            refreshToken: contract.refreshToken,
+            expiresAt: contract.expiresAt,
+            userId: contract.userId
+        ), event: contract.event == .tokenRefreshed ? .tokenRefreshed : .signedIn)
+        call.resolve(["success": true])
+    }
+
+    @objc func clearNativeAuthSession(_ call: CAPPluginCall) {
+        NativeAuthSessionStore.shared.clear()
+        call.resolve(["success": true])
+    }
+
     public func broadcastStateToWeb(updatedJsonPayload: String) {
         guard let payload = decodePayload(updatedJsonPayload),
               accept(payload, jsonString: updatedJsonPayload) else {
@@ -1291,6 +1468,18 @@ public final class MapGatewayPlugin: CAPPlugin, CAPBridgedPlugin {
         DispatchQueue.main.async { [weak self] in
             self?.notifyListeners("onNativeStateSync", data: ["jsonString": updatedJsonPayload])
         }
+    }
+
+    private func notifyAuthStateChanged(_ contract: NativeAuthSessionContract) {
+        notifyListeners("nativeAuthStateChanged", data: contractDictionary(contract))
+    }
+
+    private func contractDictionary(_ contract: NativeAuthSessionContract) -> [String: Any] {
+        guard let data = try? JSONEncoder().encode(contract),
+              let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            return ["event": contract.event.rawValue, "revisionId": contract.revisionId, "isSignedIn": contract.isSignedIn]
+        }
+        return object
     }
 
     func attach(_ controller: NativeMapViewController) {

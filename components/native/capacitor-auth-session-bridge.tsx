@@ -2,41 +2,35 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { registerPlugin, type PluginListenerHandle } from "@capacitor/core";
+import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
 import {
   isNativeCapacitorRuntime,
   NATIVE_AUTH_CALLBACK_URL
 } from "@/lib/native/capacitor-runtime";
 import { createClient } from "@/lib/supabase/client";
 
-const NATIVE_SESSION_STORAGE_KEY = "almidy_auth_session";
-
-type StoredNativeSession = {
-  access_token?: string;
-  refresh_token?: string;
+type NativeAuthSessionContract = {
+  event: "SIGNED_IN" | "SIGNED_OUT" | "TOKEN_REFRESHED";
+  revisionId: number;
+  accessToken?: string | null;
+  refreshToken?: string | null;
+  expiresAt?: number | null;
+  userId?: string | null;
+  isSignedIn: boolean;
 };
 
-function parseStoredNativeSession(value: string | null) {
-  if (!value) return null;
-
-  try {
-    const parsed = JSON.parse(value) as StoredNativeSession;
-    if (
-      typeof parsed.access_token === "string" &&
-      parsed.access_token.length > 0 &&
-      typeof parsed.refresh_token === "string" &&
-      parsed.refresh_token.length > 0
-    ) {
-      return {
-        access_token: parsed.access_token,
-        refresh_token: parsed.refresh_token
-      };
-    }
-  } catch {
-    return null;
-  }
-
-  return null;
+interface NativeAuthPlugin {
+  addListener(
+    eventName: "nativeAuthStateChanged",
+    listener: (contract: NativeAuthSessionContract) => void
+  ): Promise<PluginListenerHandle>;
+  getNativeAuthSession(): Promise<NativeAuthSessionContract>;
+  syncNativeAuthSession(options: { jsonString: string }): Promise<{ success: boolean }>;
+  clearNativeAuthSession(): Promise<{ success: boolean }>;
 }
+
+const NativeAuth = registerPlugin<NativeAuthPlugin>("MapGateway");
 
 function isNativeAuthCallbackUrl(url: string) {
   return url.startsWith(NATIVE_AUTH_CALLBACK_URL);
@@ -51,6 +45,50 @@ export function CapacitorAuthSessionBridge() {
     let isMounted = true;
     const supabase = createClient();
     const listenerCleanups: Array<() => void> = [];
+    let latestNativeRevision = 0;
+
+    function sessionContract(event: AuthChangeEvent, session: Session | null): NativeAuthSessionContract {
+      const nativeEvent = event === "TOKEN_REFRESHED" ? "TOKEN_REFRESHED" : event === "SIGNED_OUT" ? "SIGNED_OUT" : "SIGNED_IN";
+      return {
+        event: nativeEvent,
+        revisionId: Date.now(),
+        accessToken: session?.access_token ?? null,
+        refreshToken: session?.refresh_token ?? null,
+        expiresAt: session?.expires_at ?? null,
+        userId: session?.user?.id ?? null,
+        isSignedIn: Boolean(session?.access_token && session?.refresh_token)
+      };
+    }
+
+    async function syncNativeSession(contract: NativeAuthSessionContract) {
+      if (!isMounted || contract.revisionId < latestNativeRevision) return;
+      latestNativeRevision = contract.revisionId;
+      if (!contract.isSignedIn || !contract.accessToken || !contract.refreshToken) {
+        await supabase.auth.signOut({ scope: "local" });
+        return;
+      }
+      await supabase.auth.setSession({
+        access_token: contract.accessToken,
+        refresh_token: contract.refreshToken
+      });
+    }
+
+    async function syncWebSessionToNative(event: AuthChangeEvent, session: Session | null) {
+      if (!isMounted) return;
+      const contract = sessionContract(event, session);
+      latestNativeRevision = Math.max(latestNativeRevision, contract.revisionId);
+      try {
+        if (contract.event === "SIGNED_OUT") {
+          await NativeAuth.clearNativeAuthSession();
+        } else if (contract.isSignedIn) {
+          await NativeAuth.syncNativeAuthSession({
+            jsonString: JSON.stringify(contract)
+          });
+        }
+      } catch (error) {
+        console.error("Failed to sync the WebView session to native Keychain storage:", error);
+      }
+    }
 
     async function handleNativeAuthCallback(url: string) {
       if (!isNativeAuthCallbackUrl(url)) return;
@@ -86,46 +124,23 @@ export function CapacitorAuthSessionBridge() {
       router.replace("/dashboard");
     }
 
-    async function hydrateNativeSession() {
-      const { Preferences } = await import("@capacitor/preferences");
-      const { value } = await Preferences.get({ key: NATIVE_SESSION_STORAGE_KEY });
-      const storedSession = parseStoredNativeSession(value);
-
-      if (!isMounted) return;
-
-      if (!storedSession) {
-        if (value) {
-          await Preferences.remove({ key: NATIVE_SESSION_STORAGE_KEY });
-        }
-        return;
-      }
-
-      const { error } = await supabase.auth.setSession(storedSession);
-      if (error) {
-        await Preferences.remove({ key: NATIVE_SESSION_STORAGE_KEY });
-      }
-    }
-
-    const authListener = supabase.auth.onAuthStateChange(async (_event, session) => {
-      const { Preferences } = await import("@capacitor/preferences");
-
-      if (session?.access_token && session.refresh_token) {
-        await Preferences.set({
-          key: NATIVE_SESSION_STORAGE_KEY,
-          value: JSON.stringify({
-            access_token: session.access_token,
-            refresh_token: session.refresh_token
-          })
-        });
-        return;
-      }
-
-      await Preferences.remove({ key: NATIVE_SESSION_STORAGE_KEY });
+    let nativeAuthListener: PluginListenerHandle | null = null;
+    NativeAuth.addListener("nativeAuthStateChanged", (contract) => {
+      void syncNativeSession(contract);
+    }).then((listener) => {
+      nativeAuthListener = listener;
+    }).catch((error) => {
+      console.error("Failed to subscribe to native authentication changes:", error);
     });
 
-    hydrateNativeSession().catch(async () => {
-      const { Preferences } = await import("@capacitor/preferences");
-      await Preferences.remove({ key: NATIVE_SESSION_STORAGE_KEY });
+    NativeAuth.getNativeAuthSession()
+      .then((contract) => syncNativeSession(contract))
+      .catch((error) => {
+        console.error("Failed to restore the native authentication session:", error);
+      });
+
+    const authListener = supabase.auth.onAuthStateChange((event, session) => {
+      void syncWebSessionToNative(event, session);
     });
 
     async function registerNativeDeepLinkListener() {
@@ -148,6 +163,7 @@ export function CapacitorAuthSessionBridge() {
     return () => {
       isMounted = false;
       listenerCleanups.forEach((cleanup) => cleanup());
+      nativeAuthListener?.remove();
       authListener.data.subscription.unsubscribe();
     };
   }, [router]);

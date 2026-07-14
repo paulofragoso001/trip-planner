@@ -300,6 +300,38 @@ final class NativeMapConnectivityTests: XCTestCase {
         wait(for: [expectation], timeout: 2)
     }
 
+    func testNativeAuthSessionContractCoversSignInRefreshAndSignOut() throws {
+        let signedIn = NativeAuthSessionContract(
+            event: .signedIn,
+            revisionId: 1,
+            accessToken: "access-token",
+            refreshToken: "refresh-token",
+            expiresAt: 1_900_000_000,
+            userId: "user-1",
+            isSignedIn: true
+        )
+        let refreshed = NativeAuthSessionContract(
+            event: .tokenRefreshed,
+            revisionId: 2,
+            accessToken: "new-access-token",
+            refreshToken: "new-refresh-token",
+            expiresAt: 1_900_003_600,
+            userId: "user-1",
+            isSignedIn: true
+        )
+        let signedOut = NativeAuthSessionContract.signedOut(revisionId: 3)
+
+        for contract in [signedIn, refreshed, signedOut] {
+            let data = try JSONEncoder().encode(contract)
+            let decoded = try JSONDecoder().decode(NativeAuthSessionContract.self, from: data)
+            XCTAssertEqual(decoded, contract)
+        }
+        XCTAssertEqual(signedIn.userId, refreshed.userId)
+        XCTAssertFalse(signedOut.isSignedIn)
+        XCTAssertNil(signedOut.accessToken)
+        XCTAssertNil(signedOut.refreshToken)
+    }
+
     func testNativeWebRoutePolicyAllowsOnlySecondaryPages() {
         XCTAssertTrue(NativeWebRoutePolicy.allows("/dashboard/help"))
         XCTAssertTrue(NativeWebRoutePolicy.allows("/dashboard/imports/forward-reservation"))
