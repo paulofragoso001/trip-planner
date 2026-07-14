@@ -110,9 +110,16 @@ final class MainViewController: CAPBridgeViewController {
     }
 
     private func presentNativeDashboardIfNeeded() {
-        guard !didPresentNativeDashboard,
-              presentedViewController == nil,
-              bridge != nil else { return }
+        guard !didPresentNativeDashboard, bridge != nil else { return }
+
+        if let presentedViewController,
+           isRestorableSecondaryPresentation(presentedViewController) {
+            presentedViewController.dismiss(animated: false) { [weak self] in
+                self?.presentNativeDashboardIfNeeded()
+            }
+            return
+        }
+        guard presentedViewController == nil else { return }
 
         didPresentNativeDashboard = true
         let dashboard = NativeMapViewController(
@@ -123,6 +130,14 @@ final class MainViewController: CAPBridgeViewController {
         dashboard.modalPresentationStyle = .fullScreen
         nativeDashboardController = dashboard
         present(dashboard, animated: false)
+    }
+
+    private func isRestorableSecondaryPresentation(_ viewController: UIViewController) -> Bool {
+        if viewController is NativeWebFeatureViewController { return true }
+        if let navigationController = viewController as? UINavigationController {
+            return navigationController.viewControllers.first is NativeWebFeatureViewController
+        }
+        return false
     }
 
     private func installLocationOverlayBlocker() {
@@ -220,7 +235,9 @@ final class NativeWebFeatureViewController: UIViewController, WKNavigationDelega
     private let featureTitle: String
     private let onFinish: (NativeWebFeatureResult) -> Void
     private let onNativeRoute: (String) -> Void
+    private let onAuthFailure: () -> Void
     private let authStorage: NativeWebAuthStorage?
+    private let nativeSession: NativeAuthSession?
     private let monitor = NWPathMonitor()
     private let monitorQueue = DispatchQueue(label: "app.almidy.native-web-feature.network")
     private let webView: WKWebView
@@ -231,6 +248,7 @@ final class NativeWebFeatureViewController: UIViewController, WKNavigationDelega
     private var didFinish = false
     private var pendingResult: NativeWebFeatureResult = .dismissed
     private var pendingNativeRoute: String?
+    private var shouldReturnToNativeAuth = false
     private var contentDiagnosticWorkItem: DispatchWorkItem?
 
     init(
@@ -238,15 +256,35 @@ final class NativeWebFeatureViewController: UIViewController, WKNavigationDelega
         title: String,
         onFinish: @escaping (NativeWebFeatureResult) -> Void = { _ in },
         onNativeRoute: @escaping (String) -> Void = { _ in },
-        authStorage: NativeWebAuthStorage? = nil
+        authStorage: NativeWebAuthStorage? = nil,
+        nativeSession: NativeAuthSession? = nil,
+        onAuthFailure: @escaping () -> Void = {}
     ) {
         self.route = route
         self.featureTitle = title
         self.onFinish = onFinish
         self.onNativeRoute = onNativeRoute
+        self.onAuthFailure = onAuthFailure
         self.authStorage = authStorage
+        self.nativeSession = nativeSession
         let configuration = WKWebViewConfiguration()
         configuration.websiteDataStore = .default()
+        if let nativeSession {
+            configuration.userContentController.addUserScript(WKUserScript(
+                source: Self.sessionInjectionScript(
+                    key: Self.storageKey(for: nativeSession, fallback: authStorage?.key),
+                    value: Self.storageValue(for: nativeSession, fallback: authStorage?.value)
+                ),
+                injectionTime: .atDocumentStart,
+                forMainFrameOnly: true
+            ))
+        } else if let authStorage {
+            configuration.userContentController.addUserScript(WKUserScript(
+                source: Self.sessionInjectionScript(key: authStorage.key, value: authStorage.value),
+                injectionTime: .atDocumentStart,
+                forMainFrameOnly: true
+            ))
+        }
         self.webView = WKWebView(frame: .zero, configuration: configuration)
         super.init(nibName: nil, bundle: nil)
     }
@@ -256,14 +294,18 @@ final class NativeWebFeatureViewController: UIViewController, WKNavigationDelega
         title: String,
         onFinish: @escaping (NativeWebFeatureResult) -> Void = { _ in },
         onNativeRoute: @escaping (String) -> Void = { _ in },
-        authStorage: NativeWebAuthStorage? = nil
+        authStorage: NativeWebAuthStorage? = nil,
+        nativeSession: NativeAuthSession? = nil,
+        onAuthFailure: @escaping () -> Void = {}
     ) -> UINavigationController {
         let controller = NativeWebFeatureViewController(
             route: route,
             title: title,
             onFinish: onFinish,
             onNativeRoute: onNativeRoute,
-            authStorage: authStorage
+            authStorage: authStorage,
+            nativeSession: nativeSession,
+            onAuthFailure: onAuthFailure
         )
         let navigationController = UINavigationController(rootViewController: controller)
         navigationController.modalPresentationStyle = .pageSheet
@@ -379,27 +421,113 @@ final class NativeWebFeatureViewController: UIViewController, WKNavigationDelega
         }
         showState(nil, loading: true, retry: false)
         logger.info("Loading secondary route: \(self.route, privacy: .public)")
-        guard let authStorage else {
-            webView.load(URLRequest(url: url))
-            return
-        }
-        let keyBase64 = Data(authStorage.key.utf8).base64EncodedString()
-        let valueBase64 = Data(authStorage.value.utf8).base64EncodedString()
-        let cookieBase64 = Data(authStorage.cookieHeader.utf8).base64EncodedString()
-        let script = """
-        (() => {
-            const decode = (value) => decodeURIComponent(escape(atob(value)));
-            localStorage.setItem(decode('\(keyBase64)'), decode('\(valueBase64)'));
-            const cookies = decode('\(cookieBase64)').split(';');
-            for (const cookie of cookies) {
-                const separator = cookie.indexOf('=');
-                if (separator > 0) document.cookie = cookie.trim() + '; path=/';
-            }
-        })()
-        """
-        webView.evaluateJavaScript(script) { [weak self] _, _ in
+        installCookies { [weak self] in
             self?.webView.load(URLRequest(url: url))
         }
+    }
+
+    private func installCookies(completion: @escaping () -> Void) {
+        guard let host = NativeServiceConfiguration.appBaseURL.host else {
+            completion()
+            return
+        }
+
+        var cookiePairs = (authStorage?.cookieHeader ?? "").split(separator: ";").compactMap { pair -> (String, String)? in
+            let parts = pair.split(separator: "=", maxSplits: 1).map(String.init)
+            guard parts.count == 2,
+                  !parts[0].trimmingCharacters(in: .whitespaces).isEmpty else { return nil }
+            return (parts[0].trimmingCharacters(in: .whitespaces), parts[1].trimmingCharacters(in: .whitespaces))
+        }
+
+        // The SSR middleware authenticates from cookies before the browser
+        // client can read localStorage. Mirror the native session into
+        // Supabase's cookie format when the source WebView has no cookie yet.
+        let storageKey = Self.storageKey(for: nativeSession, fallback: authStorage?.key)
+        let hasSupabaseCookie = cookiePairs.contains { name, _ in
+            name == storageKey || name.hasPrefix(storageKey + ".")
+        }
+        if !hasSupabaseCookie,
+           let rawValue = nativeSession.map({ Self.storageValue(for: $0, fallback: authStorage?.value) }) ?? authStorage?.value,
+           let encodedValue = Self.supabaseCookieValue(for: rawValue) {
+            cookiePairs.append((storageKey, encodedValue))
+        }
+
+        let cookies = cookiePairs.compactMap { name, value in
+            HTTPCookie(properties: [
+                .domain: host,
+                .path: "/",
+                .name: name,
+                .value: value,
+                .secure: "TRUE"
+            ])
+        }
+        guard !cookies.isEmpty else {
+            completion()
+            return
+        }
+
+        let group = DispatchGroup()
+        let cookieStore = webView.configuration.websiteDataStore.httpCookieStore
+        for cookie in cookies {
+            group.enter()
+            cookieStore.setCookie(cookie) { group.leave() }
+        }
+        group.notify(queue: .main, execute: completion)
+    }
+
+    private static func storageKey(for session: NativeAuthSession?, fallback: String?) -> String {
+        if let fallback, fallback.contains("auth-token") { return fallback }
+        let projectRef = NativeServiceConfiguration.supabaseURL?.host?.split(separator: ".").first.map(String.init)
+        return "sb-\(projectRef ?? "almidy")-auth-token"
+    }
+
+    private static func supabaseCookieValue(for rawValue: String) -> String? {
+        guard let data = rawValue.data(using: .utf8),
+              (try? JSONSerialization.jsonObject(with: data)) != nil else { return nil }
+        let encoded = data.base64EncodedString()
+            .replacingOccurrences(of: "+", with: "-")
+            .replacingOccurrences(of: "/", with: "_")
+            .trimmingCharacters(in: CharacterSet(charactersIn: "="))
+        return "base64-" + encoded
+    }
+
+    private static func storageValue(for session: NativeAuthSession, fallback: String?) -> String {
+        var value: [String: Any] = [
+            "access_token": session.accessToken,
+            "refresh_token": session.refreshToken as Any,
+            "token_type": "bearer"
+        ]
+        if let expiresAt = session.expiresAt {
+            value["expires_at"] = expiresAt
+            value["expires_in"] = max(0, expiresAt - Int(Date().timeIntervalSince1970))
+        }
+        if let userId = session.userId {
+            value["user"] = ["id": userId]
+        } else if let fallback,
+                  let data = fallback.data(using: .utf8),
+                  let fallbackValue = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let user = fallbackValue["user"] {
+            // Keep the richer user metadata from the WebView while always
+            // preferring the freshly refreshed native tokens.
+            value["user"] = user
+        }
+        guard let data = try? JSONSerialization.data(withJSONObject: value),
+              let string = String(data: data, encoding: .utf8) else { return "{}" }
+        return string
+    }
+
+    static func sessionInjectionScript(key: String, value: String) -> String {
+        let keyBase64 = Data(key.utf8).base64EncodedString()
+        let valueBase64 = Data(value.utf8).base64EncodedString()
+        return """
+        (() => {
+            const decode = (value) => decodeURIComponent(escape(atob(value)));
+            const key = decode('\(keyBase64)');
+            const value = decode('\(valueBase64)');
+            try { localStorage.setItem(key, value); } catch (_) {}
+            try { sessionStorage.setItem(key, value); } catch (_) {}
+        })();
+        """
     }
 
     static func exportAuthStorage(from webView: WKWebView, completion: @escaping (NativeWebAuthStorage?) -> Void) {
@@ -466,7 +594,8 @@ final class NativeWebFeatureViewController: UIViewController, WKNavigationDelega
 
     private func showSessionExpired() {
         logger.warning("Secondary route redirected to login")
-        showState("Your Almidy session has expired. Sign in again to continue.", loading: false, retry: false)
+        shouldReturnToNativeAuth = true
+        finish(.dismissed)
     }
 
     private func scheduleContentDiagnostic() {
@@ -584,8 +713,12 @@ final class NativeWebFeatureViewController: UIViewController, WKNavigationDelega
         guard !didFinish else { return }
         didFinish = true
         pendingResult = result
-        dismiss(animated: true) { [onFinish] in
-            onFinish(result)
+        dismiss(animated: true) { [weak self] in
+            guard let self else { return }
+            self.onFinish(result)
+            if self.shouldReturnToNativeAuth {
+                self.onAuthFailure()
+            }
             if let nativeRoute = self.pendingNativeRoute {
                 self.onNativeRoute(nativeRoute)
             }

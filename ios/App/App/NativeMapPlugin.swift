@@ -3599,7 +3599,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
     func presentNativeWebFeature(route: String, title: String) {
         guard NativeWebRoutePolicy.allows(route) else { return }
         let previousSheetState = sheetState
-        let presentFeature: (NativeWebAuthStorage?) -> Void = { [weak self] authStorage in
+        let presentFeature: (NativeWebAuthStorage?, NativeAuthSession?) -> Void = { [weak self] authStorage, nativeSession in
             guard let self else { return }
             if let authStorage {
                 NativeAuthSessionStore.shared.update(from: authStorage.value)
@@ -3625,18 +3625,37 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
                     self.applySheetState(.expanded, animated: true)
                 }
                 },
-                authStorage: authStorage
+                authStorage: authStorage,
+                nativeSession: nativeSession,
+                onAuthFailure: { [weak self] in
+                    guard let self, self.presentedViewController == nil else { return }
+                    self.presentNativeAuth()
+                }
             )
             self.present(feature, animated: true)
         }
-        if let sourceWebView {
-            NativeWebFeatureViewController.exportAuthStorage(from: sourceWebView) { authStorage in
-                DispatchQueue.main.async {
-                    presentFeature(authStorage)
+
+        let presentWithFreshSession: (NativeAuthSession?) -> Void = { [weak self] nativeSession in
+            guard let self else { return }
+            if let sourceWebView = self.sourceWebView {
+                NativeWebFeatureViewController.exportAuthStorage(from: sourceWebView) { authStorage in
+                    DispatchQueue.main.async { presentFeature(authStorage, nativeSession) }
                 }
+            } else {
+                presentFeature(nil, nativeSession)
+            }
+        }
+
+        if let nativeSession = NativeAuthSessionStore.shared.session {
+            if NativeAuthSessionStore.shared.isExpiringSoon {
+                NativeAuthSessionStore.shared.refresh(using: .shared) { _ in
+                    presentWithFreshSession(NativeAuthSessionStore.shared.session ?? nativeSession)
+                }
+            } else {
+                presentWithFreshSession(nativeSession)
             }
         } else {
-            presentFeature(nil)
+            presentWithFreshSession(nil)
         }
     }
 
