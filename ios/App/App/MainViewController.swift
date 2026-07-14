@@ -28,6 +28,10 @@ enum NativeWebRoutePolicy {
     static func owner(for url: URL) -> NativeRouteOwner {
         guard url.host == nil || url.host == NativeServiceConfiguration.appHost else { return .external }
         let path = url.path
+        if path == "/dashboard/account",
+            allowedAccountFragments.contains(url.fragment ?? "") {
+            return .controlledWebView
+        }
         if path == "/dashboard" ||
             path.hasPrefix("/dashboard/trips") ||
             path.hasPrefix("/dashboard/search") ||
@@ -42,8 +46,7 @@ enum NativeWebRoutePolicy {
         if path.hasPrefix("/dashboard/imports") ||
             path == "/dashboard/help" ||
             path.hasPrefix("/dashboard/account/") ||
-            path.hasPrefix("/dashboard/settings/") ||
-            (path == "/dashboard/account" && allowedAccountFragments.contains(url.fragment ?? "")) {
+            path.hasPrefix("/dashboard/settings/") {
             return .controlledWebView
         }
         return .external

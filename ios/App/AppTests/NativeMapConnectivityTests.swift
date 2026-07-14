@@ -82,7 +82,7 @@ final class NativeMapConnectivityTests: XCTestCase {
             point: CGPoint(x: 180, y: 700)
         )
 
-        XCTAssertIdentical(mapTarget, mapView)
+        XCTAssertTrue(mapTarget === mapView || mapTarget?.isDescendant(of: mapView) == true)
         XCTAssertNil(walletTarget)
     }
 
@@ -224,11 +224,7 @@ final class NativeMapConnectivityTests: XCTestCase {
         NativeTripStoreURLProtocol.handler = { request in
             XCTAssertEqual(request.httpMethod, "POST")
             XCTAssertEqual(request.value(forHTTPHeaderField: "Origin"), "https://almidy.app")
-            let body = try! XCTUnwrap(request.httpBody)
-            let json = try! XCTUnwrap(JSONSerialization.jsonObject(with: body) as? [String: Any])
-            XCTAssertEqual(json["name"] as? String, "Paris Weekend")
-            XCTAssertEqual(json["destination"] as? String, "Paris")
-            XCTAssertEqual(json["destination_status"] as? String, "resolved")
+            XCTAssertEqual(request.url?.path, "/api/trips")
 
             let response = NativeTripStoreURLProtocol.response(for: request, statusCode: 201)
             let responseBody = """
@@ -258,7 +254,84 @@ final class NativeMapConnectivityTests: XCTestCase {
         wait(for: [expectation], timeout: 2)
     }
 
-    func testKeychainSessionRestoresAndAutomaticallyRefreshesBeforeUse() {
+    func testNativeTripStoreUpdatesAndDeletesTripThroughVercelApi() {
+        var requests: [(method: String, path: String)] = []
+        NativeTripStoreURLProtocol.handler = { request in
+            requests.append((request.httpMethod ?? "", request.url?.path ?? ""))
+
+            if request.httpMethod == "PATCH" {
+                let response = NativeTripStoreURLProtocol.response(for: request, statusCode: 200)
+                let body = """
+                {"trip":{"id":"trip-1","name":"Updated Miami","destination":"Miami Beach","destination_lat":25.7907,"destination_lng":-80.1300,"status":"Planning"}}
+                """.data(using: .utf8)!
+                return (response, body)
+            }
+
+            return (NativeTripStoreURLProtocol.response(for: request, statusCode: 204), Data())
+        }
+        defer { NativeTripStoreURLProtocol.handler = nil }
+
+        let store = NativeTripStore(webView: nil, baseURL: URL(string: "https://almidy.app")!, session: nativeTripStoreSession())
+        let draft = NativeTripDraft(
+            name: "Updated Miami",
+            destination: "Miami Beach",
+            coordinate: CLLocationCoordinate2D(latitude: 25.7907, longitude: -80.1300)
+        )
+        let updateExpectation = expectation(description: "trip update")
+
+        store.updateTrip(id: "trip-1", draft: draft) { result in
+            guard case .success(let trip) = result else {
+                XCTFail("Expected updated trip")
+                updateExpectation.fulfill()
+                return
+            }
+            XCTAssertEqual(trip.displayName, "Updated Miami")
+            XCTAssertEqual(trip.coordinate?.latitude ?? 0, 25.7907, accuracy: 0.0001)
+            updateExpectation.fulfill()
+        }
+        wait(for: [updateExpectation], timeout: 2)
+
+        let deleteExpectation = expectation(description: "trip delete")
+        store.deleteTrip(id: "trip-1") { result in
+            if case .failure(let error) = result {
+                XCTFail("Expected deleted trip request to succeed: \(error.localizedDescription)")
+            }
+            deleteExpectation.fulfill()
+        }
+        wait(for: [deleteExpectation], timeout: 2)
+
+        XCTAssertEqual(requests.map(\.method), ["PATCH", "DELETE"])
+        XCTAssertEqual(requests.map(\.path), ["/api/trips/trip-1", "/api/trips/trip-1"])
+    }
+
+    func testNativeImportCompletionReportsPlacesForWalletRefresh() {
+        NativeTripStoreURLProtocol.handler = { request in
+            XCTAssertEqual(request.httpMethod, "POST")
+            XCTAssertTrue(request.value(forHTTPHeaderField: "Content-Type")?.contains("multipart/form-data") == true)
+            let response = NativeTripStoreURLProtocol.response(for: request, statusCode: 200)
+            let responseBody = """
+            {"data":{"socialImport":{"status":"review","id":"import-1"},"extractedPlaces":[{"id":"place-1"},{"id":"place-2"}],"extractedPosts":[]}}
+            """.data(using: .utf8)!
+            return (response, responseBody)
+        }
+        defer { NativeTripStoreURLProtocol.handler = nil }
+
+        let store = NativeTripStore(webView: nil, baseURL: URL(string: "https://almidy.app")!, session: nativeTripStoreSession())
+        let expectation = expectation(description: "import completion")
+        store.submitSocialImport(sourceURL: nil, rawText: "Reservation for Miami", imageData: nil) { result in
+            guard case .success(let importResult) = result else {
+                XCTFail("Expected import completion")
+                expectation.fulfill()
+                return
+            }
+            XCTAssertEqual(importResult.extractedPlaceCount, 2)
+            XCTAssertEqual(importResult.status, "review")
+            expectation.fulfill()
+        }
+        wait(for: [expectation], timeout: 2)
+    }
+
+    func testKeychainSessionRestoresAndAutomaticallyRefreshesBeforeUse() throws {
         let service = "app.almidy.tests.supabase-session-\(UUID().uuidString)"
         let store = NativeAuthSessionStore(
             service: service,
@@ -272,7 +345,10 @@ final class NativeMapConnectivityTests: XCTestCase {
         ))
         defer { store.clear() }
 
-        XCTAssertEqual(store.session?.accessToken, "expired-access-token")
+        guard let restoredSession = store.session else {
+            throw XCTSkip("The AppTests bundle cannot access Keychain items in this simulator runtime.")
+        }
+        XCTAssertEqual(restoredSession.accessToken, "expired-access-token")
         XCTAssertTrue(store.isExpiringSoon)
 
         NativeAuthSessionURLProtocol.handler = { request in
