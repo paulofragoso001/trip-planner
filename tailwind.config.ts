@@ -14,12 +14,6 @@ const config: Config = {
         mist: "#eaf0f4",
         line: "#d9e0e8",
         brand: "#1f6feb",
-        "almidy-orange": "var(--almidy-brand-orange)",
-        "almidy-orange-strong": "var(--almidy-brand-orange-strong)",
-        "almidy-auth": "var(--almidy-auth-surface)",
-        "almidy-wallet": "var(--almidy-wallet-surface)",
-        "almidy-text": "var(--almidy-text-primary)",
-        "almidy-muted": "var(--almidy-text-secondary)",
         evergreen: "#14805e"
       },
       boxShadow: {

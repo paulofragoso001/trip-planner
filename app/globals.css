@@ -4,17 +4,6 @@
 
 :root {
   color-scheme: light;
-  --almidy-brand-orange: #ff7a2a;
-  --almidy-brand-orange-strong: #ff6b1a;
-  --almidy-auth-surface: #fff9f4;
-  --almidy-wallet-surface: #ffffff;
-  --almidy-text-primary: #0b1020;
-  --almidy-text-secondary: #8d8d94;
-  --almidy-border-soft: #e5e7eb;
-  --almidy-radius-sheet: 2rem;
-  --almidy-radius-card: 1.75rem;
-  --almidy-control-height: 4rem;
-  --almidy-control-height-compact: 3.375rem;
 }
 
 :root.dark {
