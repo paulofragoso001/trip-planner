@@ -3,20 +3,27 @@ import UIKit
 /// Native Almidy visual language. Keep product behavior in the controllers; keep visual decisions here.
 enum AlmidyDesignTokens {
     enum Color {
-        // Charcoal and cream create a quiet, premium travel-wallet foundation.
-        static let background = UIColor(hex: 0x050505)
-        static let surface = UIColor(hex: 0x101010)
-        static let card = UIColor(hex: 0x202023)
-        static let line = UIColor.white.withAlphaComponent(0.10)
-        static let textPrimary = UIColor.white
-        static let textSecondary = UIColor(hex: 0xA5A5AA)
-        static let textTertiary = UIColor(hex: 0x727279)
+        // Native sheets use the same airy white-and-mist foundation as Settings.
+        static let background = UIColor.white
+        static let surface = UIColor.white
+        static let card = UIColor(hex: 0xF2F3F6)
+        static let line = UIColor.black.withAlphaComponent(0.10)
+        static let textPrimary = UIColor(hex: 0x050505)
+        static let textSecondary = UIColor(hex: 0x7D7D84)
+        static let textTertiary = UIColor(hex: 0xA2A2A8)
+        static let darkInput = UIColor(hex: 0xF5F5F7)
+        static let darkInputBorder = UIColor.black.withAlphaComponent(0.12)
+        static let darkPlaceholder = UIColor.black.withAlphaComponent(0.44)
+        static let disabledActionBackground = UIColor.black.withAlphaComponent(0.06)
+        static let disabledActionText = UIColor.black.withAlphaComponent(0.38)
+        static let disabledActionBorder = UIColor.black.withAlphaComponent(0.12)
 
         // Champagne gold signals elevated action and progress without reading as warning orange.
         static let gold = UIColor(hex: 0xD6A84F)
         static let goldDeep = UIColor(hex: 0xB88A2E)
         static let goldDark = UIColor(hex: 0x8C641E)
-        static let goldSoft = UIColor(hex: 0xF3D58A)
+        // Text accents sit on light surfaces, so use the contrast-safe dark gold.
+        static let goldSoft = goldDark
 
         // Settings is intentionally light and uses the darker gold variants for contrast.
         static let settingsBackground = UIColor(hex: 0xF2F3F6)
@@ -24,6 +31,10 @@ enum AlmidyDesignTokens {
         static let settingsText = UIColor(hex: 0x050505)
         static let settingsSecondary = UIColor(hex: 0x8B8B92)
         static let settingsLine = UIColor.black.withAlphaComponent(0.08)
+        static let settingsGold = goldDark
+        static let settingsIcon = goldDark
+        static let settingsRowBackground = settingsCard
+        static let searchEmptyState = textSecondary
 
         static let success = UIColor(hex: 0x3C8F5A)
         static let danger = UIColor(hex: 0xC2413A)

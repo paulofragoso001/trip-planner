@@ -59,6 +59,11 @@ struct NativeAuthSession: Codable, Equatable {
     }
 }
 
+struct NativeAuthProfile {
+    let name: String
+    let email: String
+}
+
 struct NativeAuthSessionContract: Codable, Equatable {
     let event: NativeAuthSessionEvent
     let revisionId: Int64
@@ -117,6 +122,38 @@ final class NativeAuthSessionStore {
     var isExpiringSoon: Bool {
         guard let expiresAt = session?.expiresAt else { return false }
         return Date().timeIntervalSince1970 >= Double(expiresAt - 60)
+    }
+
+    var profile: NativeAuthProfile {
+        guard let token = session?.accessToken,
+              let payload = Self.tokenPayload(token) else {
+            return NativeAuthProfile(name: "", email: "")
+        }
+        let metadata = payload["user_metadata"] as? [String: Any]
+        let name = metadata?["full_name"] as? String
+            ?? metadata?["name"] as? String
+            ?? ""
+        return NativeAuthProfile(name: name, email: payload["email"] as? String ?? "")
+    }
+
+    func updateProfileName(_ name: String, using urlSession: URLSession = .shared, completion: @escaping (Bool) -> Void) {
+        guard let accessToken = session?.accessToken,
+              let supabaseURL,
+              let publishableKey,
+              let url = URL(string: "auth/v1/user", relativeTo: supabaseURL) else {
+            DispatchQueue.main.async { completion(false) }
+            return
+        }
+        var request = URLRequest(url: url)
+        request.httpMethod = "PUT"
+        request.setValue(publishableKey, forHTTPHeaderField: "apikey")
+        request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try? JSONSerialization.data(withJSONObject: ["data": ["full_name": name]])
+        urlSession.dataTask(with: request) { _, response, _ in
+            let success = (response as? HTTPURLResponse).map { (200...299).contains($0.statusCode) } ?? false
+            DispatchQueue.main.async { completion(success) }
+        }.resume()
     }
 
     func refresh(using urlSession: URLSession, completion: @escaping (Bool) -> Void) {
@@ -426,6 +463,10 @@ final class NativeAuthSessionStore {
     }
 
     private static func userId(fromAccessToken accessToken: String) -> String? {
+        tokenPayload(accessToken)?["sub"] as? String
+    }
+
+    private static func tokenPayload(_ accessToken: String) -> [String: Any]? {
         let parts = accessToken.split(separator: ".")
         guard parts.count >= 2 else { return nil }
         var encoded = String(parts[1]).replacingOccurrences(of: "-", with: "+")
@@ -433,7 +474,7 @@ final class NativeAuthSessionStore {
         encoded += String(repeating: "=", count: (4 - encoded.count % 4) % 4)
         guard let data = Data(base64Encoded: encoded),
               let payload = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return nil }
-        return payload["sub"] as? String
+        return payload
     }
 
     private func readData() -> Data? {
@@ -2494,7 +2535,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
 
         let overlay = UIView()
         overlay.translatesAutoresizingMaskIntoConstraints = false
-        overlay.backgroundColor = UIColor(red: 0.02, green: 0.035, blue: 0.055, alpha: 0.96)
+        overlay.backgroundColor = AlmidyDesignTokens.Color.settingsBackground.withAlphaComponent(0.98)
         overlay.alpha = 0
         overlay.accessibilityViewIsModal = false
 
@@ -2506,7 +2547,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
 
         let statusImageView = UIImageView(image: UIImage(systemName: reason == .offline ? "wifi.slash" : "exclamationmark.triangle"))
         statusImageView.contentMode = .scaleAspectFit
-        statusImageView.tintColor = .white
+        statusImageView.tintColor = AlmidyDesignTokens.Color.goldDark
         statusImageView.translatesAutoresizingMaskIntoConstraints = false
         statusImageView.accessibilityElementsHidden = true
 
@@ -2520,7 +2561,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
 
         let descriptionLabel = UILabel()
         descriptionLabel.font = .systemFont(ofSize: 14, weight: .regular)
-        descriptionLabel.textColor = UIColor.white.withAlphaComponent(0.68)
+        descriptionLabel.textColor = AlmidyDesignTokens.Color.textSecondary
         descriptionLabel.numberOfLines = 0
         descriptionLabel.textAlignment = .center
         descriptionLabel.translatesAutoresizingMaskIntoConstraints = false
@@ -2532,7 +2573,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         retryConfiguration.image = UIImage(systemName: "arrow.clockwise")
         retryConfiguration.imagePadding = 8
         retryConfiguration.baseBackgroundColor = AlmidyDesignTokens.Color.gold
-        retryConfiguration.baseForegroundColor = AlmidyDesignTokens.Color.background
+        retryConfiguration.baseForegroundColor = AlmidyDesignTokens.Color.settingsText
         retryConfiguration.cornerStyle = .capsule
         retryButton.configuration = retryConfiguration
         retryButton.titleLabel?.font = AlmidyDesignTokens.Font.button(14)
@@ -2681,7 +2722,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         mapControlStack.axis = .vertical
         mapControlStack.alignment = .center
         mapControlStack.spacing = 1
-        mapControlStack.backgroundColor = AlmidyDesignTokens.Color.surface.withAlphaComponent(0.82)
+        mapControlStack.backgroundColor = AlmidyDesignTokens.Color.surface.withAlphaComponent(0.92)
         mapControlStack.layer.cornerRadius = AlmidyDesignTokens.Radius.card
         mapControlStack.clipsToBounds = true
         mapControlStack.translatesAutoresizingMaskIntoConstraints = false
@@ -2714,7 +2755,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
 
     private func mapControlButton(systemName: String, accessibilityLabel: String) -> UIButton {
         let button = UIButton(type: .system)
-        button.tintColor = .white
+        button.tintColor = AlmidyDesignTokens.Color.textPrimary
         button.setImage(UIImage(systemName: systemName), for: .normal)
         button.accessibilityLabel = accessibilityLabel
         button.translatesAutoresizingMaskIntoConstraints = false
@@ -2727,7 +2768,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
 
     private func configureSheet() {
         sheetView.translatesAutoresizingMaskIntoConstraints = false
-        sheetView.backgroundColor = AlmidyDesignTokens.Color.surface.withAlphaComponent(0.96)
+        sheetView.backgroundColor = AlmidyDesignTokens.Color.surface.withAlphaComponent(0.98)
         sheetView.layer.cornerRadius = AlmidyDesignTokens.Radius.sheet
         sheetView.layer.maskedCorners = [.layerMinXMinYCorner, .layerMaxXMinYCorner]
         sheetView.layer.shadowColor = UIColor.black.cgColor
@@ -2872,15 +2913,15 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         book.layer.shadowOpacity = 0.06
         book.layer.shadowRadius = 18
         book.layer.shadowOffset = CGSize(width: 0, height: 9)
-        book.setTitle("  My Tripsy Book", for: .normal)
+        book.setTitle("  Travel Book", for: .normal)
         book.setTitleColor(AlmidyDesignTokens.Color.textPrimary, for: .normal)
         book.titleLabel?.font = AlmidyDesignTokens.Font.button(17)
         book.setImage(UIImage(systemName: "globe.americas.fill"), for: .normal)
         book.tintColor = AlmidyDesignTokens.Color.gold
         book.contentHorizontalAlignment = .center
-        book.addTarget(self, action: #selector(openTripsyBook), for: .touchUpInside)
+        book.addTarget(self, action: #selector(openTravelBook), for: .touchUpInside)
 
-        let add = circularButton(systemName: "plus", backgroundColor: AlmidyDesignTokens.Color.goldDeep, tintColor: AlmidyDesignTokens.Color.textPrimary)
+        let add = circularButton(systemName: "plus", backgroundColor: AlmidyDesignTokens.Color.gold, tintColor: AlmidyDesignTokens.Color.settingsText)
         add.addTarget(self, action: #selector(createTrip), for: .touchUpInside)
 
         collapsedActions.addArrangedSubview(search)
@@ -2931,7 +2972,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
 
         let stack = UIStackView()
         stack.axis = .vertical
-        stack.spacing = 10
+        stack.spacing = 12
         stack.translatesAutoresizingMaskIntoConstraints = false
         card.addSubview(stack)
 
@@ -2954,15 +2995,15 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         stack.addArrangedSubview(eyebrow)
         stack.addArrangedSubview(title)
         stack.addArrangedSubview(body)
-        stack.addArrangedSubview(actionButton(title: "Create Your First Trip", backgroundColor: AlmidyDesignTokens.Color.gold, textColor: AlmidyDesignTokens.Color.background, action: #selector(createTrip), fontSize: 16, minHeight: AlmidyDesignTokens.Control.compactButtonHeight, cornerRadius: AlmidyDesignTokens.Radius.control))
-        stack.addArrangedSubview(actionButton(title: "Forward Your Reservation", backgroundColor: AlmidyDesignTokens.Color.surface, textColor: AlmidyDesignTokens.Color.textPrimary, action: #selector(forwardReservation), fontSize: 16, minHeight: AlmidyDesignTokens.Control.compactButtonHeight, cornerRadius: AlmidyDesignTokens.Radius.control))
-        stack.addArrangedSubview(actionButton(title: "Explore Sample Trip", backgroundColor: AlmidyDesignTokens.Color.surface, textColor: AlmidyDesignTokens.Color.textPrimary, action: #selector(openSampleTrip), fontSize: 16, minHeight: AlmidyDesignTokens.Control.compactButtonHeight, cornerRadius: AlmidyDesignTokens.Radius.control))
+        stack.addArrangedSubview(actionButton(title: "Create Your First Trip", backgroundColor: AlmidyDesignTokens.Color.gold, textColor: AlmidyDesignTokens.Color.settingsText, action: #selector(createTrip), fontSize: 17, minHeight: 56, cornerRadius: AlmidyDesignTokens.Radius.control))
+        stack.addArrangedSubview(actionButton(title: "Explore Sample Trip", backgroundColor: AlmidyDesignTokens.Color.card, textColor: AlmidyDesignTokens.Color.goldSoft, action: #selector(openSampleTripPreview), fontSize: 17, minHeight: 56, cornerRadius: AlmidyDesignTokens.Radius.control))
+        stack.addArrangedSubview(actionButton(title: "Forward Your Reservation", backgroundColor: AlmidyDesignTokens.Color.card, textColor: AlmidyDesignTokens.Color.textPrimary, action: #selector(forwardReservation), fontSize: 17, minHeight: 56, cornerRadius: AlmidyDesignTokens.Radius.control))
 
         NSLayoutConstraint.activate([
-            stack.topAnchor.constraint(equalTo: card.topAnchor, constant: 20),
-            stack.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 20),
-            stack.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -20),
-            stack.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -20)
+            stack.topAnchor.constraint(equalTo: card.topAnchor, constant: 24),
+            stack.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 24),
+            stack.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -24),
+            stack.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -24)
         ])
         expandedContentStack.addArrangedSubview(card)
     }
@@ -2993,7 +3034,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         title.text = "Create your first trip"
         title.font = AlmidyDesignTokens.Font.title(20)
         title.textColor = AlmidyDesignTokens.Color.textPrimary
-        title.numberOfLines = 2
+        title.numberOfLines = 0
         title.translatesAutoresizingMaskIntoConstraints = false
         card.addSubview(title)
 
@@ -3021,7 +3062,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
             card.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
             card.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
             card.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 28),
-            card.heightAnchor.constraint(equalToConstant: 150),
+            card.heightAnchor.constraint(equalToConstant: 164),
 
             iconView.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 18),
             iconView.topAnchor.constraint(equalTo: card.topAnchor, constant: 18),
@@ -3038,9 +3079,9 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
 
             create.leadingAnchor.constraint(equalTo: title.leadingAnchor),
             create.trailingAnchor.constraint(equalTo: title.trailingAnchor),
-            create.topAnchor.constraint(equalTo: body.bottomAnchor, constant: 6),
-            create.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -12),
-            create.heightAnchor.constraint(equalToConstant: 26)
+            create.topAnchor.constraint(greaterThanOrEqualTo: body.bottomAnchor, constant: 2),
+            create.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -8),
+            create.heightAnchor.constraint(equalToConstant: 44)
         ])
         firstTripCard = card
     }
@@ -3058,7 +3099,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         let card = UIView()
         card.layer.cornerRadius = 28
         card.clipsToBounds = true
-        card.backgroundColor = UIColor(white: 0.2, alpha: 1.0)
+        card.backgroundColor = AlmidyDesignTokens.Color.card
 
         let button = UIButton(type: .custom)
         button.accessibilityIdentifier = trip.id
@@ -3209,7 +3250,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         body.textColor = .systemGray
         body.numberOfLines = 0
 
-        let cta = actionButton(title: "Forward Your Reservation", backgroundColor: AlmidyDesignTokens.Color.gold, textColor: AlmidyDesignTokens.Color.background, action: #selector(forwardReservation))
+        let cta = actionButton(title: "Forward Your Reservation", backgroundColor: AlmidyDesignTokens.Color.gold, textColor: AlmidyDesignTokens.Color.settingsText, action: #selector(forwardReservation))
 
         stack.addArrangedSubview(envelope)
         stack.addArrangedSubview(eyebrow)
@@ -3460,6 +3501,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
 
     @objc private func openSettings() {
         let settings = NativeSettingsViewController(
+            profile: NativeAuthSessionStore.shared.session == nil ? nil : NativeAuthSessionStore.shared.profile,
             onRefreshTrips: { [weak self] in
                 self?.refreshTripsFromServer()
             },
@@ -3467,6 +3509,16 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
                 guard let self else { return }
                 self.dismiss(animated: true) { [weak self] in
                     self?.presentNativeAccount()
+                }
+            },
+            onSignOut: { [weak self] in
+                guard let self else { return }
+                self.clearNativeSession { [weak self] success in
+                    guard let self, success else { return }
+                    self.dismiss(animated: true) { [weak self] in
+                        self?.renderSheetContent()
+                        self?.presentNativeAuth()
+                    }
                 }
             },
             onOpenReservationImport: { [weak self] in
@@ -3498,8 +3550,14 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
             if let authStorage {
                 NativeAuthSessionStore.shared.update(from: authStorage.value)
             }
+            let isSignedIn = authStorage != nil || NativeAuthSessionStore.shared.session != nil
+            guard isSignedIn else {
+                self.presentNativeAuth(startsInSignup: true, reopensSettingsOnAuthentication: true)
+                return
+            }
             let account = NativeAccountViewController(
-                isSignedIn: authStorage != nil || NativeAuthSessionStore.shared.session != nil,
+                profile: NativeAuthSessionStore.shared.profile,
+                isSignedIn: true,
                 onSignIn: { [weak self] in
                     self?.dismiss(animated: true) { [weak self] in
                         self?.presentNativeAuth()
@@ -3508,13 +3566,24 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
                 onSignOut: { [weak self] completion in
                     self?.clearNativeSession(completion: completion)
                 },
+                onSaveName: { name, completion in
+                    NativeAuthSessionStore.shared.updateProfileName(name, completion: completion)
+                },
+                onDeleteAccount: { [weak self] in
+                    self?.dismiss(animated: true) { [weak self] in
+                        self?.presentNativeWebFeature(route: "/dashboard/account", title: "Delete Account")
+                    }
+                },
                 onSignedOut: { [weak self] in
-                    self?.presentNativeAuth()
+                    self?.dismiss(animated: true) { [weak self] in
+                        self?.renderSheetContent()
+                        self?.presentNativeAuth()
+                    }
                 }
             )
             account.modalPresentationStyle = .pageSheet
             if let sheet = account.sheetPresentationController {
-                sheet.detents = [.medium()]
+                sheet.detents = [.large()]
                 sheet.prefersGrabberVisible = true
                 sheet.preferredCornerRadius = 28
             }
@@ -3530,7 +3599,10 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         }
     }
 
-    private func presentNativeAuth() {
+    private func presentNativeAuth(
+        startsInSignup: Bool = false,
+        reopensSettingsOnAuthentication: Bool = false
+    ) {
         let auth = NativeAuthViewController { [weak self] result in
             guard let self else { return }
             switch result {
@@ -3538,6 +3610,9 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
                 self.dismiss(animated: true) { [weak self] in
                     self?.refreshTripsFromServer()
                     self?.renderSheetContent()
+                    if reopensSettingsOnAuthentication {
+                        self?.openSettings()
+                    }
                 }
             case .createdPendingConfirmation:
                 self.showMessage(
@@ -3548,6 +3623,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
                 break
             }
         }
+        auth.startsInSignup = startsInSignup
         auth.modalPresentationStyle = UIModalPresentationStyle.pageSheet
         if let sheet = auth.sheetPresentationController {
             sheet.detents = [UISheetPresentationController.Detent.large()]
@@ -3682,7 +3758,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         present(search, animated: true)
     }
 
-    @objc private func openTripsyBook() {
+    @objc private func openTravelBook() {
         applySheetState(.expanded, animated: true)
     }
 
@@ -3791,23 +3867,20 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         )
     }
 
-    @objc private func openSampleTrip() {
-        let sampleTrip = NativeMapTrip(
-            id: "native-sample-trip",
-            name: "Barcelona Sample Trip",
-            destination: "Barcelona",
-            latitude: 41.3874,
-            longitude: 2.1686,
-            dateRange: "May 29 – May 31",
-            status: "Sample"
-        )
-        addNativeTrip(sampleTrip)
-        applySheetState(.expanded, animated: true)
-    }
-
     @objc private func openLatestTrip() {
         guard let trip = trips.first else { return }
         focusTrip(trip)
+    }
+
+    @objc private func openSampleTripPreview() {
+        let preview = UIAlertController(
+            title: "Sample Trip Preview",
+            message: "Explore how an Almidy trip can organize an itinerary, expenses, and documents. This preview does not create a trip, add a map pin, or save data to your account.",
+            preferredStyle: .alert
+        )
+        preview.view.tintColor = AlmidyDesignTokens.Color.gold
+        preview.addAction(UIAlertAction(title: "Done", style: .cancel))
+        present(preview, animated: true)
     }
 
     private func focusTrip(_ trip: NativeMapTrip) {
@@ -3842,28 +3915,38 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
 }
 
 private final class NativeSettingsViewController: UIViewController, UITableViewDataSource, UITableViewDelegate {
+    private let profile: NativeAuthProfile?
     private let onRefreshTrips: () -> Void
     private let onOpenAccount: () -> Void
+    private let onSignOut: () -> Void
     private let onOpenReservationImport: () -> Void
     private let onOpenHelp: () -> Void
     private let tableView = UITableView(frame: .zero, style: .insetGrouped)
 
-    private let sections: [(title: String, rows: [String])] = [
-        ("Account", ["Account settings", "Your Membership"]),
-        ("Automations", ["Add Reservations via Email", "Calendar Feed", "Connect with Claude / MCP", "Shortcuts", "TripIt Importer"]),
-        ("Customize", ["Currency · US Dollar", "Distance Unit · Miles", "Language · English", "Trips Timeline", "My Almidy Book", "Notifications", "Widgets", "Storage and Data"]),
-        ("Help Center", ["Need help?", "Talk to us", "Review the App", "App Updates"]),
-        ("About", ["About Almidy", "Terms of Service", "Privacy Policy", "Share to a Friend"])
-    ]
+    private var sections: [(title: String, rows: [String])] {
+        var result: [(title: String, rows: [String])] = []
+        if profile == nil {
+            result.append(("Account", ["Account settings"]))
+        }
+        result.append(("Automations", ["Add Reservations via Email", "Calendar Feed", "Connect with Claude / MCP", "Shortcuts", "Reservation Importer"]))
+        result.append(("Customize", ["Currency · US Dollar", "Distance Unit · Miles", "Language · English", "Trips Timeline", "Travel Book", "Notifications", "Widgets", "Storage and Data"]))
+        result.append(("Help Center", ["Need help?", "Talk to us", "Review the App", "App Updates"]))
+        result.append(("About", ["About Almidy", "Terms of Service", "Privacy Policy", "Share to a Friend"]))
+        return result
+    }
 
     init(
+        profile: NativeAuthProfile?,
         onRefreshTrips: @escaping () -> Void,
         onOpenAccount: @escaping () -> Void,
+        onSignOut: @escaping () -> Void,
         onOpenReservationImport: @escaping () -> Void,
         onOpenHelp: @escaping () -> Void
     ) {
+        self.profile = profile
         self.onRefreshTrips = onRefreshTrips
         self.onOpenAccount = onOpenAccount
+        self.onSignOut = onSignOut
         self.onOpenReservationImport = onOpenReservationImport
         self.onOpenHelp = onOpenHelp
         super.init(nibName: nil, bundle: nil)
@@ -3881,46 +3964,139 @@ private final class NativeSettingsViewController: UIViewController, UITableViewD
 
     private func configureTable() {
         let closeButton = UIButton(type: .system)
-        closeButton.setTitle("Done", for: .normal)
-        closeButton.titleLabel?.font = .systemFont(ofSize: 17, weight: .semibold)
+        let closeSymbol = UIImage.SymbolConfiguration(pointSize: 24, weight: .regular)
+        closeButton.setImage(UIImage(systemName: "xmark", withConfiguration: closeSymbol), for: .normal)
+        closeButton.tintColor = AlmidyDesignTokens.Color.settingsText
+        closeButton.backgroundColor = AlmidyDesignTokens.Color.settingsCard
+        closeButton.layer.cornerRadius = 26
+        closeButton.layer.borderWidth = 1
+        closeButton.layer.borderColor = AlmidyDesignTokens.Color.settingsLine.cgColor
+        closeButton.accessibilityLabel = "Close Settings"
         closeButton.addTarget(self, action: #selector(close), for: .touchUpInside)
 
         let title = UILabel()
         title.text = "Settings"
-        title.font = AlmidyDesignTokens.Font.title(34)
+        title.font = AlmidyDesignTokens.Font.display(38)
         title.textColor = AlmidyDesignTokens.Color.settingsText
-
-        let subtitle = UILabel()
-        subtitle.text = "Your Almidy workspace"
-        subtitle.font = .systemFont(ofSize: 17, weight: .regular)
-        subtitle.textColor = AlmidyDesignTokens.Color.settingsSecondary
 
         tableView.dataSource = self
         tableView.delegate = self
         tableView.register(UITableViewCell.self, forCellReuseIdentifier: "native-settings-row")
         tableView.backgroundColor = .clear
+        tableView.tintColor = AlmidyDesignTokens.Color.settingsGold
+        tableView.separatorColor = AlmidyDesignTokens.Color.settingsLine
+        tableView.rowHeight = 64
+        tableView.sectionHeaderHeight = 52
+        tableView.sectionFooterHeight = 12
+        tableView.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20)
+        if let profile {
+            tableView.tableHeaderView = makeProfileHeader(profile)
+        }
         tableView.translatesAutoresizingMaskIntoConstraints = false
         closeButton.translatesAutoresizingMaskIntoConstraints = false
         title.translatesAutoresizingMaskIntoConstraints = false
-        subtitle.translatesAutoresizingMaskIntoConstraints = false
 
         view.addSubview(closeButton)
         view.addSubview(title)
-        view.addSubview(subtitle)
         view.addSubview(tableView)
 
         NSLayoutConstraint.activate([
-            closeButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 10),
-            closeButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -24),
-            title.topAnchor.constraint(equalTo: closeButton.bottomAnchor, constant: 18),
-            title.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
-            subtitle.topAnchor.constraint(equalTo: title.bottomAnchor, constant: 4),
-            subtitle.leadingAnchor.constraint(equalTo: title.leadingAnchor),
-            tableView.topAnchor.constraint(equalTo: subtitle.bottomAnchor, constant: 14),
+            closeButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 14),
+            closeButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
+            closeButton.widthAnchor.constraint(equalToConstant: 52),
+            closeButton.heightAnchor.constraint(equalToConstant: 52),
+            title.topAnchor.constraint(equalTo: closeButton.bottomAnchor, constant: 24),
+            title.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 24),
+            title.trailingAnchor.constraint(lessThanOrEqualTo: view.trailingAnchor, constant: -24),
+            tableView.topAnchor.constraint(equalTo: title.bottomAnchor, constant: 20),
             tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
+    }
+
+    private func makeProfileHeader(_ profile: NativeAuthProfile) -> UIView {
+        let header = UIView(frame: CGRect(x: 0, y: 0, width: view.bounds.width, height: 286))
+        header.autoresizingMask = [.flexibleWidth]
+        header.isAccessibilityElement = true
+        header.accessibilityLabel = "Edit profile for \(profile.name.isEmpty ? "Almidy Traveler" : profile.name)"
+        header.accessibilityTraits = .button
+        header.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(openProfile)))
+
+        let card = UIView()
+        card.backgroundColor = AlmidyDesignTokens.Color.settingsCard
+        card.layer.cornerRadius = AlmidyDesignTokens.Radius.card
+        card.layer.borderWidth = 1
+        card.layer.borderColor = AlmidyDesignTokens.Color.settingsLine.cgColor
+        card.translatesAutoresizingMaskIntoConstraints = false
+        header.addSubview(card)
+
+        let avatar = UIImageView(image: UIImage(systemName: "person.crop.circle"))
+        avatar.tintColor = AlmidyDesignTokens.Color.settingsSecondary
+        avatar.contentMode = .scaleAspectFit
+        avatar.translatesAutoresizingMaskIntoConstraints = false
+
+        let name = UILabel()
+        name.text = profile.name.isEmpty ? "Almidy Traveler" : profile.name
+        name.font = AlmidyDesignTokens.Font.title(24)
+        name.textColor = AlmidyDesignTokens.Color.settingsText
+        name.textAlignment = .center
+        name.translatesAutoresizingMaskIntoConstraints = false
+
+        let email = UILabel()
+        email.text = profile.email
+        email.font = AlmidyDesignTokens.Font.body(16)
+        email.textColor = AlmidyDesignTokens.Color.settingsGold
+        email.textAlignment = .center
+        email.lineBreakMode = .byTruncatingMiddle
+        email.translatesAutoresizingMaskIntoConstraints = false
+
+        [avatar, name, email].forEach(card.addSubview)
+        NSLayoutConstraint.activate([
+            card.topAnchor.constraint(equalTo: header.topAnchor, constant: 10),
+            card.leadingAnchor.constraint(equalTo: header.leadingAnchor, constant: 20),
+            card.trailingAnchor.constraint(equalTo: header.trailingAnchor, constant: -20),
+            card.bottomAnchor.constraint(equalTo: header.bottomAnchor, constant: -10),
+            avatar.topAnchor.constraint(equalTo: card.topAnchor, constant: 28),
+            avatar.centerXAnchor.constraint(equalTo: card.centerXAnchor),
+            avatar.widthAnchor.constraint(equalToConstant: 118),
+            avatar.heightAnchor.constraint(equalToConstant: 118),
+            name.topAnchor.constraint(equalTo: avatar.bottomAnchor, constant: 14),
+            name.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 18),
+            name.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -18),
+            email.topAnchor.constraint(equalTo: name.bottomAnchor, constant: 4),
+            email.leadingAnchor.constraint(equalTo: name.leadingAnchor),
+            email.trailingAnchor.constraint(equalTo: name.trailingAnchor)
+        ])
+        return header
+    }
+
+    @objc private func openProfile() {
+        guard profile != nil else {
+            onOpenAccount()
+            return
+        }
+        let menu = NativeProfileMenuViewController(
+            onEditProfile: { [weak self] in self?.onOpenAccount() },
+            onChangePassword: { [weak self] in
+                self?.showMessage(
+                    title: "Change Password",
+                    message: "Password reset is available from the email sent by Almidy."
+                )
+            },
+            onSignOut: { [weak self] in self?.onSignOut() }
+        )
+        menu.modalPresentationStyle = .popover
+        menu.preferredContentSize = CGSize(width: 280, height: 188)
+        if let popover = menu.popoverPresentationController,
+           let sourceView = tableView.tableHeaderView {
+            popover.sourceView = sourceView
+            popover.sourceRect = CGRect(x: sourceView.bounds.midX - 1, y: 20, width: 2, height: 2)
+            popover.permittedArrowDirections = .down
+            popover.delegate = menu
+            popover.backgroundColor = AlmidyDesignTokens.Color.settingsCard
+        }
+        present(menu, animated: true)
     }
 
     @objc private func close() {
@@ -3936,24 +4112,64 @@ private final class NativeSettingsViewController: UIViewController, UITableViewD
     }
 
     func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
-        sections[section].title
+        sections[section].title.uppercased()
     }
 
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "native-settings-row", for: indexPath)
         var content = cell.defaultContentConfiguration()
         content.text = sections[indexPath.section].rows[indexPath.row]
-        content.textProperties.font = .systemFont(ofSize: 17, weight: .medium)
+        content.textProperties.font = AlmidyDesignTokens.Font.body(17)
         content.textProperties.color = AlmidyDesignTokens.Color.settingsText
+        content.image = settingsIcon(for: content.text ?? "")
+        content.imageProperties.tintColor = AlmidyDesignTokens.Color.settingsIcon
+        content.imageProperties.maximumSize = CGSize(width: 24, height: 24)
         cell.contentConfiguration = content
+        cell.backgroundColor = AlmidyDesignTokens.Color.settingsRowBackground
+        cell.tintColor = AlmidyDesignTokens.Color.settingsGold
         cell.accessoryType = .disclosureIndicator
         return cell
+    }
+
+    func tableView(_ tableView: UITableView, willDisplayHeaderView view: UIView, forSection section: Int) {
+        guard let header = view as? UITableViewHeaderFooterView else { return }
+        header.textLabel?.font = AlmidyDesignTokens.Font.section(15)
+        header.textLabel?.textColor = AlmidyDesignTokens.Color.settingsSecondary
+    }
+
+    private func settingsIcon(for row: String) -> UIImage? {
+        let symbols: [String: String] = [
+            "Account settings": "person.crop.circle",
+            "Your Membership": "crown",
+            "Add Reservations via Email": "envelope",
+            "Calendar Feed": "calendar",
+            "Connect with Claude / MCP": "link",
+            "Shortcuts": "wand.and.rays",
+            "Reservation Importer": "suitcase",
+            "Currency · US Dollar": "banknote",
+            "Distance Unit · Miles": "ruler",
+            "Language · English": "globe",
+            "Trips Timeline": "timeline.selection",
+            "Travel Book": "book.closed",
+            "Notifications": "bell",
+            "Widgets": "square.grid.2x2",
+            "Storage and Data": "externaldrive",
+            "Need help?": "questionmark.circle",
+            "Talk to us": "message",
+            "Review the App": "star",
+            "App Updates": "arrow.down.app",
+            "About Almidy": "info.circle",
+            "Terms of Service": "doc.text",
+            "Privacy Policy": "lock",
+            "Share to a Friend": "square.and.arrow.up"
+        ]
+        return symbols[row].flatMap { UIImage(systemName: $0) }
     }
 
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
         let row = sections[indexPath.section].rows[indexPath.row]
-        if row == "Trips Timeline" || row == "My Almidy Book" {
+        if row == "Trips Timeline" || row == "Travel Book" {
             onRefreshTrips()
             showMessage(title: row, message: "This native view stays connected to your current globe and wallet.")
             return
@@ -3976,8 +4192,66 @@ private final class NativeSettingsViewController: UIViewController, UITableViewD
     private func showMessage(title: String, message: String) {
         let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: "Done", style: .default))
+        alert.view.tintColor = AlmidyDesignTokens.Color.settingsGold
         present(alert, animated: true)
     }
+}
+
+private final class NativeProfileMenuViewController: UIViewController, UIPopoverPresentationControllerDelegate {
+    private let onEditProfile: () -> Void
+    private let onChangePassword: () -> Void
+    private let onSignOut: () -> Void
+
+    init(onEditProfile: @escaping () -> Void, onChangePassword: @escaping () -> Void, onSignOut: @escaping () -> Void) {
+        self.onEditProfile = onEditProfile
+        self.onChangePassword = onChangePassword
+        self.onSignOut = onSignOut
+        super.init(nibName: nil, bundle: nil)
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        view.backgroundColor = AlmidyDesignTokens.Color.settingsCard
+
+        let edit = menuButton(title: "Edit Profile", color: AlmidyDesignTokens.Color.settingsText, action: #selector(editProfile))
+        let password = menuButton(title: "Change Password", color: AlmidyDesignTokens.Color.settingsText, action: #selector(changePassword))
+        let signOut = menuButton(title: "Sign Out", color: AlmidyDesignTokens.Color.danger, action: #selector(signOut))
+        let stack = UIStackView(arrangedSubviews: [edit, password, signOut])
+        stack.axis = .vertical
+        stack.spacing = 8
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(stack)
+        NSLayoutConstraint.activate([
+            stack.topAnchor.constraint(equalTo: view.topAnchor, constant: 10),
+            stack.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 12),
+            stack.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -12),
+            stack.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -10)
+        ])
+    }
+
+    private func menuButton(title: String, color: UIColor, action: Selector) -> UIButton {
+        let button = UIButton(type: .system)
+        button.setTitle(title, for: .normal)
+        button.setTitleColor(color, for: .normal)
+        button.titleLabel?.font = AlmidyDesignTokens.Font.button(18)
+        button.backgroundColor = AlmidyDesignTokens.Color.settingsBackground
+        button.layer.cornerRadius = 18
+        button.heightAnchor.constraint(equalToConstant: 50).isActive = true
+        button.addTarget(self, action: action, for: .touchUpInside)
+        return button
+    }
+
+    @objc private func editProfile() { finish(with: onEditProfile) }
+    @objc private func changePassword() { finish(with: onChangePassword) }
+    @objc private func signOut() { finish(with: onSignOut) }
+
+    private func finish(with action: @escaping () -> Void) {
+        dismiss(animated: true, completion: action)
+    }
+
+    func adaptivePresentationStyle(for controller: UIPresentationController) -> UIModalPresentationStyle { .none }
 }
 
 private enum NativeAuthResult {
@@ -4003,6 +4277,7 @@ private final class NativeAuthViewController: UIViewController, ASAuthorizationC
     private var emailField: UITextField?
     private var passwordField: UITextField?
     private var actionButtons: [UIButton] = []
+    var startsInSignup = false
 
     private let orange = AlmidyDesignTokens.Color.gold
     private let warmBackground = AlmidyDesignTokens.Color.surface
@@ -4016,6 +4291,9 @@ private final class NativeAuthViewController: UIViewController, ASAuthorizationC
 
     override func viewDidLoad() {
         super.viewDidLoad()
+        if startsInSignup {
+            screen = .signup
+        }
         view.backgroundColor = warmBackground
         configureShell()
         rebuildScreen()
@@ -4085,14 +4363,21 @@ private final class NativeAuthViewController: UIViewController, ASAuthorizationC
         }
         leading.addTarget(self, action: #selector(handleLeadingAction), for: .touchUpInside)
         let trailing = UIButton(type: .system)
-        trailing.titleLabel?.font = AlmidyDesignTokens.Font.button(17)
-        trailing.setTitle(screen == .signup ? "Signup" : screen == .login ? "Login" : "", for: .normal)
-        trailing.setTitleColor(AlmidyDesignTokens.Color.background, for: .normal)
-        trailing.backgroundColor = screen == .choices ? .clear : orange
-        trailing.layer.cornerRadius = AlmidyDesignTokens.Radius.capsule
-        trailing.contentEdgeInsets = UIEdgeInsets(top: 11, left: 18, bottom: 11, right: 18)
+        var trailingConfiguration = UIButton.Configuration.filled()
+        trailingConfiguration.title = screen == .signup ? "Signup" : screen == .login ? "Login" : ""
+        trailingConfiguration.baseBackgroundColor = orange
+        trailingConfiguration.baseForegroundColor = AlmidyDesignTokens.Color.settingsText
+        trailingConfiguration.cornerStyle = .capsule
+        trailingConfiguration.contentInsets = NSDirectionalEdgeInsets(top: 11, leading: 18, bottom: 11, trailing: 18)
+        trailingConfiguration.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { attributes in
+            var updated = attributes
+            updated.font = AlmidyDesignTokens.Font.button(17)
+            return updated
+        }
+        trailing.configuration = trailingConfiguration
         trailing.addTarget(self, action: #selector(submit), for: .touchUpInside)
         trailing.isHidden = screen == .choices
+        trailing.heightAnchor.constraint(greaterThanOrEqualToConstant: 44).isActive = true
         let leftSpacer = UIView()
         let rightSpacer = UIView()
         let headerTitle = UILabel()
@@ -4180,7 +4465,7 @@ private final class NativeAuthViewController: UIViewController, ASAuthorizationC
         bodyStack.addArrangedSubview(copyContainer)
         bodyStack.addArrangedSubview(makeButton("  Sign in with Apple", background: .black, height: 54, fontSize: 16, action: #selector(signInWithApple)))
         bodyStack.addArrangedSubview(makeGoogleButton())
-        bodyStack.addArrangedSubview(makeButton("Sign up with email", background: orange, height: 54, fontSize: 16, action: #selector(showSignup)))
+        bodyStack.addArrangedSubview(makeButton("Sign up with email", background: orange, titleColor: AlmidyDesignTokens.Color.settingsText, height: 54, fontSize: 16, action: #selector(showSignup)))
         let login = UIButton(type: .system)
         login.setTitle("Have an account?", for: .normal)
         login.setTitleColor(AlmidyDesignTokens.Color.goldSoft, for: .normal)
@@ -4304,9 +4589,10 @@ private final class NativeAuthViewController: UIViewController, ASAuthorizationC
         fields.addArrangedSubview(emailField!)
         fields.addArrangedSubview(passwordField!)
         fields.arrangedSubviews.forEach { $0.heightAnchor.constraint(equalToConstant: 64).isActive = true }
+        fields.backgroundColor = AlmidyDesignTokens.Color.darkInput
         fields.layer.cornerRadius = 24
         fields.layer.borderWidth = 1
-        fields.layer.borderColor = UIColor.separator.cgColor
+        fields.layer.borderColor = AlmidyDesignTokens.Color.darkInputBorder.cgColor
         fields.clipsToBounds = true
         bodyStack.addArrangedSubview(fields)
         bodyStack.addArrangedSubview(statusLabel)
@@ -4318,9 +4604,28 @@ private final class NativeAuthViewController: UIViewController, ASAuthorizationC
             forgot.addTarget(self, action: #selector(forgotPassword), for: .touchUpInside)
             bodyStack.addArrangedSubview(forgot)
         }
-        let button = makeButton(signingUp ? "Signup" : "Login", background: orange, action: #selector(submit))
+        let button = makePrimaryAuthButton(signingUp ? "Signup" : "Login")
         bodyStack.addArrangedSubview(button)
         bodyStack.addArrangedSubview(activity)
+    }
+
+    private func makePrimaryAuthButton(_ title: String) -> UIButton {
+        let button = UIButton(type: .system)
+        var configuration = UIButton.Configuration.filled()
+        configuration.title = title
+        configuration.baseBackgroundColor = orange
+        configuration.baseForegroundColor = AlmidyDesignTokens.Color.settingsText
+        configuration.cornerStyle = .capsule
+        configuration.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { attributes in
+            var updated = attributes
+            updated.font = AlmidyDesignTokens.Font.button(17)
+            return updated
+        }
+        button.configuration = configuration
+        button.heightAnchor.constraint(greaterThanOrEqualToConstant: 48).isActive = true
+        button.addTarget(self, action: #selector(submit), for: .touchUpInside)
+        actionButtons.append(button)
+        return button
     }
 
     private func makeLabel(_ text: String, size: CGFloat, weight: UIFont.Weight, color: UIColor, alignment: NSTextAlignment) -> UILabel {
@@ -4335,10 +4640,13 @@ private final class NativeAuthViewController: UIViewController, ASAuthorizationC
 
     private func makeField(_ placeholder: String, contentType: UITextContentType) -> UITextField {
         let field = UITextField()
-        field.placeholder = placeholder
+        field.attributedPlaceholder = NSAttributedString(
+            string: placeholder,
+            attributes: [.foregroundColor: AlmidyDesignTokens.Color.darkPlaceholder]
+        )
         field.font = AlmidyDesignTokens.Font.body(21)
         field.textColor = AlmidyDesignTokens.Color.textPrimary
-        field.backgroundColor = AlmidyDesignTokens.Color.card
+        field.backgroundColor = AlmidyDesignTokens.Color.darkInput
         field.setPadding(16)
         field.autocapitalizationType = .none
         field.autocorrectionType = .no
@@ -4541,22 +4849,34 @@ private extension UITextField {
 }
 
 private final class NativeAccountViewController: UIViewController {
+    private let profile: NativeAuthProfile
     private let isSignedIn: Bool
     private let onSignIn: () -> Void
     private let onSignOut: (@escaping (Bool) -> Void) -> Void
+    private let onSaveName: (String, @escaping (Bool) -> Void) -> Void
+    private let onDeleteAccount: () -> Void
     private let onSignedOut: () -> Void
     private let statusLabel = UILabel()
     private let actionButton = UIButton(type: .system)
+    private let nameField = UITextField()
+    private let saveButton = UIButton(type: .system)
+    private let deleteButton = UIButton(type: .system)
 
     init(
+        profile: NativeAuthProfile,
         isSignedIn: Bool,
         onSignIn: @escaping () -> Void,
         onSignOut: @escaping (@escaping (Bool) -> Void) -> Void,
+        onSaveName: @escaping (String, @escaping (Bool) -> Void) -> Void,
+        onDeleteAccount: @escaping () -> Void,
         onSignedOut: @escaping () -> Void = {}
     ) {
+        self.profile = profile
         self.isSignedIn = isSignedIn
         self.onSignIn = onSignIn
         self.onSignOut = onSignOut
+        self.onSaveName = onSaveName
+        self.onDeleteAccount = onDeleteAccount
         self.onSignedOut = onSignedOut
         super.init(nibName: nil, bundle: nil)
     }
@@ -4567,56 +4887,153 @@ private final class NativeAccountViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        view.backgroundColor = AlmidyDesignTokens.Color.surface
+        view.backgroundColor = AlmidyDesignTokens.Color.settingsBackground
 
         let closeButton = UIButton(type: .system)
-        closeButton.setTitle("Done", for: .normal)
-        closeButton.titleLabel?.font = .systemFont(ofSize: 17, weight: .semibold)
+        closeButton.setTitle("Cancel", for: .normal)
+        closeButton.titleLabel?.font = AlmidyDesignTokens.Font.button(17)
+        closeButton.setTitleColor(AlmidyDesignTokens.Color.settingsGold, for: .normal)
         closeButton.addTarget(self, action: #selector(close), for: .touchUpInside)
 
         let title = UILabel()
-        title.text = "Account"
-        title.font = AlmidyDesignTokens.Font.title(32)
-        title.textColor = AlmidyDesignTokens.Color.textPrimary
+        title.text = "Edit Profile"
+        title.font = AlmidyDesignTokens.Font.title(22)
+        title.textColor = AlmidyDesignTokens.Color.settingsText
+        title.textAlignment = .center
 
-        let subtitle = UILabel()
-        subtitle.text = isSignedIn ? "Your Almidy session is active." : "Sign in to create and manage trips."
-        subtitle.font = .systemFont(ofSize: 17, weight: .regular)
-        subtitle.textColor = AlmidyDesignTokens.Color.textSecondary
-        subtitle.numberOfLines = 0
+        var saveConfiguration = UIButton.Configuration.filled()
+        saveConfiguration.title = "Save"
+        saveConfiguration.baseBackgroundColor = AlmidyDesignTokens.Color.gold
+        saveConfiguration.baseForegroundColor = AlmidyDesignTokens.Color.settingsText
+        saveConfiguration.cornerStyle = .capsule
+        saveButton.configuration = saveConfiguration
+        saveButton.addTarget(self, action: #selector(saveProfile), for: .touchUpInside)
 
-        statusLabel.text = isSignedIn ? "Signed in" : "Not signed in"
-        statusLabel.font = .systemFont(ofSize: 20, weight: .semibold)
-        statusLabel.textColor = isSignedIn ? AlmidyDesignTokens.Color.success : AlmidyDesignTokens.Color.textSecondary
+        let avatar = UIImageView(image: UIImage(systemName: "person.crop.circle.badge.plus"))
+        avatar.tintColor = AlmidyDesignTokens.Color.settingsSecondary
+        avatar.contentMode = .scaleAspectFit
 
-        actionButton.setTitle(isSignedIn ? "Sign Out" : "Sign In", for: .normal)
-        actionButton.setTitleColor(.white, for: .normal)
-        actionButton.titleLabel?.font = AlmidyDesignTokens.Font.button(18)
-        actionButton.backgroundColor = isSignedIn ? AlmidyDesignTokens.Color.danger : AlmidyDesignTokens.Color.gold
-        actionButton.setTitleColor(isSignedIn ? .white : AlmidyDesignTokens.Color.background, for: .normal)
-        actionButton.layer.cornerRadius = AlmidyDesignTokens.Radius.capsule
+        let profileCard = UIView()
+        profileCard.backgroundColor = AlmidyDesignTokens.Color.settingsCard
+        profileCard.layer.cornerRadius = AlmidyDesignTokens.Radius.card
+        profileCard.layer.borderWidth = 1
+        profileCard.layer.borderColor = AlmidyDesignTokens.Color.settingsLine.cgColor
+
+        let nameLabel = UILabel()
+        nameLabel.text = "Name"
+        nameLabel.font = AlmidyDesignTokens.Font.body(17)
+        nameLabel.textColor = AlmidyDesignTokens.Color.settingsText
+        nameField.text = profile.name
+        nameField.placeholder = "Your name"
+        nameField.font = AlmidyDesignTokens.Font.body(17)
+        nameField.textColor = AlmidyDesignTokens.Color.settingsText
+        nameField.textAlignment = .right
+
+        let divider = UIView()
+        divider.backgroundColor = AlmidyDesignTokens.Color.settingsLine
+        let emailLabel = UILabel()
+        emailLabel.text = "Email"
+        emailLabel.font = AlmidyDesignTokens.Font.body(17)
+        emailLabel.textColor = AlmidyDesignTokens.Color.settingsText
+        let emailValue = UILabel()
+        emailValue.text = profile.email.isEmpty ? "Email unavailable" : profile.email
+        emailValue.font = AlmidyDesignTokens.Font.body(17)
+        emailValue.textColor = AlmidyDesignTokens.Color.settingsSecondary
+        emailValue.textAlignment = .right
+        emailValue.lineBreakMode = .byTruncatingMiddle
+
+        actionButton.setTitle("Sign Out", for: .normal)
+        actionButton.setTitleColor(AlmidyDesignTokens.Color.settingsGold, for: .normal)
+        actionButton.titleLabel?.font = AlmidyDesignTokens.Font.button(17)
         actionButton.addTarget(self, action: #selector(action), for: .touchUpInside)
 
-        [closeButton, title, subtitle, statusLabel, actionButton].forEach {
+        deleteButton.setTitle("Delete Account", for: .normal)
+        deleteButton.setTitleColor(AlmidyDesignTokens.Color.danger, for: .normal)
+        deleteButton.titleLabel?.font = AlmidyDesignTokens.Font.button(17)
+        deleteButton.addTarget(self, action: #selector(confirmAccountDeletion), for: .touchUpInside)
+
+        [closeButton, title, saveButton, avatar, profileCard, actionButton, deleteButton, statusLabel].forEach {
             $0.translatesAutoresizingMaskIntoConstraints = false
             view.addSubview($0)
         }
+        [nameLabel, nameField, divider, emailLabel, emailValue].forEach {
+            $0.translatesAutoresizingMaskIntoConstraints = false
+            profileCard.addSubview($0)
+        }
+        statusLabel.font = AlmidyDesignTokens.Font.body(15)
+        statusLabel.textAlignment = .center
 
         NSLayoutConstraint.activate([
-            closeButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 10),
-            closeButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -24),
-            title.topAnchor.constraint(equalTo: closeButton.bottomAnchor, constant: 26),
-            title.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 24),
-            subtitle.topAnchor.constraint(equalTo: title.bottomAnchor, constant: 8),
-            subtitle.leadingAnchor.constraint(equalTo: title.leadingAnchor),
-            subtitle.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -24),
-            statusLabel.topAnchor.constraint(equalTo: subtitle.bottomAnchor, constant: 30),
-            statusLabel.leadingAnchor.constraint(equalTo: title.leadingAnchor),
-            actionButton.topAnchor.constraint(equalTo: statusLabel.bottomAnchor, constant: 22),
-            actionButton.leadingAnchor.constraint(equalTo: title.leadingAnchor),
-            actionButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -24),
-            actionButton.heightAnchor.constraint(equalToConstant: 54)
+            closeButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 12),
+            closeButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 24),
+            closeButton.heightAnchor.constraint(greaterThanOrEqualToConstant: 44),
+            saveButton.centerYAnchor.constraint(equalTo: closeButton.centerYAnchor),
+            saveButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -24),
+            saveButton.widthAnchor.constraint(greaterThanOrEqualToConstant: 76),
+            saveButton.heightAnchor.constraint(equalToConstant: 46),
+            title.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            title.centerYAnchor.constraint(equalTo: closeButton.centerYAnchor),
+
+            avatar.topAnchor.constraint(equalTo: closeButton.bottomAnchor, constant: 36),
+            avatar.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            avatar.widthAnchor.constraint(equalToConstant: 132),
+            avatar.heightAnchor.constraint(equalToConstant: 132),
+
+            profileCard.topAnchor.constraint(equalTo: avatar.bottomAnchor, constant: 38),
+            profileCard.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 24),
+            profileCard.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -24),
+            profileCard.heightAnchor.constraint(equalToConstant: 128),
+            nameLabel.leadingAnchor.constraint(equalTo: profileCard.leadingAnchor, constant: 18),
+            nameLabel.centerYAnchor.constraint(equalTo: profileCard.topAnchor, constant: 32),
+            nameField.leadingAnchor.constraint(equalTo: nameLabel.trailingAnchor, constant: 16),
+            nameField.trailingAnchor.constraint(equalTo: profileCard.trailingAnchor, constant: -18),
+            nameField.centerYAnchor.constraint(equalTo: nameLabel.centerYAnchor),
+            divider.leadingAnchor.constraint(equalTo: profileCard.leadingAnchor, constant: 18),
+            divider.trailingAnchor.constraint(equalTo: profileCard.trailingAnchor),
+            divider.centerYAnchor.constraint(equalTo: profileCard.centerYAnchor),
+            divider.heightAnchor.constraint(equalToConstant: 1),
+            emailLabel.leadingAnchor.constraint(equalTo: nameLabel.leadingAnchor),
+            emailLabel.centerYAnchor.constraint(equalTo: profileCard.bottomAnchor, constant: -32),
+            emailValue.leadingAnchor.constraint(equalTo: emailLabel.trailingAnchor, constant: 16),
+            emailValue.trailingAnchor.constraint(equalTo: profileCard.trailingAnchor, constant: -18),
+            emailValue.centerYAnchor.constraint(equalTo: emailLabel.centerYAnchor),
+
+            statusLabel.topAnchor.constraint(equalTo: profileCard.bottomAnchor, constant: 12),
+            statusLabel.leadingAnchor.constraint(equalTo: profileCard.leadingAnchor),
+            statusLabel.trailingAnchor.constraint(equalTo: profileCard.trailingAnchor),
+            actionButton.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            actionButton.bottomAnchor.constraint(equalTo: deleteButton.topAnchor, constant: -8),
+            actionButton.heightAnchor.constraint(greaterThanOrEqualToConstant: 44),
+            deleteButton.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            deleteButton.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -20),
+            deleteButton.heightAnchor.constraint(greaterThanOrEqualToConstant: 44)
         ])
+    }
+
+    @objc private func confirmAccountDeletion() {
+        let alert = UIAlertController(
+            title: "Delete Account?",
+            message: "You’ll continue to Almidy’s secure deletion request. Nothing is removed until you complete the required confirmation.",
+            preferredStyle: .alert
+        )
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        alert.addAction(UIAlertAction(title: "Continue", style: .destructive) { [weak self] _ in
+            self?.onDeleteAccount()
+        })
+        present(alert, animated: true)
+    }
+
+    @objc private func saveProfile() {
+        let name = nameField.text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        saveButton.isEnabled = false
+        statusLabel.text = "Saving…"
+        statusLabel.textColor = AlmidyDesignTokens.Color.settingsSecondary
+        onSaveName(name) { [weak self] success in
+            guard let self else { return }
+            self.saveButton.isEnabled = true
+            self.statusLabel.text = success ? "Profile saved" : "Could not save profile. Try again."
+            self.statusLabel.textColor = success ? AlmidyDesignTokens.Color.success : AlmidyDesignTokens.Color.danger
+        }
     }
 
     @objc private func close() {
@@ -4630,9 +5047,7 @@ private final class NativeAccountViewController: UIViewController {
             onSignOut { [weak self] success in
                 guard let self else { return }
                 if success {
-                    self.dismiss(animated: true) {
-                        self.onSignedOut()
-                    }
+                    self.onSignedOut()
                 } else {
                     self.actionButton.isEnabled = true
                     self.actionButton.setTitle("Sign Out", for: .normal)
@@ -4675,12 +5090,13 @@ private final class NativeMapSearchViewController: UIViewController, MKLocalSear
     private func configureSearch() {
         let cancelButton = UIButton(type: .system)
         cancelButton.setTitle("Cancel", for: .normal)
-        cancelButton.titleLabel?.font = .systemFont(ofSize: 17, weight: .semibold)
+        cancelButton.titleLabel?.font = AlmidyDesignTokens.Font.button(17)
+        cancelButton.setTitleColor(AlmidyDesignTokens.Color.goldSoft, for: .normal)
         cancelButton.addTarget(self, action: #selector(cancel), for: .touchUpInside)
 
         let title = UILabel()
         title.text = "Search the globe"
-        title.font = AlmidyDesignTokens.Font.title(30)
+        title.font = AlmidyDesignTokens.Font.display(30)
         title.textColor = AlmidyDesignTokens.Color.textPrimary
 
         let subtitle = UILabel()
@@ -4691,18 +5107,25 @@ private final class NativeMapSearchViewController: UIViewController, MKLocalSear
         queryField.placeholder = "Search a city or place"
         queryField.font = AlmidyDesignTokens.Font.body(18)
         queryField.textColor = AlmidyDesignTokens.Color.textPrimary
-        queryField.backgroundColor = AlmidyDesignTokens.Color.card
+        queryField.backgroundColor = AlmidyDesignTokens.Color.darkInput
         queryField.layer.cornerRadius = AlmidyDesignTokens.Radius.control
         queryField.layer.borderWidth = 1
-        queryField.layer.borderColor = AlmidyDesignTokens.Color.line.cgColor
+        queryField.layer.borderColor = AlmidyDesignTokens.Color.darkInputBorder.cgColor
+        queryField.attributedPlaceholder = NSAttributedString(
+            string: "Search a city or place",
+            attributes: [.foregroundColor: AlmidyDesignTokens.Color.darkPlaceholder]
+        )
+        queryField.setPadding(16)
         queryField.clearButtonMode = .whileEditing
         queryField.returnKeyType = .search
         queryField.delegate = self
         queryField.addTarget(self, action: #selector(queryChanged), for: .editingChanged)
 
-        statusLabel.font = .systemFont(ofSize: 14, weight: .medium)
-        statusLabel.textColor = AlmidyDesignTokens.Color.textSecondary
+        statusLabel.font = AlmidyDesignTokens.Font.body(16)
+        statusLabel.textColor = AlmidyDesignTokens.Color.searchEmptyState
         statusLabel.numberOfLines = 0
+        statusLabel.textAlignment = .center
+        statusLabel.text = "Start typing to search the globe."
 
         suggestionTable.register(UITableViewCell.self, forCellReuseIdentifier: "map-search-suggestion")
         suggestionTable.dataSource = self
@@ -4754,6 +5177,7 @@ private final class NativeMapSearchViewController: UIViewController, MKLocalSear
         completions = []
         suggestionTable.reloadData()
         suggestionTable.isHidden = query.count < 2
+        statusLabel.text = query.count < 2 ? "Start typing to search the globe." : "Searching…"
         if query.count >= 2 {
             completer.queryFragment = query
         }
@@ -4762,6 +5186,7 @@ private final class NativeMapSearchViewController: UIViewController, MKLocalSear
     func completerDidUpdateResults(_ completer: MKLocalSearchCompleter) {
         completions = Array(completer.results.prefix(4))
         suggestionTable.isHidden = completions.isEmpty
+        statusLabel.text = completions.isEmpty ? "No places found yet." : ""
         suggestionTable.reloadData()
     }
 
@@ -4781,11 +5206,15 @@ private final class NativeMapSearchViewController: UIViewController, MKLocalSear
         var content = cell.defaultContentConfiguration()
         content.text = completion.title
         content.secondaryText = completion.subtitle
-        content.textProperties.font = .systemFont(ofSize: 16, weight: .semibold)
-        content.secondaryTextProperties.font = .systemFont(ofSize: 13, weight: .regular)
+        content.textProperties.font = AlmidyDesignTokens.Font.body(16)
+        content.secondaryTextProperties.font = AlmidyDesignTokens.Font.body(13)
+        content.textProperties.color = AlmidyDesignTokens.Color.textPrimary
+        content.secondaryTextProperties.color = AlmidyDesignTokens.Color.textSecondary
         content.textProperties.numberOfLines = 1
         content.secondaryTextProperties.numberOfLines = 1
         cell.contentConfiguration = content
+        cell.backgroundColor = AlmidyDesignTokens.Color.card
+        cell.tintColor = AlmidyDesignTokens.Color.gold
         return cell
     }
 
@@ -4855,17 +5284,18 @@ private final class NativeCreateTripViewController: UIViewController, MKLocalSea
     private func configureForm() {
         let closeButton = UIButton(type: .system)
         closeButton.setTitle("Cancel", for: .normal)
-        closeButton.titleLabel?.font = .systemFont(ofSize: 17, weight: .semibold)
+        closeButton.titleLabel?.font = AlmidyDesignTokens.Font.button(17)
+        closeButton.setTitleColor(AlmidyDesignTokens.Color.goldSoft, for: .normal)
         closeButton.addTarget(self, action: #selector(cancel), for: .touchUpInside)
 
         let title = UILabel()
         title.text = existingTrip == nil ? "Create Trip" : "Edit Trip"
-        title.font = AlmidyDesignTokens.Font.title(30)
+        title.font = AlmidyDesignTokens.Font.display(30)
         title.textColor = AlmidyDesignTokens.Color.textPrimary
 
         let subtitle = UILabel()
         subtitle.text = "Add one destination to your trip."
-        subtitle.font = .systemFont(ofSize: 17, weight: .regular)
+        subtitle.font = AlmidyDesignTokens.Font.body(17)
         subtitle.textColor = AlmidyDesignTokens.Color.textSecondary
 
         configureField(nameField, placeholder: "Trip name")
@@ -4894,14 +5324,14 @@ private final class NativeCreateTripViewController: UIViewController, MKLocalSea
         suggestionTable.rowHeight = 68
 
         createButton.setTitle(existingTrip == nil ? "Create Trip" : "Save Changes", for: .normal)
-        createButton.setTitleColor(.white, for: .normal)
-        createButton.titleLabel?.font = AlmidyDesignTokens.Font.button(18)
-        createButton.backgroundColor = AlmidyDesignTokens.Color.gold
-        createButton.setTitleColor(AlmidyDesignTokens.Color.background, for: .normal)
+        createButton.titleLabel?.font = AlmidyDesignTokens.Font.button(17)
+        createButton.setTitleColor(AlmidyDesignTokens.Color.settingsText, for: .normal)
+        createButton.setTitleColor(AlmidyDesignTokens.Color.disabledActionText, for: .disabled)
+        createButton.backgroundColor = AlmidyDesignTokens.Color.disabledActionBackground
         createButton.layer.cornerRadius = AlmidyDesignTokens.Radius.capsule
         createButton.isEnabled = existingTrip != nil && selectedLocation != nil
-        createButton.alpha = createButton.isEnabled ? 1 : 0.45
         createButton.addTarget(self, action: #selector(create), for: .touchUpInside)
+        updateCreateState()
 
         let fields = UIStackView(arrangedSubviews: [nameField, destinationField, locationStatus, suggestionTable, createButton])
         fields.axis = .vertical
@@ -4936,8 +5366,18 @@ private final class NativeCreateTripViewController: UIViewController, MKLocalSea
 
     private func configureField(_ field: UITextField, placeholder: String) {
         field.placeholder = placeholder
-        field.font = .systemFont(ofSize: 18, weight: .medium)
-        field.borderStyle = .roundedRect
+        field.font = AlmidyDesignTokens.Font.body(18)
+        field.textColor = AlmidyDesignTokens.Color.textPrimary
+        field.backgroundColor = AlmidyDesignTokens.Color.darkInput
+        field.borderStyle = .none
+        field.layer.cornerRadius = AlmidyDesignTokens.Radius.control
+        field.layer.borderWidth = 1
+        field.layer.borderColor = AlmidyDesignTokens.Color.darkInputBorder.cgColor
+        field.attributedPlaceholder = NSAttributedString(
+            string: placeholder,
+            attributes: [.foregroundColor: AlmidyDesignTokens.Color.darkPlaceholder]
+        )
+        field.setPadding(16)
         field.clearButtonMode = .whileEditing
         field.returnKeyType = .next
         field.delegate = self
@@ -4981,11 +5421,15 @@ private final class NativeCreateTripViewController: UIViewController, MKLocalSea
         var content = cell.defaultContentConfiguration()
         content.text = completion.title
         content.secondaryText = completion.subtitle
-        content.textProperties.font = .systemFont(ofSize: 16, weight: .semibold)
-        content.secondaryTextProperties.font = .systemFont(ofSize: 13, weight: .regular)
+        content.textProperties.font = AlmidyDesignTokens.Font.body(16)
+        content.textProperties.color = AlmidyDesignTokens.Color.textPrimary
+        content.secondaryTextProperties.font = AlmidyDesignTokens.Font.body(13)
+        content.secondaryTextProperties.color = AlmidyDesignTokens.Color.textSecondary
         content.textProperties.numberOfLines = 1
         content.secondaryTextProperties.numberOfLines = 1
         cell.contentConfiguration = content
+        cell.backgroundColor = AlmidyDesignTokens.Color.card
+        cell.tintColor = AlmidyDesignTokens.Color.goldSoft
         return cell
     }
 
@@ -5020,7 +5464,10 @@ private final class NativeCreateTripViewController: UIViewController, MKLocalSea
         let hasName = !(nameField.text?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
         let enabled = hasName && selectedLocation != nil
         createButton.isEnabled = enabled
-        createButton.alpha = enabled ? 1 : 0.45
+        createButton.alpha = 1
+        createButton.backgroundColor = enabled
+            ? AlmidyDesignTokens.Color.gold
+            : AlmidyDesignTokens.Color.disabledActionBackground
     }
 
     @objc private func create() {
@@ -5091,25 +5538,25 @@ private final class NativeCaptureIdeasViewController: UIViewController, PHPicker
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        view.backgroundColor = UIColor(red: 0.04, green: 0.07, blue: 0.11, alpha: 1)
+        view.backgroundColor = AlmidyDesignTokens.Color.settingsBackground
         configureView()
     }
 
     private func configureView() {
         let cancel = UIButton(type: .system)
         cancel.setTitle("Cancel", for: .normal)
-        cancel.setTitleColor(.white, for: .normal)
+        cancel.setTitleColor(AlmidyDesignTokens.Color.settingsGold, for: .normal)
         cancel.titleLabel?.font = .systemFont(ofSize: 17, weight: .semibold)
         cancel.addTarget(self, action: #selector(close), for: .touchUpInside)
 
         let title = UILabel()
         title.text = "Capture travel ideas"
-        title.textColor = .white
+        title.textColor = AlmidyDesignTokens.Color.settingsText
         title.font = AlmidyDesignTokens.Font.title(30)
 
         let subtitle = UILabel()
         subtitle.text = "Forward a reservation, paste a note, or save an idea without leaving your globe."
-        subtitle.textColor = UIColor.white.withAlphaComponent(0.7)
+        subtitle.textColor = AlmidyDesignTokens.Color.settingsSecondary
         subtitle.font = .systemFont(ofSize: 17, weight: .regular)
         subtitle.numberOfLines = 0
 
@@ -5122,29 +5569,29 @@ private final class NativeCaptureIdeasViewController: UIViewController, PHPicker
         sourceStack.spacing = 10
 
         sourceLabel.text = "Choose a capture option to start."
-        sourceLabel.textColor = UIColor.white.withAlphaComponent(0.65)
+        sourceLabel.textColor = AlmidyDesignTokens.Color.settingsSecondary
         sourceLabel.font = .systemFont(ofSize: 15, weight: .medium)
 
-        noteView.backgroundColor = UIColor.white.withAlphaComponent(0.08)
-        noteView.textColor = .white
+        noteView.backgroundColor = AlmidyDesignTokens.Color.settingsCard
+        noteView.textColor = AlmidyDesignTokens.Color.settingsText
         noteView.font = .systemFont(ofSize: 17, weight: .regular)
         noteView.layer.cornerRadius = 16
         noteView.layer.borderWidth = 1
-        noteView.layer.borderColor = UIColor.white.withAlphaComponent(0.12).cgColor
+        noteView.layer.borderColor = AlmidyDesignTokens.Color.settingsLine.cgColor
         noteView.text = "Paste a note, caption, or visible text"
-        noteView.textColor = UIColor.white.withAlphaComponent(0.45)
+        noteView.textColor = AlmidyDesignTokens.Color.settingsSecondary
         noteView.delegate = self
         noteView.isHidden = true
 
         linkField.placeholder = "Paste a travel link"
-        linkField.textColor = .white
+        linkField.textColor = AlmidyDesignTokens.Color.settingsText
         linkField.font = .systemFont(ofSize: 17, weight: .regular)
         linkField.borderStyle = .roundedRect
         linkField.isHidden = true
 
         let review = UIButton(type: .system)
         review.setTitle("Review idea", for: .normal)
-        review.setTitleColor(.white, for: .normal)
+        review.setTitleColor(AlmidyDesignTokens.Color.settingsText, for: .normal)
         review.titleLabel?.font = AlmidyDesignTokens.Font.button(18)
         review.backgroundColor = AlmidyDesignTokens.Color.gold
         review.layer.cornerRadius = AlmidyDesignTokens.Radius.capsule
@@ -5172,14 +5619,14 @@ private final class NativeCaptureIdeasViewController: UIViewController, PHPicker
         button.contentHorizontalAlignment = .leading
         button.setTitle("  \(title)", for: .normal)
         button.setImage(UIImage(systemName: systemName), for: .normal)
-        button.setTitleColor(.white, for: .normal)
-        button.tintColor = UIColor(red: 1, green: 0.65, blue: 0.32, alpha: 1)
+        button.setTitleColor(AlmidyDesignTokens.Color.settingsText, for: .normal)
+        button.tintColor = AlmidyDesignTokens.Color.settingsIcon
         button.titleLabel?.font = .systemFont(ofSize: 17, weight: .semibold)
-        button.backgroundColor = UIColor.white.withAlphaComponent(0.08)
+        button.backgroundColor = AlmidyDesignTokens.Color.settingsCard
         button.layer.cornerRadius = 16
         var configuration = UIButton.Configuration.plain()
         configuration.contentInsets = NSDirectionalEdgeInsets(top: 15, leading: 18, bottom: 15, trailing: 18)
-        configuration.baseForegroundColor = .white
+        configuration.baseForegroundColor = AlmidyDesignTokens.Color.settingsText
         configuration.imagePadding = 6
         button.configuration = configuration
         button.addTarget(self, action: action, for: .touchUpInside)
