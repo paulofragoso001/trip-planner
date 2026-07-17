@@ -18,7 +18,7 @@ enum NativeWebRoutePolicy {
         "/dashboard/settings/",
     ]
 
-    private static let allowedAccountFragments = ["help", "membership", "preferences", "sync"]
+    private static let allowedAccountFragments = ["deletion", "help", "membership", "preferences", "sync"]
 
     static func owner(for route: String) -> NativeRouteOwner {
         guard route.hasPrefix("/"), let url = URL(string: route) else { return .external }

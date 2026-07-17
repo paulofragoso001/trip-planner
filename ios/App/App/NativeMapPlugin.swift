@@ -3571,7 +3571,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
                 },
                 onDeleteAccount: { [weak self] in
                     self?.dismiss(animated: true) { [weak self] in
-                        self?.presentNativeWebFeature(route: "/dashboard/account", title: "Delete Account")
+                        self?.presentNativeWebFeature(route: "/dashboard/account#deletion", title: "Delete Account")
                     }
                 },
                 onSignedOut: { [weak self] in

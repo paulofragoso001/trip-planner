@@ -244,7 +244,10 @@ export default async function AccountPage() {
           </SettingsSurfaceSection>
         </main>
 
-        <aside className="h-fit rounded-[1.75rem] border border-red-100 bg-white p-5 shadow-panel">
+        <aside
+          className="h-fit rounded-[1.75rem] border border-red-100 bg-white p-5 shadow-panel"
+          id="deletion"
+        >
           <div className="flex items-start gap-3">
             <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-red-50 text-red-600">
               <Shield className="h-5 w-5" aria-hidden="true" />
