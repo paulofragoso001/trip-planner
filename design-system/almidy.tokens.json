@@ -1,0 +1,21 @@
+{
+  "colors": {
+    "brand-gold": "#D6A84F",
+    "brand-gold-deep": "#B88A2E",
+    "brand-gold-text": "#8C641E",
+    "bg-light": "#FFFFFF",
+    "bg-light-mist": "#F2F3F6",
+    "text-primary": "#050505",
+    "text-secondary": "#7D7D84",
+    "border-subtle": "rgba(0,0,0,0.10)"
+  },
+  "spacing": {
+    "card-padding": "16px",
+    "element-gap": "12px",
+    "content-inset": "24px"
+  },
+  "radius": {
+    "card": "24px",
+    "control": "18px"
+  }
+}
