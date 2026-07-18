@@ -51,6 +51,27 @@ enum AlmidyDesignTokens {
         static let info = UIColor(hex: 0x6D86A8)
         static let mapSurface = UIColor(hex: 0x030406)
 
+        // Native map and generated imagery retain their existing depth while sharing semantic roles.
+        static let offlineGlobeTint = UIColor(red: 0.30, green: 0.66, blue: 0.92, alpha: 1)
+        static let generatedTripImageBase = UIColor(red: 0.09, green: 0.20, blue: 0.28, alpha: 1)
+        static let generatedTripGradientStart = UIColor(red: 0.08, green: 0.38, blue: 0.48, alpha: 1)
+        static let generatedTripGradientEnd = UIColor(red: 0.88, green: 0.38, blue: 0.18, alpha: 1)
+        static let tripCardGradientStart = UIColor.clear
+        static let tripCardGradientEnd = UIColor.black.withAlphaComponent(0.62)
+        static let tripCardTextPrimary = UIColor.white
+        static let tripCardTextSecondary = UIColor.white.withAlphaComponent(0.92)
+        static let tripCardTextTertiary = UIColor.white.withAlphaComponent(0.82)
+
+        // Decorative account surfaces are intentionally pastel and are not provider-brand colors.
+        static let avatarRoseSurface = UIColor(red: 1.00, green: 0.84, blue: 0.85, alpha: 1)
+        static let avatarPeachSurface = UIColor(red: 1.00, green: 0.87, blue: 0.80, alpha: 1)
+        static let avatarLavenderSurface = UIColor(red: 0.96, green: 0.79, blue: 0.94, alpha: 1)
+
+        static let modalDimmingBackground = UIColor.black.withAlphaComponent(0.48)
+        static let overlayPlaceholderText = UIColor.white.withAlphaComponent(0.45)
+        static let shadowBlack = UIColor.black
+        static let shadowSoft = UIColor.black.withAlphaComponent(0.12)
+
         // Compatibility aliases: existing visual call sites can migrate without changing behavior.
         static let brandOrange = gold
         static let brandOrangeStrong = goldDeep

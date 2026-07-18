@@ -2544,7 +2544,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
 
         let globeImageView = UIImageView(image: UIImage(named: "AlmidyOfflineGlobe") ?? UIImage(systemName: "globe.americas.fill"))
         globeImageView.contentMode = .scaleAspectFit
-        globeImageView.tintColor = UIColor(red: 0.3, green: 0.66, blue: 0.92, alpha: 1)
+        globeImageView.tintColor = AlmidyDesignTokens.Color.offlineGlobeTint
         globeImageView.translatesAutoresizingMaskIntoConstraints = false
         globeImageView.accessibilityElementsHidden = true
 
@@ -2774,7 +2774,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         sheetView.backgroundColor = AlmidyDesignTokens.Color.surface.withAlphaComponent(0.98)
         sheetView.layer.cornerRadius = AlmidyDesignTokens.Radius.sheet
         sheetView.layer.maskedCorners = [.layerMinXMinYCorner, .layerMaxXMinYCorner]
-        sheetView.layer.shadowColor = UIColor.black.cgColor
+        sheetView.layer.shadowColor = AlmidyDesignTokens.Color.shadowBlack.cgColor
         sheetView.layer.shadowOpacity = AlmidyDesignTokens.Shadow.opacity
         sheetView.layer.shadowRadius = AlmidyDesignTokens.Shadow.radius
         sheetView.layer.shadowOffset = AlmidyDesignTokens.Shadow.offset
@@ -2912,7 +2912,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         let book = UIButton(type: .system)
         book.backgroundColor = AlmidyDesignTokens.Color.card
         book.layer.cornerRadius = AlmidyDesignTokens.Radius.card
-        book.layer.shadowColor = UIColor.black.cgColor
+        book.layer.shadowColor = AlmidyDesignTokens.Color.shadowBlack.cgColor
         book.layer.shadowOpacity = 0.06
         book.layer.shadowRadius = 18
         book.layer.shadowOffset = CGSize(width: 0, height: 9)
@@ -3017,7 +3017,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         let card = UIView()
         card.backgroundColor = AlmidyDesignTokens.Color.card
         card.layer.cornerRadius = AlmidyDesignTokens.Radius.card
-        card.layer.shadowColor = UIColor.black.cgColor
+        card.layer.shadowColor = AlmidyDesignTokens.Color.shadowBlack.cgColor
         card.layer.shadowOpacity = 0.18
         card.layer.shadowRadius = 24
         card.layer.shadowOffset = CGSize(width: 0, height: 12)
@@ -3117,7 +3117,10 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         loadTripImage(into: imageView, trip: trip)
 
         let gradient = CAGradientLayer()
-        gradient.colors = [UIColor.clear.cgColor, UIColor.black.withAlphaComponent(0.62).cgColor]
+        gradient.colors = [
+            AlmidyDesignTokens.Color.tripCardGradientStart.cgColor,
+            AlmidyDesignTokens.Color.tripCardGradientEnd.cgColor
+        ]
         gradient.locations = [0.35, 1.0]
         button.layer.addSublayer(gradient)
 
@@ -3141,19 +3144,19 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
 
         let title = UILabel()
         title.text = trip.displayName
-        title.textColor = .white
+        title.textColor = AlmidyDesignTokens.Color.tripCardTextPrimary
         title.font = AlmidyDesignTokens.Font.title(34)
         title.adjustsFontSizeToFitWidth = true
         title.minimumScaleFactor = 0.72
 
         let dates = UILabel()
         dates.text = trip.displayDateRange
-        dates.textColor = .white.withAlphaComponent(0.92)
+        dates.textColor = AlmidyDesignTokens.Color.tripCardTextSecondary
         dates.font = .systemFont(ofSize: 21, weight: .semibold)
 
         let status = UILabel()
         status.text = trip.displayStatus
-        status.textColor = .white.withAlphaComponent(0.82)
+        status.textColor = AlmidyDesignTokens.Color.tripCardTextTertiary
         status.font = .systemFont(ofSize: 19, weight: .regular)
 
         textStack.addArrangedSubview(title)
@@ -3280,7 +3283,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         button.backgroundColor = backgroundColor
         button.tintColor = tintColor
         button.layer.cornerRadius = AlmidyDesignTokens.Radius.control
-        button.layer.shadowColor = UIColor.black.cgColor
+        button.layer.shadowColor = AlmidyDesignTokens.Color.shadowBlack.cgColor
         button.layer.shadowOpacity = 0.08
         button.layer.shadowRadius = 18
         button.layer.shadowOffset = CGSize(width: 0, height: 9)
@@ -3889,9 +3892,12 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         let renderer = UIGraphicsImageRenderer(size: CGSize(width: 720, height: 520))
         return renderer.image { context in
             let bounds = CGRect(x: 0, y: 0, width: 720, height: 520)
-            UIColor(red: 0.09, green: 0.2, blue: 0.28, alpha: 1).setFill()
+            AlmidyDesignTokens.Color.generatedTripImageBase.setFill()
             context.fill(bounds)
-            let colors = [UIColor(red: 0.08, green: 0.38, blue: 0.48, alpha: 1).cgColor, UIColor(red: 0.88, green: 0.38, blue: 0.18, alpha: 1).cgColor]
+            let colors = [
+                AlmidyDesignTokens.Color.generatedTripGradientStart.cgColor,
+                AlmidyDesignTokens.Color.generatedTripGradientEnd.cgColor
+            ]
             let gradient = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: colors as CFArray, locations: [0, 1])!
             context.cgContext.drawLinearGradient(gradient, start: CGPoint(x: 0, y: 0), end: CGPoint(x: 720, y: 520), options: [])
         }
@@ -4506,17 +4512,17 @@ private final class NativeAuthViewController: UIViewController, ASAuthorizationC
 
         let left = makeAvatarBadge(
             emoji: "👨🏻‍🦰",
-            background: UIColor(red: 1.0, green: 0.84, blue: 0.85, alpha: 1.0),
+            background: AlmidyDesignTokens.Color.avatarRoseSurface,
             size: 88
         )
         let center = makeAvatarBadge(
             emoji: "🧑🏼‍🎨",
-            background: UIColor(red: 1.0, green: 0.87, blue: 0.80, alpha: 1.0),
+            background: AlmidyDesignTokens.Color.avatarPeachSurface,
             size: 132
         )
         let right = makeAvatarBadge(
             emoji: "👩🏾‍🦱",
-            background: UIColor(red: 0.96, green: 0.79, blue: 0.94, alpha: 1.0),
+            background: AlmidyDesignTokens.Color.avatarLavenderSurface,
             size: 88
         )
         avatars.addSubview(left)
@@ -4551,6 +4557,7 @@ private final class NativeAuthViewController: UIViewController, ASAuthorizationC
             copy.trailingAnchor.constraint(equalTo: copyContainer.trailingAnchor, constant: -8)
         ])
         bodyStack.addArrangedSubview(copyContainer)
+        // Apple requires its sign-in treatment to retain the provider's black brand surface.
         bodyStack.addArrangedSubview(makeButton("  Sign in with Apple", background: .black, height: 54, fontSize: 16, action: #selector(signInWithApple)))
         bodyStack.addArrangedSubview(makeGoogleButton())
         bodyStack.addArrangedSubview(makeButton("Sign up with email", background: orange, titleColor: AlmidyDesignTokens.Color.settingsText, height: 54, fontSize: 16, action: #selector(showSignup)))
@@ -4566,7 +4573,7 @@ private final class NativeAuthViewController: UIViewController, ASAuthorizationC
     private func makeAvatarBadge(emoji: String, background: UIColor, size: CGFloat) -> UIView {
         let wrapper = UIView()
         wrapper.translatesAutoresizingMaskIntoConstraints = false
-        wrapper.layer.shadowColor = UIColor.black.withAlphaComponent(0.12).cgColor
+        wrapper.layer.shadowColor = AlmidyDesignTokens.Color.shadowSoft.cgColor
         wrapper.layer.shadowOpacity = 1
         wrapper.layer.shadowRadius = 10
         wrapper.layer.shadowOffset = CGSize(width: 0, height: 5)
@@ -4901,6 +4908,7 @@ private final class GoogleLogoView: UIView {
         let center = CGPoint(x: rect.midX, y: rect.midY)
         let radius = min(rect.width, rect.height) * 0.37
         let lineWidth = min(rect.width, rect.height) * 0.22
+        // Provider-brand exception: preserve Google's official multicolor mark; do not map it to Almidy tokens.
         let segments: [(UIColor, CGFloat, CGFloat)] = [
             (UIColor(red: 0.26, green: 0.52, blue: 0.96, alpha: 1), -0.15, 1.55),
             (UIColor(red: 0.92, green: 0.25, blue: 0.20, alpha: 1), 1.55, 3.05),
@@ -5594,8 +5602,8 @@ private final class NativeTripActionButton: UIButton {
     init(tripId: String, systemName: String) {
         self.tripId = tripId
         super.init(frame: .zero)
-        backgroundColor = UIColor.black.withAlphaComponent(0.48)
-        tintColor = .white
+        backgroundColor = AlmidyDesignTokens.Color.modalDimmingBackground
+        tintColor = AlmidyDesignTokens.Color.tripCardTextPrimary
         layer.cornerRadius = 21
         setImage(UIImage(systemName: systemName), for: .normal)
         accessibilityLabel = systemName == "trash" ? "Delete trip" : "Edit trip"
@@ -5781,9 +5789,9 @@ private final class NativeCaptureIdeasViewController: UIViewController, PHPicker
 
 extension NativeCaptureIdeasViewController: UITextViewDelegate {
     func textViewDidBeginEditing(_ textView: UITextView) {
-        if textView.textColor == UIColor.white.withAlphaComponent(0.45) {
+        if textView.textColor == AlmidyDesignTokens.Color.overlayPlaceholderText {
             textView.text = nil
-            textView.textColor = .white
+            textView.textColor = AlmidyDesignTokens.Color.tripCardTextPrimary
         }
     }
 }
