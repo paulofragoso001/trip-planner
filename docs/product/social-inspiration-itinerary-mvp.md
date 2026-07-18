@@ -31,7 +31,7 @@ Save travel idea -> AI finds place -> user confirms -> place appears on timeline
 - Trips: create trip, edit trip, delete trip, and open workspace.
 - Import: paste URL, upload screenshot, paste caption/text.
 - Review Queue: imported source cards with extracted place candidates, confidence, source, and actions.
-- Trip Timeline: TripIt-style day list with places, times, notes, and cost.
+- Trip Timeline: day-by-day itinerary with places, times, notes, and cost.
 - Trip Map: pins grouped by day, with daily route preview.
 - Place Detail: address, category, source evidence, notes, confidence, and edit controls.
 - Generate Plan: simple action state showing success/error and changed day order.

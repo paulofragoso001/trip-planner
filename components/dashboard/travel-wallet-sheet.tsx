@@ -854,7 +854,7 @@ function SettingsPanel({
         <SettingsRow icon={<CalendarDays />} label="Calendar Feed" pro unavailableLabel="Pro soon" />
         <SettingsRow icon={<PackageOpen />} label="Connect with Claude / MCP" unavailableLabel="Soon" />
         <SettingsRow icon={<Briefcase />} label="Shortcuts" unavailableLabel="Soon" />
-        <SettingsRow href={dashboardActionRoutes.imports.importSources} icon={<Upload />} label="TripIt Importer" pro />
+        <SettingsRow href={dashboardActionRoutes.imports.importSources} icon={<Upload />} label="Reservation importer" pro />
       </SettingsSection>
 
       <SettingsSection title="Customize">

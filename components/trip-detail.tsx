@@ -325,7 +325,7 @@ export function TripDetail({
         <div className={`grid min-w-0 gap-4 overflow-hidden p-4 ${tripDetailSurface}`}>
           <div>
             <p className={tripDetailEyebrow}>
-              TripIt-style itinerary builder
+              Itinerary builder
             </p>
             <h2 className="mt-1 text-xl font-black">Add itinerary segment</h2>
           </div>

@@ -764,7 +764,7 @@ export const dashboardActionContracts = [
   },
   {
     id: "settings-routed-row-actions",
-    label: "Save your trips / Add Reservations via Email / TripIt Importer / Trips Timeline / My Almidy Book / Need help? / Talk to us / Your Membership / About Almidy / Terms of Service / Privacy Policy",
+    label: "Save your trips / Add Reservations via Email / Reservation importer / Trips Timeline / My Almidy Book / Need help? / Talk to us / Your Membership / About Almidy / Terms of Service / Privacy Policy",
     kind: "navigation-only",
     surface: "Mobile settings rows",
     selectorHint: "SettingsRow links",
