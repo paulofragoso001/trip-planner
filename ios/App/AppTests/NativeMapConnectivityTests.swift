@@ -254,6 +254,43 @@ final class NativeMapConnectivityTests: XCTestCase {
         wait(for: [expectation], timeout: 2)
     }
 
+    func testNativeTripMutationsFailWhenPersistenceIsUnavailable() {
+        let controller = NativeMapViewController(
+            trips: [],
+            monitorsNetworkConnectivity: false,
+            tripStore: nil
+        )
+        let draft = NativeTripDraft(
+            name: "Paris Weekend",
+            destination: "Paris",
+            coordinate: CLLocationCoordinate2D(latitude: 48.8566, longitude: 2.3522)
+        )
+
+        let createExpectation = expectation(description: "unavailable trip creation")
+        controller.createTripFromServer(draft) { result in
+            guard case .failure(let error) = result else {
+                XCTFail("An unavailable store must not create a local-only trip")
+                createExpectation.fulfill()
+                return
+            }
+            XCTAssertEqual(error.localizedDescription, "Native trip persistence is unavailable.")
+            createExpectation.fulfill()
+        }
+
+        let updateExpectation = expectation(description: "unavailable trip update")
+        controller.updateTripFromServer(id: "trip-1", draft: draft) { result in
+            guard case .failure(let error) = result else {
+                XCTFail("An unavailable store must not report a local-only update as successful")
+                updateExpectation.fulfill()
+                return
+            }
+            XCTAssertEqual(error.localizedDescription, "Native trip persistence is unavailable.")
+            updateExpectation.fulfill()
+        }
+
+        wait(for: [createExpectation, updateExpectation], timeout: 1)
+    }
+
     func testNativeTripStoreUpdatesAndDeletesTripThroughVercelApi() {
         var requests: [(method: String, path: String)] = []
         NativeTripStoreURLProtocol.handler = { request in

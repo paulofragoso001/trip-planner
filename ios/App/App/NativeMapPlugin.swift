@@ -575,16 +575,6 @@ struct NativeTripDraft {
     let name: String
     let destination: String
     let coordinate: CLLocationCoordinate2D
-
-    func asNativeTrip() -> NativeMapTrip {
-        NativeMapTrip(
-            id: "native-\(UUID().uuidString)",
-            name: name,
-            destination: destination,
-            latitude: coordinate.latitude,
-            longitude: coordinate.longitude
-        )
-    }
 }
 
 enum NativeTripStoreError: LocalizedError {
@@ -2350,23 +2340,36 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         }
     }
 
+    func createTripFromServer(
+        _ draft: NativeTripDraft,
+        completion: @escaping (Result<NativeMapTrip, Error>) -> Void
+    ) {
+        guard let tripStore else {
+            completion(.failure(NativeTripStoreError.requestFailed("Native trip persistence is unavailable.")))
+            return
+        }
+        tripStore.createTrip(draft) { [weak self] result in
+            if case .success(let trip) = result {
+                self?.replaceTrip(trip)
+            }
+            completion(result)
+        }
+    }
+
     func updateTripFromServer(
         id: String,
         draft: NativeTripDraft,
-        completion: ((Result<Void, Error>) -> Void)? = nil
+        completion: @escaping (Result<NativeMapTrip, Error>) -> Void
     ) {
         guard let tripStore else {
-            completion?(.failure(NativeTripStoreError.requestFailed("Native trip persistence is unavailable.")))
+            completion(.failure(NativeTripStoreError.requestFailed("Native trip persistence is unavailable.")))
             return
         }
         tripStore.updateTrip(id: id, draft: draft) { [weak self] result in
-            switch result {
-            case .success:
-                self?.refreshTripsFromServer()
-                completion?(.success(()))
-            case .failure(let error):
-                completion?(.failure(error))
+            if case .success(let trip) = result {
+                self?.replaceTrip(trip)
             }
+            completion(result)
         }
     }
 
@@ -3765,17 +3768,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
     @objc private func createTrip() {
         let form = NativeCreateTripViewController { [weak self] draft, completion in
             guard let self else { return }
-            let finish: (Result<NativeMapTrip, Error>) -> Void = { [weak self] result in
-                if case .success(let trip) = result {
-                    self?.replaceTrip(trip)
-                }
-                completion(result)
-            }
-            if let tripStore = self.tripStore {
-                tripStore.createTrip(draft, completion: finish)
-            } else {
-                finish(.success(draft.asNativeTrip()))
-            }
+            self.createTripFromServer(draft, completion: completion)
         }
         presentTripForm(form)
     }
@@ -3806,16 +3799,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         guard let trip = trips.first(where: { $0.id == sender.tripId }) else { return }
         let form = NativeCreateTripViewController(existingTrip: trip) { [weak self] draft, completion in
             guard let self else { return }
-            guard let tripStore = self.tripStore else {
-                completion(.success(draft.asNativeTrip()))
-                return
-            }
-            tripStore.updateTrip(id: trip.id, draft: draft) { [weak self] result in
-                if case .success(let updatedTrip) = result {
-                    self?.replaceTrip(updatedTrip)
-                }
-                completion(result)
-            }
+            self.updateTripFromServer(id: trip.id, draft: draft, completion: completion)
         }
         presentTripForm(form)
     }
