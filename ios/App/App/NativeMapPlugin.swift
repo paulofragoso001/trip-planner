@@ -3925,9 +3925,6 @@ private final class NativeSettingsViewController: UIViewController, UITableViewD
 
     private var sections: [(title: String, rows: [String])] {
         var result: [(title: String, rows: [String])] = []
-        if profile == nil {
-            result.append(("Account", ["Account settings"]))
-        }
         result.append(("Automations", ["Add Reservations via Email", "Calendar Feed", "Connect with Claude / MCP", "Shortcuts", "Reservation Importer"]))
         result.append(("Customize", ["Currency · US Dollar", "Distance Unit · Miles", "Language · English", "Trips Timeline", "Travel Book", "Notifications", "Widgets", "Storage and Data"]))
         result.append(("Help Center", ["Need help?", "Talk to us", "Review the App", "App Updates"]))
@@ -3989,9 +3986,7 @@ private final class NativeSettingsViewController: UIViewController, UITableViewD
         tableView.sectionHeaderHeight = 52
         tableView.sectionFooterHeight = 12
         tableView.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20)
-        if let profile {
-            tableView.tableHeaderView = makeProfileHeader(profile)
-        }
+        tableView.tableHeaderView = makeSettingsHeader()
         tableView.translatesAutoresizingMaskIntoConstraints = false
         closeButton.translatesAutoresizingMaskIntoConstraints = false
         title.translatesAutoresizingMaskIntoConstraints = false
@@ -4015,13 +4010,15 @@ private final class NativeSettingsViewController: UIViewController, UITableViewD
         ])
     }
 
-    private func makeProfileHeader(_ profile: NativeAuthProfile) -> UIView {
-        let header = UIView(frame: CGRect(x: 0, y: 0, width: view.bounds.width, height: 286))
+    private func makeSettingsHeader() -> UIView {
+        let signedIn = profile != nil
+        let headerHeight: CGFloat = signedIn ? 500 : 350
+        let header = UIView(frame: CGRect(x: 0, y: 0, width: view.bounds.width, height: headerHeight))
         header.autoresizingMask = [.flexibleWidth]
-        header.isAccessibilityElement = true
-        header.accessibilityLabel = "Edit profile for \(profile.name.isEmpty ? "Almidy Traveler" : profile.name)"
-        header.accessibilityTraits = .button
-        header.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(openProfile)))
+
+        let promoCard = makePromoCard()
+        promoCard.translatesAutoresizingMaskIntoConstraints = false
+        header.addSubview(promoCard)
 
         let card = UIView()
         card.backgroundColor = AlmidyDesignTokens.Color.settingsCard
@@ -4030,6 +4027,79 @@ private final class NativeSettingsViewController: UIViewController, UITableViewD
         card.layer.borderColor = AlmidyDesignTokens.Color.settingsLine.cgColor
         card.translatesAutoresizingMaskIntoConstraints = false
         header.addSubview(card)
+
+        NSLayoutConstraint.activate([
+            promoCard.topAnchor.constraint(equalTo: header.topAnchor, constant: 10),
+            promoCard.leadingAnchor.constraint(equalTo: header.leadingAnchor, constant: 20),
+            promoCard.trailingAnchor.constraint(equalTo: header.trailingAnchor, constant: -20),
+            promoCard.heightAnchor.constraint(equalToConstant: 174),
+            card.topAnchor.constraint(equalTo: promoCard.bottomAnchor, constant: 18),
+            card.leadingAnchor.constraint(equalTo: header.leadingAnchor, constant: 20),
+            card.trailingAnchor.constraint(equalTo: header.trailingAnchor, constant: -20),
+            card.bottomAnchor.constraint(equalTo: header.bottomAnchor, constant: -10)
+        ])
+
+        if let profile {
+            configureSignedInCard(card, profile: profile)
+        } else {
+            configureSignedOutCard(card)
+        }
+        return header
+    }
+
+    private func makePromoCard() -> UIView {
+        let card = UIView()
+        card.backgroundColor = AlmidyDesignTokens.Color.settingsCard
+        card.layer.cornerRadius = AlmidyDesignTokens.Radius.card
+        card.layer.borderWidth = 1
+        card.layer.borderColor = AlmidyDesignTokens.Color.settingsLine.cgColor
+
+        let eyebrow = UILabel()
+        eyebrow.text = "ALMIDY"
+        eyebrow.font = AlmidyDesignTokens.Font.section(14)
+        eyebrow.textColor = AlmidyDesignTokens.Color.settingsGold
+
+        let title = UILabel()
+        title.text = "Plan with confidence"
+        title.font = AlmidyDesignTokens.Font.title(22)
+        title.textColor = AlmidyDesignTokens.Color.settingsText
+
+        let copy = UILabel()
+        copy.text = "Keep trip details and reservations organized in one place."
+        copy.font = AlmidyDesignTokens.Font.body(16)
+        copy.textColor = AlmidyDesignTokens.Color.settingsSecondary
+        copy.numberOfLines = 2
+
+        let icon = UIImageView(image: UIImage(systemName: "envelope.open.fill"))
+        icon.tintColor = AlmidyDesignTokens.Color.settingsGold
+        icon.contentMode = .scaleAspectFit
+
+        [eyebrow, title, copy, icon].forEach {
+            $0.translatesAutoresizingMaskIntoConstraints = false
+            card.addSubview($0)
+        }
+        NSLayoutConstraint.activate([
+            eyebrow.topAnchor.constraint(equalTo: card.topAnchor, constant: 24),
+            eyebrow.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 20),
+            title.topAnchor.constraint(equalTo: eyebrow.bottomAnchor, constant: 8),
+            title.leadingAnchor.constraint(equalTo: eyebrow.leadingAnchor),
+            title.trailingAnchor.constraint(lessThanOrEqualTo: icon.leadingAnchor, constant: -12),
+            copy.topAnchor.constraint(equalTo: title.bottomAnchor, constant: 7),
+            copy.leadingAnchor.constraint(equalTo: eyebrow.leadingAnchor),
+            copy.trailingAnchor.constraint(equalTo: icon.leadingAnchor, constant: -12),
+            icon.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -22),
+            icon.centerYAnchor.constraint(equalTo: card.centerYAnchor),
+            icon.widthAnchor.constraint(equalToConstant: 54),
+            icon.heightAnchor.constraint(equalToConstant: 54)
+        ])
+        return card
+    }
+
+    private func configureSignedInCard(_ card: UIView, profile: NativeAuthProfile) {
+        card.isAccessibilityElement = true
+        card.accessibilityLabel = "Edit profile for \(profile.name.isEmpty ? "Almidy Traveler" : profile.name)"
+        card.accessibilityTraits = .button
+        card.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(openProfile)))
 
         let avatar = UIImageView(image: UIImage(systemName: "person.crop.circle"))
         avatar.tintColor = AlmidyDesignTokens.Color.settingsSecondary
@@ -4053,10 +4123,6 @@ private final class NativeSettingsViewController: UIViewController, UITableViewD
 
         [avatar, name, email].forEach(card.addSubview)
         NSLayoutConstraint.activate([
-            card.topAnchor.constraint(equalTo: header.topAnchor, constant: 10),
-            card.leadingAnchor.constraint(equalTo: header.leadingAnchor, constant: 20),
-            card.trailingAnchor.constraint(equalTo: header.trailingAnchor, constant: -20),
-            card.bottomAnchor.constraint(equalTo: header.bottomAnchor, constant: -10),
             avatar.topAnchor.constraint(equalTo: card.topAnchor, constant: 28),
             avatar.centerXAnchor.constraint(equalTo: card.centerXAnchor),
             avatar.widthAnchor.constraint(equalToConstant: 118),
@@ -4068,7 +4134,45 @@ private final class NativeSettingsViewController: UIViewController, UITableViewD
             email.leadingAnchor.constraint(equalTo: name.leadingAnchor),
             email.trailingAnchor.constraint(equalTo: name.trailingAnchor)
         ])
-        return header
+    }
+
+    private func configureSignedOutCard(_ card: UIView) {
+        card.isAccessibilityElement = true
+        card.accessibilityLabel = "Save your trips. Log in or create an account."
+        card.accessibilityTraits = .button
+        card.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(openProfile)))
+
+        let icon = UIImageView(image: UIImage(systemName: "icloud"))
+        icon.tintColor = AlmidyDesignTokens.Color.settingsIcon
+        icon.contentMode = .scaleAspectFit
+        let eyebrow = UILabel()
+        eyebrow.text = "Save your trips"
+        eyebrow.font = AlmidyDesignTokens.Font.body(15)
+        eyebrow.textColor = AlmidyDesignTokens.Color.settingsGold
+        let title = UILabel()
+        title.text = "Log in or create an account"
+        title.font = AlmidyDesignTokens.Font.body(18)
+        title.textColor = AlmidyDesignTokens.Color.settingsText
+        let chevron = UIImageView(image: UIImage(systemName: "chevron.right"))
+        chevron.tintColor = AlmidyDesignTokens.Color.settingsSecondary
+
+        [icon, eyebrow, title, chevron].forEach {
+            $0.translatesAutoresizingMaskIntoConstraints = false
+            card.addSubview($0)
+        }
+        NSLayoutConstraint.activate([
+            icon.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 20),
+            icon.centerYAnchor.constraint(equalTo: card.centerYAnchor),
+            icon.widthAnchor.constraint(equalToConstant: 30),
+            icon.heightAnchor.constraint(equalToConstant: 30),
+            eyebrow.leadingAnchor.constraint(equalTo: icon.trailingAnchor, constant: 16),
+            eyebrow.bottomAnchor.constraint(equalTo: card.centerYAnchor, constant: -2),
+            title.leadingAnchor.constraint(equalTo: eyebrow.leadingAnchor),
+            title.topAnchor.constraint(equalTo: card.centerYAnchor, constant: 2),
+            title.trailingAnchor.constraint(lessThanOrEqualTo: chevron.leadingAnchor, constant: -10),
+            chevron.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -20),
+            chevron.centerYAnchor.constraint(equalTo: card.centerYAnchor)
+        ])
     }
 
     @objc private func openProfile() {
