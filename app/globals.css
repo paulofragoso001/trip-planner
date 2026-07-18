@@ -3,6 +3,7 @@
 @tailwind utilities;
 
 :root {
+  --almidy-brand-gold: #D6A84F;
   color-scheme: light;
 }
 
@@ -105,7 +106,7 @@ gmp-place-autocomplete {
 }
 
 .pac-matched {
-  color: #e67e22 !important;
+  color: var(--almidy-brand-gold, #D6A84F) !important;
 }
 
 .pac-icon {
