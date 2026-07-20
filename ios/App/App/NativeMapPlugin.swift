@@ -217,18 +217,25 @@ final class NativeAuthSessionStore {
         postChange(event: event, session: sessionToSave)
     }
 
-    func update(from rawValue: String) {
+    static func session(fromWebStorageValue rawValue: String) -> NativeAuthSession? {
         guard let data = rawValue.data(using: .utf8),
               let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let accessToken = object["access_token"] as? String,
-              !accessToken.isEmpty else { return }
+              !accessToken.isEmpty else { return nil }
         let user = object["user"] as? [String: Any]
-        save(NativeAuthSession(
+        return NativeAuthSession(
             accessToken: accessToken,
             refreshToken: object["refresh_token"] as? String,
             expiresAt: object["expires_at"] as? Int,
             userId: object["user_id"] as? String ?? user?["id"] as? String ?? Self.userId(fromAccessToken: accessToken)
-        ), event: .signedIn)
+        )
+    }
+
+    @discardableResult
+    func update(from rawValue: String) -> Bool {
+        guard let importedSession = Self.session(fromWebStorageValue: rawValue) else { return false }
+        save(importedSession, event: .signedIn)
+        return true
     }
 
     func accessToken(using urlSession: URLSession = .shared, completion: @escaping (String?) -> Void) {
@@ -3514,7 +3521,14 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
             onOpenAccount: { [weak self] in
                 guard let self else { return }
                 self.dismiss(animated: true) { [weak self] in
-                    self?.presentNativeAccount()
+                    guard let self else { return }
+                    if NativeAuthSessionStore.shared.session == nil {
+                        self.presentNativeAuth(
+                            reopensSettingsOnAuthentication: true
+                        )
+                    } else {
+                        self.presentNativeAccount()
+                    }
                 }
             },
             onSignOut: { [weak self] in
@@ -3553,12 +3567,12 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
     private func presentNativeAccount() {
         let presentAccount: (NativeWebAuthStorage?) -> Void = { [weak self] authStorage in
             guard let self else { return }
-            if let authStorage {
-                NativeAuthSessionStore.shared.update(from: authStorage.value)
-            }
-            let isSignedIn = authStorage != nil || NativeAuthSessionStore.shared.session != nil
+            let importedWebSession = authStorage.map {
+                NativeAuthSessionStore.shared.update(from: $0.value)
+            } ?? false
+            let isSignedIn = importedWebSession || NativeAuthSessionStore.shared.session != nil
             guard isSignedIn else {
-                self.presentNativeAuth(startsInSignup: true, reopensSettingsOnAuthentication: true)
+                self.presentNativeAuth(reopensSettingsOnAuthentication: true)
                 return
             }
             let account = NativeAccountViewController(
@@ -4370,7 +4384,7 @@ private final class NativeAuthViewController: UIViewController, ASAuthorizationC
     private var nameField: UITextField?
     private var emailField: UITextField?
     private var passwordField: UITextField?
-    private var actionButtons: [UIButton] = []
+    private var actionButtons: [UIControl] = []
     var startsInSignup = false
 
     private let orange = AlmidyDesignTokens.Color.gold
@@ -4516,7 +4530,7 @@ private final class NativeAuthViewController: UIViewController, ASAuthorizationC
             size: 88
         )
         let center = makeAvatarBadge(
-            emoji: "🧑🏼‍🎨",
+            emoji: "👩🏻‍🦰",
             background: AlmidyDesignTokens.Color.avatarPeachSurface,
             size: 132
         )
@@ -4558,9 +4572,9 @@ private final class NativeAuthViewController: UIViewController, ASAuthorizationC
         ])
         bodyStack.addArrangedSubview(copyContainer)
         // Apple requires its sign-in treatment to retain the provider's black brand surface.
-        bodyStack.addArrangedSubview(makeButton("  Sign in with Apple", background: .black, height: 54, fontSize: 16, action: #selector(signInWithApple)))
-        bodyStack.addArrangedSubview(makeGoogleButton())
-        bodyStack.addArrangedSubview(makeButton("Sign up with email", background: orange, titleColor: AlmidyDesignTokens.Color.settingsText, height: 54, fontSize: 16, action: #selector(showSignup)))
+        bodyStack.addArrangedSubview(centeredAuthAction(makeAppleButton()))
+        bodyStack.addArrangedSubview(centeredAuthAction(makeGoogleButton()))
+        bodyStack.addArrangedSubview(centeredAuthAction(makeButton("Sign up with email", background: orange, titleColor: .white, height: 54, fontSize: 17, action: #selector(showSignup))))
         let login = UIButton(type: .system)
         login.setTitle("Have an account?", for: .normal)
         login.setTitleColor(AlmidyDesignTokens.Color.goldSoft, for: .normal)
@@ -4573,23 +4587,17 @@ private final class NativeAuthViewController: UIViewController, ASAuthorizationC
     private func makeAvatarBadge(emoji: String, background: UIColor, size: CGFloat) -> UIView {
         let wrapper = UIView()
         wrapper.translatesAutoresizingMaskIntoConstraints = false
-        wrapper.layer.shadowColor = AlmidyDesignTokens.Color.shadowSoft.cgColor
-        wrapper.layer.shadowOpacity = 1
-        wrapper.layer.shadowRadius = 10
-        wrapper.layer.shadowOffset = CGSize(width: 0, height: 5)
         wrapper.isAccessibilityElement = true
-        wrapper.accessibilityLabel = "Apple avatar"
+        wrapper.accessibilityLabel = "Profile avatar"
 
         let circle = UIView()
         circle.backgroundColor = background
         circle.layer.cornerRadius = size / 2
-        circle.layer.borderWidth = 7
-        circle.layer.borderColor = AlmidyDesignTokens.Color.textPrimary.withAlphaComponent(0.96).cgColor
         circle.clipsToBounds = true
         circle.translatesAutoresizingMaskIntoConstraints = false
         wrapper.addSubview(circle)
 
-        let face = UIImageView(image: emojiImage(emoji, size: size * 0.58))
+        let face = UIImageView(image: emojiImage(emoji, size: size * 0.62))
         face.contentMode = .scaleAspectFit
         face.translatesAutoresizingMaskIntoConstraints = false
         circle.addSubview(face)
@@ -4600,8 +4608,8 @@ private final class NativeAuthViewController: UIViewController, ASAuthorizationC
             circle.bottomAnchor.constraint(equalTo: wrapper.bottomAnchor),
             face.leadingAnchor.constraint(equalTo: circle.leadingAnchor),
             face.trailingAnchor.constraint(equalTo: circle.trailingAnchor),
-            face.topAnchor.constraint(equalTo: circle.topAnchor, constant: 8),
-            face.bottomAnchor.constraint(equalTo: circle.bottomAnchor, constant: -4)
+            face.topAnchor.constraint(equalTo: circle.topAnchor, constant: 4),
+            face.bottomAnchor.constraint(equalTo: circle.bottomAnchor, constant: -2)
         ])
         return wrapper
     }
@@ -4610,6 +4618,24 @@ private final class NativeAuthViewController: UIViewController, ASAuthorizationC
         let spacer = UIView()
         spacer.heightAnchor.constraint(equalToConstant: height).isActive = true
         return spacer
+    }
+
+    private func centeredAuthAction(_ control: UIView) -> UIView {
+        let container = UIView()
+        control.translatesAutoresizingMaskIntoConstraints = false
+        container.addSubview(control)
+        let preferredWidth = control.widthAnchor.constraint(equalTo: container.widthAnchor, constant: -16)
+        preferredWidth.priority = .defaultHigh
+        NSLayoutConstraint.activate([
+            control.centerXAnchor.constraint(equalTo: container.centerXAnchor),
+            control.topAnchor.constraint(equalTo: container.topAnchor),
+            control.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+            control.leadingAnchor.constraint(greaterThanOrEqualTo: container.leadingAnchor),
+            control.trailingAnchor.constraint(lessThanOrEqualTo: container.trailingAnchor),
+            control.widthAnchor.constraint(lessThanOrEqualToConstant: 320),
+            preferredWidth
+        ])
+        return container
     }
 
     private func emojiImage(_ emoji: String, size: CGFloat) -> UIImage? {
@@ -4644,7 +4670,10 @@ private final class NativeAuthViewController: UIViewController, ASAuthorizationC
         content.translatesAutoresizingMaskIntoConstraints = false
         button.addSubview(content)
 
-        let logo = GoogleLogoView()
+        // Provider-brand exception: preserve Google's official multicolor mark; do not tint it.
+        let logo = UIImageView(image: UIImage(named: "GoogleG"))
+        logo.contentMode = .scaleAspectFit
+        logo.isAccessibilityElement = false
         logo.translatesAutoresizingMaskIntoConstraints = false
         logo.widthAnchor.constraint(equalToConstant: 21).isActive = true
         logo.heightAnchor.constraint(equalTo: logo.widthAnchor).isActive = true
@@ -4660,6 +4689,16 @@ private final class NativeAuthViewController: UIViewController, ASAuthorizationC
             content.centerXAnchor.constraint(equalTo: button.centerXAnchor),
             content.centerYAnchor.constraint(equalTo: button.centerYAnchor)
         ])
+        return button
+    }
+
+    private func makeAppleButton() -> ASAuthorizationAppleIDButton {
+        let button = ASAuthorizationAppleIDButton(type: .signUp, style: .black)
+        button.cornerRadius = 27
+        button.heightAnchor.constraint(equalToConstant: 54).isActive = true
+        button.accessibilityLabel = "Sign up with Apple"
+        button.addTarget(self, action: #selector(signInWithApple), for: .touchUpInside)
+        actionButtons.append(button)
         return button
     }
 
@@ -4751,11 +4790,17 @@ private final class NativeAuthViewController: UIViewController, ASAuthorizationC
 
     private func makeButton(_ title: String, background: UIColor, titleColor: UIColor = .white, border: Bool = false, height: CGFloat = AlmidyDesignTokens.Control.buttonHeight, fontSize: CGFloat = 17, action: Selector) -> UIButton {
         let button = UIButton(type: .system)
-        button.setTitle(title, for: .normal)
-        button.setTitleColor(titleColor, for: .normal)
-        button.titleLabel?.font = AlmidyDesignTokens.Font.button(fontSize)
-        button.backgroundColor = background
-        button.layer.cornerRadius = AlmidyDesignTokens.Radius.capsule
+        var configuration = UIButton.Configuration.filled()
+        configuration.title = title
+        configuration.baseBackgroundColor = background
+        configuration.baseForegroundColor = titleColor
+        configuration.cornerStyle = .capsule
+        configuration.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { attributes in
+            var updated = attributes
+            updated.font = AlmidyDesignTokens.Font.button(fontSize)
+            return updated
+        }
+        button.configuration = configuration
         if border {
             button.layer.borderWidth = 1
             button.layer.borderColor = AlmidyDesignTokens.Color.line.cgColor
@@ -4900,36 +4945,6 @@ private final class NativeAuthViewController: UIViewController, ASAuthorizationC
 
     private func sha256(_ input: String) -> String {
         SHA256.hash(data: Data(input.utf8)).map { String(format: "%02x", $0) }.joined()
-    }
-}
-
-private final class GoogleLogoView: UIView {
-    override func draw(_ rect: CGRect) {
-        let center = CGPoint(x: rect.midX, y: rect.midY)
-        let radius = min(rect.width, rect.height) * 0.37
-        let lineWidth = min(rect.width, rect.height) * 0.22
-        // Provider-brand exception: preserve Google's official multicolor mark; do not map it to Almidy tokens.
-        let segments: [(UIColor, CGFloat, CGFloat)] = [
-            (UIColor(red: 0.26, green: 0.52, blue: 0.96, alpha: 1), -0.15, 1.55),
-            (UIColor(red: 0.92, green: 0.25, blue: 0.20, alpha: 1), 1.55, 3.05),
-            (UIColor(red: 0.98, green: 0.75, blue: 0.12, alpha: 1), 3.05, 4.05),
-            (UIColor(red: 0.20, green: 0.66, blue: 0.33, alpha: 1), 4.05, 6.13)
-        ]
-        segments.forEach { color, start, end in
-            let path = UIBezierPath(arcCenter: center, radius: radius, startAngle: start, endAngle: end, clockwise: true)
-            color.setStroke()
-            path.lineWidth = lineWidth
-            path.lineCapStyle = .butt
-            path.stroke()
-        }
-
-        let bar = UIBezierPath()
-        bar.move(to: CGPoint(x: center.x, y: center.y))
-        bar.addLine(to: CGPoint(x: rect.maxX - 1, y: center.y))
-        UIColor(red: 0.26, green: 0.52, blue: 0.96, alpha: 1).setStroke()
-        bar.lineWidth = lineWidth
-        bar.lineCapStyle = .butt
-        bar.stroke()
     }
 }
 

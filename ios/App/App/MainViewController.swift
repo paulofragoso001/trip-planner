@@ -544,6 +544,7 @@ final class NativeWebFeatureViewController: UIViewController, WKNavigationDelega
                 }
                 return { key: '', value: '' };
             })();
+            if (!storage.key || !storage.value) return null;
             storage.cookieHeader = document.cookie || '';
             return JSON.stringify(storage);
             /*

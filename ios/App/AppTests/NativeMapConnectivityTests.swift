@@ -449,6 +449,22 @@ final class NativeMapConnectivityTests: XCTestCase {
         XCTAssertNil(signedOut.refreshToken)
     }
 
+    func testEmptyWebAuthStorageDoesNotRepresentASignedInSession() {
+        XCTAssertNil(NativeAuthSessionStore.session(fromWebStorageValue: ""))
+        XCTAssertNil(NativeAuthSessionStore.session(fromWebStorageValue: "{}"))
+        XCTAssertNil(NativeAuthSessionStore.session(fromWebStorageValue: #"{"access_token":""}"#))
+    }
+
+    func testWebAuthStorageRequiresANonemptyAccessToken() throws {
+        let rawValue = #"{"access_token":"web-access-token","refresh_token":"web-refresh-token","expires_at":1900000000,"user":{"id":"user-1"}}"#
+        let session = try XCTUnwrap(NativeAuthSessionStore.session(fromWebStorageValue: rawValue))
+
+        XCTAssertEqual(session.accessToken, "web-access-token")
+        XCTAssertEqual(session.refreshToken, "web-refresh-token")
+        XCTAssertEqual(session.expiresAt, 1_900_000_000)
+        XCTAssertEqual(session.userId, "user-1")
+    }
+
     func testNativeWebRoutePolicyAllowsOnlySecondaryPages() {
         XCTAssertTrue(NativeWebRoutePolicy.allows("/dashboard/help"))
         XCTAssertTrue(NativeWebRoutePolicy.allows("/dashboard/imports/forward-reservation"))
