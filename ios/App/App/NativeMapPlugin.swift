@@ -2241,6 +2241,34 @@ struct NativeMapTrip: Decodable {
     }
 }
 
+private enum NativeAdaptiveLayout {
+    static let formMaxWidth: CGFloat = 620
+    static let cardMaxWidth: CGFloat = 720
+
+    static func isCompactHeight(_ view: UIView) -> Bool {
+        view.bounds.height < 700 || view.bounds.width > view.bounds.height
+    }
+
+    static func preferredWidth(
+        _ view: UIView,
+        equalTo dimension: NSLayoutDimension,
+        constant: CGFloat
+    ) -> NSLayoutConstraint {
+        let constraint = view.widthAnchor.constraint(equalTo: dimension, constant: constant)
+        constraint.priority = .defaultHigh
+        return constraint
+    }
+}
+
+private final class NativeGradientButton: UIButton {
+    let overlayGradient = CAGradientLayer()
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        overlayGradient.frame = bounds
+    }
+}
+
 final class NativeMapViewController: UIViewController, CLLocationManagerDelegate, MKMapViewDelegate {
     private enum SheetState: CaseIterable {
         case collapsed
@@ -2280,6 +2308,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
     private var firstTripCard: UIView?
     private var sheetBottomConstraint: NSLayoutConstraint?
     private var sheetHeightConstraint: NSLayoutConstraint?
+    private var mapControlTopConstraint: NSLayoutConstraint?
     private var sheetState: SheetState
     private var panStartHeight: CGFloat = 0
     private var hasPlayedIntroCamera = false
@@ -2336,6 +2365,24 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
             requestCurrentLocation()
         }
         refreshTripsFromServer()
+    }
+
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        mapControlTopConstraint?.constant = NativeAdaptiveLayout.isCompactHeight(view) ? 16 : 142
+        let nextHeight = height(for: sheetState)
+        if abs((sheetHeightConstraint?.constant ?? 0) - nextHeight) > 0.5 {
+            sheetHeightConstraint?.constant = nextHeight
+        }
+    }
+
+    override func viewWillTransition(to size: CGSize, with coordinator: UIViewControllerTransitionCoordinator) {
+        super.viewWillTransition(to: size, with: coordinator)
+        coordinator.animate(alongsideTransition: { [weak self] _ in
+            guard let self else { return }
+            self.sheetHeightConstraint?.constant = self.height(for: self.sheetState, containerSize: size)
+            self.view.layoutIfNeeded()
+        })
     }
 
     func refreshTripsFromServer() {
@@ -2756,9 +2803,10 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         mapControlStack.addArrangedSubview(locationButton)
         view.addSubview(mapControlStack)
 
+        mapControlTopConstraint = mapControlStack.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 142)
         NSLayoutConstraint.activate([
             mapControlStack.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -16),
-            mapControlStack.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 142),
+            mapControlTopConstraint!,
             mapControlStack.widthAnchor.constraint(equalToConstant: 58)
         ])
     }
@@ -2778,7 +2826,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
 
     private func configureSheet() {
         sheetView.translatesAutoresizingMaskIntoConstraints = false
-        sheetView.backgroundColor = AlmidyDesignTokens.Color.surface.withAlphaComponent(0.98)
+        sheetView.backgroundColor = AlmidyDesignTokens.Color.surface
         sheetView.layer.cornerRadius = AlmidyDesignTokens.Radius.sheet
         sheetView.layer.maskedCorners = [.layerMinXMinYCorner, .layerMaxXMinYCorner]
         sheetView.layer.shadowColor = AlmidyDesignTokens.Color.shadowBlack.cgColor
@@ -2816,6 +2864,8 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         titleButton.titleLabel?.adjustsFontSizeToFitWidth = true
         titleButton.titleLabel?.minimumScaleFactor = 0.72
         titleButton.contentHorizontalAlignment = .left
+        titleButton.accessibilityLabel = "My Trips"
+        titleButton.accessibilityHint = "Expands or collapses the trip wallet"
         titleButton.addTarget(self, action: #selector(toggleSheetFromTitle), for: .touchUpInside)
 
         chevronImageView.tintColor = AlmidyDesignTokens.Color.textSecondary
@@ -2830,6 +2880,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         settingsButton.tintColor = AlmidyDesignTokens.Color.gold
         settingsButton.layer.cornerRadius = AlmidyDesignTokens.Control.iconButton / 2
         settingsButton.setImage(UIImage(systemName: "gearshape"), for: .normal)
+        settingsButton.accessibilityLabel = "Open Settings"
         settingsButton.addTarget(self, action: #selector(openSettings), for: .touchUpInside)
         settingsButton.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
@@ -2869,11 +2920,17 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
             sheetHandle.heightAnchor.constraint(equalToConstant: 6),
 
             headerStack.topAnchor.constraint(equalTo: sheetHandle.bottomAnchor, constant: 26),
-            headerStack.leadingAnchor.constraint(equalTo: sheetView.leadingAnchor, constant: 28),
-            headerStack.trailingAnchor.constraint(equalTo: sheetView.trailingAnchor, constant: -28),
+            headerStack.centerXAnchor.constraint(equalTo: sheetView.centerXAnchor),
+            headerStack.leadingAnchor.constraint(greaterThanOrEqualTo: sheetView.leadingAnchor, constant: 28),
+            headerStack.trailingAnchor.constraint(lessThanOrEqualTo: sheetView.trailingAnchor, constant: -28),
+            headerStack.widthAnchor.constraint(lessThanOrEqualToConstant: NativeAdaptiveLayout.cardMaxWidth),
+            NativeAdaptiveLayout.preferredWidth(headerStack, equalTo: sheetView.widthAnchor, constant: -56),
 
-            collapsedActions.leadingAnchor.constraint(equalTo: sheetView.leadingAnchor, constant: 28),
-            collapsedActions.trailingAnchor.constraint(equalTo: sheetView.trailingAnchor, constant: -28),
+            collapsedActions.centerXAnchor.constraint(equalTo: sheetView.centerXAnchor),
+            collapsedActions.leadingAnchor.constraint(greaterThanOrEqualTo: sheetView.leadingAnchor, constant: 28),
+            collapsedActions.trailingAnchor.constraint(lessThanOrEqualTo: sheetView.trailingAnchor, constant: -28),
+            collapsedActions.widthAnchor.constraint(lessThanOrEqualToConstant: NativeAdaptiveLayout.cardMaxWidth),
+            NativeAdaptiveLayout.preferredWidth(collapsedActions, equalTo: sheetView.widthAnchor, constant: -56),
             collapsedActions.bottomAnchor.constraint(equalTo: sheetView.safeAreaLayoutGuide.bottomAnchor, constant: -20),
             collapsedActions.heightAnchor.constraint(equalToConstant: 64),
 
@@ -2883,10 +2940,13 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
             expandedScrollView.bottomAnchor.constraint(equalTo: sheetView.bottomAnchor),
 
             expandedContentStack.topAnchor.constraint(equalTo: expandedScrollView.contentLayoutGuide.topAnchor),
-            expandedContentStack.leadingAnchor.constraint(equalTo: expandedScrollView.contentLayoutGuide.leadingAnchor, constant: 28),
-            expandedContentStack.trailingAnchor.constraint(equalTo: expandedScrollView.contentLayoutGuide.trailingAnchor, constant: -28),
+            expandedContentStack.centerXAnchor.constraint(equalTo: expandedScrollView.frameLayoutGuide.centerXAnchor),
+            expandedContentStack.leadingAnchor.constraint(greaterThanOrEqualTo: expandedScrollView.contentLayoutGuide.leadingAnchor, constant: 28),
+            expandedContentStack.trailingAnchor.constraint(lessThanOrEqualTo: expandedScrollView.contentLayoutGuide.trailingAnchor, constant: -28),
             expandedContentStack.bottomAnchor.constraint(equalTo: expandedScrollView.contentLayoutGuide.bottomAnchor, constant: -40),
-            expandedContentStack.widthAnchor.constraint(equalTo: expandedScrollView.frameLayoutGuide.widthAnchor, constant: -56)
+            expandedContentStack.widthAnchor.constraint(lessThanOrEqualTo: expandedScrollView.frameLayoutGuide.widthAnchor, constant: -56),
+            expandedContentStack.widthAnchor.constraint(lessThanOrEqualToConstant: NativeAdaptiveLayout.cardMaxWidth),
+            NativeAdaptiveLayout.preferredWidth(expandedContentStack, equalTo: expandedScrollView.frameLayoutGuide.widthAnchor, constant: -56)
         ])
     }
 
@@ -2914,6 +2974,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
 
     private func renderCollapsedActions() {
         let search = circularButton(systemName: "magnifyingglass", backgroundColor: AlmidyDesignTokens.Color.card, tintColor: AlmidyDesignTokens.Color.textPrimary)
+        search.accessibilityLabel = "Search the globe"
         search.addTarget(self, action: #selector(openSearch), for: .touchUpInside)
 
         let book = UIButton(type: .system)
@@ -2930,8 +2991,10 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         book.tintColor = AlmidyDesignTokens.Color.gold
         book.contentHorizontalAlignment = .center
         book.addTarget(self, action: #selector(openTravelBook), for: .touchUpInside)
+        book.accessibilityLabel = "Open Travel Book"
 
         let add = circularButton(systemName: "plus", backgroundColor: AlmidyDesignTokens.Color.gold, tintColor: AlmidyDesignTokens.Color.settingsText)
+        add.accessibilityLabel = "Create a trip"
         add.addTarget(self, action: #selector(createTrip), for: .touchUpInside)
 
         collapsedActions.addArrangedSubview(search)
@@ -2974,15 +3037,24 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
 
     private func renderWelcomeContent() {
         let card = UIView()
-        card.backgroundColor = AlmidyDesignTokens.Color.card
+        card.backgroundColor = AlmidyDesignTokens.Color.surface
         card.layer.cornerRadius = AlmidyDesignTokens.Radius.card
         card.layer.borderWidth = 1
-        card.layer.borderColor = AlmidyDesignTokens.Color.gold.withAlphaComponent(0.42).cgColor
+        card.layer.borderColor = AlmidyDesignTokens.Color.goldDeep.withAlphaComponent(0.28).cgColor
+        card.clipsToBounds = true
         card.translatesAutoresizingMaskIntoConstraints = false
+
+        // Composite the translucent brand wash over an opaque surface so MapKit
+        // labels and controls never bleed through the Welcome card.
+        let brandWash = UIView()
+        brandWash.backgroundColor = AlmidyDesignTokens.Color.gold.withAlphaComponent(0.10)
+        brandWash.isUserInteractionEnabled = false
+        brandWash.translatesAutoresizingMaskIntoConstraints = false
+        card.addSubview(brandWash)
 
         let stack = UIStackView()
         stack.axis = .vertical
-        stack.spacing = 12
+        stack.spacing = 10
         stack.translatesAutoresizingMaskIntoConstraints = false
         card.addSubview(stack)
 
@@ -3005,15 +3077,20 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         stack.addArrangedSubview(eyebrow)
         stack.addArrangedSubview(title)
         stack.addArrangedSubview(body)
-        stack.addArrangedSubview(actionButton(title: "Create Your First Trip", backgroundColor: AlmidyDesignTokens.Color.gold, textColor: AlmidyDesignTokens.Color.settingsText, action: #selector(createTrip), fontSize: 17, minHeight: 56, cornerRadius: AlmidyDesignTokens.Radius.control))
-        stack.addArrangedSubview(actionButton(title: "Explore Sample Trip", backgroundColor: AlmidyDesignTokens.Color.card, textColor: AlmidyDesignTokens.Color.goldSoft, action: #selector(openSampleTripPreview), fontSize: 17, minHeight: 56, cornerRadius: AlmidyDesignTokens.Radius.control))
-        stack.addArrangedSubview(actionButton(title: "Forward Your Reservation", backgroundColor: AlmidyDesignTokens.Color.card, textColor: AlmidyDesignTokens.Color.textPrimary, action: #selector(forwardReservation), fontSize: 17, minHeight: 56, cornerRadius: AlmidyDesignTokens.Radius.control))
+        stack.setCustomSpacing(18, after: body)
+        stack.addArrangedSubview(actionButton(title: "Create Your First Trip", backgroundColor: AlmidyDesignTokens.Color.gold, textColor: AlmidyDesignTokens.Color.bgLight, action: #selector(createTrip), fontSize: 17, minHeight: 50, cornerRadius: AlmidyDesignTokens.Radius.capsule))
+        stack.addArrangedSubview(actionButton(title: "Forward Your Reservation", backgroundColor: AlmidyDesignTokens.Color.disabledActionBackground, textColor: AlmidyDesignTokens.Color.textPrimary, action: #selector(forwardReservation), fontSize: 17, minHeight: 50, cornerRadius: AlmidyDesignTokens.Radius.capsule))
+        stack.addArrangedSubview(actionButton(title: "Explore Sample Trip", backgroundColor: AlmidyDesignTokens.Color.disabledActionBackground, textColor: AlmidyDesignTokens.Color.textPrimary, action: #selector(openSampleTripPreview), fontSize: 17, minHeight: 50, cornerRadius: AlmidyDesignTokens.Radius.capsule))
 
         NSLayoutConstraint.activate([
-            stack.topAnchor.constraint(equalTo: card.topAnchor, constant: 24),
-            stack.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 24),
-            stack.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -24),
-            stack.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -24)
+            brandWash.topAnchor.constraint(equalTo: card.topAnchor),
+            brandWash.leadingAnchor.constraint(equalTo: card.leadingAnchor),
+            brandWash.trailingAnchor.constraint(equalTo: card.trailingAnchor),
+            brandWash.bottomAnchor.constraint(equalTo: card.bottomAnchor),
+            stack.topAnchor.constraint(equalTo: card.topAnchor, constant: 22),
+            stack.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 22),
+            stack.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -22),
+            stack.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -22)
         ])
         expandedContentStack.addArrangedSubview(card)
     }
@@ -3069,8 +3146,11 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         view.bringSubviewToFront(card)
 
         NSLayoutConstraint.activate([
-            card.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
-            card.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            card.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            card.leadingAnchor.constraint(greaterThanOrEqualTo: view.leadingAnchor, constant: 16),
+            card.trailingAnchor.constraint(lessThanOrEqualTo: view.trailingAnchor, constant: -16),
+            card.widthAnchor.constraint(lessThanOrEqualToConstant: NativeAdaptiveLayout.cardMaxWidth),
+            NativeAdaptiveLayout.preferredWidth(card, equalTo: view.widthAnchor, constant: -32),
             card.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 28),
             card.heightAnchor.constraint(equalToConstant: 164),
 
@@ -3111,8 +3191,9 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         card.clipsToBounds = true
         card.backgroundColor = AlmidyDesignTokens.Color.card
 
-        let button = UIButton(type: .custom)
+        let button = NativeGradientButton(type: .custom)
         button.accessibilityIdentifier = trip.id
+        button.accessibilityLabel = "Open \(trip.displayName)"
         button.addTarget(self, action: #selector(openTripAction(_:)), for: .touchUpInside)
         button.translatesAutoresizingMaskIntoConstraints = false
         card.addSubview(button)
@@ -3123,13 +3204,12 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         button.addSubview(imageView)
         loadTripImage(into: imageView, trip: trip)
 
-        let gradient = CAGradientLayer()
-        gradient.colors = [
+        button.overlayGradient.colors = [
             AlmidyDesignTokens.Color.tripCardGradientStart.cgColor,
             AlmidyDesignTokens.Color.tripCardGradientEnd.cgColor
         ]
-        gradient.locations = [0.35, 1.0]
-        button.layer.addSublayer(gradient)
+        button.overlayGradient.locations = [0.35, 1.0]
+        button.layer.addSublayer(button.overlayGradient)
 
         let textStack = UIStackView()
         textStack.axis = .vertical
@@ -3185,14 +3265,11 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
             textStack.bottomAnchor.constraint(equalTo: button.bottomAnchor, constant: -26),
             actions.topAnchor.constraint(equalTo: card.topAnchor, constant: 18),
             actions.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -18),
-            edit.widthAnchor.constraint(equalToConstant: 42),
-            edit.heightAnchor.constraint(equalToConstant: 42),
-            delete.widthAnchor.constraint(equalToConstant: 42),
-            delete.heightAnchor.constraint(equalToConstant: 42)
+            edit.widthAnchor.constraint(equalToConstant: 44),
+            edit.heightAnchor.constraint(equalToConstant: 44),
+            delete.widthAnchor.constraint(equalToConstant: 44),
+            delete.heightAnchor.constraint(equalToConstant: 44)
         ])
-
-        button.layoutIfNeeded()
-        gradient.frame = CGRect(x: 0, y: 0, width: UIScreen.main.bounds.width - 56, height: 340)
         return card
     }
 
@@ -3235,6 +3312,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
 
         let close = UIButton(type: .system)
         close.setImage(UIImage(systemName: "xmark"), for: .normal)
+        close.accessibilityLabel = "Dismiss reservation suggestion"
         close.tintColor = .systemGray
         close.addTarget(self, action: #selector(dismissReservationCard), for: .touchUpInside)
         close.translatesAutoresizingMaskIntoConstraints = false
@@ -3278,8 +3356,8 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
             stack.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -24),
             close.topAnchor.constraint(equalTo: card.topAnchor, constant: 18),
             close.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -18),
-            close.widthAnchor.constraint(equalToConstant: 34),
-            close.heightAnchor.constraint(equalToConstant: 34)
+            close.widthAnchor.constraint(equalToConstant: 44),
+            close.heightAnchor.constraint(equalToConstant: 44)
         ])
 
         return card
@@ -3356,13 +3434,16 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         }
     }
 
-    private func height(for state: SheetState) -> CGFloat {
-        let fullHeight = view.bounds.height > 0 ? view.bounds.height : UIScreen.main.bounds.height
+    private func height(for state: SheetState, containerSize: CGSize? = nil) -> CGFloat {
+        let size = containerSize ?? view.bounds.size
+        let fullHeight = size.height > 0 ? size.height : 700
+        let compactHeight = fullHeight < 700 || size.width > fullHeight
         switch state {
         case .collapsed:
-            return trips.isEmpty ? min(300, fullHeight * 0.28) : min(268, fullHeight * 0.26)
+            let preferred = trips.isEmpty ? (compactHeight ? 210.0 : 300.0) : (compactHeight ? 190.0 : 268.0)
+            return min(preferred, fullHeight * (compactHeight ? 0.48 : 0.28))
         case .medium:
-            return min(fullHeight * 0.58, 520)
+            return min(fullHeight * (compactHeight ? 0.72 : 0.58), 520)
         case .expanded:
             return fullHeight - view.safeAreaInsets.top - 10
         }
@@ -3926,6 +4007,7 @@ private final class NativeSettingsViewController: UIViewController, UITableViewD
     private let onOpenReservationImport: () -> Void
     private let onOpenHelp: () -> Void
     private let tableView = UITableView(frame: .zero, style: .insetGrouped)
+    private weak var adaptiveHeaderView: UIView?
 
     private var sections: [(title: String, rows: [String])] {
         var result: [(title: String, rows: [String])] = []
@@ -3963,6 +4045,11 @@ private final class NativeSettingsViewController: UIViewController, UITableViewD
         configureTable()
     }
 
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        updateSettingsHeaderHeight()
+    }
+
     private func configureTable() {
         let closeButton = UIButton(type: .system)
         let closeSymbol = UIImage.SymbolConfiguration(pointSize: 24, weight: .regular)
@@ -3990,7 +4077,9 @@ private final class NativeSettingsViewController: UIViewController, UITableViewD
         tableView.sectionHeaderHeight = 52
         tableView.sectionFooterHeight = 12
         tableView.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20)
-        tableView.tableHeaderView = makeSettingsHeader()
+        let settingsHeader = makeSettingsHeader()
+        adaptiveHeaderView = settingsHeader
+        tableView.tableHeaderView = settingsHeader
         tableView.translatesAutoresizingMaskIntoConstraints = false
         closeButton.translatesAutoresizingMaskIntoConstraints = false
         title.translatesAutoresizingMaskIntoConstraints = false
@@ -4016,8 +4105,7 @@ private final class NativeSettingsViewController: UIViewController, UITableViewD
 
     private func makeSettingsHeader() -> UIView {
         let signedIn = profile != nil
-        let headerHeight: CGFloat = signedIn ? 500 : 350
-        let header = UIView(frame: CGRect(x: 0, y: 0, width: view.bounds.width, height: headerHeight))
+        let header = UIView(frame: CGRect(x: 0, y: 0, width: view.bounds.width, height: 1))
         header.autoresizingMask = [.flexibleWidth]
 
         let promoCard = makePromoCard()
@@ -4034,12 +4122,19 @@ private final class NativeSettingsViewController: UIViewController, UITableViewD
 
         NSLayoutConstraint.activate([
             promoCard.topAnchor.constraint(equalTo: header.topAnchor, constant: 10),
-            promoCard.leadingAnchor.constraint(equalTo: header.leadingAnchor, constant: 20),
-            promoCard.trailingAnchor.constraint(equalTo: header.trailingAnchor, constant: -20),
-            promoCard.heightAnchor.constraint(equalToConstant: 174),
+            promoCard.centerXAnchor.constraint(equalTo: header.centerXAnchor),
+            promoCard.leadingAnchor.constraint(greaterThanOrEqualTo: header.leadingAnchor, constant: 20),
+            promoCard.trailingAnchor.constraint(lessThanOrEqualTo: header.trailingAnchor, constant: -20),
+            promoCard.widthAnchor.constraint(lessThanOrEqualToConstant: NativeAdaptiveLayout.cardMaxWidth),
+            NativeAdaptiveLayout.preferredWidth(promoCard, equalTo: header.widthAnchor, constant: -40),
+            promoCard.heightAnchor.constraint(greaterThanOrEqualToConstant: 160),
             card.topAnchor.constraint(equalTo: promoCard.bottomAnchor, constant: 18),
-            card.leadingAnchor.constraint(equalTo: header.leadingAnchor, constant: 20),
-            card.trailingAnchor.constraint(equalTo: header.trailingAnchor, constant: -20),
+            card.centerXAnchor.constraint(equalTo: header.centerXAnchor),
+            card.leadingAnchor.constraint(greaterThanOrEqualTo: header.leadingAnchor, constant: 20),
+            card.trailingAnchor.constraint(lessThanOrEqualTo: header.trailingAnchor, constant: -20),
+            card.widthAnchor.constraint(lessThanOrEqualToConstant: NativeAdaptiveLayout.cardMaxWidth),
+            NativeAdaptiveLayout.preferredWidth(card, equalTo: header.widthAnchor, constant: -40),
+            card.heightAnchor.constraint(greaterThanOrEqualToConstant: signedIn ? 238 : 128),
             card.bottomAnchor.constraint(equalTo: header.bottomAnchor, constant: -10)
         ])
 
@@ -4049,6 +4144,22 @@ private final class NativeSettingsViewController: UIViewController, UITableViewD
             configureSignedOutCard(card)
         }
         return header
+    }
+
+    private func updateSettingsHeaderHeight() {
+        guard let header = adaptiveHeaderView, tableView.bounds.width > 0 else { return }
+        if abs(header.bounds.width - tableView.bounds.width) > 0.5 {
+            header.bounds.size.width = tableView.bounds.width
+        }
+        let target = CGSize(width: tableView.bounds.width, height: UIView.layoutFittingCompressedSize.height)
+        let height = header.systemLayoutSizeFitting(
+            target,
+            withHorizontalFittingPriority: .required,
+            verticalFittingPriority: .fittingSizeLevel
+        ).height
+        guard height > 0, abs(header.frame.height - height) > 0.5 else { return }
+        header.frame.size.height = height
+        tableView.tableHeaderView = header
     }
 
     private func makePromoCard() -> UIView {
@@ -4136,7 +4247,8 @@ private final class NativeSettingsViewController: UIViewController, UITableViewD
             name.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -18),
             email.topAnchor.constraint(equalTo: name.bottomAnchor, constant: 4),
             email.leadingAnchor.constraint(equalTo: name.leadingAnchor),
-            email.trailingAnchor.constraint(equalTo: name.trailingAnchor)
+            email.trailingAnchor.constraint(equalTo: name.trailingAnchor),
+            email.bottomAnchor.constraint(lessThanOrEqualTo: card.bottomAnchor, constant: -28)
         ])
     }
 
@@ -4175,7 +4287,8 @@ private final class NativeSettingsViewController: UIViewController, UITableViewD
             title.topAnchor.constraint(equalTo: card.centerYAnchor, constant: 2),
             title.trailingAnchor.constraint(lessThanOrEqualTo: chevron.leadingAnchor, constant: -10),
             chevron.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -20),
-            chevron.centerYAnchor.constraint(equalTo: card.centerYAnchor)
+            chevron.centerYAnchor.constraint(equalTo: card.centerYAnchor),
+            title.bottomAnchor.constraint(lessThanOrEqualTo: card.bottomAnchor, constant: -20)
         ])
     }
 
@@ -4385,6 +4498,7 @@ private final class NativeAuthViewController: UIViewController, ASAuthorizationC
     private var emailField: UITextField?
     private var passwordField: UITextField?
     private var actionButtons: [UIControl] = []
+    private var choicesTopSpacerConstraint: NSLayoutConstraint?
     var startsInSignup = false
 
     private let orange = AlmidyDesignTokens.Color.gold
@@ -4407,6 +4521,11 @@ private final class NativeAuthViewController: UIViewController, ASAuthorizationC
         rebuildScreen()
     }
 
+    override func viewWillTransition(to size: CGSize, with coordinator: UIViewControllerTransitionCoordinator) {
+        super.viewWillTransition(to: size, with: coordinator)
+        choicesTopSpacerConstraint?.constant = size.height < 700 || size.width > size.height ? 12 : 48
+    }
+
     private func configureShell() {
         scrollView.alwaysBounceVertical = true
         scrollView.keyboardDismissMode = .interactive
@@ -4420,7 +4539,9 @@ private final class NativeAuthViewController: UIViewController, ASAuthorizationC
         statusLabel.textColor = AlmidyDesignTokens.Color.danger
         statusLabel.numberOfLines = 0
         statusLabel.textAlignment = .center
+        statusLabel.isAccessibilityElement = true
         activity.hidesWhenStopped = true
+        activity.accessibilityLabel = "Working"
 
         view.addSubview(scrollView)
         scrollView.addSubview(contentView)
@@ -4429,14 +4550,17 @@ private final class NativeAuthViewController: UIViewController, ASAuthorizationC
             scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             scrollView.topAnchor.constraint(equalTo: view.topAnchor),
-            scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            scrollView.bottomAnchor.constraint(equalTo: view.keyboardLayoutGuide.topAnchor),
             contentView.leadingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.leadingAnchor),
             contentView.trailingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.trailingAnchor),
             contentView.topAnchor.constraint(equalTo: scrollView.contentLayoutGuide.topAnchor),
             contentView.bottomAnchor.constraint(equalTo: scrollView.contentLayoutGuide.bottomAnchor),
             contentView.widthAnchor.constraint(equalTo: scrollView.frameLayoutGuide.widthAnchor),
-            bodyStack.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 24),
-            bodyStack.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -24),
+            bodyStack.centerXAnchor.constraint(equalTo: contentView.centerXAnchor),
+            bodyStack.leadingAnchor.constraint(greaterThanOrEqualTo: contentView.leadingAnchor, constant: 24),
+            bodyStack.trailingAnchor.constraint(lessThanOrEqualTo: contentView.trailingAnchor, constant: -24),
+            bodyStack.widthAnchor.constraint(lessThanOrEqualToConstant: NativeAdaptiveLayout.formMaxWidth),
+            NativeAdaptiveLayout.preferredWidth(bodyStack, equalTo: contentView.widthAnchor, constant: -48),
             bodyStack.topAnchor.constraint(equalTo: contentView.safeAreaLayoutGuide.topAnchor, constant: 14),
             bodyStack.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -24)
         ])
@@ -4449,6 +4573,7 @@ private final class NativeAuthViewController: UIViewController, ASAuthorizationC
         emailField = nil
         passwordField = nil
         actionButtons.removeAll()
+        choicesTopSpacerConstraint = nil
         statusLabel.text = nil
 
         let header = UIStackView()
@@ -4470,6 +4595,7 @@ private final class NativeAuthViewController: UIViewController, ASAuthorizationC
             leading.heightAnchor.constraint(equalToConstant: 50).isActive = true
         }
         leading.addTarget(self, action: #selector(handleLeadingAction), for: .touchUpInside)
+        leading.accessibilityLabel = screen == .choices ? "Cancel" : "Back to account options"
         let trailing = UIButton(type: .system)
         var trailingConfiguration = UIButton.Configuration.filled()
         trailingConfiguration.title = screen == .signup ? "Signup" : screen == .login ? "Login" : ""
@@ -4484,6 +4610,7 @@ private final class NativeAuthViewController: UIViewController, ASAuthorizationC
         }
         trailing.configuration = trailingConfiguration
         trailing.addTarget(self, action: #selector(submit), for: .touchUpInside)
+        trailing.accessibilityLabel = screen == .signup ? "Submit signup" : "Submit login"
         trailing.isHidden = screen == .choices
         trailing.heightAnchor.constraint(greaterThanOrEqualToConstant: 44).isActive = true
         let leftSpacer = UIView()
@@ -4511,7 +4638,12 @@ private final class NativeAuthViewController: UIViewController, ASAuthorizationC
 
     private func buildChoices() {
         bodyStack.spacing = 12
-        bodyStack.addArrangedSubview(makeSpacer(height: 48))
+        let topSpacer = UIView()
+        choicesTopSpacerConstraint = topSpacer.heightAnchor.constraint(
+            equalToConstant: NativeAdaptiveLayout.isCompactHeight(view) ? 12 : 48
+        )
+        choicesTopSpacerConstraint?.isActive = true
+        bodyStack.addArrangedSubview(topSpacer)
         let avatars = UIView()
         avatars.translatesAutoresizingMaskIntoConstraints = false
         avatars.heightAnchor.constraint(equalToConstant: 148).isActive = true
@@ -4580,6 +4712,8 @@ private final class NativeAuthViewController: UIViewController, ASAuthorizationC
         login.setTitleColor(AlmidyDesignTokens.Color.goldSoft, for: .normal)
         login.titleLabel?.font = AlmidyDesignTokens.Font.button(17)
         login.addTarget(self, action: #selector(showLogin), for: .touchUpInside)
+        login.accessibilityLabel = "Log in with an existing account"
+        login.heightAnchor.constraint(greaterThanOrEqualToConstant: 44).isActive = true
         bodyStack.addArrangedSubview(statusLabel)
         bodyStack.addArrangedSubview(login)
     }
@@ -4612,12 +4746,6 @@ private final class NativeAuthViewController: UIViewController, ASAuthorizationC
             face.bottomAnchor.constraint(equalTo: circle.bottomAnchor, constant: -2)
         ])
         return wrapper
-    }
-
-    private func makeSpacer(height: CGFloat) -> UIView {
-        let spacer = UIView()
-        spacer.heightAnchor.constraint(equalToConstant: height).isActive = true
-        return spacer
     }
 
     private func centeredAuthAction(_ control: UIView) -> UIView {
@@ -4661,6 +4789,7 @@ private final class NativeAuthViewController: UIViewController, ASAuthorizationC
         button.layer.borderColor = AlmidyDesignTokens.Color.line.cgColor
         button.heightAnchor.constraint(equalToConstant: 54).isActive = true
         button.addTarget(self, action: #selector(signInWithGoogle), for: .touchUpInside)
+        button.accessibilityLabel = "Continue with Google"
         actionButtons.append(button)
 
         let content = UIStackView()
@@ -4736,6 +4865,8 @@ private final class NativeAuthViewController: UIViewController, ASAuthorizationC
             forgot.setTitleColor(orange, for: .normal)
             forgot.titleLabel?.font = .systemFont(ofSize: 20, weight: .regular)
             forgot.addTarget(self, action: #selector(forgotPassword), for: .touchUpInside)
+            forgot.accessibilityLabel = "Forgot password"
+            forgot.heightAnchor.constraint(greaterThanOrEqualToConstant: 44).isActive = true
             bodyStack.addArrangedSubview(forgot)
         }
         let button = makePrimaryAuthButton(signingUp ? "Signup" : "Login")
@@ -4758,6 +4889,7 @@ private final class NativeAuthViewController: UIViewController, ASAuthorizationC
         button.configuration = configuration
         button.heightAnchor.constraint(greaterThanOrEqualToConstant: 48).isActive = true
         button.addTarget(self, action: #selector(submit), for: .touchUpInside)
+        button.accessibilityLabel = title == "Signup" ? "Submit signup" : "Submit login"
         actionButtons.append(button)
         return button
     }
@@ -4807,6 +4939,7 @@ private final class NativeAuthViewController: UIViewController, ASAuthorizationC
         }
         button.heightAnchor.constraint(equalToConstant: height).isActive = true
         button.addTarget(self, action: action, for: .touchUpInside)
+        button.accessibilityLabel = title
         actionButtons.append(button)
         return button
     }
@@ -4829,7 +4962,7 @@ private final class NativeAuthViewController: UIViewController, ASAuthorizationC
         let password = passwordField?.text ?? ""
         let signingUp = screen == .signup
         guard email.contains("@"), password.count >= 6 else {
-            statusLabel.text = "Enter a valid email and a password with at least 6 characters."
+            showAuthStatus("Enter a valid email and a password with at least 6 characters.")
             return
         }
         setLoading(true)
@@ -4840,12 +4973,12 @@ private final class NativeAuthViewController: UIViewController, ASAuthorizationC
             case .success(let session):
                 if session == nil && signingUp {
                     self.onFinish(.createdPendingConfirmation)
-                    self.statusLabel.text = "Check your email to confirm your account."
+                    self.showAuthStatus("Check your email to confirm your account.", isError: false)
                 } else if session != nil {
                     self.onFinish(.authenticated)
                     self.dismiss(animated: true)
                 }
-            case .failure(let error): self.statusLabel.text = error.localizedDescription
+            case .failure(let error): self.showAuthStatus(error.localizedDescription)
             }
         }
     }
@@ -4859,14 +4992,13 @@ private final class NativeAuthViewController: UIViewController, ASAuthorizationC
             case .success:
                 self.onFinish(.authenticated)
                 self.dismiss(animated: true)
-            case .failure(let error): self.statusLabel.text = error.localizedDescription
+            case .failure(let error): self.showAuthStatus(error.localizedDescription)
             }
         }
     }
 
     @objc private func forgotPassword() {
-        statusLabel.textColor = .secondaryLabel
-        statusLabel.text = "Password reset is available from the email sent by Almidy."
+        showAuthStatus("Password reset is available from the email sent by Almidy.", isError: false)
     }
 
     @objc private func signInWithApple() {
@@ -4888,7 +5020,7 @@ private final class NativeAuthViewController: UIViewController, ASAuthorizationC
               let token = String(data: tokenData, encoding: .utf8),
               let nonce = currentNonce else {
             setLoading(false)
-            statusLabel.text = "Apple sign-in returned an invalid credential."
+            showAuthStatus("Apple sign-in returned an invalid credential.")
             return
         }
         NativeAuthSessionStore.shared.authenticateWithApple(identityToken: token, nonce: nonce) { [weak self] result in
@@ -4899,7 +5031,7 @@ private final class NativeAuthViewController: UIViewController, ASAuthorizationC
                 self.onFinish(.authenticated)
                 self.dismiss(animated: true)
             case .failure(let error):
-                self.statusLabel.text = error.localizedDescription
+                self.showAuthStatus(error.localizedDescription)
             }
         }
     }
@@ -4908,8 +5040,14 @@ private final class NativeAuthViewController: UIViewController, ASAuthorizationC
         setLoading(false)
         let nsError = error as NSError
         if nsError.code != ASAuthorizationError.canceled.rawValue {
-            statusLabel.text = error.localizedDescription
+            showAuthStatus(error.localizedDescription)
         }
+    }
+
+    private func showAuthStatus(_ message: String, isError: Bool = true) {
+        statusLabel.textColor = isError ? AlmidyDesignTokens.Color.danger : AlmidyDesignTokens.Color.textSecondary
+        statusLabel.text = message
+        UIAccessibility.post(notification: .announcement, argument: message)
     }
 
     func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
@@ -4972,6 +5110,8 @@ private final class NativeAccountViewController: UIViewController {
     private let nameField = UITextField()
     private let saveButton = UIButton(type: .system)
     private let deleteButton = UIButton(type: .system)
+    private let scrollView = UIScrollView()
+    private let contentView = UIView()
 
     init(
         profile: NativeAuthProfile,
@@ -4999,12 +5139,19 @@ private final class NativeAccountViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = AlmidyDesignTokens.Color.settingsBackground
+        scrollView.alwaysBounceVertical = true
+        scrollView.keyboardDismissMode = .interactive
+        scrollView.translatesAutoresizingMaskIntoConstraints = false
+        contentView.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(scrollView)
+        scrollView.addSubview(contentView)
 
         let closeButton = UIButton(type: .system)
         closeButton.setTitle("Cancel", for: .normal)
         closeButton.titleLabel?.font = AlmidyDesignTokens.Font.button(17)
         closeButton.setTitleColor(AlmidyDesignTokens.Color.settingsGold, for: .normal)
         closeButton.addTarget(self, action: #selector(close), for: .touchUpInside)
+        closeButton.accessibilityLabel = "Cancel profile editing"
 
         let title = UILabel()
         title.text = "Edit Profile"
@@ -5019,6 +5166,7 @@ private final class NativeAccountViewController: UIViewController {
         saveConfiguration.cornerStyle = .capsule
         saveButton.configuration = saveConfiguration
         saveButton.addTarget(self, action: #selector(saveProfile), for: .touchUpInside)
+        saveButton.accessibilityLabel = "Save profile"
 
         let avatar = UIImageView(image: UIImage(systemName: "person.crop.circle.badge.plus"))
         avatar.tintColor = AlmidyDesignTokens.Color.settingsSecondary
@@ -5057,15 +5205,17 @@ private final class NativeAccountViewController: UIViewController {
         actionButton.setTitleColor(AlmidyDesignTokens.Color.settingsGold, for: .normal)
         actionButton.titleLabel?.font = AlmidyDesignTokens.Font.button(17)
         actionButton.addTarget(self, action: #selector(action), for: .touchUpInside)
+        actionButton.accessibilityLabel = isSignedIn ? "Sign out" : "Sign in"
 
         deleteButton.setTitle("Delete Account", for: .normal)
         deleteButton.setTitleColor(AlmidyDesignTokens.Color.danger, for: .normal)
         deleteButton.titleLabel?.font = AlmidyDesignTokens.Font.button(17)
         deleteButton.addTarget(self, action: #selector(confirmAccountDeletion), for: .touchUpInside)
+        deleteButton.accessibilityLabel = "Delete account"
 
         [closeButton, title, saveButton, avatar, profileCard, actionButton, deleteButton, statusLabel].forEach {
             $0.translatesAutoresizingMaskIntoConstraints = false
-            view.addSubview($0)
+            contentView.addSubview($0)
         }
         [nameLabel, nameField, divider, emailLabel, emailValue].forEach {
             $0.translatesAutoresizingMaskIntoConstraints = false
@@ -5073,26 +5223,41 @@ private final class NativeAccountViewController: UIViewController {
         }
         statusLabel.font = AlmidyDesignTokens.Font.body(15)
         statusLabel.textAlignment = .center
+        statusLabel.numberOfLines = 0
+        statusLabel.isAccessibilityElement = true
 
         NSLayoutConstraint.activate([
-            closeButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 12),
-            closeButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 24),
+            scrollView.topAnchor.constraint(equalTo: view.topAnchor),
+            scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            scrollView.bottomAnchor.constraint(equalTo: view.keyboardLayoutGuide.topAnchor),
+            contentView.topAnchor.constraint(equalTo: scrollView.contentLayoutGuide.topAnchor),
+            contentView.leadingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.leadingAnchor),
+            contentView.trailingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.trailingAnchor),
+            contentView.bottomAnchor.constraint(equalTo: scrollView.contentLayoutGuide.bottomAnchor),
+            contentView.widthAnchor.constraint(equalTo: scrollView.frameLayoutGuide.widthAnchor),
+
+            closeButton.topAnchor.constraint(equalTo: contentView.safeAreaLayoutGuide.topAnchor, constant: 12),
+            closeButton.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 24),
             closeButton.heightAnchor.constraint(greaterThanOrEqualToConstant: 44),
             saveButton.centerYAnchor.constraint(equalTo: closeButton.centerYAnchor),
-            saveButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -24),
+            saveButton.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -24),
             saveButton.widthAnchor.constraint(greaterThanOrEqualToConstant: 76),
             saveButton.heightAnchor.constraint(equalToConstant: 46),
-            title.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            title.centerXAnchor.constraint(equalTo: contentView.centerXAnchor),
             title.centerYAnchor.constraint(equalTo: closeButton.centerYAnchor),
 
             avatar.topAnchor.constraint(equalTo: closeButton.bottomAnchor, constant: 36),
-            avatar.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            avatar.centerXAnchor.constraint(equalTo: contentView.centerXAnchor),
             avatar.widthAnchor.constraint(equalToConstant: 132),
             avatar.heightAnchor.constraint(equalToConstant: 132),
 
             profileCard.topAnchor.constraint(equalTo: avatar.bottomAnchor, constant: 38),
-            profileCard.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 24),
-            profileCard.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -24),
+            profileCard.centerXAnchor.constraint(equalTo: contentView.centerXAnchor),
+            profileCard.leadingAnchor.constraint(greaterThanOrEqualTo: contentView.leadingAnchor, constant: 24),
+            profileCard.trailingAnchor.constraint(lessThanOrEqualTo: contentView.trailingAnchor, constant: -24),
+            profileCard.widthAnchor.constraint(lessThanOrEqualToConstant: NativeAdaptiveLayout.formMaxWidth),
+            NativeAdaptiveLayout.preferredWidth(profileCard, equalTo: contentView.widthAnchor, constant: -48),
             profileCard.heightAnchor.constraint(equalToConstant: 128),
             nameLabel.leadingAnchor.constraint(equalTo: profileCard.leadingAnchor, constant: 18),
             nameLabel.centerYAnchor.constraint(equalTo: profileCard.topAnchor, constant: 32),
@@ -5112,12 +5277,13 @@ private final class NativeAccountViewController: UIViewController {
             statusLabel.topAnchor.constraint(equalTo: profileCard.bottomAnchor, constant: 12),
             statusLabel.leadingAnchor.constraint(equalTo: profileCard.leadingAnchor),
             statusLabel.trailingAnchor.constraint(equalTo: profileCard.trailingAnchor),
-            actionButton.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            actionButton.bottomAnchor.constraint(equalTo: deleteButton.topAnchor, constant: -8),
+            actionButton.centerXAnchor.constraint(equalTo: contentView.centerXAnchor),
+            actionButton.topAnchor.constraint(greaterThanOrEqualTo: statusLabel.bottomAnchor, constant: 32),
             actionButton.heightAnchor.constraint(greaterThanOrEqualToConstant: 44),
-            deleteButton.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            deleteButton.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -20),
-            deleteButton.heightAnchor.constraint(greaterThanOrEqualToConstant: 44)
+            deleteButton.centerXAnchor.constraint(equalTo: contentView.centerXAnchor),
+            deleteButton.topAnchor.constraint(equalTo: actionButton.bottomAnchor, constant: 8),
+            deleteButton.heightAnchor.constraint(greaterThanOrEqualToConstant: 44),
+            deleteButton.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -20)
         ])
     }
 
@@ -5144,6 +5310,7 @@ private final class NativeAccountViewController: UIViewController {
             self.saveButton.isEnabled = true
             self.statusLabel.text = success ? "Profile saved" : "Could not save profile. Try again."
             self.statusLabel.textColor = success ? AlmidyDesignTokens.Color.success : AlmidyDesignTokens.Color.danger
+            UIAccessibility.post(notification: .announcement, argument: self.statusLabel.text)
         }
     }
 
@@ -5164,6 +5331,7 @@ private final class NativeAccountViewController: UIViewController {
                     self.actionButton.setTitle("Sign Out", for: .normal)
                     self.statusLabel.text = "Could not sign out. Try again."
                     self.statusLabel.textColor = .systemRed
+                    UIAccessibility.post(notification: .announcement, argument: self.statusLabel.text)
                 }
             }
         } else {
@@ -5204,6 +5372,7 @@ private final class NativeMapSearchViewController: UIViewController, MKLocalSear
         cancelButton.titleLabel?.font = AlmidyDesignTokens.Font.button(17)
         cancelButton.setTitleColor(AlmidyDesignTokens.Color.goldSoft, for: .normal)
         cancelButton.addTarget(self, action: #selector(cancel), for: .touchUpInside)
+        cancelButton.accessibilityLabel = "Close globe search"
 
         let title = UILabel()
         title.text = "Search the globe"
@@ -5231,12 +5400,14 @@ private final class NativeMapSearchViewController: UIViewController, MKLocalSear
         queryField.returnKeyType = .search
         queryField.delegate = self
         queryField.addTarget(self, action: #selector(queryChanged), for: .editingChanged)
+        queryField.accessibilityLabel = "Search for a city or place"
 
         statusLabel.font = AlmidyDesignTokens.Font.body(16)
         statusLabel.textColor = AlmidyDesignTokens.Color.searchEmptyState
         statusLabel.numberOfLines = 0
         statusLabel.textAlignment = .center
         statusLabel.text = "Start typing to search the globe."
+        statusLabel.isAccessibilityElement = true
 
         suggestionTable.register(UITableViewCell.self, forCellReuseIdentifier: "map-search-suggestion")
         suggestionTable.dataSource = self
@@ -5255,10 +5426,14 @@ private final class NativeMapSearchViewController: UIViewController, MKLocalSear
 
         NSLayoutConstraint.activate([
             cancelButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 10),
-            cancelButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 24),
+            cancelButton.leadingAnchor.constraint(equalTo: title.leadingAnchor),
+            cancelButton.heightAnchor.constraint(greaterThanOrEqualToConstant: 44),
             title.topAnchor.constraint(equalTo: cancelButton.bottomAnchor, constant: 22),
-            title.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 24),
-            title.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -24),
+            title.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            title.leadingAnchor.constraint(greaterThanOrEqualTo: view.leadingAnchor, constant: 24),
+            title.trailingAnchor.constraint(lessThanOrEqualTo: view.trailingAnchor, constant: -24),
+            title.widthAnchor.constraint(lessThanOrEqualToConstant: NativeAdaptiveLayout.formMaxWidth),
+            NativeAdaptiveLayout.preferredWidth(title, equalTo: view.widthAnchor, constant: -48),
             subtitle.topAnchor.constraint(equalTo: title.bottomAnchor, constant: 5),
             subtitle.leadingAnchor.constraint(equalTo: title.leadingAnchor),
             subtitle.trailingAnchor.constraint(equalTo: title.trailingAnchor),
@@ -5273,7 +5448,7 @@ private final class NativeMapSearchViewController: UIViewController, MKLocalSear
             suggestionTable.leadingAnchor.constraint(equalTo: title.leadingAnchor),
             suggestionTable.trailingAnchor.constraint(equalTo: title.trailingAnchor),
             suggestionTable.heightAnchor.constraint(equalToConstant: 272),
-            suggestionTable.bottomAnchor.constraint(lessThanOrEqualTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -20)
+            suggestionTable.bottomAnchor.constraint(lessThanOrEqualTo: view.keyboardLayoutGuide.topAnchor, constant: -20)
         ])
 
         queryField.becomeFirstResponder()
@@ -5305,6 +5480,7 @@ private final class NativeMapSearchViewController: UIViewController, MKLocalSear
         completions = []
         suggestionTable.isHidden = true
         statusLabel.text = "Could not load search suggestions."
+        UIAccessibility.post(notification: .announcement, argument: statusLabel.text)
     }
 
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
@@ -5344,6 +5520,7 @@ private final class NativeMapSearchViewController: UIViewController, MKLocalSear
                 guard let self else { return }
                 guard let coordinate = response?.mapItems.first?.placemark.coordinate, error == nil else {
                     self.statusLabel.text = "Could not resolve that place."
+                    UIAccessibility.post(notification: .announcement, argument: self.statusLabel.text)
                     return
                 }
                 self.onSelect(coordinate)
@@ -5371,6 +5548,8 @@ private final class NativeCreateTripViewController: UIViewController, MKLocalSea
     private let suggestionTable = UITableView(frame: .zero, style: .plain)
     private let createButton = UIButton(type: .system)
     private let locationStatus = UILabel()
+    private let scrollView = UIScrollView()
+    private let contentView = UIView()
 
     init(
         existingTrip: NativeMapTrip? = nil,
@@ -5393,11 +5572,19 @@ private final class NativeCreateTripViewController: UIViewController, MKLocalSea
     }
 
     private func configureForm() {
+        scrollView.alwaysBounceVertical = true
+        scrollView.keyboardDismissMode = .interactive
+        scrollView.translatesAutoresizingMaskIntoConstraints = false
+        contentView.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(scrollView)
+        scrollView.addSubview(contentView)
+
         let closeButton = UIButton(type: .system)
         closeButton.setTitle("Cancel", for: .normal)
         closeButton.titleLabel?.font = AlmidyDesignTokens.Font.button(17)
         closeButton.setTitleColor(AlmidyDesignTokens.Color.goldSoft, for: .normal)
         closeButton.addTarget(self, action: #selector(cancel), for: .touchUpInside)
+        closeButton.accessibilityLabel = "Cancel trip editing"
 
         let title = UILabel()
         title.text = existingTrip == nil ? "Create Trip" : "Edit Trip"
@@ -5423,6 +5610,7 @@ private final class NativeCreateTripViewController: UIViewController, MKLocalSea
         locationStatus.font = .systemFont(ofSize: 14, weight: .medium)
         locationStatus.textColor = AlmidyDesignTokens.Color.textSecondary
         locationStatus.numberOfLines = 0
+        locationStatus.isAccessibilityElement = true
 
         suggestionTable.register(UITableViewCell.self, forCellReuseIdentifier: "suggestion")
         suggestionTable.dataSource = self
@@ -5442,6 +5630,7 @@ private final class NativeCreateTripViewController: UIViewController, MKLocalSea
         createButton.layer.cornerRadius = AlmidyDesignTokens.Radius.capsule
         createButton.isEnabled = existingTrip != nil && selectedLocation != nil
         createButton.addTarget(self, action: #selector(create), for: .touchUpInside)
+        createButton.accessibilityLabel = existingTrip == nil ? "Create trip" : "Save trip changes"
         updateCreateState()
 
         let fields = UIStackView(arrangedSubviews: [nameField, destinationField, locationStatus, suggestionTable, createButton])
@@ -5449,25 +5638,41 @@ private final class NativeCreateTripViewController: UIViewController, MKLocalSea
         fields.spacing = 12
         fields.translatesAutoresizingMaskIntoConstraints = false
 
-        view.addSubview(closeButton)
-        view.addSubview(title)
-        view.addSubview(subtitle)
-        view.addSubview(fields)
+        contentView.addSubview(closeButton)
+        contentView.addSubview(title)
+        contentView.addSubview(subtitle)
+        contentView.addSubview(fields)
         closeButton.translatesAutoresizingMaskIntoConstraints = false
         title.translatesAutoresizingMaskIntoConstraints = false
         subtitle.translatesAutoresizingMaskIntoConstraints = false
 
         NSLayoutConstraint.activate([
-            closeButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 10),
-            closeButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 24),
+            scrollView.topAnchor.constraint(equalTo: view.topAnchor),
+            scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            scrollView.bottomAnchor.constraint(equalTo: view.keyboardLayoutGuide.topAnchor),
+            contentView.topAnchor.constraint(equalTo: scrollView.contentLayoutGuide.topAnchor),
+            contentView.leadingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.leadingAnchor),
+            contentView.trailingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.trailingAnchor),
+            contentView.bottomAnchor.constraint(equalTo: scrollView.contentLayoutGuide.bottomAnchor),
+            contentView.widthAnchor.constraint(equalTo: scrollView.frameLayoutGuide.widthAnchor),
+
+            closeButton.topAnchor.constraint(equalTo: contentView.safeAreaLayoutGuide.topAnchor, constant: 10),
+            closeButton.leadingAnchor.constraint(equalTo: title.leadingAnchor),
+            closeButton.heightAnchor.constraint(greaterThanOrEqualToConstant: 44),
             title.topAnchor.constraint(equalTo: closeButton.bottomAnchor, constant: 22),
-            title.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 24),
+            title.centerXAnchor.constraint(equalTo: contentView.centerXAnchor),
+            title.leadingAnchor.constraint(greaterThanOrEqualTo: contentView.leadingAnchor, constant: 24),
+            title.trailingAnchor.constraint(lessThanOrEqualTo: contentView.trailingAnchor, constant: -24),
+            title.widthAnchor.constraint(lessThanOrEqualToConstant: NativeAdaptiveLayout.formMaxWidth),
+            NativeAdaptiveLayout.preferredWidth(title, equalTo: contentView.widthAnchor, constant: -48),
             subtitle.topAnchor.constraint(equalTo: title.bottomAnchor, constant: 5),
             subtitle.leadingAnchor.constraint(equalTo: title.leadingAnchor),
+            subtitle.trailingAnchor.constraint(equalTo: title.trailingAnchor),
             fields.topAnchor.constraint(equalTo: subtitle.bottomAnchor, constant: 24),
-            fields.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 24),
-            fields.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -24),
-            fields.bottomAnchor.constraint(lessThanOrEqualTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -20),
+            fields.leadingAnchor.constraint(equalTo: title.leadingAnchor),
+            fields.trailingAnchor.constraint(equalTo: title.trailingAnchor),
+            fields.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -20),
             nameField.heightAnchor.constraint(equalToConstant: 54),
             destinationField.heightAnchor.constraint(equalToConstant: 54),
             suggestionTable.heightAnchor.constraint(equalToConstant: 272),
@@ -5520,6 +5725,7 @@ private final class NativeCreateTripViewController: UIViewController, MKLocalSea
         completions = []
         suggestionTable.isHidden = true
         locationStatus.text = "Could not load destination suggestions."
+        UIAccessibility.post(notification: .announcement, argument: locationStatus.text)
     }
 
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
@@ -5560,6 +5766,7 @@ private final class NativeCreateTripViewController: UIViewController, MKLocalSea
                 guard let self else { return }
                 guard let item = response?.mapItems.first, error == nil else {
                     self.locationStatus.text = "Could not resolve that destination."
+                    UIAccessibility.post(notification: .announcement, argument: self.locationStatus.text)
                     self.selectedLocation = nil
                     self.updateCreateState()
                     return
@@ -5600,6 +5807,7 @@ private final class NativeCreateTripViewController: UIViewController, MKLocalSea
                     self.dismiss(animated: true)
                 case .failure(let error):
                     self.locationStatus.text = error.localizedDescription
+                    UIAccessibility.post(notification: .announcement, argument: self.locationStatus.text)
                     self.updateCreateState()
                 }
             }

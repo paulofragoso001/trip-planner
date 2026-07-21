@@ -244,6 +244,7 @@ final class NativeWebFeatureViewController: UIViewController, WKNavigationDelega
     private let loadingView = UIActivityIndicatorView(style: .medium)
     private let statusLabel = UILabel()
     private let retryButton = UIButton(type: .system)
+    private var lastAnnouncedState: String?
     private var isOffline = false
     private var didFinish = false
     private var pendingResult: NativeWebFeatureResult = .dismissed
@@ -371,15 +372,22 @@ final class NativeWebFeatureViewController: UIViewController, WKNavigationDelega
         loadingView.translatesAutoresizingMaskIntoConstraints = false
         statusLabel.translatesAutoresizingMaskIntoConstraints = false
         retryButton.translatesAutoresizingMaskIntoConstraints = false
+        loadingView.isAccessibilityElement = true
+        loadingView.accessibilityLabel = "Loading \(featureTitle)"
+        loadingView.color = AlmidyDesignTokens.Color.gold
 
         statusLabel.textAlignment = .center
         statusLabel.font = .systemFont(ofSize: 16, weight: .medium)
-        statusLabel.textColor = .secondaryLabel
+        statusLabel.textColor = AlmidyDesignTokens.Color.textSecondary
         statusLabel.numberOfLines = 0
         statusLabel.isHidden = true
+        statusLabel.isAccessibilityElement = true
+        statusLabel.accessibilityTraits = .staticText
 
         retryButton.setTitle("Retry", for: .normal)
+        retryButton.setTitleColor(AlmidyDesignTokens.Color.gold, for: .normal)
         retryButton.titleLabel?.font = .systemFont(ofSize: 17, weight: .semibold)
+        retryButton.accessibilityLabel = "Retry loading \(featureTitle)"
         retryButton.addTarget(self, action: #selector(retry), for: .touchUpInside)
         retryButton.isHidden = true
 
@@ -394,7 +402,8 @@ final class NativeWebFeatureViewController: UIViewController, WKNavigationDelega
             statusLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 32),
             statusLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -32),
             retryButton.topAnchor.constraint(equalTo: statusLabel.bottomAnchor, constant: 16),
-            retryButton.centerXAnchor.constraint(equalTo: view.centerXAnchor)
+            retryButton.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            retryButton.heightAnchor.constraint(greaterThanOrEqualToConstant: 44)
         ])
     }
 
@@ -579,6 +588,13 @@ final class NativeWebFeatureViewController: UIViewController, WKNavigationDelega
         statusLabel.isHidden = message == nil
         retryButton.isHidden = !retry
         webView.isHidden = loading || message != nil
+
+        if let message, message != lastAnnouncedState {
+            lastAnnouncedState = message
+            UIAccessibility.post(notification: .announcement, argument: message)
+        } else if message == nil {
+            lastAnnouncedState = nil
+        }
     }
 
     @objc private func close() {
