@@ -18,7 +18,8 @@ const provider = "google_places" as const;
 export const googlePlacesProvider: ProviderAdapter = {
   name: provider,
   resolvePlace,
-  searchNearbyActivities
+  searchNearbyActivities,
+  searchPostcardGalleryQuery
 };
 
 export async function getGooglePlacePhotoMetadata(placeId: string) {
@@ -435,9 +436,38 @@ async function searchNearbyActivities(
   }
 }
 
-function normalizeGooglePlace(item: any, type: TravelInventoryItem["type"]) {
-  const photoMetadata = googlePhotoMetadata(item);
+async function searchPostcardGalleryQuery(
+  input: NearbyActivitySearchInput,
+  query: string
+): Promise<TravelInventoryItem[]> {
+  const apiKey = googlePlacesApiKey();
+  if (!apiKey) return [];
+  const url = new URL("https://maps.googleapis.com/maps/api/place/textsearch/json");
+  url.searchParams.set("query", query);
+  url.searchParams.set("type", "tourist_attraction");
+  url.searchParams.set("location", `${input.location.latitude},${input.location.longitude}`);
+  url.searchParams.set("radius", String(Math.max(input.radiusMeters || 5000, 5000)));
+  url.searchParams.set("key", apiKey);
+  const response = await fetchWithTimeout(url);
+  if (!response.ok) throw new Error(`Google postcard discovery failed with status ${response.status}.`);
+  const payload = await response.json();
+  return (Array.isArray(payload?.results) ? payload.results : [])
+    .filter((item: any) => Array.isArray(item?.photos) && item.photos.length > 0)
+    .map((item: any) => normalizeGooglePlace(item, "activity", true));
+}
+
+function normalizeGooglePlace(
+  item: any,
+  type: TravelInventoryItem["type"],
+  postcardGallery = false
+) {
+  const photoMetadata = googlePhotoMetadata(item, postcardGallery);
   const photo = readProviderPhoto(photoMetadata);
+  const {
+    placePhoto,
+    primaryPhotoDimensions: _postcardPhotoDimensions,
+    ...legacyPhotoMetadata
+  } = photoMetadata;
   return normalizeInventoryItem({
     address: item.formatted_address || item.vicinity || null,
     category: Array.isArray(item.types) ? item.types[0] || null : null,
@@ -448,15 +478,25 @@ function normalizeGooglePlace(item: any, type: TravelInventoryItem["type"]) {
     imageUrl: buildPlacePhotoUrl(photoMetadata, 800),
     latitude: item.geometry?.location?.lat ?? null,
     longitude: item.geometry?.location?.lng ?? null,
-    metadata: {
-      businessStatus: item.business_status || null,
-      ...photoMetadata,
-      formattedAddress: item.formatted_address || item.vicinity || null,
-      googleMapsUri: item.url || (item.place_id ? `https://www.google.com/maps/place/?q=place_id:${item.place_id}` : null),
-      googlePlaceUri: item.place_id ? `https://www.google.com/maps/place/?q=place_id:${item.place_id}` : null,
-      placeTypes: item.types || [],
-      providerPlaceId: item.place_id || null
-    },
+    metadata: postcardGallery
+      ? {
+          businessStatus: item.business_status || null,
+          formattedAddress: item.formatted_address || item.vicinity || null,
+          googleMapsUri: item.url || (item.place_id ? `https://www.google.com/maps/place/?q=place_id:${item.place_id}` : null),
+          googlePlaceUri: item.place_id ? `https://www.google.com/maps/place/?q=place_id:${item.place_id}` : null,
+          placePhoto,
+          placeTypes: item.types || [],
+          providerPlaceId: item.place_id || null
+        }
+      : {
+          businessStatus: item.business_status || null,
+          ...legacyPhotoMetadata,
+          formattedAddress: item.formatted_address || item.vicinity || null,
+          googleMapsUri: item.url || (item.place_id ? `https://www.google.com/maps/place/?q=place_id:${item.place_id}` : null),
+          googlePlaceUri: item.place_id ? `https://www.google.com/maps/place/?q=place_id:${item.place_id}` : null,
+          placeTypes: item.types || [],
+          providerPlaceId: item.place_id || null
+        },
     provider,
     providerItemId: item.place_id || null,
     rating: typeof item.rating === "number" ? item.rating : null,
@@ -467,9 +507,11 @@ function normalizeGooglePlace(item: any, type: TravelInventoryItem["type"]) {
   });
 }
 
-function googlePhotoMetadata(item: any) {
+function googlePhotoMetadata(item: any, preferPostcardPhoto = false) {
   const photos = Array.isArray(item.photos) ? item.photos : [];
-  const primaryPhoto = photos[0] || null;
+  const primaryPhoto = preferPostcardPhoto
+    ? [...photos].sort((a: any, b: any) => photoPostcardScore(b) - photoPostcardScore(a))[0] || null
+    : photos[0] || null;
   const primaryPhotoName =
     typeof primaryPhoto?.name === "string"
       ? primaryPhoto.name.replace(/\/media$/, "")
@@ -485,6 +527,17 @@ function googlePhotoMetadata(item: any) {
         ? item.name
         : null;
 
+  const placePhoto = {
+    placeTypes: Array.isArray(item.types) ? item.types.filter((type: unknown): type is string => typeof type === "string") : [],
+    primaryPhotoAttributions: normalizeGoogleAttributions(primaryPhotoAttributions),
+    primaryPhotoDimensions: primaryPhoto ? {
+      heightPx: typeof primaryPhoto.heightPx === "number" ? primaryPhoto.heightPx : Number(primaryPhoto.height) || null,
+      widthPx: typeof primaryPhoto.widthPx === "number" ? primaryPhoto.widthPx : Number(primaryPhoto.width) || null
+    } : null,
+    primaryPhotoName,
+    primaryPhotoReference,
+    providerPlaceId: typeof item.place_id === "string" ? item.place_id : null
+  };
   return {
     displayName,
     imageAlt: displayName ? `Photo of ${displayName}` : null,
@@ -498,10 +551,31 @@ function googlePhotoMetadata(item: any) {
       photoReference: typeof photo?.photo_reference === "string" ? photo.photo_reference : null,
       widthPx: typeof photo?.widthPx === "number" ? photo.widthPx : photo?.width || null
     })),
+    placePhoto,
     primaryPhotoAttributions,
+    primaryPhotoDimensions: placePhoto.primaryPhotoDimensions,
     primaryPhotoName,
     primaryPhotoReference
   };
+}
+
+function normalizeGoogleAttributions(value: unknown) {
+  if (!Array.isArray(value)) return [];
+  return value.map((item) => {
+    if (typeof item === "string") return stripHtml(item);
+    if (item && typeof item === "object" && "displayName" in item && typeof item.displayName === "string") {
+      return item.displayName.trim();
+    }
+    return "";
+  }).filter(Boolean);
+}
+
+function photoPostcardScore(photo: any) {
+  const width = typeof photo?.widthPx === "number" ? photo.widthPx : Number(photo?.width) || 0;
+  const height = typeof photo?.heightPx === "number" ? photo.heightPx : Number(photo?.height) || 0;
+  if (!width || !height) return 0;
+  const landscape = width > height * 1.15 ? 3 : width >= height ? 1.5 : 0;
+  return landscape + Math.min(3, (width * height) / 4_000_000);
 }
 
 function formatGoogleAttribution(value: unknown) {

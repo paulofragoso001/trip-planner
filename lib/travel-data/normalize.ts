@@ -1,6 +1,7 @@
 import "server-only";
 
 import type {
+  TravelInventoryMetadata,
   TravelInventoryItem,
   TravelInventoryType,
   TravelProviderName
@@ -22,7 +23,7 @@ export function normalizeInventoryItem(input: {
   imageUrl?: string | null;
   latitude?: number | null;
   longitude?: number | null;
-  metadata?: Record<string, unknown> | null;
+  metadata?: TravelInventoryMetadata | null;
   priceFrom?: number | null;
   provider: TravelProviderName;
   providerItemId?: string | null;

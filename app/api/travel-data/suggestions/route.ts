@@ -27,6 +27,7 @@ export async function POST(request: Request) {
         longitude: validation.value.longitude,
         title: validation.value.title
       },
+      purpose: validation.value.purpose,
       radiusMeters: validation.value.radiusMeters,
       tripContext: { tripId: validation.value.tripId }
     });

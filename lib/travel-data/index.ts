@@ -7,6 +7,10 @@ import { eventsProvider } from "@/lib/travel-data/providers/events";
 import { flightsProvider } from "@/lib/travel-data/providers/flights";
 import { hotelsProvider } from "@/lib/travel-data/providers/hotels";
 import { rankInventoryItems } from "@/lib/travel-data/ranking";
+import {
+  planPostcardGalleryQueries,
+  rankPostcardGallery
+} from "@/lib/travel-data/postcard-gallery";
 import type {
   NearbyActivitySearchInput,
   PlaceResolutionQuery,
@@ -78,15 +82,35 @@ export async function resolvePlace(
 export async function searchNearbyActivities(
   input: NearbyActivitySearchInput
 ): Promise<TravelInventoryItem[]> {
+  if (input.purpose === "postcard_gallery") {
+    const queries = planPostcardGalleryQueries(input.location.title || "");
+    if (!queries.length) return [];
+    const postcardRequests = providers.flatMap((provider) =>
+      provider.searchPostcardGalleryQuery
+        ? queries.map((query) => provider.searchPostcardGalleryQuery!(input, query))
+        : []
+    );
+    const postcardResults = await Promise.allSettled(postcardRequests);
+    return rankPostcardGallery(
+      postcardResults.flatMap((result) => result.status === "fulfilled" ? result.value : []),
+      {
+        destination: input.location.title || "",
+        limit: input.limit || 5,
+        origin: input.location
+      }
+    );
+  }
+
   const results = await Promise.allSettled(
     providers
       .filter((provider) => provider.searchNearbyActivities)
       .map((provider) => provider.searchNearbyActivities!(input))
   );
-  return rankInventoryItems(
+  const ranked = rankInventoryItems(
     results.flatMap((result) => (result.status === "fulfilled" ? result.value : [])),
     input.location
-  ).slice(0, input.limit || 5);
+  );
+  return ranked.slice(0, input.limit || 5);
 }
 
 export type {

@@ -36,7 +36,7 @@ export type TravelInventoryItem = {
   imageUrl: string | null;
   latitude: number | null;
   longitude: number | null;
-  metadata: Record<string, unknown>;
+  metadata: TravelInventoryMetadata;
   priceFrom: number | null;
   provider: TravelProviderName;
   providerItemId: string | null;
@@ -45,6 +45,24 @@ export type TravelInventoryItem = {
   sourceUrl: string | null;
   title: string;
   type: TravelInventoryType;
+};
+
+export type TravelInventoryMetadata = Record<string, unknown> & {
+  placePhoto?: PlacePhotoMetadata | null;
+};
+
+export type PlacePhotoDimensions = {
+  heightPx: number | null;
+  widthPx: number | null;
+};
+
+export type PlacePhotoMetadata = {
+  placeTypes: string[];
+  primaryPhotoAttributions: string[];
+  primaryPhotoDimensions: PlacePhotoDimensions | null;
+  primaryPhotoName: string | null;
+  primaryPhotoReference: string | null;
+  providerPlaceId: string | null;
 };
 
 export type TripRecommendationStatus = "booked" | "dismissed" | "saved" | "suggested";
@@ -136,6 +154,7 @@ export type TripContext = {
 export type NearbyActivitySearchInput = {
   limit?: number;
   location: TravelLocation;
+  purpose?: "nearby_activities" | "postcard_gallery";
   radiusMeters?: number;
   tripContext?: TripContext;
 };
@@ -145,5 +164,9 @@ export type ProviderAdapter = {
   resolvePlace?: (query: PlaceResolutionQuery, context?: TripContext) => Promise<ResolvedPlace>;
   searchNearbyActivities?: (
     input: NearbyActivitySearchInput
+  ) => Promise<TravelInventoryItem[]>;
+  searchPostcardGalleryQuery?: (
+    input: NearbyActivitySearchInput,
+    query: string
   ) => Promise<TravelInventoryItem[]>;
 };

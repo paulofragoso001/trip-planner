@@ -10,6 +10,7 @@ export type SuggestionsInput = {
   limit: number;
   latitude: number;
   longitude: number;
+  purpose: "nearby_activities" | "postcard_gallery";
   radiusMeters: number;
   title: string | null;
   tripId: string | null;
@@ -43,6 +44,9 @@ export function validateSuggestionsInput(value: unknown): ValidationResult<Sugge
 
   if (typeof latitude !== "number") details.latitude = "latitude is required.";
   if (typeof longitude !== "number") details.longitude = "longitude is required.";
+  if (value.purpose != null && value.purpose !== "nearby_activities" && value.purpose !== "postcard_gallery") {
+    details.purpose = "purpose must be nearby_activities or postcard_gallery.";
+  }
 
   if (Object.keys(details).length) return { details, ok: false };
 
@@ -52,6 +56,7 @@ export function validateSuggestionsInput(value: unknown): ValidationResult<Sugge
       latitude: latitude!,
       limit: clampInt(readNumber(value.limit), 1, 10, 5),
       longitude: longitude!,
+      purpose: value.purpose === "postcard_gallery" ? "postcard_gallery" : "nearby_activities",
       radiusMeters: clampInt(readNumber(value.radiusMeters ?? value.radius_meters), 250, 5000, 1600),
       title: readNullableString(value.title, 300),
       tripId: readNullableString(value.tripId ?? value.trip_id, 120)
