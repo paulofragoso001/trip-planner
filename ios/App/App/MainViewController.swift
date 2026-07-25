@@ -87,6 +87,15 @@ final class MainViewController: CAPBridgeViewController {
     private var didPresentNativeDashboard = false
     private var nativeTripStore: NativeTripStore?
 
+    override func instanceDescriptor() -> InstanceDescriptor {
+        let descriptor = super.instanceDescriptor()
+        // Capacitor's debug logger serializes complete plugin call options and
+        // results. Auth bridge calls necessarily carry session credentials, so
+        // bridge logging must remain disabled in every build configuration.
+        descriptor.loggingBehavior = .none
+        return descriptor
+    }
+
     override func capacitorDidLoad() {
         super.capacitorDidLoad()
         // Preserve the mobile signal used by the server route guard while
@@ -276,12 +285,6 @@ final class NativeWebFeatureViewController: UIViewController, WKNavigationDelega
                     key: Self.storageKey(for: nativeSession, fallback: authStorage?.key),
                     value: Self.storageValue(for: nativeSession, fallback: authStorage?.value)
                 ),
-                injectionTime: .atDocumentStart,
-                forMainFrameOnly: true
-            ))
-        } else if let authStorage {
-            configuration.userContentController.addUserScript(WKUserScript(
-                source: Self.sessionInjectionScript(key: authStorage.key, value: authStorage.value),
                 injectionTime: .atDocumentStart,
                 forMainFrameOnly: true
             ))
@@ -628,7 +631,6 @@ final class NativeWebFeatureViewController: UIViewController, WKNavigationDelega
         let script = """
         JSON.stringify({
             readyState: document.readyState,
-            href: window.location.href,
             title: document.title,
             bodyTextLength: (document.body?.innerText || '').trim().length,
             bodyHTMLLength: (document.body?.innerHTML || '').length

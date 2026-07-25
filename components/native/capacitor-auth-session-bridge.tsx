@@ -8,15 +8,23 @@ import {
   isNativeCapacitorRuntime,
   NATIVE_AUTH_CALLBACK_URL
 } from "@/lib/native/capacitor-runtime";
+import {
+  NativeAuthEchoGuard,
+  nativeEventForAuthChange,
+  sessionIdentity,
+  sessionsLogicallyEqual,
+  type NativeSessionIdentity
+} from "@/lib/native/auth-session-reconciliation";
 import { createClient } from "@/lib/supabase/client";
 
 type NativeAuthSessionContract = {
   event: "SIGNED_IN" | "SIGNED_OUT" | "TOKEN_REFRESHED";
   revisionId: number;
+  state: "missing" | "valid" | "expired" | "invalid" | "explicitly_signed_out";
   accessToken?: string | null;
   refreshToken?: string | null;
   expiresAt?: number | null;
-  userId?: string | null;
+  signOutGeneration?: number | null;
   isSignedIn: boolean;
 };
 
@@ -36,6 +44,19 @@ function isNativeAuthCallbackUrl(url: string) {
   return url.startsWith(NATIVE_AUTH_CALLBACK_URL);
 }
 
+function safeNativeAuthErrorCode(error: unknown) {
+  if (!error || typeof error !== "object" || !("code" in error)) return "unknown";
+  const code = (error as { code?: unknown }).code;
+  return typeof code === "string" && /^[a-z0-9_-]{1,64}$/i.test(code) ? code : "unknown";
+}
+
+function reportNativeAuthBridgeFailure(operation: string, error: unknown) {
+  console.error("Native authentication bridge operation failed.", {
+    operation,
+    code: safeNativeAuthErrorCode(error)
+  });
+}
+
 export function CapacitorAuthSessionBridge() {
   const router = useRouter();
 
@@ -44,18 +65,25 @@ export function CapacitorAuthSessionBridge() {
 
     let isMounted = true;
     const supabase = createClient();
+    supabase.auth.stopAutoRefresh();
     const listenerCleanups: Array<() => void> = [];
     let latestNativeRevision = 0;
+    let isApplyingNativeState = false;
+    const echoGuard = new NativeAuthEchoGuard();
 
-    function sessionContract(event: AuthChangeEvent, session: Session | null): NativeAuthSessionContract {
-      const nativeEvent = event === "TOKEN_REFRESHED" ? "TOKEN_REFRESHED" : event === "SIGNED_OUT" ? "SIGNED_OUT" : "SIGNED_IN";
+    function sessionContract(
+      event: AuthChangeEvent,
+      session: Session | null,
+      revisionId: number
+    ): NativeAuthSessionContract {
+      const nativeEvent = nativeEventForAuthChange(event);
       return {
         event: nativeEvent,
-        revisionId: Date.now(),
+        revisionId,
+        state: nativeEvent === "SIGNED_OUT" ? "explicitly_signed_out" : session ? "valid" : "missing",
         accessToken: session?.access_token ?? null,
         refreshToken: session?.refresh_token ?? null,
         expiresAt: session?.expires_at ?? null,
-        userId: session?.user?.id ?? null,
         isSignedIn: Boolean(session?.access_token && session?.refresh_token)
       };
     }
@@ -63,22 +91,60 @@ export function CapacitorAuthSessionBridge() {
     async function syncNativeSession(contract: NativeAuthSessionContract) {
       if (!isMounted || contract.revisionId < latestNativeRevision) return;
       latestNativeRevision = contract.revisionId;
-      if (!contract.isSignedIn || !contract.accessToken || !contract.refreshToken) {
-        await supabase.auth.signOut({ scope: "local" });
+      if (contract.state === "missing" || contract.state === "invalid") {
+        echoGuard.observeNative(null);
         return;
       }
-      await supabase.auth.setSession({
-        access_token: contract.accessToken,
-        refresh_token: contract.refreshToken
-      });
+      isApplyingNativeState = true;
+      try {
+        if (contract.state === "explicitly_signed_out" || contract.event === "SIGNED_OUT") {
+          echoGuard.observeNative(null);
+          await supabase.auth.signOut({ scope: "local" });
+          return;
+        }
+        if (
+          !contract.isSignedIn
+          || !contract.accessToken
+          || !contract.refreshToken
+          || !contract.expiresAt
+        ) return;
+        const nativeIdentity: NativeSessionIdentity = {
+          accessToken: contract.accessToken,
+          refreshToken: contract.refreshToken,
+          expiresAt: contract.expiresAt
+        };
+        const { data: currentData } = await supabase.auth.getSession();
+        const currentIdentity = sessionIdentity(currentData.session);
+        echoGuard.observeNative(nativeIdentity);
+        if (!echoGuard.shouldApplyNative(currentIdentity, nativeIdentity)) return;
+        echoGuard.beginNativeApplication(nativeIdentity);
+        const { data, error } = await supabase.auth.setSession({
+          access_token: contract.accessToken,
+          refresh_token: contract.refreshToken
+        });
+        if (error) {
+          echoGuard.cancelNativeApplication();
+          throw error;
+        }
+        const appliedIdentity = sessionIdentity(data.session);
+        if (!sessionsLogicallyEqual(appliedIdentity, nativeIdentity)) {
+          echoGuard.cancelNativeApplication();
+        }
+      } finally {
+        isApplyingNativeState = false;
+      }
     }
 
-    async function syncWebSessionToNative(event: AuthChangeEvent, session: Session | null) {
+    async function syncWebSessionToNative(
+      event: AuthChangeEvent,
+      session: Session | null,
+      revisionId: number
+    ) {
       if (!isMounted) return;
-      const contract = sessionContract(event, session);
+      const contract = sessionContract(event, session, revisionId);
       latestNativeRevision = Math.max(latestNativeRevision, contract.revisionId);
       try {
-        if (contract.event === "SIGNED_OUT") {
+        if (event === "SIGNED_OUT") {
           await NativeAuth.clearNativeAuthSession();
         } else if (contract.isSignedIn) {
           await NativeAuth.syncNativeAuthSession({
@@ -86,7 +152,8 @@ export function CapacitorAuthSessionBridge() {
           });
         }
       } catch (error) {
-        console.error("Failed to sync the WebView session to native Keychain storage:", error);
+        reportNativeAuthBridgeFailure("sync_web_session_to_native", error);
+        throw error;
       }
     }
 
@@ -128,19 +195,38 @@ export function CapacitorAuthSessionBridge() {
     NativeAuth.addListener("nativeAuthStateChanged", (contract) => {
       void syncNativeSession(contract);
     }).then((listener) => {
+      if (!isMounted) {
+        void listener.remove();
+        return;
+      }
       nativeAuthListener = listener;
     }).catch((error) => {
-      console.error("Failed to subscribe to native authentication changes:", error);
+      if (!isMounted) return;
+      reportNativeAuthBridgeFailure("subscribe_to_native_session", error);
     });
 
     NativeAuth.getNativeAuthSession()
-      .then((contract) => syncNativeSession(contract))
+      .then((contract) => {
+        // An empty native Keychain is not an explicit sign-out. The WebView may
+        // already hold the active Supabase session and will sync it through
+        // onAuthStateChange below. Only restore native state when it exists.
+        if (contract.state === "valid" || contract.state === "expired") {
+          return syncNativeSession(contract);
+        }
+      })
       .catch((error) => {
-        console.error("Failed to restore the native authentication session:", error);
+        reportNativeAuthBridgeFailure("restore_native_session", error);
       });
 
     const authListener = supabase.auth.onAuthStateChange((event, session) => {
-      void syncWebSessionToNative(event, session);
+      const identity = sessionIdentity(session);
+      if (echoGuard.consumeExpectedWebEcho(event, identity)) return;
+      if (isApplyingNativeState) return;
+      const reservation = echoGuard.reserveWebForward(event, identity, Date.now);
+      if (!reservation) return;
+      void syncWebSessionToNative(event, session, reservation.revisionId).catch(() => {
+        echoGuard.releaseWebForward(reservation);
+      });
     });
 
     async function registerNativeDeepLinkListener() {

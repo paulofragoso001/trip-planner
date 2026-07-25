@@ -6,6 +6,7 @@ import EventKit
 import Foundation
 import MapKit
 import Network
+import os
 import PhotosUI
 import Security
 import UIKit
@@ -32,507 +33,10 @@ enum NativeServiceConfiguration {
     }
 }
 
-private extension URL {
+extension URL {
     var originString: String {
         guard let scheme, let host else { return absoluteString }
         return scheme + "://" + host + (port.map { ":\($0)" } ?? "")
-    }
-}
-
-enum NativeAuthSessionEvent: String, Codable {
-    case signedIn = "SIGNED_IN"
-    case signedOut = "SIGNED_OUT"
-    case tokenRefreshed = "TOKEN_REFRESHED"
-}
-
-struct NativeAuthSession: Codable, Equatable {
-    let accessToken: String
-    let refreshToken: String?
-    let expiresAt: Int?
-    let userId: String?
-
-    init(accessToken: String, refreshToken: String?, expiresAt: Int?, userId: String? = nil) {
-        self.accessToken = accessToken
-        self.refreshToken = refreshToken
-        self.expiresAt = expiresAt
-        self.userId = userId
-    }
-}
-
-struct NativeAuthProfile {
-    let name: String
-    let email: String
-}
-
-struct NativeAuthSessionContract: Codable, Equatable {
-    let event: NativeAuthSessionEvent
-    let revisionId: Int64
-    let accessToken: String?
-    let refreshToken: String?
-    let expiresAt: Int?
-    let userId: String?
-    let isSignedIn: Bool
-
-    static func signedOut(revisionId: Int64) -> NativeAuthSessionContract {
-        NativeAuthSessionContract(
-            event: .signedOut,
-            revisionId: revisionId,
-            accessToken: nil,
-            refreshToken: nil,
-            expiresAt: nil,
-            userId: nil,
-            isSignedIn: false
-        )
-    }
-}
-
-extension Notification.Name {
-    static let nativeAuthSessionChanged = Notification.Name("app.almidy.nativeAuthSessionChanged")
-}
-
-private let nativeAuthCallbackURL = URL(string: "app.almidy.premium://auth/callback")!
-
-final class NativeAuthSessionStore {
-    static let shared = NativeAuthSessionStore()
-
-    private let service: String
-    private let account: String
-    private let supabaseURL: URL?
-    private let publishableKey: String?
-    private static let revisionQueue = DispatchQueue(label: "app.almidy.auth.revisions")
-    private static var lastRevisionId: Int64 = 0
-
-    init(
-        service: String = "app.almidy.premium.supabase-session",
-        account: String = "current",
-        supabaseURL: URL? = NativeServiceConfiguration.supabaseURL,
-        publishableKey: String? = NativeServiceConfiguration.supabasePublishableKey
-    ) {
-        self.service = service
-        self.account = account
-        self.supabaseURL = supabaseURL
-        self.publishableKey = publishableKey
-    }
-
-    var session: NativeAuthSession? {
-        guard let data = readData() else { return nil }
-        return try? JSONDecoder().decode(NativeAuthSession.self, from: data)
-    }
-
-    var isExpiringSoon: Bool {
-        guard let expiresAt = session?.expiresAt else { return false }
-        return Date().timeIntervalSince1970 >= Double(expiresAt - 60)
-    }
-
-    var profile: NativeAuthProfile {
-        guard let token = session?.accessToken,
-              let payload = Self.tokenPayload(token) else {
-            return NativeAuthProfile(name: "", email: "")
-        }
-        let metadata = payload["user_metadata"] as? [String: Any]
-        let name = metadata?["full_name"] as? String
-            ?? metadata?["name"] as? String
-            ?? ""
-        return NativeAuthProfile(name: name, email: payload["email"] as? String ?? "")
-    }
-
-    func updateProfileName(_ name: String, using urlSession: URLSession = .shared, completion: @escaping (Bool) -> Void) {
-        guard let accessToken = session?.accessToken,
-              let supabaseURL,
-              let publishableKey,
-              let url = URL(string: "auth/v1/user", relativeTo: supabaseURL) else {
-            DispatchQueue.main.async { completion(false) }
-            return
-        }
-        var request = URLRequest(url: url)
-        request.httpMethod = "PUT"
-        request.setValue(publishableKey, forHTTPHeaderField: "apikey")
-        request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = try? JSONSerialization.data(withJSONObject: ["data": ["full_name": name]])
-        urlSession.dataTask(with: request) { _, response, _ in
-            let success = (response as? HTTPURLResponse).map { (200...299).contains($0.statusCode) } ?? false
-            DispatchQueue.main.async { completion(success) }
-        }.resume()
-    }
-
-    func refresh(using urlSession: URLSession, completion: @escaping (Bool) -> Void) {
-        guard let refreshToken = session?.refreshToken,
-              let supabaseURL,
-              let publishableKey,
-              let url = URL(string: "auth/v1/token?grant_type=refresh_token", relativeTo: supabaseURL) else {
-            DispatchQueue.main.async { completion(false) }
-            return
-        }
-
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue(publishableKey, forHTTPHeaderField: "apikey")
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = try? JSONSerialization.data(withJSONObject: ["refresh_token": refreshToken])
-
-        urlSession.dataTask(with: request) { [weak self] data, response, _ in
-            guard let self,
-                  let httpResponse = response as? HTTPURLResponse,
-                  (200...299).contains(httpResponse.statusCode),
-                  let data,
-                  let refreshed = try? JSONDecoder().decode(NativeSupabaseRefreshResponse.self, from: data) else {
-                DispatchQueue.main.async { completion(false) }
-                return
-            }
-            self.save(NativeAuthSession(
-                accessToken: refreshed.accessToken,
-                refreshToken: refreshed.refreshToken ?? refreshToken,
-                expiresAt: refreshed.expiresAt ?? Int(Date().timeIntervalSince1970) + (refreshed.expiresIn ?? 3600),
-                userId: self.session?.userId
-            ), event: .tokenRefreshed)
-            DispatchQueue.main.async { completion(true) }
-        }.resume()
-    }
-
-    func save(_ session: NativeAuthSession, event: NativeAuthSessionEvent = .tokenRefreshed) {
-        let previous = self.session
-        let sessionToSave = session.userId == nil && previous?.userId != nil
-            ? NativeAuthSession(
-                accessToken: session.accessToken,
-                refreshToken: session.refreshToken,
-                expiresAt: session.expiresAt,
-                userId: previous?.userId
-            )
-            : session
-        guard let data = try? JSONEncoder().encode(sessionToSave) else { return }
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: account
-        ]
-        let status = SecItemUpdate(query as CFDictionary, [kSecValueData as String: data] as CFDictionary)
-        if status == errSecItemNotFound {
-            var item = query
-            item[kSecValueData as String] = data
-            SecItemAdd(item as CFDictionary, nil)
-        }
-
-        guard previous != sessionToSave else { return }
-        postChange(event: event, session: sessionToSave)
-    }
-
-    static func session(fromWebStorageValue rawValue: String) -> NativeAuthSession? {
-        guard let data = rawValue.data(using: .utf8),
-              let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let accessToken = object["access_token"] as? String,
-              !accessToken.isEmpty else { return nil }
-        let user = object["user"] as? [String: Any]
-        return NativeAuthSession(
-            accessToken: accessToken,
-            refreshToken: object["refresh_token"] as? String,
-            expiresAt: object["expires_at"] as? Int,
-            userId: object["user_id"] as? String ?? user?["id"] as? String ?? Self.userId(fromAccessToken: accessToken)
-        )
-    }
-
-    @discardableResult
-    func update(from rawValue: String) -> Bool {
-        guard let importedSession = Self.session(fromWebStorageValue: rawValue) else { return false }
-        save(importedSession, event: .signedIn)
-        return true
-    }
-
-    func accessToken(using urlSession: URLSession = .shared, completion: @escaping (String?) -> Void) {
-        guard let current = session else {
-            completion(nil)
-            return
-        }
-        guard isExpiringSoon else {
-            completion(current.accessToken)
-            return
-        }
-
-        refresh(using: urlSession) { [weak self] _ in
-            DispatchQueue.main.async {
-                completion(self?.session?.accessToken ?? current.accessToken)
-            }
-        }
-    }
-
-    func authenticate(
-        email: String,
-        password: String,
-        name: String? = nil,
-        signingUp: Bool,
-        using urlSession: URLSession = .shared,
-        completion: @escaping (Result<NativeAuthSession?, Error>) -> Void
-    ) {
-        guard let supabaseURL,
-              let publishableKey,
-              let url = URL(string: signingUp ? "auth/v1/signup" : "auth/v1/token?grant_type=password", relativeTo: supabaseURL) else {
-            completion(.failure(NativeAuthError.configurationMissing))
-            return
-        }
-
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue(publishableKey, forHTTPHeaderField: "apikey")
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        var body: [String: Any] = [
-            "email": email,
-            "password": password
-        ]
-        if signingUp, let name, !name.isEmpty {
-            body["data"] = ["full_name": name]
-        }
-        request.httpBody = try? JSONSerialization.data(withJSONObject: body)
-
-        urlSession.dataTask(with: request) { [weak self] data, response, _ in
-            guard let httpResponse = response as? HTTPURLResponse, let data else {
-                DispatchQueue.main.async { completion(.failure(NativeAuthError.network)) }
-                return
-            }
-            guard (200...299).contains(httpResponse.statusCode) else {
-                let responseError = try? JSONDecoder().decode(NativeAuthErrorResponse.self, from: data)
-                let message = responseError?.message ?? responseError?.errorDescription
-                    ?? "Almidy could not authenticate this account."
-                DispatchQueue.main.async { completion(.failure(NativeAuthError.server(message))) }
-                return
-            }
-
-            guard let payload = try? JSONDecoder().decode(NativeAuthSessionPayload.self, from: data) else {
-                DispatchQueue.main.async { completion(.success(nil)) }
-                return
-            }
-            let session = NativeAuthSession(
-                accessToken: payload.accessToken,
-                refreshToken: payload.refreshToken,
-                expiresAt: payload.expiresAt ?? Int(Date().timeIntervalSince1970) + (payload.expiresIn ?? 3600),
-                userId: payload.userId ?? payload.user?.id ?? Self.userId(fromAccessToken: payload.accessToken)
-            )
-            self?.save(session, event: .signedIn)
-            DispatchQueue.main.async { completion(.success(session)) }
-        }.resume()
-    }
-
-    func authenticateWithGoogle(
-        using presentationContext: ASWebAuthenticationPresentationContextProviding,
-        completion: @escaping (Result<NativeAuthSession, Error>) -> Void
-    ) -> ASWebAuthenticationSession? {
-        guard let supabaseURL,
-              var components = URLComponents(url: supabaseURL.appendingPathComponent("auth/v1/authorize"), resolvingAgainstBaseURL: false) else {
-            completion(.failure(NativeAuthError.configurationMissing))
-            return nil
-        }
-
-        components.queryItems = [
-            URLQueryItem(name: "provider", value: "google"),
-            URLQueryItem(name: "redirect_to", value: nativeAuthCallbackURL.absoluteString)
-        ]
-        guard let authorizeURL = components.url else {
-            completion(.failure(NativeAuthError.configurationMissing))
-            return nil
-        }
-
-        let session = ASWebAuthenticationSession(url: authorizeURL, callbackURLScheme: nativeAuthCallbackURL.scheme) { [weak self] callbackURL, error in
-            guard let self else { return }
-            if let error {
-                let nsError = error as NSError
-                if nsError.code == ASWebAuthenticationSessionError.canceledLogin.rawValue {
-                    DispatchQueue.main.async { completion(.failure(NativeAuthError.server("Google sign-in was cancelled."))) }
-                    return
-                }
-                DispatchQueue.main.async { completion(.failure(error)) }
-                return
-            }
-            guard let callbackURL,
-                  let tokens = Self.oauthTokens(from: callbackURL),
-                  let accessToken = tokens["access_token"] as? String,
-                  let refreshToken = tokens["refresh_token"] as? String else {
-                DispatchQueue.main.async { completion(.failure(NativeAuthError.server("Google sign-in did not return a session."))) }
-                return
-            }
-            let expiresAt = tokens["expires_at"] as? Int
-                ?? ((tokens["expires_in"] as? Int).map { Int(Date().timeIntervalSince1970) + $0 })
-            let nativeSession = NativeAuthSession(
-                accessToken: accessToken,
-                refreshToken: refreshToken,
-                expiresAt: expiresAt,
-                userId: Self.userId(fromAccessToken: accessToken)
-            )
-            self.save(nativeSession, event: .signedIn)
-            DispatchQueue.main.async { completion(.success(nativeSession)) }
-        }
-        session.presentationContextProvider = presentationContext
-        session.prefersEphemeralWebBrowserSession = false
-        session.start()
-        return session
-    }
-
-    private static func oauthTokens(from url: URL) -> [String: Any]? {
-        let fragment = url.fragment ?? ""
-        let query = url.query ?? ""
-        let source = fragment.isEmpty ? query : fragment
-        var values: [String: Any] = [:]
-        for pair in source.split(separator: "&") {
-            let parts = pair.split(separator: "=", maxSplits: 1).map(String.init)
-            guard parts.count == 2,
-                  let key = parts[0].removingPercentEncoding,
-                  let value = parts[1].removingPercentEncoding else { continue }
-            if ["expires_in", "expires_at"].contains(key), let number = Int(value) {
-                values[key] = number
-            } else {
-                values[key] = value
-            }
-        }
-        return values
-    }
-
-    func authenticateWithApple(
-        identityToken: String,
-        nonce: String,
-        using urlSession: URLSession = .shared,
-        completion: @escaping (Result<NativeAuthSession, Error>) -> Void
-    ) {
-        guard let supabaseURL,
-              let publishableKey,
-              let url = URL(string: "auth/v1/token?grant_type=id_token", relativeTo: supabaseURL) else {
-            completion(.failure(NativeAuthError.configurationMissing))
-            return
-        }
-
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue(publishableKey, forHTTPHeaderField: "apikey")
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = try? JSONSerialization.data(withJSONObject: [
-            "provider": "apple",
-            "id_token": identityToken,
-            "nonce": nonce
-        ])
-
-        urlSession.dataTask(with: request) { [weak self] data, response, _ in
-            guard let httpResponse = response as? HTTPURLResponse, let data else {
-                DispatchQueue.main.async { completion(.failure(NativeAuthError.network)) }
-                return
-            }
-            guard (200...299).contains(httpResponse.statusCode) else {
-                let responseError = try? JSONDecoder().decode(NativeAuthErrorResponse.self, from: data)
-                let message = responseError?.message ?? responseError?.errorDescription
-                    ?? "Apple sign-in could not be completed."
-                DispatchQueue.main.async { completion(.failure(NativeAuthError.server(message))) }
-                return
-            }
-            guard let payload = try? JSONDecoder().decode(NativeAuthSessionPayload.self, from: data) else {
-                DispatchQueue.main.async { completion(.failure(NativeAuthError.network)) }
-                return
-            }
-            let session = NativeAuthSession(
-                accessToken: payload.accessToken,
-                refreshToken: payload.refreshToken,
-                expiresAt: payload.expiresAt ?? Int(Date().timeIntervalSince1970) + (payload.expiresIn ?? 3600),
-                userId: payload.userId ?? payload.user?.id ?? Self.userId(fromAccessToken: payload.accessToken)
-            )
-            self?.save(session, event: .signedIn)
-            DispatchQueue.main.async { completion(.success(session)) }
-        }.resume()
-    }
-
-    func clear(emitEvent: Bool = true) {
-        let hadSession = session != nil
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: account
-        ]
-        SecItemDelete(query as CFDictionary)
-        if emitEvent && hadSession {
-            postChange(event: .signedOut, session: nil)
-        }
-    }
-
-    private func postChange(event: NativeAuthSessionEvent, session: NativeAuthSession?) {
-        let revisionId = Self.nextRevisionId()
-        let contract = NativeAuthSessionContract(
-            event: event,
-            revisionId: revisionId,
-            accessToken: session?.accessToken,
-            refreshToken: session?.refreshToken,
-            expiresAt: session?.expiresAt,
-            userId: session?.userId,
-            isSignedIn: session != nil
-        )
-        NotificationCenter.default.post(name: .nativeAuthSessionChanged, object: contract)
-    }
-
-    private static func nextRevisionId() -> Int64 {
-        revisionQueue.sync {
-            let timestamp = Int64(Date().timeIntervalSince1970 * 1000)
-            lastRevisionId = max(timestamp, lastRevisionId + 1)
-            return lastRevisionId
-        }
-    }
-
-    private static func userId(fromAccessToken accessToken: String) -> String? {
-        tokenPayload(accessToken)?["sub"] as? String
-    }
-
-    private static func tokenPayload(_ accessToken: String) -> [String: Any]? {
-        let parts = accessToken.split(separator: ".")
-        guard parts.count >= 2 else { return nil }
-        var encoded = String(parts[1]).replacingOccurrences(of: "-", with: "+")
-            .replacingOccurrences(of: "_", with: "/")
-        encoded += String(repeating: "=", count: (4 - encoded.count % 4) % 4)
-        guard let data = Data(base64Encoded: encoded),
-              let payload = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return nil }
-        return payload
-    }
-
-    private func readData() -> Data? {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: account,
-            kSecReturnData as String: true,
-            kSecMatchLimit as String: kSecMatchLimitOne
-        ]
-        var result: CFTypeRef?
-        guard SecItemCopyMatching(query as CFDictionary, &result) == errSecSuccess else { return nil }
-        return result as? Data
-    }
-}
-
-private struct NativeSupabaseRefreshResponse: Decodable {
-    let accessToken: String
-    let refreshToken: String?
-    let expiresIn: Int?
-    let expiresAt: Int?
-
-    enum CodingKeys: String, CodingKey {
-        case accessToken = "access_token"
-        case refreshToken = "refresh_token"
-        case expiresIn = "expires_in"
-        case expiresAt = "expires_at"
-    }
-}
-
-private enum NativeAuthError: LocalizedError {
-    case configurationMissing
-    case network
-    case server(String)
-
-    var errorDescription: String? {
-        switch self {
-        case .configurationMissing: return "Native authentication is not configured yet."
-        case .network: return "Check your connection and try again."
-        case .server(let message): return message
-        }
-    }
-}
-
-private struct NativeAuthErrorResponse: Decodable {
-    let message: String?
-    let errorDescription: String?
-
-    enum CodingKeys: String, CodingKey {
-        case message
-        case errorDescription = "error_description"
     }
 }
 
@@ -549,6 +53,15 @@ public class NativeMapPlugin: CAPPlugin, CAPBridgedPlugin {
     @objc func open(_ call: CAPPluginCall) {
         DispatchQueue.main.async {
             let options = (try? call.decode(NativeMapOptions.self)) ?? NativeMapOptions(trips: [])
+            if let accessToken = options.accessToken, !accessToken.isEmpty {
+                let webSession = NativeAuthSession(
+                    accessToken: accessToken,
+                    refreshToken: options.refreshToken,
+                    expiresAt: options.expiresAt
+                )
+                let revision = NativeJWTClaims.issuedAtMilliseconds(from: accessToken) ?? 0
+                _ = NativeSessionCoordinator.shared.importWebSession(webSession, revision: revision)
+            }
             let tripStore = NativeTripStore(webView: self.bridge?.webView)
             let mapViewController = NativeMapViewController(
                 trips: options.trips,
@@ -571,9 +84,15 @@ public class NativeMapPlugin: CAPPlugin, CAPBridgedPlugin {
 }
 
 private struct NativeMapOptions: Decodable {
+    let accessToken: String?
+    let expiresAt: Int?
+    let refreshToken: String?
     let trips: [NativeMapTrip]
 
     init(trips: [NativeMapTrip]) {
+        accessToken = nil
+        expiresAt = nil
+        refreshToken = nil
         self.trips = trips
     }
 }
@@ -606,141 +125,11 @@ struct NativeImportResult {
     let status: String
 }
 
-final class NativeVercelAPIClient {
-    private let webView: WKWebView?
-    private let baseURL: URL
-    private let session: URLSession
-
-    init(
-        webView: WKWebView?,
-        baseURL: URL = NativeServiceConfiguration.appBaseURL,
-        session: URLSession = .shared
-    ) {
-        self.webView = webView
-        self.baseURL = baseURL
-        self.session = session
-    }
-
-    func request(
-        path: String,
-        method: String,
-        body: Data?,
-        completion: @escaping (Result<Data, Error>) -> Void
-    ) {
-        guard let url = URL(string: path, relativeTo: baseURL) else {
-            completion(.failure(NativeTripStoreError.invalidResponse))
-            return
-        }
-        var request = URLRequest(url: url)
-        request.httpMethod = method
-        request.httpBody = body
-        request.setValue("application/json", forHTTPHeaderField: "Accept")
-        if body != nil {
-            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        }
-        request.setValue(baseURL.originString, forHTTPHeaderField: "Origin")
-        request.setValue(baseURL.absoluteString + "/dashboard/trips", forHTTPHeaderField: "Referer")
-        attachCredentials(to: request, completion: completion)
-    }
-
-    private func attachCredentials(
-        to request: URLRequest,
-        completion: @escaping (Result<Data, Error>) -> Void
-    ) {
-        let finish: (Result<Data, Error>) -> Void = { result in
-            DispatchQueue.main.async { completion(result) }
-        }
-        let perform: (URLRequest) -> Void = { [session] request in
-            session.dataTask(with: request) { data, response, error in
-                if let error {
-                    finish(.failure(error))
-                    return
-                }
-                guard let response = response as? HTTPURLResponse else {
-                    finish(.failure(NativeTripStoreError.invalidResponse))
-                    return
-                }
-                guard (200...299).contains(response.statusCode), let data else {
-                    if response.statusCode == 401 {
-                        finish(.failure(NativeTripStoreError.unauthorized))
-                    } else {
-                        let message = data.flatMap { String(data: $0, encoding: .utf8) } ?? "Vercel API request failed."
-                        finish(.failure(NativeTripStoreError.requestFailed(message)))
-                    }
-                    return
-                }
-                finish(.success(data))
-            }.resume()
-        }
-
-        let continueWithCurrentSession: () -> Void = { [weak self] in
-            guard let self else { return }
-            var authenticatedRequest = request
-            if let accessToken = NativeAuthSessionStore.shared.session?.accessToken {
-                authenticatedRequest.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
-            }
-            guard let webView = self.webView else {
-                perform(authenticatedRequest)
-                return
-            }
-
-            let cookieStore = webView.configuration.websiteDataStore.httpCookieStore
-            cookieStore.getAllCookies { cookies in
-                if let cookieHeader = HTTPCookie.requestHeaderFields(with: cookies)["Cookie"] {
-                    authenticatedRequest.setValue(cookieHeader, forHTTPHeaderField: "Cookie")
-                }
-                let tokenScript = """
-                (() => {
-                    for (const store of [localStorage, sessionStorage]) {
-                        for (const key of Object.keys(store)) {
-                            if (!key.includes('auth-token')) continue;
-                            try {
-                                const value = JSON.parse(store.getItem(key) || 'null');
-                                if (typeof value?.access_token === 'string') {
-                                    return JSON.stringify({
-                                        accessToken: value.access_token,
-                                        refreshToken: value.refresh_token || null,
-                                        expiresAt: value.expires_at || null
-                                    });
-                                }
-                            } catch (_) {}
-                        }
-                    }
-                    return null;
-                })()
-                """
-                webView.evaluateJavaScript(tokenScript) { result, _ in
-                    if let sessionJSON = result as? String,
-                       let data = sessionJSON.data(using: .utf8),
-                       let session = try? JSONDecoder().decode(NativeAuthSessionPayload.self, from: data),
-                       !session.accessToken.isEmpty {
-                        NativeAuthSessionStore.shared.save(NativeAuthSession(
-                            accessToken: session.accessToken,
-                            refreshToken: session.refreshToken,
-                            expiresAt: session.expiresAt
-                        ))
-                        authenticatedRequest.setValue("Bearer \(session.accessToken)", forHTTPHeaderField: "Authorization")
-                    }
-                    perform(authenticatedRequest)
-                }
-            }
-        }
-
-        if NativeAuthSessionStore.shared.isExpiringSoon {
-            NativeAuthSessionStore.shared.refresh(using: session) { _ in
-                continueWithCurrentSession()
-            }
-        } else {
-            continueWithCurrentSession()
-        }
-    }
-}
-
 final class NativeTripStore {
     private let webView: WKWebView?
     private let baseURL: URL
     private let session: URLSession
-    private let apiClient: NativeVercelAPIClient
+    private let apiClient: NativeAuthenticatedHTTPClient
 
     init(
         webView: WKWebView?,
@@ -750,7 +139,7 @@ final class NativeTripStore {
         self.webView = webView
         self.baseURL = baseURL
         self.session = session
-        self.apiClient = NativeVercelAPIClient(webView: webView, baseURL: baseURL, session: session)
+        self.apiClient = NativeAuthenticatedHTTPClient(webView: webView, baseURL: baseURL, session: session)
     }
 
     func loadTrips(completion: @escaping (Result<[NativeMapTrip], Error>) -> Void) {
@@ -869,7 +258,7 @@ final class NativeTripStore {
         request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
         request.setValue(baseURL.absoluteString, forHTTPHeaderField: "Origin")
         request.setValue(baseURL.absoluteString + "/dashboard/imports", forHTTPHeaderField: "Referer")
-        sendWithWebViewCookies(request, completion: { result in
+        apiClient.request(request, completion: { result in
             completion(result.flatMap { data in
                 do {
                     let response = try JSONDecoder().decode(NativeImportResponse.self, from: data)
@@ -893,98 +282,6 @@ final class NativeTripStore {
         apiClient.request(path: path, method: method, body: body, completion: completion)
     }
 
-    private func sendWithWebViewCookies(
-        _ request: URLRequest,
-        sendRequest: ((URLRequest) -> Void)? = nil,
-        completion: ((Result<Data, Error>) -> Void)? = nil
-    ) {
-        let perform: (URLRequest) -> Void = sendRequest ?? { [session] request in
-            session.dataTask(with: request) { data, response, error in
-                if let error {
-                    DispatchQueue.main.async { completion?(.failure(error)) }
-                    return
-                }
-                guard let httpResponse = response as? HTTPURLResponse else {
-                    DispatchQueue.main.async { completion?(.failure(NativeTripStoreError.invalidResponse)) }
-                    return
-                }
-                guard (200...299).contains(httpResponse.statusCode), let data else {
-                    let error: Error = httpResponse.statusCode == 401
-                        ? NativeTripStoreError.unauthorized
-                        : NativeTripStoreError.requestFailed("Import request failed (\(httpResponse.statusCode)).")
-                    DispatchQueue.main.async { completion?(.failure(error)) }
-                    return
-                }
-                DispatchQueue.main.async { completion?(.success(data)) }
-            }.resume()
-        }
-
-        guard let webView else {
-            var authenticatedRequest = request
-            if let accessToken = NativeAuthSessionStore.shared.session?.accessToken {
-                authenticatedRequest.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
-            }
-            perform(authenticatedRequest)
-            return
-        }
-
-        let attachCredentials: ([HTTPCookie]) -> Void = { cookies in
-            var request = request
-            if let cookieHeader = HTTPCookie.requestHeaderFields(with: cookies)["Cookie"] {
-                request.setValue(cookieHeader, forHTTPHeaderField: "Cookie")
-            }
-
-            // Supabase's browser client persists the active session in WebView
-            // localStorage rather than an HTTP cookie. Forward its access token
-            // so native trip mutations use the same authenticated session.
-            let accessTokenScript = """
-            (() => {
-                const stores = [localStorage, sessionStorage];
-                for (const store of stores) {
-                    for (const key of Object.keys(store)) {
-                        if (!key.includes('auth-token')) continue;
-                        try {
-                            const value = JSON.parse(store.getItem(key) || 'null');
-                            const token = value?.access_token
-                                || value?.currentSession?.access_token
-                                || value?.session?.access_token;
-                            if (typeof token === 'string' && token.length > 0) {
-                                return JSON.stringify({
-                                    accessToken: token,
-                                    refreshToken: value?.refresh_token || value?.currentSession?.refresh_token || value?.session?.refresh_token || null,
-                                    expiresAt: value?.expires_at || value?.currentSession?.expires_at || value?.session?.expires_at || null
-                                });
-                            }
-                        } catch (_) {}
-                    }
-                }
-                return null;
-            })()
-            """
-            webView.evaluateJavaScript(accessTokenScript) { result, _ in
-                if let sessionJSON = result as? String,
-                   let data = sessionJSON.data(using: .utf8),
-                   let session = try? JSONDecoder().decode(NativeAuthSessionPayload.self, from: data),
-                   !session.accessToken.isEmpty {
-                    NativeAuthSessionStore.shared.save(NativeAuthSession(
-                        accessToken: session.accessToken,
-                        refreshToken: session.refreshToken,
-                        expiresAt: session.expiresAt
-                    ))
-                    request.setValue("Bearer \(session.accessToken)", forHTTPHeaderField: "Authorization")
-                }
-                perform(request)
-            }
-        }
-
-        let cookieStore = webView.configuration.websiteDataStore.httpCookieStore
-        cookieStore.getAllCookies { cookies in
-            DispatchQueue.main.async {
-                attachCredentials(cookies)
-            }
-        }
-    }
-
     private func appendMultipartField(_ body: inout Data, boundary: String, name: String, value: String) {
         body.append(Data("--\(boundary)\r\nContent-Disposition: form-data; name=\"\(name)\"\r\n\r\n\(value)\r\n".utf8))
     }
@@ -998,28 +295,6 @@ final class NativeTripStore {
 
 private struct NativeTripListResponse: Decodable {
     let trips: [NativeMapTrip]
-}
-
-private struct NativeAuthSessionPayload: Decodable {
-    let accessToken: String
-    let refreshToken: String?
-    let expiresAt: Int?
-    let expiresIn: Int?
-    let userId: String?
-    let user: NativeAuthUserPayload?
-
-    enum CodingKeys: String, CodingKey {
-        case accessToken = "access_token"
-        case refreshToken = "refresh_token"
-        case expiresAt = "expires_at"
-        case expiresIn = "expires_in"
-        case userId = "user_id"
-        case user
-    }
-}
-
-private struct NativeAuthUserPayload: Decodable {
-    let id: String
 }
 
 private struct NativeTripResponse: Decodable {
@@ -1243,6 +518,7 @@ public final class MapGatewayPlugin: CAPPlugin, CAPBridgedPlugin {
     private var autocompleteCompleter: MKLocalSearchCompleter?
     private var autocompleteDelegate: NativeMapAutocompleteDelegate?
     private var authObserver: NSObjectProtocol?
+    private let authLogger = Logger(subsystem: "app.almidy", category: "native-auth-bridge")
 
     public override func load() {
         super.load()
@@ -1452,15 +728,47 @@ public final class MapGatewayPlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     @objc func getNativeAuthSession(_ call: CAPPluginCall) {
-        let session = NativeAuthSessionStore.shared.session
+        let coordinator = NativeSessionCoordinator.shared
+        if case .expired = coordinator.state {
+            coordinator.validSession { [weak self] _ in
+                DispatchQueue.main.async { self?.resolveNativeAuthSession(call) }
+            }
+            return
+        }
+        resolveNativeAuthSession(call)
+    }
+
+    private func resolveNativeAuthSession(_ call: CAPPluginCall) {
+        let coordinator = NativeSessionCoordinator.shared
+        let session = coordinator.session
+        let contractState: NativeAuthSessionContract.State
+        let generation: Int64?
+        switch coordinator.state {
+        case .missing:
+            contractState = .missing
+            generation = nil
+        case .valid:
+            contractState = .valid
+            generation = nil
+        case .expired:
+            contractState = .expired
+            generation = nil
+        case .invalid:
+            contractState = .invalid
+            generation = nil
+        case .explicitlySignedOut(let marker):
+            contractState = .explicitlySignedOut
+            generation = marker.generation
+        }
         let contract = NativeAuthSessionContract(
-            event: session == nil ? .signedOut : .signedIn,
+            event: contractState == .explicitlySignedOut ? .signedOut : .signedIn,
             revisionId: Int64(Date().timeIntervalSince1970 * 1000),
             accessToken: session?.accessToken,
             refreshToken: session?.refreshToken,
             expiresAt: session?.expiresAt,
-            userId: session?.userId,
-            isSignedIn: session != nil
+            isSignedIn: session != nil,
+            signOutGeneration: generation,
+            state: contractState
         )
         call.resolve(contractDictionary(contract))
     }
@@ -1469,31 +777,48 @@ public final class MapGatewayPlugin: CAPPlugin, CAPBridgedPlugin {
         guard let jsonString = call.getString("jsonString"),
               let data = jsonString.data(using: .utf8),
               let contract = try? JSONDecoder().decode(NativeAuthSessionContract.self, from: data) else {
+            authLogger.error("Session sync rejected: malformed_contract")
             call.reject("Malformed native authentication session contract.", "invalid_native_auth_session")
             return
         }
 
-        if contract.event == .signedOut || !contract.isSignedIn {
-            NativeAuthSessionStore.shared.clear()
+        if contract.event == .signedOut || contract.state == .explicitlySignedOut {
+            NativeSessionCoordinator.shared.explicitSignOut(generation: contract.signOutGeneration ?? contract.revisionId)
+            authLogger.info("Session sync completed: event=SIGNED_OUT state=explicitly_signed_out revision=\(contract.revisionId, privacy: .public)")
             call.resolve(["success": true])
             return
         }
 
-        guard let accessToken = contract.accessToken, !accessToken.isEmpty else {
-            call.reject("Signed-in authentication state is missing an access token.", "invalid_native_auth_session")
+        guard let accessToken = contract.accessToken, !accessToken.isEmpty,
+              let refreshToken = contract.refreshToken, !refreshToken.isEmpty,
+              let expiresAt = contract.expiresAt, expiresAt > 0 else {
+            authLogger.error("Session sync rejected: incomplete_signed_in_credentials")
+            call.reject("Signed-in authentication state is incomplete.", "invalid_native_auth_session")
             return
         }
-        NativeAuthSessionStore.shared.save(NativeAuthSession(
+        let importResult = NativeSessionCoordinator.shared.importWebSession(NativeAuthSession(
             accessToken: accessToken,
-            refreshToken: contract.refreshToken,
-            expiresAt: contract.expiresAt,
-            userId: contract.userId
-        ), event: contract.event == .tokenRefreshed ? .tokenRefreshed : .signedIn)
+            refreshToken: refreshToken,
+            expiresAt: expiresAt
+        ), revision: contract.revisionId)
+        guard importResult.isAccepted else {
+            authLogger.error("Session sync rejected: stale_session revision=\(contract.revisionId, privacy: .public)")
+            call.reject("The Web session is older than the explicit sign-out state.", "stale_native_auth_session")
+            return
+        }
+        if importResult == .unchanged {
+            authLogger.info("Session import ignored: logical session unchanged origin=web_import state=valid revision=\(contract.revisionId, privacy: .public)")
+        }
+        authLogger.info("Session sync completed: event=\(contract.event.rawValue, privacy: .public) state=\(contract.state.rawValue, privacy: .public) credentialsPresent=true expired=\(expiresAt <= Int(Date().timeIntervalSince1970), privacy: .public) revision=\(contract.revisionId, privacy: .public)")
         call.resolve(["success": true])
     }
 
     @objc func clearNativeAuthSession(_ call: CAPPluginCall) {
-        NativeAuthSessionStore.shared.clear()
+        if case .explicitlySignedOut = NativeSessionCoordinator.shared.state {
+            call.resolve(["success": true])
+            return
+        }
+        NativeSessionCoordinator.shared.explicitSignOut()
         call.resolve(["success": true])
     }
 
@@ -3576,7 +2901,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
 
     @objc private func openSettings() {
         let settings = NativeSettingsViewController(
-            profile: NativeAuthSessionStore.shared.session == nil ? nil : NativeAuthSessionStore.shared.profile,
+            profile: NativeSessionCoordinator.shared.session == nil ? nil : NativeSessionCoordinator.shared.profile,
             onRefreshTrips: { [weak self] in
                 self?.refreshTripsFromServer()
             },
@@ -3584,7 +2909,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
                 guard let self else { return }
                 self.dismiss(animated: true) { [weak self] in
                     guard let self else { return }
-                    if NativeAuthSessionStore.shared.session == nil {
+                    if NativeSessionCoordinator.shared.session == nil {
                         self.presentNativeAuth(
                             reopensSettingsOnAuthentication: true
                         )
@@ -3630,15 +2955,15 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         let presentAccount: (NativeWebAuthStorage?) -> Void = { [weak self] authStorage in
             guard let self else { return }
             let importedWebSession = authStorage.map {
-                NativeAuthSessionStore.shared.update(from: $0.value)
+                NativeSessionCoordinator.shared.update(from: $0.value)
             } ?? false
-            let isSignedIn = importedWebSession || NativeAuthSessionStore.shared.session != nil
+            let isSignedIn = importedWebSession || NativeSessionCoordinator.shared.session != nil
             guard isSignedIn else {
                 self.presentNativeAuth(reopensSettingsOnAuthentication: true)
                 return
             }
             let account = NativeAccountViewController(
-                profile: NativeAuthSessionStore.shared.profile,
+                profile: NativeSessionCoordinator.shared.profile,
                 isSignedIn: true,
                 onSignIn: { [weak self] in
                     self?.dismiss(animated: true) { [weak self] in
@@ -3649,7 +2974,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
                     self?.clearNativeSession(completion: completion)
                 },
                 onSaveName: { name, completion in
-                    NativeAuthSessionStore.shared.updateProfileName(name, completion: completion)
+                    NativeSessionCoordinator.shared.updateProfileName(name, completion: completion)
                 },
                 onDeleteAccount: { [weak self] in
                     self?.dismiss(animated: true) { [weak self] in
@@ -3722,7 +3047,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
     }
 
     private func clearNativeSession(completion: @escaping (Bool) -> Void) {
-        NativeAuthSessionStore.shared.clear()
+        NativeSessionCoordinator.shared.explicitSignOut()
         guard let sourceWebView else {
             completion(true)
             return
@@ -3757,11 +3082,8 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
     func presentNativeWebFeature(route: String, title: String) {
         guard NativeWebRoutePolicy.allows(route) else { return }
         let previousSheetState = sheetState
-        let presentFeature: (NativeWebAuthStorage?, NativeAuthSession?) -> Void = { [weak self] authStorage, nativeSession in
+        let presentFeature: (NativeWebAuthStorage?, NativeAuthSession) -> Void = { [weak self] authStorage, nativeSession in
             guard let self else { return }
-            if let authStorage {
-                NativeAuthSessionStore.shared.update(from: authStorage.value)
-            }
             let feature = NativeWebFeatureViewController.wrapped(
                 route: route,
                 title: title,
@@ -3793,27 +3115,30 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
             self.present(feature, animated: true)
         }
 
-        let presentWithFreshSession: (NativeAuthSession?) -> Void = { [weak self] nativeSession in
+        let restoreAndPresent: (NativeWebAuthStorage?) -> Void = { [weak self] authStorage in
             guard let self else { return }
-            if let sourceWebView = self.sourceWebView {
-                NativeWebFeatureViewController.exportAuthStorage(from: sourceWebView) { authStorage in
-                    DispatchQueue.main.async { presentFeature(authStorage, nativeSession) }
+            if let authStorage {
+                _ = NativeSessionCoordinator.shared.update(from: authStorage.value)
+            }
+            NativeSessionCoordinator.shared.validSession { [weak self] result in
+                DispatchQueue.main.async {
+                    guard let self else { return }
+                    switch result {
+                    case .success(let session):
+                        presentFeature(authStorage, session)
+                    case .failure:
+                        self.presentNativeAuth()
+                    }
                 }
-            } else {
-                presentFeature(nil, nativeSession)
             }
         }
 
-        if let nativeSession = NativeAuthSessionStore.shared.session {
-            if NativeAuthSessionStore.shared.isExpiringSoon {
-                NativeAuthSessionStore.shared.refresh(using: .shared) { _ in
-                    presentWithFreshSession(NativeAuthSessionStore.shared.session ?? nativeSession)
-                }
-            } else {
-                presentWithFreshSession(nativeSession)
+        if let sourceWebView {
+            NativeWebFeatureViewController.exportAuthStorage(from: sourceWebView) { authStorage in
+                DispatchQueue.main.async { restoreAndPresent(authStorage) }
             }
         } else {
-            presentWithFreshSession(nil)
+            restoreAndPresent(nil)
         }
     }
 
@@ -4947,7 +4272,7 @@ private final class NativeAuthViewController: UIViewController, ASAuthorizationC
             return
         }
         setLoading(true)
-        NativeAuthSessionStore.shared.authenticate(email: email, password: password, name: nameField?.text, signingUp: signingUp) { [weak self] result in
+        NativeSessionCoordinator.shared.authenticate(email: email, password: password, name: nameField?.text, signingUp: signingUp) { [weak self] result in
             guard let self else { return }
             self.setLoading(false)
             switch result {
@@ -4966,7 +4291,7 @@ private final class NativeAuthViewController: UIViewController, ASAuthorizationC
 
     @objc private func signInWithGoogle() {
         setLoading(true)
-        webAuthSession = NativeAuthSessionStore.shared.authenticateWithGoogle(using: self) { [weak self] result in
+        webAuthSession = NativeSessionCoordinator.shared.authenticateWithGoogle(using: self) { [weak self] result in
             guard let self else { return }
             self.setLoading(false)
             switch result {
@@ -5004,7 +4329,7 @@ private final class NativeAuthViewController: UIViewController, ASAuthorizationC
             showAuthStatus("Apple sign-in returned an invalid credential.")
             return
         }
-        NativeAuthSessionStore.shared.authenticateWithApple(identityToken: token, nonce: nonce) { [weak self] result in
+        NativeSessionCoordinator.shared.authenticateWithApple(identityToken: token, nonce: nonce) { [weak self] result in
             guard let self else { return }
             self.setLoading(false)
             switch result {

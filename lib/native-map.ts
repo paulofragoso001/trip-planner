@@ -1,4 +1,5 @@
 import { Capacitor, registerPlugin } from '@capacitor/core';
+import { getSupabaseClient } from '@/lib/supabaseClient';
 
 export interface NativeMapTrip {
   dateRange?: string | null;
@@ -13,7 +14,12 @@ export interface NativeMapTrip {
 }
 
 export interface NativeMapPlugin {
-  open(options?: { trips?: NativeMapTrip[] }): Promise<void>;
+  open(options?: {
+    accessToken?: string | null;
+    expiresAt?: number | null;
+    refreshToken?: string | null;
+    trips?: NativeMapTrip[];
+  }): Promise<void>;
 }
 
 export const NativeMap = registerPlugin<NativeMapPlugin>('NativeMap');
@@ -27,6 +33,13 @@ export async function openNativeMap(trips: NativeMapTrip[] = []) {
     return false;
   }
 
-  await NativeMap.open({ trips });
+  const { data } = await getSupabaseClient().auth.getSession();
+  const session = data.session;
+  await NativeMap.open({
+    accessToken: session?.access_token ?? null,
+    expiresAt: session?.expires_at ?? null,
+    refreshToken: session?.refresh_token ?? null,
+    trips
+  });
   return true;
 }
