@@ -1,0 +1,68 @@
+import UIKit
+
+final class NativeTripTravelImageBank {
+    static let shared = NativeTripTravelImageBank(
+        identifiers: [
+            "TravelCoast",
+            "TravelAlpine",
+            "TravelOldTown",
+            "TravelSkyline",
+            "TravelDesert",
+            "TravelRail"
+        ],
+        imageLoader: { UIImage(named: $0) },
+        globeFallback: UIImage(named: "AlmidyOfflineGlobe")
+    )
+
+    let identifiers: [String]
+
+    private let imageLoader: (String) -> UIImage?
+    private let globeFallback: UIImage?
+    private let randomIndex: (Int) -> Int
+    private let lock = NSLock()
+    private var previousIdentifier: String?
+
+    init(
+        identifiers: [String],
+        imageLoader: @escaping (String) -> UIImage?,
+        globeFallback: UIImage?,
+        randomIndex: @escaping (Int) -> Int = { Int.random(in: 0..<$0) }
+    ) {
+        self.identifiers = identifiers
+        self.imageLoader = imageLoader
+        self.globeFallback = globeFallback
+        self.randomIndex = randomIndex
+    }
+
+    func selectForPresentation() -> NativeTripTravelImageSelection {
+        lock.lock()
+        defer { lock.unlock() }
+
+        let available = identifiers.compactMap { identifier in
+            imageLoader(identifier).map { (identifier, $0) }
+        }
+        guard !available.isEmpty else {
+            previousIdentifier = nil
+            return NativeTripTravelImageSelection(
+                identifier: nil,
+                image: globeFallback,
+                isUsingGlobeFallback: true
+            )
+        }
+
+        let candidates: [(String, UIImage)]
+        if available.count > 1, let previousIdentifier {
+            candidates = available.filter { $0.0 != previousIdentifier }
+        } else {
+            candidates = available
+        }
+        let selectedIndex = min(max(randomIndex(candidates.count), 0), candidates.count - 1)
+        let selected = candidates[selectedIndex]
+        previousIdentifier = selected.0
+        return NativeTripTravelImageSelection(
+            identifier: selected.0,
+            image: selected.1,
+            isUsingGlobeFallback: false
+        )
+    }
+}

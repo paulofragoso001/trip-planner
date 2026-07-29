@@ -101,6 +101,22 @@ struct NativeTripDraft {
     let name: String
     let destination: String
     let coordinate: CLLocationCoordinate2D
+    let startDate: String?
+    let endDate: String?
+
+    init(
+        name: String,
+        destination: String,
+        coordinate: CLLocationCoordinate2D,
+        startDate: String? = nil,
+        endDate: String? = nil
+    ) {
+        self.name = name
+        self.destination = destination
+        self.coordinate = coordinate
+        self.startDate = startDate
+        self.endDate = endDate
+    }
 }
 
 enum NativeTripStoreError: LocalizedError {
@@ -123,6 +139,46 @@ enum NativeTripStoreError: LocalizedError {
 struct NativeImportResult {
     let extractedPlaceCount: Int
     let status: String
+}
+
+private struct NativeDestinationHeroResponse: Decodable {
+    let data: DataPayload
+
+    struct DataPayload: Decodable {
+        let resolved: ResolvedPlace
+    }
+
+    struct ResolvedPlace: Decodable {
+        let inventoryItem: InventoryItem?
+        let latitude: Double?
+        let longitude: Double?
+    }
+
+    struct InventoryItem: Decodable {
+        let imageUrl: String?
+        let title: String?
+    }
+}
+
+private struct NativeDestinationImageBankResponse: Decodable {
+    let data: DataPayload
+
+    struct DataPayload: Decodable {
+        let suggestions: [Suggestion]
+    }
+
+    struct Suggestion: Decodable {
+        let imageAttribution: String?
+        let imageProvider: String?
+        let imageUrl: String?
+        let title: String
+    }
+}
+
+struct NativeDestinationImageChoice {
+    let attribution: String?
+    let title: String
+    let url: URL
 }
 
 final class NativeTripStore {
@@ -163,8 +219,8 @@ final class NativeTripStore {
             "destination_lat": draft.coordinate.latitude,
             "destination_lng": draft.coordinate.longitude,
             "destination_formatted_address": draft.destination,
-            "start_date": NSNull(),
-            "end_date": NSNull(),
+            "start_date": draft.startDate as Any? ?? NSNull(),
+            "end_date": draft.endDate as Any? ?? NSNull(),
             "status": "Planning",
             "travel_style": "balanced",
             "budget": 0,
@@ -201,6 +257,8 @@ final class NativeTripStore {
             "destination_lat": draft.coordinate.latitude,
             "destination_lng": draft.coordinate.longitude,
             "destination_formatted_address": draft.destination,
+            "start_date": draft.startDate as Any? ?? NSNull(),
+            "end_date": draft.endDate as Any? ?? NSNull(),
             "status": "Planning",
             "travel_style": "balanced",
             "budget": 0
@@ -224,6 +282,135 @@ final class NativeTripStore {
     func deleteTrip(id: String, completion: @escaping (Result<Void, Error>) -> Void) {
         send(path: "/api/trips/\(id)", method: "DELETE", body: nil) { result in
             completion(result.map { _ in () })
+        }
+    }
+
+    func resolveDestinationHeroImage(
+        query: String,
+        completion: @escaping (URL?) -> Void
+    ) {
+        let normalizedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !normalizedQuery.isEmpty else {
+            completion(nil)
+            return
+        }
+
+        func resolve(_ candidate: String, retryWithLandmark: Bool) {
+            guard let body = try? JSONSerialization.data(withJSONObject: [
+                "address": NSNull(),
+                "city": NSNull(),
+                "country": NSNull(),
+                "locationHint": NSNull(),
+                "name": candidate
+            ]) else {
+                completion(nil)
+                return
+            }
+
+            send(path: "/api/travel-data/resolve-place", method: "POST", body: body) { [baseURL] result in
+                guard case .success(let data) = result,
+                      let response = try? JSONDecoder().decode(NativeDestinationHeroResponse.self, from: data) else {
+                    completion(nil)
+                    return
+                }
+                guard let imagePath = response.data.resolved.inventoryItem?.imageUrl,
+                      let resolvedURL = URL(string: imagePath, relativeTo: baseURL)?.absoluteURL else {
+                    if retryWithLandmark {
+                        resolve("\(normalizedQuery) famous landmark", retryWithLandmark: false)
+                    } else {
+                        completion(nil)
+                    }
+                    return
+                }
+                var components = URLComponents(url: resolvedURL, resolvingAgainstBaseURL: false)
+                var queryItems = components?.queryItems?.filter { $0.name != "maxWidth" } ?? []
+                queryItems.append(URLQueryItem(name: "maxWidth", value: "1200"))
+                components?.queryItems = queryItems
+                completion(components?.url ?? resolvedURL)
+            }
+        }
+
+        resolve(normalizedQuery, retryWithLandmark: true)
+    }
+
+    func resolveDestinationImageBank(
+        query: String,
+        completion: @escaping ([NativeDestinationImageChoice]) -> Void
+    ) {
+        let normalizedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !normalizedQuery.isEmpty,
+              let body = try? JSONSerialization.data(withJSONObject: [
+                "address": NSNull(),
+                "city": NSNull(),
+                "country": NSNull(),
+                "locationHint": NSNull(),
+                "name": "\(normalizedQuery) famous landmark"
+              ]) else {
+            completion([])
+            return
+        }
+
+        send(path: "/api/travel-data/resolve-place", method: "POST", body: body) { [baseURL] result in
+            guard case .success(let data) = result,
+                  let response = try? JSONDecoder().decode(NativeDestinationHeroResponse.self, from: data),
+                  let latitude = response.data.resolved.latitude,
+                  let longitude = response.data.resolved.longitude,
+                  let suggestionsBody = try? JSONSerialization.data(withJSONObject: [
+                    "latitude": latitude,
+                    "longitude": longitude,
+                    "limit": 10,
+                    "purpose": "postcard_gallery",
+                    "radiusMeters": 5000,
+                    "title": normalizedQuery,
+                    "tripId": NSNull()
+                  ]) else {
+                completion([])
+                return
+            }
+
+            var initialOptions: [NativeDestinationImageChoice] = []
+            if let inventory = response.data.resolved.inventoryItem,
+               let imagePath = inventory.imageUrl,
+               let resolvedURL = URL(string: imagePath, relativeTo: baseURL)?.absoluteURL {
+                var components = URLComponents(url: resolvedURL, resolvingAgainstBaseURL: false)
+                var queryItems = components?.queryItems?.filter { $0.name != "maxWidth" } ?? []
+                queryItems.append(URLQueryItem(name: "maxWidth", value: "700"))
+                components?.queryItems = queryItems
+                initialOptions.append(NativeDestinationImageChoice(
+                    attribution: "Google",
+                    title: inventory.title ?? normalizedQuery,
+                    url: components?.url ?? resolvedURL
+                ))
+            }
+
+            self.send(path: "/api/travel-data/suggestions", method: "POST", body: suggestionsBody) { result in
+                guard case .success(let data) = result,
+                      let response = try? JSONDecoder().decode(NativeDestinationImageBankResponse.self, from: data) else {
+                    completion(initialOptions)
+                    return
+                }
+                var seen = Set(initialOptions.map { $0.url.absoluteString })
+                let options = response.data.suggestions.compactMap { suggestion -> NativeDestinationImageChoice? in
+                    guard let imagePath = suggestion.imageUrl,
+                          let resolvedURL = URL(string: imagePath, relativeTo: baseURL)?.absoluteURL else { return nil }
+                    var components = URLComponents(url: resolvedURL, resolvingAgainstBaseURL: false)
+                    var queryItems = components?.queryItems?.filter { $0.name != "maxWidth" } ?? []
+                    queryItems.append(URLQueryItem(name: "maxWidth", value: "700"))
+                    components?.queryItems = queryItems
+                    let url = components?.url ?? resolvedURL
+                    guard seen.insert(url.absoluteString).inserted else { return nil }
+                    let credit = [suggestion.imageProvider, suggestion.imageAttribution]
+                        .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
+                        .filter { !$0.isEmpty }
+                        .joined(separator: " • ")
+                    return NativeDestinationImageChoice(
+                        attribution: credit.isEmpty ? "Google" : credit,
+                        title: suggestion.title,
+                        url: url
+                    )
+                }
+                completion(initialOptions + options)
+            }
         }
     }
 
@@ -1480,12 +1667,14 @@ private extension CGColor {
 struct NativeMapTrip: Decodable {
     let dateRange: String?
     let destination: String?
+    let endDate: String?
     let href: String?
     let id: String
     let imageUrl: String?
     let latitude: Double?
     let longitude: Double?
     let name: String?
+    let startDate: String?
     let status: String?
 
     private enum CodingKeys: String, CodingKey {
@@ -1500,18 +1689,22 @@ struct NativeMapTrip: Decodable {
         latitude: Double,
         longitude: Double,
         dateRange: String? = nil,
+        startDate: String? = nil,
+        endDate: String? = nil,
         href: String? = nil,
         imageUrl: String? = nil,
         status: String? = "Planning"
     ) {
         self.dateRange = dateRange
         self.destination = destination
+        self.endDate = endDate
         self.href = href
         self.id = id
         self.imageUrl = imageUrl
         self.latitude = latitude
         self.longitude = longitude
         self.name = name
+        self.startDate = startDate
         self.status = status
     }
 
@@ -1523,6 +1716,7 @@ struct NativeMapTrip: Decodable {
 
         self.dateRange = decodedDateRange ?? Self.dateRange(start: decodedStart, end: decodedEnd)
         self.destination = try values.decodeIfPresent(String.self, forKey: .destination)
+        self.endDate = decodedEnd
         self.href = try values.decodeIfPresent(String.self, forKey: .href) ?? values.decodeIfPresent(String.self, forKey: .route)
         self.id = try values.decode(String.self, forKey: .id)
         self.imageUrl = try values.decodeIfPresent(String.self, forKey: .imageUrl)
@@ -1531,6 +1725,7 @@ struct NativeMapTrip: Decodable {
         self.longitude = try values.decodeIfPresent(Double.self, forKey: .longitude)
             ?? values.decodeIfPresent(Double.self, forKey: .destinationLng)
         self.name = try values.decodeIfPresent(String.self, forKey: .name)
+        self.startDate = decodedStart
         self.status = try values.decodeIfPresent(String.self, forKey: .status)
     }
 
@@ -1563,15 +1758,6 @@ struct NativeMapTrip: Decodable {
         guard let latitude, let longitude else { return nil }
         guard CLLocationCoordinate2DIsValid(CLLocationCoordinate2D(latitude: latitude, longitude: longitude)) else { return nil }
         return CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
-    }
-}
-
-private final class NativeGradientButton: UIButton {
-    let overlayGradient = CAGradientLayer()
-
-    override func layoutSubviews() {
-        super.layoutSubviews()
-        overlayGradient.frame = bounds
     }
 }
 
@@ -3170,10 +3356,26 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
     }
 
     @objc private func createTrip() {
-        let form = NativeCreateTripViewController { [weak self] draft, completion in
-            guard let self else { return }
-            self.createTripFromServer(draft, completion: completion)
-        }
+        let form = NativeCreateTripViewController(
+            onResolveBackground: { [weak self] query, completion in
+                guard let tripStore = self?.tripStore else {
+                    completion(nil)
+                    return
+                }
+                tripStore.resolveDestinationHeroImage(query: query, completion: completion)
+            },
+            onResolveBackgroundBank: { [weak self] query, completion in
+                guard let tripStore = self?.tripStore else {
+                    completion([])
+                    return
+                }
+                tripStore.resolveDestinationImageBank(query: query, completion: completion)
+            },
+            onCreate: { [weak self] draft, completion in
+                guard let self else { return }
+                self.createTripFromServer(draft, completion: completion)
+            }
+        )
         presentTripForm(form)
     }
 
@@ -3201,10 +3403,27 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
 
     @objc private func editTripAction(_ sender: NativeTripActionButton) {
         guard let trip = trips.first(where: { $0.id == sender.tripId }) else { return }
-        let form = NativeCreateTripViewController(existingTrip: trip) { [weak self] draft, completion in
-            guard let self else { return }
-            self.updateTripFromServer(id: trip.id, draft: draft, completion: completion)
-        }
+        let form = NativeCreateTripViewController(
+            existingTrip: trip,
+            onResolveBackground: { [weak self] query, completion in
+                guard let tripStore = self?.tripStore else {
+                    completion(nil)
+                    return
+                }
+                tripStore.resolveDestinationHeroImage(query: query, completion: completion)
+            },
+            onResolveBackgroundBank: { [weak self] query, completion in
+                guard let tripStore = self?.tripStore else {
+                    completion([])
+                    return
+                }
+                tripStore.resolveDestinationImageBank(query: query, completion: completion)
+            },
+            onCreate: { [weak self] draft, completion in
+                guard let self else { return }
+                self.updateTripFromServer(id: trip.id, draft: draft, completion: completion)
+            }
+        )
         presentTripForm(form)
     }
 
@@ -4828,24 +5047,6 @@ private final class NativeMapSearchViewController: UIViewController, MKLocalSear
         guard !completions.isEmpty else { return false }
         tableView(suggestionTable, didSelectRowAt: IndexPath(row: 0, section: 0))
         return true
-    }
-}
-
-private final class NativeTripActionButton: UIButton {
-    let tripId: String
-
-    init(tripId: String, systemName: String) {
-        self.tripId = tripId
-        super.init(frame: .zero)
-        backgroundColor = AlmidyDesignTokens.Color.modalDimmingBackground
-        tintColor = AlmidyDesignTokens.Color.tripCardTextPrimary
-        layer.cornerRadius = 21
-        setImage(UIImage(systemName: systemName), for: .normal)
-        accessibilityLabel = systemName == "trash" ? "Delete trip" : "Edit trip"
-    }
-
-    required init?(coder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
     }
 }
 

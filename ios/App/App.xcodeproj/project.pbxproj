@@ -16,20 +16,42 @@
 		504EC3121FED79650016851F /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 504EC3101FED79650016851F /* LaunchScreen.storyboard */; };
 		50B271D11FEDC1A000F3C39B /* public in Resources */ = {isa = PBXBuildFile; fileRef = 50B271D01FEDC1A000F3C39B /* public */; };
 		7A56D0012C399A4300A1F940 /* NativeMapPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A56D0002C399A4300A1F940 /* NativeMapPlugin.swift */; };
-		D00000000000000000000001 /* NativeCreateTripViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000002 /* NativeCreateTripViewController.swift */; };
-		D00000000000000000000003 /* NativeAdaptiveLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000004 /* NativeAdaptiveLayout.swift */; };
-		D00000000000000000000006 /* NativeTextFieldPadding.swift in Sources */ = {isa = PBXBuildFile; fileRef = D00000000000000000000007 /* NativeTextFieldPadding.swift */; };
 		B10000000000000000000001 /* AlmidyDesignTokens.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000002 /* AlmidyDesignTokens.swift */; };
 		7A56D0032C399A4300A1F940 /* MainViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A56D0022C399A4300A1F940 /* MainViewController.swift */; };
 		A10000000000000000000001 /* NativeMapConnectivityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000002 /* NativeMapConnectivityTests.swift */; };
+		C32000000000000000000006 /* NativeSessionCoordinatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C32000000000000000000016 /* NativeSessionCoordinatorTests.swift */; };
 		C32000000000000000000001 /* NativeSessionPayload.swift in Sources */ = {isa = PBXBuildFile; fileRef = C32000000000000000000011 /* NativeSessionPayload.swift */; };
 		C32000000000000000000002 /* NativeSessionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = C32000000000000000000012 /* NativeSessionStore.swift */; };
 		C32000000000000000000003 /* NativeSessionCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = C32000000000000000000013 /* NativeSessionCoordinator.swift */; };
 		C32000000000000000000004 /* NativeWebSessionReconciler.swift in Sources */ = {isa = PBXBuildFile; fileRef = C32000000000000000000014 /* NativeWebSessionReconciler.swift */; };
 		C32000000000000000000005 /* NativeAuthenticatedHTTPClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = C32000000000000000000015 /* NativeAuthenticatedHTTPClient.swift */; };
-		C32000000000000000000006 /* NativeSessionCoordinatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C32000000000000000000016 /* NativeSessionCoordinatorTests.swift */; };
+		D33000000000000000000001 /* NativeCreateTripState.swift in Sources */ = {isa = PBXBuildFile; fileRef = D33000000000000000000011 /* NativeCreateTripState.swift */; };
+		D33000000000000000000002 /* NativeCreateTripValidator.swift in Sources */ = {isa = PBXBuildFile; fileRef = D33000000000000000000012 /* NativeCreateTripValidator.swift */; };
+		D33000000000000000000003 /* NativeDestinationFieldController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D33000000000000000000013 /* NativeDestinationFieldController.swift */; };
+		D33000000000000000000004 /* NativeTripBackgroundController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D33000000000000000000014 /* NativeTripBackgroundController.swift */; };
+		D33000000000000000000005 /* NativeTripColorBank.swift in Sources */ = {isa = PBXBuildFile; fileRef = D33000000000000000000015 /* NativeTripColorBank.swift */; };
+		D33000000000000000000006 /* NativeTripBackgroundTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D33000000000000000000016 /* NativeTripBackgroundTests.swift */; };
+		D33000000000000000000007 /* NativeTripBackgroundModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = D33000000000000000000017 /* NativeTripBackgroundModels.swift */; };
+		D33000000000000000000008 /* NativeTripTravelImageBank.swift in Sources */ = {isa = PBXBuildFile; fileRef = D33000000000000000000018 /* NativeTripTravelImageBank.swift */; };
+		D33000000000000000000009 /* NativeCreateTripLocationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D33000000000000000000019 /* NativeCreateTripLocationTests.swift */; };
+		D3300000000000000000000A /* NativeTripBackgroundPickerViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3300000000000000000001A /* NativeTripBackgroundPickerViewController.swift */; };
+		D3300000000000000000000B /* NativeCreateTripViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3300000000000000000001B /* NativeCreateTripViewController.swift */; };
+		D34000000000000000000001 /* NativeCreateTripViewController+Background.swift in Sources */ = {isa = PBXBuildFile; fileRef = D34000000000000000000011 /* NativeCreateTripViewController+Background.swift */; };
+		A21000000000000000000001 /* NativeTripStoreTestSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = A21000000000000000000011 /* NativeTripStoreTestSupport.swift */; };
+		A21000000000000000000002 /* NativeTravelImageConnectivityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A21000000000000000000012 /* NativeTravelImageConnectivityTests.swift */; };
+		A22000000000000000000001 /* NativeRouteTestSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = A22000000000000000000011 /* NativeRouteTestSupport.swift */; };
 		C32000000000000000000007 /* NativeAuthConnectivityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C32000000000000000000017 /* NativeAuthConnectivityTests.swift */; };
 		C32000000000000000000008 /* NativeAuthTestSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = C32000000000000000000018 /* NativeAuthTestSupport.swift */; };
+		E44000000000000000000001 /* NativeTripDateRange.swift in Sources */ = {isa = PBXBuildFile; fileRef = E44000000000000000000011 /* NativeTripDateRange.swift */; };
+		E44000000000000000000002 /* NativeTripDateFormatting.swift in Sources */ = {isa = PBXBuildFile; fileRef = E44000000000000000000012 /* NativeTripDateFormatting.swift */; };
+		E44000000000000000000003 /* NativeTripDatesViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = E44000000000000000000013 /* NativeTripDatesViewController.swift */; };
+		E44000000000000000000004 /* NativeVerticalCalendarViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = E44000000000000000000014 /* NativeVerticalCalendarViews.swift */; };
+		E44000000000000000000005 /* NativeTripDateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E44000000000000000000015 /* NativeTripDateTests.swift */; };
+		E44000000000000000000006 /* NativeTripDateConnectivityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E44000000000000000000016 /* NativeTripDateConnectivityTests.swift */; };
+		E44100000000000000000001 /* NativeCreateTripViewController+Dates.swift in Sources */ = {isa = PBXBuildFile; fileRef = E44100000000000000000011 /* NativeCreateTripViewController+Dates.swift */; };
+		A66000000000000000000001 /* NativeAdaptiveLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = A66000000000000000000011 /* NativeAdaptiveLayout.swift */; };
+		A66100000000000000000001 /* NativeCreateTripViewController+Layout.swift in Sources */ = {isa = PBXBuildFile; fileRef = A66100000000000000000011 /* NativeCreateTripViewController+Layout.swift */; };
+		A23000000000000000000001 /* NativeTripActionButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = A23000000000000000000011 /* NativeTripActionButton.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -53,23 +75,45 @@
 		504EC3131FED79650016851F /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		50B271D01FEDC1A000F3C39B /* public */ = {isa = PBXFileReference; lastKnownFileType = folder; path = public; sourceTree = "<group>"; };
 		7A56D0002C399A4300A1F940 /* NativeMapPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeMapPlugin.swift; sourceTree = "<group>"; };
-		D00000000000000000000002 /* NativeCreateTripViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeCreateTripViewController.swift; sourceTree = "<group>"; };
-		D00000000000000000000004 /* NativeAdaptiveLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeAdaptiveLayout.swift; sourceTree = "<group>"; };
-		D00000000000000000000007 /* NativeTextFieldPadding.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeTextFieldPadding.swift; sourceTree = "<group>"; };
 		B10000000000000000000002 /* AlmidyDesignTokens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlmidyDesignTokens.swift; sourceTree = "<group>"; };
 		7A56D0022C399A4300A1F940 /* MainViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainViewController.swift; sourceTree = "<group>"; };
 		958DCC722DB07C7200EA8C5F /* debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = debug.xcconfig; path = ../debug.xcconfig; sourceTree = SOURCE_ROOT; };
 		958DCC732DB07C7200EA8C5F /* release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = release.xcconfig; path = ../release.xcconfig; sourceTree = SOURCE_ROOT; };
 		A10000000000000000000002 /* NativeMapConnectivityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeMapConnectivityTests.swift; sourceTree = "<group>"; };
 		A10000000000000000000003 /* AppTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AppTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		C32000000000000000000016 /* NativeSessionCoordinatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeSessionCoordinatorTests.swift; sourceTree = "<group>"; };
 		C32000000000000000000011 /* NativeSessionPayload.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeSessionPayload.swift; sourceTree = "<group>"; };
 		C32000000000000000000012 /* NativeSessionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeSessionStore.swift; sourceTree = "<group>"; };
 		C32000000000000000000013 /* NativeSessionCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeSessionCoordinator.swift; sourceTree = "<group>"; };
 		C32000000000000000000014 /* NativeWebSessionReconciler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeWebSessionReconciler.swift; sourceTree = "<group>"; };
 		C32000000000000000000015 /* NativeAuthenticatedHTTPClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeAuthenticatedHTTPClient.swift; sourceTree = "<group>"; };
-		C32000000000000000000016 /* NativeSessionCoordinatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeSessionCoordinatorTests.swift; sourceTree = "<group>"; };
+		D33000000000000000000011 /* NativeCreateTripState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeCreateTripState.swift; sourceTree = "<group>"; };
+		D33000000000000000000012 /* NativeCreateTripValidator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeCreateTripValidator.swift; sourceTree = "<group>"; };
+		D33000000000000000000013 /* NativeDestinationFieldController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeDestinationFieldController.swift; sourceTree = "<group>"; };
+		D33000000000000000000014 /* NativeTripBackgroundController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeTripBackgroundController.swift; sourceTree = "<group>"; };
+		D33000000000000000000015 /* NativeTripColorBank.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeTripColorBank.swift; sourceTree = "<group>"; };
+		D33000000000000000000016 /* NativeTripBackgroundTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeTripBackgroundTests.swift; sourceTree = "<group>"; };
+		D33000000000000000000017 /* NativeTripBackgroundModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeTripBackgroundModels.swift; sourceTree = "<group>"; };
+		D33000000000000000000018 /* NativeTripTravelImageBank.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeTripTravelImageBank.swift; sourceTree = "<group>"; };
+		D33000000000000000000019 /* NativeCreateTripLocationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeCreateTripLocationTests.swift; sourceTree = "<group>"; };
+		D3300000000000000000001A /* NativeTripBackgroundPickerViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeTripBackgroundPickerViewController.swift; sourceTree = "<group>"; };
+		D3300000000000000000001B /* NativeCreateTripViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeCreateTripViewController.swift; sourceTree = "<group>"; };
+		D34000000000000000000011 /* NativeCreateTripViewController+Background.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NativeCreateTripViewController+Background.swift"; sourceTree = "<group>"; };
+		A21000000000000000000011 /* NativeTripStoreTestSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeTripStoreTestSupport.swift; sourceTree = "<group>"; };
+		A21000000000000000000012 /* NativeTravelImageConnectivityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeTravelImageConnectivityTests.swift; sourceTree = "<group>"; };
+		A22000000000000000000011 /* NativeRouteTestSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeRouteTestSupport.swift; sourceTree = "<group>"; };
 		C32000000000000000000017 /* NativeAuthConnectivityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeAuthConnectivityTests.swift; sourceTree = "<group>"; };
 		C32000000000000000000018 /* NativeAuthTestSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeAuthTestSupport.swift; sourceTree = "<group>"; };
+		E44000000000000000000011 /* NativeTripDateRange.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeTripDateRange.swift; sourceTree = "<group>"; };
+		E44000000000000000000012 /* NativeTripDateFormatting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeTripDateFormatting.swift; sourceTree = "<group>"; };
+		E44000000000000000000013 /* NativeTripDatesViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeTripDatesViewController.swift; sourceTree = "<group>"; };
+		E44000000000000000000014 /* NativeVerticalCalendarViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeVerticalCalendarViews.swift; sourceTree = "<group>"; };
+		E44000000000000000000015 /* NativeTripDateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeTripDateTests.swift; sourceTree = "<group>"; };
+		E44000000000000000000016 /* NativeTripDateConnectivityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeTripDateConnectivityTests.swift; sourceTree = "<group>"; };
+		E44100000000000000000011 /* NativeCreateTripViewController+Dates.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NativeCreateTripViewController+Dates.swift"; sourceTree = "<group>"; };
+		A66000000000000000000011 /* NativeAdaptiveLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeAdaptiveLayout.swift; sourceTree = "<group>"; };
+		A66100000000000000000011 /* NativeCreateTripViewController+Layout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NativeCreateTripViewController+Layout.swift"; sourceTree = "<group>"; };
+		A23000000000000000000011 /* NativeTripActionButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeTripActionButton.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -111,12 +155,26 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
-		D00000000000000000000005 /* CreateTrip */ = {
+		504EC3061FED79650016851F /* App */ = {
 			isa = PBXGroup;
 			children = (
-				D00000000000000000000002 /* NativeCreateTripViewController.swift */,
+				C32000000000000000000020 /* Auth */,
+				D33000000000000000000020 /* CreateTrip */,
+				50379B222058CBB4000EE86E /* capacitor.config.json */,
+				504EC3071FED79650016851F /* AppDelegate.swift */,
+				7A56D0022C399A4300A1F940 /* MainViewController.swift */,
+				7A56D0002C399A4300A1F940 /* NativeMapPlugin.swift */,
+				B10000000000000000000002 /* AlmidyDesignTokens.swift */,
+				A66000000000000000000011 /* NativeAdaptiveLayout.swift */,
+				A23000000000000000000011 /* NativeTripActionButton.swift */,
+				504EC30B1FED79650016851F /* Main.storyboard */,
+				504EC30E1FED79650016851F /* Assets.xcassets */,
+				504EC3101FED79650016851F /* LaunchScreen.storyboard */,
+				504EC3131FED79650016851F /* Info.plist */,
+				2FAD9762203C412B000D30F8 /* config.xml */,
+				50B271D01FEDC1A000F3C39B /* public */,
 			);
-			path = CreateTrip;
+			path = App;
 			sourceTree = "<group>";
 		};
 		C32000000000000000000020 /* Auth */ = {
@@ -131,35 +189,59 @@
 			path = Auth;
 			sourceTree = "<group>";
 		};
-		504EC3061FED79650016851F /* App */ = {
+		D33000000000000000000020 /* CreateTrip */ = {
 			isa = PBXGroup;
 			children = (
-				50379B222058CBB4000EE86E /* capacitor.config.json */,
-				C32000000000000000000020 /* Auth */,
-				504EC3071FED79650016851F /* AppDelegate.swift */,
-				7A56D0022C399A4300A1F940 /* MainViewController.swift */,
-				7A56D0002C399A4300A1F940 /* NativeMapPlugin.swift */,
-				D00000000000000000000005 /* CreateTrip */,
-				D00000000000000000000004 /* NativeAdaptiveLayout.swift */,
-				D00000000000000000000007 /* NativeTextFieldPadding.swift */,
-				B10000000000000000000002 /* AlmidyDesignTokens.swift */,
-				504EC30B1FED79650016851F /* Main.storyboard */,
-				504EC30E1FED79650016851F /* Assets.xcassets */,
-				504EC3101FED79650016851F /* LaunchScreen.storyboard */,
-				504EC3131FED79650016851F /* Info.plist */,
-				2FAD9762203C412B000D30F8 /* config.xml */,
-				50B271D01FEDC1A000F3C39B /* public */,
+				D33000000000000000000021 /* Background */,
+				E44000000000000000000020 /* Dates */,
+				D33000000000000000000011 /* NativeCreateTripState.swift */,
+				D33000000000000000000012 /* NativeCreateTripValidator.swift */,
+				D33000000000000000000013 /* NativeDestinationFieldController.swift */,
+				D3300000000000000000001B /* NativeCreateTripViewController.swift */,
+				D34000000000000000000011 /* NativeCreateTripViewController+Background.swift */,
+				E44100000000000000000011 /* NativeCreateTripViewController+Dates.swift */,
+				A66100000000000000000011 /* NativeCreateTripViewController+Layout.swift */,
 			);
-			path = App;
+			path = CreateTrip;
+			sourceTree = "<group>";
+		};
+		D33000000000000000000021 /* Background */ = {
+			isa = PBXGroup;
+			children = (
+				D33000000000000000000014 /* NativeTripBackgroundController.swift */,
+				D33000000000000000000015 /* NativeTripColorBank.swift */,
+				D33000000000000000000017 /* NativeTripBackgroundModels.swift */,
+				D33000000000000000000018 /* NativeTripTravelImageBank.swift */,
+				D3300000000000000000001A /* NativeTripBackgroundPickerViewController.swift */,
+			);
+			path = Background;
+			sourceTree = "<group>";
+		};
+		E44000000000000000000020 /* Dates */ = {
+			isa = PBXGroup;
+			children = (
+				E44000000000000000000011 /* NativeTripDateRange.swift */,
+				E44000000000000000000012 /* NativeTripDateFormatting.swift */,
+				E44000000000000000000013 /* NativeTripDatesViewController.swift */,
+				E44000000000000000000014 /* NativeVerticalCalendarViews.swift */,
+			);
+			path = Dates;
 			sourceTree = "<group>";
 		};
 		A10000000000000000000007 /* AppTests */ = {
 			isa = PBXGroup;
 			children = (
 				A10000000000000000000002 /* NativeMapConnectivityTests.swift */,
-				C32000000000000000000016 /* NativeSessionCoordinatorTests.swift */,
+				A21000000000000000000011 /* NativeTripStoreTestSupport.swift */,
+				A21000000000000000000012 /* NativeTravelImageConnectivityTests.swift */,
+				A22000000000000000000011 /* NativeRouteTestSupport.swift */,
 				C32000000000000000000017 /* NativeAuthConnectivityTests.swift */,
 				C32000000000000000000018 /* NativeAuthTestSupport.swift */,
+				C32000000000000000000016 /* NativeSessionCoordinatorTests.swift */,
+				D33000000000000000000019 /* NativeCreateTripLocationTests.swift */,
+				D33000000000000000000016 /* NativeTripBackgroundTests.swift */,
+				E44000000000000000000015 /* NativeTripDateTests.swift */,
+				E44000000000000000000016 /* NativeTripDateConnectivityTests.swift */,
 			);
 			path = AppTests;
 			sourceTree = "<group>";
@@ -278,18 +360,33 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				504EC3081FED79650016851F /* AppDelegate.swift in Sources */,
-				7A56D0032C399A4300A1F940 /* MainViewController.swift in Sources */,
-				7A56D0012C399A4300A1F940 /* NativeMapPlugin.swift in Sources */,
-				D00000000000000000000001 /* NativeCreateTripViewController.swift in Sources */,
-				D00000000000000000000003 /* NativeAdaptiveLayout.swift in Sources */,
-				D00000000000000000000006 /* NativeTextFieldPadding.swift in Sources */,
-				B10000000000000000000001 /* AlmidyDesignTokens.swift in Sources */,
 				C32000000000000000000001 /* NativeSessionPayload.swift in Sources */,
 				C32000000000000000000002 /* NativeSessionStore.swift in Sources */,
 				C32000000000000000000003 /* NativeSessionCoordinator.swift in Sources */,
 				C32000000000000000000004 /* NativeWebSessionReconciler.swift in Sources */,
 				C32000000000000000000005 /* NativeAuthenticatedHTTPClient.swift in Sources */,
+				D33000000000000000000001 /* NativeCreateTripState.swift in Sources */,
+				D33000000000000000000002 /* NativeCreateTripValidator.swift in Sources */,
+				D33000000000000000000003 /* NativeDestinationFieldController.swift in Sources */,
+				D33000000000000000000004 /* NativeTripBackgroundController.swift in Sources */,
+				D33000000000000000000005 /* NativeTripColorBank.swift in Sources */,
+				D33000000000000000000007 /* NativeTripBackgroundModels.swift in Sources */,
+				D33000000000000000000008 /* NativeTripTravelImageBank.swift in Sources */,
+				D3300000000000000000000A /* NativeTripBackgroundPickerViewController.swift in Sources */,
+				D3300000000000000000000B /* NativeCreateTripViewController.swift in Sources */,
+				D34000000000000000000001 /* NativeCreateTripViewController+Background.swift in Sources */,
+				E44000000000000000000001 /* NativeTripDateRange.swift in Sources */,
+				E44000000000000000000002 /* NativeTripDateFormatting.swift in Sources */,
+				E44000000000000000000003 /* NativeTripDatesViewController.swift in Sources */,
+				E44000000000000000000004 /* NativeVerticalCalendarViews.swift in Sources */,
+				E44100000000000000000001 /* NativeCreateTripViewController+Dates.swift in Sources */,
+				A66000000000000000000001 /* NativeAdaptiveLayout.swift in Sources */,
+				A66100000000000000000001 /* NativeCreateTripViewController+Layout.swift in Sources */,
+				A23000000000000000000001 /* NativeTripActionButton.swift in Sources */,
+				504EC3081FED79650016851F /* AppDelegate.swift in Sources */,
+				7A56D0032C399A4300A1F940 /* MainViewController.swift in Sources */,
+				7A56D0012C399A4300A1F940 /* NativeMapPlugin.swift in Sources */,
+				B10000000000000000000001 /* AlmidyDesignTokens.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -298,9 +395,16 @@
 			buildActionMask = 2147483647;
 			files = (
 				A10000000000000000000001 /* NativeMapConnectivityTests.swift in Sources */,
-				C32000000000000000000006 /* NativeSessionCoordinatorTests.swift in Sources */,
+				A21000000000000000000001 /* NativeTripStoreTestSupport.swift in Sources */,
+				A21000000000000000000002 /* NativeTravelImageConnectivityTests.swift in Sources */,
+				A22000000000000000000001 /* NativeRouteTestSupport.swift in Sources */,
 				C32000000000000000000007 /* NativeAuthConnectivityTests.swift in Sources */,
 				C32000000000000000000008 /* NativeAuthTestSupport.swift in Sources */,
+				C32000000000000000000006 /* NativeSessionCoordinatorTests.swift in Sources */,
+				D33000000000000000000009 /* NativeCreateTripLocationTests.swift in Sources */,
+				D33000000000000000000006 /* NativeTripBackgroundTests.swift in Sources */,
+				E44000000000000000000005 /* NativeTripDateTests.swift in Sources */,
+				E44000000000000000000006 /* NativeTripDateConnectivityTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

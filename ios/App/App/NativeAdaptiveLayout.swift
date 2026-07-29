@@ -18,3 +18,12 @@ enum NativeAdaptiveLayout {
         return constraint
     }
 }
+
+final class NativeGradientButton: UIButton {
+    let overlayGradient = CAGradientLayer()
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        overlayGradient.frame = bounds
+    }
+}
