@@ -3,12 +3,20 @@ import UIKit
 final class NativeTripTravelImageBank {
     static let shared = NativeTripTravelImageBank(
         identifiers: [
-            "TravelCoast",
-            "TravelAlpine",
-            "TravelOldTown",
-            "TravelSkyline",
-            "TravelDesert",
-            "TravelRail"
+            "WonderGreatWall",
+            "WonderPetra",
+            "WonderChristRedeemer",
+            "WonderMachuPicchu",
+            "WonderChichenItza",
+            "WonderColosseum",
+            "WonderTajMahal",
+            "WonderAmazon",
+            "WonderHaLongBay",
+            "WonderIguazuFalls",
+            "WonderJejuIsland",
+            "WonderKomodoIsland",
+            "WonderPuertoPrincesa",
+            "WonderTableMountain"
         ],
         imageLoader: { UIImage(named: $0) },
         globeFallback: UIImage(named: "AlmidyOfflineGlobe")

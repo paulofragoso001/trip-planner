@@ -9,24 +9,33 @@ final class NativeTripBackgroundTests: XCTestCase {
         coordinate: CLLocationCoordinate2D(latitude: 48.8566, longitude: 2.3522)
     )
 
-    func testTravelImageBankContainsApprovedBundledAssets() {
+    func testTravelImageBankContainsFourteenApprovedWonderAssets() {
+        XCTAssertEqual(NativeTripTravelImageBank.shared.identifiers.count, 14)
         XCTAssertEqual(
             Set(NativeTripTravelImageBank.shared.identifiers),
             Set([
-                "TravelCoast",
-                "TravelAlpine",
-                "TravelOldTown",
-                "TravelSkyline",
-                "TravelDesert",
-                "TravelRail"
+                "WonderGreatWall",
+                "WonderPetra",
+                "WonderChristRedeemer",
+                "WonderMachuPicchu",
+                "WonderChichenItza",
+                "WonderColosseum",
+                "WonderTajMahal",
+                "WonderAmazon",
+                "WonderHaLongBay",
+                "WonderIguazuFalls",
+                "WonderJejuIsland",
+                "WonderKomodoIsland",
+                "WonderPuertoPrincesa",
+                "WonderTableMountain"
             ])
         )
         for identifier in NativeTripTravelImageBank.shared.identifiers {
-            XCTAssertNotNil(UIImage(named: identifier), "Missing bundled travel image: \(identifier)")
+            XCTAssertNotNil(UIImage(named: identifier), "Missing bundled wonder image: \(identifier)")
         }
     }
 
-    func testTravelImageBankSelectsGenericImageAndAvoidsImmediateRepetition() {
+    func testTravelImageBankSelectsWonderImageAndAvoidsImmediateRepetition() {
         let firstImage = UIImage()
         let secondImage = UIImage()
         let bank = NativeTripTravelImageBank(
