@@ -1,12 +1,16 @@
 import "server-only";
 
-import { logTravelProviderEvent } from "@/lib/travel-data/errors";
+import {
+  logTravelProviderEvent,
+  TravelProviderError
+} from "@/lib/travel-data/errors";
 import { normalizeInventoryItem } from "@/lib/travel-data/normalize";
 import { buildPlacePhotoUrl, readProviderPhoto } from "@/lib/travel-data/photo-url";
 import type {
   LocationDiagnostics,
   NearbyActivitySearchInput,
   PlaceResolutionQuery,
+  PostcardDiscoveryCategory,
   ProviderAdapter,
   ResolvedPlace,
   TravelInventoryItem,
@@ -451,15 +455,87 @@ async function searchPostcardGalleryQuery(
   const response = await fetchWithTimeout(url);
   if (!response.ok) throw new Error(`Google postcard discovery failed with status ${response.status}.`);
   const payload = await response.json();
+  const providerStatus = typeof payload?.status === "string"
+    ? payload.status.toUpperCase()
+    : "MISSING_STATUS";
+  const providerFailure = postcardProviderFailure(providerStatus);
+  if (providerFailure) {
+    logTravelProviderEvent("postcard_gallery_provider_failed", {
+      endpointFamily: "places_legacy_text_search",
+      errorClassification: providerFailure.code,
+      provider,
+      providerStatus,
+      queryCategory: postcardQueryCategory(query)
+    });
+    throw providerFailure;
+  }
+  if (providerStatus === "ZERO_RESULTS") return [];
   return (Array.isArray(payload?.results) ? payload.results : [])
     .filter((item: any) => Array.isArray(item?.photos) && item.photos.length > 0)
-    .map((item: any) => normalizeGooglePlace(item, "activity", true));
+    .map((item: any) => normalizeGooglePlace(
+      item,
+      "activity",
+      true,
+      postcardQueryCategory(query)
+    ));
+}
+
+function postcardProviderFailure(status: string) {
+  switch (status) {
+    case "OK":
+    case "ZERO_RESULTS":
+      return null;
+    case "REQUEST_DENIED":
+      return new TravelProviderError(
+        provider,
+        "provider_authorization",
+        "Google postcard discovery was not authorized.",
+        { recoverable: false }
+      );
+    case "INVALID_REQUEST":
+      return new TravelProviderError(
+        provider,
+        "provider_invalid_request",
+        "Google postcard discovery rejected the request.",
+        { recoverable: false }
+      );
+    case "OVER_QUERY_LIMIT":
+    case "RESOURCE_EXHAUSTED":
+      return new TravelProviderError(
+        provider,
+        "provider_quota",
+        "Google postcard discovery quota was exceeded."
+      );
+    case "UNKNOWN_ERROR":
+      return new TravelProviderError(
+        provider,
+        "provider_transient",
+        "Google postcard discovery temporarily failed."
+      );
+    default:
+      return new TravelProviderError(
+        provider,
+        "provider_failed",
+        "Google postcard discovery failed."
+      );
+  }
+}
+
+function postcardQueryCategory(query: string) {
+  const normalized = query.toLowerCase();
+  if (normalized.includes("landmark")) return "iconic_landmark";
+  if (normalized.includes("viewpoint") || normalized.includes("skyline")) {
+    return "scenic_view";
+  }
+  if (normalized.includes("tourist attraction")) return "tourist_attraction";
+  return "destination_discovery";
 }
 
 function normalizeGooglePlace(
   item: any,
   type: TravelInventoryItem["type"],
-  postcardGallery = false
+  postcardGallery = false,
+  postcardDiscoveryCategory: PostcardDiscoveryCategory | null = null
 ) {
   const photoMetadata = googlePhotoMetadata(item, postcardGallery);
   const photo = readProviderPhoto(photoMetadata);
@@ -486,6 +562,7 @@ function normalizeGooglePlace(
           googlePlaceUri: item.place_id ? `https://www.google.com/maps/place/?q=place_id:${item.place_id}` : null,
           placePhoto,
           placeTypes: item.types || [],
+          postcardDiscoveryCategory,
           providerPlaceId: item.place_id || null
         }
       : {
