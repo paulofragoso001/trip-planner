@@ -1796,6 +1796,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
     private let collapsedActions = UIStackView()
     private let expandedScrollView = UIScrollView()
     private let expandedContentStack = UIStackView()
+    private var expandedContentWidthConstraint: NSLayoutConstraint?
     private let mapControlStack = UIStackView()
     private var firstTripCard: UIView?
     private var sheetBottomConstraint: NSLayoutConstraint?
@@ -1862,6 +1863,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         mapControlTopConstraint?.constant = NativeAdaptiveLayout.isCompactHeight(view) ? 16 : 142
+        updateExpandedContentWidthPriority(for: view.bounds.width)
         let nextHeight = height(for: sheetState)
         if abs((sheetHeightConstraint?.constant ?? 0) - nextHeight) > 0.5 {
             sheetHeightConstraint?.constant = nextHeight
@@ -1873,6 +1875,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         coordinator.animate(alongsideTransition: { [weak self] _ in
             guard let self else { return }
             self.sheetHeightConstraint?.constant = self.height(for: self.sheetState, containerSize: size)
+            self.updateExpandedContentWidthPriority(for: size.width)
             self.view.layoutIfNeeded()
         })
     }
@@ -2405,6 +2408,13 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         expandedContentStack.translatesAutoresizingMaskIntoConstraints = false
         expandedScrollView.addSubview(expandedContentStack)
 
+        let expandedContentWidthConstraint = expandedContentStack.widthAnchor.constraint(
+            equalTo: expandedScrollView.frameLayoutGuide.widthAnchor,
+            constant: -56
+        )
+        expandedContentWidthConstraint.priority = .defaultHigh
+        self.expandedContentWidthConstraint = expandedContentWidthConstraint
+
         NSLayoutConstraint.activate([
             sheetHandle.topAnchor.constraint(equalTo: sheetView.topAnchor, constant: 10),
             sheetHandle.centerXAnchor.constraint(equalTo: sheetView.centerXAnchor),
@@ -2438,8 +2448,13 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
             expandedContentStack.bottomAnchor.constraint(equalTo: expandedScrollView.contentLayoutGuide.bottomAnchor, constant: -40),
             expandedContentStack.widthAnchor.constraint(lessThanOrEqualTo: expandedScrollView.frameLayoutGuide.widthAnchor, constant: -56),
             expandedContentStack.widthAnchor.constraint(lessThanOrEqualToConstant: NativeAdaptiveLayout.cardMaxWidth),
-            NativeAdaptiveLayout.preferredWidth(expandedContentStack, equalTo: expandedScrollView.frameLayoutGuide.widthAnchor, constant: -56)
+            expandedContentWidthConstraint
         ])
+    }
+
+    private func updateExpandedContentWidthPriority(for containerWidth: CGFloat) {
+        let compactWidthLimit = NativeAdaptiveLayout.cardMaxWidth + 56
+        expandedContentWidthConstraint?.priority = containerWidth <= compactWidthLimit ? .required : .defaultHigh
     }
 
     private func renderSheetContent() {
@@ -3645,18 +3660,30 @@ private final class NativeSettingsViewController: UIViewController, UITableViewD
         card.translatesAutoresizingMaskIntoConstraints = false
         header.addSubview(card)
 
+        let promoTrailingInset = promoCard.trailingAnchor.constraint(
+            lessThanOrEqualTo: header.trailingAnchor,
+            constant: -20
+        )
+        promoTrailingInset.priority = UILayoutPriority(999)
+
+        let accountTrailingInset = card.trailingAnchor.constraint(
+            lessThanOrEqualTo: header.trailingAnchor,
+            constant: -20
+        )
+        accountTrailingInset.priority = UILayoutPriority(999)
+
         NSLayoutConstraint.activate([
             promoCard.topAnchor.constraint(equalTo: header.topAnchor, constant: 10),
             promoCard.centerXAnchor.constraint(equalTo: header.centerXAnchor),
             promoCard.leadingAnchor.constraint(greaterThanOrEqualTo: header.leadingAnchor, constant: 20),
-            promoCard.trailingAnchor.constraint(lessThanOrEqualTo: header.trailingAnchor, constant: -20),
+            promoTrailingInset,
             promoCard.widthAnchor.constraint(lessThanOrEqualToConstant: NativeAdaptiveLayout.cardMaxWidth),
             NativeAdaptiveLayout.preferredWidth(promoCard, equalTo: header.widthAnchor, constant: -40),
             promoCard.heightAnchor.constraint(greaterThanOrEqualToConstant: 160),
             card.topAnchor.constraint(equalTo: promoCard.bottomAnchor, constant: 18),
             card.centerXAnchor.constraint(equalTo: header.centerXAnchor),
             card.leadingAnchor.constraint(greaterThanOrEqualTo: header.leadingAnchor, constant: 20),
-            card.trailingAnchor.constraint(lessThanOrEqualTo: header.trailingAnchor, constant: -20),
+            accountTrailingInset,
             card.widthAnchor.constraint(lessThanOrEqualToConstant: NativeAdaptiveLayout.cardMaxWidth),
             NativeAdaptiveLayout.preferredWidth(card, equalTo: header.widthAnchor, constant: -40),
             card.heightAnchor.constraint(greaterThanOrEqualToConstant: signedIn ? 238 : 128),
@@ -3667,6 +3694,21 @@ private final class NativeSettingsViewController: UIViewController, UITableViewD
             configureSignedInCard(card, profile: profile)
         } else {
             configureSignedOutCard(card)
+        }
+
+        if header.bounds.width > 0 {
+            let fittingTarget = CGSize(
+                width: header.bounds.width,
+                height: UIView.layoutFittingCompressedSize.height
+            )
+            let fittingHeight = header.systemLayoutSizeFitting(
+                fittingTarget,
+                withHorizontalFittingPriority: .required,
+                verticalFittingPriority: .fittingSizeLevel
+            ).height
+            if fittingHeight > 1 {
+                header.frame.size.height = ceil(fittingHeight)
+            }
         }
         return header
     }
