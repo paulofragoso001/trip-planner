@@ -5,7 +5,7 @@ import {
   validationFailure
 } from "@/lib/api/errors";
 import { authorizeDashboardApi } from "@/lib/server/dashboard-test-auth";
-import { resolvePlace } from "@/lib/travel-data";
+import { resolvePlaceWithPostcardHero } from "@/lib/travel-data";
 import { validateResolvePlaceInput } from "@/lib/validators/travel-data";
 
 const routeName = "travel-data/resolve-place";
@@ -20,7 +20,7 @@ export async function POST(request: Request) {
     const auth = await authorizeDashboardApi();
     if (!auth) return unauthorized();
 
-    const resolved = await resolvePlace(validation.value);
+    const resolved = await resolvePlaceWithPostcardHero(validation.value);
     return apiCanonicalSuccess({ resolved });
   } catch (error) {
     return handleApiError(error, routeName);

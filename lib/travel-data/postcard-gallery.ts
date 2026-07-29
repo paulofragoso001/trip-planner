@@ -1,5 +1,6 @@
 import type {
   PlacePhotoMetadata,
+  PostcardDiscoveryCategory,
   TravelInventoryItem,
   TravelLocation
 } from "./types";
@@ -18,15 +19,52 @@ const COMMERCIAL_PLACE_TYPES = new Set([
   "store"
 ]);
 
-const ICONIC_PLACE_TYPES = new Set([
+const STRONG_ICONIC_PLACE_TYPES = new Set([
   "beach",
   "historical_landmark",
   "monument",
-  "museum",
   "natural_feature",
   "observation_deck",
-  "park",
   "tourist_attraction"
+]);
+
+const MEDIUM_ICONIC_PLACE_TYPES = new Set([
+  "art_gallery",
+  "cathedral",
+  "church",
+  "museum",
+  "park",
+  "place_of_worship",
+  "plaza"
+]);
+
+const GENERIC_BROAD_QUERY_TYPES = new Set([
+  "convention_center",
+  "establishment",
+  "museum",
+  "point_of_interest",
+  "premise"
+]);
+
+const ICONIC_TITLE_TERMS = new Set([
+  "arch",
+  "beach",
+  "bridge",
+  "castle",
+  "colosseum",
+  "gardens",
+  "landmark",
+  "monument",
+  "mount",
+  "mountain",
+  "palace",
+  "redeemer",
+  "skyline",
+  "statue",
+  "temple",
+  "tower",
+  "view",
+  "viewpoint"
 ]);
 
 export const POSTCARD_GALLERY_MAX_DISCOVERY_REQUESTS = 3;
@@ -76,9 +114,42 @@ export function rankPostcardGallery(
     POSTCARD_GALLERY_MAX_RESULTS
   );
 
-  return [...unique.values()]
-    .sort((a, b) => comparePostcardItems(a, b, destination, options.origin))
-    .slice(0, limit);
+  const ranked = [...unique.values()]
+    .sort((a, b) => comparePostcardItems(a, b, destination, options.origin));
+
+  if (process.env.NODE_ENV === "development") {
+    ranked.slice(0, limit).forEach((item, index) => {
+      const score = postcardScore(item, destination, options.origin);
+      console.info("Postcard ranking:", {
+        candidateCategory: item.metadata.postcardDiscoveryCategory || "destination_discovery",
+        finalRank: index + 1,
+        iconicTier: score.iconicTier,
+        landscape: isLandscape(item),
+        resolutionTier: resolutionTier(item),
+        titleRelevance: Number(score.titleRelevance.toFixed(2))
+      });
+    });
+  }
+
+  return ranked.slice(0, limit);
+}
+
+export function selectPostcardHero(
+  items: TravelInventoryItem[],
+  options: PostcardRankingOptions
+) {
+  const ranked = rankPostcardGallery(items, {
+    ...options,
+    limit: POSTCARD_GALLERY_MAX_RESULTS
+  });
+  if (!ranked.length) return null;
+
+  const destination = normalizeSearchText(options.destination);
+  return ranked.find((item) =>
+    hasUsableHeroImage(item) &&
+    (iconicTier(item) >= 3 || discoveryTier(item) >= 3) &&
+    postcardScore(item, destination, options.origin).heroSuitability >= 2
+  ) || ranked.find(hasUsableHeroImage) || ranked[0];
 }
 
 function comparePostcardItems(
@@ -87,8 +158,22 @@ function comparePostcardItems(
   destination: string,
   origin?: TravelLocation | null
 ) {
-  const scoreDifference = postcardScore(b, destination, origin) - postcardScore(a, destination, origin);
+  const aScore = postcardScore(a, destination, origin);
+  const bScore = postcardScore(b, destination, origin);
+  const scoreDifference = bScore.total - aScore.total;
   if (scoreDifference) return scoreDifference;
+
+  const iconicDifference = bScore.iconicTier - aScore.iconicTier;
+  if (iconicDifference) return iconicDifference;
+
+  const relevanceDifference = bScore.titleRelevance - aScore.titleRelevance;
+  if (relevanceDifference) return relevanceDifference;
+
+  const landscapeDifference = bScore.heroSuitability - aScore.heroSuitability;
+  if (landscapeDifference) return landscapeDifference;
+
+  const areaDifference = photoArea(b) - photoArea(a);
+  if (areaDifference) return areaDifference;
 
   const reviewDifference = (b.reviewCount || 0) - (a.reviewCount || 0);
   if (reviewDifference) return reviewDifference;
@@ -96,8 +181,8 @@ function comparePostcardItems(
   const ratingDifference = (b.rating || 0) - (a.rating || 0);
   if (ratingDifference) return ratingDifference;
 
-  const areaDifference = photoArea(b) - photoArea(a);
-  if (areaDifference) return areaDifference;
+  const distanceDifference = distanceForSort(a, origin) - distanceForSort(b, origin);
+  if (distanceDifference) return distanceDifference;
 
   const titleDifference = a.title.localeCompare(b.title, "en", { sensitivity: "base" });
   if (titleDifference) return titleDifference;
@@ -113,15 +198,111 @@ function postcardScore(
   const metadata = photoMetadata(item);
   const width = metadata.primaryPhotoDimensions?.widthPx || 0;
   const height = metadata.primaryPhotoDimensions?.heightPx || 0;
+  const normalizedTitle = normalizeSearchText(item.title);
   const itemText = normalizeSearchText(`${item.title} ${item.address || ""}`);
-  const relevance = destination && itemText.includes(destination) ? 8 : tokenOverlap(itemText, destination) * 2;
-  const iconic = metadata.placeTypes.some((type) => ICONIC_PLACE_TYPES.has(type.toLowerCase())) ? 7 : 0;
+  const titleRelevance = destination
+    ? tokenOverlap(normalizedTitle, destination)
+    : 0;
+  const localityRelevance = destination
+    ? tokenOverlap(normalizeSearchText(item.address || ""), destination)
+    : 0;
+  const exactDestinationInTitle = destination && normalizedTitle.includes(destination) ? 1 : 0;
+  const discovery = discoveryTier(item);
+  const iconic = iconicTier(item);
+  const iconicTitle = titleIconicTier(normalizedTitle);
+  const broadQuery = !isSpecificAttractionQuery(destination);
+  const specificQueryMatch = !broadQuery && titleRelevance >= 0.8 ? 24 : 0;
+  const genericPenalty = broadQuery && metadata.placeTypes.some((type) =>
+    GENERIC_BROAD_QUERY_TYPES.has(type.toLowerCase())
+  ) ? 3 : 0;
   const landscape = width > height * 1.15 ? 3 : width >= height && width > 0 ? 1.5 : 0;
-  const resolution = Math.min(3, photoArea(item) / 4_000_000);
-  const prominence = Math.min(2.5, Math.log10((item.reviewCount || 0) + 1) / 2);
+  const resolution = resolutionTier(item);
+  const prominence = Math.min(2, Math.log10((item.reviewCount || 0) + 1) / 3);
   const rating = (item.rating || 0) / 5;
-  const proximity = origin ? Math.max(0, 1.5 - distanceKm(origin, item) / 100) : 0;
-  return relevance + iconic + landscape + resolution + prominence + rating + proximity;
+  const proximity = origin ? Math.max(0, 0.75 - distanceKm(origin, item) / 200) : 0;
+  const total =
+    discovery * 3 +
+    iconic * 3 +
+    iconicTitle * 2 +
+    titleRelevance * 4 +
+    localityRelevance * 1.5 +
+    exactDestinationInTitle * 0.75 +
+    specificQueryMatch +
+    landscape +
+    resolution +
+    prominence +
+    rating +
+    proximity -
+    genericPenalty;
+  return {
+    heroSuitability: landscape + resolution,
+    iconicTier: Math.max(iconic, iconicTitle, discovery),
+    titleRelevance,
+    total
+  };
+}
+
+function discoveryTier(item: TravelInventoryItem) {
+  const category = item.metadata.postcardDiscoveryCategory as PostcardDiscoveryCategory | undefined;
+  switch (category) {
+    case "iconic_landmark":
+    case "scenic_view":
+      return 3;
+    case "tourist_attraction":
+      return 1;
+    default:
+      return 0;
+  }
+}
+
+function iconicTier(item: TravelInventoryItem) {
+  const types = photoMetadata(item).placeTypes.map((type) => type.toLowerCase());
+  if (types.some((type) => STRONG_ICONIC_PLACE_TYPES.has(type))) return 3;
+  if (types.some((type) => MEDIUM_ICONIC_PLACE_TYPES.has(type))) return 1;
+  return 0;
+}
+
+function titleIconicTier(title: string) {
+  const tokens = title.split(" ");
+  return tokens.some((token) => ICONIC_TITLE_TERMS.has(token)) ? 3 : 0;
+}
+
+function resolutionTier(item: TravelInventoryItem) {
+  const area = photoArea(item);
+  if (area >= 6_000_000) return 3;
+  if (area >= 2_000_000) return 2;
+  if (area >= 800_000) return 1;
+  return 0;
+}
+
+function hasUsableHeroImage(item: TravelInventoryItem) {
+  if (!item.imageUrl) return false;
+  const dimensions = photoMetadata(item).primaryPhotoDimensions;
+  if (!dimensions?.widthPx || !dimensions?.heightPx) return false;
+  return dimensions.widthPx >= dimensions.heightPx && photoArea(item) >= 800_000;
+}
+
+function isLandscape(item: TravelInventoryItem) {
+  const dimensions = photoMetadata(item).primaryPhotoDimensions;
+  return Boolean(
+    dimensions?.widthPx &&
+    dimensions?.heightPx &&
+    dimensions.widthPx > dimensions.heightPx * 1.15
+  );
+}
+
+function isSpecificAttractionQuery(destination: string) {
+  if (!destination) return false;
+  const specificTerms = [
+    "cathedral",
+    "church",
+    "gallery",
+    "museum",
+    "palace",
+    "temple",
+    "tower"
+  ];
+  return specificTerms.some((term) => destination.includes(term));
 }
 
 function photoMetadata(item: TravelInventoryItem): PlacePhotoMetadata {
@@ -192,6 +373,10 @@ function distanceKm(origin: TravelLocation, item: TravelInventoryItem) {
   const lat2 = radians(item.latitude);
   const h = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
   return 2 * radiusKm * Math.asin(Math.sqrt(h));
+}
+
+function distanceForSort(item: TravelInventoryItem, origin?: TravelLocation | null) {
+  return origin ? distanceKm(origin, item) : Number.POSITIVE_INFINITY;
 }
 
 function radians(value: number) {

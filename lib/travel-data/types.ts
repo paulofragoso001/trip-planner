@@ -49,7 +49,14 @@ export type TravelInventoryItem = {
 
 export type TravelInventoryMetadata = Record<string, unknown> & {
   placePhoto?: PlacePhotoMetadata | null;
+  postcardDiscoveryCategory?: PostcardDiscoveryCategory | null;
 };
+
+export type PostcardDiscoveryCategory =
+  | "destination_discovery"
+  | "iconic_landmark"
+  | "scenic_view"
+  | "tourist_attraction";
 
 export type PlacePhotoDimensions = {
   heightPx: number | null;
