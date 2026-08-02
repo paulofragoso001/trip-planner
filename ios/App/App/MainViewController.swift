@@ -108,7 +108,6 @@ final class MainViewController: CAPBridgeViewController {
         nativeTripStore = NativeTripStore(webView: bridge?.webView)
         bridge?.registerPluginInstance(mapGatewayPlugin)
         bridge?.registerPluginInstance(nativeMapPlugin)
-        bridge?.registerPluginInstance(AppleCalendarPlugin())
     }
 
     override func viewDidAppear(_ animated: Bool) {
