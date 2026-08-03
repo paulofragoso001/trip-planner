@@ -19,6 +19,35 @@ final class NativeAuthSessionURLProtocol: URLProtocol {
 
     override func stopLoading() {}
 
+    static func requestBody(for request: URLRequest) throws -> Data {
+        if let body = request.httpBody {
+            return body
+        }
+
+        guard let stream = request.httpBodyStream else {
+            throw NativeAuthSessionURLProtocolError.missingRequestBody
+        }
+
+        stream.open()
+        defer { stream.close() }
+
+        var body = Data()
+        var buffer = [UInt8](repeating: 0, count: 4_096)
+        while true {
+            let count = stream.read(&buffer, maxLength: buffer.count)
+            if count < 0 {
+                throw stream.streamError ?? NativeAuthSessionURLProtocolError.requestBodyReadFailed
+            }
+            if count == 0 { break }
+            body.append(contentsOf: buffer.prefix(count))
+        }
+
+        guard !body.isEmpty else {
+            throw NativeAuthSessionURLProtocolError.missingRequestBody
+        }
+        return body
+    }
+
     static func response(for request: URLRequest, statusCode: Int) -> HTTPURLResponse {
         HTTPURLResponse(
             url: request.url!,
@@ -27,4 +56,9 @@ final class NativeAuthSessionURLProtocol: URLProtocol {
             headerFields: ["Content-Type": "application/json"]
         )!
     }
+}
+
+private enum NativeAuthSessionURLProtocolError: Error {
+    case missingRequestBody
+    case requestBodyReadFailed
 }

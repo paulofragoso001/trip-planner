@@ -34,7 +34,7 @@ final class NativeAuthConnectivityTests: XCTestCase {
         NativeAuthSessionURLProtocol.handler = { request in
             XCTAssertEqual(request.httpMethod, "POST")
             XCTAssertEqual(request.value(forHTTPHeaderField: "apikey"), "test-publishable-key")
-            let body = try! XCTUnwrap(request.httpBody)
+            let body = try! NativeAuthSessionURLProtocol.requestBody(for: request)
             let json = try! XCTUnwrap(JSONSerialization.jsonObject(with: body) as? [String: Any])
             XCTAssertEqual(json["refresh_token"] as? String, "refresh-token")
             let response = NativeAuthSessionURLProtocol.response(for: request, statusCode: 200)
@@ -105,6 +105,17 @@ final class NativeAuthConnectivityTests: XCTestCase {
         XCTAssertEqual(session.accessToken, "web-access-token")
         XCTAssertEqual(session.refreshToken, "web-refresh-token")
         XCTAssertEqual(session.expiresAt, 1_900_000_000)
+    }
+
+    func testAuthRequestBodySupportsDataAndStreamStorage() throws {
+        let expected = Data(#"{"refresh_token":"refresh-token"}"#.utf8)
+        var dataRequest = URLRequest(url: URL(string: "https://supabase.test/token")!)
+        dataRequest.httpBody = expected
+        XCTAssertEqual(try NativeAuthSessionURLProtocol.requestBody(for: dataRequest), expected)
+
+        var streamRequest = URLRequest(url: URL(string: "https://supabase.test/token")!)
+        streamRequest.httpBodyStream = InputStream(data: expected)
+        XCTAssertEqual(try NativeAuthSessionURLProtocol.requestBody(for: streamRequest), expected)
     }
 
 }
