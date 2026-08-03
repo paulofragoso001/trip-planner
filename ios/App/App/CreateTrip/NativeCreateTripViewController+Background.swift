@@ -1,11 +1,77 @@
 import PhotosUI
+import CoreImage
 import UIKit
+
+final class NativeTripBackgroundImageCache {
+    static let shared = NativeTripBackgroundImageCache()
+    private let cacheVersion = "destination-only-sharp-hd-v6"
+
+    private let memory = NSCache<NSString, UIImage>()
+    private let writeQueue = DispatchQueue(label: "app.almidy.trip-background-cache", qos: .utility)
+    private let directory: URL
+
+    private init(fileManager: FileManager = .default) {
+        let caches = fileManager.urls(for: .cachesDirectory, in: .userDomainMask).first
+            ?? fileManager.temporaryDirectory
+        directory = caches.appendingPathComponent("TripBackgrounds", isDirectory: true)
+        try? fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
+    }
+
+    func image(for trip: NativeMapTrip) -> UIImage? {
+        image(forKey: "\(cacheVersion):trip:\(trip.id)")
+            ?? trip.destination.flatMap { image(forDestination: $0) }
+    }
+
+    func image(forDestination destination: String) -> UIImage? {
+        image(forKey: "\(cacheVersion):destination:\(normalized(destination))")
+    }
+
+    func store(_ image: UIImage, for trip: NativeMapTrip) {
+        store(image, forKey: "\(cacheVersion):trip:\(trip.id)")
+        if let destination = trip.destination { store(image, forDestination: destination) }
+    }
+
+    func store(_ image: UIImage, forDestination destination: String) {
+        store(image, forKey: "\(cacheVersion):destination:\(normalized(destination))")
+    }
+
+    private func image(forKey key: String) -> UIImage? {
+        let cacheKey = key as NSString
+        if let image = memory.object(forKey: cacheKey) { return image }
+        guard let image = UIImage(contentsOfFile: fileURL(for: key).path) else { return nil }
+        memory.setObject(image, forKey: cacheKey)
+        return image
+    }
+
+    private func store(_ image: UIImage, forKey key: String) {
+        memory.setObject(image, forKey: key as NSString)
+        let url = fileURL(for: key)
+        writeQueue.async {
+            guard let data = image.jpegData(compressionQuality: 0.92) else { return }
+            try? data.write(to: url, options: .atomic)
+        }
+    }
+
+    private func normalized(_ value: String) -> String {
+        value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    }
+
+    private func fileURL(for key: String) -> URL {
+        var hash: UInt64 = 14_695_981_039_346_656_037
+        for byte in key.utf8 {
+            hash ^= UInt64(byte)
+            hash &*= 1_099_511_628_211
+        }
+        return directory.appendingPathComponent(String(hash, radix: 16)).appendingPathExtension("jpg")
+    }
+}
 
 final class NativeCreateTripBackgroundContext {
     let resolveImageBank: ((String, @escaping ([NativeDestinationImageChoice]) -> Void) -> Void)?
     let genericSelection: NativeTripTravelImageSelection
     let controller: NativeTripBackgroundController?
     let imageView = UIImageView()
+    let imageMask = CAGradientLayer()
     let fallbackImage = UIImage(named: "AlmidyOfflineGlobe")
     let gradient = CAGradientLayer()
     let loadingIndicator = UIActivityIndicatorView(style: .large)
@@ -33,22 +99,34 @@ extension NativeCreateTripViewController: PHPickerViewControllerDelegate {
         context.imageView.translatesAutoresizingMaskIntoConstraints = false
         context.imageView.contentMode = .scaleAspectFill
         context.imageView.clipsToBounds = true
-        context.imageView.image = context.genericSelection.image ?? context.fallbackImage
+        context.imageView.backgroundColor = AlmidyDesignTokens.Color.mapSurface
+        context.imageView.image = existingTrip.flatMap(NativeTripBackgroundImageCache.shared.image(for:))
+            ?? (existingTrip == nil ? (context.genericSelection.image ?? context.fallbackImage) : nil)
+        if let initialImage = context.imageView.image {
+            view.backgroundColor = destinationSurfaceColor(from: initialImage)
+        }
+        context.imageMask.colors = [
+            UIColor.black.cgColor,
+            UIColor.black.cgColor,
+            UIColor.clear.cgColor
+        ]
+        context.imageMask.locations = [0, 0.70, 1]
+        context.imageView.layer.mask = context.imageMask
         view.addSubview(context.imageView)
 
         context.gradient.colors = [
-            UIColor.black.withAlphaComponent(0.08).cgColor,
-            UIColor.black.withAlphaComponent(0.22).cgColor,
-            UIColor.black.withAlphaComponent(0.76).cgColor
+            UIColor.black.withAlphaComponent(0.04).cgColor,
+            UIColor.black.withAlphaComponent(0.14).cgColor,
+            UIColor.black.withAlphaComponent(0.38).cgColor
         ]
-        context.gradient.locations = [0, 0.48, 1]
+        context.gradient.locations = [0, 0.34, 1]
         view.layer.insertSublayer(context.gradient, above: context.imageView.layer)
 
         NSLayoutConstraint.activate([
             context.imageView.topAnchor.constraint(equalTo: view.topAnchor),
             context.imageView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             context.imageView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            context.imageView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
+            context.imageView.heightAnchor.constraint(equalTo: view.heightAnchor, multiplier: 0.43)
         ])
 
         context.loadingIndicator.color = UIColor.white.withAlphaComponent(0.72)
@@ -62,16 +140,39 @@ extension NativeCreateTripViewController: PHPickerViewControllerDelegate {
             context.loadingIndicator.centerYAnchor.constraint(equalTo: view.centerYAnchor, constant: -92)
         ])
 
-        if let imageUrl = existingTrip?.imageUrl, let url = URL(string: imageUrl) {
-            URLSession.shared.dataTask(with: url) { [weak self] data, _, _ in
-                guard let data, let image = UIImage(data: data) else { return }
-                DispatchQueue.main.async { self?.transitionToBackgroundImage(image) }
-            }.resume()
+        loadExistingTripBackgroundIfNeeded()
+    }
+
+    private func loadExistingTripBackgroundIfNeeded() {
+        guard let existingTrip else { return }
+        if NativeTripBackgroundImageCache.shared.image(for: existingTrip) != nil { return }
+        guard let imageUrl = existingTrip.imageUrl,
+              let url = URL(string: imageUrl) else {
+            scheduleDestinationBackgroundUpdate()
+            return
         }
+        backgroundContext.loadingIndicator.startAnimating()
+        URLSession.shared.dataTask(with: url) { [weak self] data, response, _ in
+            let statusCode = (response as? HTTPURLResponse)?.statusCode ?? 0
+            let image = (statusCode == 0 || (200...299).contains(statusCode))
+                ? data.flatMap(UIImage.init(data:))
+                : nil
+            DispatchQueue.main.async {
+                guard let self else { return }
+                self.backgroundContext.loadingIndicator.stopAnimating()
+                if let image {
+                    NativeTripBackgroundImageCache.shared.store(image, for: existingTrip)
+                    self.transitionToBackgroundImage(image)
+                } else {
+                    self.scheduleDestinationBackgroundUpdate()
+                }
+            }
+        }.resume()
     }
 
     func updateBackgroundLayout() {
         backgroundContext.gradient.frame = view.bounds
+        backgroundContext.imageMask.frame = backgroundContext.imageView.bounds
     }
 
     func cancelBackgroundWork() {
@@ -89,6 +190,7 @@ extension NativeCreateTripViewController: PHPickerViewControllerDelegate {
             guard let self else { return }
             self.cancelBackgroundWork()
             self.backgroundContext.controller?.selectManualImage(image) { [weak self] image in
+                self?.cacheSelectedBackground(image)
                 self?.transitionToBackgroundImage(image)
             }
             self.setLocationStatus(nil)
@@ -114,6 +216,7 @@ extension NativeCreateTripViewController: PHPickerViewControllerDelegate {
                 guard let self else { return }
                 self.cancelBackgroundWork()
                 self.backgroundContext.controller?.selectManualImage(image) { [weak self] image in
+                    self?.cacheSelectedBackground(image)
                     self?.transitionToBackgroundImage(image)
                 }
                 self.setLocationStatus(nil)
@@ -127,14 +230,26 @@ extension NativeCreateTripViewController: PHPickerViewControllerDelegate {
             destination: tripState.resolvedLocation,
             loading: { [weak self] isLoading in
                 guard let self else { return }
-                isLoading
-                    ? self.backgroundContext.loadingIndicator.startAnimating()
-                    : self.backgroundContext.loadingIndicator.stopAnimating()
+                if isLoading {
+                    self.backgroundContext.loadingIndicator.startAnimating()
+                    if self.tripState.resolvedLocation != nil {
+                        self.backgroundContext.imageView.image = nil
+                    }
+                } else {
+                    self.backgroundContext.loadingIndicator.stopAnimating()
+                }
             },
             completion: { [weak self] image in
                 guard let self else { return }
-                if image != nil || self.existingTrip == nil {
+                if self.backgroundContext.controller?.state.selectionMode == .automaticDestination,
+                   let image {
+                    self.cacheSelectedBackground(image)
                     self.transitionToBackgroundImage(image)
+                } else {
+                    // Keep the quiet destination-colored surface when no verified
+                    // travel photo is available. A satellite map is not a photo
+                    // of the selected destination and must not flash or be cached.
+                    self.transitionToBackgroundImage(nil)
                 }
             }
         )
@@ -144,9 +259,21 @@ extension NativeCreateTripViewController: PHPickerViewControllerDelegate {
         tripState.resolvedLocation?.title.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
     }
 
+    private func cacheSelectedBackground(_ image: UIImage) {
+        if let existingTrip {
+            NativeTripBackgroundImageCache.shared.store(image, for: existingTrip)
+        }
+        if let destination = tripState.resolvedLocation?.title {
+            NativeTripBackgroundImageCache.shared.store(image, forDestination: destination)
+        }
+    }
+
     func transitionToBackgroundImage(_ image: UIImage?) {
         let imageView = backgroundContext.imageView
         guard imageView.image !== image else { return }
+        if let image {
+            view.backgroundColor = destinationSurfaceColor(from: image)
+        }
         UIView.transition(
             with: imageView,
             duration: NativeTripBackgroundController.transitionDuration(
@@ -154,6 +281,34 @@ extension NativeCreateTripViewController: PHPickerViewControllerDelegate {
             ),
             options: [.transitionCrossDissolve, .allowAnimatedContent, .beginFromCurrentState],
             animations: { imageView.image = image }
+        )
+    }
+
+    private func destinationSurfaceColor(from image: UIImage) -> UIColor {
+        guard let input = CIImage(image: image), !input.extent.isEmpty,
+              let filter = CIFilter(name: "CIAreaAverage") else {
+            return AlmidyDesignTokens.Color.mapSurface
+        }
+        filter.setValue(input, forKey: kCIInputImageKey)
+        filter.setValue(CIVector(cgRect: input.extent), forKey: kCIInputExtentKey)
+        guard let output = filter.outputImage else {
+            return AlmidyDesignTokens.Color.mapSurface
+        }
+        var rgba = [UInt8](repeating: 0, count: 4)
+        CIContext(options: [.workingColorSpace: NSNull()]).render(
+            output,
+            toBitmap: &rgba,
+            rowBytes: 4,
+            bounds: CGRect(x: 0, y: 0, width: 1, height: 1),
+            format: .RGBA8,
+            colorSpace: CGColorSpaceCreateDeviceRGB()
+        )
+        let darkeningFactor: CGFloat = 0.52
+        return UIColor(
+            red: CGFloat(rgba[0]) / 255 * darkeningFactor,
+            green: CGFloat(rgba[1]) / 255 * darkeningFactor,
+            blue: CGFloat(rgba[2]) / 255 * darkeningFactor,
+            alpha: 1
         )
     }
 }

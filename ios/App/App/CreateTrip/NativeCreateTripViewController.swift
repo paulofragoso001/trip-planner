@@ -175,6 +175,8 @@ final class NativeCreateTripViewController: UIViewController,
                     self.updateCreateState()
                     return
                 }
+                self.nameField.text = destination.title
+                self.tripState.updateTripName(destination.title)
                 self.tripState.confirmLocation(destination)
                 self.setLocationStatus(nil)
                 self.updateCreateState()

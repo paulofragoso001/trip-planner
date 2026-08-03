@@ -102,7 +102,9 @@ function buildProviderPhotoUrl({
   if (photoReference) {
     if (!/^[A-Za-z0-9._~:+=-]{10,1800}$/.test(photoReference)) return null;
     const url = new URL("https://maps.googleapis.com/maps/api/place/photo");
-    url.searchParams.set("maxwidth", String(maxWidth));
+    // The legacy Places Photo endpoint tops out at 1600px. New Places photo
+    // names use the v1 endpoint above and support the full requested 4800px.
+    url.searchParams.set("maxwidth", String(Math.min(maxWidth, 1600)));
     url.searchParams.set("photo_reference", photoReference);
     url.searchParams.set("key", apiKey);
     return url;

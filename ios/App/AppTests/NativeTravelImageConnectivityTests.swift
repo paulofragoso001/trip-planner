@@ -44,7 +44,7 @@ final class NativeTravelImageConnectivityTests: XCTestCase {
             XCTAssertEqual(
                 URLComponents(url: imageURL, resolvingAgainstBaseURL: false)?
                     .queryItems?.first(where: { $0.name == "maxWidth" })?.value,
-                "1200"
+                "3200"
             )
             expectation.fulfill()
         }
@@ -79,7 +79,7 @@ final class NativeTravelImageConnectivityTests: XCTestCase {
             session: nativeTripStoreSession()
         )
         store.resolveDestinationHeroImage(query: "Brazil") { imageURL in
-            XCTAssertEqual(requestedNames, ["Brazil", "Brazil famous landmark"])
+            XCTAssertEqual(requestedNames, ["Brazil", "Brazil most visited iconic landmark"])
             guard let imageURL else {
                 XCTFail("Expected the iconic landmark retry to return a photo URL")
                 expectation.fulfill()
@@ -104,7 +104,10 @@ final class NativeTravelImageConnectivityTests: XCTestCase {
             if path == "/api/travel-data/resolve-place" {
                 let payload = try! XCTUnwrap(nativeRequestBodyData(request))
                 let json = try! XCTUnwrap(JSONSerialization.jsonObject(with: payload) as? [String: Any])
-                XCTAssertEqual(json["name"] as? String, "Brazil famous landmark")
+                XCTAssertEqual(
+                    json["name"] as? String,
+                    "Brazil iconic tourist landmark travel photography"
+                )
                 return (response, """
                 {"data":{"resolved":{"inventoryItem":null,"latitude":-22.9519,"longitude":-43.2105}},"error":null}
                 """.data(using: .utf8)!)
@@ -138,7 +141,7 @@ final class NativeTravelImageConnectivityTests: XCTestCase {
             XCTAssertEqual(
                 choices.first.flatMap { URLComponents(url: $0.url, resolvingAgainstBaseURL: false) }?
                     .queryItems?.first(where: { $0.name == "maxWidth" })?.value,
-                "700"
+                "2400"
             )
             expectation.fulfill()
         }

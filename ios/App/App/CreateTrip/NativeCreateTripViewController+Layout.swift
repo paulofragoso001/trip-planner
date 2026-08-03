@@ -125,7 +125,7 @@ extension NativeCreateTripViewController {
             createButton.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -24),
             createButton.heightAnchor.constraint(equalToConstant: 48),
             fields.topAnchor.constraint(greaterThanOrEqualTo: closeButton.bottomAnchor, constant: 60),
-            fields.centerYAnchor.constraint(equalTo: contentView.centerYAnchor, constant: 88),
+            fields.centerYAnchor.constraint(equalTo: contentView.centerYAnchor, constant: 210),
             fields.centerXAnchor.constraint(equalTo: contentView.centerXAnchor),
             fields.leadingAnchor.constraint(greaterThanOrEqualTo: contentView.leadingAnchor, constant: 28),
             fields.trailingAnchor.constraint(lessThanOrEqualTo: contentView.trailingAnchor, constant: -28),

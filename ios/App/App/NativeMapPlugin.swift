@@ -180,6 +180,42 @@ struct NativeDestinationImageChoice {
     let url: URL
 }
 
+private func nativeImageSharpnessScore(_ image: CGImage) -> Double? {
+    let width = 256
+    let height = 256
+    var pixels = [UInt8](repeating: 0, count: width * height)
+    let rendered = pixels.withUnsafeMutableBytes { buffer -> Bool in
+        guard let context = CGContext(
+            data: buffer.baseAddress,
+            width: width,
+            height: height,
+            bitsPerComponent: 8,
+            bytesPerRow: width,
+            space: CGColorSpaceCreateDeviceGray(),
+            bitmapInfo: CGImageAlphaInfo.none.rawValue
+        ) else { return false }
+        context.interpolationQuality = .high
+        context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
+        return true
+    }
+    guard rendered else { return nil }
+
+    var laplacianTotal = 0.0
+    var sampleCount = 0
+    for y in 1..<(height - 1) {
+        for x in 1..<(width - 1) {
+            let index = y * width + x
+            let center = Int(pixels[index]) * 4
+            let neighbors = Int(pixels[index - 1]) + Int(pixels[index + 1])
+                + Int(pixels[index - width]) + Int(pixels[index + width])
+            laplacianTotal += Double(abs(center - neighbors))
+            sampleCount += 1
+        }
+    }
+    guard sampleCount > 0 else { return nil }
+    return laplacianTotal / Double(sampleCount)
+}
+
 final class NativeTripStore {
     private let webView: WKWebView?
     private let baseURL: URL
@@ -286,12 +322,44 @@ final class NativeTripStore {
 
     func resolveDestinationHeroImage(
         query: String,
+        minimumPixelDimension: Int = 0,
         completion: @escaping (URL?) -> Void
     ) {
         let normalizedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !normalizedQuery.isEmpty else {
             completion(nil)
             return
+        }
+
+        func chooseQualityURL(_ candidates: [URL], completion: @escaping (URL?) -> Void) {
+            guard minimumPixelDimension > 0 else {
+                completion(candidates.first)
+                return
+            }
+            func inspect(_ index: Int) {
+                guard candidates.indices.contains(index) else {
+                    completion(nil)
+                    return
+                }
+                var request = URLRequest(url: candidates[index])
+                request.cachePolicy = .returnCacheDataElseLoad
+                session.dataTask(with: request) { data, response, _ in
+                    let statusCode = (response as? HTTPURLResponse)?.statusCode ?? 0
+                    guard (statusCode == 0 || (200...299).contains(statusCode)),
+                          let data,
+                          let image = UIImage(data: data),
+                          let cgImage = image.cgImage,
+                          min(cgImage.width, cgImage.height) >= minimumPixelDimension,
+                          cgImage.width * cgImage.height >= 3_000_000,
+                          let sharpness = nativeImageSharpnessScore(cgImage),
+                          sharpness >= 6.0 else {
+                        inspect(index + 1)
+                        return
+                    }
+                    completion(candidates[index])
+                }.resume()
+            }
+            inspect(0)
         }
 
         func resolve(_ candidate: String, retryWithLandmark: Bool) {
@@ -312,20 +380,55 @@ final class NativeTripStore {
                     completion(nil)
                     return
                 }
-                guard let imagePath = response.data.resolved.inventoryItem?.imageUrl,
-                      let resolvedURL = URL(string: imagePath, relativeTo: baseURL)?.absoluteURL else {
-                    if retryWithLandmark {
-                        resolve("\(normalizedQuery) famous landmark", retryWithLandmark: false)
-                    } else {
-                        completion(nil)
+
+                func highResolutionURL(_ imagePath: String?) -> URL? {
+                    guard let imagePath,
+                          let resolvedURL = URL(string: imagePath, relativeTo: baseURL)?.absoluteURL else {
+                        return nil
+                    }
+                    var components = URLComponents(url: resolvedURL, resolvingAgainstBaseURL: false)
+                    var queryItems = components?.queryItems?.filter { $0.name != "maxWidth" } ?? []
+                    queryItems.append(URLQueryItem(name: "maxWidth", value: "3200"))
+                    components?.queryItems = queryItems
+                    return components?.url ?? resolvedURL
+                }
+
+                let inventoryURL = highResolutionURL(response.data.resolved.inventoryItem?.imageUrl)
+                guard let latitude = response.data.resolved.latitude,
+                      let longitude = response.data.resolved.longitude,
+                      let suggestionsBody = try? JSONSerialization.data(withJSONObject: [
+                        "latitude": latitude,
+                        "longitude": longitude,
+                        "limit": 12,
+                        "purpose": "postcard_gallery",
+                        "radiusMeters": 25_000,
+                        "title": normalizedQuery,
+                        "tripId": NSNull()
+                      ]) else {
+                    chooseQualityURL([inventoryURL].compactMap { $0 }) { url in
+                        if let url { completion(url) }
+                        else if retryWithLandmark {
+                            resolve("\(normalizedQuery) most visited iconic landmark", retryWithLandmark: false)
+                        } else { completion(nil) }
                     }
                     return
                 }
-                var components = URLComponents(url: resolvedURL, resolvingAgainstBaseURL: false)
-                var queryItems = components?.queryItems?.filter { $0.name != "maxWidth" } ?? []
-                queryItems.append(URLQueryItem(name: "maxWidth", value: "1200"))
-                components?.queryItems = queryItems
-                completion(components?.url ?? resolvedURL)
+
+                self.send(path: "/api/travel-data/suggestions", method: "POST", body: suggestionsBody) { result in
+                    let galleryURLs: [URL]
+                    if case .success(let data) = result,
+                       let gallery = try? JSONDecoder().decode(NativeDestinationImageBankResponse.self, from: data) {
+                        galleryURLs = gallery.data.suggestions.compactMap { highResolutionURL($0.imageUrl) }
+                    } else {
+                        galleryURLs = []
+                    }
+                    chooseQualityURL(galleryURLs + [inventoryURL].compactMap { $0 }) { url in
+                        if let url { completion(url) }
+                        else if retryWithLandmark {
+                            resolve("\(normalizedQuery) most visited iconic landmark", retryWithLandmark: false)
+                        } else { completion(nil) }
+                    }
+                }
             }
         }
 
@@ -343,7 +446,7 @@ final class NativeTripStore {
                 "city": NSNull(),
                 "country": NSNull(),
                 "locationHint": NSNull(),
-                "name": "\(normalizedQuery) famous landmark"
+                "name": "\(normalizedQuery) iconic tourist landmark travel photography"
               ]) else {
             completion([])
             return
@@ -373,7 +476,7 @@ final class NativeTripStore {
                let resolvedURL = URL(string: imagePath, relativeTo: baseURL)?.absoluteURL {
                 var components = URLComponents(url: resolvedURL, resolvingAgainstBaseURL: false)
                 var queryItems = components?.queryItems?.filter { $0.name != "maxWidth" } ?? []
-                queryItems.append(URLQueryItem(name: "maxWidth", value: "700"))
+                queryItems.append(URLQueryItem(name: "maxWidth", value: "2400"))
                 components?.queryItems = queryItems
                 initialOptions.append(NativeDestinationImageChoice(
                     attribution: "Google",
@@ -394,7 +497,7 @@ final class NativeTripStore {
                           let resolvedURL = URL(string: imagePath, relativeTo: baseURL)?.absoluteURL else { return nil }
                     var components = URLComponents(url: resolvedURL, resolvingAgainstBaseURL: false)
                     var queryItems = components?.queryItems?.filter { $0.name != "maxWidth" } ?? []
-                    queryItems.append(URLQueryItem(name: "maxWidth", value: "700"))
+                    queryItems.append(URLQueryItem(name: "maxWidth", value: "2400"))
                     components?.queryItems = queryItems
                     let url = components?.url ?? resolvedURL
                     guard seen.insert(url.absoluteString).inserted else { return nil }
@@ -1393,6 +1496,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = AlmidyDesignTokens.Color.mapSurface
+        trips.forEach { warmTripBackground($0) }
         configureMap()
         configureMapControls()
         configureSheet()
@@ -1497,6 +1601,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
 
     private func replaceTrips(_ nextTrips: [NativeMapTrip]) {
         trips = nextTrips
+        nextTrips.forEach { warmTripBackground($0) }
         addTripPins()
         renderSheetContent()
     }
@@ -2335,9 +2440,14 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
     }
 
     private func loadTripImage(into imageView: UIImageView, trip: NativeMapTrip) {
+        if let cachedImage = NativeTripBackgroundImageCache.shared.image(for: trip) {
+            imageView.image = cachedImage
+            return
+        }
         if let imageUrl = trip.imageUrl, let url = URL(string: imageUrl) {
             URLSession.shared.dataTask(with: url) { data, _, _ in
                 guard let data, let image = UIImage(data: data) else { return }
+                NativeTripBackgroundImageCache.shared.store(image, for: trip)
                 DispatchQueue.main.async { imageView.image = image }
             }.resume()
             return
@@ -2931,7 +3041,11 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
                     completion(nil)
                     return
                 }
-                tripStore.resolveDestinationHeroImage(query: query, completion: completion)
+                tripStore.resolveDestinationHeroImage(
+                    query: query,
+                    minimumPixelDimension: 1400,
+                    completion: completion
+                )
             },
             onResolveBackgroundBank: { [weak self] query, completion in
                 guard let tripStore = self?.tripStore else {
@@ -2951,6 +3065,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
     private func addNativeTrip(_ trip: NativeMapTrip) {
         guard !trips.contains(where: { $0.id == trip.id }) else { return }
         trips.insert(trip, at: 0)
+        warmTripBackground(trip)
         addTripPins()
         renderSheetContent()
         if let coordinate = trip.coordinate {
@@ -2972,28 +3087,74 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
 
     @objc private func editTripAction(_ sender: NativeTripActionButton) {
         guard let trip = trips.first(where: { $0.id == sender.tripId }) else { return }
-        let form = NativeCreateTripViewController(
-            existingTrip: trip,
-            onResolveBackground: { [weak self] query, completion in
-                guard let tripStore = self?.tripStore else {
-                    completion(nil)
-                    return
+        let presentEditor = { [weak self] in
+            guard let self, self.presentedViewController == nil else { return }
+            let form = NativeCreateTripViewController(
+                existingTrip: trip,
+                onResolveBackground: { [weak self] query, completion in
+                    guard let tripStore = self?.tripStore else {
+                        completion(nil)
+                        return
+                    }
+                    tripStore.resolveDestinationHeroImage(
+                        query: query,
+                        minimumPixelDimension: 1400,
+                        completion: completion
+                    )
+                },
+                onResolveBackgroundBank: { [weak self] query, completion in
+                    guard let tripStore = self?.tripStore else {
+                        completion([])
+                        return
+                    }
+                    tripStore.resolveDestinationImageBank(query: query, completion: completion)
+                },
+                onCreate: { [weak self] draft, completion in
+                    guard let self else { return }
+                    self.updateTripFromServer(id: trip.id, draft: draft, completion: completion)
                 }
-                tripStore.resolveDestinationHeroImage(query: query, completion: completion)
-            },
-            onResolveBackgroundBank: { [weak self] query, completion in
-                guard let tripStore = self?.tripStore else {
-                    completion([])
-                    return
-                }
-                tripStore.resolveDestinationImageBank(query: query, completion: completion)
-            },
-            onCreate: { [weak self] draft, completion in
-                guard let self else { return }
-                self.updateTripFromServer(id: trip.id, draft: draft, completion: completion)
+            )
+            self.presentTripForm(form)
+        }
+        if NativeTripBackgroundImageCache.shared.image(for: trip) != nil {
+            presentEditor()
+        } else {
+            warmTripBackground(trip, completion: presentEditor)
+        }
+    }
+
+    private func warmTripBackground(_ trip: NativeMapTrip, completion: (() -> Void)? = nil) {
+        if NativeTripBackgroundImageCache.shared.image(for: trip) != nil {
+            DispatchQueue.main.async { completion?() }
+            return
+        }
+
+        let download: (URL?) -> Void = { url in
+            guard let url else {
+                DispatchQueue.main.async { completion?() }
+                return
             }
-        )
-        presentTripForm(form)
+            URLSession.shared.dataTask(with: url) { data, response, _ in
+                let statusCode = (response as? HTTPURLResponse)?.statusCode ?? 0
+                if (statusCode == 0 || (200...299).contains(statusCode)),
+                   let data, let image = UIImage(data: data) {
+                    NativeTripBackgroundImageCache.shared.store(image, for: trip)
+                }
+                DispatchQueue.main.async { completion?() }
+            }.resume()
+        }
+
+        if let imageUrl = trip.imageUrl, let url = URL(string: imageUrl) {
+            download(url)
+        } else if let destination = trip.destination, let tripStore {
+            tripStore.resolveDestinationHeroImage(
+                query: destination,
+                minimumPixelDimension: 1400,
+                completion: download
+            )
+        } else {
+            download(nil)
+        }
     }
 
     @objc private func deleteTripAction(_ sender: NativeTripActionButton) {
@@ -3020,6 +3181,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         } else {
             trips.insert(updatedTrip, at: 0)
         }
+        warmTripBackground(updatedTrip)
         addTripPins()
         renderSheetContent()
         refreshTripsFromServer()
@@ -3226,16 +3388,21 @@ private final class NativeSettingsViewController: UIViewController, UITableViewD
         )
         accountTrailingInset.priority = UILayoutPriority(999)
 
+        let preferredPromoCenter = promoCard.centerXAnchor.constraint(equalTo: header.centerXAnchor)
+        preferredPromoCenter.priority = UILayoutPriority(999)
+        let preferredAccountCenter = card.centerXAnchor.constraint(equalTo: header.centerXAnchor)
+        preferredAccountCenter.priority = UILayoutPriority(999)
+
         NSLayoutConstraint.activate([
             promoCard.topAnchor.constraint(equalTo: header.topAnchor, constant: 10),
-            promoCard.centerXAnchor.constraint(equalTo: header.centerXAnchor),
+            preferredPromoCenter,
             promoCard.leadingAnchor.constraint(greaterThanOrEqualTo: header.leadingAnchor, constant: 20),
             promoTrailingInset,
             promoCard.widthAnchor.constraint(lessThanOrEqualToConstant: NativeAdaptiveLayout.cardMaxWidth),
             NativeAdaptiveLayout.preferredWidth(promoCard, equalTo: header.widthAnchor, constant: -40),
             promoCard.heightAnchor.constraint(greaterThanOrEqualToConstant: 160),
             card.topAnchor.constraint(equalTo: promoCard.bottomAnchor, constant: 18),
-            card.centerXAnchor.constraint(equalTo: header.centerXAnchor),
+            preferredAccountCenter,
             card.leadingAnchor.constraint(greaterThanOrEqualTo: header.leadingAnchor, constant: 20),
             accountTrailingInset,
             card.widthAnchor.constraint(lessThanOrEqualToConstant: NativeAdaptiveLayout.cardMaxWidth),
@@ -3314,19 +3481,27 @@ private final class NativeSettingsViewController: UIViewController, UITableViewD
             $0.translatesAutoresizingMaskIntoConstraints = false
             card.addSubview($0)
         }
+        let preferredIconWidth = icon.widthAnchor.constraint(equalToConstant: 54)
+        preferredIconWidth.priority = UILayoutPriority(999)
+        let preferredIconHeight = icon.heightAnchor.constraint(equalToConstant: 54)
+        preferredIconHeight.priority = UILayoutPriority(999)
+        let preferredTitleSpacing = title.trailingAnchor.constraint(lessThanOrEqualTo: icon.leadingAnchor, constant: -12)
+        preferredTitleSpacing.priority = UILayoutPriority(999)
+        let preferredCopySpacing = copy.trailingAnchor.constraint(equalTo: icon.leadingAnchor, constant: -12)
+        preferredCopySpacing.priority = UILayoutPriority(999)
         NSLayoutConstraint.activate([
             eyebrow.topAnchor.constraint(equalTo: card.topAnchor, constant: 24),
             eyebrow.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 20),
             title.topAnchor.constraint(equalTo: eyebrow.bottomAnchor, constant: 8),
             title.leadingAnchor.constraint(equalTo: eyebrow.leadingAnchor),
-            title.trailingAnchor.constraint(lessThanOrEqualTo: icon.leadingAnchor, constant: -12),
+            preferredTitleSpacing,
             copy.topAnchor.constraint(equalTo: title.bottomAnchor, constant: 7),
             copy.leadingAnchor.constraint(equalTo: eyebrow.leadingAnchor),
-            copy.trailingAnchor.constraint(equalTo: icon.leadingAnchor, constant: -12),
+            preferredCopySpacing,
             icon.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -22),
             icon.centerYAnchor.constraint(equalTo: card.centerYAnchor),
-            icon.widthAnchor.constraint(equalToConstant: 54),
-            icon.heightAnchor.constraint(equalToConstant: 54)
+            preferredIconWidth,
+            preferredIconHeight
         ])
         return card
     }
@@ -3358,14 +3533,22 @@ private final class NativeSettingsViewController: UIViewController, UITableViewD
         email.translatesAutoresizingMaskIntoConstraints = false
 
         [avatar, name, email].forEach(card.addSubview)
+        let preferredAvatarWidth = avatar.widthAnchor.constraint(equalToConstant: 118)
+        preferredAvatarWidth.priority = UILayoutPriority(999)
+        let preferredAvatarHeight = avatar.heightAnchor.constraint(equalToConstant: 118)
+        preferredAvatarHeight.priority = UILayoutPriority(999)
+        let preferredNameLeading = name.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 18)
+        preferredNameLeading.priority = UILayoutPriority(999)
+        let preferredNameTrailing = name.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -18)
+        preferredNameTrailing.priority = UILayoutPriority(999)
         NSLayoutConstraint.activate([
             avatar.topAnchor.constraint(equalTo: card.topAnchor, constant: 28),
             avatar.centerXAnchor.constraint(equalTo: card.centerXAnchor),
-            avatar.widthAnchor.constraint(equalToConstant: 118),
-            avatar.heightAnchor.constraint(equalToConstant: 118),
+            preferredAvatarWidth,
+            preferredAvatarHeight,
             name.topAnchor.constraint(equalTo: avatar.bottomAnchor, constant: 14),
-            name.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 18),
-            name.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -18),
+            preferredNameLeading,
+            preferredNameTrailing,
             email.topAnchor.constraint(equalTo: name.bottomAnchor, constant: 4),
             email.leadingAnchor.constraint(equalTo: name.leadingAnchor),
             email.trailingAnchor.constraint(equalTo: name.trailingAnchor),
@@ -3580,7 +3763,9 @@ private final class NativeProfileMenuViewController: UIViewController, UIPopover
         button.titleLabel?.font = AlmidyDesignTokens.Font.button(18)
         button.backgroundColor = AlmidyDesignTokens.Color.settingsBackground
         button.layer.cornerRadius = 18
-        button.heightAnchor.constraint(equalToConstant: 50).isActive = true
+        let heightConstraint = button.heightAnchor.constraint(equalToConstant: 50)
+        heightConstraint.priority = UILayoutPriority(999)
+        heightConstraint.isActive = true
         button.addTarget(self, action: action, for: .touchUpInside)
         return button
     }
@@ -3701,7 +3886,7 @@ private final class NativeAuthViewController: UIViewController, ASAuthorizationC
         header.axis = .horizontal
         header.alignment = .center
         header.distribution = .fill
-        header.heightAnchor.constraint(equalToConstant: 48).isActive = true
+        header.heightAnchor.constraint(equalToConstant: 50).isActive = true
 
         let leading = UIButton(type: .system)
         leading.titleLabel?.font = AlmidyDesignTokens.Font.button(19)

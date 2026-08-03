@@ -45,7 +45,7 @@ export function readProviderPhoto(metadata: Record<string, unknown> | null | und
 }
 
 export function clampPhotoWidth(value: number) {
-  return Math.max(80, Math.min(Math.round(value), 1200));
+  return Math.max(80, Math.min(Math.round(value), 4800));
 }
 
 function buildImageAlt(metadata: Record<string, unknown>) {

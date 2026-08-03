@@ -32,11 +32,34 @@ final class NativeDestinationFieldController {
                 handler(.failure(NativeDestinationResolutionError.noResult))
                 return
             }
+            let placemark = item.placemark
+            let canonicalTitle = Self.canonicalDestinationTitle(
+                fallback: completion.title,
+                placemark: placemark
+            )
             handler(.success(NativeResolvedDestination(
-                title: completion.title,
-                coordinate: item.placemark.coordinate
+                title: canonicalTitle,
+                coordinate: placemark.coordinate
             )))
         }
+    }
+
+    private static func canonicalDestinationTitle(
+        fallback: String,
+        placemark: MKPlacemark
+    ) -> String {
+        let locality = placemark.locality?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let region = placemark.administrativeArea?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let country = placemark.country?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let place = [locality, region, placemark.name]
+            .compactMap { $0 }
+            .first { !$0.isEmpty }
+            ?? fallback.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let country, !country.isEmpty,
+              place.localizedCaseInsensitiveCompare(country) != .orderedSame else {
+            return place
+        }
+        return "\(place), \(country)"
     }
 
     func cancel() {
