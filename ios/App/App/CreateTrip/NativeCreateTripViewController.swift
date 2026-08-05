@@ -3,8 +3,6 @@ import UIKit
 
 final class NativeCreateTripViewController: UIViewController,
     MKLocalSearchCompleterDelegate,
-    UITableViewDataSource,
-    UITableViewDelegate,
     UITextFieldDelegate
 {
     private let onCreate: (NativeTripDraft, @escaping (Result<NativeMapTrip, Error>) -> Void) -> Void
@@ -15,11 +13,12 @@ final class NativeCreateTripViewController: UIViewController,
 
     private let completer = MKLocalSearchCompleter()
     private let destinationController = NativeDestinationFieldController()
-    private var completions: [MKLocalSearchCompletion] = []
+    private var destinationLookupWorkItem: DispatchWorkItem?
+    private var activeDestinationQuery = ""
+    private var resolvingDestinationQuery: String?
     var tripState = NativeCreateTripState(tripName: "", resolvedLocation: nil)
 
     let nameField = UITextField()
-    let suggestionTable = UITableView(frame: .zero, style: .plain)
     let createButton = UIButton(type: .system)
     let locationStatus = UILabel()
 
@@ -44,6 +43,8 @@ final class NativeCreateTripViewController: UIViewController,
     }
 
     deinit {
+        NotificationCenter.default.removeObserver(self)
+        destinationLookupWorkItem?.cancel()
         destinationController.cancel()
         cancelBackgroundWork()
     }
@@ -55,6 +56,7 @@ final class NativeCreateTripViewController: UIViewController,
         configureCoreState()
         configureBackgroundPresentation()
         configureFormLayout()
+        observeKeyboardFrameChanges()
         if existingTrip == nil {
             DispatchQueue.main.async { [weak self] in
                 self?.nameField.becomeFirstResponder()
@@ -65,6 +67,43 @@ final class NativeCreateTripViewController: UIViewController,
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         updateCreateTripLayout()
+    }
+
+    private func observeKeyboardFrameChanges() {
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(keyboardFrameWillChange(_:)),
+            name: UIResponder.keyboardWillChangeFrameNotification,
+            object: nil
+        )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(keyboardFrameWillChange(_:)),
+            name: UIResponder.keyboardWillHideNotification,
+            object: nil
+        )
+    }
+
+    @objc private func keyboardFrameWillChange(_ notification: Notification) {
+        guard let screenFrame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect else {
+            return
+        }
+
+        let keyboardFrame = view.convert(screenFrame, from: nil)
+        let safeAreaBottom = view.bounds.maxY - view.safeAreaInsets.bottom
+        let keyboardOverlap = max(0, safeAreaBottom - keyboardFrame.minY)
+        layoutContext.fieldsBottomConstraint?.constant = -(20 + keyboardOverlap)
+
+        let duration = notification.userInfo?[UIResponder.keyboardAnimationDurationUserInfoKey] as? Double ?? 0.25
+        let curveValue = (notification.userInfo?[UIResponder.keyboardAnimationCurveUserInfoKey] as? NSNumber)?.uintValue ?? 7
+        let options = UIView.AnimationOptions(rawValue: curveValue << 16)
+        UIView.animate(
+            withDuration: duration,
+            delay: 0,
+            options: [options, .beginFromCurrentState, .allowUserInteraction]
+        ) {
+            self.view.layoutIfNeeded()
+        }
     }
 
     private func configureCoreState() {
@@ -116,73 +155,46 @@ final class NativeCreateTripViewController: UIViewController,
         setLocationStatus(nil)
         updateCreateState()
         let query = nameField.text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        completer.queryFragment = query
-        suggestionTable.isHidden = query.count < 2
-        if query.count < 2 {
-            completions = []
-            suggestionTable.reloadData()
+        destinationLookupWorkItem?.cancel()
+        activeDestinationQuery = query
+        resolvingDestinationQuery = nil
+        guard query.count >= 2 else { return }
+
+        let workItem = DispatchWorkItem { [weak self] in
+            guard let self, self.activeDestinationQuery == query else { return }
+            self.completer.queryFragment = query
         }
+        destinationLookupWorkItem = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.55, execute: workItem)
     }
 
     func completerDidUpdateResults(_ completer: MKLocalSearchCompleter) {
-        completions = Array(completer.results.prefix(4))
-        suggestionTable.isHidden = completions.isEmpty
-        suggestionTable.reloadData()
-    }
-
-    func completer(_ completer: MKLocalSearchCompleter, didFailWithError error: Error) {
-        completions = []
-        suggestionTable.isHidden = true
-        setLocationStatus("Could not load destination suggestions.", announce: true)
-    }
-
-    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        completions.count
-    }
-
-    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = tableView.dequeueReusableCell(withIdentifier: "suggestion", for: indexPath)
-        let completion = completions[indexPath.row]
-        var content = cell.defaultContentConfiguration()
-        content.text = completion.title
-        content.secondaryText = completion.subtitle
-        content.textProperties.font = AlmidyDesignTokens.Font.body(16)
-        content.textProperties.color = AlmidyDesignTokens.Color.textPrimary
-        content.secondaryTextProperties.font = AlmidyDesignTokens.Font.body(13)
-        content.secondaryTextProperties.color = AlmidyDesignTokens.Color.textSecondary
-        content.textProperties.numberOfLines = 1
-        content.secondaryTextProperties.numberOfLines = 1
-        cell.contentConfiguration = content
-        cell.backgroundColor = AlmidyDesignTokens.Color.card
-        cell.tintColor = AlmidyDesignTokens.Color.goldSoft
-        return cell
-    }
-
-    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        let completion = completions[indexPath.row]
-        nameField.resignFirstResponder()
-        suggestionTable.isHidden = true
-        setLocationStatus("Finding \(completion.title)…")
-
-        destinationController.resolve(completion: completion) { [weak self] result in
+        let query = activeDestinationQuery
+        guard query.count >= 2,
+              resolvingDestinationQuery != query,
+              let bestMatch = completer.results.first else { return }
+        resolvingDestinationQuery = query
+        setLocationStatus("Finding destination…")
+        destinationController.resolve(completion: bestMatch) { [weak self] result in
             DispatchQueue.main.async {
-                guard let self else { return }
+                guard let self, self.activeDestinationQuery == query else { return }
                 guard case .success(let destination) = result else {
-                    self.setLocationStatus(
-                        "Could not resolve that location. Choose another suggestion.",
-                        announce: true
-                    )
+                    self.resolvingDestinationQuery = nil
+                    self.setLocationStatus("Keep typing to identify a destination.")
                     self.updateCreateState()
                     return
                 }
-                self.nameField.text = destination.title
-                self.tripState.updateTripName(destination.title)
                 self.tripState.confirmLocation(destination)
                 self.setLocationStatus(nil)
                 self.updateCreateState()
                 self.scheduleDestinationBackgroundUpdate()
             }
         }
+    }
+
+    func completer(_ completer: MKLocalSearchCompleter, didFailWithError error: Error) {
+        resolvingDestinationQuery = nil
+        setLocationStatus("Keep typing to identify a destination.")
     }
 
     func updateCreateState() {
@@ -246,4 +258,5 @@ final class NativeCreateTripViewController: UIViewController,
         textField.resignFirstResponder()
         return true
     }
+
 }

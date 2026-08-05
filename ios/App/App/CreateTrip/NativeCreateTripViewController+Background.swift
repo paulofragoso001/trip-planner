@@ -83,10 +83,11 @@ final class NativeCreateTripBackgroundContext {
         let selection = NativeTripTravelImageBank.shared.selectForPresentation()
         genericSelection = selection
         resolveImageBank = imageBankResolver
+        let offlineFallback = UIImage(named: "AlmidyOfflineGlobe")
         controller = resolver.map {
             NativeTripBackgroundController(
                 resolver: $0,
-                fallbackImage: UIImage(named: "AlmidyOfflineGlobe"),
+                fallbackImage: offlineFallback,
                 genericSelection: selection
             )
         }
@@ -101,7 +102,7 @@ extension NativeCreateTripViewController: PHPickerViewControllerDelegate {
         context.imageView.clipsToBounds = true
         context.imageView.backgroundColor = AlmidyDesignTokens.Color.mapSurface
         context.imageView.image = existingTrip.flatMap(NativeTripBackgroundImageCache.shared.image(for:))
-            ?? (existingTrip == nil ? (context.genericSelection.image ?? context.fallbackImage) : nil)
+            ?? (existingTrip == nil ? context.genericSelection.image : nil)
         if let initialImage = context.imageView.image {
             view.backgroundColor = destinationSurfaceColor(from: initialImage)
         }
@@ -116,10 +117,10 @@ extension NativeCreateTripViewController: PHPickerViewControllerDelegate {
 
         context.gradient.colors = [
             UIColor.black.withAlphaComponent(0.04).cgColor,
-            UIColor.black.withAlphaComponent(0.14).cgColor,
-            UIColor.black.withAlphaComponent(0.38).cgColor
+            UIColor.black.withAlphaComponent(0.10).cgColor,
+            UIColor.black.withAlphaComponent(0.24).cgColor
         ]
-        context.gradient.locations = [0, 0.34, 1]
+        context.gradient.locations = [0, 0.40, 1]
         view.layer.insertSublayer(context.gradient, above: context.imageView.layer)
 
         NSLayoutConstraint.activate([
@@ -151,7 +152,6 @@ extension NativeCreateTripViewController: PHPickerViewControllerDelegate {
             scheduleDestinationBackgroundUpdate()
             return
         }
-        backgroundContext.loadingIndicator.startAnimating()
         URLSession.shared.dataTask(with: url) { [weak self] data, response, _ in
             let statusCode = (response as? HTTPURLResponse)?.statusCode ?? 0
             let image = (statusCode == 0 || (200...299).contains(statusCode))
@@ -230,12 +230,7 @@ extension NativeCreateTripViewController: PHPickerViewControllerDelegate {
             destination: tripState.resolvedLocation,
             loading: { [weak self] isLoading in
                 guard let self else { return }
-                if isLoading {
-                    self.backgroundContext.loadingIndicator.startAnimating()
-                    if self.tripState.resolvedLocation != nil {
-                        self.backgroundContext.imageView.image = nil
-                    }
-                } else {
+                if !isLoading {
                     self.backgroundContext.loadingIndicator.stopAnimating()
                 }
             },
@@ -245,11 +240,6 @@ extension NativeCreateTripViewController: PHPickerViewControllerDelegate {
                    let image {
                     self.cacheSelectedBackground(image)
                     self.transitionToBackgroundImage(image)
-                } else {
-                    // Keep the quiet destination-colored surface when no verified
-                    // travel photo is available. A satellite map is not a photo
-                    // of the selected destination and must not flash or be cached.
-                    self.transitionToBackgroundImage(nil)
                 }
             }
         )
@@ -290,7 +280,16 @@ extension NativeCreateTripViewController: PHPickerViewControllerDelegate {
             return AlmidyDesignTokens.Color.mapSurface
         }
         filter.setValue(input, forKey: kCIInputImageKey)
-        filter.setValue(CIVector(cgRect: input.extent), forKey: kCIInputExtentKey)
+        // Sample the lower visual band—the portion that actually fades into
+        // the form panel—instead of averaging sky, landmarks, and foreground
+        // into an unrelated gray.
+        let transitionBand = CGRect(
+            x: input.extent.minX,
+            y: input.extent.minY,
+            width: input.extent.width,
+            height: input.extent.height * 0.34
+        )
+        filter.setValue(CIVector(cgRect: transitionBand), forKey: kCIInputExtentKey)
         guard let output = filter.outputImage else {
             return AlmidyDesignTokens.Color.mapSurface
         }
@@ -303,11 +302,28 @@ extension NativeCreateTripViewController: PHPickerViewControllerDelegate {
             format: .RGBA8,
             colorSpace: CGColorSpaceCreateDeviceRGB()
         )
-        let darkeningFactor: CGFloat = 0.52
+        let sampledColor = UIColor(
+            red: CGFloat(rgba[0]) / 255,
+            green: CGFloat(rgba[1]) / 255,
+            blue: CGFloat(rgba[2]) / 255,
+            alpha: 1
+        )
+        var hue: CGFloat = 0
+        var saturation: CGFloat = 0
+        var brightness: CGFloat = 0
+        guard sampledColor.getHue(
+            &hue,
+            saturation: &saturation,
+            brightness: &brightness,
+            alpha: nil
+        ) else { return AlmidyDesignTokens.Color.mapSurface }
+
+        // Preserve enough of the image hue to read as a continuation of the
+        // photo, while bounding brightness for white-control contrast.
         return UIColor(
-            red: CGFloat(rgba[0]) / 255 * darkeningFactor,
-            green: CGFloat(rgba[1]) / 255 * darkeningFactor,
-            blue: CGFloat(rgba[2]) / 255 * darkeningFactor,
+            hue: hue,
+            saturation: min(max(saturation * 1.30, 0.22), 0.62),
+            brightness: min(max(brightness * 0.72, 0.24), 0.46),
             alpha: 1
         )
     }

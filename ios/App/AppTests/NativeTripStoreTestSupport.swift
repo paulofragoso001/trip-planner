@@ -7,6 +7,37 @@ func nativeTripStoreSession() -> URLSession {
     configuration.protocolClasses = [NativeTripStoreURLProtocol.self]
     return URLSession(configuration: configuration)
 }
+
+func nativeTripStore(baseURL: URL = URL(string: "https://almidy.app")!) -> NativeTripStore {
+    NativeTripStore(
+        webView: nil,
+        baseURL: baseURL,
+        session: nativeTripStoreSession(),
+        coordinator: NativeSessionCoordinator(store: NativeTripStoreSessionStore())
+    )
+}
+
+private final class NativeTripStoreSessionStore: NativeSessionStoring {
+    private var storedSession = NativeStoredSession.valid(
+        NativeAuthSession(
+            accessToken: "native-trip-store-test-access-token",
+            refreshToken: "native-trip-store-test-refresh-token",
+            expiresAt: Int(Date().addingTimeInterval(3_600).timeIntervalSince1970)
+        )
+    )
+
+    func loadSession() -> NativeStoredSession { storedSession }
+
+    func saveSession(_ session: NativeAuthSession) -> Bool {
+        storedSession = .valid(session)
+        return true
+    }
+
+    func clearSession() { storedSession = .missing }
+    func loadSignOutMarker() -> SignOutMarker? { nil }
+    func saveSignOutMarker(_ marker: SignOutMarker) {}
+    func clearSignOutMarker() {}
+}
 func nativeRequestBodyData(_ request: URLRequest) -> Data? {
     if let body = request.httpBody {
         return body

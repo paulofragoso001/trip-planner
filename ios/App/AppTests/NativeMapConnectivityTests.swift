@@ -241,7 +241,7 @@ final class NativeMapConnectivityTests: XCTestCase {
         }
         defer { NativeTripStoreURLProtocol.handler = nil }
 
-        let store = NativeTripStore(webView: nil, baseURL: URL(string: "https://almidy.app")!, session: nativeTripStoreSession())
+        let store = nativeTripStore()
         let expectation = expectation(description: "import completion")
         store.submitSocialImport(sourceURL: nil, rawText: "Reservation for Miami", imageData: nil) { result in
             guard case .success(let importResult) = result else {

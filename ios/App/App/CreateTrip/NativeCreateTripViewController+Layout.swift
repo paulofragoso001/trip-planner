@@ -1,21 +1,16 @@
 import UIKit
 
 final class NativeCreateTripLayoutContext {
-    let scrollView = UIScrollView()
     let contentView = UIView()
+    weak var fields: UIStackView?
+    var fieldsBottomConstraint: NSLayoutConstraint?
 }
 
 extension NativeCreateTripViewController {
     func configureFormLayout() {
-        let scrollView = layoutContext.scrollView
         let contentView = layoutContext.contentView
-        scrollView.alwaysBounceVertical = true
-        scrollView.keyboardDismissMode = .interactive
-        scrollView.backgroundColor = .clear
-        scrollView.translatesAutoresizingMaskIntoConstraints = false
         contentView.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(scrollView)
-        scrollView.addSubview(contentView)
+        view.addSubview(contentView)
 
         let closeButton = UIButton(type: .system)
         closeButton.setTitle("Cancel", for: .normal)
@@ -36,15 +31,6 @@ extension NativeCreateTripViewController {
         locationStatus.numberOfLines = 0
         locationStatus.isAccessibilityElement = true
         locationStatus.isHidden = true
-
-        suggestionTable.register(UITableViewCell.self, forCellReuseIdentifier: "suggestion")
-        suggestionTable.dataSource = self
-        suggestionTable.delegate = self
-        suggestionTable.isHidden = true
-        suggestionTable.backgroundColor = UIColor.white.withAlphaComponent(0.94)
-        suggestionTable.layer.cornerRadius = AlmidyDesignTokens.Radius.control
-        suggestionTable.layer.masksToBounds = true
-        suggestionTable.rowHeight = 68
 
         var createConfiguration = UIButton.Configuration.filled()
         createConfiguration.title = existingTrip == nil ? "Create Trip" : "Save Changes"
@@ -93,13 +79,13 @@ extension NativeCreateTripViewController {
         let fields = UIStackView(arrangedSubviews: [
             nameField,
             locationStatus,
-            suggestionTable,
             dateSummary,
             featuredActions
         ])
         fields.axis = .vertical
         fields.spacing = 14
         fields.translatesAutoresizingMaskIntoConstraints = false
+        layoutContext.fields = fields
 
         contentView.addSubview(closeButton)
         contentView.addSubview(createButton)
@@ -108,15 +94,10 @@ extension NativeCreateTripViewController {
         createButton.translatesAutoresizingMaskIntoConstraints = false
 
         NSLayoutConstraint.activate([
-            scrollView.topAnchor.constraint(equalTo: view.topAnchor),
-            scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            scrollView.bottomAnchor.constraint(equalTo: view.keyboardLayoutGuide.topAnchor),
-            contentView.topAnchor.constraint(equalTo: scrollView.contentLayoutGuide.topAnchor),
-            contentView.leadingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.leadingAnchor),
-            contentView.trailingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.trailingAnchor),
-            contentView.bottomAnchor.constraint(equalTo: scrollView.contentLayoutGuide.bottomAnchor),
-            contentView.widthAnchor.constraint(equalTo: scrollView.frameLayoutGuide.widthAnchor),
+            contentView.topAnchor.constraint(equalTo: view.topAnchor),
+            contentView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            contentView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            contentView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
 
             closeButton.topAnchor.constraint(equalTo: contentView.safeAreaLayoutGuide.topAnchor, constant: 16),
             closeButton.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 24),
@@ -125,20 +106,26 @@ extension NativeCreateTripViewController {
             createButton.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -24),
             createButton.heightAnchor.constraint(equalToConstant: 48),
             fields.topAnchor.constraint(greaterThanOrEqualTo: closeButton.bottomAnchor, constant: 60),
-            fields.centerYAnchor.constraint(equalTo: contentView.centerYAnchor, constant: 210),
             fields.centerXAnchor.constraint(equalTo: contentView.centerXAnchor),
             fields.leadingAnchor.constraint(greaterThanOrEqualTo: contentView.leadingAnchor, constant: 28),
             fields.trailingAnchor.constraint(lessThanOrEqualTo: contentView.trailingAnchor, constant: -28),
             fields.widthAnchor.constraint(lessThanOrEqualToConstant: NativeAdaptiveLayout.formMaxWidth),
             NativeAdaptiveLayout.preferredWidth(fields, equalTo: contentView.widthAnchor, constant: -56),
-            fields.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -20),
             nameField.heightAnchor.constraint(equalToConstant: 72),
             featuredActions.heightAnchor.constraint(greaterThanOrEqualToConstant: 82)
         ])
-
-        let suggestionsHeight = suggestionTable.heightAnchor.constraint(equalToConstant: 272)
-        suggestionsHeight.priority = .defaultHigh
-        suggestionsHeight.isActive = true
+        let fieldsBottomConstraint = fields.bottomAnchor.constraint(
+            lessThanOrEqualTo: contentView.safeAreaLayoutGuide.bottomAnchor,
+            constant: -20
+        )
+        fieldsBottomConstraint.isActive = true
+        layoutContext.fieldsBottomConstraint = fieldsBottomConstraint
+        let verticalPosition = fields.centerYAnchor.constraint(
+            equalTo: contentView.centerYAnchor,
+            constant: 125
+        )
+        verticalPosition.priority = .defaultHigh
+        verticalPosition.isActive = true
         updateCreateState()
     }
 

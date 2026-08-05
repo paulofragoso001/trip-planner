@@ -180,42 +180,6 @@ struct NativeDestinationImageChoice {
     let url: URL
 }
 
-private func nativeImageSharpnessScore(_ image: CGImage) -> Double? {
-    let width = 256
-    let height = 256
-    var pixels = [UInt8](repeating: 0, count: width * height)
-    let rendered = pixels.withUnsafeMutableBytes { buffer -> Bool in
-        guard let context = CGContext(
-            data: buffer.baseAddress,
-            width: width,
-            height: height,
-            bitsPerComponent: 8,
-            bytesPerRow: width,
-            space: CGColorSpaceCreateDeviceGray(),
-            bitmapInfo: CGImageAlphaInfo.none.rawValue
-        ) else { return false }
-        context.interpolationQuality = .high
-        context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
-        return true
-    }
-    guard rendered else { return nil }
-
-    var laplacianTotal = 0.0
-    var sampleCount = 0
-    for y in 1..<(height - 1) {
-        for x in 1..<(width - 1) {
-            let index = y * width + x
-            let center = Int(pixels[index]) * 4
-            let neighbors = Int(pixels[index - 1]) + Int(pixels[index + 1])
-                + Int(pixels[index - width]) + Int(pixels[index + width])
-            laplacianTotal += Double(abs(center - neighbors))
-            sampleCount += 1
-        }
-    }
-    guard sampleCount > 0 else { return nil }
-    return laplacianTotal / Double(sampleCount)
-}
-
 final class NativeTripStore {
     private let webView: WKWebView?
     private let baseURL: URL
@@ -225,12 +189,18 @@ final class NativeTripStore {
     init(
         webView: WKWebView?,
         baseURL: URL = NativeServiceConfiguration.appBaseURL,
-        session: URLSession = .shared
+        session: URLSession = .shared,
+        coordinator: NativeSessionCoordinator = .shared
     ) {
         self.webView = webView
         self.baseURL = baseURL
         self.session = session
-        self.apiClient = NativeAuthenticatedHTTPClient(webView: webView, baseURL: baseURL, session: session)
+        self.apiClient = NativeAuthenticatedHTTPClient(
+            webView: webView,
+            baseURL: baseURL,
+            session: session,
+            coordinator: coordinator
+        )
     }
 
     func loadTrips(completion: @escaping (Result<[NativeMapTrip], Error>) -> Void) {
@@ -332,34 +302,13 @@ final class NativeTripStore {
         }
 
         func chooseQualityURL(_ candidates: [URL], completion: @escaping (URL?) -> Void) {
-            guard minimumPixelDimension > 0 else {
-                completion(candidates.first)
-                return
-            }
-            func inspect(_ index: Int) {
-                guard candidates.indices.contains(index) else {
-                    completion(nil)
-                    return
-                }
-                var request = URLRequest(url: candidates[index])
-                request.cachePolicy = .returnCacheDataElseLoad
-                session.dataTask(with: request) { data, response, _ in
-                    let statusCode = (response as? HTTPURLResponse)?.statusCode ?? 0
-                    guard (statusCode == 0 || (200...299).contains(statusCode)),
-                          let data,
-                          let image = UIImage(data: data),
-                          let cgImage = image.cgImage,
-                          min(cgImage.width, cgImage.height) >= minimumPixelDimension,
-                          cgImage.width * cgImage.height >= 3_000_000,
-                          let sharpness = nativeImageSharpnessScore(cgImage),
-                          sharpness >= 6.0 else {
-                        inspect(index + 1)
-                        return
-                    }
-                    completion(candidates[index])
-                }.resume()
-            }
-            inspect(0)
+            // The server already returns destination-ranked photo URLs and the
+            // proxy applies the requested 3200px width. Pre-downloading every
+            // candidate here duplicated network and decode work, delayed the
+            // UI, and could reject otherwise usable provider formats. Let the
+            // background controller download, display, and cache the top-ranked
+            // destination image exactly once.
+            completion(candidates.first)
         }
 
         func resolve(_ candidate: String, retryWithLandmark: Bool) {
@@ -3190,7 +3139,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
     private func presentTripForm(_ form: UIViewController) {
         form.modalPresentationStyle = .pageSheet
         if let sheet = form.sheetPresentationController {
-            sheet.detents = [.medium(), .large()]
+            sheet.detents = [.large()]
             sheet.selectedDetentIdentifier = .large
             sheet.prefersGrabberVisible = true
             sheet.preferredCornerRadius = 28

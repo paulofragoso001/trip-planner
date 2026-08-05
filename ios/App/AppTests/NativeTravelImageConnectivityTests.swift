@@ -23,11 +23,7 @@ final class NativeTravelImageConnectivityTests: XCTestCase {
         defer { NativeTripStoreURLProtocol.handler = nil }
 
         let expectation = expectation(description: "destination hero resolution")
-        let store = NativeTripStore(
-            webView: nil,
-            baseURL: URL(string: "https://almidy.app")!,
-            session: nativeTripStoreSession()
-        )
+        let store = nativeTripStore()
         store.resolveDestinationHeroImage(query: "Brazil") { imageURL in
             guard let imageURL else {
                 XCTFail("Expected a destination-aware Place Photo URL")
@@ -73,11 +69,7 @@ final class NativeTravelImageConnectivityTests: XCTestCase {
         defer { NativeTripStoreURLProtocol.handler = nil }
 
         let expectation = expectation(description: "iconic destination hero retry")
-        let store = NativeTripStore(
-            webView: nil,
-            baseURL: URL(string: "https://almidy.app")!,
-            session: nativeTripStoreSession()
-        )
+        let store = nativeTripStore()
         store.resolveDestinationHeroImage(query: "Brazil") { imageURL in
             XCTAssertEqual(requestedNames, ["Brazil", "Brazil most visited iconic landmark"])
             guard let imageURL else {
@@ -129,11 +121,7 @@ final class NativeTravelImageConnectivityTests: XCTestCase {
         defer { NativeTripStoreURLProtocol.handler = nil }
 
         let expectation = expectation(description: "destination image bank")
-        let store = NativeTripStore(
-            webView: nil,
-            baseURL: URL(string: "https://almidy.app")!,
-            session: nativeTripStoreSession()
-        )
+        let store = nativeTripStore()
         store.resolveDestinationImageBank(query: "Brazil") { choices in
             XCTAssertEqual(requestedPaths, ["/api/travel-data/resolve-place", "/api/travel-data/suggestions"])
             XCTAssertEqual(choices.map(\.title), ["Christ the Redeemer", "Sugarloaf Mountain"])

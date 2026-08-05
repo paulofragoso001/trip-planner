@@ -17,7 +17,7 @@ final class NativeTripDateConnectivityTests: XCTestCase {
         defer { NativeTripStoreURLProtocol.handler = nil }
 
         let expectation = expectation(description: "trip hydration")
-        let store = NativeTripStore(webView: nil, baseURL: URL(string: "https://almidy.app")!, session: nativeTripStoreSession())
+        let store = nativeTripStore()
         store.loadTrips { result in
             guard case .success(let trips) = result else {
                 XCTFail("Expected hydrated trips")
@@ -53,7 +53,7 @@ final class NativeTripDateConnectivityTests: XCTestCase {
         defer { NativeTripStoreURLProtocol.handler = nil }
 
         let expectation = expectation(description: "trip persistence")
-        let store = NativeTripStore(webView: nil, baseURL: URL(string: "https://almidy.app")!, session: nativeTripStoreSession())
+        let store = nativeTripStore()
         let draft = NativeTripDraft(
             name: "Paris Weekend",
             destination: "Paris",
@@ -95,7 +95,7 @@ final class NativeTripDateConnectivityTests: XCTestCase {
         }
         defer { NativeTripStoreURLProtocol.handler = nil }
 
-        let store = NativeTripStore(webView: nil, baseURL: URL(string: "https://almidy.app")!, session: nativeTripStoreSession())
+        let store = nativeTripStore()
         let draft = NativeTripDraft(
             name: "Updated Miami",
             destination: "Miami Beach",
