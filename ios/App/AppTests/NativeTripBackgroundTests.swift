@@ -4,14 +4,14 @@ import XCTest
 @testable import App
 
 final class NativeTripBackgroundTests: XCTestCase {
-    func testCreateTripStartsWithNeutralGlobeInsteadOfUnrelatedLandmark() {
+    func testCreateTripStartsWithCuratedDefaultImagery() {
         let context = NativeCreateTripBackgroundContext(
             resolver: nil,
             imageBankResolver: nil
         )
 
-        XCTAssertNil(context.genericSelection.identifier)
-        XCTAssertTrue(context.genericSelection.isUsingGlobeFallback)
+        XCTAssertNotNil(context.genericSelection.identifier)
+        XCTAssertFalse(context.genericSelection.isUsingGlobeFallback)
     }
 
     private let destination = NativeResolvedDestination(
@@ -152,7 +152,7 @@ final class NativeTripBackgroundTests: XCTestCase {
         XCTAssertFalse(controller.state.isUsingGlobeFallback)
     }
 
-    func testDestinationFailureRestoresGenericInsteadOfGlobe() {
+    func testDestinationFailureUsesGlobeInsteadOfUnrelatedGenericImage() {
         let generic = UIImage()
         let globe = UIImage()
         let selection = NativeTripTravelImageSelection(
@@ -160,7 +160,7 @@ final class NativeTripBackgroundTests: XCTestCase {
             image: generic,
             isUsingGlobeFallback: false
         )
-        let completed = expectation(description: "generic retained")
+        let completed = expectation(description: "neutral fallback restored")
         let controller = NativeTripBackgroundController(
             resolver: { _, completion in completion(nil) },
             fallbackImage: globe,
@@ -168,12 +168,12 @@ final class NativeTripBackgroundTests: XCTestCase {
         )
 
         controller.schedule(destination: destination, debounce: 0, loading: { _ in }) { image in
-            XCTAssertTrue(image === generic)
+            XCTAssertTrue(image === globe)
             completed.fulfill()
         }
         wait(for: [completed], timeout: 1)
         XCTAssertEqual(controller.state.selectionMode, .automaticGeneric)
-        XCTAssertFalse(controller.state.isUsingGlobeFallback)
+        XCTAssertTrue(controller.state.isUsingGlobeFallback)
     }
 
     func testManualSelectionOverridesGenericAndBlocksAutomaticReplacement() {

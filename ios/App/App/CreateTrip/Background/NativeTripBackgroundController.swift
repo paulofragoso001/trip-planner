@@ -71,7 +71,7 @@ final class NativeTripBackgroundController {
                     guard let self, requestRevision == self.revision else { return }
                     guard let url else {
                         loading(false)
-                        self.restoreGenericBackground(completion: completion)
+                        self.restoreDestinationFallback(completion: completion)
                         return
                     }
                     self.downloadHero(
@@ -134,7 +134,7 @@ final class NativeTripBackgroundController {
                 self.heroImageTask = nil
                 loading(false)
                 guard let image else {
-                    self.restoreGenericBackground(completion: completion)
+                    self.restoreDestinationFallback(completion: completion)
                     return
                 }
                 self.state.selectionMode = .automaticDestination
@@ -156,5 +156,11 @@ final class NativeTripBackgroundController {
         state.selectionMode = .automaticGeneric
         state.isUsingGlobeFallback = genericSelection.isUsingGlobeFallback
         completion(genericSelection.image ?? fallbackImage)
+    }
+
+    private func restoreDestinationFallback(completion: (UIImage?) -> Void) {
+        state.selectionMode = .automaticGeneric
+        state.isUsingGlobeFallback = true
+        completion(fallbackImage)
     }
 }

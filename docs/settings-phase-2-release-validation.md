@@ -335,10 +335,12 @@ Physical-device Create Trip testing also confirmed that destination gallery look
 was geocoding a synthetic search phrase instead of the entered destination and that
 new trips could display a random world-wonder fallback (for example, the Great Wall
 for Italy). The correction resolves the unmodified destination, uses the same 25 km
-destination-gallery radius as hero lookup, and keeps the neutral offline globe until
-a destination-ranked or manually selected image succeeds. Focused regression tests
-cover the request contract and prohibit an unrelated landmark as the initial Create
-Trip background.
+destination-gallery radius as hero lookup, and prevents an unrelated default from
+remaining after a destination lookup fails. Follow-up device testing showed that
+applying the neutral globe at initial presentation removed the intended curated
+default imagery. The refined contract restores curated imagery while the destination
+is empty, then uses the neutral globe only when a resolved destination's lookup or
+download fails. Focused regression tests cover the request and fallback contracts.
 
 ## Required rerun and production rollout
 
