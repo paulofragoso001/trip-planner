@@ -88,10 +88,10 @@ test.describe("dashboard navigation and client-state actions", () => {
     const sheet = page.getByTestId("mobile-home-wallet-content");
     await expect(sheet).toHaveAttribute("data-sheet-state", "collapsed");
 
-    await page.getByRole("link", { name: "Search" }).click();
-    await expect(page).toHaveURL(`${baseUrl}/dashboard/search`);
-
-    await openDashboardRoute(page, "/dashboard");
+    await page.getByRole("button", { name: "Search" }).click();
+    await expect(sheet).toHaveAttribute("data-sheet-state", "search");
+    await expect(page.getByTestId("mobile-sheet-search-input")).toBeVisible();
+    await page.getByTestId("mobile-sheet-search-cancel").click();
     await expect(sheet).toHaveAttribute("data-sheet-state", "collapsed");
 
     await page.getByRole("button", { name: "Expand trips sheet" }).click();
@@ -158,8 +158,11 @@ test.describe("dashboard navigation and client-state actions", () => {
     await expect(accountSurface.getByRole("link", { name: "Preferences" })).toHaveAttribute("href", "#preferences");
     await expect(accountSurface.getByRole("link", { name: "Privacy Policy" })).toHaveAttribute("href", "/privacy");
     await expect(accountSurface.getByRole("link", { name: "Terms of Service" })).toHaveAttribute("href", "/terms");
-    await expect(accountSurface.getByText("Add Reservations via Email", { exact: true })).toBeVisible();
-    await expect(accountSurface.getByText("Coming soon", { exact: true })).toBeVisible();
+    const reservationEmailRow = accountSurface
+      .getByText("Add Reservations via Email", { exact: true })
+      .locator("xpath=ancestor::*[@aria-disabled='true'][1]");
+    await expect(reservationEmailRow).toHaveCount(1);
+    await expect(reservationEmailRow).toContainText("Coming soon");
     await expect(accountSurface.getByRole("link", { name: "Add Reservations via Email" })).toHaveCount(0);
     await expect(accountSurface.getByRole("link", { name: "Manual reservation importer" })).toHaveAttribute(
       "href",

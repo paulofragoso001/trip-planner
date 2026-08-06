@@ -98,6 +98,26 @@ Node 20 and again failed only at Turbopack's sandbox-denied internal port bindin
 Those checks are not marked passed, and the overall release recommendation remains
 **HOLD** pending the broader runtime gates already listed in this report.
 
+## Dashboard Playwright selector correction
+
+The capable-host run identified two failures in
+`tests/playwright/dashboard-actions.spec.ts`; neither was a product defect.
+
+- Mobile wallet Search was a stale role/navigation expectation. The collapsed home
+  wallet intentionally renders an accessible `Search` button that opens the in-sheet
+  search overlay; the routed Search link remains available in the expanded wallet.
+  The test now asserts the button, `search` sheet state, visible search input, cancel
+  action, and return to collapsed state.
+- The Account Settings failure was an ambiguous locator. The disabled Add
+  Reservations via Email row intentionally contains two `Coming soon` text badges.
+  The test now resolves that exact `aria-disabled` row and asserts the status within
+  it, while retaining the assertion that no Add Reservations link exists.
+
+`npx tsc --noEmit` and `git diff --check` passed. The exact requested Playwright
+command was attempted, but the managed host again denied the configured server's
+localhost bind (`listen EPERM: operation not permitted 127.0.0.1:3000`), so no test
+case ran and the suite is not recorded as passed.
+
 ## Validation environment
 
 | Component | Observed version/state |
