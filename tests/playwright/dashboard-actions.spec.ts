@@ -102,7 +102,7 @@ test.describe("dashboard navigation and client-state actions", () => {
 
     await page.getByRole("button", { name: "Open settings" }).click();
     await expect(sheet).toHaveAttribute("data-sheet-state", "settings");
-    await expect(page.getByRole("button", { name: "Pro soon" })).toBeDisabled();
+    await expect(page.getByRole("button", { exact: true, name: "Pro soon" })).toBeDisabled();
     await page.getByRole("button", { name: "Close settings" }).click();
     await expect(sheet).toHaveAttribute("data-sheet-state", "collapsed");
 

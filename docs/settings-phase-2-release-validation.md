@@ -128,6 +128,10 @@ defects:
 - The account-deletion assertion matched both the `Account deletion` section and
   `Request account deletion` form headings. It now uses an exact accessible-name
   match for the intended section; product copy is unchanged.
+- The remaining `Pro soon` assertion was ambiguous because the trial control has
+  that exact accessible name while the disabled Calendar Feed row contains the same
+  words in its longer accessible name. The test now uses an exact accessible-name
+  match for the trial control; neither UI nor Calendar behavior changed.
 
 After these corrections, `npx tsc --noEmit` and `git diff --check` passed. The exact
 focused Playwright command was rerun, but this managed execution environment denied
