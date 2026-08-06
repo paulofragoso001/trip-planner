@@ -3,8 +3,9 @@ import os
 
 func nativeImageryDebug(_ message: @autoclosure () -> String) {
 #if DEBUG
+    let resolvedMessage = message()
     Logger(subsystem: "app.almidy", category: "destination-imagery")
-        .debug("\(message(), privacy: .public)")
+        .debug("\(resolvedMessage, privacy: .public)")
 #endif
 }
 
