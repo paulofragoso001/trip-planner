@@ -489,3 +489,13 @@ Phase 0–2 product defect. Full commands, outputs, security review, rerun proce
 rollout/rollback steps, and the release decision are recorded in
 `docs/settings-phase-2-release-validation.md`. Protected recovery/security material
 remained untouched and outside validation commits.
+
+Validation was resumed on 2026-08-06 at
+`c954cdd972eda6d331d9da898aa7249d67a60cc3`, but the actual host still lacked
+Docker/Podman, a disposable Supabase configuration, localhost binding permission,
+working CoreSimulator/CoreDevice services, and writable SwiftPM host caches. The
+production build, Playwright server, native package resolution, and device discovery
+reproduced their prior environment failures. Next route types were regenerated after
+the failed build; TypeScript and nine static Phase 1–2 contract tests passed. No
+runtime gate changed status, no product defect was proven, no corrective code was
+added, and the recommendation remains **HOLD**.

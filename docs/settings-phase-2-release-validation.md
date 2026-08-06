@@ -15,6 +15,50 @@ unverified. Under the requested decision rules, none is eligible for Conditional
 No Phase 0–2 product defect was proven, so no corrective application or migration
 commit was made. Phase 3 work was not started.
 
+## Resumed validation attempt — 2026-08-06
+
+Validation resumed at exact source SHA
+`c954cdd972eda6d331d9da898aa7249d67a60cc3`. The actual execution host remained
+the same managed environment rather than the fully capable host described in the
+resume request. Repeated preflight and runtime probes confirmed:
+
+- Branch `codex/settings-phase-2-release-validation` at the expected SHA; only the
+  pre-existing protected `.gitignore`, `package.json`, `package-lock.json`, and
+  `docs/security/` paths were dirty, and none was modified or staged.
+- Node 24.15.0, repository test Node 20.20.2, npm 11.12.1, Playwright 1.60.0,
+  Xcode 26.6 (17F113), Swift 6.3.3, and iOS SDK 26.5 were unchanged.
+- Chromium/headless-shell 1223 remained installed. No Docker/Podman binary existed
+  in PATH, Homebrew, `/Applications`, `/opt/homebrew/bin`, or `/usr/local/bin`.
+- Supabase CLI package 2.111.0 was present only in the npm execution cache. Direct
+  execution failed before command processing because the managed host denied its
+  telemetry write beneath `~/.supabase`; no container engine existed regardless.
+- No disposable Supabase URL/key set was configured. Only the already documented
+  Vercel OIDC variable name and two UI feature-flag names were present; values were
+  not recorded.
+- A direct Node HTTP server probe on `127.0.0.1:3107` failed with
+  `listen EPERM: operation not permitted`, proving localhost services cannot run.
+- `simctl` still could not connect to CoreSimulatorService, `devicectl` timed out
+  initializing CoreDeviceService, and no simulator or physical iPhone was visible.
+- SwiftPM/Xcode cache access remained blocked even with module, source-package, and
+  derived-data paths redirected to `/private/tmp`.
+
+The production build was rerun with the locked Node 20 runtime:
+
+`PATH="/Users/fragoso/.nvm/versions/node/v20.20.2/bin:$PATH" NEXT_TELEMETRY_DISABLED=1 npm run build`
+
+It again failed in Turbopack while processing `app/globals.css` because an internal
+worker could not bind a port (`Operation not permitted`). Focused Playwright again
+failed before test execution because the configured server could not listen on
+`127.0.0.1:3000`. Native package resolution again exited 74 after CoreSimulator and
+SwiftPM cache failures. These are execution-environment failures, not passing gates.
+
+The failed build temporarily left incomplete generated `.next/types` artifacts.
+`next typegen` regenerated them successfully; `tsc --noEmit` then passed, followed by
+all nine Phase 1–2 static contract tests. No committed application, migration, Xcode,
+dependency, or protected file changed. No screenshots or physical-device claims were
+created. All runtime sections and the **HOLD** recommendation below therefore remain
+current.
+
 ## Validation environment
 
 | Component | Observed version/state |
