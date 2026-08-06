@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { getGoogleDataServiceConfig } from "@/lib/google/data-services";
+import { getCalendarEnvironmentStatus } from "@/lib/server/calendar-feature";
+import { areCoreHealthChecksHealthy } from "@/lib/server/health-status";
 import { validateEnv } from "@/lib/server/env";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getGooglePlaceResolutionConfig } from "@/lib/travel-data/providers/google-places";
@@ -15,12 +17,19 @@ export async function GET() {
     checkFlightRefreshQueue(),
     checkTravelProviders()
   ]);
-  const coreHealthy = envCheck.ok && supabaseCheck.ok && travelProvidersCheck.ok;
+  const calendarCheck = getCalendarEnvironmentStatus();
+  const coreHealthy = areCoreHealthChecksHealthy({
+    calendar: calendarCheck,
+    env: envCheck,
+    supabase: supabaseCheck,
+    travelProviders: travelProvidersCheck
+  });
   const status = coreHealthy ? 200 : 503;
 
   return NextResponse.json(
     {
       checks: {
+        calendar: calendarCheck,
         env: envCheck,
         flightRefreshQueue: queueCheck,
         supabase: supabaseCheck,

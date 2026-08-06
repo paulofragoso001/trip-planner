@@ -1,5 +1,6 @@
 import {
   apiCanonicalSuccess,
+  calendarDisabled,
   handleApiError,
   unauthorized,
   validationFailure
@@ -11,10 +12,12 @@ import {
 import { authorizeDashboardApi } from "@/lib/server/dashboard-test-auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { validateCalendarSyncInput } from "@/lib/validators/calendar-sync";
+import { isCalendarSyncEnabled } from "@/lib/server/calendar-feature";
 
 const routeName = "calendar/sync";
 
 export async function POST(request: Request) {
+  if (!isCalendarSyncEnabled()) return calendarDisabled();
   try {
     const auth = await authorizeDashboardApi<CalendarSyncClient>();
 

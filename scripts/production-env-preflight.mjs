@@ -6,18 +6,23 @@ const requiredEnv = [
   "NEXT_PUBLIC_GOOGLE_MAPS_API_KEY",
   "NEXT_PUBLIC_APP_URL",
   "SUPABASE_SERVICE_ROLE_KEY",
-  "CALENDAR_TOKEN_ENCRYPTION_KEY",
-  "CALENDAR_SYNC_WORKER_SECRET",
   "SOCIAL_IMPORT_WORKER_SECRET",
+  "OPENAI_API_KEY",
+  "RESEND_API_KEY",
+  "RESEND_FROM_EMAIL"
+];
+
+const calendarRequiredEnv = [
+  "CALENDAR_TOKEN_ENCRYPTION_KEY",
+  "CALENDAR_TOKEN_KEY_ID",
+  "CALENDAR_SYNC_WORKER_SECRET",
   "GOOGLE_CALENDAR_CLIENT_ID",
   "GOOGLE_CALENDAR_CLIENT_SECRET",
   "GOOGLE_CALENDAR_REDIRECT_URI",
   "MICROSOFT_CALENDAR_CLIENT_ID",
   "MICROSOFT_CALENDAR_CLIENT_SECRET",
   "MICROSOFT_CALENDAR_REDIRECT_URI",
-  "OPENAI_API_KEY",
-  "RESEND_API_KEY",
-  "RESEND_FROM_EMAIL"
+  "MICROSOFT_CALENDAR_TENANT_ID"
 ];
 
 const serverSecrets = [
@@ -68,7 +73,10 @@ function findEnabledBypassFlags() {
 }
 
 function findMissingRequiredEnv() {
-  return requiredEnv
+  const names = calendarEnabled()
+    ? [...requiredEnv, ...calendarRequiredEnv]
+    : requiredEnv;
+  return names
     .filter((name) => !process.env[name])
     .map((name) => `Missing required env var: ${name}`);
 }
@@ -84,22 +92,28 @@ function findMissingProviderEnv() {
 function findInvalidProductionUrls() {
   const errors = [];
   const appUrl = readHttpsUrl("NEXT_PUBLIC_APP_URL", errors);
-  readHttpsUrl("GOOGLE_CALENDAR_REDIRECT_URI", errors);
-  readHttpsUrl("MICROSOFT_CALENDAR_REDIRECT_URI", errors);
+  if (!calendarEnabled()) {
+    return errors;
+  }
+  const googleRedirect = readHttpsUrl("GOOGLE_CALENDAR_REDIRECT_URI", errors);
+  const microsoftRedirect = readHttpsUrl("MICROSOFT_CALENDAR_REDIRECT_URI", errors);
+
+  if ((process.env.CALENDAR_TOKEN_ENCRYPTION_KEY?.length ?? 0) < 32) {
+    errors.push("CALENDAR_TOKEN_ENCRYPTION_KEY must be at least 32 characters.");
+  }
 
   if (appUrl) {
-    assertCallbackUrl(
-      appUrl,
-      buildCalendarCallbackUrl(appUrl, "google"),
-      calendarCallbackPaths.google,
-      errors
-    );
-    assertCallbackUrl(
-      appUrl,
-      buildCalendarCallbackUrl(appUrl, "outlook"),
-      calendarCallbackPaths.outlook,
-      errors
-    );
+    if (googleRedirect) {
+      assertCallbackUrl(appUrl, googleRedirect, calendarCallbackPaths.google, errors);
+    }
+    if (microsoftRedirect) {
+      assertCallbackUrl(
+        appUrl,
+        microsoftRedirect,
+        calendarCallbackPaths.outlook,
+        errors
+      );
+    }
   }
 
   return errors;
@@ -123,12 +137,13 @@ function readHttpsUrl(name, errors) {
   }
 }
 
-function buildCalendarCallbackUrl(appUrl, provider) {
-  return new URL(`${appUrl.origin}${calendarCallbackPaths[provider]}`);
-}
-
 function assertCallbackUrl(appUrl, callbackUrl, expectedPath, errors) {
-  if (callbackUrl.origin !== appUrl.origin || callbackUrl.pathname !== expectedPath) {
+  if (
+    callbackUrl.origin !== appUrl.origin ||
+    callbackUrl.pathname !== expectedPath ||
+    callbackUrl.search ||
+    callbackUrl.hash
+  ) {
     errors.push(
       `${callbackUrl.href} must match ${appUrl.origin}${expectedPath} and be registered in the provider console.`
     );
@@ -173,6 +188,10 @@ function findPublicSecretLeaks() {
 function bool(value) {
   const normalized = value?.trim().toLowerCase();
   return normalized === "true" || normalized === "1";
+}
+
+function calendarEnabled() {
+  return bool(process.env.CALENDAR_SYNC_ENABLED);
 }
 
 main();

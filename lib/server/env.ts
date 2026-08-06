@@ -1,9 +1,7 @@
 import "server-only";
 
-import {
-  buildCalendarCallbackUrl,
-  calendarCallbackPath
-} from "@/lib/server/calendar-redirect-uri";
+import { calendarCallbackPath } from "@/lib/server/calendar-redirect-uri";
+import { getCalendarEnvironmentStatus } from "@/lib/server/calendar-feature";
 
 const productionRequiredEnv = [
   "NEXT_PUBLIC_SUPABASE_URL",
@@ -11,15 +9,7 @@ const productionRequiredEnv = [
   "NEXT_PUBLIC_GOOGLE_MAPS_API_KEY",
   "NEXT_PUBLIC_APP_URL",
   "SUPABASE_SERVICE_ROLE_KEY",
-  "CALENDAR_TOKEN_ENCRYPTION_KEY",
-  "CALENDAR_SYNC_WORKER_SECRET",
   "SOCIAL_IMPORT_WORKER_SECRET",
-  "GOOGLE_CALENDAR_CLIENT_ID",
-  "GOOGLE_CALENDAR_CLIENT_SECRET",
-  "GOOGLE_CALENDAR_REDIRECT_URI",
-  "MICROSOFT_CALENDAR_CLIENT_ID",
-  "MICROSOFT_CALENDAR_CLIENT_SECRET",
-  "MICROSOFT_CALENDAR_REDIRECT_URI",
   "OPENAI_API_KEY",
   "RESEND_API_KEY",
   "RESEND_FROM_EMAIL"
@@ -47,6 +37,17 @@ export function validateEnv() {
 
   for (const name of productionRequiredEnv) {
     requireEnv(name);
+  }
+
+  const calendar = getCalendarEnvironmentStatus();
+  if (!calendar.ok) {
+    throw new Error(`Missing required env var: ${calendar.missing[0]}`);
+  }
+  if (
+    calendar.enabled &&
+    (process.env.CALENDAR_TOKEN_ENCRYPTION_KEY?.length ?? 0) < 32
+  ) {
+    throw new Error("CALENDAR_TOKEN_ENCRYPTION_KEY must be at least 32 characters.");
   }
 
   for (const name of serverSecretEnv) {
@@ -99,17 +100,20 @@ function assertSecretIsNotPublic(secretName: string) {
 
 function assertProductionUrls() {
   const appUrl = requireHttpsUrl("NEXT_PUBLIC_APP_URL");
-  requireHttpsUrl("GOOGLE_CALENDAR_REDIRECT_URI");
-  requireHttpsUrl("MICROSOFT_CALENDAR_REDIRECT_URI");
+  if (!getCalendarEnvironmentStatus().enabled) {
+    return;
+  }
+  const googleRedirect = requireHttpsUrl("GOOGLE_CALENDAR_REDIRECT_URI");
+  const microsoftRedirect = requireHttpsUrl("MICROSOFT_CALENDAR_REDIRECT_URI");
 
-  assertCallbackUrl(
+  assertConfiguredCallbackUrl(
     appUrl,
-    new URL(buildCalendarCallbackUrl(appUrl.href, "google")),
+    googleRedirect,
     calendarCallbackPath("google")
   );
-  assertCallbackUrl(
+  assertConfiguredCallbackUrl(
     appUrl,
-    new URL(buildCalendarCallbackUrl(appUrl.href, "outlook")),
+    microsoftRedirect,
     calendarCallbackPath("outlook")
   );
 }
@@ -134,10 +138,19 @@ function requireHttpsUrl(name: string) {
   return url;
 }
 
-function assertCallbackUrl(appUrl: URL, callbackUrl: URL, expectedPath: string) {
-  if (callbackUrl.origin !== appUrl.origin || callbackUrl.pathname !== expectedPath) {
+function assertConfiguredCallbackUrl(
+  appUrl: URL,
+  configuredUrl: URL,
+  expectedPath: string
+) {
+  if (
+    configuredUrl.origin !== appUrl.origin ||
+    configuredUrl.pathname !== expectedPath ||
+    configuredUrl.search ||
+    configuredUrl.hash
+  ) {
     throw new Error(
-      `${callbackUrl.pathname} must be registered on the production app origin: ${appUrl.origin}${expectedPath}`
+      `${configuredUrl.href} must match ${appUrl.origin}${expectedPath} and be registered in the provider console.`
     );
   }
 }

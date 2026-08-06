@@ -3,8 +3,35 @@ import { expect, test, type APIRequestContext } from "@playwright/test";
 const baseUrl = process.env.BASE_URL ?? "http://127.0.0.1:3000";
 const dashboardHeaders = { "x-cypress-dashboard": "true" };
 const testOAuthCode = "__wayline_oauth_test_code__";
+const calendarEnabled = ["1", "true"].includes(
+  (process.env.CALENDAR_SYNC_ENABLED || "").trim().toLowerCase()
+);
+
+test("disabled Calendar routes fail closed with the deferred contract", async ({ request }) => {
+  test.skip(calendarEnabled, "Calendar is explicitly enabled for provider contract coverage.");
+  const responses = await Promise.all([
+    request.get(`${baseUrl}/api/calendar/connections`),
+    request.get(`${baseUrl}/api/calendar/oauth/google`),
+    request.get(`${baseUrl}/api/calendar/oauth/google/callback`),
+    request.post(`${baseUrl}/api/calendar/sync`, { data: {} }),
+    request.post(`${baseUrl}/api/calendar/worker`)
+  ]);
+
+  for (const response of responses) {
+    expect(response.status()).toBe(501);
+    expect(await response.json()).toMatchObject({
+      data: null,
+      error: {
+        code: "not_implemented",
+        details: { enabled: false },
+        message: "Calendar sync is disabled and remains deferred."
+      }
+    });
+  }
+});
 
 test("calendar contract routes expose expected provider behavior", async ({ request }) => {
+  test.skip(!calendarEnabled, "Calendar remains disabled by default.");
   test.setTimeout(60_000);
 
   const google = await request.get(
@@ -143,6 +170,7 @@ test("calendar contract routes expose expected provider behavior", async ({ requ
 test("calendar callback with valid test state restores the original route", async ({
   request
 }) => {
+  test.skip(!calendarEnabled, "Calendar remains disabled by default.");
   const start = await startGoogleOAuth(request);
   test.skip(!start, "Google Calendar OAuth env is not configured for callback contract.");
 
@@ -168,6 +196,7 @@ test("calendar callback with valid test state restores the original route", asyn
 });
 
 test("calendar callback rejects missing and mismatched state cookies", async ({ request }) => {
+  test.skip(!calendarEnabled, "Calendar remains disabled by default.");
   const first = await startGoogleOAuth(request);
   const second = await startGoogleOAuth(request);
   test.skip(
@@ -209,6 +238,7 @@ test("calendar callback rejects missing and mismatched state cookies", async ({ 
 });
 
 test("unsafe calendar redirect target falls back to timeline", async ({ request }) => {
+  test.skip(!calendarEnabled, "Calendar remains disabled by default.");
   const start = await startGoogleOAuth(request, "https%3A%2F%2Fevil.example");
   test.skip(!start, "Google Calendar OAuth env is not configured for callback contract.");
 

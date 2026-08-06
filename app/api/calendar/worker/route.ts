@@ -1,4 +1,5 @@
-import { ApiError, apiCanonicalSuccess, handleApiError } from "@/lib/api/errors";
+import { ApiError, apiCanonicalSuccess, calendarDisabled, handleApiError } from "@/lib/api/errors";
+import { isCalendarSyncEnabled } from "@/lib/server/calendar-feature";
 import { AlmidyCalendarSyncManager } from "@/lib/calendar/sync-manager";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -6,6 +7,7 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
+  if (!isCalendarSyncEnabled()) return calendarDisabled();
   try {
     authorizeWorker(request);
 

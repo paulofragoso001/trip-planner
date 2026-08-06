@@ -1,4 +1,5 @@
-import { apiCanonicalSuccess, validationFailure } from "@/lib/api/errors";
+import { apiCanonicalSuccess, calendarDisabled, validationFailure } from "@/lib/api/errors";
+import { isCalendarSyncEnabled } from "@/lib/server/calendar-feature";
 import { recordCalendarOAuthEvent } from "@/lib/server/calendar-oauth-events";
 import { createCalendarOAuthState, isSafeInternalPath } from "@/lib/server/calendar-oauth-state";
 import { resolveCalendarRedirectUri } from "@/lib/server/calendar-redirect-uri";
@@ -16,6 +17,7 @@ export async function GET(
   request: Request,
   { params }: { params: Promise<{ provider: string }> }
 ) {
+  if (!isCalendarSyncEnabled()) return calendarDisabled();
   const { provider: providerParam } = await params;
   const provider = normalizeCalendarProvider(providerParam);
 

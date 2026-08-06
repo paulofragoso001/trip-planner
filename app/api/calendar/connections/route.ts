@@ -1,6 +1,7 @@
 import {
   ApiError,
   apiCanonicalSuccess,
+  calendarDisabled,
   handleApiError,
   validationFailure
 } from "@/lib/api/errors";
@@ -8,11 +9,13 @@ import { authorizeDashboardApi } from "@/lib/server/dashboard-test-auth";
 import { validateSessionMutationRequest } from "@/lib/server/request-protection";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { normalizeCalendarProvider } from "@/lib/validators/calendar-sync";
+import { isCalendarSyncEnabled } from "@/lib/server/calendar-feature";
 
 const connectionSelect =
   "id,provider,provider_account_email,provider_account_name,status,default_calendar_id,default_calendar_name,scopes,last_synced_at,last_error,created_at,updated_at";
 
 export async function GET() {
+  if (!isCalendarSyncEnabled()) return calendarDisabled();
   try {
     const { supabase, userId } = await authorizeCalendarConnectionRead();
 
@@ -33,6 +36,7 @@ export async function GET() {
 }
 
 export async function DELETE(request: Request) {
+  if (!isCalendarSyncEnabled()) return calendarDisabled();
   try {
     const csrfError = validateSessionMutationRequest(request);
     if (csrfError) {

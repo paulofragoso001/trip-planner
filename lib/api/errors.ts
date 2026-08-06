@@ -106,6 +106,15 @@ export function validationFailure(message: string, details?: unknown) {
   return apiFailure("validation_error", message, 400, details);
 }
 
+export function calendarDisabled() {
+  return apiFailure(
+    "not_implemented",
+    "Calendar sync is disabled and remains deferred.",
+    501,
+    { enabled: false }
+  );
+}
+
 export function handleApiError(error: unknown, route: string) {
   if (error instanceof ApiError) {
     if (error.status >= 500) {

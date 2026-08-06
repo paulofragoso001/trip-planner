@@ -1,5 +1,6 @@
 import {
   apiCanonicalSuccess,
+  calendarDisabled,
   handleApiError,
   unauthorized,
   validationFailure
@@ -12,11 +13,13 @@ import { hasCalendarTokenEncryptionKey } from "@/lib/server/calendar-token-encry
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { normalizeCalendarProvider } from "@/lib/validators/calendar-sync";
+import { isCalendarSyncEnabled } from "@/lib/server/calendar-feature";
 
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ provider: string }> }
 ) {
+  if (!isCalendarSyncEnabled()) return calendarDisabled();
   try {
     const { provider: providerParam } = await params;
     const provider = normalizeCalendarProvider(providerParam);
