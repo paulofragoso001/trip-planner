@@ -79,6 +79,19 @@ final class NativeTripBackgroundTests: XCTestCase {
         XCTAssertFalse(selection?.isUsingGlobeFallback ?? true)
     }
 
+    func testTravelImageBankSelectsChristRedeemerForBrazilAndRio() {
+        let christRedeemer = UIImage()
+        let bank = NativeTripTravelImageBank(
+            identifiers: ["WonderChristRedeemer"],
+            imageLoader: { $0 == "WonderChristRedeemer" ? christRedeemer : nil },
+            globeFallback: nil
+        )
+
+        XCTAssertEqual(bank.selectForDestination("Brazil")?.identifier, "WonderChristRedeemer")
+        XCTAssertEqual(bank.selectForDestination("Rio de Janeiro")?.identifier, "WonderChristRedeemer")
+        XCTAssertNil(bank.selectForDestination("Unmapped destination"))
+    }
+
     func testMissingTravelAssetsUseBundledGlobeAsFinalFallback() {
         let globe = UIImage()
         let bank = NativeTripTravelImageBank(

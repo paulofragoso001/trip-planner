@@ -59,6 +59,7 @@ private final class NativeTripBackgroundCell: UICollectionViewCell {
 final class NativeTripBackgroundPickerViewController: UIViewController, UICollectionViewDataSource, UICollectionViewDelegateFlowLayout, UITextFieldDelegate, PHPickerViewControllerDelegate {
     private let initialQuery: String
     private let resolveImageBank: (String, @escaping ([NativeDestinationImageChoice]) -> Void) -> Void
+    private let destinationFallback: (String) -> NativeTripTravelImageSelection?
     private let onSelect: (UIImage) -> Void
     private var imageOptions: [NativeTripBackgroundOption] = []
     private var rankedImageOptions = NativeRankedBackgroundSlots(count: 0)
@@ -75,10 +76,12 @@ final class NativeTripBackgroundPickerViewController: UIViewController, UICollec
     init(
         query: String,
         resolveImageBank: @escaping (String, @escaping ([NativeDestinationImageChoice]) -> Void) -> Void,
+        destinationFallback: @escaping (String) -> NativeTripTravelImageSelection?,
         onSelect: @escaping (UIImage) -> Void
     ) {
         initialQuery = query
         self.resolveImageBank = resolveImageBank
+        self.destinationFallback = destinationFallback
         self.onSelect = onSelect
         super.init(nibName: nil, bundle: nil)
     }
@@ -259,6 +262,13 @@ final class NativeTripBackgroundPickerViewController: UIViewController, UICollec
         loadingIndicator.startAnimating()
         resolveImageBank(bankQuery) { [weak self] choices in
             guard let self, revision == self.searchRevision else { return }
+            let bundledOption = self.destinationFallback(query).flatMap { selection in
+                selection.image.map {
+                    NativeTripBackgroundOption(title: query, image: $0, attribution: "Included with Almidy")
+                }
+            }
+            self.imageOptions = [bundledOption].compactMap { $0 }
+            self.collectionView.reloadData()
             guard !choices.isEmpty else {
                 self.finishLoadingImages()
                 return
@@ -276,6 +286,7 @@ final class NativeTripBackgroundPickerViewController: UIViewController, UICollec
                                 attribution: choice.attribution
                             ), at: index)
                             self.imageOptions = self.rankedImageOptions.loadedOptionsInServerOrder
+                                + [bundledOption].compactMap { $0 }
                             self.collectionView.reloadData()
                         }
                         remaining -= 1

@@ -186,7 +186,8 @@ extension NativeCreateTripViewController: PHPickerViewControllerDelegate {
         nameField.resignFirstResponder()
         let picker = NativeTripBackgroundPickerViewController(
             query: destinationBackgroundQuery,
-            resolveImageBank: resolveImageBank
+            resolveImageBank: resolveImageBank,
+            destinationFallback: NativeTripTravelImageBank.shared.selectForDestination
         ) { [weak self] image in
             guard let self else { return }
             self.cancelBackgroundWork()

@@ -352,6 +352,12 @@ The next device pass confirmed that Italy's remote lookup could still return no
 usable photo. Because the app already ships an approved Colosseum asset, Italy/Rome
 now uses that destination-matched bundled image before falling back to the globe.
 Unknown destinations still use the neutral fallback rather than an unrelated asset.
+Further device evidence showed the same empty remote gallery for Italy and neutral
+fallbacks for Brazil/Rio. Destination matching is now centralized across the
+approved bundled wonder assets, and the image picker includes the matching bundled
+choice alongside any downloaded results. Brazil and Rio use the bundled Christ the
+Redeemer image when remote imagery is unavailable; unmapped destinations remain on
+the neutral globe.
 
 ## Required rerun and production rollout
 

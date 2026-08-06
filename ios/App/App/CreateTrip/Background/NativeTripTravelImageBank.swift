@@ -75,15 +75,44 @@ final class NativeTripTravelImageBank {
     }
 
     func selectForDestination(_ destination: String) -> NativeTripTravelImageSelection? {
-        let words = Set(destination
+        let normalized = destination
             .folding(options: [.caseInsensitive, .diacriticInsensitive], locale: .current)
             .lowercased()
+        let words = Set(normalized
             .components(separatedBy: CharacterSet.alphanumerics.inverted)
             .filter { !$0.isEmpty })
         let identifier: String?
-        identifier = !words.isDisjoint(with: ["italy", "rome", "roma"])
-            ? "WonderColosseum"
-            : nil
+        if words.contains("amazon") {
+            identifier = "WonderAmazon"
+        } else if words.contains("iguazu") {
+            identifier = "WonderIguazuFalls"
+        } else if !words.isDisjoint(with: ["brazil", "rio"]) {
+            identifier = "WonderChristRedeemer"
+        } else if !words.isDisjoint(with: ["italy", "rome", "roma"]) {
+            identifier = "WonderColosseum"
+        } else if normalized.contains("great wall") || !words.isDisjoint(with: ["china", "beijing"]) {
+            identifier = "WonderGreatWall"
+        } else if words.contains("jordan") || words.contains("petra") {
+            identifier = "WonderPetra"
+        } else if !words.isDisjoint(with: ["peru", "machu"]) {
+            identifier = "WonderMachuPicchu"
+        } else if words.contains("mexico") || words.contains("chichen") {
+            identifier = "WonderChichenItza"
+        } else if !words.isDisjoint(with: ["india", "agra"]) {
+            identifier = "WonderTajMahal"
+        } else if words.contains("vietnam") || normalized.contains("ha long") {
+            identifier = "WonderHaLongBay"
+        } else if !words.isDisjoint(with: ["korea", "jeju"]) {
+            identifier = "WonderJejuIsland"
+        } else if !words.isDisjoint(with: ["indonesia", "komodo"]) {
+            identifier = "WonderKomodoIsland"
+        } else if !words.isDisjoint(with: ["philippines", "palawan"]) {
+            identifier = "WonderPuertoPrincesa"
+        } else if normalized.contains("south africa") || normalized.contains("cape town") {
+            identifier = "WonderTableMountain"
+        } else {
+            identifier = nil
+        }
         guard let identifier, let image = imageLoader(identifier) else { return nil }
         return NativeTripTravelImageSelection(
             identifier: identifier,
