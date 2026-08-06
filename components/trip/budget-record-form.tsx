@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import type { FormEvent } from "react";
 import { useEffect, useState } from "react";
 import { useAlmidyAction } from "@/hooks/use-wayline-action";
+import { useUserPreferences } from "@/hooks/use-user-preferences";
+import { currencyLabels } from "@/lib/user-preferences";
 
 export function BudgetRecordForm({ tripId }: { tripId: string }) {
   const router = useRouter();
@@ -15,6 +17,8 @@ export function BudgetRecordForm({ tripId }: { tripId: string }) {
   const [label, setLabel] = useState("");
   const [recordType, setRecordType] = useState("actual");
   const { isPending, run, state } = useAlmidyAction();
+  const { preferences } = useUserPreferences();
+  const currency = preferences?.default_currency || "USD";
   const numericAmount = Number(amount || 0);
   const canSave = Boolean(label.trim()) && Number.isFinite(numericAmount) && numericAmount > 0 && !isPending;
 
@@ -26,7 +30,7 @@ export function BudgetRecordForm({ tripId }: { tripId: string }) {
       body: {
         amount,
         category,
-        currency: "USD",
+        currency,
         label,
         recordType,
         tripId
@@ -65,7 +69,7 @@ export function BudgetRecordForm({ tripId }: { tripId: string }) {
 
   const message = state.status === "success" ? "Expense saved." : state.message;
   const amountLabel = new Intl.NumberFormat("en-US", {
-    currency: "USD",
+    currency,
     minimumFractionDigits: 2,
     style: "currency"
   }).format(numericAmount || 0);
@@ -125,7 +129,7 @@ export function BudgetRecordForm({ tripId }: { tripId: string }) {
                   <span className="text-6xl font-light tracking-tight text-white">{amountLabel}</span>
                   <span className="ml-1 h-14 w-px translate-y-2 animate-pulse bg-orange-500" aria-hidden="true" />
                 </div>
-                <p className="mt-8 text-sm font-black text-orange-400">US Dollar (USD)</p>
+                <p className="mt-8 text-sm font-black text-orange-400">{currencyLabels[currency]}</p>
               </div>
 
               <div className="mt-6 grid w-full max-w-md grid-cols-3 gap-2">

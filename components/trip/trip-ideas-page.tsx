@@ -36,13 +36,15 @@ import {
 } from "@/components/trip/activity-detail-sheet";
 import {
   distanceUnitForLocale,
-  formatDistance,
+  formatDistanceForPreference,
   getDistanceAnchorOptions,
   haversineDistanceKm,
   sortByDistance,
   type DistanceAnchorOption,
   type GeoPoint
 } from "@/lib/geo/distance";
+import { useUserPreferences } from "@/hooks/use-user-preferences";
+import type { UserDistanceUnit } from "@/lib/user-preferences";
 import type { AlmidyMapPin, AlmidyMapSurfaceState } from "@/lib/map/wayline-map-models";
 
 type TripIdeasPageProps = TripMapData;
@@ -416,7 +418,8 @@ function MobileActivitiesView({
   const [cityFilter, setCityFilter] = useState("all");
   const tripTitle = destination?.split(",")[0]?.trim() || "Your trip";
   const locale = typeof window === "undefined" ? "en-US" : window.navigator.language || "en-US";
-  const distanceUnit = distanceUnitForLocale(locale);
+  const { preferences } = useUserPreferences();
+  const distanceUnit: UserDistanceUnit = preferences?.distance_unit || (distanceUnitForLocale(locale) === "mi" ? "miles" : "kilometers");
   const mapItems = useMemo(() => buildMobileActivityMapItems(items, rows), [items, rows]);
   const anchorOptions = useMemo(() => {
     const mappedOptions = getDistanceAnchorOptions(
@@ -818,7 +821,7 @@ function MobileActivitiesView({
                   anchorPoint={anchorPoint}
                   disabled={disabled}
                   key={`${row.type}-${row.id}`}
-                  locale={locale}
+                  distanceUnit={distanceUnit}
                   onDismiss={onDismiss}
                   onOpenDetail={onOpenDetail}
                   onSave={onSave}
@@ -884,7 +887,7 @@ function MobileActivitiesView({
 function MobileActivityRow({
   anchorPoint,
   disabled,
-  locale,
+  distanceUnit,
   onDismiss,
   onOpenDetail,
   onSave,
@@ -893,7 +896,7 @@ function MobileActivityRow({
 }: {
   anchorPoint: GeoPoint | null;
   disabled: boolean;
-  locale: string;
+  distanceUnit: UserDistanceUnit;
   onDismiss: (row: Extract<ActivityRow, { type: "recommendation" }>) => void;
   onOpenDetail: (row: ActivityRow) => void;
   onSave: (row: Extract<ActivityRow, { type: "recommendation" }>) => void;
@@ -902,7 +905,7 @@ function MobileActivityRow({
 }) {
   const icon = categoryIcon(row.category);
   const title = row.title;
-  const detail = mobileRowDetail(row, anchorPoint, locale);
+  const detail = mobileRowDetail(row, anchorPoint, distanceUnit);
   const sideLabel = mobileRowSideLabel(row);
   const added = row.type === "place";
   const canOpenDetail = row.type === "recommendation" || row.type === "place";
@@ -972,8 +975,8 @@ function MobileActivityRow({
   );
 }
 
-function mobileRowDetail(row: ActivityRow, anchorPoint: GeoPoint | null, locale: string) {
-  const distance = getDistanceLabel(row, anchorPoint, locale);
+function mobileRowDetail(row: ActivityRow, anchorPoint: GeoPoint | null, distanceUnit: UserDistanceUnit) {
+  const distance = getDistanceLabel(row, anchorPoint, distanceUnit);
   if (row.type === "recommendation") {
     return {
       distance,
@@ -1016,10 +1019,10 @@ function getActivityCoordinates(row: ActivityRow): GeoPoint | null {
   return { lat: row.lat, lng: row.lng };
 }
 
-function getDistanceLabel(row: ActivityRow, anchorPoint: GeoPoint | null, locale: string) {
+function getDistanceLabel(row: ActivityRow, anchorPoint: GeoPoint | null, distanceUnit: UserDistanceUnit) {
   const coordinates = getActivityCoordinates(row);
   if (!coordinates || !anchorPoint) return null;
-  return formatDistance(haversineDistanceKm(anchorPoint, coordinates), locale);
+  return formatDistanceForPreference(haversineDistanceKm(anchorPoint, coordinates), distanceUnit);
 }
 
 function getActivityCity(row: ActivityRow) {

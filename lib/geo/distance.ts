@@ -73,6 +73,15 @@ export function formatDistance(distanceKm: number | null, locale?: string | null
   return `${rounded} ${unit}`;
 }
 
+export function formatDistanceForPreference(distanceKm: number | null, preference: "miles" | "kilometers") {
+  if (distanceKm === null || !Number.isFinite(distanceKm)) return null;
+  const unit: DistanceUnit = preference === "miles" ? "mi" : "km";
+  const value = distanceValueForUnit(distanceKm, unit);
+  if (value < 0.05) return null;
+  const rounded = value < 10 ? value.toFixed(1) : String(Math.round(value));
+  return `${rounded} ${unit}`;
+}
+
 export function sortByDistance<T>(
   rows: T[],
   anchor: GeoPoint | null,

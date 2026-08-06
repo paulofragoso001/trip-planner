@@ -2428,7 +2428,7 @@ test.describe("mobile soft-launch UX", () => {
     await expect(launchSheet.getByRole("button", { name: /Add Reservations via Email/ })).toContainText(
       "Coming soon"
     );
-    await expect(launchSheet.getByRole("link", { name: "Manual reservation importer" })).toHaveAttribute(
+    await expect(launchSheet.getByRole("link", { name: "Import reservations manually" })).toHaveAttribute(
       "href",
       "/dashboard/imports"
     );
@@ -2461,23 +2461,23 @@ test.describe("mobile soft-launch UX", () => {
       ["Calendar Feed", "Pro soon"],
       ["Connect with Claude / MCP", "Soon"],
       ["Shortcuts", "Soon"],
-      ["Currency", "Soon"],
-      ["Distance Unit", "Soon"],
       ["Language", "Soon"],
       ["App Icon", "Soon"],
       ["Notifications", "Soon"],
       ["Widgets", "Soon"],
       ["Storage and Data", "Soon"],
-      ["Review the App", "Soon"],
-      ["App Updates", "Soon"],
-      ["Share to a Friend", "Soon"]
+      ["Review the App", "Soon"]
     ] as const;
     for (const [label, status] of disabledSettingsRows) {
       const row = launchSheet.getByRole("button", { name: new RegExp(`^${label}`) });
       await expect(row, `${label} remains non-interactive`).toBeDisabled();
       await expect(row, `${label} exposes its truthful availability`).toContainText(status);
     }
-    await expect(launchSheet.getByText("Version 0.1.0")).toBeVisible();
+    await expect(launchSheet.getByLabel("Default currency")).toBeVisible();
+    await expect(launchSheet.getByLabel("Distance unit")).toBeVisible();
+    await expect(launchSheet.getByRole("button", { name: /Share with a friend/ })).toBeEnabled();
+    await expect(launchSheet.getByRole("button", { name: /App Updates/ })).toHaveCount(0);
+    await expect(launchSheet.getByText(/^Version \d+\.\d+\.\d+/)).toBeVisible();
     await expect(launchSheet.getByText(/Last Sync/i)).toHaveCount(0);
     await expect(launchSheet.getByRole("button", { name: /Force Sync/i })).toHaveCount(0);
     for (const width of [360, 390, 430]) {

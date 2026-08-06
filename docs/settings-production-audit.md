@@ -408,3 +408,43 @@ This phase did not add migrations, dependencies, providers, calendar behavior,
 EventKit, Apple Calendar plugins, plugin registration, or usage-description keys.
 The preserved `.gitignore`, dependency manifests/lockfile, and `docs/security/`
 material remain outside the implementation commit.
+
+## Phase 2 implementation status appendix
+
+**Implementation branch:** `codex/settings-phase-2`
+
+**Parent:** `86da2f304af0b58e446b22e67524594da1529c51`
+
+**Status:** implemented for staging review; not merged, deployed, or migrated in production.
+
+Phase 2 adds the isolated `user_preferences` model for default currency and distance
+unit. The authenticated GET/PATCH contract derives ownership from the session,
+returns typed defaults without creating a row, rejects unknown fields, supports
+independent partial changes, and uses CSRF protection. Account Settings and the
+mobile wallet surface hydrate the same server state; native loads and saves through
+that API after session restoration. Failed optimistic web changes roll back, stale
+responses cannot replace newer intent, and native never reports success before the
+server confirms it.
+
+The default currency is consumed only when a new budget record has no explicit
+record currency. Existing money is neither rewritten nor converted. Distance stays
+canonical in kilometers and is converted at display boundaries using one shared web
+formatter; native preference semantics and allowed values match web. Existing data
+is unchanged.
+
+Web version text continues to come from package metadata. Native now reads both
+`CFBundleShortVersionString` and `CFBundleVersion`. A build SHA is reserved for
+diagnostics and is not exposed in Settings. There is still no reliable product-wide
+sync timestamp, so Last Sync and Force Sync remain absent. There is no approved App
+Store product identifier, so native App Updates remains disabled with explicit
+listing wording and web shows no store action.
+
+Web and native share the canonical `https://almidy.app` URL using platform share
+sheets, with a web copy-link fallback and iPad-safe native presentation. Manual
+reservation import routes to `/dashboard/imports` under explicit manual wording;
+email forwarding remains unavailable and no provider connection is implied.
+
+The Phase 2 migration was not executed. Static RLS validation passes; runtime RLS,
+native compilation, and authenticated staging parity must be repeated using
+`docs/settings-phase-2-staging-verification.md`. Protected recovery/security
+material remains outside this phase.

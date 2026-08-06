@@ -39,6 +39,7 @@ import { useEffect, useRef, useState } from "react";
 import type { CSSProperties, PointerEvent, ReactNode, TouchEvent } from "react";
 import type { DashboardRecentTripView } from "@/app/dashboard/loader";
 import { cn } from "@/components/trip-ui";
+import { UserPreferencesSettings } from "@/components/account/user-preferences-settings";
 import { appVersion } from "@/lib/app-metadata";
 import { dashboardActionRoutes } from "@/lib/dashboard/action-routes";
 import type { WalletHeroImage } from "@/lib/wallet/hero-image";
@@ -807,6 +808,24 @@ function SheetActionButton({
 }
 
 function SettingsPanel({ onClose }: { onClose: () => void }) {
+  const [shareMessage, setShareMessage] = useState("");
+
+  async function shareAlmidy() {
+    setShareMessage("");
+    try {
+      const share = { text: "Plan memorable trips with Almidy.", title: "Almidy", url: "https://almidy.app" };
+      if (navigator.share) {
+        await navigator.share(share);
+        setShareMessage("Share sheet opened.");
+      } else {
+        await navigator.clipboard.writeText(share.url);
+        setShareMessage("Almidy link copied.");
+      }
+    } catch (error) {
+      setShareMessage(error instanceof DOMException && error.name === "AbortError" ? "Sharing cancelled." : "Could not share Almidy. Try copying https://almidy.app.");
+    }
+  }
+
   return (
     <div className="h-[100dvh] overflow-y-auto bg-slate-100 px-5 pb-10 pt-3" data-testid="mobile-home-settings">
       <header className="relative min-h-24">
@@ -844,12 +863,11 @@ function SettingsPanel({ onClose }: { onClose: () => void }) {
         <SettingsRow icon={<CalendarDays />} label="Calendar Feed" pro unavailableLabel="Pro soon" />
         <SettingsRow icon={<PackageOpen />} label="Connect with Claude / MCP" unavailableLabel="Soon" />
         <SettingsRow icon={<Briefcase />} label="Shortcuts" unavailableLabel="Soon" />
-        <SettingsRow href={dashboardActionRoutes.imports.manualReservations} icon={<Upload />} label="Manual reservation importer" />
+        <SettingsRow href={dashboardActionRoutes.imports.manualReservations} icon={<Upload />} label="Import reservations manually" value="Available" />
       </SettingsSection>
 
       <SettingsSection title="Customize">
-        <SettingsRow icon={<RefreshCw />} label="Currency" value="US Dollar" picker unavailableLabel="Soon" />
-        <SettingsRow icon={<SlidersHorizontal />} label="Distance Unit" value="Miles" picker unavailableLabel="Soon" />
+        <UserPreferencesSettings compact />
         <SettingsRow icon={<Languages />} label="Language" value="English" picker unavailableLabel="Soon" />
         <SettingsRow href={dashboardActionRoutes.trips.list} icon={<Wallet />} label="Trips Timeline" />
         <SettingsRow icon={<BookOpen />} label="App Icon" unavailableLabel="Soon" />
@@ -863,7 +881,6 @@ function SettingsPanel({ onClose }: { onClose: () => void }) {
         <SettingsRow href={dashboardActionRoutes.settings.help} icon={<LifeBuoy />} label="Need help?" />
         <SettingsRow href={dashboardActionRoutes.settings.talkToUs} icon={<Mail />} label="Talk to us" />
         <SettingsRow icon={<Star />} label="Review the App" unavailableLabel="Soon" />
-        <SettingsRow icon={<Sparkles />} label="App Updates" unavailableLabel="Soon" />
         <SettingsRow href={dashboardActionRoutes.settings.membership} icon={<Star />} label="Your Membership" />
       </SettingsSection>
 
@@ -871,8 +888,10 @@ function SettingsPanel({ onClose }: { onClose: () => void }) {
         <SettingsRow href={dashboardActionRoutes.settings.about} icon={<Briefcase />} label="About Almidy" />
         <SettingsRow href={dashboardActionRoutes.settings.terms} icon={<MessageSquare />} label="Terms of Service" />
         <SettingsRow href={dashboardActionRoutes.settings.privacy} icon={<Shield />} label="Privacy Policy" />
-        <SettingsRow icon={<Upload />} label="Share to a Friend" unavailableLabel="Soon" />
+        <SettingsRow icon={<Upload />} label="Share with a friend" onClick={() => void shareAlmidy()} />
       </SettingsSection>
+
+      <p aria-live="polite" className="mt-3 px-5 text-center text-sm font-bold text-slate-500">{shareMessage}</p>
 
       <div className="mt-14 pb-4 text-center text-slate-400">
         <p className="text-base font-medium">Version {appVersion}</p>
@@ -1031,6 +1050,7 @@ function SettingsRow({
   icon,
   label,
   meta,
+  onClick,
   picker = false,
   pro = false,
   unavailableLabel,
@@ -1041,6 +1061,7 @@ function SettingsRow({
   icon: ReactNode;
   label: string;
   meta?: string;
+  onClick?: () => void;
   picker?: boolean;
   pro?: boolean;
   unavailableLabel?: string;
@@ -1085,6 +1106,10 @@ function SettingsRow({
         {content}
       </Link>
     );
+  }
+
+  if (onClick && !unavailableLabel) {
+    return <button className={className} onClick={onClick} type="button">{content}</button>;
   }
 
   return (

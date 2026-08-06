@@ -10,6 +10,7 @@ final class NativeSettingsTests: XCTestCase {
             "Need help?",
             "Talk to us",
             "Notifications",
+            "Share with a friend",
             "About Almidy",
             "Terms of Service",
             "Privacy Policy"
@@ -23,7 +24,7 @@ final class NativeSettingsTests: XCTestCase {
             if !row.isEnabled {
                 XCTAssertNil(row.action, row.title)
                 XCTAssertTrue(
-                    row.detail.map(["Soon", "Pro soon", "Coming soon"].contains) == true,
+                    row.detail.map(["Soon", "Pro soon", "Coming soon", "Sign in to manage", "Unavailable until App Store listing"].contains) == true,
                     row.title
                 )
             }
@@ -36,6 +37,7 @@ final class NativeSettingsTests: XCTestCase {
         XCTAssertEqual(action(for: "Travel Book"), .openTravelBook)
         XCTAssertEqual(action(for: "Need help?"), .openHelp)
         XCTAssertEqual(action(for: "Notifications"), .openNotificationPreferences)
+        XCTAssertEqual(action(for: "Share with a friend"), .shareAlmidy)
         XCTAssertEqual(
             action(for: "Talk to us"),
             .composeSupportEmail(address: "support@almidy.app")
@@ -63,8 +65,27 @@ final class NativeSettingsTests: XCTestCase {
     }
 
     func testVersionComesFromBundleMetadata() {
-        XCTAssertNotEqual(NativeSettingsAppMetadata.version(), "Unknown")
-        XCTAssertFalse(NativeSettingsAppMetadata.version().isEmpty)
+        XCTAssertTrue(NativeSettingsAppMetadata.version().hasPrefix("Version "))
+        XCTAssertTrue(NativeSettingsAppMetadata.version().contains("("))
+    }
+
+    func testPreferenceRowsHaveTruthfulLoadingPersistedSavingAndFailureStates() {
+        XCTAssertEqual(row(named: "Currency", state: .loading).detail, "Loading…")
+        XCTAssertFalse(row(named: "Currency", state: .loading).isEnabled)
+        let preferences = NativeUserPreferences(defaultCurrency: .EUR, distanceUnit: .kilometers)
+        XCTAssertEqual(row(named: "Currency", state: .loaded(preferences)).detail, "Euro (EUR)")
+        XCTAssertEqual(row(named: "Currency", state: .loaded(preferences)).action, .selectCurrency)
+        XCTAssertEqual(row(named: "Distance Unit", state: .loaded(preferences)).detail, "Kilometers")
+        XCTAssertEqual(row(named: "Distance Unit", state: .saving(preferences)).detail, "Kilometers · Saving…")
+        XCTAssertEqual(row(named: "Distance Unit", state: .failed(preferences)).detail, "Kilometers · Offline")
+    }
+
+    func testAppUpdateAndShareContractsAreTruthfulAndIPadSafeInputsAreStable() {
+        let updates = row(named: "App Updates")
+        XCTAssertFalse(updates.isEnabled)
+        XCTAssertEqual(updates.detail, "Unavailable until App Store listing")
+        XCTAssertEqual(NativeShareContract.url.absoluteString, "https://almidy.app")
+        XCTAssertEqual(NativeShareContract.message, "Plan memorable trips with Almidy.")
     }
 
     private func row(named title: String) -> NativeSettingsRowModel {
@@ -77,5 +98,13 @@ final class NativeSettingsTests: XCTestCase {
 
     private func action(for title: String) -> NativeSettingsAction? {
         row(named: title).action
+    }
+
+    private func row(named title: String, state: NativePreferenceViewState) -> NativeSettingsRowModel {
+        guard let row = NativeSettingsCatalog.sections(preferenceState: state).flatMap(\.rows).first(where: { $0.title == title }) else {
+            XCTFail("Missing Settings row: \(title)")
+            return NativeSettingsRowModel(title: title, detail: nil, systemImageName: "", action: nil)
+        }
+        return row
     }
 }

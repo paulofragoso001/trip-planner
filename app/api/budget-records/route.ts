@@ -6,6 +6,7 @@ import {
   validationFailure
 } from "@/lib/api/errors";
 import { authorizeDashboardApi } from "@/lib/server/dashboard-test-auth";
+import { defaultUserPreferences, supportedCurrencyCodes, type SupportedCurrencyCode } from "@/lib/user-preferences";
 
 const routeName = "budget-records";
 
@@ -28,7 +29,7 @@ export async function POST(request: Request) {
       .insert({
         amount: validation.value.amount,
         category: validation.value.category,
-        currency: validation.value.currency,
+        currency: validation.value.currency || await defaultCurrency(auth.supabase, auth.userId),
         label: validation.value.label,
         notes: validation.value.notes,
         record_type: validation.value.recordType,
@@ -69,7 +70,10 @@ function validateBudgetRecord(value: unknown) {
   const label = readString(value.label, 120);
   const category = readString(value.category, 80) || "misc";
   const amount = readNumber(value.amount);
-  const currency = readString(value.currency, 3) || "USD";
+  const currencyValue = readString(value.currency, 3)?.toUpperCase() || null;
+  const currency = currencyValue && supportedCurrencyCodes.includes(currencyValue as SupportedCurrencyCode)
+    ? currencyValue as SupportedCurrencyCode
+    : null;
   const recordType = readString(value.recordType, 20) || "actual";
 
   if (!tripId) details.tripId = "tripId is required.";
@@ -77,6 +81,9 @@ function validateBudgetRecord(value: unknown) {
   if (amount == null || amount < 0) details.amount = "amount must be a non-negative number.";
   if (recordType !== "planned" && recordType !== "actual") {
     details.recordType = "recordType must be planned or actual.";
+  }
+  if (value.currency != null && !currency) {
+    details.currency = `currency must be one of ${supportedCurrencyCodes.join(", ")}.`;
   }
 
   if (Object.keys(details).length || !tripId || !label || amount == null) {
@@ -88,7 +95,7 @@ function validateBudgetRecord(value: unknown) {
     value: {
       amount,
       category,
-      currency: currency.toUpperCase(),
+      currency,
       label,
       notes: readNullableString(value.notes, 1000),
       recordType,
@@ -96,6 +103,11 @@ function validateBudgetRecord(value: unknown) {
       tripId
     }
   };
+}
+
+async function defaultCurrency(supabase: any, userId: string): Promise<SupportedCurrencyCode> {
+  const { data } = await supabase.from("user_preferences").select("default_currency").eq("user_id", userId).maybeSingle();
+  return supportedCurrencyCodes.includes(data?.default_currency) ? data.default_currency : defaultUserPreferences.default_currency;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

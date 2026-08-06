@@ -174,6 +174,10 @@ private struct NativeDestinationImageBankResponse: Decodable {
     }
 }
 
+private struct NativeUserPreferencesResponse: Decodable {
+    let preferences: NativeUserPreferences
+}
+
 struct NativeDestinationImageChoice {
     let attribution: String?
     let title: String
@@ -227,6 +231,31 @@ final class NativeTripStore {
     func requestPasswordReset(completion: @escaping (Bool) -> Void) {
         apiClient.request(path: "/api/account/password-reset", method: "POST", body: Data("{}".utf8)) { result in
             completion(result.isSuccess)
+        }
+    }
+
+    func loadUserPreferences(completion: @escaping (Result<NativeUserPreferences, Error>) -> Void) {
+        apiClient.request(path: "/api/user-preferences", method: "GET", body: nil) { result in
+            completion(result.flatMap { data in
+                guard let response = try? JSONDecoder().decode(NativeUserPreferencesResponse.self, from: data) else {
+                    return .failure(NativeTripStoreError.invalidResponse)
+                }
+                return .success(response.preferences)
+            })
+        }
+    }
+
+    func updateUserPreferences(_ values: [String: String], completion: @escaping (Result<NativeUserPreferences, Error>) -> Void) {
+        guard JSONSerialization.isValidJSONObject(values), let body = try? JSONSerialization.data(withJSONObject: values) else {
+            completion(.failure(NativeTripStoreError.invalidResponse)); return
+        }
+        apiClient.request(path: "/api/user-preferences", method: "PATCH", body: body) { result in
+            completion(result.flatMap { data in
+                guard let response = try? JSONDecoder().decode(NativeUserPreferencesResponse.self, from: data) else {
+                    return .failure(NativeTripStoreError.invalidResponse)
+                }
+                return .success(response.preferences)
+            })
         }
     }
 
@@ -2788,6 +2817,12 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
                     self?.presentNativeWebFeature(route: "/dashboard/account#notifications", title: "Notifications")
                 }
             },
+            onLoadPreferences: { [weak self] completion in
+                self?.tripStore.loadUserPreferences(completion: completion)
+            },
+            onUpdatePreferences: { [weak self] values, completion in
+                self?.tripStore.updateUserPreferences(values, completion: completion)
+            },
             onOpenPublicPage: { [weak self] path in
                 self?.dismiss(animated: true) {
                     guard let url = URL(string: path, relativeTo: NativeServiceConfiguration.appBaseURL)?.absoluteURL else {
@@ -3261,12 +3296,15 @@ private final class NativeSettingsViewController: UIViewController, UITableViewD
     private let onOpenTravelBook: () -> Void
     private let onOpenHelp: () -> Void
     private let onOpenNotificationPreferences: () -> Void
+    private let onLoadPreferences: (@escaping (Result<NativeUserPreferences, Error>) -> Void) -> Void
+    private let onUpdatePreferences: ([String: String], @escaping (Result<NativeUserPreferences, Error>) -> Void) -> Void
     private let onOpenPublicPage: (String) -> Void
     private let onTalkToUs: (String) -> Void
     private let tableView = UITableView(frame: .zero, style: .insetGrouped)
     private weak var adaptiveHeaderView: UIView?
 
-    private let sections = NativeSettingsCatalog.sections
+    private var preferenceState: NativePreferenceViewState
+    private var sections: [NativeSettingsSectionModel] { NativeSettingsCatalog.sections(preferenceState: preferenceState) }
 
     init(
         profile: NativeAuthProfile?,
@@ -3278,6 +3316,8 @@ private final class NativeSettingsViewController: UIViewController, UITableViewD
         onOpenTravelBook: @escaping () -> Void,
         onOpenHelp: @escaping () -> Void,
         onOpenNotificationPreferences: @escaping () -> Void,
+        onLoadPreferences: @escaping (@escaping (Result<NativeUserPreferences, Error>) -> Void) -> Void,
+        onUpdatePreferences: @escaping ([String: String], @escaping (Result<NativeUserPreferences, Error>) -> Void) -> Void,
         onOpenPublicPage: @escaping (String) -> Void,
         onTalkToUs: @escaping (String) -> Void
     ) {
@@ -3290,8 +3330,11 @@ private final class NativeSettingsViewController: UIViewController, UITableViewD
         self.onOpenTravelBook = onOpenTravelBook
         self.onOpenHelp = onOpenHelp
         self.onOpenNotificationPreferences = onOpenNotificationPreferences
+        self.onLoadPreferences = onLoadPreferences
+        self.onUpdatePreferences = onUpdatePreferences
         self.onOpenPublicPage = onOpenPublicPage
         self.onTalkToUs = onTalkToUs
+        self.preferenceState = profile == nil ? .signedOut : .loading
         super.init(nibName: nil, bundle: nil)
     }
 
@@ -3303,6 +3346,7 @@ private final class NativeSettingsViewController: UIViewController, UITableViewD
         super.viewDidLoad()
         view.backgroundColor = AlmidyDesignTokens.Color.settingsBackground
         configureTable()
+        if profile != nil { loadPreferences() }
     }
 
     override func viewDidLayoutSubviews() {
@@ -3458,7 +3502,7 @@ private final class NativeSettingsViewController: UIViewController, UITableViewD
     private func makeVersionFooter() -> UIView {
         let footer = UIView(frame: CGRect(x: 0, y: 0, width: view.bounds.width, height: 72))
         let label = UILabel()
-        label.text = "Version \(NativeSettingsAppMetadata.version())"
+        label.text = NativeSettingsAppMetadata.version()
         label.font = AlmidyDesignTokens.Font.body(14)
         label.textColor = AlmidyDesignTokens.Color.settingsSecondary
         label.textAlignment = .center
@@ -3644,6 +3688,71 @@ private final class NativeSettingsViewController: UIViewController, UITableViewD
         dismiss(animated: true)
     }
 
+    private func loadPreferences() {
+        preferenceState = .loading
+        tableView.reloadData()
+        onLoadPreferences { [weak self] result in
+            guard let self else { return }
+            switch result {
+            case .success(let preferences): self.preferenceState = .loaded(preferences)
+            case .failure: self.preferenceState = .failed(self.preferenceState.preferences)
+            }
+            self.tableView.reloadData()
+        }
+    }
+
+    private func chooseCurrency(from sourceView: UIView) {
+        let alert = UIAlertController(title: "Default currency", message: "Used for new expense records. Existing money is not converted.", preferredStyle: .actionSheet)
+        for currency in NativeCurrency.allCases {
+            alert.addAction(UIAlertAction(title: currency.label, style: .default) { [weak self] _ in
+                self?.savePreference(["default_currency": currency.rawValue])
+            })
+        }
+        presentPreferenceSheet(alert, from: sourceView)
+    }
+
+    private func chooseDistanceUnit(from sourceView: UIView) {
+        let alert = UIAlertController(title: "Distance unit", message: "Used when Almidy formats distances.", preferredStyle: .actionSheet)
+        for unit in NativeDistanceUnit.allCases {
+            alert.addAction(UIAlertAction(title: unit.label, style: .default) { [weak self] _ in
+                self?.savePreference(["distance_unit": unit.rawValue])
+            })
+        }
+        presentPreferenceSheet(alert, from: sourceView)
+    }
+
+    private func presentPreferenceSheet(_ alert: UIAlertController, from sourceView: UIView) {
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        if let popover = alert.popoverPresentationController {
+            popover.sourceView = sourceView
+            popover.sourceRect = sourceView.bounds
+        }
+        present(alert, animated: true)
+    }
+
+    private func savePreference(_ values: [String: String]) {
+        guard let current = preferenceState.preferences else { return }
+        preferenceState = .saving(current)
+        tableView.reloadData()
+        onUpdatePreferences(values) { [weak self] result in
+            guard let self else { return }
+            switch result {
+            case .success(let preferences): self.preferenceState = .loaded(preferences)
+            case .failure: self.preferenceState = .failed(current)
+            }
+            self.tableView.reloadData()
+        }
+    }
+
+    private func shareAlmidy(from sourceView: UIView) {
+        let activity = UIActivityViewController(activityItems: [NativeShareContract.message, NativeShareContract.url], applicationActivities: nil)
+        if let popover = activity.popoverPresentationController {
+            popover.sourceView = sourceView
+            popover.sourceRect = sourceView.bounds
+        }
+        present(activity, animated: true)
+    }
+
     func numberOfSections(in tableView: UITableView) -> Int {
         sections.count
     }
@@ -3704,6 +3813,12 @@ private final class NativeSettingsViewController: UIViewController, UITableViewD
             onOpenHelp()
         case .openNotificationPreferences:
             onOpenNotificationPreferences()
+        case .selectCurrency:
+            chooseCurrency(from: tableView.cellForRow(at: indexPath) ?? tableView)
+        case .selectDistanceUnit:
+            chooseDistanceUnit(from: tableView.cellForRow(at: indexPath) ?? tableView)
+        case .shareAlmidy:
+            shareAlmidy(from: tableView.cellForRow(at: indexPath) ?? tableView)
         case .openPublicPage(let path):
             onOpenPublicPage(path)
         case .composeSupportEmail(let address):

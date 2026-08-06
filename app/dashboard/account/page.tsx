@@ -22,6 +22,7 @@ import type { ReactNode } from "react";
 import { AccountDeletionRequestForm } from "@/components/account/account-deletion-request-form";
 import { PasswordResetButton } from "@/components/account/password-reset-button";
 import { ProfileSettingsForm } from "@/components/account/profile-settings-form";
+import { UserPreferencesSettings } from "@/components/account/user-preferences-settings";
 import NotificationSettings from "@/components/NotificationSettings";
 import {
   allowsDashboardTestBypass,
@@ -230,6 +231,7 @@ export default async function AccountPage() {
           {user ? <ProfileSettingsForm initialDisplayName={profile?.username || user.email || "Traveler"} /> : null}
           {user ? <PasswordResetButton /> : null}
           {user || hasDashboardBypass ? <NotificationSettings /> : null}
+          {user || hasDashboardBypass ? <UserPreferencesSettings /> : null}
           <SettingsSurfaceSection
             eyebrow="Account"
             id="preferences"
