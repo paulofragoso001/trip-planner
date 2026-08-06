@@ -19,6 +19,7 @@ final class NativeDestinationFieldController {
         request.naturalLanguageQuery = [completion.title, completion.subtitle]
             .filter { !$0.isEmpty }
             .joined(separator: ", ")
+        nativeImageryDebug("MapKit completion selected title=\(completion.title) subtitle=\(completion.subtitle)")
         let search = MKLocalSearch(request: request)
         activeSearch = search
         search.start { [weak self] response, error in
@@ -39,8 +40,12 @@ final class NativeDestinationFieldController {
             )
             handler(.success(NativeResolvedDestination(
                 title: canonicalTitle,
-                coordinate: placemark.coordinate
+                coordinate: placemark.coordinate,
+                locality: placemark.locality,
+                administrativeArea: placemark.administrativeArea,
+                country: placemark.country
             )))
+            nativeImageryDebug("MapKit resolved title=\(canonicalTitle) locality=\(placemark.locality ?? "none") admin=\(placemark.administrativeArea ?? "none") country=\(placemark.country ?? "none") latitude=\(placemark.coordinate.latitude) longitude=\(placemark.coordinate.longitude)")
         }
     }
 

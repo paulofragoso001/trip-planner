@@ -83,6 +83,18 @@ test("enabled Calendar passes with the complete strict contract", () => {
   assert.equal(runPreflight(completeCalendarEnv).status, 0);
 });
 
+test("production image providers require a server-side Places credential", () => {
+  const withoutServerPlaces = { ...baseEnv };
+  delete withoutServerPlaces.GOOGLE_PLACES_API_KEY;
+  const result = spawnSync(process.execPath, ["scripts/production-env-preflight.mjs"], {
+    cwd: new URL("../../", import.meta.url),
+    encoding: "utf8",
+    env: { PATH: process.env.PATH, ...withoutServerPlaces, CALENDAR_SYNC_ENABLED: "false" }
+  });
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /GOOGLE_PLACES_API_KEY or GOOGLE_MAPS_API_KEY/);
+});
+
 function runPreflight(calendarEnv) {
   return spawnSync(process.execPath, ["scripts/production-env-preflight.mjs"], {
     cwd: new URL("../../", import.meta.url),

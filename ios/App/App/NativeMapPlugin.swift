@@ -148,9 +148,20 @@ private struct NativeDestinationHeroResponse: Decodable {
     }
 
     struct ResolvedPlace: Decodable {
+        let address: String?
+        let city: String?
+        let country: String?
+        let diagnostics: Diagnostics?
         let inventoryItem: InventoryItem?
         let latitude: Double?
         let longitude: Double?
+        let provider: String?
+    }
+
+    struct Diagnostics: Decodable {
+        let lastErrorCode: String?
+        let providerResultCount: Int?
+        let status: String?
     }
 
     struct InventoryItem: Decodable {
@@ -347,6 +358,7 @@ final class NativeTripStore {
             completion(nil)
             return
         }
+        nativeImageryDebug("Automatic image lookup query=\(normalizedQuery)")
 
         func chooseQualityURL(_ candidates: [URL], completion: @escaping (URL?) -> Void) {
             // The server already returns destination-ranked photo URLs and the
@@ -371,11 +383,20 @@ final class NativeTripStore {
             }
 
             send(path: "/api/travel-data/resolve-place", method: "POST", body: body) { [baseURL] result in
-                guard case .success(let data) = result,
-                      let response = try? JSONDecoder().decode(NativeDestinationHeroResponse.self, from: data) else {
+                guard case .success(let data) = result else {
+                    if case .failure(let error) = result {
+                        nativeImageryDebug("Automatic resolve request failed query=\(candidate) category=\(Self.imageryErrorCategory(error))")
+                    }
                     completion(nil)
                     return
                 }
+                guard let response = try? JSONDecoder().decode(NativeDestinationHeroResponse.self, from: data) else {
+                    nativeImageryDebug("Automatic resolve response invalid query=\(candidate) category=decode")
+                    completion(nil)
+                    return
+                }
+                let resolved = response.data.resolved
+                nativeImageryDebug("Automatic resolve result query=\(candidate) provider=\(resolved.provider ?? "none") status=\(resolved.diagnostics?.status ?? "unknown") error=\(resolved.diagnostics?.lastErrorCode ?? "none") count=\(resolved.diagnostics?.providerResultCount ?? 0) latitude=\(resolved.latitude ?? 0) longitude=\(resolved.longitude ?? 0) hasImage=\(resolved.inventoryItem?.imageUrl != nil)")
 
                 func highResolutionURL(_ imagePath: String?) -> URL? {
                     guard let imagePath,
@@ -418,6 +439,7 @@ final class NativeTripStore {
                     } else {
                         galleryURLs = []
                     }
+                    nativeImageryDebug("Automatic suggestion result query=\(normalizedQuery) count=\(galleryURLs.count)")
                     chooseQualityURL(galleryURLs + [inventoryURL].compactMap { $0 }) { url in
                         if let url { completion(url) }
                         else if retryWithLandmark {
@@ -447,6 +469,7 @@ final class NativeTripStore {
             completion([])
             return
         }
+        nativeImageryDebug("Picker image lookup query=\(normalizedQuery)")
 
         send(path: "/api/travel-data/resolve-place", method: "POST", body: body) { [baseURL] result in
             guard case .success(let data) = result,
@@ -462,6 +485,7 @@ final class NativeTripStore {
                     "title": normalizedQuery,
                     "tripId": NSNull()
                   ]) else {
+                nativeImageryDebug("Picker resolve failed query=\(normalizedQuery) category=resolve_or_decode")
                 completion([])
                 return
             }
@@ -484,6 +508,7 @@ final class NativeTripStore {
             self.send(path: "/api/travel-data/suggestions", method: "POST", body: suggestionsBody) { result in
                 guard case .success(let data) = result,
                       let response = try? JSONDecoder().decode(NativeDestinationImageBankResponse.self, from: data) else {
+                    nativeImageryDebug("Picker suggestions failed query=\(normalizedQuery) category=request_or_decode fallbackCount=\(initialOptions.count)")
                     completion(initialOptions)
                     return
                 }
@@ -507,9 +532,22 @@ final class NativeTripStore {
                         url: url
                     )
                 }
+                nativeImageryDebug("Picker suggestions result query=\(normalizedQuery) count=\(initialOptions.count + options.count)")
                 completion(initialOptions + options)
             }
         }
+    }
+
+    private static func imageryErrorCategory(_ error: Error) -> String {
+        if error is URLError { return "network" }
+        if let storeError = error as? NativeTripStoreError {
+            switch storeError {
+            case .unauthorized: return "unauthorized"
+            case .invalidResponse: return "invalid_response"
+            case .requestFailed: return "server_request"
+            }
+        }
+        return "server_request"
     }
 
     func submitSocialImport(

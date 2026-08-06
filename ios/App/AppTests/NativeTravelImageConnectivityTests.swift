@@ -6,6 +6,35 @@ import XCTest
 
 @MainActor
 final class NativeTravelImageConnectivityTests: XCTestCase {
+    func testExactReleaseDestinationsReturnUsableAutomaticImageURLs() {
+        let destinations = ["Tokyo", "Rio de Janeiro", "Brazil", "Italy", "Rome", "Paris", "Miami"]
+        NativeTripStoreURLProtocol.handler = { request in
+            let payload = try! XCTUnwrap(nativeRequestBodyData(request))
+            let json = try! XCTUnwrap(JSONSerialization.jsonObject(with: payload) as? [String: Any])
+            let destination = try! XCTUnwrap(json["name"] as? String)
+            let reference = destination
+                .lowercased()
+                .replacingOccurrences(of: " ", with: "-") + "-photo-reference"
+            let response = NativeTripStoreURLProtocol.response(for: request, statusCode: 200)
+            return (response, """
+            {"data":{"resolved":{"inventoryItem":{"imageUrl":"/api/travel-data/place-photo?photoReference=\(reference)&maxWidth=800"}}},"error":null}
+            """.data(using: .utf8)!)
+        }
+        defer { NativeTripStoreURLProtocol.handler = nil }
+
+        let store = nativeTripStore()
+        let completions = destinations.map { destination in
+            expectation(description: destination)
+        }
+        for (index, destination) in destinations.enumerated() {
+            store.resolveDestinationHeroImage(query: destination) { imageURL in
+                XCTAssertEqual(imageURL?.path, "/api/travel-data/place-photo")
+                completions[index].fulfill()
+            }
+        }
+        wait(for: completions, timeout: 3)
+    }
+
     func testNativeTripStoreResolvesDestinationHeroThroughExistingPlacePhotoRoute() {
         NativeTripStoreURLProtocol.handler = { request in
             XCTAssertEqual(request.httpMethod, "POST")

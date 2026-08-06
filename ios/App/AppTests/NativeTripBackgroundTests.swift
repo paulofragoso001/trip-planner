@@ -14,6 +14,21 @@ final class NativeTripBackgroundTests: XCTestCase {
         XCTAssertFalse(context.genericSelection.isUsingGlobeFallback)
     }
 
+    func testSavedTripBackgroundRemainsAvailableWhenTripIsReopened() {
+        let trip = NativeMapTrip(
+            id: "image-persistence-\(UUID().uuidString)",
+            name: "Tokyo",
+            destination: "Tokyo, Japan",
+            latitude: 35.6762,
+            longitude: 139.6503
+        )
+        let image = UIImage()
+
+        NativeTripBackgroundImageCache.shared.store(image, for: trip)
+
+        XCTAssertTrue(NativeTripBackgroundImageCache.shared.image(for: trip) === image)
+    }
+
     private let destination = NativeResolvedDestination(
         title: "Paris",
         coordinate: CLLocationCoordinate2D(latitude: 48.8566, longitude: 2.3522)

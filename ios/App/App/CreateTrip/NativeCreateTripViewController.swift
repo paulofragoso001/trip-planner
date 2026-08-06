@@ -149,12 +149,14 @@ final class NativeCreateTripViewController: UIViewController,
     }
 
     @objc private func nameChanged() {
-        tripState.updateTripName(nameField.text ?? "")
+        let rawDestination = nameField.text ?? ""
+        tripState.updateTripName(rawDestination)
         destinationController.cancel()
         cancelBackgroundWork()
         setLocationStatus(nil)
         updateCreateState()
-        let query = nameField.text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let query = rawDestination.trimmingCharacters(in: .whitespacesAndNewlines)
+        nativeImageryDebug("Destination input raw=\(rawDestination) normalized=\(query)")
         destinationLookupWorkItem?.cancel()
         activeDestinationQuery = query
         resolvingDestinationQuery = nil
@@ -179,12 +181,14 @@ final class NativeCreateTripViewController: UIViewController,
             DispatchQueue.main.async {
                 guard let self, self.activeDestinationQuery == query else { return }
                 guard case .success(let destination) = result else {
+                    nativeImageryDebug("Destination resolution failed query=\(query) category=mapkit_resolution")
                     self.resolvingDestinationQuery = nil
                     self.setLocationStatus("Keep typing to identify a destination.")
                     self.updateCreateState()
                     return
                 }
                 self.tripState.confirmLocation(destination)
+                nativeImageryDebug("Destination confirmed query=\(query) resolved=\(destination.title)")
                 self.setLocationStatus(nil)
                 self.updateCreateState()
                 self.scheduleDestinationBackgroundUpdate()
@@ -240,7 +244,11 @@ final class NativeCreateTripViewController: UIViewController,
             DispatchQueue.main.async {
                 guard let self else { return }
                 switch result {
-                case .success:
+                case .success(let trip):
+                    if self.backgroundContext.controller?.state.selectionMode != .automaticGeneric,
+                       let image = self.backgroundContext.imageView.image {
+                        NativeTripBackgroundImageCache.shared.store(image, for: trip)
+                    }
                     self.dismiss(animated: true)
                 case .failure(let error):
                     self.setLocationStatus(error.localizedDescription, announce: true)

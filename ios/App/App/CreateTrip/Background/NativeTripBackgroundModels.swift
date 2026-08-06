@@ -1,4 +1,12 @@
 import UIKit
+import os
+
+func nativeImageryDebug(_ message: @autoclosure () -> String) {
+#if DEBUG
+    Logger(subsystem: "app.almidy", category: "destination-imagery")
+        .debug("\(message(), privacy: .public)")
+#endif
+}
 
 enum NativeTripBackgroundSelectionMode: Equatable {
     case automaticGeneric

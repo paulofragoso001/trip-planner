@@ -38,6 +38,11 @@ export function validateEnv() {
   for (const name of productionRequiredEnv) {
     requireEnv(name);
   }
+  if (!process.env.GOOGLE_PLACES_API_KEY && !process.env.GOOGLE_MAPS_API_KEY) {
+    throw new Error(
+      "Missing required server env var: GOOGLE_PLACES_API_KEY or GOOGLE_MAPS_API_KEY"
+    );
+  }
 
   const calendar = getCalendarEnvironmentStatus();
   if (!calendar.ok) {

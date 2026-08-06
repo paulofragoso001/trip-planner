@@ -101,6 +101,9 @@ final class NativeAuthenticatedHTTPClient {
                 self.finish(.failure(NativeTripStoreError.invalidResponse), completion)
                 return
             }
+            if let path = request.url?.path, path.hasPrefix("/api/travel-data/") {
+                nativeImageryDebug("Image API response path=\(path) httpStatus=\(response.statusCode)")
+            }
             if response.statusCode == 401, retryAfterAuthenticationFailure {
                 self.coordinator.validSession(forceRefresh: true) { refreshResult in
                     guard refreshResult.isSuccess else {

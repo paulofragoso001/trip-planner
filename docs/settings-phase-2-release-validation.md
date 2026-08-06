@@ -359,6 +359,47 @@ choice alongside any downloaded results. Brazil and Rio use the bundled Christ t
 Redeemer image when remote imagery is unavailable; unmapped destinations remain on
 the neutral globe.
 
+### Native destination-imagery root-cause correction
+
+The full typed destination → MapKit → authenticated native API → Google Places →
+photo proxy pipeline was traced after physical-device failures for Tokyo, Rio de
+Janeiro, Brazil, and Italy. Rendering, manual selection, color derivation, and local
+image caching were functional. The confirmed configuration-contract defect was that
+production preflight required only `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`, while the
+server-side Google provider intentionally refuses public browser keys in production
+and reads only `GOOGLE_PLACES_API_KEY` or `GOOGLE_MAPS_API_KEY`. A deployment could
+therefore pass preflight while `/api/travel-data/resolve-place` had no usable server
+credential and returned no provider image. Production preflight now requires one of
+the server-only credentials in addition to the separately restricted browser key.
+No credential was added or changed by this validation.
+
+DEBUG-only, sanitized native diagnostics now record typed/normalized destination,
+selected MapKit completion, locality/admin/country, coordinates, lookup query,
+provider status/error category and result count, photo HTTP status, and chosen
+provider/bundled/globe fallback. They never record keys, tokens, cookies, photo URLs,
+or response bodies. MapKit metadata is retained in the resolved native destination.
+Automatic and picker paths share destination matching, successful/manual images are
+cached under the returned trip identity after save, stale request revisions remain
+rejected, and manual selection remains authoritative.
+
+Server tests cover Tokyo, Rio de Janeiro, Brazil, Italy, Rome, Paris, and Miami,
+including country-level lookup, ranked hero selection, the native response shape,
+provider failure behavior, and streamed photo bodies. The focused Node run passed
+86/86. Swift parsing and TypeScript passed. Focused `NativeTravelImageConnectivityTests`
+and `NativeTripBackgroundTests` were attempted, but this managed host failed during
+SwiftPM resolution with `sandbox-exec: sandbox_apply: Operation not permitted` before
+compilation or XCTest. A production health request was also attempted, but this host
+could not resolve `almidy.app`; deployed credential presence is therefore unverified.
+
+The supplied physical-iPhone evidence is pre-correction: Italy manual imagery and
+layout passed, while remote automatic/gallery discovery failed for the listed
+destinations. No post-correction device run was possible from this environment, so
+Tokyo, Rio, Italy, manual Italy, saved-trip reopen, and
+`UIViewAlertForUnsatisfiableConstraints` remain required at the exact corrective SHA.
+Before any rollout, configure and verify a restricted server-side Places credential
+in staging, rerun `/api/health`, the seven-destination device matrix, picker parity,
+destination replacement, manual override, save/reopen, and sanitized DEBUG logs.
+
 ## Required rerun and production rollout
 
 Before reconsidering the release:

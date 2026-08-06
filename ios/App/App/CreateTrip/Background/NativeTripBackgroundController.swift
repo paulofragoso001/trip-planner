@@ -69,11 +69,13 @@ final class NativeTripBackgroundController {
         let workItem = DispatchWorkItem { [weak self] in
             guard let self, requestRevision == revision else { return }
             loading(true)
+            nativeImageryDebug("Automatic image resolver started query=\(query)")
             resolver(query) { [weak self] url in
                 DispatchQueue.main.async {
                     guard let self, requestRevision == self.revision else { return }
                     guard let url else {
                         loading(false)
+                        nativeImageryDebug("Automatic image resolver returned no URL query=\(query)")
                         self.restoreDestinationFallback(for: query, completion: completion)
                         return
                     }
@@ -139,11 +141,13 @@ final class NativeTripBackgroundController {
                 self.heroImageTask = nil
                 loading(false)
                 guard let image else {
+                    nativeImageryDebug("Automatic image download failed query=\(destination) httpStatus=\(statusCode)")
                     self.restoreDestinationFallback(for: destination, completion: completion)
                     return
                 }
                 self.state.selectionMode = .automaticDestination
                 self.state.isUsingGlobeFallback = false
+                nativeImageryDebug("Automatic image selected query=\(destination) source=provider httpStatus=\(statusCode)")
                 completion(image)
             }
         }
@@ -167,11 +171,13 @@ final class NativeTripBackgroundController {
         if let selection = destinationFallback(destination), let image = selection.image {
             state.selectionMode = .automaticDestination
             state.isUsingGlobeFallback = false
+            nativeImageryDebug("Automatic image fallback query=\(destination) source=bundled identifier=\(selection.identifier ?? "unknown")")
             completion(image)
             return
         }
         state.selectionMode = .automaticGeneric
         state.isUsingGlobeFallback = true
+        nativeImageryDebug("Automatic image fallback query=\(destination) source=globe category=no_usable_provider_or_bundled_image")
         completion(fallbackImage)
     }
 }

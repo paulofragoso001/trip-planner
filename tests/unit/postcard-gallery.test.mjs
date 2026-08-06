@@ -11,6 +11,21 @@ registerHooks({
     if (specifier === "server-only") {
       return { shortCircuit: true, url: "data:text/javascript,export default {}" };
     }
+    if (specifier === "next/server") {
+      return {
+        shortCircuit: true,
+        url: "data:text/javascript," + encodeURIComponent(`
+          export class NextResponse extends Response {
+            static json(value, init) {
+              return new NextResponse(JSON.stringify(value), {
+                ...init,
+                headers: { "content-type": "application/json", ...(init?.headers || {}) }
+              });
+            }
+          }
+        `)
+      };
+    }
     if (specifier.startsWith("next/") && !path.extname(specifier)) {
       return { shortCircuit: true, url: pathToFileURL(path.resolve(repositoryRoot, `node_modules/${specifier}.js`)).href };
     }
@@ -60,6 +75,7 @@ const validators = await import("../../lib/validators/travel-data.ts");
 const travelData = await import("../../lib/travel-data/index.ts");
 const resolvePlaceRoute = await import("../../app/api/travel-data/resolve-place/route.ts");
 const suggestionsRoute = await import("../../app/api/travel-data/suggestions/route.ts");
+const placePhotoRoute = await import("../../app/api/travel-data/place-photo/route.ts");
 
 function item(overrides = {}) {
   const placeTypes = overrides.placeTypes || ["tourist_attraction"];
@@ -771,9 +787,40 @@ test("hero resolution remains independent from postcard provider-status handling
   assert.match(photoRouteSource, /places\.googleapis\.com\/v1\/\$\{normalizedName\}\/media/);
 });
 
+test("place photo proxy preserves the provider response body stream", async () => {
+  const originalFetch = globalThis.fetch;
+  const originalKey = process.env.GOOGLE_PLACES_API_KEY;
+  process.env.GOOGLE_PLACES_API_KEY = "test-secret-key";
+  globalThis.fetch = async () => new Response(
+    new ReadableStream({
+      start(controller) {
+        controller.enqueue(new Uint8Array([1, 2]));
+        controller.enqueue(new Uint8Array([3, 4]));
+        controller.close();
+      }
+    }),
+    { headers: { "content-type": "image/jpeg" }, status: 200 }
+  );
+  try {
+    const response = await placePhotoRoute.GET(new Request(
+      "https://almidy.test/api/travel-data/place-photo?photoReference=valid-photo-reference&maxWidth=800"
+    ));
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get("content-type"), "image/jpeg");
+    assert.deepEqual([...new Uint8Array(await response.arrayBuffer())], [1, 2, 3, 4]);
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (originalKey === undefined) delete process.env.GOOGLE_PLACES_API_KEY;
+    else process.env.GOOGLE_PLACES_API_KEY = originalKey;
+  }
+});
+
 for (const [destination, iconicTitle, iconicTypes] of [
   ["Rio de Janeiro", "Christ the Redeemer", ["historical_landmark", "tourist_attraction"]],
+  ["Brazil", "Christ the Redeemer", ["historical_landmark", "tourist_attraction"]],
+  ["Italy", "Colosseum Monument", ["historical_landmark", "tourist_attraction"]],
   ["Paris", "Eiffel Tower", ["historical_landmark", "tourist_attraction"]],
+  ["Miami", "Miami Beach Skyline", ["tourist_attraction"]],
   ["New York", "Statue of Liberty Skyline", ["historical_landmark", "tourist_attraction"]],
   ["Tokyo", "Tokyo Tower Skyline View", ["tourist_attraction"]],
   ["Rome", "Colosseum Monument", ["historical_landmark", "tourist_attraction"]]
