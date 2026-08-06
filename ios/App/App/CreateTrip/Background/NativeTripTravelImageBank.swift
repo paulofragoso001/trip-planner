@@ -73,4 +73,22 @@ final class NativeTripTravelImageBank {
             isUsingGlobeFallback: false
         )
     }
+
+    func selectForDestination(_ destination: String) -> NativeTripTravelImageSelection? {
+        let words = Set(destination
+            .folding(options: [.caseInsensitive, .diacriticInsensitive], locale: .current)
+            .lowercased()
+            .components(separatedBy: CharacterSet.alphanumerics.inverted)
+            .filter { !$0.isEmpty })
+        let identifier: String?
+        identifier = !words.isDisjoint(with: ["italy", "rome", "roma"])
+            ? "WonderColosseum"
+            : nil
+        guard let identifier, let image = imageLoader(identifier) else { return nil }
+        return NativeTripTravelImageSelection(
+            identifier: identifier,
+            image: image,
+            isUsingGlobeFallback: false
+        )
+    }
 }

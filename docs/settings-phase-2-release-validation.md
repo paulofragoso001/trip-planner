@@ -348,6 +348,10 @@ results and caches only successful destination imagery. A follow-up confirmed th
 switching to the globe after two typed characters was premature, so curated defaults
 remain while typing; replacement occurs only after destination resolution and image
 lookup complete.
+The next device pass confirmed that Italy's remote lookup could still return no
+usable photo. Because the app already ships an approved Colosseum asset, Italy/Rome
+now uses that destination-matched bundled image before falling back to the globe.
+Unknown destinations still use the neutral fallback rather than an unrelated asset.
 
 ## Required rerun and production rollout
 

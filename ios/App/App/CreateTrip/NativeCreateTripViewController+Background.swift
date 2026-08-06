@@ -88,7 +88,8 @@ final class NativeCreateTripBackgroundContext {
             NativeTripBackgroundController(
                 resolver: $0,
                 fallbackImage: offlineFallback,
-                genericSelection: selection
+                genericSelection: selection,
+                destinationFallback: NativeTripTravelImageBank.shared.selectForDestination
             )
         }
     }

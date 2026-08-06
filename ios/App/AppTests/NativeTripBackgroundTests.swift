@@ -64,6 +64,21 @@ final class NativeTripBackgroundTests: XCTestCase {
         XCTAssertFalse(second.isUsingGlobeFallback)
     }
 
+    func testTravelImageBankSelectsColosseumForItaly() {
+        let colosseum = UIImage()
+        let bank = NativeTripTravelImageBank(
+            identifiers: ["WonderColosseum"],
+            imageLoader: { $0 == "WonderColosseum" ? colosseum : nil },
+            globeFallback: nil
+        )
+
+        let selection = bank.selectForDestination("Italy")
+
+        XCTAssertEqual(selection?.identifier, "WonderColosseum")
+        XCTAssertTrue(selection?.image === colosseum)
+        XCTAssertFalse(selection?.isUsingGlobeFallback ?? true)
+    }
+
     func testMissingTravelAssetsUseBundledGlobeAsFinalFallback() {
         let globe = UIImage()
         let bank = NativeTripTravelImageBank(
@@ -174,6 +189,39 @@ final class NativeTripBackgroundTests: XCTestCase {
         wait(for: [completed], timeout: 1)
         XCTAssertEqual(controller.state.selectionMode, .automaticGeneric)
         XCTAssertTrue(controller.state.isUsingGlobeFallback)
+    }
+
+    func testDestinationFailureUsesMatchingBundledImageWhenAvailable() {
+        let italy = UIImage()
+        let completed = expectation(description: "Italy fallback")
+        let controller = NativeTripBackgroundController(
+            resolver: { _, completion in completion(nil) },
+            fallbackImage: UIImage(),
+            destinationFallback: { destination in
+                guard destination == "Italy" else { return nil }
+                return NativeTripTravelImageSelection(
+                    identifier: "WonderColosseum",
+                    image: italy,
+                    isUsingGlobeFallback: false
+                )
+            }
+        )
+
+        controller.schedule(
+            destination: NativeResolvedDestination(
+                title: "Italy",
+                coordinate: CLLocationCoordinate2D(latitude: 41.8719, longitude: 12.5674)
+            ),
+            debounce: 0,
+            loading: { _ in }
+        ) { image in
+            XCTAssertTrue(image === italy)
+            completed.fulfill()
+        }
+
+        wait(for: [completed], timeout: 1)
+        XCTAssertEqual(controller.state.selectionMode, .automaticDestination)
+        XCTAssertFalse(controller.state.isUsingGlobeFallback)
     }
 
     func testManualSelectionOverridesGenericAndBlocksAutomaticReplacement() {

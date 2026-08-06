@@ -18,6 +18,7 @@ final class NativeTripBackgroundController {
     private let downloader: HeroDownloader
     private let genericSelection: NativeTripTravelImageSelection
     private let fallbackImage: UIImage?
+    private let destinationFallback: (String) -> NativeTripTravelImageSelection?
     private var debounceWorkItem: DispatchWorkItem?
     private var heroImageTask: NativeTripBackgroundTask?
     private var revision = 0
@@ -28,6 +29,7 @@ final class NativeTripBackgroundController {
         resolver: @escaping HeroResolver,
         fallbackImage: UIImage?,
         genericSelection: NativeTripTravelImageSelection? = nil,
+        destinationFallback: @escaping (String) -> NativeTripTravelImageSelection? = { _ in nil },
         downloader: @escaping HeroDownloader = NativeTripBackgroundController.liveDownloader
     ) {
         self.resolver = resolver
@@ -37,6 +39,7 @@ final class NativeTripBackgroundController {
             image: fallbackImage,
             isUsingGlobeFallback: true
         )
+        self.destinationFallback = destinationFallback
         self.downloader = downloader
         self.state = NativeTripBackgroundState(
             genericImageIdentifier: genericSelection?.identifier,
@@ -71,11 +74,12 @@ final class NativeTripBackgroundController {
                     guard let self, requestRevision == self.revision else { return }
                     guard let url else {
                         loading(false)
-                        self.restoreDestinationFallback(completion: completion)
+                        self.restoreDestinationFallback(for: query, completion: completion)
                         return
                     }
                     self.downloadHero(
                         from: url,
+                        destination: query,
                         revision: requestRevision,
                         loading: loading,
                         completion: completion
@@ -119,6 +123,7 @@ final class NativeTripBackgroundController {
 
     private func downloadHero(
         from url: URL,
+        destination: String,
         revision requestRevision: Int,
         loading: @escaping (Bool) -> Void,
         completion: @escaping (UIImage?) -> Void
@@ -134,7 +139,7 @@ final class NativeTripBackgroundController {
                 self.heroImageTask = nil
                 loading(false)
                 guard let image else {
-                    self.restoreDestinationFallback(completion: completion)
+                    self.restoreDestinationFallback(for: destination, completion: completion)
                     return
                 }
                 self.state.selectionMode = .automaticDestination
@@ -158,7 +163,13 @@ final class NativeTripBackgroundController {
         completion(genericSelection.image ?? fallbackImage)
     }
 
-    private func restoreDestinationFallback(completion: (UIImage?) -> Void) {
+    private func restoreDestinationFallback(for destination: String, completion: (UIImage?) -> Void) {
+        if let selection = destinationFallback(destination), let image = selection.image {
+            state.selectionMode = .automaticDestination
+            state.isUsingGlobeFallback = false
+            completion(image)
+            return
+        }
         state.selectionMode = .automaticGeneric
         state.isUsingGlobeFallback = true
         completion(fallbackImage)
