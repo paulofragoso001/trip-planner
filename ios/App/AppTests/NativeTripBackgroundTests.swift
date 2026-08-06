@@ -4,6 +4,16 @@ import XCTest
 @testable import App
 
 final class NativeTripBackgroundTests: XCTestCase {
+    func testCreateTripStartsWithNeutralGlobeInsteadOfUnrelatedLandmark() {
+        let context = NativeCreateTripBackgroundContext(
+            resolver: nil,
+            imageBankResolver: nil
+        )
+
+        XCTAssertNil(context.genericSelection.identifier)
+        XCTAssertTrue(context.genericSelection.isUsingGlobeFallback)
+    }
+
     private let destination = NativeResolvedDestination(
         title: "Paris",
         coordinate: CLLocationCoordinate2D(latitude: 48.8566, longitude: 2.3522)

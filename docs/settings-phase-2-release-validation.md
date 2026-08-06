@@ -331,6 +331,15 @@ failed during SwiftPM package resolution with `sandbox-exec: sandbox_apply: Oper
 not permitted`; compilation and XCTest must therefore be rerun in Xcode on the
 capable host and are not marked passed here.
 
+Physical-device Create Trip testing also confirmed that destination gallery lookup
+was geocoding a synthetic search phrase instead of the entered destination and that
+new trips could display a random world-wonder fallback (for example, the Great Wall
+for Italy). The correction resolves the unmodified destination, uses the same 25 km
+destination-gallery radius as hero lookup, and keeps the neutral offline globe until
+a destination-ranked or manually selected image succeeds. Focused regression tests
+cover the request contract and prohibit an unrelated landmark as the initial Create
+Trip background.
+
 ## Required rerun and production rollout
 
 Before reconsidering the release:

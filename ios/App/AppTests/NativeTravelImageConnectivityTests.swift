@@ -96,10 +96,7 @@ final class NativeTravelImageConnectivityTests: XCTestCase {
             if path == "/api/travel-data/resolve-place" {
                 let payload = try! XCTUnwrap(nativeRequestBodyData(request))
                 let json = try! XCTUnwrap(JSONSerialization.jsonObject(with: payload) as? [String: Any])
-                XCTAssertEqual(
-                    json["name"] as? String,
-                    "Brazil iconic tourist landmark travel photography"
-                )
+                XCTAssertEqual(json["name"] as? String, "Brazil")
                 return (response, """
                 {"data":{"resolved":{"inventoryItem":null,"latitude":-22.9519,"longitude":-43.2105}},"error":null}
                 """.data(using: .utf8)!)
@@ -110,7 +107,7 @@ final class NativeTravelImageConnectivityTests: XCTestCase {
             let json = try! XCTUnwrap(JSONSerialization.jsonObject(with: payload) as? [String: Any])
             XCTAssertEqual(json["limit"] as? Int, 10)
             XCTAssertEqual(json["purpose"] as? String, "postcard_gallery")
-            XCTAssertEqual(json["radiusMeters"] as? Int, 5000)
+            XCTAssertEqual(json["radiusMeters"] as? Int, 25_000)
             return (response, """
             {"data":{"suggestions":[
               {"title":"Christ the Redeemer","imageUrl":"/api/travel-data/place-photo?photoReference=christ-photo&maxWidth=800"},

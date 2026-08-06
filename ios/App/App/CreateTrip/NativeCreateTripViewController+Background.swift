@@ -80,10 +80,14 @@ final class NativeCreateTripBackgroundContext {
         resolver: ((String, @escaping (URL?) -> Void) -> Void)?,
         imageBankResolver: ((String, @escaping ([NativeDestinationImageChoice]) -> Void) -> Void)?
     ) {
-        let selection = NativeTripTravelImageBank.shared.selectForPresentation()
+        let offlineFallback = UIImage(named: "AlmidyOfflineGlobe")
+        let selection = NativeTripTravelImageSelection(
+            identifier: nil,
+            image: offlineFallback,
+            isUsingGlobeFallback: true
+        )
         genericSelection = selection
         resolveImageBank = imageBankResolver
-        let offlineFallback = UIImage(named: "AlmidyOfflineGlobe")
         controller = resolver.map {
             NativeTripBackgroundController(
                 resolver: $0,

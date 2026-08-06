@@ -442,7 +442,7 @@ final class NativeTripStore {
                 "city": NSNull(),
                 "country": NSNull(),
                 "locationHint": NSNull(),
-                "name": "\(normalizedQuery) iconic tourist landmark travel photography"
+                "name": normalizedQuery
               ]) else {
             completion([])
             return
@@ -458,7 +458,7 @@ final class NativeTripStore {
                     "longitude": longitude,
                     "limit": 10,
                     "purpose": "postcard_gallery",
-                    "radiusMeters": 5000,
+                    "radiusMeters": 25_000,
                     "title": normalizedQuery,
                     "tripId": NSNull()
                   ]) else {
