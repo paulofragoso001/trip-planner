@@ -400,6 +400,42 @@ Before any rollout, configure and verify a restricted server-side Places credent
 in staging, rerun `/api/health`, the seven-destination device matrix, picker parity,
 destination replacement, manual override, save/reopen, and sanitized DEBUG logs.
 
+### Native compiler-diagnostic follow-up at `4f12bcedf8044d2ab569c13766c7e05f0da60c1c`
+
+The 6:17 PM Xcode screenshot reporting a missing `using` argument, inaccessible
+`isSuccess`, optional `NativeTripStore?` member calls, and derivative contextual-type
+errors represents a build from before corrective commit
+`cd9315c29c9e294ac8137dfaddb17fd557ba3116`. Git ancestry confirms that commit is
+already included in `4f12bcedf8044d2ab569c13766c7e05f0da60c1c`. The correction passes
+`URLSession.shared` to session refresh, pattern-matches the request result within its
+declaring file, and uses guarded trip-store dependencies with explicit failure
+completions. No force unwrap, broad `Any` cast, public access expansion, or additional
+source change was required.
+
+All current application Swift sources were type-checked for arm64 iOS 15 with the
+iPhoneOS SDK and the existing resolved Capacitor/Cordova frameworks. The command
+exited 0; its only diagnostics were the two acknowledged `contentEdgeInsets`
+deprecation warnings in `NativeCreateTripViewController+Layout.swift` and
+`NativeMapPlugin.swift`. A direct XCTest-source type-check cannot substitute for the
+Xcode test driver: XCTest assertion macros are unavailable to standalone `swiftc`, so
+that attempt is recorded as inconclusive rather than failed product compilation.
+
+The generic unsigned build was retried with derived data, cloned packages, Clang
+modules, and SwiftPM caches redirected under `/private/tmp/almidy-xcode`:
+
+`CLANG_MODULE_CACHE_PATH=/private/tmp/almidy-xcode/ModuleCache SWIFTPM_MODULECACHE_OVERRIDE=/private/tmp/almidy-xcode/ModuleCache SWIFTPM_CUSTOM_CACHE_PATH=/private/tmp/almidy-xcode/SwiftPMCache xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Debug -sdk iphoneos -destination 'generic/platform=iOS' -derivedDataPath /private/tmp/almidy-xcode/DerivedData -clonedSourcePackagesDirPath /private/tmp/almidy-xcode/SourcePackages CODE_SIGNING_ALLOWED=NO build`
+
+It exited 74 before compilation because Xcode still attempted to emit SwiftPM
+manifest diagnostics at the sandbox-denied
+`~/Library/Caches/org.swift.swiftpm/manifests/ManifestLoading/capapp-spm.dia`.
+CoreSimulatorService was also unavailable and CoreDeviceService timed out, so package
+resolution, build-for-testing, XCTest, physical-device installation, and the imagery
+interaction matrix remain environment-blocked. In Xcode, clean the App build folder
+or remove only this project's Derived Data, confirm the checked-out SHA is `4f12bced`,
+then rebuild before treating the old issue navigator entries as current. The release
+recommendation remains HOLD until the real build, XCTest, and physical-iPhone gates
+complete.
+
 ## Required rerun and production rollout
 
 Before reconsidering the release:
