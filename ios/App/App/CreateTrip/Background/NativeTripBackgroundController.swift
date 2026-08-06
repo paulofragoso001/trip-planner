@@ -101,12 +101,6 @@ final class NativeTripBackgroundController {
         state.isUsingGlobeFallback = genericSelection.isUsingGlobeFallback
     }
 
-    func prepareForDestinationLookup(completion: (UIImage?) -> Void) {
-        guard !isManualSelection else { return }
-        cancelAutomaticWork()
-        restoreDestinationFallback(completion: completion)
-    }
-
     func cancelAll() {
         cancelAutomaticWork()
     }

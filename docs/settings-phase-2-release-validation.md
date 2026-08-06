@@ -344,8 +344,10 @@ download fails. Focused regression tests cover the request and fallback contract
 Another device pass exposed that the fallback completion was cached conditionally
 and never rendered unless it represented a successful destination image, leaving the
 curated default visible for Italy. The view now applies both successful and fallback
-results, caches only successful destination imagery, and switches to the neutral
-fallback as soon as a meaningful destination lookup begins.
+results and caches only successful destination imagery. A follow-up confirmed that
+switching to the globe after two typed characters was premature, so curated defaults
+remain while typing; replacement occurs only after destination resolution and image
+lookup complete.
 
 ## Required rerun and production rollout
 
