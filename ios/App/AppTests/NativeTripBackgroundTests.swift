@@ -176,6 +176,25 @@ final class NativeTripBackgroundTests: XCTestCase {
         XCTAssertTrue(controller.state.isUsingGlobeFallback)
     }
 
+    func testPreparingDestinationLookupImmediatelyReplacesUnrelatedDefault() {
+        let generic = UIImage()
+        let globe = UIImage()
+        let controller = NativeTripBackgroundController(
+            resolver: { _, _ in },
+            fallbackImage: globe,
+            genericSelection: NativeTripTravelImageSelection(
+                identifier: "generic",
+                image: generic,
+                isUsingGlobeFallback: false
+            )
+        )
+
+        controller.prepareForDestinationLookup { image in
+            XCTAssertTrue(image === globe)
+        }
+        XCTAssertTrue(controller.state.isUsingGlobeFallback)
+    }
+
     func testManualSelectionOverridesGenericAndBlocksAutomaticReplacement() {
         let generic = UIImage()
         let manual = UIImage()

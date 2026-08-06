@@ -341,6 +341,11 @@ applying the neutral globe at initial presentation removed the intended curated
 default imagery. The refined contract restores curated imagery while the destination
 is empty, then uses the neutral globe only when a resolved destination's lookup or
 download fails. Focused regression tests cover the request and fallback contracts.
+Another device pass exposed that the fallback completion was cached conditionally
+and never rendered unless it represented a successful destination image, leaving the
+curated default visible for Italy. The view now applies both successful and fallback
+results, caches only successful destination imagery, and switches to the neutral
+fallback as soon as a meaningful destination lookup begins.
 
 ## Required rerun and production rollout
 

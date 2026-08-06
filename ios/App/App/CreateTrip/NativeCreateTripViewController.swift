@@ -159,6 +159,9 @@ final class NativeCreateTripViewController: UIViewController,
         activeDestinationQuery = query
         resolvingDestinationQuery = nil
         guard query.count >= 2 else { return }
+        backgroundContext.controller?.prepareForDestinationLookup { [weak self] image in
+            self?.transitionToBackgroundImage(image)
+        }
 
         let workItem = DispatchWorkItem { [weak self] in
             guard let self, self.activeDestinationQuery == query else { return }

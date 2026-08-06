@@ -239,8 +239,8 @@ extension NativeCreateTripViewController: PHPickerViewControllerDelegate {
                 if self.backgroundContext.controller?.state.selectionMode == .automaticDestination,
                    let image {
                     self.cacheSelectedBackground(image)
-                    self.transitionToBackgroundImage(image)
                 }
+                self.transitionToBackgroundImage(image)
             }
         )
     }
