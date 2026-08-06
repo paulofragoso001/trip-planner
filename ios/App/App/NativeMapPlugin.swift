@@ -2194,7 +2194,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         stack.addArrangedSubview(body)
         stack.setCustomSpacing(18, after: body)
         stack.addArrangedSubview(actionButton(title: "Create Your First Trip", backgroundColor: AlmidyDesignTokens.Color.gold, textColor: AlmidyDesignTokens.Color.bgLight, action: #selector(createTrip), fontSize: 17, minHeight: 50, cornerRadius: AlmidyDesignTokens.Radius.capsule))
-        stack.addArrangedSubview(actionButton(title: "Forward Your Reservation", backgroundColor: AlmidyDesignTokens.Color.disabledActionBackground, textColor: AlmidyDesignTokens.Color.textPrimary, action: #selector(forwardReservation), fontSize: 17, minHeight: 50, cornerRadius: AlmidyDesignTokens.Radius.capsule))
+        stack.addArrangedSubview(actionButton(title: "Import a Reservation Manually", backgroundColor: AlmidyDesignTokens.Color.disabledActionBackground, textColor: AlmidyDesignTokens.Color.textPrimary, action: #selector(openManualReservationImporter), fontSize: 17, minHeight: 50, cornerRadius: AlmidyDesignTokens.Radius.capsule))
         stack.addArrangedSubview(actionButton(title: "Explore Sample Trip", backgroundColor: AlmidyDesignTokens.Color.disabledActionBackground, textColor: AlmidyDesignTokens.Color.textPrimary, action: #selector(openSampleTripPreview), fontSize: 17, minHeight: 50, cornerRadius: AlmidyDesignTokens.Radius.capsule))
 
         NSLayoutConstraint.activate([
@@ -2445,23 +2445,23 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         envelope.font = .systemFont(ofSize: 34, weight: .regular)
 
         let eyebrow = UILabel()
-        eyebrow.text = "AUTOMATION"
+        eyebrow.text = "IMPORT"
         eyebrow.textColor = AlmidyDesignTokens.Color.goldSoft
         eyebrow.font = AlmidyDesignTokens.Font.semibold(15)
 
         let title = UILabel()
-        title.text = "Add Reservations via Email"
+        title.text = "Manual Reservation Importer"
         title.font = AlmidyDesignTokens.Font.title(27)
         title.textColor = AlmidyDesignTokens.Color.textPrimary
         title.numberOfLines = 0
 
         let body = UILabel()
-        body.text = "Let Almidy automatically create an itinerary based on your flight or hotel reservation."
+        body.text = "Add reservation details from the importer while email forwarding remains unavailable."
         body.font = .systemFont(ofSize: 19, weight: .regular)
         body.textColor = .systemGray
         body.numberOfLines = 0
 
-        let cta = actionButton(title: "Forward Your Reservation", backgroundColor: AlmidyDesignTokens.Color.gold, textColor: AlmidyDesignTokens.Color.settingsText, action: #selector(forwardReservation))
+        let cta = actionButton(title: "Open Reservation Importer", backgroundColor: AlmidyDesignTokens.Color.gold, textColor: AlmidyDesignTokens.Color.settingsText, action: #selector(openManualReservationImporter))
 
         stack.addArrangedSubview(envelope)
         stack.addArrangedSubview(eyebrow)
@@ -2716,9 +2716,6 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
     @objc private func openSettings() {
         let settings = NativeSettingsViewController(
             profile: NativeSessionCoordinator.shared.session == nil ? nil : NativeSessionCoordinator.shared.profile,
-            onRefreshTrips: { [weak self] in
-                self?.refreshTripsFromServer()
-            },
             onOpenAccount: { [weak self] in
                 guard let self else { return }
                 self.dismiss(animated: true) { [weak self] in
@@ -2742,17 +2739,45 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
                     }
                 }
             },
-            onOpenReservationImport: { [weak self] in
+            onOpenManualReservationImporter: { [weak self] in
                 self?.dismiss(animated: true) { [weak self] in
                     self?.presentNativeWebFeature(
-                        route: "/dashboard/imports#reservation-forwarding",
-                        title: "Add Reservation"
+                        route: "/dashboard/imports",
+                        title: "Reservation Importer"
+                    )
+                }
+            },
+            onOpenTrips: { [weak self] in
+                self?.dismiss(animated: true) { [weak self] in
+                    self?.refreshTripsFromServer()
+                    self?.applySheetState(.expanded, animated: true)
+                }
+            },
+            onOpenTravelBook: { [weak self] in
+                self?.dismiss(animated: true) { [weak self] in
+                    self?.presentNativeWebFeature(
+                        route: "/dashboard/profile/stats",
+                        title: "Travel Book"
                     )
                 }
             },
             onOpenHelp: { [weak self] in
                 self?.dismiss(animated: true) { [weak self] in
                     self?.presentNativeWebFeature(route: "/dashboard/account#help", title: "Help")
+                }
+            },
+            onOpenPublicPage: { [weak self] path in
+                self?.dismiss(animated: true) {
+                    guard let url = URL(string: path, relativeTo: NativeServiceConfiguration.appBaseURL)?.absoluteURL else {
+                        return
+                    }
+                    UIApplication.shared.open(url)
+                }
+            },
+            onTalkToUs: { [weak self] address in
+                self?.dismiss(animated: true) {
+                    guard let url = URL(string: "mailto:\(address)") else { return }
+                    UIApplication.shared.open(url)
                 }
             }
         )
@@ -3147,10 +3172,10 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         present(form, animated: true)
     }
 
-    @objc private func forwardReservation() {
+    @objc private func openManualReservationImporter() {
         presentNativeWebFeature(
-            route: "/dashboard/imports#reservation-forwarding",
-            title: "Add Reservation"
+            route: "/dashboard/imports",
+            title: "Reservation Importer"
         )
     }
 
@@ -3206,37 +3231,39 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
 
 private final class NativeSettingsViewController: UIViewController, UITableViewDataSource, UITableViewDelegate {
     private let profile: NativeAuthProfile?
-    private let onRefreshTrips: () -> Void
     private let onOpenAccount: () -> Void
     private let onSignOut: () -> Void
-    private let onOpenReservationImport: () -> Void
+    private let onOpenManualReservationImporter: () -> Void
+    private let onOpenTrips: () -> Void
+    private let onOpenTravelBook: () -> Void
     private let onOpenHelp: () -> Void
+    private let onOpenPublicPage: (String) -> Void
+    private let onTalkToUs: (String) -> Void
     private let tableView = UITableView(frame: .zero, style: .insetGrouped)
     private weak var adaptiveHeaderView: UIView?
 
-    private var sections: [(title: String, rows: [String])] {
-        var result: [(title: String, rows: [String])] = []
-        result.append(("Automations", ["Add Reservations via Email", "Calendar Feed", "Connect with Claude / MCP", "Shortcuts", "Reservation Importer"]))
-        result.append(("Customize", ["Currency · US Dollar", "Distance Unit · Miles", "Language · English", "Trips Timeline", "Travel Book", "Notifications", "Widgets", "Storage and Data"]))
-        result.append(("Help Center", ["Need help?", "Talk to us", "Review the App", "App Updates"]))
-        result.append(("About", ["About Almidy", "Terms of Service", "Privacy Policy", "Share to a Friend"]))
-        return result
-    }
+    private let sections = NativeSettingsCatalog.sections
 
     init(
         profile: NativeAuthProfile?,
-        onRefreshTrips: @escaping () -> Void,
         onOpenAccount: @escaping () -> Void,
         onSignOut: @escaping () -> Void,
-        onOpenReservationImport: @escaping () -> Void,
-        onOpenHelp: @escaping () -> Void
+        onOpenManualReservationImporter: @escaping () -> Void,
+        onOpenTrips: @escaping () -> Void,
+        onOpenTravelBook: @escaping () -> Void,
+        onOpenHelp: @escaping () -> Void,
+        onOpenPublicPage: @escaping (String) -> Void,
+        onTalkToUs: @escaping (String) -> Void
     ) {
         self.profile = profile
-        self.onRefreshTrips = onRefreshTrips
         self.onOpenAccount = onOpenAccount
         self.onSignOut = onSignOut
-        self.onOpenReservationImport = onOpenReservationImport
+        self.onOpenManualReservationImporter = onOpenManualReservationImporter
+        self.onOpenTrips = onOpenTrips
+        self.onOpenTravelBook = onOpenTravelBook
         self.onOpenHelp = onOpenHelp
+        self.onOpenPublicPage = onOpenPublicPage
+        self.onTalkToUs = onTalkToUs
         super.init(nibName: nil, bundle: nil)
     }
 
@@ -3285,6 +3312,7 @@ private final class NativeSettingsViewController: UIViewController, UITableViewD
         let settingsHeader = makeSettingsHeader()
         adaptiveHeaderView = settingsHeader
         tableView.tableHeaderView = settingsHeader
+        tableView.tableFooterView = makeVersionFooter()
         tableView.translatesAutoresizingMaskIntoConstraints = false
         closeButton.translatesAutoresizingMaskIntoConstraints = false
         title.translatesAutoresizingMaskIntoConstraints = false
@@ -3397,6 +3425,22 @@ private final class NativeSettingsViewController: UIViewController, UITableViewD
         guard height > 0, abs(header.frame.height - height) > 0.5 else { return }
         header.frame.size.height = height
         tableView.tableHeaderView = header
+    }
+
+    private func makeVersionFooter() -> UIView {
+        let footer = UIView(frame: CGRect(x: 0, y: 0, width: view.bounds.width, height: 72))
+        let label = UILabel()
+        label.text = "Version \(NativeSettingsAppMetadata.version())"
+        label.font = AlmidyDesignTokens.Font.body(14)
+        label.textColor = AlmidyDesignTokens.Color.settingsSecondary
+        label.textAlignment = .center
+        label.translatesAutoresizingMaskIntoConstraints = false
+        footer.addSubview(label)
+        NSLayoutConstraint.activate([
+            label.centerXAnchor.constraint(equalTo: footer.centerXAnchor),
+            label.topAnchor.constraint(equalTo: footer.topAnchor, constant: 20)
+        ])
+        return footer
     }
 
     private func makePromoCard() -> UIView {
@@ -3552,12 +3596,6 @@ private final class NativeSettingsViewController: UIViewController, UITableViewD
         }
         let menu = NativeProfileMenuViewController(
             onEditProfile: { [weak self] in self?.onOpenAccount() },
-            onChangePassword: { [weak self] in
-                self?.showMessage(
-                    title: "Change Password",
-                    message: "Password reset is available from the email sent by Almidy."
-                )
-            },
             onSignOut: { [weak self] in self?.onSignOut() }
         )
         menu.modalPresentationStyle = .popover
@@ -3591,17 +3629,28 @@ private final class NativeSettingsViewController: UIViewController, UITableViewD
 
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "native-settings-row", for: indexPath)
+        let row = sections[indexPath.section].rows[indexPath.row]
         var content = cell.defaultContentConfiguration()
-        content.text = sections[indexPath.section].rows[indexPath.row]
+        content.text = row.title
+        content.secondaryText = row.detail
         content.textProperties.font = AlmidyDesignTokens.Font.body(17)
-        content.textProperties.color = AlmidyDesignTokens.Color.settingsText
-        content.image = settingsIcon(for: content.text ?? "")
-        content.imageProperties.tintColor = AlmidyDesignTokens.Color.settingsIcon
+        content.textProperties.color = row.isEnabled
+            ? AlmidyDesignTokens.Color.settingsText
+            : AlmidyDesignTokens.Color.settingsSecondary
+        content.secondaryTextProperties.font = AlmidyDesignTokens.Font.body(14)
+        content.secondaryTextProperties.color = AlmidyDesignTokens.Color.settingsSecondary
+        content.image = UIImage(systemName: row.systemImageName)
+        content.imageProperties.tintColor = row.isEnabled
+            ? AlmidyDesignTokens.Color.settingsIcon
+            : AlmidyDesignTokens.Color.settingsSecondary
         content.imageProperties.maximumSize = CGSize(width: 24, height: 24)
         cell.contentConfiguration = content
         cell.backgroundColor = AlmidyDesignTokens.Color.settingsRowBackground
         cell.tintColor = AlmidyDesignTokens.Color.settingsGold
-        cell.accessoryType = .disclosureIndicator
+        cell.accessoryType = row.showsDisclosureIndicator ? .disclosureIndicator : .none
+        cell.selectionStyle = row.isEnabled ? .default : .none
+        cell.isUserInteractionEnabled = row.isEnabled
+        cell.accessibilityTraits = row.isEnabled ? .button : [.notEnabled]
         return cell
     }
 
@@ -3611,74 +3660,33 @@ private final class NativeSettingsViewController: UIViewController, UITableViewD
         header.textLabel?.textColor = AlmidyDesignTokens.Color.settingsSecondary
     }
 
-    private func settingsIcon(for row: String) -> UIImage? {
-        let symbols: [String: String] = [
-            "Account settings": "person.crop.circle",
-            "Your Membership": "crown",
-            "Add Reservations via Email": "envelope",
-            "Calendar Feed": "calendar",
-            "Connect with Claude / MCP": "link",
-            "Shortcuts": "wand.and.rays",
-            "Reservation Importer": "suitcase",
-            "Currency · US Dollar": "banknote",
-            "Distance Unit · Miles": "ruler",
-            "Language · English": "globe",
-            "Trips Timeline": "timeline.selection",
-            "Travel Book": "book.closed",
-            "Notifications": "bell",
-            "Widgets": "square.grid.2x2",
-            "Storage and Data": "externaldrive",
-            "Need help?": "questionmark.circle",
-            "Talk to us": "message",
-            "Review the App": "star",
-            "App Updates": "arrow.down.app",
-            "About Almidy": "info.circle",
-            "Terms of Service": "doc.text",
-            "Privacy Policy": "lock",
-            "Share to a Friend": "square.and.arrow.up"
-        ]
-        return symbols[row].flatMap { UIImage(systemName: $0) }
-    }
-
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
         let row = sections[indexPath.section].rows[indexPath.row]
-        if row == "Trips Timeline" || row == "Travel Book" {
-            onRefreshTrips()
-            showMessage(title: row, message: "This native view stays connected to your current globe and wallet.")
-            return
-        }
-        if row == "Account settings" {
-            onOpenAccount()
-            return
-        }
-        if row == "Add Reservations via Email" {
-            onOpenReservationImport()
-            return
-        }
-        if row == "Need help?" || row == "Talk to us" {
+        guard let action = row.action else { return }
+        switch action {
+        case .openManualReservationImporter:
+            onOpenManualReservationImporter()
+        case .openTrips:
+            onOpenTrips()
+        case .openTravelBook:
+            onOpenTravelBook()
+        case .openHelp:
             onOpenHelp()
-            return
+        case .openPublicPage(let path):
+            onOpenPublicPage(path)
+        case .composeSupportEmail(let address):
+            onTalkToUs(address)
         }
-        showMessage(title: row, message: "This setting is available in the native app and will stay in the current session.")
-    }
-
-    private func showMessage(title: String, message: String) {
-        let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: "Done", style: .default))
-        alert.view.tintColor = AlmidyDesignTokens.Color.settingsGold
-        present(alert, animated: true)
     }
 }
 
 private final class NativeProfileMenuViewController: UIViewController, UIPopoverPresentationControllerDelegate {
     private let onEditProfile: () -> Void
-    private let onChangePassword: () -> Void
     private let onSignOut: () -> Void
 
-    init(onEditProfile: @escaping () -> Void, onChangePassword: @escaping () -> Void, onSignOut: @escaping () -> Void) {
+    init(onEditProfile: @escaping () -> Void, onSignOut: @escaping () -> Void) {
         self.onEditProfile = onEditProfile
-        self.onChangePassword = onChangePassword
         self.onSignOut = onSignOut
         super.init(nibName: nil, bundle: nil)
     }
@@ -3690,7 +3698,12 @@ private final class NativeProfileMenuViewController: UIViewController, UIPopover
         view.backgroundColor = AlmidyDesignTokens.Color.settingsCard
 
         let edit = menuButton(title: "Edit Profile", color: AlmidyDesignTokens.Color.settingsText, action: #selector(editProfile))
-        let password = menuButton(title: "Change Password", color: AlmidyDesignTokens.Color.settingsText, action: #selector(changePassword))
+        let password = menuButton(
+            title: NativeProfileMenuModel.changePasswordTitle,
+            color: AlmidyDesignTokens.Color.settingsSecondary,
+            action: nil
+        )
+        password.isEnabled = NativeProfileMenuModel.isChangePasswordEnabled
         let signOut = menuButton(title: "Sign Out", color: AlmidyDesignTokens.Color.danger, action: #selector(signOut))
         let stack = UIStackView(arrangedSubviews: [edit, password, signOut])
         stack.axis = .vertical
@@ -3705,7 +3718,7 @@ private final class NativeProfileMenuViewController: UIViewController, UIPopover
         ])
     }
 
-    private func menuButton(title: String, color: UIColor, action: Selector) -> UIButton {
+    private func menuButton(title: String, color: UIColor, action: Selector?) -> UIButton {
         let button = UIButton(type: .system)
         button.setTitle(title, for: .normal)
         button.setTitleColor(color, for: .normal)
@@ -3715,12 +3728,13 @@ private final class NativeProfileMenuViewController: UIViewController, UIPopover
         let heightConstraint = button.heightAnchor.constraint(equalToConstant: 50)
         heightConstraint.priority = UILayoutPriority(999)
         heightConstraint.isActive = true
-        button.addTarget(self, action: action, for: .touchUpInside)
+        if let action {
+            button.addTarget(self, action: action, for: .touchUpInside)
+        }
         return button
     }
 
     @objc private func editProfile() { finish(with: onEditProfile) }
-    @objc private func changePassword() { finish(with: onChangePassword) }
     @objc private func signOut() { finish(with: onSignOut) }
 
     private func finish(with action: @escaping () -> Void) {

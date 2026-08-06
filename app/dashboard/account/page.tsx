@@ -52,15 +52,28 @@ const preferenceRows = [
     icon: BookOpen,
     label: "My Almidy Book",
     meta: "Profile"
+  },
+  {
+    description: "Learn what Almidy is building and how Settings features are released.",
+    href: dashboardActionRoutes.settings.about,
+    icon: UserRound,
+    label: "About Almidy",
+    meta: "About"
   }
 ] as const;
 
 const syncRows = [
   {
-    description: "Forward hotel, flight, and activity reservations into Almidy.",
-    href: dashboardActionRoutes.imports.forwardReservation,
+    description: "Email forwarding is unavailable until a complete inbound workflow is ready.",
     icon: Mail,
     label: "Add Reservations via Email",
+    meta: "Coming soon"
+  },
+  {
+    description: "Open the existing importer to add reservation details manually.",
+    href: dashboardActionRoutes.imports.manualReservations,
+    icon: PackageOpen,
+    label: "Manual reservation importer",
     meta: "Available"
   },
   {
@@ -101,10 +114,17 @@ const membershipRows = [
 
 const helpRows = [
   {
-    description: "Send a note to the Almidy support inbox.",
-    href: dashboardActionRoutes.settings.talkToUs,
+    description: "Open the Settings help section and support guidance.",
+    href: dashboardActionRoutes.settings.help,
     icon: LifeBuoy,
     label: "Need help?",
+    meta: "Help"
+  },
+  {
+    description: "Send a note to the Almidy support inbox.",
+    href: dashboardActionRoutes.settings.talkToUs,
+    icon: Mail,
+    label: "Talk to us",
     meta: "Email"
   },
   {
@@ -219,8 +239,9 @@ export default async function AccountPage() {
             rows={syncRows}
             title="Connected services"
           >
-            Reservation forwarding is available from Imports. Provider-level
-            calendar and storage controls stay unavailable until they are wired.
+            Manual reservation importing is available from Imports. Email
+            forwarding, provider calendar, and storage controls remain unavailable
+            until their complete workflows are ready.
           </SettingsSurfaceSection>
 
           <SettingsSurfaceSection
@@ -350,7 +371,7 @@ function SettingsActionRow({ row }: { row: SettingsRow }) {
         <ChevronRight className="h-5 w-5 shrink-0 text-slate-400" aria-hidden="true" />
       ) : (
         <span className="shrink-0 rounded-full bg-slate-100 px-3 py-1 text-xs font-black uppercase tracking-[0.12em] text-slate-400">
-          Soon
+          {row.meta.toLowerCase().includes("soon") ? row.meta : "Soon"}
         </span>
       )}
     </>

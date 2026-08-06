@@ -7,6 +7,7 @@ import MobileTripsWalletSheet, {
 } from "@/components/dashboard/mobile-trips-wallet-sheet";
 import { CustomGlobeRenderer } from "@/components/map/custom-globe-renderer";
 import { countryCodeToFlag } from "@/lib/map/wayline-map-pins";
+import { dashboardActionRoutes } from "@/lib/dashboard/action-routes";
 import { canOpenNativeMap, openNativeMap } from "@/lib/native-map";
 import type {
   AlmidyLaunchGlobeTripPin,
@@ -113,9 +114,7 @@ export default function AlmidyLaunchGlobeHub({
       <div className="native-map-web-interactive relative z-30 w-full shrink-0">
         <MobileTripsWalletSheet
           currentYear="2026"
-          onOpenSettings={() => {}}
-          onOpenStats={() => {}}
-          onYearChange={() => {}}
+          settingsHref={dashboardActionRoutes.settings.account}
           trips={savedTrips}
         />
       </div>

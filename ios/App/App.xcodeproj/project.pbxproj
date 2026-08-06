@@ -53,6 +53,8 @@
 		A66000000000000000000001 /* NativeAdaptiveLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = A66000000000000000000011 /* NativeAdaptiveLayout.swift */; };
 		A66100000000000000000001 /* NativeCreateTripViewController+Layout.swift in Sources */ = {isa = PBXBuildFile; fileRef = A66100000000000000000011 /* NativeCreateTripViewController+Layout.swift */; };
 		A23000000000000000000001 /* NativeTripActionButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = A23000000000000000000011 /* NativeTripActionButton.swift */; };
+		F55000000000000000000001 /* NativeSettingsModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F55000000000000000000011 /* NativeSettingsModel.swift */; };
+		F55000000000000000000002 /* NativeSettingsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F55000000000000000000012 /* NativeSettingsTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -116,6 +118,8 @@
 		A66000000000000000000011 /* NativeAdaptiveLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeAdaptiveLayout.swift; sourceTree = "<group>"; };
 		A66100000000000000000011 /* NativeCreateTripViewController+Layout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NativeCreateTripViewController+Layout.swift"; sourceTree = "<group>"; };
 		A23000000000000000000011 /* NativeTripActionButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeTripActionButton.swift; sourceTree = "<group>"; };
+		F55000000000000000000011 /* NativeSettingsModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeSettingsModel.swift; sourceTree = "<group>"; };
+		F55000000000000000000012 /* NativeSettingsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeSettingsTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -170,6 +174,7 @@
 				A24000000000000000000011 /* NativeTextFieldPadding.swift */,
 				A66000000000000000000011 /* NativeAdaptiveLayout.swift */,
 				A23000000000000000000011 /* NativeTripActionButton.swift */,
+				F55000000000000000000011 /* NativeSettingsModel.swift */,
 				504EC30B1FED79650016851F /* Main.storyboard */,
 				504EC30E1FED79650016851F /* Assets.xcassets */,
 				504EC3101FED79650016851F /* LaunchScreen.storyboard */,
@@ -245,6 +250,7 @@
 				D33000000000000000000016 /* NativeTripBackgroundTests.swift */,
 				E44000000000000000000015 /* NativeTripDateTests.swift */,
 				E44000000000000000000016 /* NativeTripDateConnectivityTests.swift */,
+				F55000000000000000000012 /* NativeSettingsTests.swift */,
 			);
 			path = AppTests;
 			sourceTree = "<group>";
@@ -386,6 +392,7 @@
 				A66000000000000000000001 /* NativeAdaptiveLayout.swift in Sources */,
 				A66100000000000000000001 /* NativeCreateTripViewController+Layout.swift in Sources */,
 				A23000000000000000000001 /* NativeTripActionButton.swift in Sources */,
+				F55000000000000000000001 /* NativeSettingsModel.swift in Sources */,
 				504EC3081FED79650016851F /* AppDelegate.swift in Sources */,
 				7A56D0032C399A4300A1F940 /* MainViewController.swift in Sources */,
 				7A56D0012C399A4300A1F940 /* NativeMapPlugin.swift in Sources */,
@@ -409,6 +416,7 @@
 				D33000000000000000000006 /* NativeTripBackgroundTests.swift in Sources */,
 				E44000000000000000000005 /* NativeTripDateTests.swift in Sources */,
 				E44000000000000000000006 /* NativeTripDateConnectivityTests.swift in Sources */,
+				F55000000000000000000002 /* NativeSettingsTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

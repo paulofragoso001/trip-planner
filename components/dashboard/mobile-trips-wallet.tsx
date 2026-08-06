@@ -566,7 +566,6 @@ export function MobileTripsCountriesMap({
         onYearChange={onYearChange}
         query={query}
         settingsHref={dashboardActionRoutes.settings.account}
-        statsHref={dashboardActionRoutes.trips.stats}
         trips={sheetTrips}
         years={years}
       />

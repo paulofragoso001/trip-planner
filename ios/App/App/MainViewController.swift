@@ -14,6 +14,7 @@ enum NativeWebRoutePolicy {
     static let allowedPrefixes = [
         "/dashboard/imports",
         "/dashboard/help",
+        "/dashboard/profile/stats",
         "/dashboard/account/",
         "/dashboard/settings/",
     ]
@@ -45,6 +46,7 @@ enum NativeWebRoutePolicy {
         }
         if path.hasPrefix("/dashboard/imports") ||
             path == "/dashboard/help" ||
+            path == "/dashboard/profile/stats" ||
             path.hasPrefix("/dashboard/account/") ||
             path.hasPrefix("/dashboard/settings/") {
             return .controlledWebView

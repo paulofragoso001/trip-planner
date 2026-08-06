@@ -7,8 +7,8 @@ export const dashboardActionRoutes = {
     openMap: "/dashboard/map"
   },
   imports: {
-    forwardReservation: "/dashboard/imports#reservation-forwarding",
     importSources: "/dashboard/imports",
+    manualReservations: "/dashboard/imports",
     socialImportWorker: "/dashboard/imports#social-imports"
   },
   plan: {
@@ -18,7 +18,7 @@ export const dashboardActionRoutes = {
     sampleMiami: "/dashboard/plan?sample=miami#saved-inspiration"
   },
   settings: {
-    about: "/dashboard/profile",
+    about: "/about",
     account: "/dashboard/account",
     help: "/dashboard/account#help",
     membership: "/dashboard/account#membership",

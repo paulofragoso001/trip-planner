@@ -21,6 +21,7 @@ import {
 import type { ReactNode } from "react";
 import type { TripOverviewData } from "@/app/dashboard/trips/[tripId]/overview-loader";
 import { MobileFlightRouteCard } from "@/components/trip/mobile-flight-route-card";
+import { dashboardActionRoutes } from "@/lib/dashboard/action-routes";
 
 type TripOverviewPageProps = TripOverviewData;
 
@@ -745,7 +746,7 @@ function OverviewMoreMenu({ base }: { base: string }) {
         <Link className="block rounded-xl px-3 py-3 hover:bg-white/10" href={`${base}/share`}>
           Share
         </Link>
-        <Link className="block rounded-xl px-3 py-3 hover:bg-white/10" href={base}>
+        <Link className="block rounded-xl px-3 py-3 hover:bg-white/10" href={dashboardActionRoutes.settings.account}>
           Settings
         </Link>
       </div>

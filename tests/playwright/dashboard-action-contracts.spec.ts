@@ -1,4 +1,6 @@
 import { expect, test } from "@playwright/test";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import {
   dashboardActionDomains,
   dashboardActionRolloutSlices,
@@ -13,6 +15,53 @@ import {
   tripMutationPayloadSchema
 } from "../../lib/server/mutation-schemas";
 import { isAllowedSessionMutationRequest } from "../../lib/request-protection-core";
+import { appVersion } from "../../lib/app-metadata";
+import { dashboardActionRoutes } from "../../lib/dashboard/action-routes";
+
+test("settings routes and metadata remain canonical and truthful", () => {
+  expect(dashboardActionRoutes.settings).toEqual({
+    about: "/about",
+    account: "/dashboard/account",
+    help: "/dashboard/account#help",
+    membership: "/dashboard/account#membership",
+    preferences: "/dashboard/account#preferences",
+    privacy: "/privacy",
+    sync: "/dashboard/account#sync",
+    talkToUs: "mailto:support@almidy.app",
+    terms: "/terms"
+  });
+  expect(dashboardActionRoutes.trips.list).toBe("/dashboard/trips");
+  expect(dashboardActionRoutes.trips.stats).toBe("/dashboard/profile/stats");
+  expect(dashboardActionRoutes.imports.manualReservations).toBe("/dashboard/imports");
+  expect(appVersion).toMatch(/^\d+\.\d+\.\d+/);
+  expect(appVersion).not.toBe("1.0.0");
+});
+
+test("visible settings launch controls cannot regress to empty callbacks", () => {
+  const launchSource = readFileSync(
+    resolve(process.cwd(), "components/dashboard/almidy-launch-globe.tsx"),
+    "utf8"
+  );
+  const walletSource = readFileSync(
+    resolve(process.cwd(), "components/dashboard/mobile-trips-wallet-sheet.tsx"),
+    "utf8"
+  );
+  const overviewSource = readFileSync(
+    resolve(process.cwd(), "components/trip/trip-overview-page.tsx"),
+    "utf8"
+  );
+  const timelineSource = readFileSync(
+    resolve(process.cwd(), "components/trip/trip-timeline-page.tsx"),
+    "utf8"
+  );
+
+  expect(launchSource).not.toContain("onOpenSettings={() => {}}");
+  expect(launchSource).not.toContain("onOpenStats={() => {}}");
+  expect(launchSource).toContain("settingsHref={dashboardActionRoutes.settings.account}");
+  expect(walletSource).toContain("settingsHref = dashboardActionRoutes.settings.account");
+  expect(overviewSource).toContain('href={dashboardActionRoutes.settings.account}');
+  expect(timelineSource).toContain('href={dashboardActionRoutes.settings.account}');
+});
 
 test("dashboard action contracts stay well-formed", () => {
   const ids = new Set<string>();

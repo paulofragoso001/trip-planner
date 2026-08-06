@@ -103,14 +103,12 @@ test.describe("dashboard navigation and client-state actions", () => {
 
     await page.getByRole("button", { name: "Dismiss pro card" }).click();
     await expect(page.getByRole("button", { name: "Dismiss pro card" })).toHaveCount(0);
-    await page.getByRole("button", { name: "Dismiss email automation card" }).click();
-    await expect(page.getByTestId("mobile-home-email-card")).toHaveCount(0);
+    await page.getByRole("button", { name: "Dismiss reservation importer card" }).click();
+    await expect(page.getByTestId("mobile-home-reservation-importer-card")).toHaveCount(0);
 
     await page.getByRole("button", { name: "Open settings" }).click();
     await expect(sheet).toHaveAttribute("data-sheet-state", "settings");
-    await page.getByRole("button", { name: "Redeem 15 Days Free" }).click();
-    await expect(page.getByRole("dialog")).toContainText("Trial activation coming soon");
-    await page.getByRole("button", { name: "Close trial availability" }).click();
+    await expect(page.getByRole("button", { name: "Pro soon" })).toBeDisabled();
     await page.getByRole("button", { name: "Close settings" }).click();
     await expect(sheet).toHaveAttribute("data-sheet-state", "collapsed");
 
@@ -160,17 +158,60 @@ test.describe("dashboard navigation and client-state actions", () => {
     await expect(accountSurface.getByRole("link", { name: "Preferences" })).toHaveAttribute("href", "#preferences");
     await expect(accountSurface.getByRole("link", { name: "Privacy Policy" })).toHaveAttribute("href", "/privacy");
     await expect(accountSurface.getByRole("link", { name: "Terms of Service" })).toHaveAttribute("href", "/terms");
-    await expect(accountSurface.getByRole("link", { name: "Add Reservations via Email" })).toHaveAttribute(
+    await expect(accountSurface.getByText("Add Reservations via Email", { exact: true })).toBeVisible();
+    await expect(accountSurface.getByText("Coming soon", { exact: true })).toBeVisible();
+    await expect(accountSurface.getByRole("link", { name: "Add Reservations via Email" })).toHaveCount(0);
+    await expect(accountSurface.getByRole("link", { name: "Manual reservation importer" })).toHaveAttribute(
       "href",
-      dashboardActionRoutes.imports.forwardReservation
+      dashboardActionRoutes.imports.manualReservations
     );
     await expect(accountSurface.getByText("Redeem 15 Days Free")).toBeVisible();
     await expect(accountSurface.getByText("Billing", { exact: true })).toBeVisible();
     await expect(accountSurface.getByRole("link", { name: "Need help?" })).toHaveAttribute(
       "href",
+      dashboardActionRoutes.settings.help
+    );
+    await expect(accountSurface.getByRole("link", { name: "Talk to us" })).toHaveAttribute(
+      "href",
       dashboardActionRoutes.settings.talkToUs
     );
+    await expect(accountSurface.getByRole("link", { name: "About Almidy" })).toHaveAttribute(
+      "href",
+      dashboardActionRoutes.settings.about
+    );
+    await expect(accountSurface.getByRole("link", { name: "My Almidy Book" })).toHaveAttribute(
+      "href",
+      dashboardActionRoutes.trips.stats
+    );
+    await expect(accountSurface.getByRole("link", { name: "My Trips" })).toHaveAttribute(
+      "href",
+      dashboardActionRoutes.trips.list
+    );
+    for (const label of [
+      "Add Reservations via Email",
+      "Calendar Feed",
+      "Storage and Data",
+      "Redeem 15 Days Free",
+      "Billing"
+    ]) {
+      await expect(
+        accountSurface
+          .getByText(label, { exact: true })
+          .locator("xpath=ancestor::*[@aria-disabled='true'][1]"),
+        `${label} is visibly disabled`
+      ).toHaveCount(1);
+    }
     await expect(accountSurface.getByRole("heading", { name: "Account deletion" })).toBeVisible();
+  });
+
+  test("About Almidy has a real public destination", async ({ page }) => {
+    await page.goto(`${baseUrl}${dashboardActionRoutes.settings.about}`, { waitUntil: "commit" });
+
+    await expect(page.getByRole("heading", { name: "Plan travel with confidence" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Account settings" })).toHaveAttribute(
+      "href",
+      dashboardActionRoutes.settings.account
+    );
   });
 
   test("visible enabled dashboard button controls have an affordance or explicit contract", async ({ page }) => {
@@ -181,7 +222,7 @@ test.describe("dashboard navigation and client-state actions", () => {
       "Close settings",
       "Close trial availability",
       "Collapse trips sheet",
-      "Dismiss email automation card",
+      "Dismiss reservation importer card",
       "Dismiss pro card",
       "Expand trips sheet",
       "Open navigation",

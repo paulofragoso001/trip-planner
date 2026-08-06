@@ -30,6 +30,7 @@ import { MobileMapAwareSheet } from "@/components/trip/mobile-map-aware-sheet";
 import { MobileMapPreview } from "@/components/trip/mobile-map-preview";
 import { TripSegmentForm } from "@/components/trip/trip-segment-form";
 import { EmptyState } from "@/components/trip-ui";
+import { dashboardActionRoutes } from "@/lib/dashboard/action-routes";
 import { hasResolvedRoute, routeEndpointLabel } from "@/lib/trip-segment-route";
 
 type TripTimelinePageProps = TripTimelineData;
@@ -1008,7 +1009,7 @@ function ItineraryMoreMenu({ tripId }: { tripId: string }) {
         <Link className="block rounded-xl px-3 py-3 hover:bg-white/10" href={`${base}/share`}>
           Share
         </Link>
-        <Link className="block rounded-xl px-3 py-3 hover:bg-white/10" href={`${base}`}>
+        <Link className="block rounded-xl px-3 py-3 hover:bg-white/10" href={dashboardActionRoutes.settings.account}>
           Settings
         </Link>
       </div>

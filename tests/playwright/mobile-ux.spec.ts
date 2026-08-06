@@ -709,7 +709,7 @@ test.describe("mobile soft-launch UX", () => {
     await createFirstTrip.click();
     await expect(page).toHaveURL(`${baseUrl}/dashboard`);
     await expect(page.getByTestId("dashboard-wallet-layer-stack")).toHaveAttribute("data-wallet-layer", "createTrip");
-    await expect(page.getByRole("link", { name: "Forward Your Reservation" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Import a Reservation Manually" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Explore Sample Trip" })).toBeVisible();
   });
 
@@ -2346,7 +2346,7 @@ test.describe("mobile soft-launch UX", () => {
     await launchSheet.getByRole("button", { name: "Dismiss pro card" }).click();
     await expect(launchSheet.getByText("Explore all the Pro features")).toHaveCount(0);
     await expect(launchSheet.getByText("Add Reservations via Email")).toBeVisible();
-    await expect(launchSheet.getByRole("link", { name: "Forward Your Reservation" })).toBeVisible();
+    await expect(launchSheet.getByRole("link", { name: "Open Reservation Importer" })).toBeVisible();
     await expect(launchSheet.getByRole("link", { name: /Travel Book/ })).toBeVisible();
     await expect(page.getByTestId("mobile-home-plan-actions")).toBeVisible();
     await expect(launchSheet.getByRole("link", { name: /Add idea/ })).toHaveAttribute(
@@ -2364,7 +2364,7 @@ test.describe("mobile soft-launch UX", () => {
       /Travel Book/,
       /Add idea/,
       /Review places/,
-      /Forward Your Reservation/,
+      /Open Reservation Importer/,
       /Add/
     ];
     for (const actionName of actionNames) {
@@ -2399,8 +2399,8 @@ test.describe("mobile soft-launch UX", () => {
         `mobile home action ${actionName} keeps tap clearance above bottom nav`
       ).toBeGreaterThanOrEqual(12);
     }
-    await launchSheet.getByRole("link", { name: /Forward Your Reservation/ }).scrollIntoViewIfNeeded();
-    const finalActionScrollCushion = await launchSheet.getByRole("link", { name: /Forward Your Reservation/ }).evaluate((element) => {
+    await launchSheet.getByRole("link", { name: /Open Reservation Importer/ }).scrollIntoViewIfNeeded();
+    const finalActionScrollCushion = await launchSheet.getByRole("link", { name: /Open Reservation Importer/ }).evaluate((element) => {
       const nav = document.querySelector('[data-testid="app-shell-mobile-bottom-nav"]');
       const navRect = nav?.getBoundingClientRect();
       const actionRect = element.getBoundingClientRect();
@@ -2411,10 +2411,10 @@ test.describe("mobile soft-launch UX", () => {
     });
     expect(
       finalActionScrollCushion.clearance,
-      "Forward reservation can scroll clear of the fixed bottom nav"
+      "Manual reservation importer can scroll clear of the fixed bottom nav"
     ).toBeGreaterThanOrEqual(12);
-    await launchSheet.getByRole("button", { name: "Dismiss email automation card" }).click();
-    await expect(launchSheet.getByTestId("mobile-home-email-card")).toHaveCount(0);
+    await launchSheet.getByRole("button", { name: "Dismiss reservation importer card" }).click();
+    await expect(launchSheet.getByTestId("mobile-home-reservation-importer-card")).toHaveCount(0);
     await launchSheet.getByRole("button", { name: "Open settings" }).click();
     await expect(launchSheet).toHaveAttribute("data-sheet-state", "settings");
     await expect(page.getByTestId("mobile-home-settings")).toBeVisible();
@@ -2423,20 +2423,63 @@ test.describe("mobile soft-launch UX", () => {
       "href",
       "/dashboard/account"
     );
-    await expect(launchSheet.getByText("Redeem 15 Days Free")).toBeVisible();
-    await launchSheet.getByRole("button", { name: "Redeem 15 Days Free" }).click();
-    await expect(page.getByRole("dialog").getByText("Trial activation coming soon")).toBeVisible();
-    await page.getByRole("button", { name: "Close trial availability" }).click();
-    await expect(launchSheet.getByRole("link", { name: "Add Reservations via Email" })).toHaveAttribute(
+    await expect(launchSheet.getByRole("button", { name: "Pro soon" })).toBeDisabled();
+    await expect(launchSheet.getByRole("button", { name: /Add Reservations via Email/ })).toBeDisabled();
+    await expect(launchSheet.getByRole("button", { name: /Add Reservations via Email/ })).toContainText(
+      "Coming soon"
+    );
+    await expect(launchSheet.getByRole("link", { name: "Manual reservation importer" })).toHaveAttribute(
       "href",
-      "/dashboard/imports#reservation-forwarding"
+      "/dashboard/imports"
+    );
+    await expect(launchSheet.getByRole("link", { name: "Trips Timeline" })).toHaveAttribute(
+      "href",
+      "/dashboard/trips"
+    );
+    await expect(launchSheet.getByRole("link", { name: "My Almidy Book" })).toHaveAttribute(
+      "href",
+      "/dashboard/profile/stats"
     );
     await expect(launchSheet.getByText("Currency")).toBeVisible();
     await expect(launchSheet.getByText("Need help?")).toBeVisible();
+    await expect(launchSheet.getByRole("link", { name: "Need help?" })).toHaveAttribute(
+      "href",
+      "/dashboard/account#help"
+    );
+    await expect(launchSheet.getByRole("link", { name: "Talk to us" })).toHaveAttribute(
+      "href",
+      "mailto:support@almidy.app"
+    );
+    await expect(launchSheet.getByRole("link", { name: "About Almidy" })).toHaveAttribute("href", "/about");
+    await expect(launchSheet.getByRole("link", { name: "Terms of Service" })).toHaveAttribute("href", "/terms");
     await expect(launchSheet.getByRole("link", { name: "Privacy Policy" })).toHaveAttribute("href", "/privacy");
-    await expect(launchSheet.getByText("Soon").first()).toBeVisible();
-    await expect(launchSheet.getByRole("button", { name: "Force Sync" })).toBeDisabled();
-    await expect(launchSheet.getByText("Sync is unavailable until connected services are enabled.")).toBeVisible();
+    await expect(launchSheet.getByRole("button", { name: /Calendar Feed/ })).toBeDisabled();
+    await expect(launchSheet.getByRole("button", { name: /Calendar Feed/ })).toContainText("Pro soon");
+    const disabledSettingsRows = [
+      ["Custom Categories", "Soon"],
+      ["Add Reservations via Email", "Coming soon"],
+      ["Calendar Feed", "Pro soon"],
+      ["Connect with Claude / MCP", "Soon"],
+      ["Shortcuts", "Soon"],
+      ["Currency", "Soon"],
+      ["Distance Unit", "Soon"],
+      ["Language", "Soon"],
+      ["App Icon", "Soon"],
+      ["Notifications", "Soon"],
+      ["Widgets", "Soon"],
+      ["Storage and Data", "Soon"],
+      ["Review the App", "Soon"],
+      ["App Updates", "Soon"],
+      ["Share to a Friend", "Soon"]
+    ] as const;
+    for (const [label, status] of disabledSettingsRows) {
+      const row = launchSheet.getByRole("button", { name: new RegExp(`^${label}`) });
+      await expect(row, `${label} remains non-interactive`).toBeDisabled();
+      await expect(row, `${label} exposes its truthful availability`).toContainText(status);
+    }
+    await expect(launchSheet.getByText("Version 0.1.0")).toBeVisible();
+    await expect(launchSheet.getByText(/Last Sync/i)).toHaveCount(0);
+    await expect(launchSheet.getByRole("button", { name: /Force Sync/i })).toHaveCount(0);
     for (const width of [360, 390, 430]) {
       await page.setViewportSize({ height: 900, width });
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);

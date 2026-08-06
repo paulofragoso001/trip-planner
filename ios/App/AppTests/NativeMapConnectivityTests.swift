@@ -259,6 +259,7 @@ final class NativeMapConnectivityTests: XCTestCase {
     func testNativeWebRoutePolicyAllowsOnlySecondaryPages() {
         XCTAssertTrue(NativeWebRoutePolicy.allows("/dashboard/help"))
         XCTAssertTrue(NativeWebRoutePolicy.allows("/dashboard/imports/forward-reservation"))
+        XCTAssertTrue(NativeWebRoutePolicy.allows("/dashboard/profile/stats"))
         XCTAssertTrue(NativeWebRoutePolicy.allows("/dashboard/account/profile"))
         XCTAssertTrue(NativeWebRoutePolicy.allows("/dashboard/account#deletion"))
         XCTAssertTrue(NativeWebRoutePolicy.allows("/dashboard/account#help"))
@@ -278,7 +279,8 @@ final class NativeMapConnectivityTests: XCTestCase {
         XCTAssertEqual(NativeWebRoutePolicy.owner(for: "/dashboard/trips"), .native)
         XCTAssertEqual(NativeWebRoutePolicy.owner(for: "/dashboard/search"), .native)
         XCTAssertEqual(NativeWebRoutePolicy.owner(for: "/dashboard/account"), .native)
-        XCTAssertEqual(NativeWebRoutePolicy.owner(for: "/dashboard/imports#reservation-forwarding"), .controlledWebView)
+        XCTAssertEqual(NativeWebRoutePolicy.owner(for: "/dashboard/imports"), .controlledWebView)
+        XCTAssertEqual(NativeWebRoutePolicy.owner(for: "/dashboard/profile/stats"), .controlledWebView)
         XCTAssertEqual(NativeWebRoutePolicy.owner(for: "/dashboard/account#deletion"), .controlledWebView)
         XCTAssertEqual(NativeWebRoutePolicy.owner(for: "/dashboard/account#help"), .controlledWebView)
         XCTAssertEqual(NativeWebRoutePolicy.owner(for: "/dashboard/settings/preferences"), .controlledWebView)

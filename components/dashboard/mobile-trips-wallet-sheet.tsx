@@ -45,11 +45,8 @@ interface WalletSheetProps {
   onOverviewFocusChange?: (focus: MobileTripsOverviewFocus | null) => void;
   onQueryChange?: (query: string) => void;
   onYearChange?: (year: string) => void;
-  onOpenSettings?: () => void;
-  onOpenStats?: () => void;
   query?: string;
   settingsHref?: string;
-  statsHref?: string;
   trips?: MobileTripsWalletSheetTrip[];
   years?: string[];
 }
@@ -87,10 +84,9 @@ export default function MobileTripsWalletSheet({
   initialSelectedTripId = null,
   initialSheetState = "collapsed",
   onOverviewFocusChange,
-  onOpenSettings,
   onYearChange,
   query,
-  settingsHref,
+  settingsHref = dashboardActionRoutes.settings.account,
   trips = [],
   years = []
 }: WalletSheetProps) {
@@ -313,7 +309,7 @@ export default function MobileTripsWalletSheet({
                       >
                         <MoreHorizontal className="h-7 w-7" aria-hidden="true" />
                       </Link>
-                    ) : settingsHref ? (
+                    ) : (
                       <Link
                         aria-label="Trip settings"
                         className="grid h-12 w-12 place-items-center rounded-full bg-white/70 text-black shadow-[inset_0_1px_0_rgba(255,255,255,0.65)] transition hover:bg-white/80 focus:outline-none focus:ring-4 focus:ring-orange-400/20"
@@ -321,15 +317,6 @@ export default function MobileTripsWalletSheet({
                       >
                         <MoreHorizontal className="h-7 w-7" aria-hidden="true" />
                       </Link>
-                    ) : (
-                      <button
-                        aria-label="Trip settings"
-                        className="grid h-12 w-12 place-items-center rounded-full bg-white/70 text-black shadow-[inset_0_1px_0_rgba(255,255,255,0.65)] transition hover:bg-white/80 focus:outline-none focus:ring-4 focus:ring-orange-400/20"
-                        onClick={onOpenSettings}
-                        type="button"
-                      >
-                        <MoreHorizontal className="h-7 w-7" aria-hidden="true" />
-                      </button>
                     )}
                     <button
                       aria-label="Search trips"

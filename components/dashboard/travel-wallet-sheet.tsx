@@ -39,6 +39,7 @@ import { useEffect, useRef, useState } from "react";
 import type { CSSProperties, PointerEvent, ReactNode, TouchEvent } from "react";
 import type { DashboardRecentTripView } from "@/app/dashboard/loader";
 import { cn } from "@/components/trip-ui";
+import { appVersion } from "@/lib/app-metadata";
 import { dashboardActionRoutes } from "@/lib/dashboard/action-routes";
 import type { WalletHeroImage } from "@/lib/wallet/hero-image";
 
@@ -297,12 +298,7 @@ export function TravelWalletSheet({
         </button>
 
         {isSettings ? (
-          <SettingsPanel
-            onClose={collapseSheet}
-            onOpenTrial={() =>
-              setTrialSheetCopy("Your 15 day Almidy Pro trial will be available from billing settings soon.")
-            }
-          />
+          <SettingsPanel onClose={collapseSheet} />
         ) : isSearch ? (
           <SearchOverlay onClose={closeSearch} />
         ) : (
@@ -430,9 +426,9 @@ function WelcomeGetStarted({ onCreateTrip }: { onCreateTrip?: () => void }) {
           )}
           <Link
             className="inline-flex min-h-14 items-center justify-center rounded-full bg-[#eadfd8] px-5 text-center text-lg font-black text-black transition hover:bg-[#dfd2ca] focus:outline-none focus:ring-4 focus:ring-orange-300/20"
-            href={dashboardActionRoutes.imports.forwardReservation}
+            href={dashboardActionRoutes.imports.manualReservations}
           >
-            Forward Your Reservation
+            Import a Reservation Manually
           </Link>
           <Link
             className="inline-flex min-h-14 items-center justify-center rounded-full bg-[#eadfd8] px-5 text-center text-lg font-black text-black transition hover:bg-[#dfd2ca] focus:outline-none focus:ring-4 focus:ring-orange-300/20"
@@ -693,7 +689,7 @@ function ExpandedTrips({
   recentTrips: DashboardRecentTripView[];
 }) {
   const featuredTrip = recentTrips[0] || null;
-  const [showEmailAutomation, setShowEmailAutomation] = useState(true);
+  const [showReservationImporter, setShowReservationImporter] = useState(true);
 
   return (
     <div className="mt-5 h-[calc(100dvh-6.25rem)] overflow-y-auto pb-[calc(6.5rem+env(safe-area-inset-bottom))]" data-testid="ios-launch-sheet-expanded">
@@ -712,8 +708,8 @@ function ExpandedTrips({
         dateRange={featuredTrip?.dateRange || primaryMeta}
         status={featuredTrip ? tripRelativeStatus(featuredTrip) : ""}
       />
-      {showEmailAutomation ? (
-        <EmailAutomationCard onDismiss={() => setShowEmailAutomation(false)} />
+      {showReservationImporter ? (
+        <ReservationImporterCard onDismiss={() => setShowReservationImporter(false)} />
       ) : null}
       <div className="mt-5 grid grid-cols-[3.8rem_minmax(0,1fr)_3.8rem] items-center gap-3">
         <CircleAction href="/dashboard/search" icon={<Search />} label="Search" />
@@ -810,13 +806,7 @@ function SheetActionButton({
   );
 }
 
-function SettingsPanel({
-  onClose,
-  onOpenTrial
-}: {
-  onClose: () => void;
-  onOpenTrial: () => void;
-}) {
+function SettingsPanel({ onClose }: { onClose: () => void }) {
   return (
     <div className="h-[100dvh] overflow-y-auto bg-slate-100 px-5 pb-10 pt-3" data-testid="mobile-home-settings">
       <header className="relative min-h-24">
@@ -837,7 +827,7 @@ function SettingsPanel({
         </Link>
       </header>
 
-      <ProSettingsCard onOpenTrial={onOpenTrial} />
+      <ProSettingsCard />
       <SettingsGroup>
         <SettingsRow
           accentMeta
@@ -850,11 +840,11 @@ function SettingsPanel({
       </SettingsGroup>
 
       <SettingsSection title="Automations">
-        <SettingsRow href={dashboardActionRoutes.imports.forwardReservation} icon={<Send />} label="Add Reservations via Email" pro />
+        <SettingsRow icon={<Send />} label="Add Reservations via Email" unavailableLabel="Coming soon" />
         <SettingsRow icon={<CalendarDays />} label="Calendar Feed" pro unavailableLabel="Pro soon" />
         <SettingsRow icon={<PackageOpen />} label="Connect with Claude / MCP" unavailableLabel="Soon" />
         <SettingsRow icon={<Briefcase />} label="Shortcuts" unavailableLabel="Soon" />
-        <SettingsRow href={dashboardActionRoutes.imports.importSources} icon={<Upload />} label="Reservation importer" pro />
+        <SettingsRow href={dashboardActionRoutes.imports.manualReservations} icon={<Upload />} label="Manual reservation importer" />
       </SettingsSection>
 
       <SettingsSection title="Customize">
@@ -885,17 +875,7 @@ function SettingsPanel({
       </SettingsSection>
 
       <div className="mt-14 pb-4 text-center text-slate-400">
-        <p className="text-2xl font-medium">Version: 1.0.0</p>
-        <p className="mt-1 text-base font-medium">Last Sync: Never</p>
-        <button
-          aria-disabled="true"
-          className="mt-4 cursor-not-allowed text-lg font-black text-slate-400"
-          disabled
-          type="button"
-        >
-          Force Sync
-        </button>
-        <p className="mt-1 text-sm font-bold text-slate-400">Sync is unavailable until connected services are enabled.</p>
+        <p className="text-base font-medium">Version {appVersion}</p>
       </div>
     </div>
   );
@@ -961,7 +941,7 @@ function ProFeatureCard({
       <span className="inline-flex rounded-lg bg-white/70 px-2.5 py-1 text-sm font-black text-orange-900">PRO</span>
       <h3 className="mt-5 text-[1.55rem] font-black">Explore all the Pro features</h3>
       <p className="mt-3 text-[1.6rem] font-black leading-tight text-pink-300/70">
-        Get flight update alerts, manage expenses, forward reservations and much
+        Get flight update alerts, manage expenses, organize reservations and much
       </p>
       <button
         type="button"
@@ -974,38 +954,38 @@ function ProFeatureCard({
   );
 }
 
-function EmailAutomationCard({ onDismiss }: { onDismiss: () => void }) {
+function ReservationImporterCard({ onDismiss }: { onDismiss: () => void }) {
   return (
-    <section className="mt-6 rounded-[1.75rem] bg-white p-6 ring-1 ring-slate-200" data-testid="mobile-home-email-card">
+    <section className="mt-6 rounded-[1.75rem] bg-white p-6 ring-1 ring-slate-200" data-testid="mobile-home-reservation-importer-card">
       <div className="flex justify-between gap-4">
         <div className="grid h-14 w-14 place-items-center rounded-xl border-2 border-dashed border-orange-300 text-orange-500">
           <Mail className="h-8 w-8" aria-hidden="true" />
         </div>
         <button
           type="button"
-          aria-label="Dismiss email automation card"
+          aria-label="Dismiss reservation importer card"
           className="self-start text-slate-400"
           onClick={onDismiss}
         >
           <X className="h-7 w-7" aria-hidden="true" />
         </button>
       </div>
-      <p className="mt-5 text-sm font-black uppercase tracking-normal text-orange-500">Automation</p>
-      <h3 className="mt-2 text-[1.55rem] font-black leading-tight">Add Reservations via Email</h3>
+      <p className="mt-5 text-sm font-black uppercase tracking-normal text-orange-500">Import</p>
+      <h3 className="mt-2 text-[1.55rem] font-black leading-tight">Manual reservation importer</h3>
       <p className="mt-3 text-lg font-medium leading-snug text-slate-500">
-        Let Almidy automatically create an itinerary based on your flight or hotel reservation.
+        Add reservation details from the importer while email forwarding remains unavailable.
       </p>
       <Link
         className="mt-5 grid h-14 place-items-center rounded-full bg-orange-50 text-lg font-black text-orange-500"
-        href={dashboardActionRoutes.imports.forwardReservation}
+        href={dashboardActionRoutes.imports.manualReservations}
       >
-        Forward Your Reservation
+        Open Reservation Importer
       </Link>
     </section>
   );
 }
 
-function ProSettingsCard({ onOpenTrial }: { onOpenTrial: () => void }) {
+function ProSettingsCard() {
   return (
     <section className="mt-7 rounded-[1.65rem] bg-white p-5">
       <div className="flex items-center justify-between gap-4">
@@ -1018,10 +998,10 @@ function ProSettingsCard({ onOpenTrial }: { onOpenTrial: () => void }) {
           </p>
           <button
             type="button"
-            className="mt-2 text-xl font-black text-orange-500"
-            onClick={onOpenTrial}
+            className="mt-2 cursor-not-allowed text-xl font-black text-slate-400"
+            disabled
           >
-            Redeem 15 Days Free
+            Pro soon
           </button>
         </div>
         <div className="grid h-20 w-20 place-items-center rounded-full bg-sky-400 text-white">
