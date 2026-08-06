@@ -224,13 +224,17 @@ final class NativeTripStore {
         let body = try? JSONSerialization.data(withJSONObject: ["displayName": name])
         apiClient.request(path: "/api/account/profile", method: "POST", body: body) { result in
             guard case .success = result else { completion(false); return }
-            NativeSessionCoordinator.shared.refresh { completion($0) }
+            NativeSessionCoordinator.shared.refresh(using: .shared) { completion($0) }
         }
     }
 
     func requestPasswordReset(completion: @escaping (Bool) -> Void) {
         apiClient.request(path: "/api/account/password-reset", method: "POST", body: Data("{}".utf8)) { result in
-            completion(result.isSuccess)
+            if case .success = result {
+                completion(true)
+            } else {
+                completion(false)
+            }
         }
     }
 
@@ -2783,7 +2787,11 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
                 }
             },
             onChangePassword: { [weak self] completion in
-                self?.tripStore.requestPasswordReset(completion: completion)
+                guard let tripStore = self?.tripStore else {
+                    completion(false)
+                    return
+                }
+                tripStore.requestPasswordReset(completion: completion)
             },
             onOpenManualReservationImporter: { [weak self] in
                 self?.dismiss(animated: true) { [weak self] in
@@ -2818,10 +2826,18 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
                 }
             },
             onLoadPreferences: { [weak self] completion in
-                self?.tripStore.loadUserPreferences(completion: completion)
+                guard let tripStore = self?.tripStore else {
+                    completion(.failure(NativeTripStoreError.requestFailed("Native preference persistence is unavailable.")))
+                    return
+                }
+                tripStore.loadUserPreferences(completion: completion)
             },
             onUpdatePreferences: { [weak self] values, completion in
-                self?.tripStore.updateUserPreferences(values, completion: completion)
+                guard let tripStore = self?.tripStore else {
+                    completion(.failure(NativeTripStoreError.requestFailed("Native preference persistence is unavailable.")))
+                    return
+                }
+                tripStore.updateUserPreferences(values, completion: completion)
             },
             onOpenPublicPage: { [weak self] path in
                 self?.dismiss(animated: true) {
@@ -2870,7 +2886,11 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
                     self?.clearNativeSession(completion: completion)
                 },
                 onSaveName: { [weak self] name, completion in
-                    self?.tripStore.updateProfileName(name, completion: completion)
+                    guard let tripStore = self?.tripStore else {
+                        completion(false)
+                        return
+                    }
+                    tripStore.updateProfileName(name, completion: completion)
                 },
                 onDeleteAccount: { [weak self] in
                     self?.dismiss(animated: true) { [weak self] in

@@ -320,6 +320,17 @@ unknowns are real migration replay, storage/RLS isolation, persistence and passw
 reset behavior, production compilation, browser runtime/visuals, native compilation
 and XCTest, device persistence/parity, and Auto Layout. These mandate HOLD.
 
+A later physical-device build exposed native Phase 1–2 call-site drift in
+`NativeMapPlugin.swift`: session refresh omitted its required `URLSession`, password
+reset referenced a file-private `Result` helper, and optional trip-store Settings
+closures did not provide explicit unavailable completions. The corrective patch uses
+`URLSession.shared`, handles the request result locally, and returns truthful failure
+results when native persistence is unavailable. A generic unsigned build was
+attempted with isolated derived-data and package-cache paths, but this managed host
+failed during SwiftPM package resolution with `sandbox-exec: sandbox_apply: Operation
+not permitted`; compilation and XCTest must therefore be rerun in Xcode on the
+capable host and are not marked passed here.
+
 ## Required rerun and production rollout
 
 Before reconsidering the release:
