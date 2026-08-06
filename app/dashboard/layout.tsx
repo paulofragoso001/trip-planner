@@ -79,7 +79,6 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
           <ProfileAvatar
             email={user.email ?? ""}
             profile={profile}
-            userId={user.id}
           />
           <Link
             className="min-h-11 rounded-xl border border-white/10 bg-white/10 px-4 py-2 text-center text-sm font-bold text-white transition hover:bg-white/15 focus:outline-none focus:ring-4 focus:ring-blue-400/20"

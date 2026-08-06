@@ -23,7 +23,7 @@ export async function ensureProfile(supabase: SupabaseClient, user: User) {
         username,
         avatar_url: avatarUrl
       },
-      { onConflict: "id" }
+      { onConflict: "id", ignoreDuplicates: true }
     );
 }
 

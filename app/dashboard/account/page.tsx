@@ -20,6 +20,9 @@ import {
 import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import { AccountDeletionRequestForm } from "@/components/account/account-deletion-request-form";
+import { PasswordResetButton } from "@/components/account/password-reset-button";
+import { ProfileSettingsForm } from "@/components/account/profile-settings-form";
+import NotificationSettings from "@/components/NotificationSettings";
 import {
   allowsDashboardTestBypass,
   allowsLocalDashboardBypass
@@ -161,17 +164,18 @@ export default async function AccountPage() {
     redirect("/login");
   }
 
-  const { data: deletionRequest } = user
-    ? await supabase
+  const [{ data: deletionRequest }, { data: profile }] = user
+    ? await Promise.all([
+      supabase
         .from("account_deletion_requests")
         .select("id,status,requested_at")
         .eq("user_id", user.id)
-        .in("status", ["requested", "in_review"])
         .order("requested_at", { ascending: false })
         .limit(1)
-        .maybeSingle()
-    : { data: null };
-
+        .maybeSingle(),
+      supabase.from("profiles").select("username").eq("id", user.id).maybeSingle()
+    ])
+    : [{ data: null }, { data: null }];
   const accountLabel = user?.email ?? (hasDashboardBypass ? "Local dashboard preview" : "Signed in");
 
   return (
@@ -223,6 +227,9 @@ export default async function AccountPage() {
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_390px]">
         <main className="grid gap-5">
+          {user ? <ProfileSettingsForm initialDisplayName={profile?.username || user.email || "Traveler"} /> : null}
+          {user ? <PasswordResetButton /> : null}
+          {user || hasDashboardBypass ? <NotificationSettings /> : null}
           <SettingsSurfaceSection
             eyebrow="Account"
             id="preferences"

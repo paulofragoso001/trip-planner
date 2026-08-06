@@ -10,6 +10,19 @@ import { createClient } from "@/lib/supabase/server";
 
 const routeName = "account/deletion-request";
 
+export async function GET() {
+  try {
+    const supabase = await createClient();
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) return unauthorized();
+    const { data, error } = await supabase.from("account_deletion_requests")
+      .select("id,status,requested_at").eq("user_id", user.id)
+      .order("requested_at", { ascending: false }).limit(1).maybeSingle();
+    if (error) throw new ApiError("bad_gateway", "Could not load account deletion request status.", 502);
+    return apiCanonicalSuccess({ request: data ?? null });
+  } catch (error) { return handleApiError(error, routeName); }
+}
+
 export async function POST(request: Request) {
   try {
     const csrfError = validateSessionMutationRequest(request);
@@ -53,7 +66,7 @@ export async function POST(request: Request) {
 
     if (existingRequest) {
       return apiCanonicalSuccess({
-        message: "Account deletion request already exists.",
+        message: "An open account-deletion request already exists.",
         request: existingRequest
       });
     }
@@ -79,7 +92,7 @@ export async function POST(request: Request) {
 
     return apiCanonicalSuccess(
       {
-        message: "Account deletion request submitted.",
+        message: "Account-deletion request submitted for operator review. Your account has not been deleted.",
         request: createdRequest
       },
       { status: 201 }

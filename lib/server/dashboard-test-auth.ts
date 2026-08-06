@@ -9,6 +9,7 @@ import { createClient } from "@/lib/supabase/server";
 export type DashboardApiAuth<TClient = SupabaseClient> = {
   supabase: TClient;
   userId: string;
+  userEmail: string | null;
 };
 
 const dashboardTestUserEmail = "cypress@wayline.test";
@@ -34,7 +35,7 @@ export async function authorizeDashboardApi<TClient = SupabaseClient>(): Promise
       return null;
     }
 
-    return { supabase: admin as TClient, userId: testUserId };
+    return { supabase: admin as TClient, userEmail: dashboardTestUserEmail, userId: testUserId };
   }
 
   const supabase = await createClient();
@@ -60,7 +61,7 @@ export async function authorizeDashboardApi<TClient = SupabaseClient>(): Promise
     });
 
     if (!error && user) {
-      return { supabase: supabase as TClient, userId: user.id };
+      return { supabase: supabase as TClient, userEmail: user.email ?? null, userId: user.id };
     }
   }
 
@@ -83,7 +84,7 @@ export async function authorizeDashboardApi<TClient = SupabaseClient>(): Promise
   });
 
   if (!error && user) {
-    return { supabase: supabase as TClient, userId: user.id };
+    return { supabase: supabase as TClient, userEmail: user.email ?? null, userId: user.id };
   }
 
   return null;

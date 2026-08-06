@@ -66,8 +66,8 @@ export function AccountDeletionRequestForm({
     <form className="grid gap-4" data-testid="account-deletion-request-form" onSubmit={onSubmit}>
       <MobileFormShell>
         <MobileFormHeader
-          subtitle="This is reviewed before anything is removed"
-          title="Delete Account"
+          subtitle="Submitting creates a request; your account is not deleted immediately"
+          title="Request account deletion"
         />
         <MobileFormSection title="Request">
           <MobileField label="Deletion reason">
@@ -85,8 +85,8 @@ export function AccountDeletionRequestForm({
               Danger Zone
             </p>
             <p className="mt-2 max-w-xl text-sm font-semibold leading-6 text-white/58 lg:text-slate-600">
-              Permanently deleting your account removes your travel wallet, saved trips,
-              documents, and historical logs after operator review. This action cannot be undone.
+              An operator reviews the request and may contact you before processing. Data is
+              removed only after review, subject to legal and operational retention requirements.
             </p>
 
             {!reviewOpen ? (
@@ -97,7 +97,7 @@ export function AccountDeletionRequestForm({
                 onClick={() => setReviewOpen(true)}
                 type="button"
               >
-                {currentRequest ? "Deletion request submitted" : "Delete Account..."}
+                {currentRequest ? "View request status" : "Request account deletion…"}
               </button>
             ) : (
               <div
@@ -148,7 +148,7 @@ export function AccountDeletionRequestForm({
                     disabled={!canSubmitRequest || isPending}
                     type="submit"
                   >
-                    {isPending ? "Submitting..." : "Confirm Destruction"}
+                    {isPending ? "Submitting..." : "Submit deletion request"}
                   </button>
                 </div>
               </div>
@@ -159,8 +159,9 @@ export function AccountDeletionRequestForm({
 
       {currentRequest ? (
         <p className="rounded-2xl bg-amber-400/12 px-4 py-3 text-sm font-semibold text-amber-100 ring-1 ring-amber-300/20 lg:bg-amber-50 lg:text-amber-800 lg:ring-transparent">
-          Request status: {currentRequest.status}. Submitted{" "}
+          Account-deletion request status: {currentRequest.status.replace("_", " ")}. Submitted{" "}
           {new Date(currentRequest.requested_at).toLocaleDateString()}.
+          {currentRequest.status === "completed" ? " Processing has been recorded as complete." : " The account remains active unless and until processing is completed."}
         </p>
       ) : null}
 

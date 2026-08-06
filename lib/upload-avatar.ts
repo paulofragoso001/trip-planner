@@ -1,16 +1,7 @@
-import { createClient } from "@/lib/supabase/client";
-
-export async function uploadAvatar(file: File, userId: string) {
-  const supabase = createClient();
-  const extension = file.name.split(".").pop();
-  const fileName = `${userId}-${Date.now()}${extension ? `.${extension}` : ""}`;
-  const { error } = await supabase.storage.from("avatars").upload(fileName, file);
-
-  if (error) {
-    throw error;
-  }
-
-  const { data } = supabase.storage.from("avatars").getPublicUrl(fileName);
-
-  return data.publicUrl;
+export async function uploadAvatar(file: File) {
+  const form = new FormData(); form.set("avatar", file);
+  const response = await fetch("/api/account/avatar", { method: "POST", body: form });
+  const result = await response.json() as { avatarUrl?: string; error?: string };
+  if (!response.ok || !result.avatarUrl) throw new Error(result.error || "Could not upload avatar.");
+  return result.avatarUrl;
 }

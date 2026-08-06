@@ -4,6 +4,14 @@
 **Production behavior baseline:** `a9ffb9a4b4c3d3552c286409ff6a260b16ded862`
 **Audit scope:** the full current working tree, with the baseline commit used to distinguish released behavior from unfinished work.
 
+## Phase 1 implementation status (2026-08-06)
+
+Implemented on `codex/settings-phase-1`, parent `9261275866147a87095fc8bad35f547458f9ae88`. Notification preferences now have an authenticated own-user GET contract, complete comment/mention UI hydration, guarded optimistic persistence, and mounted Account Settings UI. `profiles.username` is the canonical display name; Auth `full_name` is a synchronized cache updated by the same authenticated API, and existing mismatches resolve in favor of the profile row without a production-wide migration.
+
+Avatar mutations now use a server-validated `<auth-user-id>/<generated-uuid>.<approved-extension>` path and an isolated migration tightens Storage ownership, MIME, and size enforcement while retaining the existing public-read product decision. Web avatar replacement preserves the old profile on failure and cleans up only previous owned objects. Native avatar upload remains visibly unavailable; adding a media dependency is deferred.
+
+Authenticated password-reset initiation is available on web and native and always targets the session user's verified email. Completion uses the approved web reset route. Account deletion remains an operator-reviewed request; own-status reads, duplicate-open handling, completed status wording, and the operating lifecycle are documented. No production reconciliation, migration, deployment, provider mutation, or deferred Settings scope was performed.
+
 ## Executive summary
 
 Almidy currently has two broad Settings experiences:

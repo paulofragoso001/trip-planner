@@ -9,6 +9,7 @@ final class NativeSettingsTests: XCTestCase {
             "Travel Book",
             "Need help?",
             "Talk to us",
+            "Notifications",
             "About Almidy",
             "Terms of Service",
             "Privacy Policy"
@@ -34,6 +35,7 @@ final class NativeSettingsTests: XCTestCase {
         XCTAssertEqual(action(for: "Trips Timeline"), .openTrips)
         XCTAssertEqual(action(for: "Travel Book"), .openTravelBook)
         XCTAssertEqual(action(for: "Need help?"), .openHelp)
+        XCTAssertEqual(action(for: "Notifications"), .openNotificationPreferences)
         XCTAssertEqual(
             action(for: "Talk to us"),
             .composeSupportEmail(address: "support@almidy.app")
@@ -53,9 +55,11 @@ final class NativeSettingsTests: XCTestCase {
         XCTAssertEqual(email.detail, "Coming soon")
     }
 
-    func testProfilePasswordActionIsTruthfullyDisabled() {
-        XCTAssertFalse(NativeProfileMenuModel.isChangePasswordEnabled)
-        XCTAssertEqual(NativeProfileMenuModel.changePasswordTitle, "Change Password · Soon")
+    func testProfilePasswordActionRoutesToVerifiedEmailReset() {
+        XCTAssertTrue(NativeProfileMenuModel.isChangePasswordEnabled)
+        XCTAssertEqual(NativeProfileMenuModel.changePasswordTitle, "Email Password Reset")
+        XCTAssertTrue(NativeProfileMenuModel.resetSuccessMessage.contains("verified account email"))
+        XCTAssertTrue(NativeProfileMenuModel.resetSuccessMessage.contains("web reset flow"))
     }
 
     func testVersionComesFromBundleMetadata() {

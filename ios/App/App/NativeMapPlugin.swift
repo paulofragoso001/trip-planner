@@ -216,6 +216,20 @@ final class NativeTripStore {
         }
     }
 
+    func updateProfileName(_ name: String, completion: @escaping (Bool) -> Void) {
+        let body = try? JSONSerialization.data(withJSONObject: ["displayName": name])
+        apiClient.request(path: "/api/account/profile", method: "POST", body: body) { result in
+            guard case .success = result else { completion(false); return }
+            NativeSessionCoordinator.shared.refresh { completion($0) }
+        }
+    }
+
+    func requestPasswordReset(completion: @escaping (Bool) -> Void) {
+        apiClient.request(path: "/api/account/password-reset", method: "POST", body: Data("{}".utf8)) { result in
+            completion(result.isSuccess)
+        }
+    }
+
     func createTrip(_ draft: NativeTripDraft, completion: @escaping (Result<NativeMapTrip, Error>) -> Void) {
         let payload: [String: Any] = [
             "name": draft.name,
@@ -2739,6 +2753,9 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
                     }
                 }
             },
+            onChangePassword: { [weak self] completion in
+                self?.tripStore.requestPasswordReset(completion: completion)
+            },
             onOpenManualReservationImporter: { [weak self] in
                 self?.dismiss(animated: true) { [weak self] in
                     self?.presentNativeWebFeature(
@@ -2764,6 +2781,11 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
             onOpenHelp: { [weak self] in
                 self?.dismiss(animated: true) { [weak self] in
                     self?.presentNativeWebFeature(route: "/dashboard/account#help", title: "Help")
+                }
+            },
+            onOpenNotificationPreferences: { [weak self] in
+                self?.dismiss(animated: true) { [weak self] in
+                    self?.presentNativeWebFeature(route: "/dashboard/account#notifications", title: "Notifications")
                 }
             },
             onOpenPublicPage: { [weak self] path in
@@ -2812,8 +2834,8 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
                 onSignOut: { [weak self] completion in
                     self?.clearNativeSession(completion: completion)
                 },
-                onSaveName: { name, completion in
-                    NativeSessionCoordinator.shared.updateProfileName(name, completion: completion)
+                onSaveName: { [weak self] name, completion in
+                    self?.tripStore.updateProfileName(name, completion: completion)
                 },
                 onDeleteAccount: { [weak self] in
                     self?.dismiss(animated: true) { [weak self] in
@@ -3233,10 +3255,12 @@ private final class NativeSettingsViewController: UIViewController, UITableViewD
     private let profile: NativeAuthProfile?
     private let onOpenAccount: () -> Void
     private let onSignOut: () -> Void
+    private let onChangePassword: (@escaping (Bool) -> Void) -> Void
     private let onOpenManualReservationImporter: () -> Void
     private let onOpenTrips: () -> Void
     private let onOpenTravelBook: () -> Void
     private let onOpenHelp: () -> Void
+    private let onOpenNotificationPreferences: () -> Void
     private let onOpenPublicPage: (String) -> Void
     private let onTalkToUs: (String) -> Void
     private let tableView = UITableView(frame: .zero, style: .insetGrouped)
@@ -3248,20 +3272,24 @@ private final class NativeSettingsViewController: UIViewController, UITableViewD
         profile: NativeAuthProfile?,
         onOpenAccount: @escaping () -> Void,
         onSignOut: @escaping () -> Void,
+        onChangePassword: @escaping (@escaping (Bool) -> Void) -> Void,
         onOpenManualReservationImporter: @escaping () -> Void,
         onOpenTrips: @escaping () -> Void,
         onOpenTravelBook: @escaping () -> Void,
         onOpenHelp: @escaping () -> Void,
+        onOpenNotificationPreferences: @escaping () -> Void,
         onOpenPublicPage: @escaping (String) -> Void,
         onTalkToUs: @escaping (String) -> Void
     ) {
         self.profile = profile
         self.onOpenAccount = onOpenAccount
         self.onSignOut = onSignOut
+        self.onChangePassword = onChangePassword
         self.onOpenManualReservationImporter = onOpenManualReservationImporter
         self.onOpenTrips = onOpenTrips
         self.onOpenTravelBook = onOpenTravelBook
         self.onOpenHelp = onOpenHelp
+        self.onOpenNotificationPreferences = onOpenNotificationPreferences
         self.onOpenPublicPage = onOpenPublicPage
         self.onTalkToUs = onTalkToUs
         super.init(nibName: nil, bundle: nil)
@@ -3596,6 +3624,7 @@ private final class NativeSettingsViewController: UIViewController, UITableViewD
         }
         let menu = NativeProfileMenuViewController(
             onEditProfile: { [weak self] in self?.onOpenAccount() },
+            onChangePassword: { [weak self] completion in self?.onChangePassword(completion) },
             onSignOut: { [weak self] in self?.onSignOut() }
         )
         menu.modalPresentationStyle = .popover
@@ -3673,6 +3702,8 @@ private final class NativeSettingsViewController: UIViewController, UITableViewD
             onOpenTravelBook()
         case .openHelp:
             onOpenHelp()
+        case .openNotificationPreferences:
+            onOpenNotificationPreferences()
         case .openPublicPage(let path):
             onOpenPublicPage(path)
         case .composeSupportEmail(let address):
@@ -3683,10 +3714,12 @@ private final class NativeSettingsViewController: UIViewController, UITableViewD
 
 private final class NativeProfileMenuViewController: UIViewController, UIPopoverPresentationControllerDelegate {
     private let onEditProfile: () -> Void
+    private let onChangePassword: (@escaping (Bool) -> Void) -> Void
     private let onSignOut: () -> Void
 
-    init(onEditProfile: @escaping () -> Void, onSignOut: @escaping () -> Void) {
+    init(onEditProfile: @escaping () -> Void, onChangePassword: @escaping (@escaping (Bool) -> Void) -> Void, onSignOut: @escaping () -> Void) {
         self.onEditProfile = onEditProfile
+        self.onChangePassword = onChangePassword
         self.onSignOut = onSignOut
         super.init(nibName: nil, bundle: nil)
     }
@@ -3701,7 +3734,7 @@ private final class NativeProfileMenuViewController: UIViewController, UIPopover
         let password = menuButton(
             title: NativeProfileMenuModel.changePasswordTitle,
             color: AlmidyDesignTokens.Color.settingsSecondary,
-            action: nil
+            action: #selector(changePassword)
         )
         password.isEnabled = NativeProfileMenuModel.isChangePasswordEnabled
         let signOut = menuButton(title: "Sign Out", color: AlmidyDesignTokens.Color.danger, action: #selector(signOut))
@@ -3716,6 +3749,18 @@ private final class NativeProfileMenuViewController: UIViewController, UIPopover
             stack.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -12),
             stack.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -10)
         ])
+    }
+
+    @objc private func changePassword() {
+        onChangePassword { [weak self] success in
+            let alert = UIAlertController(
+                title: success ? "Reset requested" : "Could not request reset",
+                message: success ? NativeProfileMenuModel.resetSuccessMessage : "Please wait and try again. Almidy does not send reset requests to client-supplied email addresses.",
+                preferredStyle: .alert
+            )
+            alert.addAction(UIAlertAction(title: "OK", style: .default))
+            self?.present(alert, animated: true)
+        }
     }
 
     private func menuButton(title: String, color: UIColor, action: Selector?) -> UIButton {
@@ -4426,7 +4471,7 @@ private final class NativeAccountViewController: UIViewController {
         saveButton.addTarget(self, action: #selector(saveProfile), for: .touchUpInside)
         saveButton.accessibilityLabel = "Save profile"
 
-        let avatar = UIImageView(image: UIImage(systemName: "person.crop.circle.badge.plus"))
+        let avatar = UIImageView(image: UIImage(systemName: "person.crop.circle"))
         avatar.tintColor = AlmidyDesignTokens.Color.settingsSecondary
         avatar.contentMode = .scaleAspectFit
 
@@ -4483,6 +4528,8 @@ private final class NativeAccountViewController: UIViewController {
         statusLabel.textAlignment = .center
         statusLabel.numberOfLines = 0
         statusLabel.isAccessibilityElement = true
+        statusLabel.text = "Avatar changes are available in web Account Settings."
+        statusLabel.textColor = AlmidyDesignTokens.Color.settingsSecondary
 
         NSLayoutConstraint.activate([
             scrollView.topAnchor.constraint(equalTo: view.topAnchor),

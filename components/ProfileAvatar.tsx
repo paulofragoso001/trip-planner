@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { createClient } from "@/lib/supabase/client";
 import { uploadAvatar } from "@/lib/upload-avatar";
 
 type Profile = {
@@ -10,7 +9,6 @@ type Profile = {
 };
 
 type ProfileAvatarProps = {
-  userId: string;
   email: string;
   profile: Profile | null;
 };
@@ -18,7 +16,7 @@ type ProfileAvatarProps = {
 const defaultAvatar =
   "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='32' fill='%23e2e8f0'/%3E%3Ccircle cx='32' cy='25' r='11' fill='%2394a3b8'/%3E%3Cpath d='M14 55c3-12 12-18 18-18s15 6 18 18' fill='%2394a3b8'/%3E%3C/svg%3E";
 
-export function ProfileAvatar({ userId, email, profile }: ProfileAvatarProps) {
+export function ProfileAvatar({ email, profile }: ProfileAvatarProps) {
   const [avatarUrl, setAvatarUrl] = useState(profile?.avatar_url || "");
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
@@ -29,17 +27,7 @@ export function ProfileAvatar({ userId, email, profile }: ProfileAvatarProps) {
     setError("");
 
     try {
-      const url = await uploadAvatar(file, userId);
-      const supabase = createClient();
-      const { error: updateError } = await supabase
-        .from("profiles")
-        .update({ avatar_url: url })
-        .eq("id", userId);
-
-      if (updateError) {
-        throw updateError;
-      }
-
+      const url = await uploadAvatar(file);
       setAvatarUrl(url);
     } catch (uploadError) {
       setError(uploadError instanceof Error ? uploadError.message : "Could not upload avatar.");
@@ -60,7 +48,7 @@ export function ProfileAvatar({ userId, email, profile }: ProfileAvatarProps) {
         <label className="mt-0.5 block cursor-pointer text-xs font-semibold text-slate-500">
           {uploading ? "Uploading..." : "Change avatar"}
           <input
-            accept="image/*"
+            accept="image/jpeg,image/png,image/webp"
             className="sr-only"
             disabled={uploading}
             type="file"

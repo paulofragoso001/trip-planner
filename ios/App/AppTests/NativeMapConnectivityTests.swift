@@ -265,6 +265,7 @@ final class NativeMapConnectivityTests: XCTestCase {
         XCTAssertTrue(NativeWebRoutePolicy.allows("/dashboard/account#help"))
         XCTAssertTrue(NativeWebRoutePolicy.allows("/dashboard/account#membership"))
         XCTAssertTrue(NativeWebRoutePolicy.allows("/dashboard/account#preferences"))
+        XCTAssertTrue(NativeWebRoutePolicy.allows("/dashboard/account#notifications"))
         XCTAssertTrue(NativeWebRoutePolicy.allows("/dashboard/account#sync"))
         XCTAssertTrue(NativeWebRoutePolicy.allows("/dashboard/settings/preferences"))
         XCTAssertFalse(NativeWebRoutePolicy.allows("/dashboard"))

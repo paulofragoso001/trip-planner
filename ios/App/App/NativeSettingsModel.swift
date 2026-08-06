@@ -5,6 +5,7 @@ enum NativeSettingsAction: Equatable {
     case openTrips
     case openTravelBook
     case openHelp
+    case openNotificationPreferences
     case openPublicPage(path: String)
     case composeSupportEmail(address: String)
 }
@@ -45,7 +46,7 @@ enum NativeSettingsCatalog {
             row("Language", detail: "Soon", icon: "globe"),
             row("Trips Timeline", icon: "timeline.selection", action: .openTrips),
             row("Travel Book", icon: "book.closed", action: .openTravelBook),
-            row("Notifications", detail: "Soon", icon: "bell"),
+            row("Notifications", icon: "bell", action: .openNotificationPreferences),
             row("Widgets", detail: "Soon", icon: "square.grid.2x2"),
             row("Storage and Data", detail: "Soon", icon: "externaldrive")
         ]),
@@ -94,8 +95,9 @@ enum NativeSettingsAppMetadata {
 }
 
 enum NativeProfileMenuModel {
-    static let changePasswordTitle = "Change Password · Soon"
-    static let isChangePasswordEnabled = false
+    static let changePasswordTitle = "Email Password Reset"
+    static let isChangePasswordEnabled = true
+    static let resetSuccessMessage = "If email delivery succeeds, Almidy will send reset instructions to your verified account email. The link opens Almidy’s secure web reset flow."
 }
 
 private extension String {
