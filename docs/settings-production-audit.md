@@ -448,3 +448,44 @@ The Phase 2 migration was not executed. Static RLS validation passes; runtime RL
 native compilation, and authenticated staging parity must be repeated using
 `docs/settings-phase-2-staging-verification.md`. Protected recovery/security
 material remains outside this phase.
+
+## Phase 1–2 release-validation status appendix
+
+**Validation branch:** `codex/settings-phase-2-release-validation`
+
+**Parent:** `8c13b23ecd7d9de71cc2d7c2b7c066e2e9324a9f`
+
+**Recommendation:** **HOLD**. No production deploy, merge, or migration is approved.
+
+The validation host identified Node 24.15.0 (the Playwright server contract pins
+Node 20.20.2), npm 11.12.1, Playwright 1.60.0 with its lockfile-compatible Chromium
+installed, Supabase CLI package 2.111.0 in the npm execution cache, Xcode 26.6,
+Swift 6.3.3, and iOS SDK 26.5. Docker and Podman are absent. No disposable/staging
+Supabase credentials are configured, so clean migration application and real
+two-user RLS/storage tests could not be executed.
+
+Migration review confirms Phase 1
+`20260806111021_settings_phase_1_account_security.sql` precedes Phase 2
+`20260806140000_create_user_preferences.sql`. Phase 1 depends on the existing public
+avatars bucket and policies; it tightens mutation ownership and MIME/size limits
+without deleting data. Existing legacy avatar objects remain publicly readable but
+cannot be mutated through the new owner-path rules. Phase 2 depends on Auth users,
+creates the isolated typed preference table and trigger, and has explicit manual
+rollback. No compatibility rewrite or destructive data step is present.
+
+Static TypeScript and nine focused policy/contract tests pass. Runtime gates do not:
+Turbopack production build cannot bind an internal worker port under the sandbox;
+Webpack remained silent in optimization and was stopped; Playwright cannot bind
+localhost; the in-app browser confirms connection refusal; CoreSimulator/CoreDevice
+services are unavailable; Swift package resolution cannot write its host cache; and
+no physical iPhone can be enumerated. These environment failures are not treated as
+application passes. Consequently avatar ownership, preferences, notifications,
+profile synchronization, password-reset delivery/redirect, deletion lifecycle,
+browser visuals, native compilation/XCTest, restart parity, and physical-device
+constraints remain release gates.
+
+No corrective code or migration was added because runtime testing did not reveal a
+Phase 0–2 product defect. Full commands, outputs, security review, rerun procedure,
+rollout/rollback steps, and the release decision are recorded in
+`docs/settings-phase-2-release-validation.md`. Protected recovery/security material
+remained untouched and outside validation commits.
