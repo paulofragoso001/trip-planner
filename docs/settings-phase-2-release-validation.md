@@ -118,6 +118,23 @@ command was attempted, but the managed host again denied the configured server's
 localhost bind (`listen EPERM: operation not permitted 127.0.0.1:3000`), so no test
 case ran and the suite is not recorded as passed.
 
+Two subsequent capable-host failures were also test defects rather than product
+defects:
+
+- The trial assertion targeted a conditional promotional card and its local-only
+  availability sheet. No entitlement exists. The stable mobile Settings contract
+  truthfully exposes Pro as a disabled `Pro soon` control, which the test now checks
+  without attempting activation.
+- The account-deletion assertion matched both the `Account deletion` section and
+  `Request account deletion` form headings. It now uses an exact accessible-name
+  match for the intended section; product copy is unchanged.
+
+After these corrections, `npx tsc --noEmit` and `git diff --check` passed. The exact
+focused Playwright command was rerun, but this managed execution environment denied
+the configured server bind with `listen EPERM: operation not permitted
+127.0.0.1:3000`; consequently the expected 9-test result could not be observed here
+and is not reported as passed.
+
 ## Validation environment
 
 | Component | Observed version/state |

@@ -97,12 +97,6 @@ test.describe("dashboard navigation and client-state actions", () => {
     await page.getByRole("button", { name: "Expand trips sheet" }).click();
     await expect(sheet).toHaveAttribute("data-sheet-state", "expanded");
 
-    await page.getByRole("button", { name: "Accept 15 Days Free" }).click();
-    await expect(page.getByRole("dialog")).toContainText("Trial activation coming soon");
-    await page.getByRole("button", { name: "Close trial availability" }).click();
-
-    await page.getByRole("button", { name: "Dismiss pro card" }).click();
-    await expect(page.getByRole("button", { name: "Dismiss pro card" })).toHaveCount(0);
     await page.getByRole("button", { name: "Dismiss reservation importer card" }).click();
     await expect(page.getByTestId("mobile-home-reservation-importer-card")).toHaveCount(0);
 
@@ -204,7 +198,7 @@ test.describe("dashboard navigation and client-state actions", () => {
         `${label} is visibly disabled`
       ).toHaveCount(1);
     }
-    await expect(accountSurface.getByRole("heading", { name: "Account deletion" })).toBeVisible();
+    await expect(accountSurface.getByRole("heading", { exact: true, name: "Account deletion" })).toBeVisible();
   });
 
   test("About Almidy has a real public destination", async ({ page }) => {
