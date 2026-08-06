@@ -6,6 +6,7 @@
 - Parent: `8c13b23ecd7d9de71cc2d7c2b7c066e2e9324a9f`
 - Phase 2 implementation: `0b310e00ea447809b010798a38718a420b95c8fe`
 - Validation status commit: `f076c243981537434eed080e740e0e4ffe88a5d3`
+- Calendar corrective commit: `7ccb5ad1c6b0393c48d7d34e8f6a3e9c333d60b7`
 - Documentation finalization: the commit containing this report is branch HEAD.
 - Exact recommendation: **HOLD**.
 
@@ -58,6 +59,44 @@ all nine Phase 1–2 static contract tests. No committed application, migration,
 dependency, or protected file changed. No screenshots or physical-device claims were
 created. All runtime sections and the **HOLD** recommendation below therefore remain
 current.
+
+## Confirmed Calendar environment defect and correction
+
+A capable-host validation subsequently confirmed that `/api/health` and the
+production environment contract required Calendar OAuth credentials—initially
+surfacing `GOOGLE_CALENDAR_CLIENT_ID`—while Calendar UI remained disabled and Scope F
+deferred. Supplying fake provider credentials would have hidden the defect and was
+not accepted.
+
+Corrective commit `7ccb5ad1c6b0393c48d7d34e8f6a3e9c333d60b7` adds the server-side
+`CALENDAR_SYNC_ENABLED` contract. Absent, false, or zero means disabled. In that
+state, Calendar credentials, token encryption configuration, and worker secret are
+not production requirements; health reports `{ enabled: false, deferred: true,
+configured: false, ok: true }`; and connections, OAuth start/callback, sync, and
+worker routes return a canonical 501 `not_implemented` response before authentication,
+database, provider, logging, or mutation work.
+
+When explicitly enabled, production validation requires Google and Microsoft client
+IDs/secrets/HTTPS callback URLs, Microsoft tenant, token encryption key/key ID, and
+worker secret. The encryption key must be at least 32 characters, and both callback
+URLs must exactly match the production app origin and approved paths. Secret values
+remain server-only and health exposes only status and missing variable names.
+
+Focused validation passed:
+
+- `./node_modules/.bin/tsc --noEmit`
+- `node --test tests/unit/calendar-feature-flag.test.mjs tests/unit/settings-phase-1-contracts.test.mjs tests/unit/settings-phase-2-contracts.test.mjs` — 13 passed, 0 failed/skipped
+- Disabled Calendar without Calendar variables keeps otherwise healthy core checks healthy.
+- Every disabled Calendar route has a fail-closed guard.
+- Enabled/missing configuration fails production preflight.
+- Enabled/complete strict configuration passes production preflight.
+- `git diff --check` passed.
+
+The focused Playwright Calendar suite could not start because this managed host still
+denied localhost binding. The required production build was attempted with locked
+Node 20 and again failed only at Turbopack's sandbox-denied internal port binding.
+Those checks are not marked passed, and the overall release recommendation remains
+**HOLD** pending the broader runtime gates already listed in this report.
 
 ## Validation environment
 
@@ -225,15 +264,17 @@ No new client/native service-role reference, privileged secret, token, reset lin
 signed storage URL was introduced. `SUPABASE_SERVICE_ROLE_KEY` remains accessed by
 server-only modules and is not `NEXT_PUBLIC_*`. Phase 1–2 API identities are derived
 from authenticated sessions; preference payloads are strict; avatar ownership is
-defined in storage policies as well as application validation. Calendar secrets,
+defined in storage policies as well as application validation. Calendar secrets are
+now required only behind explicit server-side enablement and remain server-only.
 EventKit, email forwarding, and Phase 3 features remain untouched. Redirect code
 requires HTTPS in production, but the non-production reset allowlist was not
 runtime-verified. No production resource was mutated.
 
 ## Failures, corrective commits, and risks
 
-All failed/blocked commands above are environment gates. There are no corrective
-code or schema commits because no product defect was isolated. Remaining high-risk
+Calendar corrective commit `7ccb5ad1c6b0393c48d7d34e8f6a3e9c333d60b7`
+resolves the confirmed deferred-feature environment defect without enabling Calendar
+or adding provider credentials. No schema correction was needed. Remaining high-risk
 unknowns are real migration replay, storage/RLS isolation, persistence and password
 reset behavior, production compilation, browser runtime/visuals, native compilation
 and XCTest, device persistence/parity, and Auto Layout. These mandate HOLD.

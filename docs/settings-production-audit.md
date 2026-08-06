@@ -499,3 +499,15 @@ reproduced their prior environment failures. Next route types were regenerated a
 the failed build; TypeScript and nine static Phase 1–2 contract tests passed. No
 runtime gate changed status, no product defect was proven, no corrective code was
 added, and the recommendation remains **HOLD**.
+
+A later capable-host check confirmed one Phase 0–2 defect: production health and
+environment preflight required Calendar OAuth/token/worker variables even though
+Calendar is disabled and Scope F deferred. Corrective commit
+`7ccb5ad1c6b0393c48d7d34e8f6a3e9c333d60b7` introduces
+`CALENDAR_SYNC_ENABLED`, default-disabled. Disabled Calendar is healthy/deferred and
+all Calendar routes fail closed with a canonical 501 response; provider and token
+secrets are not required. Explicit enablement strictly requires both providers,
+callbacks, tenant, encryption key/key ID, and worker secret. Thirteen focused
+environment/security contracts and TypeScript pass. Production build and Playwright
+remain host-blocked, so the overall release recommendation remains **HOLD**. Scope F
+was not reopened and no Calendar credential or production environment was changed.
