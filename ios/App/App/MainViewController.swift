@@ -132,6 +132,9 @@ final class MainViewController: CAPBridgeViewController {
         guard presentedViewController == nil else { return }
 
         didPresentNativeDashboard = true
+#if DEBUG
+        NativeSessionCoordinator.shared.debugValidateCurrentSession()
+#endif
         let dashboard = NativeMapViewController(
             trips: [],
             tripStore: nativeTripStore,

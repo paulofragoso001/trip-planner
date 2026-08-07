@@ -95,10 +95,11 @@ final class NativeSessionCoordinator {
         request.setValue(publishableKey, forHTTPHeaderField: "apikey")
         request.setValue("Bearer \(session.accessToken)", forHTTPHeaderField: "Authorization")
 
+        let expirationDescription = session.expiresAt.map(String.init) ?? "missing"
         print(
             "[NativeAuthDebug] sessionPresent=true " +
             "expired=\(session.isExpired()) " +
-            "expiresAt=\(session.expiresAt)"
+            "expiresAt=\(expirationDescription)"
         )
 
         urlSession.dataTask(with: request) { _, response, error in
