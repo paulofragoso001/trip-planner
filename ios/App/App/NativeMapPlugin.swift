@@ -1492,6 +1492,8 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
     private var firstTripCard: UIView?
     private var sheetBottomConstraint: NSLayoutConstraint?
     private var sheetHeightConstraint: NSLayoutConstraint?
+    private var mapTopConstraint: NSLayoutConstraint?
+    private var mapBottomConstraint: NSLayoutConstraint?
     private var mapControlTopConstraint: NSLayoutConstraint?
     private var sheetState: SheetState
     private var panStartHeight: CGFloat = 0
@@ -1634,8 +1636,12 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
     }
 
     private func replaceTrips(_ nextTrips: [NativeMapTrip]) {
+        let previouslyHadTrips = !trips.isEmpty
         trips = nextTrips
         nextTrips.forEach { warmTripBackground($0) }
+        updateMapFramingForTripAvailability(
+            zoomsToPopulatedGlobe: !previouslyHadTrips && !nextTrips.isEmpty
+        )
         addTripPins()
         renderSheetContent()
     }
@@ -1668,11 +1674,22 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         applyMapPresentation(.hybrid)
         view.addSubview(mapView)
 
+        let populatedLaunchVerticalOffset: CGFloat = trips.isEmpty ? 0 : 72
+        let mapTopConstraint = mapView.topAnchor.constraint(
+            equalTo: view.topAnchor,
+            constant: populatedLaunchVerticalOffset
+        )
+        let mapBottomConstraint = mapView.bottomAnchor.constraint(
+            equalTo: view.bottomAnchor,
+            constant: populatedLaunchVerticalOffset
+        )
+        self.mapTopConstraint = mapTopConstraint
+        self.mapBottomConstraint = mapBottomConstraint
         NSLayoutConstraint.activate([
-            mapView.topAnchor.constraint(equalTo: view.topAnchor),
+            mapTopConstraint,
             mapView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             mapView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            mapView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
+            mapBottomConstraint
         ])
 
         let initialDistance: CLLocationDistance = trips.isEmpty ? 10_000_000 : 18_000_000
@@ -1680,6 +1697,16 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         if let pendingCameraTelemetry {
             applyCameraTelemetry(pendingCameraTelemetry)
             self.pendingCameraTelemetry = nil
+        }
+    }
+
+    private func updateMapFramingForTripAvailability(zoomsToPopulatedGlobe: Bool) {
+        let verticalOffset: CGFloat = trips.isEmpty ? 0 : 72
+        mapTopConstraint?.constant = verticalOffset
+        mapBottomConstraint?.constant = verticalOffset
+
+        if zoomsToPopulatedGlobe {
+            mapView.setCamera(globeCamera(distance: 18_000_000, heading: 2), animated: true)
         }
     }
 
