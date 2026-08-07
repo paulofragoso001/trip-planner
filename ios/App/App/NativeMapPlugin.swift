@@ -2208,7 +2208,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
     }
 
     private func renderTripContent() {
-        let year = pillLabel("2026", fontSize: 22, textColor: AlmidyDesignTokens.Color.goldSoft, backgroundColor: AlmidyDesignTokens.Color.card)
+        let year = pillLabel(overviewYear, fontSize: 22, textColor: AlmidyDesignTokens.Color.goldSoft, backgroundColor: AlmidyDesignTokens.Color.card)
         expandedContentStack.addArrangedSubview(year)
 
         let upcoming = UIStackView()
@@ -2226,13 +2226,25 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         NSLayoutConstraint.activate([line.heightAnchor.constraint(equalToConstant: 1)])
         expandedContentStack.addArrangedSubview(upcoming)
 
-        if let latestTrip = trips.first {
-            expandedContentStack.addArrangedSubview(tripCard(for: latestTrip))
+        for trip in trips {
+            expandedContentStack.addArrangedSubview(tripCard(for: trip))
         }
 
         if reservationCardVisible {
             expandedContentStack.addArrangedSubview(reservationAutomationCard())
         }
+    }
+
+    private var overviewYear: String {
+        for trip in trips {
+            guard let startDate = trip.startDate?.trimmingCharacters(in: .whitespacesAndNewlines),
+                  startDate.count >= 4 else { continue }
+            let year = String(startDate.prefix(4))
+            if year.allSatisfy(\.isNumber) {
+                return year
+            }
+        }
+        return String(Calendar.current.component(.year, from: Date()))
     }
 
     private func renderWelcomeContent() {
@@ -2387,7 +2399,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
 
     private func tripCard(for trip: NativeMapTrip) -> UIView {
         let card = UIView()
-        card.layer.cornerRadius = 28
+        card.layer.cornerRadius = 30
         card.clipsToBounds = true
         card.backgroundColor = AlmidyDesignTokens.Color.card
 
@@ -2408,7 +2420,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
             AlmidyDesignTokens.Color.tripCardGradientStart.cgColor,
             AlmidyDesignTokens.Color.tripCardGradientEnd.cgColor
         ]
-        button.overlayGradient.locations = [0.35, 1.0]
+        button.overlayGradient.locations = [0.40, 1.0]
         button.layer.addSublayer(button.overlayGradient)
 
         let textStack = UIStackView()
@@ -2432,26 +2444,26 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         let title = UILabel()
         title.text = trip.displayName
         title.textColor = AlmidyDesignTokens.Color.tripCardTextPrimary
-        title.font = AlmidyDesignTokens.Font.title(34)
+        title.font = AlmidyDesignTokens.Font.title(31)
         title.adjustsFontSizeToFitWidth = true
         title.minimumScaleFactor = 0.72
 
         let dates = UILabel()
         dates.text = trip.displayDateRange
         dates.textColor = AlmidyDesignTokens.Color.tripCardTextSecondary
-        dates.font = .systemFont(ofSize: 21, weight: .semibold)
+        dates.font = .systemFont(ofSize: 20, weight: .semibold)
 
         let status = UILabel()
         status.text = trip.displayStatus
         status.textColor = AlmidyDesignTokens.Color.tripCardTextTertiary
-        status.font = .systemFont(ofSize: 19, weight: .regular)
+        status.font = .systemFont(ofSize: 18, weight: .regular)
 
         textStack.addArrangedSubview(title)
         textStack.addArrangedSubview(dates)
         textStack.addArrangedSubview(status)
 
         NSLayoutConstraint.activate([
-            card.heightAnchor.constraint(equalToConstant: 340),
+            card.heightAnchor.constraint(equalToConstant: 300),
             button.topAnchor.constraint(equalTo: card.topAnchor),
             button.leadingAnchor.constraint(equalTo: card.leadingAnchor),
             button.trailingAnchor.constraint(equalTo: card.trailingAnchor),
