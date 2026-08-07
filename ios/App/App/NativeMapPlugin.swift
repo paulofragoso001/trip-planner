@@ -1675,7 +1675,8 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
             mapView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
 
-        mapView.setCamera(globeCamera(distance: 10_000_000, heading: 0), animated: false)
+        let initialDistance: CLLocationDistance = trips.isEmpty ? 10_000_000 : 14_000_000
+        mapView.setCamera(globeCamera(distance: initialDistance, heading: 0), animated: false)
         if let pendingCameraTelemetry {
             applyCameraTelemetry(pendingCameraTelemetry)
             self.pendingCameraTelemetry = nil
@@ -1688,7 +1689,8 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { [weak self] in
             guard let self else { return }
-            self.mapView.setCamera(self.globeCamera(distance: 7_800_000, heading: 2), animated: true)
+            let launchDistance: CLLocationDistance = self.trips.isEmpty ? 7_800_000 : 13_500_000
+            self.mapView.setCamera(self.globeCamera(distance: launchDistance, heading: 2), animated: true)
         }
     }
 
@@ -2114,7 +2116,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
             sheetHandle.widthAnchor.constraint(equalToConstant: 42),
             sheetHandle.heightAnchor.constraint(equalToConstant: 6),
 
-            headerStack.topAnchor.constraint(equalTo: sheetHandle.bottomAnchor, constant: 26),
+            headerStack.topAnchor.constraint(equalTo: sheetHandle.bottomAnchor, constant: 18),
             headerStack.centerXAnchor.constraint(equalTo: sheetView.centerXAnchor),
             headerStack.leadingAnchor.constraint(greaterThanOrEqualTo: sheetView.leadingAnchor, constant: 28),
             headerStack.trailingAnchor.constraint(lessThanOrEqualTo: sheetView.trailingAnchor, constant: -28),
@@ -2184,14 +2186,46 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         book.layer.shadowOpacity = 0.06
         book.layer.shadowRadius = 18
         book.layer.shadowOffset = CGSize(width: 0, height: 9)
-        book.setTitle("  Travel Book", for: .normal)
-        book.setTitleColor(AlmidyDesignTokens.Color.textPrimary, for: .normal)
-        book.titleLabel?.font = AlmidyDesignTokens.Font.button(17)
-        book.setImage(UIImage(systemName: "globe.americas.fill"), for: .normal)
-        book.tintColor = AlmidyDesignTokens.Color.gold
-        book.contentHorizontalAlignment = .center
         book.addTarget(self, action: #selector(openTravelBook), for: .touchUpInside)
-        book.accessibilityLabel = "Open Travel Book"
+        let tripSummary = trips.count == 1 ? "1 trip planned" : "\(trips.count) trips planned"
+        book.accessibilityLabel = "Open My Almidy Book, \(tripSummary)"
+
+        let bookIcon = UIImageView(image: UIImage(systemName: "globe.americas.fill"))
+        bookIcon.tintColor = AlmidyDesignTokens.Color.gold
+        bookIcon.contentMode = .scaleAspectFit
+        bookIcon.translatesAutoresizingMaskIntoConstraints = false
+
+        let bookTitle = UILabel()
+        bookTitle.text = "My Almidy Book"
+        bookTitle.textColor = AlmidyDesignTokens.Color.textPrimary
+        bookTitle.font = AlmidyDesignTokens.Font.button(16)
+
+        let bookSubtitle = UILabel()
+        bookSubtitle.text = tripSummary
+        bookSubtitle.textColor = AlmidyDesignTokens.Color.textSecondary
+        bookSubtitle.font = AlmidyDesignTokens.Font.body(14)
+
+        let bookLabels = UIStackView(arrangedSubviews: [bookTitle, bookSubtitle])
+        bookLabels.axis = .vertical
+        bookLabels.alignment = .leading
+        bookLabels.spacing = 0
+
+        let bookContent = UIStackView(arrangedSubviews: [bookIcon, bookLabels])
+        bookContent.axis = .horizontal
+        bookContent.alignment = .center
+        bookContent.spacing = 11
+        bookContent.isUserInteractionEnabled = false
+        bookContent.translatesAutoresizingMaskIntoConstraints = false
+        book.addSubview(bookContent)
+
+        NSLayoutConstraint.activate([
+            bookIcon.widthAnchor.constraint(equalToConstant: 30),
+            bookIcon.heightAnchor.constraint(equalToConstant: 30),
+            bookContent.centerXAnchor.constraint(equalTo: book.centerXAnchor),
+            bookContent.centerYAnchor.constraint(equalTo: book.centerYAnchor),
+            bookContent.leadingAnchor.constraint(greaterThanOrEqualTo: book.leadingAnchor, constant: 14),
+            bookContent.trailingAnchor.constraint(lessThanOrEqualTo: book.trailingAnchor, constant: -14)
+        ])
 
         let add = circularButton(systemName: "plus", backgroundColor: AlmidyDesignTokens.Color.gold, tintColor: AlmidyDesignTokens.Color.settingsText)
         add.accessibilityLabel = "Create a trip"
@@ -2657,7 +2691,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         let compactHeight = fullHeight < 700 || size.width > fullHeight
         switch state {
         case .collapsed:
-            let preferred = trips.isEmpty ? (compactHeight ? 210.0 : 300.0) : (compactHeight ? 190.0 : 268.0)
+            let preferred = trips.isEmpty ? (compactHeight ? 210.0 : 300.0) : (compactHeight ? 184.0 : 218.0)
             return min(preferred, fullHeight * (compactHeight ? 0.48 : 0.28))
         case .medium:
             return min(fullHeight * (compactHeight ? 0.72 : 0.58), 520)
@@ -2792,7 +2826,12 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
             hasCenteredInitialLocation = true
             mapView.setUserTrackingMode(.none, animated: false)
             mapView.setCamera(
-                MKMapCamera(lookingAtCenter: coordinate, fromDistance: 3_600_000, pitch: 0, heading: 0),
+                MKMapCamera(
+                    lookingAtCenter: coordinate,
+                    fromDistance: trips.isEmpty ? 3_600_000 : 13_000_000,
+                    pitch: 0,
+                    heading: 0
+                ),
                 animated: true
             )
         } else {
