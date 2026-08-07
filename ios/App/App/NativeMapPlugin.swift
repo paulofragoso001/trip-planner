@@ -1675,7 +1675,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
             mapView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
 
-        let initialDistance: CLLocationDistance = trips.isEmpty ? 10_000_000 : 14_000_000
+        let initialDistance: CLLocationDistance = trips.isEmpty ? 10_000_000 : 18_000_000
         mapView.setCamera(globeCamera(distance: initialDistance, heading: 0), animated: false)
         if let pendingCameraTelemetry {
             applyCameraTelemetry(pendingCameraTelemetry)
@@ -1689,7 +1689,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { [weak self] in
             guard let self else { return }
-            let launchDistance: CLLocationDistance = self.trips.isEmpty ? 7_800_000 : 13_500_000
+            let launchDistance: CLLocationDistance = self.trips.isEmpty ? 7_800_000 : 18_000_000
             self.mapView.setCamera(self.globeCamera(distance: launchDistance, heading: 2), animated: true)
         }
     }
@@ -2828,7 +2828,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
             mapView.setCamera(
                 MKMapCamera(
                     lookingAtCenter: coordinate,
-                    fromDistance: trips.isEmpty ? 3_600_000 : 13_000_000,
+                    fromDistance: trips.isEmpty ? 3_600_000 : 18_000_000,
                     pitch: 0,
                     heading: 0
                 ),
