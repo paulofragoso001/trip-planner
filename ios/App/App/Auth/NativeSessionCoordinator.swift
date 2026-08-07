@@ -80,6 +80,37 @@ final class NativeSessionCoordinator {
         session.map { NativeJWTClaims.profile(from: $0.accessToken) } ?? NativeAuthProfile(name: "", email: "")
     }
 
+#if DEBUG
+    func debugValidateCurrentSession(using urlSession: URLSession = .shared) {
+        guard let session,
+              let supabaseURL,
+              let publishableKey,
+              let url = URL(string: "auth/v1/user", relativeTo: supabaseURL) else {
+            print("[NativeAuthDebug] configuration/session missing")
+            return
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.setValue(publishableKey, forHTTPHeaderField: "apikey")
+        request.setValue("Bearer \(session.accessToken)", forHTTPHeaderField: "Authorization")
+
+        print(
+            "[NativeAuthDebug] sessionPresent=true " +
+            "expired=\(session.isExpired()) " +
+            "expiresAt=\(session.expiresAt)"
+        )
+
+        urlSession.dataTask(with: request) { _, response, error in
+            let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+            print(
+                "[NativeAuthDebug] supabaseUserStatus=\(status) " +
+                "error=\(error == nil ? "none" : "network")"
+            )
+        }.resume()
+    }
+#endif
+
     @discardableResult
     func save(_ session: NativeAuthSession, event: NativeAuthSessionEvent = .tokenRefreshed) -> Bool {
         guard session.isComplete else { return false }

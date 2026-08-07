@@ -62,6 +62,9 @@ public class NativeMapPlugin: CAPPlugin, CAPBridgedPlugin {
                 _ = NativeSessionCoordinator.shared.importWebSession(webSession, revision: revision)
             }
             let tripStore = NativeTripStore(webView: self.bridge?.webView)
+#if DEBUG
+            NativeSessionCoordinator.shared.debugValidateCurrentSession()
+#endif
             let mapViewController = NativeMapViewController(
                 trips: options.trips,
                 tripStore: tripStore,
