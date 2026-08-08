@@ -2117,13 +2117,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         settingsButton.backgroundColor = AlmidyDesignTokens.Color.avatarPeachSurface
         settingsButton.tintColor = AlmidyDesignTokens.Color.gold
         settingsButton.layer.cornerRadius = 23
-        settingsButton.setImage(
-            UIImage(
-                systemName: "gearshape",
-                withConfiguration: UIImage.SymbolConfiguration(pointSize: 19, weight: .medium)
-            ),
-            for: .normal
-        )
+        settingsButton.setImage(NativeLaunchSettingsIcon.image, for: .normal)
         settingsButton.accessibilityLabel = "Open Settings"
         settingsButton.addTarget(self, action: #selector(openSettings), for: .touchUpInside)
         settingsButton.translatesAutoresizingMaskIntoConstraints = false
@@ -5380,6 +5374,36 @@ extension NativeCaptureIdeasViewController {
             }
         }
     }
+}
+
+private enum NativeLaunchSettingsIcon {
+    static let image: UIImage = {
+        let size = CGSize(width: 24, height: 24)
+        let center = CGPoint(x: size.width / 2, y: size.height / 2)
+        let renderer = UIGraphicsImageRenderer(size: size)
+        return renderer.image { _ in
+            let gear = UIBezierPath()
+            let pointCount = 32
+            for index in 0..<pointCount {
+                let angle = CGFloat(index) * (.pi * 2 / CGFloat(pointCount)) - (.pi / 2)
+                let radius: CGFloat = index.isMultiple(of: 2) ? 10.5 : 8.4
+                let point = CGPoint(
+                    x: center.x + cos(angle) * radius,
+                    y: center.y + sin(angle) * radius
+                )
+                index == 0 ? gear.move(to: point) : gear.addLine(to: point)
+            }
+            gear.close()
+            gear.lineJoinStyle = .round
+            gear.lineWidth = 1.8
+            UIColor.black.setStroke()
+            gear.stroke()
+
+            let hub = UIBezierPath(arcCenter: center, radius: 3.2, startAngle: 0, endAngle: .pi * 2, clockwise: true)
+            hub.lineWidth = 1.8
+            hub.stroke()
+        }.withRenderingMode(.alwaysTemplate)
+    }()
 }
 
 private final class NativeGeographicLabelAnnotation: NSObject, MKAnnotation {
