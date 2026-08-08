@@ -2118,8 +2118,13 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         titleGroup.axis = .horizontal
         titleGroup.alignment = .center
         titleGroup.spacing = 8
-        titleGroup.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        titleButton.setContentHuggingPriority(.required, for: .horizontal)
+        titleGroup.setContentHuggingPriority(.required, for: .horizontal)
+
+        let headerSpacer = UIView()
+        headerSpacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
         headerStack.addArrangedSubview(titleGroup)
+        headerStack.addArrangedSubview(headerSpacer)
         headerStack.addArrangedSubview(settingsButton)
 
         collapsedActions.axis = .horizontal
