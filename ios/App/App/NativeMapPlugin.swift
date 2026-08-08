@@ -1509,6 +1509,8 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
     private weak var offlineRetryButton: UIButton?
     private var pendingCameraTelemetry: MKMapCamera?
     private var preservedCamera: MKMapCamera?
+    private var resolvedLegacyTripCoordinates: [String: CLLocationCoordinate2D] = [:]
+    private var resolvingLegacyTripIDs: Set<String> = []
     private var isRequestingLocationAuthorization = false
     private var hasRequestedInitialLocation = false
     private var hasCenteredInitialLocation = false
@@ -1641,6 +1643,9 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
     private func replaceTrips(_ nextTrips: [NativeMapTrip]) {
         let previouslyHadTrips = !trips.isEmpty
         trips = nextTrips
+        let activeTripIDs = Set(nextTrips.map(\.id))
+        resolvedLegacyTripCoordinates = resolvedLegacyTripCoordinates.filter { activeTripIDs.contains($0.key) }
+        resolvingLegacyTripIDs.formIntersection(activeTripIDs)
         nextTrips.forEach { warmTripBackground($0) }
         updateMapFramingForTripAvailability(
             zoomsToPopulatedGlobe: !previouslyHadTrips && !nextTrips.isEmpty
@@ -2790,10 +2795,38 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
             mapView.addAnnotations(NativeGeographicLabelAnnotation.majorLabels)
         }
         let annotations = trips.compactMap { trip -> NativeTripAnnotation? in
-            guard let coordinate = trip.coordinate else { return nil }
+            guard let coordinate = trip.coordinate ?? resolvedLegacyTripCoordinates[trip.id] else {
+                resolveLegacyTripCoordinateIfNeeded(for: trip)
+                return nil
+            }
             return NativeTripAnnotation(trip: trip, coordinate: coordinate)
         }
         mapView.addAnnotations(annotations)
+    }
+
+    private func resolveLegacyTripCoordinateIfNeeded(for trip: NativeMapTrip) {
+        guard trip.coordinate == nil,
+              resolvedLegacyTripCoordinates[trip.id] == nil,
+              !resolvingLegacyTripIDs.contains(trip.id),
+              let destination = trip.destination?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !destination.isEmpty else { return }
+
+        resolvingLegacyTripIDs.insert(trip.id)
+        let request = MKLocalSearch.Request()
+        request.naturalLanguageQuery = destination
+        request.resultTypes = [.address]
+
+        MKLocalSearch(request: request).start { [weak self] response, _ in
+            DispatchQueue.main.async {
+                guard let self else { return }
+                self.resolvingLegacyTripIDs.remove(trip.id)
+                guard self.trips.contains(where: { $0.id == trip.id }),
+                      let coordinate = response?.mapItems.first?.placemark.coordinate,
+                      CLLocationCoordinate2DIsValid(coordinate) else { return }
+                self.resolvedLegacyTripCoordinates[trip.id] = coordinate
+                self.addTripPins()
+            }
+        }
     }
 
     func mapViewDidFinishLoadingMap(_ mapView: MKMapView) {
