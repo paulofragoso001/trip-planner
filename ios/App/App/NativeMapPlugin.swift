@@ -2269,7 +2269,12 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
             bookContent.trailingAnchor.constraint(lessThanOrEqualTo: book.trailingAnchor, constant: -14)
         ])
 
-        let add = circularButton(systemName: "plus", backgroundColor: AlmidyDesignTokens.Color.gold, tintColor: AlmidyDesignTokens.Color.settingsText)
+        let add = circularButton(
+            systemName: "plus",
+            backgroundColor: AlmidyDesignTokens.Color.generatedTripGradientEnd,
+            tintColor: .white
+        )
+        add.layer.cornerRadius = 29
         add.accessibilityLabel = "Create a trip"
         add.addTarget(self, action: #selector(createTrip), for: .touchUpInside)
 
@@ -2280,7 +2285,8 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         NSLayoutConstraint.activate([
             search.widthAnchor.constraint(equalToConstant: 58),
             search.heightAnchor.constraint(equalToConstant: 58),
-            add.widthAnchor.constraint(equalToConstant: 64)
+            add.widthAnchor.constraint(equalToConstant: 58),
+            add.heightAnchor.constraint(equalToConstant: 58)
         ])
     }
 
