@@ -1654,7 +1654,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
     private func configureMap() {
         mapView.translatesAutoresizingMaskIntoConstraints = false
         mapView.delegate = self
-        mapView.pointOfInterestFilter = .includingAll
+        mapView.pointOfInterestFilter = trips.isEmpty ? .includingAll : .excludingAll
         mapView.showsCompass = false
         mapView.showsScale = false
         mapView.showsBuildings = true
@@ -1704,6 +1704,8 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         let verticalOffset: CGFloat = trips.isEmpty ? 0 : 72
         mapTopConstraint?.constant = verticalOffset
         mapBottomConstraint?.constant = verticalOffset
+        mapView.pointOfInterestFilter = trips.isEmpty ? .includingAll : .excludingAll
+        applyMapPresentation(mapPresentationMode)
 
         if zoomsToPopulatedGlobe {
             mapView.setCamera(globeCamera(distance: 18_000_000, heading: 2), animated: true)
@@ -1749,14 +1751,14 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
             switch mode {
             case .hybrid:
                 let configuration = MKHybridMapConfiguration(elevationStyle: .realistic)
-                configuration.pointOfInterestFilter = .includingAll
+                configuration.pointOfInterestFilter = trips.isEmpty ? .includingAll : .excludingAll
                 configuration.showsTraffic = false
                 mapView.preferredConfiguration = configuration
             case .imagery:
                 mapView.preferredConfiguration = MKImageryMapConfiguration(elevationStyle: .realistic)
             case .standard:
                 let configuration = MKStandardMapConfiguration(elevationStyle: .realistic, emphasisStyle: .default)
-                configuration.pointOfInterestFilter = .includingAll
+                configuration.pointOfInterestFilter = trips.isEmpty ? .includingAll : .excludingAll
                 configuration.showsTraffic = false
                 mapView.preferredConfiguration = configuration
             }
