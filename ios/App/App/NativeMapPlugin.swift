@@ -2116,14 +2116,20 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
 
         settingsButton.backgroundColor = AlmidyDesignTokens.Color.avatarPeachSurface
         settingsButton.tintColor = AlmidyDesignTokens.Color.gold
-        settingsButton.layer.cornerRadius = AlmidyDesignTokens.Control.iconButton / 2
-        settingsButton.setImage(UIImage(systemName: "gearshape"), for: .normal)
+        settingsButton.layer.cornerRadius = 23
+        settingsButton.setImage(
+            UIImage(
+                systemName: "gearshape",
+                withConfiguration: UIImage.SymbolConfiguration(pointSize: 19, weight: .medium)
+            ),
+            for: .normal
+        )
         settingsButton.accessibilityLabel = "Open Settings"
         settingsButton.addTarget(self, action: #selector(openSettings), for: .touchUpInside)
         settingsButton.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
-            settingsButton.widthAnchor.constraint(equalToConstant: 58),
-            settingsButton.heightAnchor.constraint(equalToConstant: 58)
+            settingsButton.widthAnchor.constraint(equalToConstant: 46),
+            settingsButton.heightAnchor.constraint(equalToConstant: 46)
         ])
 
         let titleGroup = UIStackView(arrangedSubviews: [titleButton, chevronImageView])
