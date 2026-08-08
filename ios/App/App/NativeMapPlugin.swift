@@ -2073,7 +2073,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         sheetView.layer.shadowOffset = CGSize(width: 0, height: -6)
         view.addSubview(sheetView)
 
-        sheetBottomConstraint = sheetView.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -12)
+        sheetBottomConstraint = sheetView.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -8)
         sheetHeightConstraint = sheetView.heightAnchor.constraint(equalToConstant: height(for: sheetState))
         NSLayoutConstraint.activate([
             sheetView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 8),
