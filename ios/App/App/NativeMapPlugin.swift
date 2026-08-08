@@ -2086,7 +2086,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
 
         titleButton.setTitle("My Trips", for: .normal)
         titleButton.setTitleColor(AlmidyDesignTokens.Color.textPrimary, for: .normal)
-        titleButton.titleLabel?.font = AlmidyDesignTokens.Font.display(38)
+        titleButton.titleLabel?.font = AlmidyDesignTokens.Font.display(32)
         titleButton.titleLabel?.adjustsFontSizeToFitWidth = true
         titleButton.titleLabel?.minimumScaleFactor = 0.72
         titleButton.contentHorizontalAlignment = .left
