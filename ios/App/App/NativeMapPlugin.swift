@@ -2754,7 +2754,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         let compactHeight = fullHeight < 700 || size.width > fullHeight
         switch state {
         case .collapsed:
-            let preferred = trips.isEmpty ? (compactHeight ? 210.0 : 300.0) : (compactHeight ? 184.0 : 200.0)
+            let preferred = trips.isEmpty ? (compactHeight ? 210.0 : 300.0) : 184.0
             return min(preferred, fullHeight * (compactHeight ? 0.48 : 0.28))
         case .medium:
             return min(fullHeight * (compactHeight ? 0.72 : 0.58), 520)
