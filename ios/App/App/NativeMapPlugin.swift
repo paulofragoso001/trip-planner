@@ -2102,8 +2102,8 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
             chevronImageView.heightAnchor.constraint(equalToConstant: 24)
         ])
 
-        settingsButton.backgroundColor = AlmidyDesignTokens.Color.card
-        settingsButton.tintColor = AlmidyDesignTokens.Color.gold
+        settingsButton.backgroundColor = AlmidyDesignTokens.Color.avatarPeachSurface
+        settingsButton.tintColor = AlmidyDesignTokens.Color.generatedTripGradientEnd
         settingsButton.layer.cornerRadius = AlmidyDesignTokens.Control.iconButton / 2
         settingsButton.setImage(UIImage(systemName: "gearshape"), for: .normal)
         settingsButton.accessibilityLabel = "Open Settings"
