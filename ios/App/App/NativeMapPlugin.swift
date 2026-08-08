@@ -2049,18 +2049,23 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         sheetView.translatesAutoresizingMaskIntoConstraints = false
         sheetView.backgroundColor = AlmidyDesignTokens.Color.surface
         sheetView.layer.cornerRadius = AlmidyDesignTokens.Radius.sheet
-        sheetView.layer.maskedCorners = [.layerMinXMinYCorner, .layerMaxXMinYCorner]
+        sheetView.layer.maskedCorners = [
+            .layerMinXMinYCorner,
+            .layerMaxXMinYCorner,
+            .layerMinXMaxYCorner,
+            .layerMaxXMaxYCorner
+        ]
         sheetView.layer.shadowColor = AlmidyDesignTokens.Color.shadowBlack.cgColor
         sheetView.layer.shadowOpacity = AlmidyDesignTokens.Shadow.opacity
         sheetView.layer.shadowRadius = AlmidyDesignTokens.Shadow.radius
         sheetView.layer.shadowOffset = AlmidyDesignTokens.Shadow.offset
         view.addSubview(sheetView)
 
-        sheetBottomConstraint = sheetView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
+        sheetBottomConstraint = sheetView.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -12)
         sheetHeightConstraint = sheetView.heightAnchor.constraint(equalToConstant: height(for: sheetState))
         NSLayoutConstraint.activate([
-            sheetView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            sheetView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            sheetView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+            sheetView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
             sheetBottomConstraint!,
             sheetHeightConstraint!
         ])
