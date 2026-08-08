@@ -2068,9 +2068,9 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
             .layerMaxXMaxYCorner
         ]
         sheetView.layer.shadowColor = AlmidyDesignTokens.Color.shadowBlack.cgColor
-        sheetView.layer.shadowOpacity = 0.34
-        sheetView.layer.shadowRadius = 28
-        sheetView.layer.shadowOffset = CGSize(width: 0, height: -6)
+        sheetView.layer.shadowOpacity = 0.20
+        sheetView.layer.shadowRadius = 34
+        sheetView.layer.shadowOffset = CGSize(width: 0, height: -4)
         view.addSubview(sheetView)
 
         sheetBottomConstraint = sheetView.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -8)
