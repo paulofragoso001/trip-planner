@@ -2782,6 +2782,14 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
     }
 
     func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
+        if annotation is MKUserLocation {
+            let identifier = "user-location"
+            let annotationView = mapView.dequeueReusableAnnotationView(withIdentifier: identifier)
+                ?? NativeUserLocationAnnotationView(annotation: annotation, reuseIdentifier: identifier)
+            annotationView.annotation = annotation
+            return annotationView
+        }
+
         guard let tripAnnotation = annotation as? NativeTripAnnotation else { return nil }
         let identifier = "trip-country-flag"
         let annotationView = mapView.dequeueReusableAnnotationView(withIdentifier: identifier) as? NativeTripFlagAnnotationView
@@ -5358,6 +5366,30 @@ private struct NativeTripCountryPresentation {
             guard let regionalIndicator = UnicodeScalar(127397 + scalar.value) else { return }
             result.unicodeScalars.append(regionalIndicator)
         }
+    }
+}
+
+private final class NativeUserLocationAnnotationView: MKAnnotationView {
+    override init(annotation: MKAnnotation?, reuseIdentifier: String?) {
+        super.init(annotation: annotation, reuseIdentifier: reuseIdentifier)
+
+        frame = CGRect(x: 0, y: 0, width: 28, height: 28)
+        backgroundColor = AlmidyDesignTokens.Color.gold
+        layer.cornerRadius = 14
+        layer.borderColor = UIColor.white.cgColor
+        layer.borderWidth = 4
+        layer.shadowColor = UIColor.black.cgColor
+        layer.shadowOpacity = 0.24
+        layer.shadowRadius = 5
+        layer.shadowOffset = CGSize(width: 0, height: 2)
+        collisionMode = .circle
+        displayPriority = .required
+        canShowCallout = false
+        accessibilityLabel = "Your location"
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
     }
 }
 
