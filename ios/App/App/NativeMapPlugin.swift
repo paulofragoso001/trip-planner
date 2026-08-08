@@ -2076,8 +2076,8 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         sheetBottomConstraint = sheetView.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -12)
         sheetHeightConstraint = sheetView.heightAnchor.constraint(equalToConstant: height(for: sheetState))
         NSLayoutConstraint.activate([
-            sheetView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
-            sheetView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            sheetView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 8),
+            sheetView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -8),
             sheetBottomConstraint!,
             sheetHeightConstraint!
         ])
