@@ -2782,16 +2782,14 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
     }
 
     func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
-        guard annotation is NativeTripAnnotation else { return nil }
-        let identifier = "trip-pin"
-        let annotationView = mapView.dequeueReusableAnnotationView(withIdentifier: identifier) ?? MKMarkerAnnotationView(annotation: annotation, reuseIdentifier: identifier)
+        guard let tripAnnotation = annotation as? NativeTripAnnotation else { return nil }
+        let identifier = "trip-country-flag"
+        let annotationView = mapView.dequeueReusableAnnotationView(withIdentifier: identifier) as? NativeTripFlagAnnotationView
+            ?? NativeTripFlagAnnotationView(annotation: tripAnnotation, reuseIdentifier: identifier)
         annotationView.annotation = annotation
         annotationView.canShowCallout = true
         annotationView.rightCalloutAccessoryView = UIButton(type: .detailDisclosure)
-        if let marker = annotationView as? MKMarkerAnnotationView {
-            marker.markerTintColor = AlmidyDesignTokens.Color.goldDeep
-            marker.glyphImage = UIImage(systemName: "airplane")
-        }
+        annotationView.configure(with: tripAnnotation.countryPresentation)
         return annotationView
     }
 
@@ -5300,11 +5298,127 @@ private final class NativeTripAnnotation: NSObject, MKAnnotation {
     let coordinate: CLLocationCoordinate2D
     let title: String?
     let trip: NativeMapTrip
+    let countryPresentation: NativeTripCountryPresentation
 
     init(trip: NativeMapTrip, coordinate: CLLocationCoordinate2D) {
         self.trip = trip
         self.coordinate = coordinate
-        self.title = trip.displayName
+        self.countryPresentation = NativeTripCountryPresentation(trip: trip)
+        self.title = countryPresentation.name
+    }
+}
+
+private struct NativeTripCountryPresentation {
+    let flag: String
+    let name: String
+
+    init(trip: NativeMapTrip, locale: Locale = .current) {
+        let destinationParts = (trip.destination ?? "")
+            .split(separator: ",")
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .reversed()
+
+        for candidate in destinationParts {
+            if let regionCode = Self.regionCode(for: candidate, locale: locale) {
+                self.flag = Self.flagEmoji(for: regionCode)
+                self.name = locale.localizedString(forRegionCode: regionCode) ?? candidate
+                return
+            }
+        }
+
+        self.flag = "🌐"
+        self.name = trip.displayName
+    }
+
+    private static func regionCode(for countryName: String, locale: Locale) -> String? {
+        let normalized = countryName.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: locale)
+        let aliases = [
+            "usa": "US",
+            "u.s.a.": "US",
+            "united states of america": "US",
+            "uk": "GB",
+            "u.k.": "GB"
+        ]
+        if let alias = aliases[normalized] {
+            return alias
+        }
+
+        return Locale.isoRegionCodes.first { regionCode in
+            guard let localizedName = locale.localizedString(forRegionCode: regionCode) else { return false }
+            return localizedName.folding(
+                options: [.caseInsensitive, .diacriticInsensitive],
+                locale: locale
+            ) == normalized
+        }
+    }
+
+    private static func flagEmoji(for regionCode: String) -> String {
+        regionCode.uppercased().unicodeScalars.reduce(into: "") { result, scalar in
+            guard let regionalIndicator = UnicodeScalar(127397 + scalar.value) else { return }
+            result.unicodeScalars.append(regionalIndicator)
+        }
+    }
+}
+
+private final class NativeTripFlagAnnotationView: MKAnnotationView {
+    private let flagLabel = UILabel()
+    private let countryLabel = UILabel()
+
+    override init(annotation: MKAnnotation?, reuseIdentifier: String?) {
+        super.init(annotation: annotation, reuseIdentifier: reuseIdentifier)
+
+        frame = CGRect(x: 0, y: 0, width: 160, height: 78)
+        centerOffset = CGPoint(x: 0, y: -39)
+        collisionMode = .circle
+        displayPriority = .required
+
+        flagLabel.backgroundColor = .white
+        flagLabel.font = .systemFont(ofSize: 30)
+        flagLabel.textAlignment = .center
+        flagLabel.layer.cornerRadius = 24
+        flagLabel.layer.borderColor = UIColor.white.cgColor
+        flagLabel.layer.borderWidth = 3
+        flagLabel.layer.shadowColor = UIColor.black.cgColor
+        flagLabel.layer.shadowOpacity = 0.24
+        flagLabel.layer.shadowRadius = 5
+        flagLabel.layer.shadowOffset = CGSize(width: 0, height: 2)
+        flagLabel.clipsToBounds = false
+        flagLabel.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(flagLabel)
+
+        countryLabel.textColor = .white
+        countryLabel.font = .systemFont(ofSize: 14, weight: .bold)
+        countryLabel.textAlignment = .center
+        countryLabel.adjustsFontSizeToFitWidth = true
+        countryLabel.minimumScaleFactor = 0.72
+        countryLabel.layer.shadowColor = UIColor.black.cgColor
+        countryLabel.layer.shadowOpacity = 1
+        countryLabel.layer.shadowRadius = 2
+        countryLabel.layer.shadowOffset = .zero
+        countryLabel.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(countryLabel)
+
+        NSLayoutConstraint.activate([
+            flagLabel.topAnchor.constraint(equalTo: topAnchor),
+            flagLabel.centerXAnchor.constraint(equalTo: centerXAnchor),
+            flagLabel.widthAnchor.constraint(equalToConstant: 48),
+            flagLabel.heightAnchor.constraint(equalToConstant: 48),
+            countryLabel.topAnchor.constraint(equalTo: flagLabel.bottomAnchor, constant: 2),
+            countryLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 4),
+            countryLabel.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -4),
+            countryLabel.bottomAnchor.constraint(lessThanOrEqualTo: bottomAnchor)
+        ])
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    func configure(with presentation: NativeTripCountryPresentation) {
+        flagLabel.text = presentation.flag
+        countryLabel.text = presentation.name
+        accessibilityLabel = "Trip in \(presentation.name)"
     }
 }
 
