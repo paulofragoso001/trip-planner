@@ -2164,7 +2164,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
             collapsedActions.trailingAnchor.constraint(lessThanOrEqualTo: sheetView.trailingAnchor, constant: -28),
             collapsedActions.widthAnchor.constraint(lessThanOrEqualToConstant: NativeAdaptiveLayout.cardMaxWidth),
             NativeAdaptiveLayout.preferredWidth(collapsedActions, equalTo: sheetView.widthAnchor, constant: -56),
-            collapsedActions.bottomAnchor.constraint(equalTo: sheetView.safeAreaLayoutGuide.bottomAnchor, constant: -20),
+            collapsedActions.bottomAnchor.constraint(equalTo: sheetView.bottomAnchor, constant: -20),
             collapsedActions.heightAnchor.constraint(equalToConstant: 64),
 
             expandedScrollView.topAnchor.constraint(equalTo: headerStack.bottomAnchor, constant: 26),
@@ -2727,7 +2727,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         let compactHeight = fullHeight < 700 || size.width > fullHeight
         switch state {
         case .collapsed:
-            let preferred = trips.isEmpty ? (compactHeight ? 210.0 : 300.0) : (compactHeight ? 184.0 : 218.0)
+            let preferred = trips.isEmpty ? (compactHeight ? 210.0 : 300.0) : (compactHeight ? 184.0 : 200.0)
             return min(preferred, fullHeight * (compactHeight ? 0.48 : 0.28))
         case .medium:
             return min(fullHeight * (compactHeight ? 0.72 : 0.58), 520)
