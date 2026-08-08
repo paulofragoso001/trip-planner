@@ -2240,7 +2240,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         let bookTitle = UILabel()
         bookTitle.text = "My Almidy Book"
         bookTitle.textColor = AlmidyDesignTokens.Color.textPrimary
-        bookTitle.font = AlmidyDesignTokens.Font.button(16)
+        bookTitle.font = AlmidyDesignTokens.Font.button(15)
 
         let bookSubtitle = UILabel()
         bookSubtitle.text = tripSummary
