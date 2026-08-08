@@ -2229,7 +2229,9 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         book.layer.shadowRadius = 18
         book.layer.shadowOffset = CGSize(width: 0, height: 9)
         book.addTarget(self, action: #selector(openTravelBook), for: .touchUpInside)
-        let tripSummary = trips.count == 1 ? "1 trip planned" : "\(trips.count) trips planned"
+        let countryCount = Set(trips.compactMap { NativeTripCountryPresentation(trip: $0).regionCode }).count
+        let tripSummary = "\(trips.count) \(trips.count == 1 ? "trip" : "trips"), "
+            + "\(countryCount) \(countryCount == 1 ? "country" : "countries")"
         book.accessibilityLabel = "Open My Almidy Book, \(tripSummary)"
 
         let bookIcon = UIImageView(image: UIImage(systemName: "globe.americas.fill"))
@@ -5337,6 +5339,7 @@ private final class NativeTripAnnotation: NSObject, MKAnnotation {
 private struct NativeTripCountryPresentation {
     let flag: String
     let name: String
+    let regionCode: String?
 
     init(trip: NativeMapTrip, locale: Locale = .current) {
         let destinationParts = (trip.destination ?? "")
@@ -5349,12 +5352,14 @@ private struct NativeTripCountryPresentation {
             if let regionCode = Self.regionCode(for: candidate, locale: locale) {
                 self.flag = Self.flagEmoji(for: regionCode)
                 self.name = locale.localizedString(forRegionCode: regionCode) ?? candidate
+                self.regionCode = regionCode
                 return
             }
         }
 
         self.flag = "🌐"
         self.name = trip.displayName
+        self.regionCode = nil
     }
 
     private static func regionCode(for countryName: String, locale: Locale) -> String? {
