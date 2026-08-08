@@ -1754,6 +1754,10 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         if #available(iOS 16.0, *) {
             switch mode {
             case .hybrid:
+                if !trips.isEmpty {
+                    mapView.preferredConfiguration = MKImageryMapConfiguration(elevationStyle: .realistic)
+                    return
+                }
                 let configuration = MKHybridMapConfiguration(elevationStyle: .realistic)
                 configuration.pointOfInterestFilter = trips.isEmpty ? .includingAll : .excludingAll
                 configuration.showsTraffic = false
@@ -1769,7 +1773,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         } else {
             switch mode {
             case .hybrid:
-                mapView.mapType = .hybridFlyover
+                mapView.mapType = trips.isEmpty ? .hybridFlyover : .satelliteFlyover
             case .imagery:
                 mapView.mapType = .satelliteFlyover
             case .standard:
@@ -2779,7 +2783,12 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
     }
 
     private func addTripPins() {
-        mapView.removeAnnotations(mapView.annotations.filter { $0 is NativeTripAnnotation })
+        mapView.removeAnnotations(mapView.annotations.filter {
+            $0 is NativeTripAnnotation || $0 is NativeGeographicLabelAnnotation
+        })
+        if !trips.isEmpty {
+            mapView.addAnnotations(NativeGeographicLabelAnnotation.majorLabels)
+        }
         let annotations = trips.compactMap { trip -> NativeTripAnnotation? in
             guard let coordinate = trip.coordinate else { return nil }
             return NativeTripAnnotation(trip: trip, coordinate: coordinate)
@@ -2810,6 +2819,15 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
             let annotationView = mapView.dequeueReusableAnnotationView(withIdentifier: identifier)
                 ?? NativeUserLocationAnnotationView(annotation: annotation, reuseIdentifier: identifier)
             annotationView.annotation = annotation
+            return annotationView
+        }
+
+        if let geographicLabel = annotation as? NativeGeographicLabelAnnotation {
+            let identifier = "major-geographic-label"
+            let annotationView = mapView.dequeueReusableAnnotationView(withIdentifier: identifier) as? NativeGeographicLabelAnnotationView
+                ?? NativeGeographicLabelAnnotationView(annotation: geographicLabel, reuseIdentifier: identifier)
+            annotationView.annotation = annotation
+            annotationView.configure(with: geographicLabel)
             return annotationView
         }
 
@@ -5322,6 +5340,78 @@ extension NativeCaptureIdeasViewController {
                 self.sourceLabel.text = data == nil ? "Could not read that screenshot." : "Screenshot ready to review."
             }
         }
+    }
+}
+
+private final class NativeGeographicLabelAnnotation: NSObject, MKAnnotation {
+    enum Kind {
+        case continent
+        case ocean
+    }
+
+    let coordinate: CLLocationCoordinate2D
+    let title: String?
+    let kind: Kind
+
+    init(_ title: String, latitude: Double, longitude: Double, kind: Kind) {
+        self.title = title
+        self.coordinate = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
+        self.kind = kind
+    }
+
+    static let majorLabels: [NativeGeographicLabelAnnotation] = [
+        .init("NORTH AMERICA", latitude: 49, longitude: -102, kind: .continent),
+        .init("SOUTH AMERICA", latitude: -17, longitude: -60, kind: .continent),
+        .init("EUROPE", latitude: 51, longitude: 18, kind: .continent),
+        .init("AFRICA", latitude: 6, longitude: 20, kind: .continent),
+        .init("ASIA", latitude: 47, longitude: 87, kind: .continent),
+        .init("AUSTRALIA", latitude: -25, longitude: 134, kind: .continent),
+        .init("ARCTIC OCEAN", latitude: 78, longitude: -95, kind: .ocean),
+        .init("NORTH ATLANTIC OCEAN", latitude: 29, longitude: -42, kind: .ocean),
+        .init("NORTH PACIFIC OCEAN", latitude: 26, longitude: -155, kind: .ocean),
+        .init("INDIAN OCEAN", latitude: -17, longitude: 78, kind: .ocean)
+    ]
+}
+
+private final class NativeGeographicLabelAnnotationView: MKAnnotationView {
+    private let label = UILabel()
+
+    override init(annotation: MKAnnotation?, reuseIdentifier: String?) {
+        super.init(annotation: annotation, reuseIdentifier: reuseIdentifier)
+        frame = CGRect(x: 0, y: 0, width: 190, height: 54)
+        collisionMode = .rectangle
+        displayPriority = .defaultHigh
+        canShowCallout = false
+
+        label.frame = bounds
+        label.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        label.textColor = .white
+        label.textAlignment = .center
+        label.numberOfLines = 2
+        label.adjustsFontSizeToFitWidth = true
+        label.minimumScaleFactor = 0.72
+        label.layer.shadowColor = UIColor.black.cgColor
+        label.layer.shadowOpacity = 1
+        label.layer.shadowRadius = 2
+        label.layer.shadowOffset = .zero
+        addSubview(label)
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    func configure(with annotation: NativeGeographicLabelAnnotation) {
+        label.text = annotation.title
+        switch annotation.kind {
+        case .continent:
+            label.font = .systemFont(ofSize: 18, weight: .bold)
+            label.textColor = .white
+        case .ocean:
+            label.font = .italicSystemFont(ofSize: 15)
+            label.textColor = UIColor(red: 0.67, green: 0.82, blue: 0.90, alpha: 1)
+        }
+        accessibilityLabel = annotation.title
     }
 }
 
