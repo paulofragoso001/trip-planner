@@ -5424,7 +5424,7 @@ private final class NativeTripFlagAnnotationView: MKAnnotationView {
         super.init(annotation: annotation, reuseIdentifier: reuseIdentifier)
 
         frame = CGRect(x: 0, y: 0, width: 160, height: 78)
-        centerOffset = CGPoint(x: 0, y: -39)
+        centerOffset = CGPoint(x: 0, y: -55)
         collisionMode = .circle
         displayPriority = .required
 
