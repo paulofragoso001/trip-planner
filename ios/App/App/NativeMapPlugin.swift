@@ -2233,7 +2233,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         book.accessibilityLabel = "Open My Almidy Book, \(tripSummary)"
 
         let bookIcon = UIImageView(image: UIImage(systemName: "globe.americas.fill"))
-        bookIcon.tintColor = AlmidyDesignTokens.Color.gold
+        bookIcon.tintColor = AlmidyDesignTokens.Color.textPrimary
         bookIcon.contentMode = .scaleAspectFit
         bookIcon.translatesAutoresizingMaskIntoConstraints = false
 
