@@ -2130,7 +2130,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         collapsedActions.axis = .horizontal
         collapsedActions.alignment = .center
         collapsedActions.distribution = .fill
-        collapsedActions.spacing = 14
+        collapsedActions.spacing = 18
         collapsedActions.translatesAutoresizingMaskIntoConstraints = false
         sheetView.addSubview(collapsedActions)
 
@@ -2165,10 +2165,10 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
             NativeAdaptiveLayout.preferredWidth(headerStack, equalTo: sheetView.widthAnchor, constant: -56),
 
             collapsedActions.centerXAnchor.constraint(equalTo: sheetView.centerXAnchor),
-            collapsedActions.leadingAnchor.constraint(greaterThanOrEqualTo: sheetView.leadingAnchor, constant: 28),
-            collapsedActions.trailingAnchor.constraint(lessThanOrEqualTo: sheetView.trailingAnchor, constant: -28),
+            collapsedActions.leadingAnchor.constraint(greaterThanOrEqualTo: sheetView.leadingAnchor, constant: 24),
+            collapsedActions.trailingAnchor.constraint(lessThanOrEqualTo: sheetView.trailingAnchor, constant: -24),
             collapsedActions.widthAnchor.constraint(lessThanOrEqualToConstant: NativeAdaptiveLayout.cardMaxWidth),
-            NativeAdaptiveLayout.preferredWidth(collapsedActions, equalTo: sheetView.widthAnchor, constant: -56),
+            NativeAdaptiveLayout.preferredWidth(collapsedActions, equalTo: sheetView.widthAnchor, constant: -48),
             collapsedActions.bottomAnchor.constraint(equalTo: sheetView.bottomAnchor, constant: -14),
             collapsedActions.heightAnchor.constraint(equalToConstant: 64),
 
