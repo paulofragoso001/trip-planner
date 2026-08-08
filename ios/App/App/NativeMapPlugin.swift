@@ -1454,6 +1454,7 @@ struct NativeMapTrip: Decodable {
 
 final class NativeMapViewController: UIViewController, CLLocationManagerDelegate, MKMapViewDelegate {
     private static let populatedGlobeDistance: CLLocationDistance = 24_000_000
+    private static let populatedGlobeVerticalOffset: CGFloat = 84
 
     private enum SheetState: CaseIterable {
         case collapsed
@@ -1676,7 +1677,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         applyMapPresentation(.hybrid)
         view.addSubview(mapView)
 
-        let populatedLaunchVerticalOffset: CGFloat = trips.isEmpty ? 0 : 72
+        let populatedLaunchVerticalOffset: CGFloat = trips.isEmpty ? 0 : Self.populatedGlobeVerticalOffset
         let mapTopConstraint = mapView.topAnchor.constraint(
             equalTo: view.topAnchor,
             constant: populatedLaunchVerticalOffset
@@ -1703,7 +1704,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
     }
 
     private func updateMapFramingForTripAvailability(zoomsToPopulatedGlobe: Bool) {
-        let verticalOffset: CGFloat = trips.isEmpty ? 0 : 72
+        let verticalOffset: CGFloat = trips.isEmpty ? 0 : Self.populatedGlobeVerticalOffset
         mapTopConstraint?.constant = verticalOffset
         mapBottomConstraint?.constant = verticalOffset
         mapView.pointOfInterestFilter = trips.isEmpty ? .includingAll : .excludingAll
