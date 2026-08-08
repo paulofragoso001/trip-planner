@@ -2103,7 +2103,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         ])
 
         settingsButton.backgroundColor = AlmidyDesignTokens.Color.avatarPeachSurface
-        settingsButton.tintColor = AlmidyDesignTokens.Color.generatedTripGradientEnd
+        settingsButton.tintColor = AlmidyDesignTokens.Color.gold
         settingsButton.layer.cornerRadius = AlmidyDesignTokens.Control.iconButton / 2
         settingsButton.setImage(UIImage(systemName: "gearshape"), for: .normal)
         settingsButton.accessibilityLabel = "Open Settings"
@@ -2273,7 +2273,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
 
         let add = circularButton(
             systemName: "plus",
-            backgroundColor: AlmidyDesignTokens.Color.generatedTripGradientEnd,
+            backgroundColor: AlmidyDesignTokens.Color.gold,
             tintColor: .white
         )
         add.layer.cornerRadius = 32
