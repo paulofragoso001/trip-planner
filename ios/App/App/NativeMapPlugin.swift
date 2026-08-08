@@ -2164,7 +2164,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
             collapsedActions.trailingAnchor.constraint(lessThanOrEqualTo: sheetView.trailingAnchor, constant: -28),
             collapsedActions.widthAnchor.constraint(lessThanOrEqualToConstant: NativeAdaptiveLayout.cardMaxWidth),
             NativeAdaptiveLayout.preferredWidth(collapsedActions, equalTo: sheetView.widthAnchor, constant: -56),
-            collapsedActions.bottomAnchor.constraint(equalTo: sheetView.bottomAnchor, constant: -20),
+            collapsedActions.bottomAnchor.constraint(equalTo: sheetView.bottomAnchor, constant: -14),
             collapsedActions.heightAnchor.constraint(equalToConstant: 64),
 
             expandedScrollView.topAnchor.constraint(equalTo: headerStack.bottomAnchor, constant: 26),
