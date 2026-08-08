@@ -2222,7 +2222,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         search.addTarget(self, action: #selector(openSearch), for: .touchUpInside)
 
         let book = UIButton(type: .system)
-        book.backgroundColor = AlmidyDesignTokens.Color.card
+        book.backgroundColor = AlmidyDesignTokens.Color.surface.withAlphaComponent(0.94)
         book.layer.cornerRadius = AlmidyDesignTokens.Radius.card
         book.layer.shadowColor = AlmidyDesignTokens.Color.shadowBlack.cgColor
         book.layer.shadowOpacity = 0.06
