@@ -1705,6 +1705,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         mapTopConstraint?.constant = verticalOffset
         mapBottomConstraint?.constant = verticalOffset
         mapView.pointOfInterestFilter = trips.isEmpty ? .includingAll : .excludingAll
+        mapControlStack.isHidden = !trips.isEmpty
         applyMapPresentation(mapPresentationMode)
 
         if zoomsToPopulatedGlobe {
@@ -2001,6 +2002,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         mapControlStack.backgroundColor = AlmidyDesignTokens.Color.surface.withAlphaComponent(0.92)
         mapControlStack.layer.cornerRadius = AlmidyDesignTokens.Radius.card
         mapControlStack.clipsToBounds = true
+        mapControlStack.isHidden = !trips.isEmpty
         mapControlStack.translatesAutoresizingMaskIntoConstraints = false
 
         let mapModeButton = mapControlButton(systemName: "map", accessibilityLabel: "Change map mode")
