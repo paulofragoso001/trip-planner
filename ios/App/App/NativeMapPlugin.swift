@@ -1678,7 +1678,13 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
             mapView.insetsLayoutMarginsFromSafeArea = false
         }
         if #available(iOS 13.0, *) {
-            mapView.setCameraZoomRange(MKMapView.CameraZoomRange(minCenterCoordinateDistance: 900, maxCenterCoordinateDistance: 30_000_000), animated: false)
+            mapView.setCameraZoomRange(
+                MKMapView.CameraZoomRange(
+                    minCenterCoordinateDistance: 900,
+                    maxCenterCoordinateDistance: 60_000_000
+                ),
+                animated: false
+            )
         }
         applyMapPresentation(.hybrid)
         view.addSubview(mapView)
@@ -2953,25 +2959,23 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         guard let coordinate = locations.last?.coordinate else { return }
         mapView.showsUserLocation = true
-        if !hasCenteredInitialLocation {
-            hasCenteredInitialLocation = true
-            mapView.setUserTrackingMode(.none, animated: false)
-            mapView.setCamera(
-                MKMapCamera(
-                    lookingAtCenter: coordinate,
-                    fromDistance: trips.isEmpty ? 3_600_000 : Self.populatedGlobeDistance,
-                    pitch: 0,
-                    heading: 0
-                ),
-                animated: true
-            )
-        } else {
-            mapView.setUserTrackingMode(.followWithHeading, animated: true)
-            mapView.setCamera(
-                MKMapCamera(lookingAtCenter: coordinate, fromDistance: 18_000, pitch: 58, heading: mapView.camera.heading),
-                animated: true
-            )
-        }
+        guard !hasCenteredInitialLocation else { return }
+        hasCenteredInitialLocation = true
+        mapView.setUserTrackingMode(.none, animated: false)
+
+        // A populated globe has a deliberate launch composition. Location is
+        // shown as an annotation, but it must not replace the user's camera or
+        // opt the map into follow mode after they begin interacting with it.
+        guard trips.isEmpty else { return }
+        mapView.setCamera(
+            MKMapCamera(
+                lookingAtCenter: coordinate,
+                fromDistance: 3_600_000,
+                pitch: 0,
+                heading: 0
+            ),
+            animated: true
+        )
     }
 
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {}
