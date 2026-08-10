@@ -2729,7 +2729,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
 
         let stack = UIStackView()
         stack.axis = .vertical
-        stack.spacing = 12
+        stack.spacing = 8
         stack.translatesAutoresizingMaskIntoConstraints = false
         card.addSubview(stack)
 
@@ -2745,26 +2745,33 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         envelope.text = "✉"
         envelope.textAlignment = .center
         envelope.textColor = AlmidyDesignTokens.Color.gold
-        envelope.font = .systemFont(ofSize: 34, weight: .regular)
+        envelope.font = .systemFont(ofSize: 26, weight: .regular)
 
         let eyebrow = UILabel()
         eyebrow.text = "IMPORT"
         eyebrow.textColor = AlmidyDesignTokens.Color.goldSoft
-        eyebrow.font = AlmidyDesignTokens.Font.semibold(15)
+        eyebrow.font = AlmidyDesignTokens.Font.semibold(13)
 
         let title = UILabel()
         title.text = "Manual Reservation Importer"
-        title.font = AlmidyDesignTokens.Font.title(27)
+        title.font = AlmidyDesignTokens.Font.title(22)
         title.textColor = AlmidyDesignTokens.Color.textPrimary
         title.numberOfLines = 0
 
         let body = UILabel()
         body.text = "Add reservation details from the importer while email forwarding remains unavailable."
-        body.font = .systemFont(ofSize: 19, weight: .regular)
+        body.font = .systemFont(ofSize: 16, weight: .regular)
         body.textColor = .systemGray
         body.numberOfLines = 0
 
-        let cta = actionButton(title: "Open Reservation Importer", backgroundColor: AlmidyDesignTokens.Color.gold, textColor: AlmidyDesignTokens.Color.settingsText, action: #selector(openManualReservationImporter))
+        let cta = actionButton(
+            title: "Open Reservation Importer",
+            backgroundColor: AlmidyDesignTokens.Color.gold,
+            textColor: AlmidyDesignTokens.Color.settingsText,
+            action: #selector(openManualReservationImporter),
+            fontSize: 17,
+            minHeight: 46
+        )
 
         stack.addArrangedSubview(envelope)
         stack.addArrangedSubview(eyebrow)
@@ -2773,14 +2780,14 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         stack.addArrangedSubview(cta)
 
         NSLayoutConstraint.activate([
-            stack.topAnchor.constraint(equalTo: card.topAnchor, constant: 26),
-            stack.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 24),
-            stack.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -24),
-            stack.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -24),
-            close.topAnchor.constraint(equalTo: card.topAnchor, constant: 18),
-            close.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -18),
-            close.widthAnchor.constraint(equalToConstant: 44),
-            close.heightAnchor.constraint(equalToConstant: 44)
+            stack.topAnchor.constraint(equalTo: card.topAnchor, constant: 18),
+            stack.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 18),
+            stack.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -18),
+            stack.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -18),
+            close.topAnchor.constraint(equalTo: card.topAnchor, constant: 12),
+            close.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -12),
+            close.widthAnchor.constraint(equalToConstant: 36),
+            close.heightAnchor.constraint(equalToConstant: 36)
         ])
 
         return card
