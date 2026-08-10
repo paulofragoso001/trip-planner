@@ -2288,7 +2288,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
             backgroundColor: AlmidyDesignTokens.Color.gold,
             tintColor: .white
         )
-        add.layer.cornerRadius = 32
+        add.layer.cornerRadius = 24
         add.accessibilityLabel = "Create a trip"
         add.addTarget(self, action: #selector(createTrip), for: .touchUpInside)
 
@@ -2299,8 +2299,8 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         NSLayoutConstraint.activate([
             search.widthAnchor.constraint(equalToConstant: 48),
             search.heightAnchor.constraint(equalToConstant: 48),
-            add.widthAnchor.constraint(equalToConstant: 64),
-            add.heightAnchor.constraint(equalToConstant: 64)
+            add.widthAnchor.constraint(equalToConstant: 48),
+            add.heightAnchor.constraint(equalToConstant: 48)
         ])
     }
 
