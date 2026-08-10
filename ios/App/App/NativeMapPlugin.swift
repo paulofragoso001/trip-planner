@@ -2389,6 +2389,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         upcoming.addArrangedSubview(line)
         NSLayoutConstraint.activate([line.heightAnchor.constraint(equalToConstant: 1)])
         expandedContentStack.addArrangedSubview(upcoming)
+        expandedContentStack.setCustomSpacing(10, after: upcoming)
 
         for trip in trips {
             expandedContentStack.addArrangedSubview(tripCard(for: trip))
