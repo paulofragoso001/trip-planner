@@ -5598,8 +5598,11 @@ private final class NativeTripFlagAnnotationView: MKAnnotationView {
 
         frame = CGRect(x: 0, y: 0, width: 160, height: 78)
         centerOffset = CGPoint(x: 0, y: -55)
-        collisionMode = .circle
+        collisionMode = .none
         displayPriority = .required
+        if #available(iOS 14.0, *) {
+            zPriority = .max
+        }
 
         flagLabel.backgroundColor = .white
         flagLabel.font = .systemFont(ofSize: 30)
