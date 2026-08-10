@@ -2182,7 +2182,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
             collapsedActions.widthAnchor.constraint(lessThanOrEqualToConstant: NativeAdaptiveLayout.cardMaxWidth),
             NativeAdaptiveLayout.preferredWidth(collapsedActions, equalTo: sheetView.widthAnchor, constant: -48),
             collapsedActions.bottomAnchor.constraint(equalTo: sheetView.bottomAnchor, constant: -14),
-            collapsedActions.heightAnchor.constraint(equalToConstant: 64),
+            collapsedActions.heightAnchor.constraint(equalToConstant: 48),
 
             expandedScrollView.topAnchor.constraint(equalTo: headerStack.bottomAnchor, constant: 26),
             expandedScrollView.leadingAnchor.constraint(equalTo: sheetView.leadingAnchor),
@@ -2299,6 +2299,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         NSLayoutConstraint.activate([
             search.widthAnchor.constraint(equalToConstant: 48),
             search.heightAnchor.constraint(equalToConstant: 48),
+            book.heightAnchor.constraint(equalToConstant: 48),
             add.widthAnchor.constraint(equalToConstant: 48),
             add.heightAnchor.constraint(equalToConstant: 48)
         ])
