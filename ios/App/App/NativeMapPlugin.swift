@@ -2209,7 +2209,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
 
         let expandedContentWidthConstraint = expandedContentStack.widthAnchor.constraint(
             equalTo: expandedScrollView.frameLayoutGuide.widthAnchor,
-            constant: -32
+            constant: -24
         )
         expandedContentWidthConstraint.priority = .defaultHigh
         self.expandedContentWidthConstraint = expandedContentWidthConstraint
@@ -2242,17 +2242,17 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
 
             expandedContentStack.topAnchor.constraint(equalTo: expandedScrollView.contentLayoutGuide.topAnchor),
             expandedContentStack.centerXAnchor.constraint(equalTo: expandedScrollView.frameLayoutGuide.centerXAnchor),
-            expandedContentStack.leadingAnchor.constraint(greaterThanOrEqualTo: expandedScrollView.contentLayoutGuide.leadingAnchor, constant: 16),
-            expandedContentStack.trailingAnchor.constraint(lessThanOrEqualTo: expandedScrollView.contentLayoutGuide.trailingAnchor, constant: -16),
+            expandedContentStack.leadingAnchor.constraint(greaterThanOrEqualTo: expandedScrollView.contentLayoutGuide.leadingAnchor, constant: 12),
+            expandedContentStack.trailingAnchor.constraint(lessThanOrEqualTo: expandedScrollView.contentLayoutGuide.trailingAnchor, constant: -12),
             expandedContentStack.bottomAnchor.constraint(equalTo: expandedScrollView.contentLayoutGuide.bottomAnchor, constant: -40),
-            expandedContentStack.widthAnchor.constraint(lessThanOrEqualTo: expandedScrollView.frameLayoutGuide.widthAnchor, constant: -32),
+            expandedContentStack.widthAnchor.constraint(lessThanOrEqualTo: expandedScrollView.frameLayoutGuide.widthAnchor, constant: -24),
             expandedContentStack.widthAnchor.constraint(lessThanOrEqualToConstant: NativeAdaptiveLayout.cardMaxWidth),
             expandedContentWidthConstraint
         ])
     }
 
     private func updateExpandedContentWidthPriority(for containerWidth: CGFloat) {
-        let compactWidthLimit = NativeAdaptiveLayout.cardMaxWidth + 32
+        let compactWidthLimit = NativeAdaptiveLayout.cardMaxWidth + 24
         expandedContentWidthConstraint?.priority = containerWidth <= compactWidthLimit ? .required : .defaultHigh
     }
 
