@@ -5482,15 +5482,37 @@ private final class NativeGeographicLabelAnnotationView: MKAnnotationView {
     }
 
     func configure(with annotation: NativeGeographicLabelAnnotation) {
-        label.text = annotation.title
+        let font: UIFont
+        let fillColor: UIColor
+        let strokeColor: UIColor
+        let strokeWidth: CGFloat
+        let letterSpacing: CGFloat
+
         switch annotation.kind {
         case .continent:
-            label.font = .systemFont(ofSize: 18, weight: .bold)
-            label.textColor = .white
+            font = .systemFont(ofSize: 18, weight: .bold)
+            fillColor = .white
+            strokeColor = UIColor.black.withAlphaComponent(0.88)
+            strokeWidth = -4
+            letterSpacing = 2.4
         case .ocean:
-            label.font = .italicSystemFont(ofSize: 15)
-            label.textColor = UIColor(red: 0.67, green: 0.82, blue: 0.90, alpha: 1)
+            font = .italicSystemFont(ofSize: 15)
+            fillColor = UIColor(red: 0.67, green: 0.82, blue: 0.90, alpha: 1)
+            strokeColor = UIColor(red: 0.06, green: 0.15, blue: 0.19, alpha: 0.9)
+            strokeWidth = -4
+            letterSpacing = 0.5
         }
+
+        label.attributedText = NSAttributedString(
+            string: annotation.title ?? "",
+            attributes: [
+                .font: font,
+                .foregroundColor: fillColor,
+                .strokeColor: strokeColor,
+                .strokeWidth: strokeWidth,
+                .kern: letterSpacing
+            ]
+        )
         accessibilityLabel = annotation.title
     }
 }
