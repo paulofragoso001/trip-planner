@@ -2183,7 +2183,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         NSLayoutConstraint.activate([
             sheetHandle.topAnchor.constraint(equalTo: sheetView.topAnchor, constant: 10),
             sheetHandle.centerXAnchor.constraint(equalTo: sheetView.centerXAnchor),
-            sheetHandle.widthAnchor.constraint(equalToConstant: 42),
+            sheetHandle.widthAnchor.constraint(equalToConstant: 36),
             sheetHandle.heightAnchor.constraint(equalToConstant: 6),
 
             headerStack.topAnchor.constraint(equalTo: sheetHandle.bottomAnchor, constant: 18),
