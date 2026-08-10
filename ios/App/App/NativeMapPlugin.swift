@@ -1453,7 +1453,7 @@ struct NativeMapTrip: Decodable {
 }
 
 final class NativeMapViewController: UIViewController, CLLocationManagerDelegate, MKMapViewDelegate {
-    private static let populatedGlobeDistance: CLLocationDistance = 27_000_000
+    private static let populatedGlobeDistance: CLLocationDistance = 26_000_000
     private static let populatedGlobeVerticalOffset: CGFloat = 50
 
     private enum SheetState: CaseIterable {
