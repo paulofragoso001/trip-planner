@@ -2783,7 +2783,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         collapsedActions.isHidden = sheetState != .collapsed || trips.isEmpty
         expandedScrollView.isHidden = sheetState == .collapsed
         firstTripCard?.isHidden = !(trips.isEmpty && sheetState == .collapsed)
-        chevronImageView.transform = sheetState == .collapsed ? .identity : CGAffineTransform(rotationAngle: .pi)
+        chevronImageView.transform = .identity
     }
 
     private func applySheetState(_ state: SheetState, animated: Bool) {
