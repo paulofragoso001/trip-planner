@@ -5440,7 +5440,7 @@ private final class NativeGeographicLabelAnnotation: NSObject, MKAnnotation {
     }
 
     static let majorLabels: [NativeGeographicLabelAnnotation] = [
-        .init("NORTH AMERICA", latitude: 49, longitude: -102, kind: .continent),
+        .init("NORTH\nAMERICA", latitude: 49, longitude: -102, kind: .continent),
         .init("SOUTH AMERICA", latitude: -17, longitude: -60, kind: .continent),
         .init("EUROPE", latitude: 51, longitude: 18, kind: .continent),
         .init("AFRICA", latitude: 6, longitude: 20, kind: .continent),
@@ -5513,7 +5513,7 @@ private final class NativeGeographicLabelAnnotationView: MKAnnotationView {
                 .kern: letterSpacing
             ]
         )
-        accessibilityLabel = annotation.title
+        accessibilityLabel = annotation.title?.replacingOccurrences(of: "\n", with: " ")
     }
 }
 
