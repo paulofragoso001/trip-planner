@@ -2609,7 +2609,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         let title = UILabel()
         title.text = trip.displayName
         title.textColor = AlmidyDesignTokens.Color.tripCardTextPrimary
-        title.font = AlmidyDesignTokens.Font.title(31)
+        title.font = AlmidyDesignTokens.Font.title(36)
         title.adjustsFontSizeToFitWidth = true
         title.minimumScaleFactor = 0.72
 
