@@ -5440,13 +5440,13 @@ private final class NativeGeographicLabelAnnotation: NSObject, MKAnnotation {
     }
 
     static let majorLabels: [NativeGeographicLabelAnnotation] = [
-        .init("NORTH\nAMERICA", latitude: 49, longitude: -102, kind: .continent),
+        .init("NORTH\nAMERICA", latitude: 45, longitude: -94, kind: .continent),
         .init("SOUTH AMERICA", latitude: -17, longitude: -60, kind: .continent),
         .init("EUROPE", latitude: 51, longitude: 18, kind: .continent),
         .init("AFRICA", latitude: 6, longitude: 20, kind: .continent),
         .init("ASIA", latitude: 47, longitude: 87, kind: .continent),
         .init("AUSTRALIA", latitude: -25, longitude: 134, kind: .continent),
-        .init("ARCTIC\nOCEAN", latitude: 78, longitude: -95, kind: .ocean),
+        .init("ARCTIC\nOCEAN", latitude: 74, longitude: -85, kind: .ocean),
         .init("NORTH ATLANTIC OCEAN", latitude: 29, longitude: -42, kind: .ocean),
         .init("NORTH PACIFIC OCEAN", latitude: 26, longitude: -155, kind: .ocean),
         .init("INDIAN OCEAN", latitude: -17, longitude: 78, kind: .ocean)
