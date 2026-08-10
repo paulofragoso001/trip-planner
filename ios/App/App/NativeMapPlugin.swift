@@ -2358,8 +2358,22 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
     }
 
     private func renderTripContent() {
-        let year = pillLabel(overviewYear, fontSize: 22, textColor: AlmidyDesignTokens.Color.goldSoft, backgroundColor: AlmidyDesignTokens.Color.card)
-        expandedContentStack.addArrangedSubview(year)
+        let yearRow = UIView()
+        let year = pillLabel(
+            overviewYear,
+            fontSize: 22,
+            textColor: AlmidyDesignTokens.Color.gold,
+            backgroundColor: AlmidyDesignTokens.Color.avatarPeachSurface
+        )
+        year.translatesAutoresizingMaskIntoConstraints = false
+        yearRow.addSubview(year)
+        NSLayoutConstraint.activate([
+            year.topAnchor.constraint(equalTo: yearRow.topAnchor),
+            year.leadingAnchor.constraint(equalTo: yearRow.leadingAnchor),
+            year.bottomAnchor.constraint(equalTo: yearRow.bottomAnchor),
+            year.trailingAnchor.constraint(lessThanOrEqualTo: yearRow.trailingAnchor)
+        ])
+        expandedContentStack.addArrangedSubview(yearRow)
 
         let upcoming = UIStackView()
         upcoming.axis = .horizontal
