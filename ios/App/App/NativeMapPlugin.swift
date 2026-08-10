@@ -2222,10 +2222,10 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
 
             headerStack.topAnchor.constraint(equalTo: sheetHandle.bottomAnchor, constant: 8),
             headerStack.centerXAnchor.constraint(equalTo: sheetView.centerXAnchor),
-            headerStack.leadingAnchor.constraint(greaterThanOrEqualTo: sheetView.leadingAnchor, constant: 20),
-            headerStack.trailingAnchor.constraint(lessThanOrEqualTo: sheetView.trailingAnchor, constant: -20),
+            headerStack.leadingAnchor.constraint(greaterThanOrEqualTo: sheetView.leadingAnchor, constant: 12),
+            headerStack.trailingAnchor.constraint(lessThanOrEqualTo: sheetView.trailingAnchor, constant: -12),
             headerStack.widthAnchor.constraint(lessThanOrEqualToConstant: NativeAdaptiveLayout.cardMaxWidth),
-            NativeAdaptiveLayout.preferredWidth(headerStack, equalTo: sheetView.widthAnchor, constant: -40),
+            NativeAdaptiveLayout.preferredWidth(headerStack, equalTo: sheetView.widthAnchor, constant: -24),
 
             collapsedActions.centerXAnchor.constraint(equalTo: sheetView.centerXAnchor),
             collapsedActions.leadingAnchor.constraint(greaterThanOrEqualTo: sheetView.leadingAnchor, constant: 24),
