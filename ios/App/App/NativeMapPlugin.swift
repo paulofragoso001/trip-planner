@@ -1455,6 +1455,7 @@ struct NativeMapTrip: Decodable {
 final class NativeMapViewController: UIViewController, CLLocationManagerDelegate, MKMapViewDelegate {
     private static let populatedGlobeDistance: CLLocationDistance = 25_000_000
     private static let populatedGlobeVerticalOffset: CGFloat = 0
+    private static let populatedGlobeLongitude: CLLocationDegrees = -108
 
     private enum SheetState: CaseIterable {
         case collapsed
@@ -1701,7 +1702,8 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         ])
 
         let initialDistance: CLLocationDistance = trips.isEmpty ? 10_000_000 : Self.populatedGlobeDistance
-        mapView.setCamera(globeCamera(distance: initialDistance, heading: 0), animated: false)
+        let initialLongitude = trips.isEmpty ? -96.0 : Self.populatedGlobeLongitude
+        mapView.setCamera(globeCamera(distance: initialDistance, heading: 0, longitude: initialLongitude), animated: false)
         if let pendingCameraTelemetry {
             applyCameraTelemetry(pendingCameraTelemetry)
             self.pendingCameraTelemetry = nil
@@ -1717,7 +1719,14 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         applyMapPresentation(mapPresentationMode)
 
         if zoomsToPopulatedGlobe {
-            mapView.setCamera(globeCamera(distance: Self.populatedGlobeDistance, heading: 2), animated: true)
+            mapView.setCamera(
+                globeCamera(
+                    distance: Self.populatedGlobeDistance,
+                    heading: 2,
+                    longitude: Self.populatedGlobeLongitude
+                ),
+                animated: true
+            )
         }
     }
 
@@ -1728,13 +1737,21 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { [weak self] in
             guard let self else { return }
             let launchDistance: CLLocationDistance = self.trips.isEmpty ? 7_800_000 : Self.populatedGlobeDistance
-            self.mapView.setCamera(self.globeCamera(distance: launchDistance, heading: 2), animated: true)
+            let launchLongitude = self.trips.isEmpty ? -96.0 : Self.populatedGlobeLongitude
+            self.mapView.setCamera(
+                self.globeCamera(distance: launchDistance, heading: 2, longitude: launchLongitude),
+                animated: true
+            )
         }
     }
 
-    private func globeCamera(distance: CLLocationDistance, heading: CLLocationDirection) -> MKMapCamera {
+    private func globeCamera(
+        distance: CLLocationDistance,
+        heading: CLLocationDirection,
+        longitude: CLLocationDegrees = -96
+    ) -> MKMapCamera {
         MKMapCamera(
-            lookingAtCenter: CLLocationCoordinate2D(latitude: 42.5, longitude: -96.0),
+            lookingAtCenter: CLLocationCoordinate2D(latitude: 42.5, longitude: longitude),
             fromDistance: distance,
             pitch: 0,
             heading: heading
