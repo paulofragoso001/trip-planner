@@ -1429,7 +1429,7 @@ struct NativeMapTrip: Decodable {
         }
     }
 
-    private static func displayDate(_ value: String?) -> String? {
+    private static func dateValue(_ value: String?) -> Date? {
         guard let value = clean(value) else { return nil }
 
         let parser = DateFormatter()
@@ -1437,12 +1437,16 @@ struct NativeMapTrip: Decodable {
         parser.locale = Locale(identifier: "en_US_POSIX")
         parser.timeZone = TimeZone(secondsFromGMT: 0)
         parser.dateFormat = "yyyy-MM-dd"
-        guard let date = parser.date(from: value) else { return nil }
+        return parser.date(from: value)
+    }
+
+    private static func displayDate(_ value: String?) -> String? {
+        guard let date = dateValue(value) else { return nil }
 
         let formatter = DateFormatter()
-        formatter.calendar = parser.calendar
+        formatter.calendar = Calendar(identifier: .gregorian)
         formatter.locale = Locale(identifier: "en_US")
-        formatter.timeZone = parser.timeZone
+        formatter.timeZone = TimeZone(secondsFromGMT: 0)
         formatter.dateFormat = "MMM d"
         return formatter.string(from: date)
     }
@@ -1461,7 +1465,38 @@ struct NativeMapTrip: Decodable {
     }
 
     var displayStatus: String {
-        clean(status) ?? "Planning"
+        relativeStatus(relativeTo: Date())
+    }
+
+    func relativeStatus(relativeTo referenceDate: Date) -> String {
+        var calendar = Calendar(identifier: .gregorian)
+        if let utc = TimeZone(secondsFromGMT: 0) {
+            calendar.timeZone = utc
+        }
+        let today = calendar.startOfDay(for: referenceDate)
+
+        if let start = Self.dateValue(startDate) {
+            let daysUntilStart = calendar.dateComponents([.day], from: today, to: start).day ?? 0
+            if daysUntilStart > 0 {
+                return daysUntilStart == 1 ? "Starts tomorrow" : "Starts in \(daysUntilStart) days"
+            }
+            if daysUntilStart == 0, Self.dateValue(endDate) == nil {
+                return "Starts today"
+            }
+        }
+
+        if let end = Self.dateValue(endDate) {
+            let daysUntilEnd = calendar.dateComponents([.day], from: today, to: end).day ?? 0
+            switch daysUntilEnd {
+            case 1: return "Ends tomorrow"
+            case 0: return "Ends today"
+            case 2...: return "Ends in \(daysUntilEnd) days"
+            case -1: return "Ended yesterday"
+            default: return "Ended \(-daysUntilEnd) days ago"
+            }
+        }
+
+        return clean(status) ?? "Planning"
     }
 
     var route: String {

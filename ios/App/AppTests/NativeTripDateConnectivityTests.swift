@@ -6,6 +6,24 @@ import XCTest
 
 @MainActor
 final class NativeTripDateConnectivityTests: XCTestCase {
+    func testNativeTripStatusUsesRelativeTiming() throws {
+        let referenceDate = try XCTUnwrap(
+            ISO8601DateFormatter().date(from: "2026-08-10T12:00:00Z")
+        )
+        let trip = NativeMapTrip(
+            id: "trip-relative",
+            name: "Barcelona",
+            destination: "Barcelona",
+            latitude: 41.3874,
+            longitude: 2.1686,
+            startDate: "2026-08-11",
+            endDate: "2026-09-17",
+            status: "Planning"
+        )
+
+        XCTAssertEqual(trip.relativeStatus(relativeTo: referenceDate), "Starts tomorrow")
+    }
+
     func testNativeTripStoreHydratesTripsFromAuthenticatedApiResponse() {
         NativeTripStoreURLProtocol.handler = { request in
             let response = NativeTripStoreURLProtocol.response(for: request, statusCode: 200)
