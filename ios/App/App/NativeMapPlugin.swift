@@ -2077,7 +2077,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
     private func configureSheet() {
         sheetView.translatesAutoresizingMaskIntoConstraints = false
         sheetView.backgroundColor = AlmidyDesignTokens.Color.surface
-        sheetView.layer.cornerRadius = 44
+        sheetView.layer.cornerRadius = 40
         sheetView.layer.maskedCorners = [
             .layerMinXMinYCorner,
             .layerMaxXMinYCorner,
