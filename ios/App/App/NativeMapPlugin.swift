@@ -2622,7 +2622,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
 
     private func tripCard(for trip: NativeMapTrip) -> UIView {
         let card = UIView()
-        card.layer.cornerRadius = 30
+        card.layer.cornerRadius = 36
         card.clipsToBounds = true
         card.backgroundColor = AlmidyDesignTokens.Color.card
 
