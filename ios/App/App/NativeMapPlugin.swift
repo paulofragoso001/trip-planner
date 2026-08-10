@@ -5417,8 +5417,34 @@ private enum NativeLaunchSettingsIcon {
             UIColor.black.setStroke()
             gear.stroke()
 
-            let hub = UIBezierPath(arcCenter: center, radius: 3.2, startAngle: 0, endAngle: .pi * 2, clockwise: true)
-            hub.lineWidth = 1.8
+            let innerRing = UIBezierPath(
+                arcCenter: center,
+                radius: 6.7,
+                startAngle: 0,
+                endAngle: .pi * 2,
+                clockwise: true
+            )
+            innerRing.lineWidth = 1.5
+            innerRing.stroke()
+
+            let spokes = UIBezierPath()
+            for index in 0..<8 {
+                let angle = CGFloat(index) * (.pi / 4) - (.pi / 2)
+                spokes.move(to: CGPoint(
+                    x: center.x + cos(angle) * 3.6,
+                    y: center.y + sin(angle) * 3.6
+                ))
+                spokes.addLine(to: CGPoint(
+                    x: center.x + cos(angle) * 6.1,
+                    y: center.y + sin(angle) * 6.1
+                ))
+            }
+            spokes.lineCapStyle = .round
+            spokes.lineWidth = 1.2
+            spokes.stroke()
+
+            let hub = UIBezierPath(arcCenter: center, radius: 2.4, startAngle: 0, endAngle: .pi * 2, clockwise: true)
+            hub.lineWidth = 1.5
             hub.stroke()
         }.withRenderingMode(.alwaysTemplate)
     }()
