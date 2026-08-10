@@ -2248,6 +2248,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
     private func renderCollapsedActions() {
         let search = circularButton(systemName: "magnifyingglass", backgroundColor: AlmidyDesignTokens.Color.card, tintColor: AlmidyDesignTokens.Color.textPrimary)
         search.layer.cornerRadius = 24
+        search.transform = CGAffineTransform(translationX: -6, y: 0)
         search.accessibilityLabel = "Search the globe"
         search.addTarget(self, action: #selector(openSearch), for: .touchUpInside)
 
