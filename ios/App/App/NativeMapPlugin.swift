@@ -1429,12 +1429,35 @@ struct NativeMapTrip: Decodable {
         }
     }
 
+    private static func displayDate(_ value: String?) -> String? {
+        guard let value = clean(value) else { return nil }
+
+        let parser = DateFormatter()
+        parser.calendar = Calendar(identifier: .gregorian)
+        parser.locale = Locale(identifier: "en_US_POSIX")
+        parser.timeZone = TimeZone(secondsFromGMT: 0)
+        parser.dateFormat = "yyyy-MM-dd"
+        guard let date = parser.date(from: value) else { return nil }
+
+        let formatter = DateFormatter()
+        formatter.calendar = parser.calendar
+        formatter.locale = Locale(identifier: "en_US")
+        formatter.timeZone = parser.timeZone
+        formatter.dateFormat = "MMM d"
+        return formatter.string(from: date)
+    }
+
     var displayName: String {
         clean(name) ?? clean(destination) ?? "Untitled trip"
     }
 
     var displayDateRange: String {
-        clean(dateRange) ?? "Dates not set"
+        switch (Self.displayDate(startDate), Self.displayDate(endDate)) {
+        case let (start?, end?): return "\(start) → \(end)"
+        case let (start?, nil): return start
+        case let (nil, end?): return end
+        case (nil, nil): return clean(dateRange) ?? "Dates not set"
+        }
     }
 
     var displayStatus: String {

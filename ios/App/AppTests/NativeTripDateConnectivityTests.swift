@@ -28,7 +28,7 @@ final class NativeTripDateConnectivityTests: XCTestCase {
             XCTAssertEqual(trips[0].id, "trip-1")
             XCTAssertEqual(trips[0].displayName, "Miami Weekend")
             XCTAssertEqual(trips[0].coordinate?.latitude ?? 0, 25.7617, accuracy: 0.0001)
-            XCTAssertEqual(trips[0].displayDateRange, "2026-05-29 – 2026-05-31")
+            XCTAssertEqual(trips[0].displayDateRange, "May 29 → May 31")
             expectation.fulfill()
         }
         wait(for: [expectation], timeout: 2)
