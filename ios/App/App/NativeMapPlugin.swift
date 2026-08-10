@@ -2135,6 +2135,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         settingsButton.tintColor = AlmidyDesignTokens.Color.gold
         settingsButton.layer.cornerRadius = 23
         settingsButton.setImage(NativeLaunchSettingsIcon.image, for: .normal)
+        settingsButton.transform = CGAffineTransform(translationX: 6, y: -4)
         settingsButton.accessibilityLabel = "Open Settings"
         settingsButton.addTarget(self, action: #selector(openSettings), for: .touchUpInside)
         settingsButton.translatesAutoresizingMaskIntoConstraints = false
