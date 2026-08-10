@@ -1681,7 +1681,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
             mapView.setCameraZoomRange(
                 MKMapView.CameraZoomRange(
                     minCenterCoordinateDistance: 900,
-                    maxCenterCoordinateDistance: 60_000_000
+                    maxCenterCoordinateDistance: 90_000_000
                 ),
                 animated: false
             )
