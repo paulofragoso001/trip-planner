@@ -2307,6 +2307,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
             tintColor: .white
         )
         add.layer.cornerRadius = 24
+        add.transform = CGAffineTransform(translationX: 6, y: 0)
         add.accessibilityLabel = "Create a trip"
         add.addTarget(self, action: #selector(createTrip), for: .touchUpInside)
 
