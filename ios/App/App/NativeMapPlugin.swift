@@ -2653,17 +2653,6 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         textStack.translatesAutoresizingMaskIntoConstraints = false
         button.addSubview(textStack)
 
-        let edit = NativeTripActionButton(tripId: trip.id, systemName: "pencil")
-        edit.addTarget(self, action: #selector(editTripAction(_:)), for: .touchUpInside)
-        let delete = NativeTripActionButton(tripId: trip.id, systemName: "trash")
-        delete.tintColor = .systemRed
-        delete.addTarget(self, action: #selector(deleteTripAction(_:)), for: .touchUpInside)
-        let actions = UIStackView(arrangedSubviews: [edit, delete])
-        actions.axis = .horizontal
-        actions.spacing = 8
-        actions.translatesAutoresizingMaskIntoConstraints = false
-        card.addSubview(actions)
-
         let title = UILabel()
         title.text = trip.displayName
         title.textColor = AlmidyDesignTokens.Color.tripCardTextPrimary
@@ -2697,13 +2686,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
             imageView.bottomAnchor.constraint(equalTo: button.bottomAnchor),
             textStack.leadingAnchor.constraint(equalTo: button.leadingAnchor, constant: 24),
             textStack.trailingAnchor.constraint(equalTo: button.trailingAnchor, constant: -24),
-            textStack.bottomAnchor.constraint(equalTo: button.bottomAnchor, constant: -42),
-            actions.topAnchor.constraint(equalTo: card.topAnchor, constant: 18),
-            actions.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -18),
-            edit.widthAnchor.constraint(equalToConstant: 44),
-            edit.heightAnchor.constraint(equalToConstant: 44),
-            delete.widthAnchor.constraint(equalToConstant: 44),
-            delete.heightAnchor.constraint(equalToConstant: 44)
+            textStack.bottomAnchor.constraint(equalTo: button.bottomAnchor, constant: -42)
         ])
         return card
     }
