@@ -2229,7 +2229,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
 
     private func renderCollapsedActions() {
         let search = circularButton(systemName: "magnifyingglass", backgroundColor: AlmidyDesignTokens.Color.card, tintColor: AlmidyDesignTokens.Color.textPrimary)
-        search.layer.cornerRadius = 32
+        search.layer.cornerRadius = 24
         search.accessibilityLabel = "Search the globe"
         search.addTarget(self, action: #selector(openSearch), for: .touchUpInside)
 
@@ -2297,8 +2297,8 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         collapsedActions.addArrangedSubview(add)
         book.setContentHuggingPriority(.defaultLow, for: .horizontal)
         NSLayoutConstraint.activate([
-            search.widthAnchor.constraint(equalToConstant: 64),
-            search.heightAnchor.constraint(equalToConstant: 64),
+            search.widthAnchor.constraint(equalToConstant: 48),
+            search.heightAnchor.constraint(equalToConstant: 48),
             add.widthAnchor.constraint(equalToConstant: 64),
             add.heightAnchor.constraint(equalToConstant: 64)
         ])
