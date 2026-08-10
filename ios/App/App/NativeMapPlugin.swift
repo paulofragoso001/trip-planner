@@ -5569,11 +5569,11 @@ private final class NativeUserLocationAnnotationView: MKAnnotationView {
     override init(annotation: MKAnnotation?, reuseIdentifier: String?) {
         super.init(annotation: annotation, reuseIdentifier: reuseIdentifier)
 
-        frame = CGRect(x: 0, y: 0, width: 24, height: 24)
+        frame = CGRect(x: 0, y: 0, width: 22, height: 22)
         backgroundColor = AlmidyDesignTokens.Color.gold
-        layer.cornerRadius = 12
+        layer.cornerRadius = 11
         layer.borderColor = UIColor.white.cgColor
-        layer.borderWidth = 3.5
+        layer.borderWidth = 3
         layer.shadowColor = UIColor.black.cgColor
         layer.shadowOpacity = 0.24
         layer.shadowRadius = 5
