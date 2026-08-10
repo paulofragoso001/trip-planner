@@ -1505,6 +1505,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
     private var isConnected: Bool?
     private var isNetworkMonitorRunning = false
     private var mapPresentationMode: MapPresentationMode = .hybrid
+    private var usesExpandedGlobeConfiguration = false
     private var mapFallbackReason: MapFallbackReason?
     private var offlineOverlayView: UIView?
     private weak var offlineRetryButton: UIButton?
@@ -1779,6 +1780,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
 
     private func applyMapPresentation(_ mode: MapPresentationMode) {
         mapPresentationMode = mode
+        usesExpandedGlobeConfiguration = false
         if #available(iOS 16.0, *) {
             switch mode {
             case .hybrid:
@@ -1807,6 +1809,31 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
             case .standard:
                 mapView.mapType = .standard
             }
+        }
+    }
+
+    private func setExpandedGlobeConfiguration(_ expanded: Bool) {
+        guard usesExpandedGlobeConfiguration != expanded else { return }
+        usesExpandedGlobeConfiguration = expanded
+
+        if #available(iOS 16.0, *) {
+            if expanded {
+                let configuration = MKHybridMapConfiguration(elevationStyle: .realistic)
+                configuration.pointOfInterestFilter = .excludingAll
+                configuration.showsTraffic = false
+                mapView.preferredConfiguration = configuration
+            } else {
+                mapView.preferredConfiguration = MKImageryMapConfiguration(elevationStyle: .realistic)
+            }
+        } else {
+            mapView.mapType = expanded ? .hybridFlyover : .satelliteFlyover
+        }
+
+        let geographicLabels = mapView.annotations.compactMap { $0 as? NativeGeographicLabelAnnotation }
+        if expanded {
+            mapView.removeAnnotations(geographicLabels)
+        } else if geographicLabels.isEmpty {
+            mapView.addAnnotations(NativeGeographicLabelAnnotation.majorLabels)
         }
     }
 
@@ -2852,6 +2879,17 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
                 self.resolvedLegacyTripCoordinates[trip.id] = coordinate
                 self.addTripPins()
             }
+        }
+    }
+
+    func mapView(_ mapView: MKMapView, regionDidChangeAnimated animated: Bool) {
+        guard !trips.isEmpty, mapPresentationMode == .hybrid else { return }
+
+        let distance = mapView.camera.centerCoordinateDistance
+        if !usesExpandedGlobeConfiguration, distance >= 29_000_000 {
+            setExpandedGlobeConfiguration(true)
+        } else if usesExpandedGlobeConfiguration, distance <= 27_000_000 {
+            setExpandedGlobeConfiguration(false)
         }
     }
 
