@@ -2146,7 +2146,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         let titleGroup = UIStackView(arrangedSubviews: [titleButton, chevronImageView])
         titleGroup.axis = .horizontal
         titleGroup.alignment = .center
-        titleGroup.spacing = 8
+        titleGroup.spacing = 4
         titleButton.setContentHuggingPriority(.required, for: .horizontal)
         titleGroup.setContentHuggingPriority(.required, for: .horizontal)
 
