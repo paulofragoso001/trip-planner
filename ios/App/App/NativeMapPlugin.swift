@@ -2275,8 +2275,8 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         book.addSubview(bookContent)
 
         NSLayoutConstraint.activate([
-            bookIcon.widthAnchor.constraint(equalToConstant: 30),
-            bookIcon.heightAnchor.constraint(equalToConstant: 30),
+            bookIcon.widthAnchor.constraint(equalToConstant: 24),
+            bookIcon.heightAnchor.constraint(equalToConstant: 24),
             bookContent.centerXAnchor.constraint(equalTo: book.centerXAnchor),
             bookContent.centerYAnchor.constraint(equalTo: book.centerYAnchor),
             bookContent.leadingAnchor.constraint(greaterThanOrEqualTo: book.leadingAnchor, constant: 14),
