@@ -57,7 +57,7 @@ enum AlmidyDesignTokens {
         static let generatedTripGradientStart = UIColor(red: 0.08, green: 0.38, blue: 0.48, alpha: 1)
         static let generatedTripGradientEnd = UIColor(red: 0.88, green: 0.38, blue: 0.18, alpha: 1)
         static let tripCardGradientStart = UIColor.clear
-        static let tripCardGradientEnd = UIColor.black.withAlphaComponent(0.62)
+        static let tripCardGradientEnd = UIColor.black.withAlphaComponent(0.78)
         static let tripCardTextPrimary = UIColor.white
         static let tripCardTextSecondary = UIColor.white.withAlphaComponent(0.92)
         static let tripCardTextTertiary = UIColor.white.withAlphaComponent(0.82)
