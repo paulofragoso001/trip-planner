@@ -2639,7 +2639,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
             imageView.bottomAnchor.constraint(equalTo: button.bottomAnchor),
             textStack.leadingAnchor.constraint(equalTo: button.leadingAnchor, constant: 24),
             textStack.trailingAnchor.constraint(equalTo: button.trailingAnchor, constant: -24),
-            textStack.bottomAnchor.constraint(equalTo: button.bottomAnchor, constant: -26),
+            textStack.bottomAnchor.constraint(equalTo: button.bottomAnchor, constant: -42),
             actions.topAnchor.constraint(equalTo: card.topAnchor, constant: 18),
             actions.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -18),
             edit.widthAnchor.constraint(equalToConstant: 44),
