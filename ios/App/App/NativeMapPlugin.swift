@@ -2160,7 +2160,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         collapsedActions.axis = .horizontal
         collapsedActions.alignment = .center
         collapsedActions.distribution = .fill
-        collapsedActions.spacing = 18
+        collapsedActions.spacing = 6
         collapsedActions.translatesAutoresizingMaskIntoConstraints = false
         sheetView.addSubview(collapsedActions)
 
