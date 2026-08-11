@@ -1550,6 +1550,8 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
     private let expandedScrollView = UIScrollView()
     private let expandedContentStack = UIStackView()
     private var expandedContentWidthConstraint: NSLayoutConstraint?
+    private var expandedScrollBottomToActionsConstraint: NSLayoutConstraint?
+    private var expandedScrollBottomToSheetConstraint: NSLayoutConstraint?
     private let mapControlStack = UIStackView()
     private var firstTripCard: UIView?
     private var sheetBottomConstraint: NSLayoutConstraint?
@@ -2271,6 +2273,15 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         )
         expandedContentWidthConstraint.priority = .defaultHigh
         self.expandedContentWidthConstraint = expandedContentWidthConstraint
+        let expandedScrollBottomToActionsConstraint = expandedScrollView.bottomAnchor.constraint(
+            equalTo: collapsedActions.topAnchor,
+            constant: -12
+        )
+        let expandedScrollBottomToSheetConstraint = expandedScrollView.bottomAnchor.constraint(
+            equalTo: sheetView.bottomAnchor
+        )
+        self.expandedScrollBottomToActionsConstraint = expandedScrollBottomToActionsConstraint
+        self.expandedScrollBottomToSheetConstraint = expandedScrollBottomToSheetConstraint
 
         NSLayoutConstraint.activate([
             sheetHandle.topAnchor.constraint(equalTo: sheetView.topAnchor, constant: 10),
@@ -2296,7 +2307,6 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
             expandedScrollView.topAnchor.constraint(equalTo: headerStack.bottomAnchor, constant: 26),
             expandedScrollView.leadingAnchor.constraint(equalTo: sheetView.leadingAnchor),
             expandedScrollView.trailingAnchor.constraint(equalTo: sheetView.trailingAnchor),
-            expandedScrollView.bottomAnchor.constraint(equalTo: sheetView.bottomAnchor),
 
             expandedContentStack.topAnchor.constraint(equalTo: expandedScrollView.contentLayoutGuide.topAnchor),
             expandedContentStack.centerXAnchor.constraint(equalTo: expandedScrollView.frameLayoutGuide.centerXAnchor),
@@ -2307,6 +2317,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
             expandedContentStack.widthAnchor.constraint(lessThanOrEqualToConstant: NativeAdaptiveLayout.cardMaxWidth),
             expandedContentWidthConstraint
         ])
+        syncExpandedScrollBottomConstraint()
     }
 
     private func updateExpandedContentWidthPriority(for containerWidth: CGFloat) {
@@ -2836,10 +2847,17 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
     }
 
     private func syncSheetVisibility() {
-        collapsedActions.isHidden = sheetState != .collapsed || trips.isEmpty
+        collapsedActions.isHidden = trips.isEmpty
         expandedScrollView.isHidden = sheetState == .collapsed
         firstTripCard?.isHidden = !(trips.isEmpty && sheetState == .collapsed)
         chevronImageView.transform = .identity
+        syncExpandedScrollBottomConstraint()
+    }
+
+    private func syncExpandedScrollBottomConstraint() {
+        let pinsToActions = !trips.isEmpty
+        expandedScrollBottomToActionsConstraint?.isActive = pinsToActions
+        expandedScrollBottomToSheetConstraint?.isActive = !pinsToActions
     }
 
     private func applySheetState(_ state: SheetState, animated: Bool) {
