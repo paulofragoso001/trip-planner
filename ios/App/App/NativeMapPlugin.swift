@@ -1556,6 +1556,8 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
     private var firstTripCard: UIView?
     private var sheetBottomConstraint: NSLayoutConstraint?
     private var sheetHeightConstraint: NSLayoutConstraint?
+    private var sheetLeadingConstraint: NSLayoutConstraint?
+    private var sheetTrailingConstraint: NSLayoutConstraint?
     private var mapTopConstraint: NSLayoutConstraint?
     private var mapBottomConstraint: NSLayoutConstraint?
     private var mapControlTopConstraint: NSLayoutConstraint?
@@ -2185,9 +2187,11 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
 
         sheetBottomConstraint = sheetView.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -12)
         sheetHeightConstraint = sheetView.heightAnchor.constraint(equalToConstant: height(for: sheetState))
+        sheetLeadingConstraint = sheetView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 8)
+        sheetTrailingConstraint = sheetView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -8)
         NSLayoutConstraint.activate([
-            sheetView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 8),
-            sheetView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -8),
+            sheetLeadingConstraint!,
+            sheetTrailingConstraint!,
             sheetBottomConstraint!,
             sheetHeightConstraint!
         ])
@@ -2863,6 +2867,9 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
     private func applySheetState(_ state: SheetState, animated: Bool) {
         sheetState = state
         sheetHeightConstraint?.constant = height(for: state)
+        let horizontalInset: CGFloat = state == .expanded ? 0 : 8
+        sheetLeadingConstraint?.constant = horizontalInset
+        sheetTrailingConstraint?.constant = -horizontalInset
         let changes = {
             self.syncSheetVisibility()
             self.view.layoutIfNeeded()
