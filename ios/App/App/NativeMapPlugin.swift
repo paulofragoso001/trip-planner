@@ -2741,12 +2741,6 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         close.translatesAutoresizingMaskIntoConstraints = false
         card.addSubview(close)
 
-        let envelope = UILabel()
-        envelope.text = "✉"
-        envelope.textAlignment = .center
-        envelope.textColor = AlmidyDesignTokens.Color.gold
-        envelope.font = .systemFont(ofSize: 26, weight: .regular)
-
         let eyebrow = UILabel()
         eyebrow.text = "IMPORT"
         eyebrow.textColor = AlmidyDesignTokens.Color.goldSoft
@@ -2773,7 +2767,6 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
             minHeight: 46
         )
 
-        stack.addArrangedSubview(envelope)
         stack.addArrangedSubview(eyebrow)
         stack.addArrangedSubview(title)
         stack.addArrangedSubview(body)
