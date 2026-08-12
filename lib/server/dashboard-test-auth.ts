@@ -1,9 +1,10 @@
 import "server-only";
 
 import { headers } from "next/headers";
-import type { SupabaseClient } from "@supabase/supabase-js";
+import { createClient as createSupabaseClient, type SupabaseClient } from "@supabase/supabase-js";
 import { allowsDashboardTestBypass } from "@/lib/server/auth-flags";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getSupabaseUrl } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
 
 export type DashboardApiAuth<TClient = SupabaseClient> = {
@@ -61,7 +62,11 @@ export async function authorizeDashboardApi<TClient = SupabaseClient>(): Promise
     });
 
     if (!error && user) {
-      return { supabase: supabase as TClient, userEmail: user.email ?? null, userId: user.id };
+      return {
+        supabase: createBearerScopedClient(bearerToken) as TClient,
+        userEmail: user.email ?? null,
+        userId: user.id
+      };
     }
   }
 
@@ -88,6 +93,23 @@ export async function authorizeDashboardApi<TClient = SupabaseClient>(): Promise
   }
 
   return null;
+}
+
+function createBearerScopedClient(accessToken: string) {
+  return createSupabaseClient(
+    getSupabaseUrl(),
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+    {
+      auth: {
+        autoRefreshToken: false,
+        detectSessionInUrl: false,
+        persistSession: false
+      },
+      global: {
+        headers: { Authorization: `Bearer ${accessToken}` }
+      }
+    }
+  );
 }
 
 async function getDashboardTestUserId(admin: SupabaseClient) {

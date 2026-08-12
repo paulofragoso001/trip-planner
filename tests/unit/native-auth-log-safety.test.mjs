@@ -2,27 +2,26 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-const [mainViewController, plugin, bridge] = await Promise.all([
+const [mainViewController, plugin, bridge, dashboardAuth] = await Promise.all([
   readFile("ios/App/App/MainViewController.swift", "utf8"),
   readFile("ios/App/App/NativeMapPlugin.swift", "utf8"),
-  readFile("components/native/capacitor-auth-session-bridge.tsx", "utf8")
+  readFile("components/native/capacitor-auth-session-bridge.tsx", "utf8"),
+  readFile("lib/server/dashboard-test-auth.ts", "utf8")
 ]);
 
 test("Capacitor call and result logging is disabled for every build", () => {
   assert.match(mainViewController, /descriptor\.loggingBehavior\s*=\s*\.none/);
 });
 
-test("native auth success responses contain only a success flag", () => {
+test("Web content cannot import or clear the authoritative native session", () => {
   const method = plugin.slice(
     plugin.indexOf("@objc func syncNativeAuthSession"),
-    plugin.indexOf("@objc func clearNativeAuthSession")
+    plugin.indexOf("public func broadcastStateToWeb")
   );
-  const resolutions = [...method.matchAll(/call\.resolve\(([^\n]+)\)/g)].map((match) => match[1]);
-  assert.ok(resolutions.length >= 2);
-  assert.ok(resolutions.every((value) => value.trim() === '["success": true]'));
-  assert.doesNotMatch(method, /call\.resolve\([^\n]*(accessToken|refreshToken|Authorization|Cookie)/);
+  assert.doesNotMatch(method, /importWebSession|update\(from:|explicitSignOut\(|call\.resolve\(/);
+  assert.match(method, /native_auth_authoritative/);
   const logStatements = method.match(/authLogger\.(?:info|error|warning|debug)\([^\n]+/g) ?? [];
-  assert.ok(logStatements.length >= 4);
+  assert.ok(logStatements.length >= 2);
   assert.ok(logStatements.every((statement) => !/(accessToken|refreshToken|Authorization|Cookie|jsonString)/.test(statement)));
 });
 
@@ -42,4 +41,10 @@ test("late native listener registration is removed after bridge unmount", () => 
     /if \(!isMounted\) \{\s*void listener\.remove\(\);\s*return;\s*\}/
   );
   assert.match(bridge, /authListener\.data\.subscription\.unsubscribe\(\)/);
+});
+
+test("verified native bearer auth scopes subsequent Supabase database queries", () => {
+  assert.match(dashboardAuth, /supabase:\s*createBearerScopedClient\(bearerToken\)/);
+  assert.match(dashboardAuth, /headers:\s*\{\s*Authorization:\s*`Bearer \$\{accessToken\}`\s*\}/);
+  assert.match(dashboardAuth, /persistSession:\s*false/);
 });
