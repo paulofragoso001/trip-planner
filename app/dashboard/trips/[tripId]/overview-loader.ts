@@ -16,8 +16,15 @@ import {
 } from "@/lib/trip-segment-route";
 import type { TripMapItem } from "@/components/TripMap";
 import type { MobileFlightRoutePreview } from "@/components/trip/mobile-flight-route-card";
+import { buildFirstReleaseTripOverviewActions } from "@/lib/trip-overview-feature-scope";
+import { tripOverviewCategorySymbol } from "@/lib/trip-overview-category";
+import { tripOverviewV1Schema } from "@/lib/contracts/trip-overview-v1";
+import { projectCanonicalTripOverview } from "@/lib/trip-overview-presentation";
+export { projectCanonicalTripOverview } from "@/lib/trip-overview-presentation";
 
 export type TripOverviewData = {
+  canonical: CanonicalTripOverview | null;
+  loadState: "loaded" | "partial" | "error";
   actualLabel: string;
   actionSummary: {
     hasFlight: boolean;
@@ -62,6 +69,13 @@ export type TripOverviewData = {
   notes: string | null;
   plannedLabel: string;
   remainingLabel: string;
+  recentItems: Array<{
+    createdAt: string;
+    href: string;
+    id: string;
+    title: string;
+    typeLabel: string;
+  }>;
   routePreview: {
     destinationLabel: string | null;
     id: string;
@@ -80,6 +94,84 @@ export type TripOverviewData = {
   tripId: string;
 };
 
+export type OverviewSectionState = "available" | "empty" | "failed";
+
+export type CanonicalTripOverview = {
+  version: 1;
+  trip: {
+    id: string;
+    title: string;
+    destination: string;
+    countryCode: string | null;
+    startDate: string | null;
+    endDate: string | null;
+    dateRange: string;
+    relativeTiming: string | null;
+    durationDays: number | null;
+    status: string;
+  };
+  hero: {
+    imageUrl: string | null;
+    alt: string;
+    attribution: string | null;
+    sourceLabel: string | null;
+    fallbackColor: string;
+  };
+  itinerarySummary: {
+    state: OverviewSectionState;
+    error: string | null;
+    exactCount: number;
+    dateRange: string;
+    categories: Array<{ key: string; label: string; count: number; icon: string }>;
+  };
+  documentsPreview: {
+    state: OverviewSectionState;
+    error: string | null;
+    items: Array<{
+      id: string;
+      title: string;
+      type: string;
+      date: string | null;
+      href: string;
+    }>;
+  };
+  expenseSummary: {
+    state: OverviewSectionState;
+    error: string | null;
+    ledger: "budget_records";
+    currencies: Array<{
+      currency: string;
+      total: number;
+      totalLabel: string;
+      categories: Array<{ key: string; label: string; amount: number; amountLabel: string }>;
+    }>;
+  };
+  recentItems: {
+    state: OverviewSectionState;
+    error: string | null;
+    items: Array<{
+      id: string;
+      title: string;
+      category: string;
+      icon: string;
+      createdAt: string;
+      href: string;
+    }>;
+  };
+  supportedActions: Array<{
+    key: "newActivity" | "places" | "routes" | "flights" | "stays";
+    label: string;
+    available: boolean;
+    href: string | null;
+    handoff: "web" | "native-route" | null;
+  }>;
+  sections: Record<"itinerary" | "documents" | "expenses" | "recentItems", OverviewSectionState>;
+};
+
+export type CanonicalTripOverviewResult =
+  | { ok: true; data: CanonicalTripOverview }
+  | { ok: false; status: 400 | 401 | 404 | 500; error: string };
+
 type TripRow = {
   budget: number | string | null;
   destination: string | null;
@@ -88,6 +180,7 @@ type TripRow = {
   notes: string | null;
   start_date: string | null;
   status: string | null;
+  destination_provider_metadata?: Record<string, unknown> | null;
 };
 
 type BudgetRow = {
@@ -125,235 +218,157 @@ type SegmentRow = {
   provider_place_id?: string | null;
   start_time: string | null;
   title: string;
+  created_at?: string | null;
 };
 
-export async function loadTripOverviewData(tripId: string): Promise<TripOverviewData> {
-  if (isDemoTripId(tripId)) {
-    return {
-      actualLabel: "$3,651.00",
-      actionSummary: {
-        hasFlight: true,
-        hasLodging: true,
-        hasRestaurantOrPlace: true
-      },
-      dateRange: "Jun 11 - Jun 17",
-      destination: "Barcelona, Spain",
-      documentsPreview: [],
-      error: null,
-      expenseCategories: [
-        { amountLabel: "$42.00", id: "bar-party", label: "Bar & Party" },
-        { amountLabel: "$1,075.00", id: "flight", label: "Flight" },
-        { amountLabel: "$2,500.00", id: "lodging", label: "Lodging" }
-      ],
-      flightPreview: null,
-      itineraryPreview: [
-        {
-          id: "flight-demo",
-          isMapped: true,
-          location: "Miami International to Barcelona El Prat",
-          timeLabel: "9:15 AM",
-          title: "MIA to BCN",
-          typeLabel: "Flight"
-        },
-        {
-          id: "hotel-arts",
-          isMapped: true,
-          location: "Hotel Arts Barcelona, Marina 19-21",
-          timeLabel: "3:00 PM",
-          title: "Hotel Arts check-in",
-          typeLabel: "Hotel"
-        },
-        {
-          id: "team-dinner",
-          isMapped: true,
-          location: "El Born, Barcelona",
-          timeLabel: "7:30 PM",
-          title: "Team dinner",
-          typeLabel: "Restaurant"
-        }
-      ],
-      hasExpenses: true,
-      heroImage: getTripHeroImage(
-        { destination: "Barcelona, Spain", name: "Barcelona Work Trip" },
-        []
-      ),
-      mappedCount: 3,
-      mapPreviewItems: [
-        {
-          category: "Airport",
-          dayLabel: "Thu",
-          id: "flight-demo-origin",
-          lat: 25.7959,
-          lng: -80.287,
-          routeOrder: 1,
-          title: "Miami International Airport"
-        },
-        {
-          category: "Hotel",
-          dayLabel: "Thu",
-          id: "hotel-arts",
-          lat: 41.3879,
-          lng: 2.1969,
-          routeOrder: 2,
-          title: "Hotel Arts Barcelona"
-        },
-        {
-          category: "Restaurant",
-          dayLabel: "Thu",
-          id: "team-dinner",
-          lat: 41.3851,
-          lng: 2.1734,
-          routeOrder: 3,
-          title: "Team dinner"
-        }
-      ],
-      nextUp: {
-        id: "hotel-arts",
-        location: "Hotel Arts Barcelona, Marina 19-21",
-        timeLabel: "3:00 PM",
-        title: "Hotel Arts check-in",
-        typeLabel: "Hotel"
-      },
-      notes: "Demo workspace",
-      plannedLabel: "$4,200.00",
-      remainingLabel: "$549.00",
-      routePreview: {
-        destinationLabel: "BCN",
-        id: "flight-demo",
-        metaLabel: "Flight",
-        originLabel: "MIA",
-        routeLabel: "MIA to BCN",
-        timeLabel: "9:15 AM",
-        title: "MIA to BCN",
-        typeLabel: "Flight"
-      },
-      segmentCount: 5,
-      status: "On track",
-      statusLabel: "Happening now",
-      suggestionsCount: 2,
-      title: "Barcelona Work Trip",
-      tripId
-    };
+export async function loadCanonicalTripOverview(
+  tripId: string
+): Promise<CanonicalTripOverviewResult> {
+  if (!isUuid(tripId) && !isDemoTripId(tripId)) {
+    return { ok: false, status: 400, error: "Invalid trip id." };
   }
 
-  if (!isUuid(tripId)) {
-    return emptyOverviewData(tripId, "Invalid trip id.");
+  if (isDemoTripId(tripId)) {
+    return { ok: true, data: buildCanonicalDemoOverview(tripId) };
   }
 
   const auth = await authorizeDashboardApi();
+  if (!auth) return { ok: false, status: 401, error: "Authentication required." };
 
-  if (!auth) {
-    return emptyOverviewData(tripId, "Sign in to load trip overview data.");
+  const tripResult = await auth.supabase
+    .from("trips")
+    .select("name,destination,status,start_date,end_date,destination_provider_metadata")
+    .eq("id", tripId)
+    .eq("user_id", auth.userId)
+    .maybeSingle();
+
+  if (tripResult.error) {
+    return { ok: false, status: 500, error: "Could not load trip overview." };
   }
+  if (!tripResult.data) return { ok: false, status: 404, error: "Trip not found." };
 
-  const [tripResult, segmentResult, budgetResult, suggestionsResult, documentsResult] = await Promise.all([
-    auth.supabase
-      .from("trips")
-      .select("name,destination,status,budget,notes,start_date,end_date")
-      .eq("id", tripId)
-      .eq("user_id", auth.userId)
-      .maybeSingle(),
+  const [segmentsResult, budgetsResult, documentsResult] = await Promise.all([
     auth.supabase
       .from("trip_segments")
-      .select(
-        "id,title,kind,location,start_time,end_time,lat,lng,provider,provider_place_id,provider_metadata,confirmation_code,booking_url,notes",
-        { count: "exact" }
-      )
+      .select("id,title,kind,start_time,created_at", { count: "exact" })
       .eq("trip_id", tripId)
       .eq("user_id", auth.userId)
-      .order("start_time", { ascending: true, nullsFirst: false })
-      .limit(8),
+      .order("created_at", { ascending: false, nullsFirst: false }),
     auth.supabase
       .from("budget_records")
       .select("amount,category,currency,record_type")
       .eq("trip_id", tripId)
       .eq("user_id", auth.userId),
     auth.supabase
-      .from("trip_recommendations")
-      .select("id", { count: "exact", head: true })
-      .eq("trip_id", tripId)
-      .eq("status", "suggested"),
-    auth.supabase
       .from("unfiled_items")
-      .select("id,title,source_type,source_label,location,date_time,notes,created_at")
+      .select("id,title,source_type,source_label,date_time,created_at")
       .eq("trip_id", tripId)
       .eq("user_id", auth.userId)
       .order("created_at", { ascending: false, nullsFirst: false })
       .limit(3)
   ]);
 
-  const segmentResultWithFallback =
-    segmentResult.error && isMissingLatLngColumns(segmentResult.error.message)
-      ? await auth.supabase
-          .from("trip_segments")
-          .select(
-            "id,title,kind,location,start_time,end_time,latitude,longitude,provider,provider_place_id,provider_metadata,confirmation_code,booking_url,notes",
-            { count: "exact" }
-          )
-          .eq("trip_id", tripId)
-          .eq("user_id", auth.userId)
-          .order("start_time", { ascending: true, nullsFirst: false })
-          .limit(8)
-      : segmentResult;
-
-  if (tripResult.error || segmentResultWithFallback.error || budgetResult.error) {
-    return emptyOverviewData(tripId, "Could not load trip overview data.");
-  }
-
-  if (!tripResult.data) {
-    return emptyOverviewData(tripId, "Trip not found.");
-  }
-
   const trip = tripResult.data as TripRow;
-  const budgetRows = (budgetResult.data || []) as BudgetRow[];
-  const currency = budgetRows[0]?.currency || "USD";
-  const actual = budgetRows
-    .filter((row) => row.record_type !== "planned")
-    .reduce((total, row) => total + Number(row.amount || 0), 0);
-  const planned = Number(trip.budget || 0);
-  const segments = (segmentResultWithFallback.data || []) as SegmentRow[];
-  const itineraryPreview = segments.slice(0, 5).map(mapSegmentPreview);
-  const expenseCategories = groupExpenseCategories(budgetRows, currency).slice(0, 4);
-  const heroImage = getTripHeroImage(
-    {
-      destination: trip.destination,
-      name: trip.name
-    },
-    segments as WalletHeroSegment[]
-  );
+  const segments = segmentsResult.error ? [] : (segmentsResult.data || []) as SegmentRow[];
+  const budgets = budgetsResult.error ? [] : (budgetsResult.data || []) as BudgetRow[];
+  const documents = documentsResult.error ? [] : (documentsResult.data || []) as DocumentRow[];
+  const hero = getTripHeroImage({ destination: trip.destination, name: trip.name }, []);
+  const itineraryState = sectionState(segmentsResult.error, segments.length);
+  const documentsState = sectionState(documentsResult.error, documents.length);
+  const expensesState = sectionState(budgetsResult.error, budgets.filter((row) => row.record_type !== "planned").length);
+  const recent = segments
+    .filter((row): row is SegmentRow & { created_at: string } => Boolean(row.created_at))
+    .sort((a, b) => b.created_at.localeCompare(a.created_at) || a.id.localeCompare(b.id))
+    .slice(0, 5);
+  const recentState = segmentsResult.error ? "failed" : recent.length ? "available" : "empty";
+  const metadata = trip.destination_provider_metadata;
+  const countryCode = normalizeCountryCode(metadata?.countryCode ?? metadata?.country_code);
+  const base = `/dashboard/trips/${encodeURIComponent(tripId)}`;
 
   return {
-    actualLabel: formatMoney(actual, currency),
-    actionSummary: summarizeSegments(segments),
-    dateRange: formatDateRange(trip.start_date, trip.end_date),
-    destination: trip.destination || "No destination set",
-    documentsPreview: documentsResult.error
-      ? []
-      : ((documentsResult.data || []) as DocumentRow[]).map((row) => mapDocumentPreview(row, tripId)),
-    error: null,
-    expenseCategories,
-    flightPreview: mapFlightPreview(segments.find(isFlightSegment) || null),
-    hasExpenses: actual > 0 || expenseCategories.length > 0,
-    heroImage,
-    itineraryPreview,
-    mappedCount: segments.filter(isMappedSegment).length,
-    mapPreviewItems: segments.filter(isMappedSegment).slice(0, 5).map(mapSegmentMapPreview),
-    nextUp: itineraryPreview.find((item) => item.timeLabel !== "Anytime") || itineraryPreview[0] || null,
-    notes: trip.notes,
-    plannedLabel: formatMoney(planned, currency),
-    remainingLabel: formatMoney(planned - actual, currency),
-    routePreview: mapRoutePreview(segments.find(isOverviewRouteSegment) || null),
-    segmentCount: segmentResultWithFallback.count || segments.length,
-    status: trip.status || "Planning",
-    statusLabel: formatTripStatus(trip.start_date, trip.end_date, trip.status),
-    suggestionsCount: suggestionsResult.error ? 0 : suggestionsResult.count || 0,
-    title: trip.name,
-    tripId
+    ok: true,
+    data: {
+      version: 1,
+      trip: {
+        id: tripId,
+        title: trip.name,
+        destination: trip.destination || "No destination set",
+        countryCode,
+        startDate: trip.start_date,
+        endDate: trip.end_date,
+        dateRange: formatDateRange(trip.start_date, trip.end_date),
+        relativeTiming: formatTripStatus(trip.start_date, trip.end_date, null),
+        durationDays: inclusiveDurationDays(trip.start_date, trip.end_date),
+        status: trip.status || "Planning"
+      },
+      hero: {
+        imageUrl: hero.imageUrl,
+        alt: hero.imageAlt,
+        attribution: hero.imageAttribution,
+        sourceLabel: hero.imageSourceLabel,
+        fallbackColor: "#201f20"
+      },
+      itinerarySummary: {
+        state: itineraryState,
+        error: sectionError(segmentsResult.error),
+        exactCount: segmentsResult.error ? 0 : segmentsResult.count || segments.length,
+        dateRange: formatDateRange(trip.start_date, trip.end_date),
+        categories: groupItineraryCategories(segments)
+      },
+      documentsPreview: {
+        state: documentsState,
+        error: sectionError(documentsResult.error),
+        items: documents.map((row) => ({
+          id: row.id,
+          title: cleanString(row.title) || cleanString(row.source_label) || labelForDocumentType(row.source_type),
+          type: labelForDocumentType(row.source_type),
+          date: row.date_time || row.created_at,
+          href: `${base}/documents`
+        }))
+      },
+      expenseSummary: {
+        state: expensesState,
+        error: sectionError(budgetsResult.error),
+        ledger: "budget_records",
+        currencies: groupExpensesByCurrency(budgets)
+      },
+      recentItems: {
+        state: recentState,
+        error: sectionError(segmentsResult.error),
+        items: recent.map((row) => ({
+          id: row.id,
+          title: row.title,
+          category: labelForKind(row.kind),
+          icon: itineraryIcon(row.kind),
+          createdAt: row.created_at,
+          href: `${base}/timeline#${row.id}`
+        }))
+      },
+      supportedActions: buildFirstReleaseTripOverviewActions(base),
+      sections: {
+        itinerary: itineraryState,
+        documents: documentsState,
+        expenses: expensesState,
+        recentItems: recentState
+      }
+    }
   };
+}
+
+export async function loadTripOverviewData(tripId: string): Promise<TripOverviewData> {
+  const result = await loadCanonicalTripOverview(tripId);
+  if (!result.ok) return emptyOverviewData(tripId, result.error);
+
+  const parsed = tripOverviewV1Schema.safeParse(result.data);
+  return parsed.success
+    ? projectCanonicalTripOverview(parsed.data)
+    : emptyOverviewData(tripId, "Trip overview returned an invalid canonical response.");
 }
 
 function emptyOverviewData(tripId: string, error: string): TripOverviewData {
   return {
+    canonical: null,
+    loadState: "error",
     actualLabel: "$0.00",
     actionSummary: {
       hasFlight: false,
@@ -375,6 +390,7 @@ function emptyOverviewData(tripId: string, error: string): TripOverviewData {
     notes: null,
     plannedLabel: "$0.00",
     remainingLabel: "$0.00",
+    recentItems: [],
     routePreview: null,
     segmentCount: 0,
     status: "Unavailable",
@@ -621,6 +637,136 @@ function normalizeExpenseCategory(category: string | null | undefined) {
   if (/ground|transport|car|train|rail|road|taxi|uber|transfer|bus/.test(normalized)) return "transport";
   if (/activity|place|attraction|museum|tour|event|meeting|park/.test(normalized)) return "activity";
   return "other";
+}
+
+function sectionState(error: { message?: string } | null, count: number): OverviewSectionState {
+  if (error) return "failed";
+  return count > 0 ? "available" : "empty";
+}
+
+function sectionError(error: { message?: string } | null) {
+  return error ? "This section is temporarily unavailable." : null;
+}
+
+function normalizeCountryCode(value: unknown) {
+  if (typeof value !== "string") return null;
+  const normalized = value.trim().toUpperCase();
+  return /^[A-Z]{2}$/.test(normalized) ? normalized : null;
+}
+
+function inclusiveDurationDays(startDate: string | null, endDate: string | null) {
+  if (!startDate || !endDate) return null;
+  const start = startOfUtcDay(new Date(`${startDate}T00:00:00Z`));
+  const end = startOfUtcDay(new Date(`${endDate}T00:00:00Z`));
+  if (end < start) return null;
+  return dayDiff(start, end) + 1;
+}
+
+function itineraryIcon(kind: string | null) {
+  return tripOverviewCategorySymbol(kind || "place");
+}
+
+function groupItineraryCategories(rows: SegmentRow[]) {
+  const totals = new Map<string, { label: string; count: number; icon: string }>();
+  for (const row of rows) {
+    const key = normalizeExpenseCategory(row.kind);
+    const current = totals.get(key);
+    totals.set(key, {
+      label: labelForKind(row.kind),
+      count: (current?.count || 0) + 1,
+      icon: itineraryIcon(row.kind)
+    });
+  }
+  return Array.from(totals.entries())
+    .map(([key, value]) => ({ key, ...value }))
+    .sort((a, b) => b.count - a.count || a.key.localeCompare(b.key));
+}
+
+export function groupExpensesByCurrency(rows: BudgetRow[]) {
+  const currencies = new Map<string, Map<string, number>>();
+  for (const row of rows) {
+    if (row.record_type === "planned") continue;
+    const currency = /^[A-Z]{3}$/.test(String(row.currency || "").toUpperCase())
+      ? String(row.currency).toUpperCase()
+      : "USD";
+    const category = normalizeExpenseCategory(row.category);
+    const categories = currencies.get(currency) || new Map<string, number>();
+    categories.set(category, (categories.get(category) || 0) + Number(row.amount || 0));
+    currencies.set(currency, categories);
+  }
+
+  return Array.from(currencies.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([currency, categories]) => {
+      const categoryRows = Array.from(categories.entries())
+        .map(([key, amount]) => ({
+          key,
+          label: labelForExpenseCategory(key),
+          amount,
+          amountLabel: formatMoney(amount, currency)
+        }))
+        .sort((a, b) => b.amount - a.amount || a.key.localeCompare(b.key));
+      const total = categoryRows.reduce((sum, row) => sum + row.amount, 0);
+      return { currency, total, totalLabel: formatMoney(total, currency), categories: categoryRows };
+    });
+}
+
+function buildCanonicalDemoOverview(tripId: string): CanonicalTripOverview {
+  const base = `/dashboard/trips/${encodeURIComponent(tripId)}`;
+  return {
+    version: 1,
+    trip: {
+      id: tripId,
+      title: "Barcelona Work Trip",
+      destination: "Barcelona, Spain",
+      countryCode: "ES",
+      startDate: "2026-06-11",
+      endDate: "2026-06-17",
+      dateRange: "Jun 11 - Jun 17",
+      relativeTiming: formatTripStatus("2026-06-11", "2026-06-17", null),
+      durationDays: 7,
+      status: "On track"
+    },
+    hero: {
+      imageUrl: null,
+      alt: "Barcelona Work Trip background",
+      attribution: null,
+      sourceLabel: null,
+      fallbackColor: "#201f20"
+    },
+    itinerarySummary: {
+      state: "available",
+      error: null,
+      exactCount: 5,
+      dateRange: "Jun 11 - Jun 17",
+      categories: [
+        { key: "flight", label: "Flight", count: 1, icon: "airplane" },
+        { key: "lodging", label: "Hotel", count: 1, icon: "bed.double" },
+        { key: "restaurant", label: "Restaurant", count: 1, icon: "fork.knife" },
+        { key: "transport", label: "Transportation", count: 1, icon: "point.topleft.down.to.point.bottomright.curvepath" },
+        { key: "activity", label: "Activity", count: 1, icon: "mappin" }
+      ]
+    },
+    documentsPreview: { state: "empty", error: null, items: [] },
+    expenseSummary: {
+      state: "available",
+      error: null,
+      ledger: "budget_records",
+      currencies: [{
+        currency: "USD",
+        total: 3617,
+        totalLabel: "$3,617.00",
+        categories: [
+          { key: "lodging", label: "Lodging", amount: 2500, amountLabel: "$2,500.00" },
+          { key: "flight", label: "Flight", amount: 1075, amountLabel: "$1,075.00" },
+          { key: "bar-party", label: "Bar & Party", amount: 42, amountLabel: "$42.00" }
+        ]
+      }]
+    },
+    recentItems: { state: "empty", error: null, items: [] },
+    supportedActions: buildFirstReleaseTripOverviewActions(base),
+    sections: { itinerary: "available", documents: "empty", expenses: "available", recentItems: "empty" }
+  };
 }
 
 function labelForKind(value: string | null) {
