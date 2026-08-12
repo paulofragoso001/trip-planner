@@ -218,7 +218,7 @@ type SegmentRow = {
   provider_place_id?: string | null;
   start_time: string | null;
   title: string;
-  created_at?: string | null;
+  inserted_at?: string | null;
 };
 
 export async function loadCanonicalTripOverview(
@@ -250,10 +250,10 @@ export async function loadCanonicalTripOverview(
   const [segmentsResult, budgetsResult, documentsResult] = await Promise.all([
     auth.supabase
       .from("trip_segments")
-      .select("id,title,kind,start_time,created_at", { count: "exact" })
+      .select("id,title,kind,start_time,inserted_at", { count: "exact" })
       .eq("trip_id", tripId)
       .eq("user_id", auth.userId)
-      .order("created_at", { ascending: false, nullsFirst: false }),
+      .order("inserted_at", { ascending: false, nullsFirst: false }),
     auth.supabase
       .from("budget_records")
       .select("amount,category,currency,record_type")
@@ -272,13 +272,20 @@ export async function loadCanonicalTripOverview(
   const segments = segmentsResult.error ? [] : (segmentsResult.data || []) as SegmentRow[];
   const budgets = budgetsResult.error ? [] : (budgetsResult.data || []) as BudgetRow[];
   const documents = documentsResult.error ? [] : (documentsResult.data || []) as DocumentRow[];
-  const hero = getTripHeroImage({ destination: trip.destination, name: trip.name }, []);
+  const hero = getTripHeroImage(
+    {
+      destination: trip.destination,
+      destination_provider_metadata: trip.destination_provider_metadata,
+      name: trip.name
+    },
+    []
+  );
   const itineraryState = sectionState(segmentsResult.error, segments.length);
   const documentsState = sectionState(documentsResult.error, documents.length);
   const expensesState = sectionState(budgetsResult.error, budgets.filter((row) => row.record_type !== "planned").length);
   const recent = segments
-    .filter((row): row is SegmentRow & { created_at: string } => Boolean(row.created_at))
-    .sort((a, b) => b.created_at.localeCompare(a.created_at) || a.id.localeCompare(b.id))
+    .filter((row): row is SegmentRow & { inserted_at: string } => Boolean(row.inserted_at))
+    .sort((a, b) => b.inserted_at.localeCompare(a.inserted_at) || a.id.localeCompare(b.id))
     .slice(0, 5);
   const recentState = segmentsResult.error ? "failed" : recent.length ? "available" : "empty";
   const metadata = trip.destination_provider_metadata;
@@ -340,7 +347,7 @@ export async function loadCanonicalTripOverview(
           title: row.title,
           category: labelForKind(row.kind),
           icon: itineraryIcon(row.kind),
-          createdAt: row.created_at,
+          createdAt: row.inserted_at,
           href: `${base}/timeline#${row.id}`
         }))
       },
