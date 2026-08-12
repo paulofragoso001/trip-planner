@@ -4,7 +4,6 @@ import { headers } from "next/headers";
 import { createClient as createSupabaseClient, type SupabaseClient } from "@supabase/supabase-js";
 import { allowsDashboardTestBypass } from "@/lib/server/auth-flags";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getSupabaseUrl } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
 
 export type DashboardApiAuth<TClient = SupabaseClient> = {
@@ -97,7 +96,7 @@ export async function authorizeDashboardApi<TClient = SupabaseClient>(): Promise
 
 function createBearerScopedClient(accessToken: string) {
   return createSupabaseClient(
-    getSupabaseUrl(),
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
     {
       auth: {
