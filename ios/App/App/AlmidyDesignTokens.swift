@@ -66,8 +66,12 @@ enum AlmidyDesignTokens {
         static let tripCardTextPrimary = UIColor.white
         static let tripCardTextSecondary = UIColor.white.withAlphaComponent(0.92)
         static let tripCardTextTertiary = UIColor.white.withAlphaComponent(0.82)
-        static let tripOverviewMetadataPrimary = UIColor.white.withAlphaComponent(0.78)
-        static let tripOverviewMetadataSecondary = UIColor.white.withAlphaComponent(0.70)
+        static let tripOverviewMetadataPrimary = UIColor { traits in
+            UIColor.white.withAlphaComponent(traits.accessibilityContrast == .high ? 0.94 : 0.82)
+        }
+        static let tripOverviewMetadataSecondary = UIColor { traits in
+            UIColor.white.withAlphaComponent(traits.accessibilityContrast == .high ? 0.88 : 0.74)
+        }
         static let tripOverviewActionSurface = UIColor(hex: 0xDCC794)
         static let tripOverviewActionIcon = UIColor(hex: 0x76531A)
         static let tripOverviewActionLabel = UIColor.white.withAlphaComponent(0.76)

@@ -4,6 +4,26 @@ import XCTest
 @testable import App
 
 final class NativeTripBackgroundTests: XCTestCase {
+    func testOverviewExpandedTypographyKeepsLongDestinationDominantWithoutCrowdingMetadata() {
+        let header = NativeTripOverviewHeaderView()
+
+        XCTAssertEqual(header.expandedTitlePointSize, 34, accuracy: 0.01)
+        XCTAssertEqual(header.expandedTitleWeight.rawValue, UIFont.Weight.semibold.rawValue, accuracy: 0.01)
+        XCTAssertEqual(header.expandedTitleMaximumLines, 2)
+        XCTAssertLessThan(header.expandedTimingPointSize, header.expandedTitlePointSize)
+        XCTAssertEqual(header.expandedTitleBottomInset, 10, accuracy: 0.01)
+
+        header.render(seed: NativeTripOverviewSeed(
+            tripID: "localized-long-title",
+            title: "San Miguel de Allende y Dolores Hidalgo",
+            dateRange: "Aug 11 - Sep 2",
+            imageURL: nil,
+            fallbackColor: "#50343C"
+        ))
+        header.layoutIfNeeded()
+        XCTAssertEqual(header.expandedTitleMaximumLines, 2)
+    }
+
     func testOverviewHeroGradientRetainsImageUntilLowerRegion() {
         XCTAssertEqual(NativeTripOverviewHeroGradient.locations, [0.0, 0.62, 0.84, 1.0])
         let colors = NativeTripOverviewHeroGradient.colors(transition: .systemBrown, sheet: .systemPurple, increasedContrast: false)

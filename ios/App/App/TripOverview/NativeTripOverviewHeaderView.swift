@@ -37,6 +37,11 @@ final class NativeTripOverviewHeaderView: UIView {
     var compactContentAlpha: CGFloat { compactLabels.alpha }
     var heroPlaceholderAccessibilityLabel: String? { imagePlaceholder.accessibilityLabel }
     var honorsReducedMotion: Bool { UIAccessibility.isReduceMotionEnabled }
+    var expandedTitlePointSize: CGFloat { titleLabel.font.pointSize }
+    var expandedTitleWeight: UIFont.Weight { titleLabel.font.almidyWeight }
+    var expandedTitleMaximumLines: Int { titleLabel.numberOfLines }
+    var expandedTimingPointSize: CGFloat { timingLabel.font.pointSize }
+    var expandedTitleBottomInset: CGFloat { 10 }
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -147,11 +152,11 @@ final class NativeTripOverviewHeaderView: UIView {
         flagLabel.widthAnchor.constraint(equalToConstant: 50).isActive = true
         flagLabel.heightAnchor.constraint(equalToConstant: 50).isActive = true
 
-        configureLabel(titleLabel, font: AlmidyDesignTokens.Font.semibold(37), textStyle: .largeTitle, color: AlmidyDesignTokens.Color.tripCardTextPrimary)
+        configureLabel(titleLabel, font: AlmidyDesignTokens.Font.semibold(34), textStyle: .largeTitle, color: AlmidyDesignTokens.Color.tripCardTextPrimary)
         titleLabel.numberOfLines = 2
         titleLabel.lineBreakMode = .byWordWrapping
-        configureLabel(timingLabel, font: AlmidyDesignTokens.Font.body(16), textStyle: .subheadline, color: AlmidyDesignTokens.Color.tripOverviewMetadataPrimary)
-        configureLabel(dateLabel, font: AlmidyDesignTokens.Font.body(15), textStyle: .subheadline, color: AlmidyDesignTokens.Color.tripOverviewMetadataSecondary)
+        configureLabel(timingLabel, font: AlmidyDesignTokens.Font.body(15), textStyle: .subheadline, color: AlmidyDesignTokens.Color.tripOverviewMetadataPrimary)
+        configureLabel(dateLabel, font: AlmidyDesignTokens.Font.body(14), textStyle: .subheadline, color: AlmidyDesignTokens.Color.tripOverviewMetadataSecondary)
         configureLabel(attributionLabel, font: AlmidyDesignTokens.Font.body(11), textStyle: .caption2, color: AlmidyDesignTokens.Color.tripCardTextTertiary)
         attributionLabel.numberOfLines = 2
 
@@ -212,7 +217,7 @@ final class NativeTripOverviewHeaderView: UIView {
             expandedLabels.leadingAnchor.constraint(greaterThanOrEqualTo: leadingAnchor, constant: 24),
             expandedLabels.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor, constant: -24),
             expandedLabels.centerXAnchor.constraint(equalTo: centerXAnchor),
-            expandedLabels.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -18),
+            expandedLabels.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -10),
             compactLabels.leadingAnchor.constraint(equalTo: searchButton.trailingAnchor, constant: 12),
             compactLabels.trailingAnchor.constraint(equalTo: closeButton.leadingAnchor, constant: -12),
             compactLabels.centerYAnchor.constraint(equalTo: moreButton.centerYAnchor)
@@ -511,6 +516,14 @@ private extension UIColor {
         guard luminance > maximum else { return self }
         let scale = sqrt(maximum / luminance)
         return UIColor(red: red * scale, green: green * scale, blue: blue * scale, alpha: alpha)
+    }
+}
+
+private extension UIFont {
+    var almidyWeight: UIFont.Weight {
+        let traits = fontDescriptor.object(forKey: .traits) as? [UIFontDescriptor.TraitKey: Any]
+        let value = (traits?[.weight] as? NSNumber)?.doubleValue ?? Double(UIFont.Weight.regular.rawValue)
+        return UIFont.Weight(rawValue: CGFloat(value))
     }
 }
 
