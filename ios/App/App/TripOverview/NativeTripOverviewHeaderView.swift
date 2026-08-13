@@ -25,7 +25,8 @@ final class NativeTripOverviewHeaderView: UIView {
     private var imageTask: URLSessionDataTask?
     private var seedImageURL: URL?
     private var seedImage: UIImage?
-    private var heroTintColor = NativeTripOverviewHeroGradient.surfaceColor(from: AlmidyDesignTokens.Color.generatedTripImageBase)
+    private var heroTintColor = NativeTripOverviewHeroColorProcessor.guardrailSurface
+    private var sheetTintColor = NativeTripOverviewHeroColorProcessor.guardrailSurface
     private var controlMaterialViews: [UIVisualEffectView] = []
     private(set) var transitionProgress: CGFloat = 0
 
@@ -241,11 +242,17 @@ final class NativeTripOverviewHeaderView: UIView {
         accessibilityLabel = [title, timing, dateRange, attribution].compactMap { $0 }.joined(separator: ", ")
 
         let fallback = UIColor(almidyHex: fallbackColor) ?? AlmidyDesignTokens.Color.generatedTripImageBase
-        backgroundColor = fallback
-        heroTintColor = NativeTripOverviewHeroGradient.surfaceColor(from: fallback)
-        grabberView.backgroundColor = fallback.almidyGrabberColor
+        let fallbackPalette = NativeTripOverviewHeroColorProcessor.palette(
+            top: fallback,
+            bottom: fallback,
+            dominant: fallback
+        )
+        heroTintColor = fallbackPalette.transition
+        sheetTintColor = fallbackPalette.sheet
+        backgroundColor = fallbackPalette.sheet
+        grabberView.backgroundColor = fallbackPalette.topContrast
         applyContrast()
-        onBackgroundColor?(fallback)
+        onBackgroundColor?(fallbackPalette.sheet)
 
         imageTask?.cancel()
         imageView.image = seedImage
@@ -277,16 +284,17 @@ final class NativeTripOverviewHeaderView: UIView {
     }
 
     private func applyHeroColors(from image: UIImage) {
-        guard let color = image.almidyAverageColor else { return }
-        // Match the continuation color to the part of the photo that actually
-        // meets the sheet, avoiding an unrelated whole-image tint.
-        let transitionColor = image.almidyBottomBandColor ?? color
-        heroTintColor = NativeTripOverviewHeroGradient.surfaceColor(from: transitionColor)
-        // The grabber sits at the top of the hero, so derive its contrast from
-        // that exact image band instead of the image-wide average.
-        grabberView.backgroundColor = (image.almidyTopBandColor ?? color).almidyGrabberColor
+        guard let dominant = image.almidyAverageColor else { return }
+        let palette = NativeTripOverviewHeroColorProcessor.palette(
+            top: image.almidyTopBandColor,
+            bottom: image.almidyBottomBandColor,
+            dominant: dominant
+        )
+        heroTintColor = palette.transition
+        sheetTintColor = palette.sheet
+        grabberView.backgroundColor = palette.topContrast
         applyContrast()
-        onBackgroundColor?(transitionColor)
+        onBackgroundColor?(palette.sheet)
     }
 
     override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
@@ -296,7 +304,11 @@ final class NativeTripOverviewHeaderView: UIView {
 
     private func applyContrast() {
         let increased = traitCollection.accessibilityContrast == .high || UIAccessibility.isDarkerSystemColorsEnabled
-        gradientView.colors = NativeTripOverviewHeroGradient.colors(surface: heroTintColor, increasedContrast: increased)
+        gradientView.colors = NativeTripOverviewHeroGradient.colors(
+            transition: heroTintColor,
+            sheet: sheetTintColor,
+            increasedContrast: increased
+        )
         let borderAlpha: CGFloat = increased ? 0.72 : 0.46
         let highlight = heroTintColor.almidyControlHighlight
         [moreButton, searchButton, closeButton].forEach {
@@ -388,29 +400,55 @@ private final class NativeTripOverviewGradientView: UIView {
 enum NativeTripOverviewHeroGradient {
     static let locations: [NSNumber] = [0.0, 0.62, 0.84, 1.0]
 
-    static func colors(surface: UIColor, increasedContrast: Bool) -> [UIColor] {
+    static func colors(transition: UIColor, sheet: UIColor, increasedContrast: Bool) -> [UIColor] {
         [
             .clear,
             UIColor.black.withAlphaComponent(increasedContrast ? 0.10 : 0.07),
-            surface.withAlphaComponent(increasedContrast ? 0.60 : 0.52),
-            surface.withAlphaComponent(increasedContrast ? 1.00 : 0.98)
+            transition.withAlphaComponent(increasedContrast ? 0.60 : 0.52),
+            sheet.withAlphaComponent(increasedContrast ? 1.00 : 0.98)
         ]
     }
 
-    static func surfaceColor(from color: UIColor) -> UIColor {
+}
+
+struct NativeTripOverviewHeroPalette {
+    let topContrast: UIColor
+    let transition: UIColor
+    let sheet: UIColor
+}
+
+enum NativeTripOverviewHeroColorProcessor {
+    static let guardrailSurface = AlmidyDesignTokens.Color.generatedTripImageBase
+
+    static func palette(top: UIColor?, bottom: UIColor?, dominant: UIColor?) -> NativeTripOverviewHeroPalette {
+        let source = dominant ?? bottom ?? top ?? guardrailSurface
+        return NativeTripOverviewHeroPalette(
+            topContrast: (top ?? source).almidyGrabberColor,
+            transition: mutedSurface(from: bottom ?? source, burgundyBias: 0.04),
+            sheet: mutedSurface(from: source, burgundyBias: 0.10)
+        )
+    }
+
+    static func mutedSurface(from color: UIColor, burgundyBias: CGFloat) -> UIColor {
         var red: CGFloat = 0, green: CGFloat = 0, blue: CGFloat = 0, alpha: CGFloat = 0
         guard color.getRed(&red, green: &green, blue: &blue, alpha: &alpha) else {
-            return AlmidyDesignTokens.Color.generatedTripImageBase
+            return guardrailSurface
         }
-        let luminance = red * 0.2126 + green * 0.7152 + blue * 0.0722
-        let scale: CGFloat = luminance > 0.42 ? 0.58 : 0.82
-        let warmth: CGFloat = 0.025
-        return UIColor(
-            red: min(0.42, red * scale + warmth),
-            green: min(0.34, green * scale),
-            blue: min(0.36, blue * scale + warmth * 0.45),
-            alpha: 1
-        )
+
+        let source = UIColor(red: red, green: green, blue: blue, alpha: 1)
+        var hue: CGFloat = 0, saturation: CGFloat = 0, brightness: CGFloat = 0
+        guard source.getHue(&hue, saturation: &saturation, brightness: &brightness, alpha: &alpha) else {
+            return guardrailSurface
+        }
+
+        // Preserve the destination hue while keeping white metadata comfortably
+        // readable. Only low-chroma inputs receive a small saturation lift.
+        let safeSaturation = min(0.52, max(0.10, saturation * 0.72))
+        let safeBrightness = min(0.34, max(0.20, brightness * 0.62))
+        let huePreserving = UIColor(hue: hue, saturation: safeSaturation, brightness: safeBrightness, alpha: 1)
+        let burgundy = UIColor(red: 0.30, green: 0.17, blue: 0.22, alpha: 1)
+        let biased = huePreserving.blended(with: burgundy, fraction: burgundyBias) ?? huePreserving
+        return biased.scaledToMaximumRelativeLuminance(0.18)
     }
 }
 
@@ -447,6 +485,32 @@ private extension UIColor {
             brightness: max(brightness, 0.96),
             alpha: 1
         )
+    }
+
+    func blended(with other: UIColor, fraction: CGFloat) -> UIColor? {
+        var r1: CGFloat = 0, g1: CGFloat = 0, b1: CGFloat = 0, a1: CGFloat = 0
+        var r2: CGFloat = 0, g2: CGFloat = 0, b2: CGFloat = 0, a2: CGFloat = 0
+        guard getRed(&r1, green: &g1, blue: &b1, alpha: &a1),
+              other.getRed(&r2, green: &g2, blue: &b2, alpha: &a2) else { return nil }
+        let amount = min(1, max(0, fraction))
+        return UIColor(
+            red: r1 + (r2 - r1) * amount,
+            green: g1 + (g2 - g1) * amount,
+            blue: b1 + (b2 - b1) * amount,
+            alpha: a1 + (a2 - a1) * amount
+        )
+    }
+
+    func scaledToMaximumRelativeLuminance(_ maximum: CGFloat) -> UIColor {
+        var red: CGFloat = 0, green: CGFloat = 0, blue: CGFloat = 0, alpha: CGFloat = 0
+        guard getRed(&red, green: &green, blue: &blue, alpha: &alpha) else { return self }
+        func linear(_ component: CGFloat) -> CGFloat {
+            component <= 0.04045 ? component / 12.92 : pow((component + 0.055) / 1.055, 2.4)
+        }
+        let luminance = 0.2126 * linear(red) + 0.7152 * linear(green) + 0.0722 * linear(blue)
+        guard luminance > maximum else { return self }
+        let scale = sqrt(maximum / luminance)
+        return UIColor(red: red * scale, green: green * scale, blue: blue * scale, alpha: alpha)
     }
 }
 

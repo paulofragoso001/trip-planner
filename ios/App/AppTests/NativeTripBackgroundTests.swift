@@ -6,24 +6,64 @@ import XCTest
 final class NativeTripBackgroundTests: XCTestCase {
     func testOverviewHeroGradientRetainsImageUntilLowerRegion() {
         XCTAssertEqual(NativeTripOverviewHeroGradient.locations, [0.0, 0.62, 0.84, 1.0])
-        let colors = NativeTripOverviewHeroGradient.colors(surface: .systemBrown, increasedContrast: false)
+        let colors = NativeTripOverviewHeroGradient.colors(transition: .systemBrown, sheet: .systemPurple, increasedContrast: false)
         XCTAssertEqual(colors.count, 4)
         XCTAssertEqual(colors[0].cgColor.alpha, 0, accuracy: 0.001)
         XCTAssertEqual(colors[1].cgColor.alpha, 0.07, accuracy: 0.001)
         XCTAssertEqual(colors[2].cgColor.alpha, 0.52, accuracy: 0.001)
         XCTAssertEqual(colors[3].cgColor.alpha, 0.98, accuracy: 0.001)
+        XCTAssertEqual(colors[3], UIColor.systemPurple.withAlphaComponent(0.98))
     }
 
     func testOverviewHeroGradientProducesSafeSurfaceForImageExtremes() {
         for imageColor in [UIColor.white, .black, .systemGray, .systemYellow, .systemPink, .systemBlue] {
-            let surface = NativeTripOverviewHeroGradient.surfaceColor(from: imageColor)
+            let surface = NativeTripOverviewHeroColorProcessor.mutedSurface(from: imageColor, burgundyBias: 0.10)
             var red: CGFloat = 0, green: CGFloat = 0, blue: CGFloat = 0, alpha: CGFloat = 0
             XCTAssertTrue(surface.getRed(&red, green: &green, blue: &blue, alpha: &alpha))
-            XCTAssertLessThanOrEqual(red, 0.42)
-            XCTAssertLessThanOrEqual(green, 0.34)
-            XCTAssertLessThanOrEqual(blue, 0.36)
+            var hue: CGFloat = 0, saturation: CGFloat = 0, brightness: CGFloat = 0
+            XCTAssertTrue(surface.getHue(&hue, saturation: &saturation, brightness: &brightness, alpha: &alpha))
+            XCTAssertGreaterThanOrEqual(brightness, 0.18)
+            XCTAssertLessThanOrEqual(brightness, 0.35)
+            XCTAssertLessThanOrEqual(saturation, 0.55)
+            XCTAssertGreaterThanOrEqual(Self.contrastRatio(surface, .white), 4.5)
             XCTAssertEqual(alpha, 1, accuracy: 0.001)
         }
+    }
+
+    func testOverviewPaletteSeparatesTopTransitionAndSheetPurposes() {
+        let palette = NativeTripOverviewHeroColorProcessor.palette(
+            top: UIColor(white: 0.90, alpha: 1),
+            bottom: UIColor(red: 0.34, green: 0.30, blue: 0.28, alpha: 1),
+            dominant: UIColor(red: 0.54, green: 0.24, blue: 0.30, alpha: 1)
+        )
+
+        XCTAssertLessThan(palette.topContrast.cgColor.alpha, 1)
+        XCTAssertNotEqual(palette.transition, palette.sheet)
+        var sheetHue: CGFloat = 0, sheetSaturation: CGFloat = 0, sheetBrightness: CGFloat = 0, alpha: CGFloat = 0
+        XCTAssertTrue(palette.sheet.getHue(&sheetHue, saturation: &sheetSaturation, brightness: &sheetBrightness, alpha: &alpha))
+        XCTAssertGreaterThan(sheetSaturation, 0.20, "Barcelona-like burgundy input must retain destination hue instead of becoming taupe.")
+        XCTAssertGreaterThanOrEqual(sheetBrightness, 0.20)
+    }
+
+    func testOverviewPaletteUsesAlmidyGuardrailWhenSamplingFails() {
+        let palette = NativeTripOverviewHeroColorProcessor.palette(top: nil, bottom: nil, dominant: nil)
+        XCTAssertEqual(palette.sheet.cgColor.alpha, 1, accuracy: 0.001)
+        XCTAssertNotEqual(palette.sheet, UIColor.black)
+    }
+
+    private static func contrastRatio(_ first: UIColor, _ second: UIColor) -> CGFloat {
+        let firstLuminance = relativeLuminance(first)
+        let secondLuminance = relativeLuminance(second)
+        return (max(firstLuminance, secondLuminance) + 0.05) / (min(firstLuminance, secondLuminance) + 0.05)
+    }
+
+    private static func relativeLuminance(_ color: UIColor) -> CGFloat {
+        var red: CGFloat = 0, green: CGFloat = 0, blue: CGFloat = 0, alpha: CGFloat = 0
+        guard color.getRed(&red, green: &green, blue: &blue, alpha: &alpha) else { return 0 }
+        func linear(_ component: CGFloat) -> CGFloat {
+            component <= 0.04045 ? component / 12.92 : pow((component + 0.055) / 1.055, 2.4)
+        }
+        return 0.2126 * linear(red) + 0.7152 * linear(green) + 0.0722 * linear(blue)
     }
 
     func testCreateTripStartsWithCuratedDefaultImagery() {

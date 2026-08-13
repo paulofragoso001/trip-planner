@@ -242,9 +242,8 @@ final class NativeTripOverviewViewController: UIViewController, UIScrollViewDele
     }
 
     private func applyBackground(_ color: UIColor) {
-        let surface = NativeTripOverviewHeroGradient.surfaceColor(from: color)
-        view.backgroundColor = surface
-        backgroundGradient.colors = [surface.cgColor, surface.darkerForAlmidy.cgColor]
+        view.backgroundColor = color
+        backgroundGradient.colors = [color.cgColor, color.darkerForAlmidy.cgColor]
         setNeedsStatusBarAppearanceUpdate()
     }
 }
