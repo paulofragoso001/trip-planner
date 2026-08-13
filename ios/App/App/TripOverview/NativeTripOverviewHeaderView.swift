@@ -25,7 +25,7 @@ final class NativeTripOverviewHeaderView: UIView {
     private var imageTask: URLSessionDataTask?
     private var seedImageURL: URL?
     private var seedImage: UIImage?
-    private var heroTintColor = AlmidyDesignTokens.Color.generatedTripImageBase
+    private var heroTintColor = NativeTripOverviewHeroGradient.surfaceColor(from: AlmidyDesignTokens.Color.generatedTripImageBase)
     private var controlMaterialViews: [UIVisualEffectView] = []
     private(set) var transitionProgress: CGFloat = 0
 
@@ -242,7 +242,7 @@ final class NativeTripOverviewHeaderView: UIView {
 
         let fallback = UIColor(almidyHex: fallbackColor) ?? AlmidyDesignTokens.Color.generatedTripImageBase
         backgroundColor = fallback
-        heroTintColor = fallback.almidyHeroTint
+        heroTintColor = NativeTripOverviewHeroGradient.surfaceColor(from: fallback)
         grabberView.backgroundColor = fallback.almidyGrabberColor
         applyContrast()
         onBackgroundColor?(fallback)
@@ -281,7 +281,7 @@ final class NativeTripOverviewHeaderView: UIView {
         // Match the continuation color to the part of the photo that actually
         // meets the sheet, avoiding an unrelated whole-image tint.
         let transitionColor = image.almidyBottomBandColor ?? color
-        heroTintColor = transitionColor.almidyHeroTint
+        heroTintColor = NativeTripOverviewHeroGradient.surfaceColor(from: transitionColor)
         // The grabber sits at the top of the hero, so derive its contrast from
         // that exact image band instead of the image-wide average.
         grabberView.backgroundColor = (image.almidyTopBandColor ?? color).almidyGrabberColor
@@ -296,11 +296,7 @@ final class NativeTripOverviewHeaderView: UIView {
 
     private func applyContrast() {
         let increased = traitCollection.accessibilityContrast == .high || UIAccessibility.isDarkerSystemColorsEnabled
-        gradientView.colors = [
-            UIColor.black.withAlphaComponent(increased ? 0.16 : 0.02),
-            UIColor.black.withAlphaComponent(increased ? 0.38 : 0.18),
-            heroTintColor.withAlphaComponent(increased ? 0.98 : 0.94)
-        ]
+        gradientView.colors = NativeTripOverviewHeroGradient.colors(surface: heroTintColor, increasedContrast: increased)
         let borderAlpha: CGFloat = increased ? 0.72 : 0.46
         let highlight = heroTintColor.almidyControlHighlight
         [moreButton, searchButton, closeButton].forEach {
@@ -384,9 +380,38 @@ private final class NativeTripOverviewGradientView: UIView {
         super.init(frame: frame)
         gradient.startPoint = CGPoint(x: 0.5, y: 0)
         gradient.endPoint = CGPoint(x: 0.5, y: 1)
-        gradient.locations = [0, 0.58, 1]
+        gradient.locations = NativeTripOverviewHeroGradient.locations
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+}
+
+enum NativeTripOverviewHeroGradient {
+    static let locations: [NSNumber] = [0.0, 0.62, 0.84, 1.0]
+
+    static func colors(surface: UIColor, increasedContrast: Bool) -> [UIColor] {
+        [
+            .clear,
+            UIColor.black.withAlphaComponent(increasedContrast ? 0.10 : 0.07),
+            surface.withAlphaComponent(increasedContrast ? 0.60 : 0.52),
+            surface.withAlphaComponent(increasedContrast ? 1.00 : 0.98)
+        ]
+    }
+
+    static func surfaceColor(from color: UIColor) -> UIColor {
+        var red: CGFloat = 0, green: CGFloat = 0, blue: CGFloat = 0, alpha: CGFloat = 0
+        guard color.getRed(&red, green: &green, blue: &blue, alpha: &alpha) else {
+            return AlmidyDesignTokens.Color.generatedTripImageBase
+        }
+        let luminance = red * 0.2126 + green * 0.7152 + blue * 0.0722
+        let scale: CGFloat = luminance > 0.42 ? 0.58 : 0.82
+        let warmth: CGFloat = 0.025
+        return UIColor(
+            red: min(0.42, red * scale + warmth),
+            green: min(0.34, green * scale),
+            blue: min(0.36, blue * scale + warmth * 0.45),
+            alpha: 1
+        )
+    }
 }
 
 private extension String {
@@ -398,21 +423,6 @@ private extension UIColor {
         let text = value.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
         guard text.count == 6, let number = UInt64(text, radix: 16) else { return nil }
         self.init(red: CGFloat((number >> 16) & 0xff) / 255, green: CGFloat((number >> 8) & 0xff) / 255, blue: CGFloat(number & 0xff) / 255, alpha: 1)
-    }
-
-    var almidyHeroTint: UIColor {
-        var red: CGFloat = 0, green: CGFloat = 0, blue: CGFloat = 0, alpha: CGFloat = 0
-        guard getRed(&red, green: &green, blue: &blue, alpha: &alpha) else {
-            return AlmidyDesignTokens.Color.generatedTripImageBase
-        }
-        let luminance = red * 0.2126 + green * 0.7152 + blue * 0.0722
-        let scale: CGFloat = luminance > 0.45 ? 0.48 : 0.72
-        return UIColor(
-            red: min(0.40, red * scale + 0.025),
-            green: min(0.31, green * scale),
-            blue: min(0.34, blue * scale + 0.012),
-            alpha: 1
-        )
     }
 
     var almidyGrabberColor: UIColor {

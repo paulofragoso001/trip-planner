@@ -4,6 +4,28 @@ import XCTest
 @testable import App
 
 final class NativeTripBackgroundTests: XCTestCase {
+    func testOverviewHeroGradientRetainsImageUntilLowerRegion() {
+        XCTAssertEqual(NativeTripOverviewHeroGradient.locations, [0.0, 0.62, 0.84, 1.0])
+        let colors = NativeTripOverviewHeroGradient.colors(surface: .systemBrown, increasedContrast: false)
+        XCTAssertEqual(colors.count, 4)
+        XCTAssertEqual(colors[0].cgColor.alpha, 0, accuracy: 0.001)
+        XCTAssertEqual(colors[1].cgColor.alpha, 0.07, accuracy: 0.001)
+        XCTAssertEqual(colors[2].cgColor.alpha, 0.52, accuracy: 0.001)
+        XCTAssertEqual(colors[3].cgColor.alpha, 0.98, accuracy: 0.001)
+    }
+
+    func testOverviewHeroGradientProducesSafeSurfaceForImageExtremes() {
+        for imageColor in [UIColor.white, .black, .systemGray, .systemYellow, .systemPink, .systemBlue] {
+            let surface = NativeTripOverviewHeroGradient.surfaceColor(from: imageColor)
+            var red: CGFloat = 0, green: CGFloat = 0, blue: CGFloat = 0, alpha: CGFloat = 0
+            XCTAssertTrue(surface.getRed(&red, green: &green, blue: &blue, alpha: &alpha))
+            XCTAssertLessThanOrEqual(red, 0.42)
+            XCTAssertLessThanOrEqual(green, 0.34)
+            XCTAssertLessThanOrEqual(blue, 0.36)
+            XCTAssertEqual(alpha, 1, accuracy: 0.001)
+        }
+    }
+
     func testCreateTripStartsWithCuratedDefaultImagery() {
         let context = NativeCreateTripBackgroundContext(
             resolver: nil,

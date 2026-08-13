@@ -242,7 +242,7 @@ final class NativeTripOverviewViewController: UIViewController, UIScrollViewDele
     }
 
     private func applyBackground(_ color: UIColor) {
-        let surface = color.mutedForAlmidy
+        let surface = NativeTripOverviewHeroGradient.surfaceColor(from: color)
         view.backgroundColor = surface
         backgroundGradient.colors = [surface.cgColor, surface.darkerForAlmidy.cgColor]
         setNeedsStatusBarAppearanceUpdate()
@@ -250,20 +250,6 @@ final class NativeTripOverviewViewController: UIViewController, UIScrollViewDele
 }
 
 private extension UIColor {
-    var mutedForAlmidy: UIColor {
-        var red: CGFloat = 0, green: CGFloat = 0, blue: CGFloat = 0, alpha: CGFloat = 0
-        guard getRed(&red, green: &green, blue: &blue, alpha: &alpha) else { return AlmidyDesignTokens.Color.generatedTripImageBase }
-        let luminance = red * 0.2126 + green * 0.7152 + blue * 0.0722
-        let scale: CGFloat = luminance > 0.42 ? 0.58 : 0.82
-        let warmth: CGFloat = 0.025
-        return UIColor(
-            red: min(0.42, red * scale + warmth),
-            green: min(0.34, green * scale),
-            blue: min(0.36, blue * scale + warmth * 0.45),
-            alpha: 1
-        )
-    }
-
     var darkerForAlmidy: UIColor {
         var red: CGFloat = 0, green: CGFloat = 0, blue: CGFloat = 0, alpha: CGFloat = 0
         guard getRed(&red, green: &green, blue: &blue, alpha: &alpha) else { return AlmidyDesignTokens.Color.generatedTripImageBase }
