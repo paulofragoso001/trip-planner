@@ -24,6 +24,7 @@ final class NativeTripOverviewHeaderView: UIView {
     private let compactLabels = UIStackView()
     private var imageTask: URLSessionDataTask?
     private var seedImageURL: URL?
+    private var seedImage: UIImage?
     private var heroTintColor = AlmidyDesignTokens.Color.generatedTripImageBase
     private var controlMaterialViews: [UIVisualEffectView] = []
     private(set) var transitionProgress: CGFloat = 0
@@ -67,8 +68,9 @@ final class NativeTripOverviewHeaderView: UIView {
         )
     }
 
-    func render(seed: NativeTripOverviewSeed) {
+    func render(seed: NativeTripOverviewSeed, image: UIImage? = nil) {
         seedImageURL = seed.imageURL
+        seedImage = image
         render(
             title: seed.title,
             countryCode: nil,
@@ -246,10 +248,16 @@ final class NativeTripOverviewHeaderView: UIView {
         onBackgroundColor?(fallback)
 
         imageTask?.cancel()
-        imageView.image = nil
+        imageView.image = seedImage
         imagePlaceholder.isHidden = true
         imagePlaceholder.accessibilityLabel = nil
         imageLoadingIndicator.stopAnimating()
+
+        if let image = seedImage {
+            applyHeroColors(from: image)
+            return
+        }
+
         guard let rawURL = imageURL,
               let url = URL(string: rawURL.relativeString, relativeTo: NativeServiceConfiguration.appBaseURL)?.absoluteURL else { return }
         imageLoadingIndicator.startAnimating()
@@ -262,20 +270,23 @@ final class NativeTripOverviewHeaderView: UIView {
                 }
                 self.imageView.image = image
                 self.imagePlaceholder.isHidden = true
-                if let color = image.almidyAverageColor {
-                    // Match the continuation color to the part of the photo that
-                    // actually meets the sheet, avoiding an unrelated whole-image tint.
-                    let transitionColor = image.almidyBottomBandColor ?? color
-                    self.heroTintColor = transitionColor.almidyHeroTint
-                    // The grabber sits at the top of the hero, so derive its contrast
-                    // from that exact image band instead of the image-wide average.
-                    self.grabberView.backgroundColor = (image.almidyTopBandColor ?? color).almidyGrabberColor
-                    self.applyContrast()
-                    self.onBackgroundColor?(transitionColor)
-                }
+                self.applyHeroColors(from: image)
             }
         }
         imageTask?.resume()
+    }
+
+    private func applyHeroColors(from image: UIImage) {
+        guard let color = image.almidyAverageColor else { return }
+        // Match the continuation color to the part of the photo that actually
+        // meets the sheet, avoiding an unrelated whole-image tint.
+        let transitionColor = image.almidyBottomBandColor ?? color
+        heroTintColor = transitionColor.almidyHeroTint
+        // The grabber sits at the top of the hero, so derive its contrast from
+        // that exact image band instead of the image-wide average.
+        grabberView.backgroundColor = (image.almidyTopBandColor ?? color).almidyGrabberColor
+        applyContrast()
+        onBackgroundColor?(transitionColor)
     }
 
     override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {

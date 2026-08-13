@@ -3624,6 +3624,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
             userID: userID,
             tripID: trip.id,
             seed: seed,
+            seedImage: NativeTripBackgroundImageCache.shared.image(for: trip),
             store: store
         )
         let router = NativeTripOverviewRouter(

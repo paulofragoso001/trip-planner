@@ -4,6 +4,7 @@ final class NativeTripOverviewViewController: UIViewController, UIScrollViewDele
     private let userID: String
     private let tripID: String
     private let seed: NativeTripOverviewSeed?
+    private let seedImage: UIImage?
     private let store: NativeTripOverviewStore
     var router: NativeTripOverviewRouting?
 
@@ -28,8 +29,8 @@ final class NativeTripOverviewViewController: UIViewController, UIScrollViewDele
     private var shouldRestoreOverviewFocus = true
     var tripOverviewID: String { tripID }
 
-    init(userID: String, tripID: String, seed: NativeTripOverviewSeed? = nil, store: NativeTripOverviewStore) {
-        self.userID = userID; self.tripID = tripID; self.seed = seed; self.store = store
+    init(userID: String, tripID: String, seed: NativeTripOverviewSeed? = nil, seedImage: UIImage? = nil, store: NativeTripOverviewStore) {
+        self.userID = userID; self.tripID = tripID; self.seed = seed; self.seedImage = seedImage; self.store = store
         super.init(nibName: nil, bundle: nil)
     }
 
@@ -149,7 +150,7 @@ final class NativeTripOverviewViewController: UIViewController, UIScrollViewDele
             headerView.topAnchor.constraint(equalTo: view.topAnchor), headerHeightConstraint
         ])
         view.bringSubviewToFront(headerView)
-        if let seed { headerView.render(seed: seed) }
+        if let seed { headerView.render(seed: seed, image: seedImage) }
     }
 
     func scrollViewDidScroll(_ scrollView: UIScrollView) {
