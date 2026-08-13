@@ -1,4 +1,5 @@
 import XCTest
+import UIKit
 @testable import App
 
 final class NativeTripDateTests: XCTestCase {
@@ -71,6 +72,14 @@ final class NativeTripOverviewActivityModeTests: XCTestCase {
             NativeTripOverviewActivityPresentation.label(for: newActivity, mode: itinerary.activityMode),
             "Add First Activity"
         )
+
+        let view = NativeTripOverviewActionsView()
+        view.render(actions: [newActivity, places, routes], activityMode: itinerary.activityMode)
+        XCTAssertTrue(view.isUsingDedicatedEmptyAction)
+        XCTAssertEqual(view.renderedActionKinds, [.newActivity])
+        let control = view.descendant(withAccessibilityIdentifier: "trip-overview-empty-add-activity")
+        XCTAssertEqual(control?.accessibilityLabel, "Add First Activity")
+        XCTAssertEqual(control?.accessibilityHint, "Opens the new activity form for this trip")
     }
 
     func testPopulatedFixtureRendersOnlySupportedActions() {
@@ -83,6 +92,11 @@ final class NativeTripOverviewActivityModeTests: XCTestCase {
             mode: itinerary.activityMode
         )
         XCTAssertEqual(visible.map(\.kind), [.newActivity, .routes])
+
+        let view = NativeTripOverviewActionsView()
+        view.render(actions: [newActivity, unavailablePlaces, routes], activityMode: itinerary.activityMode)
+        XCTAssertFalse(view.isUsingDedicatedEmptyAction)
+        XCTAssertEqual(view.renderedActionKinds, [.newActivity, .routes])
     }
 
     func testFailedFixtureDoesNotInferEmptyFromZeroCount() {
@@ -108,5 +122,12 @@ final class NativeTripOverviewActivityModeTests: XCTestCase {
             dateRange: "Aug 11 → Sep 2",
             categories: count == 0 ? [] : [.init(key: "places", label: "Places", count: count, icon: "mappin")]
         )
+    }
+}
+
+private extension UIView {
+    func descendant(withAccessibilityIdentifier identifier: String) -> UIView? {
+        if accessibilityIdentifier == identifier { return self }
+        return subviews.lazy.compactMap { $0.descendant(withAccessibilityIdentifier: identifier) }.first
     }
 }

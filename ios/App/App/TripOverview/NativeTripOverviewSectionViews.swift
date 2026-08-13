@@ -618,8 +618,12 @@ final class NativeTripOverviewActionsView: UIView {
     private let scrollView = UIScrollView()
     private let actionStack = UIStackView()
     private var stackWidthConstraint: NSLayoutConstraint!
+    private var renderedActions: [NativeTripOverviewAction] = []
     var renderedActionKinds: [NativeTripOverviewActionKind] {
-        actionStack.arrangedSubviews.compactMap { ($0 as? NativeTripOverviewActionButton)?.action.kind }
+        renderedActions.map(\.kind)
+    }
+    var isUsingDedicatedEmptyAction: Bool {
+        actionStack.arrangedSubviews.first is NativeTripOverviewEmptyActivityAction
     }
     var usesHorizontalScrolling: Bool { scrollView.isScrollEnabled }
     var renderedAccessibilityValues: [String] {
@@ -663,13 +667,21 @@ final class NativeTripOverviewActionsView: UIView {
 
     func render(actions: [NativeTripOverviewAction], activityMode: TripOverviewActivityMode?) {
         actionStack.arrangedSubviews.forEach { $0.removeFromSuperview() }
-        NativeTripOverviewActivityPresentation.visibleActions(from: actions, mode: activityMode).forEach { action in
-            let button = NativeTripOverviewActionButton(
-                action: action,
-                displayLabel: NativeTripOverviewActivityPresentation.label(for: action, mode: activityMode)
-            )
-            button.addTarget(self, action: #selector(activate(_:)), for: .touchUpInside)
-            actionStack.addArrangedSubview(button)
+        renderedActions = NativeTripOverviewActivityPresentation.visibleActions(from: actions, mode: activityMode)
+
+        if activityMode == .empty, let action = renderedActions.first(where: { $0.kind == .newActivity }) {
+            let emptyAction = NativeTripOverviewEmptyActivityAction(action: action)
+            emptyAction.addTarget(self, action: #selector(activateEmptyAction(_:)), for: .touchUpInside)
+            actionStack.addArrangedSubview(emptyAction)
+        } else {
+            renderedActions.forEach { action in
+                let button = NativeTripOverviewActionButton(
+                    action: action,
+                    displayLabel: NativeTripOverviewActivityPresentation.label(for: action, mode: activityMode)
+                )
+                button.addTarget(self, action: #selector(activate(_:)), for: .touchUpInside)
+                actionStack.addArrangedSubview(button)
+            }
         }
         isHidden = actionStack.arrangedSubviews.isEmpty
         updateLargeTextLayout()
@@ -686,6 +698,94 @@ final class NativeTripOverviewActionsView: UIView {
     }
 
     @objc private func activate(_ sender: NativeTripOverviewActionButton) { onAction?(sender.action) }
+    @objc private func activateEmptyAction(_ sender: NativeTripOverviewEmptyActivityAction) { onAction?(sender.action) }
+}
+
+private final class NativeTripOverviewEmptyActivityAction: UIControl {
+    let action: NativeTripOverviewAction
+    private let materialView = UIVisualEffectView(effect: UIBlurEffect(style: .systemThinMaterialDark))
+    private let materialWash = UIView()
+    private let iconView = UIImageView()
+    private let actionLabel = UILabel()
+
+    init(action: NativeTripOverviewAction) {
+        self.action = action
+        super.init(frame: .zero)
+
+        materialView.isUserInteractionEnabled = false
+        materialView.clipsToBounds = true
+        materialView.layer.cornerRadius = 38
+        materialView.layer.cornerCurve = .continuous
+        materialView.layer.borderWidth = 1
+        materialView.layer.borderColor = UIColor.white.withAlphaComponent(0.24).cgColor
+        materialView.translatesAutoresizingMaskIntoConstraints = false
+
+        materialWash.backgroundColor = UIColor.white.withAlphaComponent(0.14)
+        materialWash.isUserInteractionEnabled = false
+        materialWash.translatesAutoresizingMaskIntoConstraints = false
+
+        let symbol = UIImage.SymbolConfiguration(pointSize: 30, weight: .regular)
+        iconView.image = UIImage(systemName: "plus", withConfiguration: symbol)
+        iconView.tintColor = AlmidyDesignTokens.Color.tripOverviewActionIcon
+        iconView.contentMode = .scaleAspectFit
+        iconView.isUserInteractionEnabled = false
+        iconView.translatesAutoresizingMaskIntoConstraints = false
+
+        actionLabel.text = "Add First Activity"
+        actionLabel.font = UIFontMetrics(forTextStyle: .callout).scaledFont(for: AlmidyDesignTokens.Font.body(15))
+        actionLabel.adjustsFontForContentSizeCategory = true
+        actionLabel.textColor = AlmidyDesignTokens.Color.tripOverviewActionLabel
+        actionLabel.textAlignment = .center
+        actionLabel.numberOfLines = 0
+        actionLabel.isUserInteractionEnabled = false
+        actionLabel.translatesAutoresizingMaskIntoConstraints = false
+
+        addSubview(materialView)
+        materialView.contentView.addSubview(materialWash)
+        materialView.contentView.addSubview(iconView)
+        addSubview(actionLabel)
+
+        NSLayoutConstraint.activate([
+            materialView.topAnchor.constraint(equalTo: topAnchor, constant: 8),
+            materialView.centerXAnchor.constraint(equalTo: centerXAnchor),
+            materialView.widthAnchor.constraint(equalToConstant: 76),
+            materialView.heightAnchor.constraint(equalToConstant: 76),
+            materialWash.leadingAnchor.constraint(equalTo: materialView.contentView.leadingAnchor),
+            materialWash.trailingAnchor.constraint(equalTo: materialView.contentView.trailingAnchor),
+            materialWash.topAnchor.constraint(equalTo: materialView.contentView.topAnchor),
+            materialWash.bottomAnchor.constraint(equalTo: materialView.contentView.bottomAnchor),
+            iconView.centerXAnchor.constraint(equalTo: materialView.contentView.centerXAnchor),
+            iconView.centerYAnchor.constraint(equalTo: materialView.contentView.centerYAnchor),
+            iconView.widthAnchor.constraint(equalToConstant: 34),
+            iconView.heightAnchor.constraint(equalToConstant: 34),
+            actionLabel.topAnchor.constraint(equalTo: materialView.bottomAnchor, constant: 9),
+            actionLabel.leadingAnchor.constraint(greaterThanOrEqualTo: leadingAnchor, constant: 8),
+            actionLabel.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor, constant: -8),
+            actionLabel.centerXAnchor.constraint(equalTo: centerXAnchor),
+            actionLabel.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -8),
+            widthAnchor.constraint(greaterThanOrEqualToConstant: 160),
+            heightAnchor.constraint(greaterThanOrEqualToConstant: 122)
+        ])
+
+        isAccessibilityElement = true
+        accessibilityTraits = [.button]
+        accessibilityLabel = "Add First Activity"
+        accessibilityHint = "Opens the new activity form for this trip"
+        accessibilityIdentifier = "trip-overview-empty-add-activity"
+        accessibilityValue = "Available"
+    }
+
+    override var isHighlighted: Bool {
+        didSet {
+            let transform = isHighlighted ? CGAffineTransform(scaleX: 0.96, y: 0.96) : .identity
+            UIView.animate(withDuration: 0.14) {
+                self.materialView.transform = transform
+                self.materialView.alpha = self.isHighlighted ? 0.78 : 1
+            }
+        }
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 }
 
 private final class NativeTripOverviewActionButton: UIButton {
