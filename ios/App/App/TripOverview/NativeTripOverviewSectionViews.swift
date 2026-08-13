@@ -614,6 +614,8 @@ private extension DateFormatter {
 }
 
 final class NativeTripOverviewActionsView: UIView {
+    static let populatedCircleDiameter: CGFloat = 52
+    static let populatedMinimumTarget: CGFloat = 88
     var onAction: ((NativeTripOverviewAction) -> Void)?
     private let scrollView = UIScrollView()
     private let actionStack = UIStackView()
@@ -636,7 +638,7 @@ final class NativeTripOverviewActionsView: UIView {
         scrollView.alwaysBounceHorizontal = false
         scrollView.translatesAutoresizingMaskIntoConstraints = false
         actionStack.axis = .horizontal
-        actionStack.spacing = 22
+        actionStack.spacing = 18
         actionStack.translatesAutoresizingMaskIntoConstraints = false
         addSubview(scrollView)
         scrollView.addSubview(actionStack)
@@ -800,12 +802,12 @@ private final class NativeTripOverviewActionButton: UIButton {
         backgroundColor = .clear
 
         iconSurface.backgroundColor = AlmidyDesignTokens.Color.tripOverviewActionSurface
-        iconSurface.layer.cornerRadius = 28
+        iconSurface.layer.cornerRadius = NativeTripOverviewActionsView.populatedCircleDiameter / 2
         iconSurface.layer.cornerCurve = .continuous
         iconSurface.isUserInteractionEnabled = false
         iconSurface.translatesAutoresizingMaskIntoConstraints = false
 
-        let symbol = UIImage.SymbolConfiguration(pointSize: 22, weight: .medium)
+        let symbol = UIImage.SymbolConfiguration(pointSize: 20, weight: .medium)
         iconView.image = UIImage(systemName: Self.symbolName(for: action.kind), withConfiguration: symbol)
         iconView.tintColor = AlmidyDesignTokens.Color.tripOverviewActionIcon
         iconView.contentMode = .scaleAspectFit
@@ -813,7 +815,7 @@ private final class NativeTripOverviewActionButton: UIButton {
         iconView.translatesAutoresizingMaskIntoConstraints = false
 
         actionLabel.text = displayLabel
-        actionLabel.font = UIFontMetrics(forTextStyle: .caption1).scaledFont(for: AlmidyDesignTokens.Font.body(12))
+        actionLabel.font = UIFontMetrics(forTextStyle: .caption2).scaledFont(for: AlmidyDesignTokens.Font.body(11))
         actionLabel.adjustsFontForContentSizeCategory = true
         actionLabel.textColor = AlmidyDesignTokens.Color.tripOverviewActionLabel
         actionLabel.textAlignment = .center
@@ -827,13 +829,13 @@ private final class NativeTripOverviewActionButton: UIButton {
         NSLayoutConstraint.activate([
             iconSurface.topAnchor.constraint(equalTo: topAnchor, constant: 4),
             iconSurface.centerXAnchor.constraint(equalTo: centerXAnchor),
-            iconSurface.widthAnchor.constraint(equalToConstant: 56),
-            iconSurface.heightAnchor.constraint(equalToConstant: 56),
+            iconSurface.widthAnchor.constraint(equalToConstant: NativeTripOverviewActionsView.populatedCircleDiameter),
+            iconSurface.heightAnchor.constraint(equalToConstant: NativeTripOverviewActionsView.populatedCircleDiameter),
             iconView.centerXAnchor.constraint(equalTo: iconSurface.centerXAnchor),
             iconView.centerYAnchor.constraint(equalTo: iconSurface.centerYAnchor),
-            iconView.widthAnchor.constraint(equalToConstant: 24),
-            iconView.heightAnchor.constraint(equalToConstant: 24),
-            actionLabel.topAnchor.constraint(equalTo: iconSurface.bottomAnchor, constant: 7),
+            iconView.widthAnchor.constraint(equalToConstant: 22),
+            iconView.heightAnchor.constraint(equalToConstant: 22),
+            actionLabel.topAnchor.constraint(equalTo: iconSurface.bottomAnchor, constant: 6),
             actionLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 4),
             actionLabel.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -4),
             actionLabel.bottomAnchor.constraint(lessThanOrEqualTo: bottomAnchor, constant: -2)
@@ -848,8 +850,8 @@ private final class NativeTripOverviewActionButton: UIButton {
         case nil: accessibilityValue = "Unavailable"
         }
         accessibilityTraits.insert(.button)
-        widthAnchor.constraint(greaterThanOrEqualToConstant: 88).isActive = true
-        heightAnchor.constraint(greaterThanOrEqualToConstant: 104).isActive = true
+        widthAnchor.constraint(greaterThanOrEqualToConstant: NativeTripOverviewActionsView.populatedMinimumTarget).isActive = true
+        heightAnchor.constraint(greaterThanOrEqualToConstant: 96).isActive = true
     }
 
     private static func symbolName(for kind: NativeTripOverviewActionKind) -> String {

@@ -72,9 +72,12 @@ enum AlmidyDesignTokens {
         static let tripOverviewMetadataSecondary = UIColor { traits in
             UIColor.white.withAlphaComponent(traits.accessibilityContrast == .high ? 0.88 : 0.74)
         }
-        static let tripOverviewActionSurface = UIColor(hex: 0xDCC794)
+        // Populated-trip actions stay subordinate to the destination hero.
+        static let tripOverviewActionSurface = UIColor(hex: 0xC9B989)
         static let tripOverviewActionIcon = UIColor(hex: 0x76531A)
-        static let tripOverviewActionLabel = UIColor.white.withAlphaComponent(0.76)
+        static let tripOverviewActionLabel = UIColor { traits in
+            UIColor.white.withAlphaComponent(traits.accessibilityContrast == .high ? 0.90 : 0.72)
+        }
 
         // Decorative account surfaces are intentionally pastel and are not provider-brand colors.
         static let avatarRoseSurface = UIColor(red: 1.00, green: 0.84, blue: 0.85, alpha: 1)

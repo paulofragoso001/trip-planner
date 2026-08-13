@@ -84,19 +84,32 @@ final class NativeTripOverviewActivityModeTests: XCTestCase {
 
     func testPopulatedFixtureRendersOnlySupportedActions() {
         let unavailablePlaces = NativeTripOverviewAction(kind: .places, label: "Places", destination: nil)
+        let unavailableFlight = NativeTripOverviewAction(kind: .flights, label: "Flights", destination: nil)
         let itinerary = fixture(count: 3, state: .available)
 
         XCTAssertEqual(itinerary.activityMode, .populated)
         let visible = NativeTripOverviewActivityPresentation.visibleActions(
-            from: [newActivity, unavailablePlaces, routes],
+            from: [newActivity, unavailablePlaces, routes, unavailableFlight],
             mode: itinerary.activityMode
         )
         XCTAssertEqual(visible.map(\.kind), [.newActivity, .routes])
 
         let view = NativeTripOverviewActionsView()
-        view.render(actions: [newActivity, unavailablePlaces, routes], activityMode: itinerary.activityMode)
+        view.render(actions: [newActivity, unavailablePlaces, routes, unavailableFlight], activityMode: itinerary.activityMode)
         XCTAssertFalse(view.isUsingDedicatedEmptyAction)
         XCTAssertEqual(view.renderedActionKinds, [.newActivity, .routes])
+        XCTAssertEqual(NativeTripOverviewActionsView.populatedCircleDiameter, 52)
+        XCTAssertGreaterThanOrEqual(NativeTripOverviewActionsView.populatedMinimumTarget, 44)
+    }
+
+    func testPopulatedFixtureRendersBalancedSupportedSet() {
+        let itinerary = fixture(count: 3, state: .available)
+        let view = NativeTripOverviewActionsView()
+
+        view.render(actions: [newActivity, places, routes], activityMode: itinerary.activityMode)
+
+        XCTAssertEqual(view.renderedActionKinds, [.newActivity, .places, .routes])
+        XCTAssertEqual(view.renderedAccessibilityValues, ["Available", "Available", "Available"])
     }
 
     func testFailedFixtureDoesNotInferEmptyFromZeroCount() {
