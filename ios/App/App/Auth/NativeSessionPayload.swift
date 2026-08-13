@@ -59,9 +59,34 @@ enum NativeSessionState: Equatable {
     case explicitlySignedOut(SignOutMarker)
 }
 
-struct NativeAuthProfile {
+struct NativeAuthProfile: Equatable {
     let name: String
     let email: String
+}
+
+struct NativeUserIdentity: Equatable {
+    let id: String
+    let profile: NativeAuthProfile
+}
+
+enum NativeAuthState: Equatable {
+    case loading
+    case authenticated(NativeUserIdentity)
+    case refreshable
+    case authenticationExpired
+    case signedOut
+}
+
+struct NativeIdentityIsolationBoundary: Equatable {
+    private(set) var verifiedUserID: String?
+
+    init(verifiedUserID: String?) { self.verifiedUserID = verifiedUserID }
+
+    mutating func transition(to nextUserID: String?) -> Bool {
+        let shouldPurge = verifiedUserID != nextUserID && verifiedUserID != nil
+        verifiedUserID = nextUserID
+        return shouldPurge
+    }
 }
 
 struct NativeAuthSessionContract: Codable, Equatable, CustomStringConvertible, CustomDebugStringConvertible {
@@ -246,6 +271,7 @@ struct NativeAuthSessionContract: Codable, Equatable, CustomStringConvertible, C
 
 extension Notification.Name {
     static let nativeAuthSessionChanged = Notification.Name("app.almidy.nativeAuthSessionChanged")
+    static let nativeAuthExpired = Notification.Name("app.almidy.nativeAuthExpired")
     static let nativeAuthenticatedWorkCancelled = Notification.Name("app.almidy.nativeAuthenticatedWorkCancelled")
 }
 

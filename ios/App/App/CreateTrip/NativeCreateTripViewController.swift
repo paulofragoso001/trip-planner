@@ -238,7 +238,9 @@ final class NativeCreateTripViewController: UIViewController,
             destination: selectedLocation.title,
             coordinate: selectedLocation.coordinate,
             startDate: dates.startDate,
-            endDate: dates.endDate
+            endDate: dates.endDate,
+            imageURL: backgroundContext.controller?.selectedImageURL
+                ?? existingTrip?.imageUrl.flatMap(URL.init(string:))
         )
         onCreate(draft) { [weak self] result in
             DispatchQueue.main.async {

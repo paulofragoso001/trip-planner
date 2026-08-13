@@ -52,15 +52,6 @@ public class NativeMapPlugin: CAPPlugin, CAPBridgedPlugin {
     @objc func open(_ call: CAPPluginCall) {
         DispatchQueue.main.async {
             let options = (try? call.decode(NativeMapOptions.self)) ?? NativeMapOptions(trips: [])
-            if let accessToken = options.accessToken, !accessToken.isEmpty {
-                let webSession = NativeAuthSession(
-                    accessToken: accessToken,
-                    refreshToken: options.refreshToken,
-                    expiresAt: options.expiresAt
-                )
-                let revision = NativeJWTClaims.issuedAtMilliseconds(from: accessToken) ?? 0
-                _ = NativeSessionCoordinator.shared.importWebSession(webSession, revision: revision)
-            }
             let tripStore = NativeTripStore(webView: self.bridge?.webView)
             let mapViewController = NativeMapViewController(
                 trips: options.trips,
@@ -102,19 +93,22 @@ struct NativeTripDraft {
     let coordinate: CLLocationCoordinate2D
     let startDate: String?
     let endDate: String?
+    let imageURL: URL?
 
     init(
         name: String,
         destination: String,
         coordinate: CLLocationCoordinate2D,
         startDate: String? = nil,
-        endDate: String? = nil
+        endDate: String? = nil,
+        imageURL: URL? = nil
     ) {
         self.name = name
         self.destination = destination
         self.coordinate = coordinate
         self.startDate = startDate
         self.endDate = endDate
+        self.imageURL = imageURL
     }
 }
 
@@ -196,7 +190,6 @@ struct NativeDestinationImageChoice {
 }
 
 final class NativeTripStore {
-    private let webView: WKWebView?
     private let baseURL: URL
     private let session: URLSession
     private let apiClient: NativeAuthenticatedHTTPClient
@@ -207,7 +200,6 @@ final class NativeTripStore {
         session: URLSession = .shared,
         coordinator: NativeSessionCoordinator = .shared
     ) {
-        self.webView = webView
         self.baseURL = baseURL
         self.session = session
         self.apiClient = NativeAuthenticatedHTTPClient(
@@ -282,6 +274,9 @@ final class NativeTripStore {
             "destination_lat": draft.coordinate.latitude,
             "destination_lng": draft.coordinate.longitude,
             "destination_formatted_address": draft.destination,
+            "destination_provider_metadata": draft.imageURL.map {
+                ["image_url": $0.absoluteString, "image_source": "native_destination_resolver"]
+            } ?? [:],
             "start_date": draft.startDate as Any? ?? NSNull(),
             "end_date": draft.endDate as Any? ?? NSNull(),
             "status": "Planning",
@@ -320,6 +315,9 @@ final class NativeTripStore {
             "destination_lat": draft.coordinate.latitude,
             "destination_lng": draft.coordinate.longitude,
             "destination_formatted_address": draft.destination,
+            "destination_provider_metadata": draft.imageURL.map {
+                ["image_url": $0.absoluteString, "image_source": "native_destination_resolver"]
+            } ?? [:],
             "start_date": draft.startDate as Any? ?? NSNull(),
             "end_date": draft.endDate as Any? ?? NSNull(),
             "status": "Planning",
@@ -1099,50 +1097,19 @@ public final class MapGatewayPlugin: CAPPlugin, CAPBridgedPlugin {
     @objc func syncNativeAuthSession(_ call: CAPPluginCall) {
         guard let jsonString = call.getString("jsonString"),
               let data = jsonString.data(using: .utf8),
-              let contract = try? JSONDecoder().decode(NativeAuthSessionContract.self, from: data) else {
+              (try? JSONDecoder().decode(NativeAuthSessionContract.self, from: data)) != nil else {
             authLogger.error("Session sync rejected: malformed_contract")
             call.reject("Malformed native authentication session contract.", "invalid_native_auth_session")
             return
         }
 
-        if contract.event == .signedOut || contract.state == .explicitlySignedOut {
-            NativeSessionCoordinator.shared.explicitSignOut(generation: contract.signOutGeneration ?? contract.revisionId)
-            authLogger.info("Session sync completed: event=SIGNED_OUT state=explicitly_signed_out revision=\(contract.revisionId, privacy: .public)")
-            call.resolve(["success": true])
-            return
-        }
-
-        guard let accessToken = contract.accessToken, !accessToken.isEmpty,
-              let refreshToken = contract.refreshToken, !refreshToken.isEmpty,
-              let expiresAt = contract.expiresAt, expiresAt > 0 else {
-            authLogger.error("Session sync rejected: incomplete_signed_in_credentials")
-            call.reject("Signed-in authentication state is incomplete.", "invalid_native_auth_session")
-            return
-        }
-        let importResult = NativeSessionCoordinator.shared.importWebSession(NativeAuthSession(
-            accessToken: accessToken,
-            refreshToken: refreshToken,
-            expiresAt: expiresAt
-        ), revision: contract.revisionId)
-        guard importResult.isAccepted else {
-            authLogger.error("Session sync rejected: stale_session revision=\(contract.revisionId, privacy: .public)")
-            call.reject("The Web session is older than the explicit sign-out state.", "stale_native_auth_session")
-            return
-        }
-        if importResult == .unchanged {
-            authLogger.info("Session import ignored: logical session unchanged origin=web_import state=valid revision=\(contract.revisionId, privacy: .public)")
-        }
-        authLogger.info("Session sync completed: event=\(contract.event.rawValue, privacy: .public) state=\(contract.state.rawValue, privacy: .public) credentialsPresent=true expired=\(expiresAt <= Int(Date().timeIntervalSince1970), privacy: .public) revision=\(contract.revisionId, privacy: .public)")
-        call.resolve(["success": true])
+        authLogger.error("Session sync rejected: native_session_is_authoritative")
+        call.reject("Web authentication cannot replace the native session.", "native_auth_authoritative")
     }
 
     @objc func clearNativeAuthSession(_ call: CAPPluginCall) {
-        if case .explicitlySignedOut = NativeSessionCoordinator.shared.state {
-            call.resolve(["success": true])
-            return
-        }
-        NativeSessionCoordinator.shared.explicitSignOut()
-        call.resolve(["success": true])
+        authLogger.error("Session clear rejected: native_session_is_authoritative")
+        call.reject("Web content cannot clear the native session.", "native_auth_authoritative")
     }
 
     public func broadcastStateToWeb(updatedJsonPayload: String) {
@@ -1420,6 +1387,23 @@ struct NativeMapTrip: Decodable {
         self.status = try values.decodeIfPresent(String.self, forKey: .status)
     }
 
+    func usingImageURL(_ url: URL?) -> NativeMapTrip {
+        guard imageUrl == nil, let url else { return self }
+        return NativeMapTrip(
+            id: id,
+            name: name ?? destination ?? "Trip",
+            destination: destination ?? name ?? "Trip",
+            latitude: latitude ?? 0,
+            longitude: longitude ?? 0,
+            dateRange: dateRange,
+            startDate: startDate,
+            endDate: endDate,
+            href: href,
+            imageUrl: url.absoluteString,
+            status: status
+        )
+    }
+
     private static func dateRange(start: String?, end: String?) -> String? {
         switch (start, end) {
         case let (start?, end?): return "\(start) – \(end)"
@@ -1661,10 +1645,11 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
             return
         }
         tripStore.createTrip(draft) { [weak self] result in
-            if case .success(let trip) = result {
+            let resolvedResult = result.map { $0.usingImageURL(draft.imageURL) }
+            if case .success(let trip) = resolvedResult {
                 self?.replaceTrip(trip)
             }
-            completion(result)
+            completion(resolvedResult)
         }
     }
 
@@ -3207,12 +3192,9 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
     }
 
     private func presentNativeAccount() {
-        let presentAccount: (NativeWebAuthStorage?) -> Void = { [weak self] authStorage in
+        let presentAccount: () -> Void = { [weak self] in
             guard let self else { return }
-            let importedWebSession = authStorage.map {
-                NativeSessionCoordinator.shared.update(from: $0.value)
-            } ?? false
-            let isSignedIn = importedWebSession || NativeSessionCoordinator.shared.session != nil
+            let isSignedIn = NativeSessionCoordinator.shared.verifiedUserID != nil
             guard isSignedIn else {
                 self.presentNativeAuth(reopensSettingsOnAuthentication: true)
                 return
@@ -3256,13 +3238,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
             self.present(account, animated: true)
         }
 
-        if let sourceWebView {
-            NativeWebFeatureViewController.exportAuthStorage(from: sourceWebView) { authStorage in
-                DispatchQueue.main.async { presentAccount(authStorage) }
-            }
-        } else {
-            presentAccount(nil)
-        }
+        presentAccount()
     }
 
     private func presentNativeAuth(
@@ -3339,9 +3315,15 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
     }
 
     func presentNativeWebFeature(route: String, title: String) {
-        guard NativeWebRoutePolicy.allows(route) else { return }
+        guard NativeWebRoutePolicy.allows(route) else {
+#if DEBUG
+            assertionFailure("Attempted to open a route that is not controlled-WebView owned: \(URL(string: route)?.path ?? "invalid")")
+#endif
+            showUnavailableRouteMessage()
+            return
+        }
         let previousSheetState = sheetState
-        let presentFeature: (NativeWebAuthStorage?, NativeAuthSession) -> Void = { [weak self] authStorage, nativeSession in
+        let presentFeature: (NativeAuthSession) -> Void = { [weak self] nativeSession in
             guard let self else { return }
             let feature = NativeWebFeatureViewController.wrapped(
                 route: route,
@@ -3364,7 +3346,6 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
                     self.applySheetState(.expanded, animated: true)
                 }
                 },
-                authStorage: authStorage,
                 nativeSession: nativeSession,
                 onAuthFailure: { [weak self] in
                     guard let self, self.presentedViewController == nil else { return }
@@ -3374,17 +3355,14 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
             self.present(feature, animated: true)
         }
 
-        let restoreAndPresent: (NativeWebAuthStorage?) -> Void = { [weak self] authStorage in
+        let restoreAndPresent: () -> Void = { [weak self] in
             guard let self else { return }
-            if let authStorage {
-                _ = NativeSessionCoordinator.shared.update(from: authStorage.value)
-            }
             NativeSessionCoordinator.shared.validSession { [weak self] result in
                 DispatchQueue.main.async {
                     guard let self else { return }
                     switch result {
                     case .success(let session):
-                        presentFeature(authStorage, session)
+                        presentFeature(session)
                     case .failure:
                         self.presentNativeAuth()
                     }
@@ -3392,13 +3370,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
             }
         }
 
-        if let sourceWebView {
-            NativeWebFeatureViewController.exportAuthStorage(from: sourceWebView) { authStorage in
-                DispatchQueue.main.async { restoreAndPresent(authStorage) }
-            }
-        } else {
-            restoreAndPresent(nil)
-        }
+        restoreAndPresent()
     }
 
     @objc private func openSearch() {
@@ -3450,7 +3422,13 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
             },
             onCreate: { [weak self] draft, completion in
                 guard let self else { return }
-                self.createTripFromServer(draft, completion: completion)
+                self.createTripFromServer(draft) { [weak self] result in
+                    completion(result)
+                    guard case .success(let trip) = result else { return }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) {
+                        self?.presentTripOverview(for: trip)
+                    }
+                }
             }
         )
         presentTripForm(form)
@@ -3616,15 +3594,75 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
     }
 
     private func focusTrip(_ trip: NativeMapTrip) {
-        guard let coordinate = trip.coordinate else {
-            applySheetState(.expanded, animated: true)
+        if let coordinate = trip.coordinate {
+            mapView.setCamera(
+                MKMapCamera(lookingAtCenter: coordinate, fromDistance: 120_000, pitch: 42, heading: mapView.camera.heading),
+                animated: true
+            )
+        }
+        presentTripOverview(for: trip)
+    }
+
+    private func presentTripOverview(for trip: NativeMapTrip) {
+        guard presentedViewController == nil else { return }
+        guard let userID = NativeSessionCoordinator.shared.verifiedUserID else {
+            presentNativeAuth()
             return
         }
-        mapView.setCamera(
-            MKMapCamera(lookingAtCenter: coordinate, fromDistance: 120_000, pitch: 42, heading: mapView.camera.heading),
-            animated: true
+
+        let seed = NativeTripOverviewSeed(
+            tripID: trip.id,
+            title: trip.displayName,
+            dateRange: trip.displayDateRange,
+            imageURL: trip.imageUrl.flatMap(URL.init(string:)),
+            fallbackColor: "#6B625B"
         )
-        applySheetState(.expanded, animated: true)
+        let store = NativeTripOverviewStore(
+            requester: NativeTripOverviewAPIClient(webView: nil)
+        )
+        let overview = NativeTripOverviewViewController(
+            userID: userID,
+            tripID: trip.id,
+            seed: seed,
+            store: store
+        )
+        let router = NativeTripOverviewRouter(
+            viewController: overview,
+            webHandoff: { [weak self, weak overview] url in
+                guard NativeWebRoutePolicy.allows(url) else {
+                    self?.showUnavailableRouteMessage()
+                    return
+                }
+                overview?.dismiss(animated: true) {
+                    self?.presentNativeWebFeature(route: url.almidyRoute, title: "Trip")
+                }
+            },
+            nativeRoute: { [weak self, weak overview] kind, _ in
+                overview?.dismiss(animated: true) {
+                    switch kind {
+                    case .places: self?.openSearch()
+                    case .routes: self?.applySheetState(.collapsed, animated: true)
+                    default: break
+                    }
+                }
+            },
+            authenticationRecovery: { [weak self, weak overview] in
+                overview?.dismiss(animated: true) { self?.presentNativeAuth() }
+            }
+        )
+        overview.router = router
+        overview.configureForGlobePresentation()
+        present(overview, animated: true)
+    }
+
+    private func showUnavailableRouteMessage() {
+        let alert = UIAlertController(
+            title: "Unable to Open Section",
+            message: "This trip section is not available right now.",
+            preferredStyle: .alert
+        )
+        alert.addAction(UIAlertAction(title: "OK", style: .default))
+        (presentedViewController ?? self).present(alert, animated: true)
     }
 
     @objc private func dismissReservationCard() {

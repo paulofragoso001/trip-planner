@@ -36,6 +36,7 @@ export type Trip = {
   destination_lat: number | null;
   destination_lng: number | null;
   destination_provider_metadata: Record<string, unknown>;
+  imageUrl: string | null;
   start_date: string | null;
   end_date: string | null;
   status: string;
@@ -153,6 +154,13 @@ export function toTripWritePayload(trip: ReturnType<typeof normalizeTripInput>) 
 }
 
 export function mapTripRecord(record: Record<string, unknown>): Trip {
+  const destinationProviderMetadata =
+    record.destination_provider_metadata &&
+    typeof record.destination_provider_metadata === "object" &&
+    !Array.isArray(record.destination_provider_metadata)
+      ? (record.destination_provider_metadata as Record<string, unknown>)
+      : {};
+
   return {
     ...record,
     name: String(record.name || record.title || "Untitled trip"),
@@ -168,12 +176,11 @@ export function mapTripRecord(record: Record<string, unknown>): Trip {
         : null,
     destination_lat: normalizeNullableNumber(record.destination_lat),
     destination_lng: normalizeNullableNumber(record.destination_lng),
-    destination_provider_metadata:
-      record.destination_provider_metadata &&
-      typeof record.destination_provider_metadata === "object" &&
-      !Array.isArray(record.destination_provider_metadata)
-        ? (record.destination_provider_metadata as Record<string, unknown>)
-        : {},
+    destination_provider_metadata: destinationProviderMetadata,
+    imageUrl:
+      typeof destinationProviderMetadata.image_url === "string"
+        ? destinationProviderMetadata.image_url
+        : null,
     travel_style: normalizeTravelStyle(record.travel_style),
     route: typeof record.route === "string" ? record.route : null,
     notes: typeof record.notes === "string" ? record.notes : null

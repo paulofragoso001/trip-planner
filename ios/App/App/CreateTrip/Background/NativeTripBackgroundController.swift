@@ -23,6 +23,7 @@ final class NativeTripBackgroundController {
     private var heroImageTask: NativeTripBackgroundTask?
     private var revision = 0
     private(set) var isManualSelection = false
+    private(set) var selectedImageURL: URL?
     private(set) var state: NativeTripBackgroundState
 
     init(
@@ -96,6 +97,7 @@ final class NativeTripBackgroundController {
     func selectManualImage(_ image: UIImage, completion: (UIImage) -> Void) {
         isManualSelection = true
         cancelAutomaticWork()
+        selectedImageURL = nil
         state.selectionMode = .manual
         state.isUsingGlobeFallback = false
         completion(image)
@@ -147,6 +149,7 @@ final class NativeTripBackgroundController {
                 }
                 self.state.selectionMode = .automaticDestination
                 self.state.isUsingGlobeFallback = false
+                self.selectedImageURL = url
                 nativeImageryDebug("Automatic image selected query=\(destination) source=provider httpStatus=\(statusCode)")
                 completion(image)
             }
@@ -162,12 +165,14 @@ final class NativeTripBackgroundController {
     }
 
     private func restoreGenericBackground(completion: (UIImage?) -> Void) {
+        selectedImageURL = nil
         state.selectionMode = .automaticGeneric
         state.isUsingGlobeFallback = genericSelection.isUsingGlobeFallback
         completion(genericSelection.image ?? fallbackImage)
     }
 
     private func restoreDestinationFallback(for destination: String, completion: (UIImage?) -> Void) {
+        selectedImageURL = nil
         if let selection = destinationFallback(destination), let image = selection.image {
             state.selectionMode = .automaticDestination
             state.isUsingGlobeFallback = false

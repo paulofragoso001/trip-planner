@@ -10,3 +10,5 @@ tsconfig.tsbuildinfo
 test-results
 storybook-static
 cypress/videos
+.env*
+/build/

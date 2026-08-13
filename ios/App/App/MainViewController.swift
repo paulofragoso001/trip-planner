@@ -8,6 +8,7 @@ enum NativeRouteOwner: String {
     case controlledWebView
     case webAPI
     case external
+    case unavailable
 }
 
 enum NativeWebRoutePolicy {
@@ -33,8 +34,11 @@ enum NativeWebRoutePolicy {
             allowedAccountFragments.contains(url.fragment ?? "") {
             return .controlledWebView
         }
+        if path.range(of: #"^/dashboard/trips/[^/]+/(timeline|documents|budget)$"#, options: .regularExpression) != nil {
+            return .controlledWebView
+        }
         if path == "/dashboard" ||
-            path.hasPrefix("/dashboard/trips") ||
+            path == "/dashboard/trips" ||
             path.hasPrefix("/dashboard/search") ||
             path.hasPrefix("/dashboard/globe") ||
             path.hasPrefix("/dashboard/wallet") ||
@@ -51,7 +55,7 @@ enum NativeWebRoutePolicy {
             path.hasPrefix("/dashboard/settings/") {
             return .controlledWebView
         }
-        return .external
+        return path.hasPrefix("/dashboard/") ? .unavailable : .external
     }
 
     static func allows(_ route: String) -> Bool {
@@ -75,12 +79,6 @@ enum NativeWebFeatureResult {
     case dismissed
     case tripDataChanged
     case importCompleted
-}
-
-struct NativeWebAuthStorage {
-    let key: String
-    let value: String
-    let cookieHeader: String
 }
 
 final class MainViewController: CAPBridgeViewController {
@@ -249,7 +247,6 @@ final class NativeWebFeatureViewController: UIViewController, WKNavigationDelega
     private let onFinish: (NativeWebFeatureResult) -> Void
     private let onNativeRoute: (String) -> Void
     private let onAuthFailure: () -> Void
-    private let authStorage: NativeWebAuthStorage?
     private let nativeSession: NativeAuthSession?
     private let monitor = NWPathMonitor()
     private let monitorQueue = DispatchQueue(label: "app.almidy.native-web-feature.network")
@@ -270,7 +267,6 @@ final class NativeWebFeatureViewController: UIViewController, WKNavigationDelega
         title: String,
         onFinish: @escaping (NativeWebFeatureResult) -> Void = { _ in },
         onNativeRoute: @escaping (String) -> Void = { _ in },
-        authStorage: NativeWebAuthStorage? = nil,
         nativeSession: NativeAuthSession? = nil,
         onAuthFailure: @escaping () -> Void = {}
     ) {
@@ -279,15 +275,14 @@ final class NativeWebFeatureViewController: UIViewController, WKNavigationDelega
         self.onFinish = onFinish
         self.onNativeRoute = onNativeRoute
         self.onAuthFailure = onAuthFailure
-        self.authStorage = authStorage
         self.nativeSession = nativeSession
         let configuration = WKWebViewConfiguration()
         configuration.websiteDataStore = .default()
         if let nativeSession {
             configuration.userContentController.addUserScript(WKUserScript(
                 source: Self.sessionInjectionScript(
-                    key: Self.storageKey(for: nativeSession, fallback: authStorage?.key),
-                    value: Self.storageValue(for: nativeSession, fallback: authStorage?.value)
+                    key: Self.storageKey(for: nativeSession),
+                    value: Self.storageValue(for: nativeSession)
                 ),
                 injectionTime: .atDocumentStart,
                 forMainFrameOnly: true
@@ -302,7 +297,6 @@ final class NativeWebFeatureViewController: UIViewController, WKNavigationDelega
         title: String,
         onFinish: @escaping (NativeWebFeatureResult) -> Void = { _ in },
         onNativeRoute: @escaping (String) -> Void = { _ in },
-        authStorage: NativeWebAuthStorage? = nil,
         nativeSession: NativeAuthSession? = nil,
         onAuthFailure: @escaping () -> Void = {}
     ) -> UINavigationController {
@@ -311,7 +305,6 @@ final class NativeWebFeatureViewController: UIViewController, WKNavigationDelega
             title: title,
             onFinish: onFinish,
             onNativeRoute: onNativeRoute,
-            authStorage: authStorage,
             nativeSession: nativeSession,
             onAuthFailure: onAuthFailure
         )
@@ -448,22 +441,17 @@ final class NativeWebFeatureViewController: UIViewController, WKNavigationDelega
             return
         }
 
-        var cookiePairs = (authStorage?.cookieHeader ?? "").split(separator: ";").compactMap { pair -> (String, String)? in
-            let parts = pair.split(separator: "=", maxSplits: 1).map(String.init)
-            guard parts.count == 2,
-                  !parts[0].trimmingCharacters(in: .whitespaces).isEmpty else { return nil }
-            return (parts[0].trimmingCharacters(in: .whitespaces), parts[1].trimmingCharacters(in: .whitespaces))
-        }
+        var cookiePairs: [(String, String)] = []
 
         // The SSR middleware authenticates from cookies before the browser
         // client can read localStorage. Mirror the native session into
         // Supabase's cookie format when the source WebView has no cookie yet.
-        let storageKey = Self.storageKey(for: nativeSession, fallback: authStorage?.key)
+        let storageKey = Self.storageKey(for: nativeSession)
         let hasSupabaseCookie = cookiePairs.contains { name, _ in
             name == storageKey || name.hasPrefix(storageKey + ".")
         }
         if !hasSupabaseCookie,
-           let rawValue = nativeSession.map({ Self.storageValue(for: $0, fallback: authStorage?.value) }) ?? authStorage?.value,
+           let rawValue = nativeSession.map({ Self.storageValue(for: $0) }),
            let encodedValue = Self.supabaseCookieValue(for: rawValue) {
             cookiePairs.append((storageKey, encodedValue))
         }
@@ -491,8 +479,7 @@ final class NativeWebFeatureViewController: UIViewController, WKNavigationDelega
         group.notify(queue: .main, execute: completion)
     }
 
-    private static func storageKey(for session: NativeAuthSession?, fallback: String?) -> String {
-        if let fallback, fallback.contains("auth-token") { return fallback }
+    private static func storageKey(for session: NativeAuthSession?) -> String {
         let projectRef = NativeServiceConfiguration.supabaseURL?.host?.split(separator: ".").first.map(String.init)
         return "sb-\(projectRef ?? "almidy")-auth-token"
     }
@@ -507,7 +494,7 @@ final class NativeWebFeatureViewController: UIViewController, WKNavigationDelega
         return "base64-" + encoded
     }
 
-    private static func storageValue(for session: NativeAuthSession, fallback: String?) -> String {
+    private static func storageValue(for session: NativeAuthSession) -> String {
         var value: [String: Any] = [
             "access_token": session.accessToken,
             "refresh_token": session.refreshToken as Any,
@@ -519,13 +506,6 @@ final class NativeWebFeatureViewController: UIViewController, WKNavigationDelega
         }
         if let userId = session.userId {
             value["user"] = ["id": userId]
-        } else if let fallback,
-                  let data = fallback.data(using: .utf8),
-                  let fallbackValue = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                  let user = fallbackValue["user"] {
-            // Keep the richer user metadata from the WebView while always
-            // preferring the freshly refreshed native tokens.
-            value["user"] = user
         }
         guard let data = try? JSONSerialization.data(withJSONObject: value),
               let string = String(data: data, encoding: .utf8) else { return "{}" }
@@ -544,44 +524,6 @@ final class NativeWebFeatureViewController: UIViewController, WKNavigationDelega
             try { sessionStorage.setItem(key, value); } catch (_) {}
         })();
         """
-    }
-
-    static func exportAuthStorage(from webView: WKWebView, completion: @escaping (NativeWebAuthStorage?) -> Void) {
-        let script = """
-        (() => {
-            const storage = (() => {
-                const stores = [localStorage, sessionStorage];
-                for (const store of stores) {
-                    for (const key of Object.keys(store)) {
-                        if (!key.includes('auth-token')) continue;
-                        const value = store.getItem(key);
-                        if (value) return { key, value };
-                    }
-                }
-                return { key: '', value: '' };
-            })();
-            if (!storage.key || !storage.value) return null;
-            storage.cookieHeader = document.cookie || '';
-            return JSON.stringify(storage);
-            /*
-            for (const key of Object.keys(localStorage)) {
-                if (!key.includes('-auth-token')) continue;
-                const value = localStorage.getItem(key);
-                if (value) return JSON.stringify({ key, value });
-            }
-            return null;
-            */
-        })()
-        """
-        webView.evaluateJavaScript(script) { result, _ in
-            guard let json = result as? String,
-                  let data = json.data(using: .utf8),
-                  let payload = try? JSONDecoder().decode(NativeWebAuthStoragePayload.self, from: data) else {
-                completion(nil)
-                return
-            }
-            completion(NativeWebAuthStorage(key: payload.key, value: payload.value, cookieHeader: payload.cookieHeader))
-        }
     }
 
     private func showState(_ message: String?, loading: Bool, retry: Bool) {
@@ -747,10 +689,4 @@ final class NativeWebFeatureViewController: UIViewController, WKNavigationDelega
             }
         }
     }
-}
-
-private struct NativeWebAuthStoragePayload: Decodable {
-    let key: String
-    let value: String
-    let cookieHeader: String
 }

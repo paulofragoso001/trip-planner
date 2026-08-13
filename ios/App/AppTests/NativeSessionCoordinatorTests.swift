@@ -90,16 +90,16 @@ final class NativeSessionCoordinatorTests: XCTestCase {
         }
     }
 
-    func testReconciliationImportsValidWebWhenNativeMissingOrInvalid() {
+    func testReconciliationNeverImportsWebWhenNativeMissingOrInvalid() {
         let webSession = session(expiresAt: future)
         let reconciler = NativeWebSessionReconciler()
         XCTAssertEqual(
             reconciler.reconcile(native: .missing, web: .valid(webSession, revision: 10)),
-            [.importWeb(webSession, revision: 10)]
+            [.remainSignedOut]
         )
         XCTAssertEqual(
             reconciler.reconcile(native: .invalid(.corruptStorage), web: .valid(webSession, revision: 10)),
-            [.discardInvalidNative, .importWeb(webSession, revision: 10)]
+            [.discardInvalidNative, .remainSignedOut]
         )
     }
 
@@ -136,15 +136,15 @@ final class NativeSessionCoordinatorTests: XCTestCase {
         XCTAssertEqual(webMarker.generation, 30)
     }
 
-    func testSignOutMarkerSurvivesRelaunchAndNewerAuthenticationSupersedesIt() {
+    func testSignOutMarkerSurvivesRelaunchAndWebAuthenticationCannotSupersedeIt() {
         let store = TestSessionStore(session: .valid(session(expiresAt: future)))
         let first = coordinator(store: store)
         first.explicitSignOut(generation: 50, emitEvent: false)
         XCTAssertEqual(TestState(coordinator(store: store).state), .signedOut)
-        XCTAssertEqual(first.importWebSession(session(expiresAt: future), revision: 49), .rejectedStale)
-        XCTAssertEqual(first.importWebSession(session(expiresAt: future), revision: 51), .imported)
-        XCTAssertNil(store.marker)
-        XCTAssertEqual(TestState(first.state), .valid)
+        XCTAssertEqual(first.importWebSession(session(expiresAt: future), revision: 49), .rejectedInvalid)
+        XCTAssertEqual(first.importWebSession(session(expiresAt: future), revision: 51), .rejectedInvalid)
+        XCTAssertEqual(store.marker?.generation, 50)
+        XCTAssertEqual(TestState(first.state), .signedOut)
     }
 
     func testIdenticalWebImportDoesNotSaveClearMarkerOrEmit() {
@@ -159,13 +159,13 @@ final class NativeSessionCoordinatorTests: XCTestCase {
         ) { _ in eventCount += 1 }
         defer { NotificationCenter.default.removeObserver(observer) }
 
-        XCTAssertEqual(coordinator.importWebSession(current, revision: 100), .unchanged)
+        XCTAssertEqual(coordinator.importWebSession(current, revision: 100), .rejectedInvalid)
         XCTAssertEqual(store.saveCount, 0)
         XCTAssertEqual(store.clearMarkerCount, 0)
         XCTAssertEqual(eventCount, 0)
     }
 
-    func testChangedWebSessionFieldsSaveAndEmitInboundRevision() {
+    func testChangedWebSessionFieldsCannotReplaceNativeSession() {
         let original = session(expiresAt: future)
         for changed in [
             NativeAuthSession(accessToken: "changed-access", refreshToken: "refresh", expiresAt: future),
@@ -183,10 +183,10 @@ final class NativeSessionCoordinatorTests: XCTestCase {
             ) { notification in
                 emittedRevision = (notification.object as? NativeAuthSessionContract)?.revisionId
             }
-            XCTAssertEqual(coordinator.importWebSession(changed, revision: revision), .imported)
+            XCTAssertEqual(coordinator.importWebSession(changed, revision: revision), .rejectedInvalid)
             NotificationCenter.default.removeObserver(observer)
-            XCTAssertEqual(store.saveCount, 1)
-            XCTAssertEqual(emittedRevision, revision)
+            XCTAssertEqual(store.saveCount, 0)
+            XCTAssertNil(emittedRevision)
         }
     }
 
@@ -262,11 +262,10 @@ final class NativeSessionCoordinatorTests: XCTestCase {
         }
 
         XCTAssertEqual(results.count, 10)
-        XCTAssertEqual(results.filter { $0 == .imported }.count, 1)
-        XCTAssertEqual(results.filter { $0 == .unchanged }.count, 9)
-        XCTAssertEqual(store.saveCount, 1)
-        XCTAssertEqual(store.clearMarkerCount, 1)
-        XCTAssertEqual(eventCount, 1)
+        XCTAssertEqual(results.filter { $0 == .rejectedInvalid }.count, 10)
+        XCTAssertEqual(store.saveCount, 0)
+        XCTAssertEqual(store.clearMarkerCount, 0)
+        XCTAssertEqual(eventCount, 0)
     }
 
     func testMissingNativeStateNeverOverwritesValidWebSession() {
@@ -274,7 +273,7 @@ final class NativeSessionCoordinatorTests: XCTestCase {
             native: .missing,
             web: .valid(session(expiresAt: future), revision: 100)
         )
-        XCTAssertFalse(actions.contains(.remainSignedOut))
+        XCTAssertTrue(actions.contains(.remainSignedOut))
         XCTAssertEqual(actions.count, 1)
     }
 
@@ -324,7 +323,7 @@ final class NativeSessionCoordinatorTests: XCTestCase {
         XCTAssertEqual(stored.refreshToken, "new-refresh")
     }
 
-    func testRefreshRejectionClearsStateAndPersistsSignOut() {
+    func testRefreshRejectionClearsCredentialsAndTransitionsToAuthenticationExpired() {
         let store = TestSessionStore(session: .valid(session(expiresAt: past)))
         let coordinator = coordinator(store: store)
         TestURLProtocol.handler = { _ in (400, Data(#"{"error":"invalid_grant"}"#.utf8)) }
@@ -339,8 +338,10 @@ final class NativeSessionCoordinatorTests: XCTestCase {
             expectation.fulfill()
         }
         wait(for: [expectation], timeout: 2)
-        XCTAssertEqual(TestState(coordinator.state), .signedOut)
-        XCTAssertNotNil(store.marker)
+        XCTAssertEqual(TestState(coordinator.state), .invalid)
+        XCTAssertEqual(coordinator.authState, .authenticationExpired)
+        XCTAssertNil(store.marker)
+        XCTAssertNil(coordinator.session)
     }
 
     func testAuthenticatedClientRetriesOnlyOnceAfter401() {

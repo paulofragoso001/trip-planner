@@ -21,6 +21,9 @@ enum AlmidyDesignTokens {
         static let textPrimary = canonicalTextPrimary
         static let textSecondary = canonicalTextSecondary
         static let textTertiary = UIColor(hex: 0xA2A2A8)
+        static let overviewMetadata = UIColor { traits in
+            traits.accessibilityContrast == .high ? UIColor(hex: 0x4A4A50) : canonicalTextSecondary
+        }
         static let darkInput = UIColor(hex: 0xF5F5F7)
         static let darkInputBorder = UIColor.black.withAlphaComponent(0.12)
         static let darkPlaceholder = UIColor.black.withAlphaComponent(0.44)
@@ -32,6 +35,8 @@ enum AlmidyDesignTokens {
         static let gold = brandGold
         static let goldDeep = brandGoldDeep
         static let goldDark = brandGoldText
+        static let goldMuted = UIColor(hex: 0x9F8857)
+        static let goldMutedSurface = UIColor(hex: 0xF2EBDD)
         // Text accents sit on light surfaces, so use the contrast-safe dark gold.
         static let goldSoft = goldDark
 
@@ -61,6 +66,11 @@ enum AlmidyDesignTokens {
         static let tripCardTextPrimary = UIColor.white
         static let tripCardTextSecondary = UIColor.white.withAlphaComponent(0.92)
         static let tripCardTextTertiary = UIColor.white.withAlphaComponent(0.82)
+        static let tripOverviewMetadataPrimary = UIColor.white.withAlphaComponent(0.78)
+        static let tripOverviewMetadataSecondary = UIColor.white.withAlphaComponent(0.70)
+        static let tripOverviewActionSurface = UIColor(hex: 0xDCC794)
+        static let tripOverviewActionIcon = UIColor(hex: 0x76531A)
+        static let tripOverviewActionLabel = UIColor.white.withAlphaComponent(0.76)
 
         // Decorative account surfaces are intentionally pastel and are not provider-brand colors.
         static let avatarRoseSurface = UIColor(red: 1.00, green: 0.84, blue: 0.85, alpha: 1)

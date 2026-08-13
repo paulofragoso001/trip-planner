@@ -1,23 +1,20 @@
 import Foundation
-import WebKit
 
 final class NativeAuthenticatedHTTPClient {
     typealias RequestExecutor = (URLRequest, @escaping (Data?, URLResponse?, Error?) -> Void) -> NativeAuthenticatedTask
 
-    private weak var webView: WKWebView?
     private let baseURL: URL
     private let session: URLSession
     private let coordinator: NativeSessionCoordinator
     private let requestExecutor: RequestExecutor
 
     init(
-        webView: WKWebView?,
+        webView: AnyObject? = nil,
         baseURL: URL = NativeServiceConfiguration.appBaseURL,
         session: URLSession = .shared,
         coordinator: NativeSessionCoordinator = .shared,
         requestExecutor: RequestExecutor? = nil
     ) {
-        self.webView = webView
         self.baseURL = baseURL
         self.session = session
         self.coordinator = coordinator
@@ -63,24 +60,11 @@ final class NativeAuthenticatedHTTPClient {
             }
             var authorized = request
             authorized.setValue("Bearer \(session.accessToken)", forHTTPHeaderField: "Authorization")
-            self.attachCookies(to: authorized) { requestWithCookies in
-                self.perform(
-                    requestWithCookies,
-                    retryAfterAuthenticationFailure: retryAfterAuthenticationFailure,
-                    completion: completion
-                )
-            }
-        }
-    }
-
-    private func attachCookies(to request: URLRequest, completion: @escaping (URLRequest) -> Void) {
-        guard let webView else { completion(request); return }
-        webView.configuration.websiteDataStore.httpCookieStore.getAllCookies { cookies in
-            var updated = request
-            if let cookieHeader = HTTPCookie.requestHeaderFields(with: cookies)["Cookie"] {
-                updated.setValue(cookieHeader, forHTTPHeaderField: "Cookie")
-            }
-            completion(updated)
+            self.perform(
+                authorized,
+                retryAfterAuthenticationFailure: retryAfterAuthenticationFailure,
+                completion: completion
+            )
         }
     }
 

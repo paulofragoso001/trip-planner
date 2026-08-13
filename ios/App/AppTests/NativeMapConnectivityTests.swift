@@ -278,6 +278,11 @@ final class NativeMapConnectivityTests: XCTestCase {
 
     func testNativeRouteOwnershipIsExplicit() {
         XCTAssertEqual(NativeWebRoutePolicy.owner(for: "/dashboard/trips"), .native)
+        XCTAssertEqual(NativeWebRoutePolicy.owner(for: "/dashboard/trips/trip-123/timeline"), .controlledWebView)
+        XCTAssertEqual(NativeWebRoutePolicy.owner(for: "/dashboard/trips/trip-123/timeline#new-plan"), .controlledWebView)
+        XCTAssertEqual(NativeWebRoutePolicy.owner(for: "/dashboard/trips/trip-123/documents"), .controlledWebView)
+        XCTAssertEqual(NativeWebRoutePolicy.owner(for: "/dashboard/trips/trip-123/budget"), .controlledWebView)
+        XCTAssertEqual(NativeWebRoutePolicy.owner(for: "/dashboard/trips/trip-123/flights"), .unavailable)
         XCTAssertEqual(NativeWebRoutePolicy.owner(for: "/dashboard/search"), .native)
         XCTAssertEqual(NativeWebRoutePolicy.owner(for: "/dashboard/account"), .native)
         XCTAssertEqual(NativeWebRoutePolicy.owner(for: "/dashboard/imports"), .controlledWebView)

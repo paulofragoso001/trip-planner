@@ -30,10 +30,12 @@ final class NativeSessionCoordinator {
     private let publishableKey: String?
     private let defaultSession: URLSession
     private let lock = NSLock()
+    private let authStateLock = NSLock()
     private let sessionMutationLock = NSLock()
     private var refreshWaiters: [(Result<NativeAuthSession, Error>) -> Void] = []
     private var refreshTask: URLSessionDataTask?
     private var authenticatedTasks: [NativeAuthenticatedTask] = []
+    private var refreshRejected = false
     private static let revisionQueue = DispatchQueue(label: "app.almidy.auth.revisions")
     private static var lastRevisionId: Int64 = 0
 
@@ -51,6 +53,8 @@ final class NativeSessionCoordinator {
     }
 
     var session: NativeAuthSession? {
+        authStateLock.lock(); let rejected = refreshRejected; authStateLock.unlock()
+        guard !rejected else { return nil }
         guard store.loadSignOutMarker() == nil,
               case .valid(let session) = store.loadSession(),
               session.isComplete else { return nil }
@@ -58,6 +62,8 @@ final class NativeSessionCoordinator {
     }
 
     var state: NativeSessionState {
+        authStateLock.lock(); let rejected = refreshRejected; authStateLock.unlock()
+        if rejected { return .invalid(.refreshRejected) }
         if let marker = store.loadSignOutMarker() { return .explicitlySignedOut(marker) }
         switch store.loadSession() {
         case .missing: return .missing
@@ -69,6 +75,22 @@ final class NativeSessionCoordinator {
             guard expiry > 0 else { return .invalid(.invalidExpiry) }
             return session.isExpired() ? .expired(session) : .valid(session)
         }
+    }
+
+    var authState: NativeAuthState {
+        switch state {
+        case .valid(let session):
+            guard let userID = session.userId, !userID.isEmpty else { return .authenticationExpired }
+            return .authenticated(NativeUserIdentity(id: userID, profile: NativeJWTClaims.profile(from: session.accessToken)))
+        case .expired: return .refreshable
+        case .invalid(.refreshRejected): return .authenticationExpired
+        case .invalid, .missing, .explicitlySignedOut: return .signedOut
+        }
+    }
+
+    var verifiedUserID: String? {
+        guard case .authenticated(let identity) = authState else { return nil }
+        return identity.id
     }
 
     var isExpiringSoon: Bool {
@@ -128,6 +150,7 @@ final class NativeSessionCoordinator {
             return false
         }
         store.clearSignOutMarker()
+        authStateLock.lock(); refreshRejected = false; authStateLock.unlock()
         sessionMutationLock.unlock()
         postChange(event: event, session: session)
         return true
@@ -135,27 +158,9 @@ final class NativeSessionCoordinator {
 
     @discardableResult
     func importWebSession(_ session: NativeAuthSession, revision: Int64) -> NativeWebSessionImportResult {
-        guard session.isComplete else { return .rejectedInvalid }
-        sessionMutationLock.lock()
-        let marker = store.loadSignOutMarker()
-        if let marker, revision <= marker.generation {
-            sessionMutationLock.unlock()
-            return .rejectedStale
-        }
-        if marker == nil,
-           case .valid(let storedSession) = store.loadSession(),
-           storedSession == session {
-            sessionMutationLock.unlock()
-            return .unchanged
-        }
-        guard store.saveSession(session) else {
-            sessionMutationLock.unlock()
-            return .persistenceFailed
-        }
-        store.clearSignOutMarker()
-        sessionMutationLock.unlock()
-        postChange(event: .signedIn, session: session, generation: revision)
-        return .imported
+        // Retained temporarily for binary/test compatibility while the old
+        // Capacitor bridge is retired. Web credentials are never authoritative.
+        .rejectedInvalid
     }
 
     static func session(fromWebStorageValue rawValue: String) -> NativeAuthSession? {
@@ -170,11 +175,7 @@ final class NativeSessionCoordinator {
 
     @discardableResult
     func update(from rawValue: String, revision: Int64? = nil) -> Bool {
-        guard let session = Self.session(fromWebStorageValue: rawValue) else { return false }
-        let authenticationRevision = revision
-            ?? NativeJWTClaims.issuedAtMilliseconds(from: session.accessToken)
-            ?? 0
-        return importWebSession(session, revision: authenticationRevision).isAccepted
+        false
     }
 
     func accessToken(using urlSession: URLSession = .shared, completion: @escaping (String?) -> Void) {
@@ -307,7 +308,11 @@ final class NativeSessionCoordinator {
     }
 
     private func invalidateAfterRefreshRejection() {
-        explicitSignOut()
+        sessionMutationLock.lock()
+        store.clearSession()
+        sessionMutationLock.unlock()
+        authStateLock.lock(); refreshRejected = true; authStateLock.unlock()
+        NotificationCenter.default.post(name: .nativeAuthExpired, object: nil)
     }
 
     func updateProfileName(_ name: String, using urlSession: URLSession = .shared, completion: @escaping (Bool) -> Void) {

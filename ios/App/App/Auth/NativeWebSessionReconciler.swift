@@ -7,6 +7,7 @@ enum NativeWebSessionState: Equatable {
 }
 
 enum NativeSessionReconciliationAction: Equatable {
+    @available(*, deprecated, message: "Web sessions are projections and cannot be imported into native auth.")
     case importWeb(NativeAuthSession, revision: Int64)
     case preserveNative(NativeAuthSession)
     case refreshNative(NativeAuthSession)
@@ -19,9 +20,6 @@ enum NativeSessionReconciliationAction: Equatable {
 struct NativeWebSessionReconciler {
     func reconcile(native: NativeSessionState, web: NativeWebSessionState) -> [NativeSessionReconciliationAction] {
         if case .explicitlySignedOut(let marker) = native {
-            if case .valid(let session, let revision) = web, revision > marker.generation {
-                return [.importWeb(session, revision: revision)]
-            }
             return [.clearAll(marker), .remainSignedOut]
         }
         if case .explicitlySignedOut(let generation) = web {
@@ -29,14 +27,14 @@ struct NativeWebSessionReconciler {
         }
 
         switch (native, web) {
-        case (.missing, .valid(let session, let revision)):
-            return [.importWeb(session, revision: revision)]
+        case (.missing, .valid):
+            return [.remainSignedOut]
         case (.valid(let session), .missing):
             return [.restoreWeb(session)]
         case (.expired(let session), _):
             return [.refreshNative(session)]
-        case (.invalid, .valid(let session, let revision)):
-            return [.discardInvalidNative, .importWeb(session, revision: revision)]
+        case (.invalid, .valid):
+            return [.discardInvalidNative, .remainSignedOut]
         case (.invalid, .missing):
             return [.discardInvalidNative, .remainSignedOut]
         case (.missing, .missing):

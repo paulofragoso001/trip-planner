@@ -94,6 +94,16 @@ export function imageFromProviderMetadata(
   sourceLabel = "Google Places",
   maxWidth = 900
 ): Omit<WalletHeroImage, "fallbackGradient"> | null {
+  const persistedImageUrl = readString(metadata?.image_url);
+  if (persistedImageUrl) {
+    return {
+      imageAlt: readString(metadata?.image_alt) || fallbackAlt,
+      imageAttribution: readString(metadata?.image_attribution),
+      imageSourceLabel: readString(metadata?.image_source) || sourceLabel,
+      imageUrl: persistedImageUrl
+    };
+  }
+
   const photo = readProviderPhoto(metadata);
   const imageUrl = buildPlacePhotoUrl(metadata, maxWidth);
   if (!photo || !imageUrl) return null;
