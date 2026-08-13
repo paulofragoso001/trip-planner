@@ -234,7 +234,7 @@ final class NativeTripOverviewViewController: UIViewController, UIScrollViewDele
     private func render(_ overview: NativeTripOverview, stale: Bool) {
         latestOverview = overview
         headerView.render(hero: overview.hero, trip: overview.trip, stale: stale)
-        actionsView.render(actions: overview.actions)
+        actionsView.render(actions: overview.actions, activityMode: overview.itinerary.activityMode)
         itineraryView.render(overview.itinerary, newActivityAvailable: overview.actions.contains { $0.kind == .newActivity && $0.isAvailable })
         documentsView.render(overview.documents)
         expensesView.render(overview.expenses)

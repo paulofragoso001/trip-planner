@@ -40,3 +40,73 @@ final class NativeTripDateTests: XCTestCase {
         }
     }
 }
+
+final class NativeTripOverviewActivityModeTests: XCTestCase {
+    private let newActivity = NativeTripOverviewAction(
+        kind: .newActivity,
+        label: "New Activity",
+        destination: .webHandoff(URL(string: "https://almidy.app/dashboard/trips/trip-1/timeline#new-plan")!)
+    )
+    private let places = NativeTripOverviewAction(
+        kind: .places,
+        label: "Places",
+        destination: .nativePlaces(URL(string: "almidy://trips/trip-1/places")!)
+    )
+    private let routes = NativeTripOverviewAction(
+        kind: .routes,
+        label: "Routes",
+        destination: .nativeRoutes(URL(string: "almidy://trips/trip-1/routes")!)
+    )
+
+    func testEmptyFixtureRendersOnlyAddFirstActivity() {
+        let itinerary = fixture(count: 0, state: .empty)
+
+        XCTAssertEqual(itinerary.activityMode, .empty)
+        let visible = NativeTripOverviewActivityPresentation.visibleActions(
+            from: [newActivity, places, routes],
+            mode: itinerary.activityMode
+        )
+        XCTAssertEqual(visible.map(\.kind), [.newActivity])
+        XCTAssertEqual(
+            NativeTripOverviewActivityPresentation.label(for: newActivity, mode: itinerary.activityMode),
+            "Add First Activity"
+        )
+    }
+
+    func testPopulatedFixtureRendersOnlySupportedActions() {
+        let unavailablePlaces = NativeTripOverviewAction(kind: .places, label: "Places", destination: nil)
+        let itinerary = fixture(count: 3, state: .available)
+
+        XCTAssertEqual(itinerary.activityMode, .populated)
+        let visible = NativeTripOverviewActivityPresentation.visibleActions(
+            from: [newActivity, unavailablePlaces, routes],
+            mode: itinerary.activityMode
+        )
+        XCTAssertEqual(visible.map(\.kind), [.newActivity, .routes])
+    }
+
+    func testFailedFixtureDoesNotInferEmptyFromZeroCount() {
+        let itinerary = fixture(count: 0, state: .failed)
+
+        XCTAssertNil(itinerary.activityMode)
+        let visible = NativeTripOverviewActivityPresentation.visibleActions(
+            from: [newActivity, places, routes],
+            mode: itinerary.activityMode
+        )
+        XCTAssertEqual(visible.map(\.kind), [.newActivity, .places, .routes])
+    }
+
+    func testCanonicalCountWinsOverNonFailedSectionLabel() {
+        XCTAssertEqual(fixture(count: 0, state: .available).activityMode, .empty)
+        XCTAssertEqual(fixture(count: 2, state: .empty).activityMode, .populated)
+    }
+
+    private func fixture(count: Int, state: NativeTripOverviewSectionState) -> NativeTripOverview.Itinerary {
+        .init(
+            status: .init(state: state, error: state == .failed ? "Unavailable" : nil),
+            exactCount: count,
+            dateRange: "Aug 11 → Sep 2",
+            categories: count == 0 ? [] : [.init(key: "places", label: "Places", count: count, icon: "mappin")]
+        )
+    }
+}

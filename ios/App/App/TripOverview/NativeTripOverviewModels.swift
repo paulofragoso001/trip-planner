@@ -118,6 +118,11 @@ enum NativeTripOverviewActionKind: String, Codable, Equatable {
     case stays
 }
 
+enum TripOverviewActivityMode: Equatable {
+    case empty
+    case populated
+}
+
 enum NativeTripOverviewActionDestination: Codable, Equatable {
     case webHandoff(URL)
     case nativePlaces(URL)
@@ -213,6 +218,13 @@ struct NativeTripOverview: Codable, Equatable {
         let exactCount: Int
         let dateRange: String
         let categories: [ItineraryCategory]
+
+        /// A failed section has no trustworthy canonical count. Keep the last
+        /// supported-action contract visible until the itinerary can refresh.
+        var activityMode: TripOverviewActivityMode? {
+            guard status.state != .failed else { return nil }
+            return exactCount == 0 ? .empty : .populated
+        }
     }
 
     struct Document: Codable, Equatable {
@@ -277,6 +289,23 @@ struct NativeTripOverview: Codable, Equatable {
         try values.encode(ExpensesWire(model: expenses), forKey: .expenseSummary)
         try values.encode(RecentItemsWire(model: recentItems), forKey: .recentItems)
         try values.encode(actions.map(ActionWire.init(model:)), forKey: .supportedActions)
+    }
+}
+
+enum NativeTripOverviewActivityPresentation {
+    static func visibleActions(
+        from actions: [NativeTripOverviewAction],
+        mode: TripOverviewActivityMode?
+    ) -> [NativeTripOverviewAction] {
+        let supported = actions.filter { action in
+            action.isAvailable && ![.flights, .stays].contains(action.kind)
+        }
+        guard mode == .empty else { return supported }
+        return supported.filter { $0.kind == .newActivity }
+    }
+
+    static func label(for action: NativeTripOverviewAction, mode: TripOverviewActivityMode?) -> String {
+        mode == .empty && action.kind == .newActivity ? "Add First Activity" : action.label
     }
 }
 

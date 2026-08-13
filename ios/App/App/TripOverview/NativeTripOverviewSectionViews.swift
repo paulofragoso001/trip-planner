@@ -127,7 +127,11 @@ final class NativeTripOverviewItineraryCard: NativeTripOverviewCard {
         overflowCount = 0
         totalText = "\(itinerary.exactCount) \(itinerary.exactCount == 1 ? "activity" : "activities")"
         contentStack.addArrangedSubview(NativeTripOverviewDivider())
-        if itinerary.status.state == .empty || itinerary.exactCount == 0 {
+        if itinerary.status.state == .failed {
+            accessibilityValue = "Temporarily unavailable"
+            return
+        }
+        if itinerary.activityMode == .empty {
             let emptyRow = NativeTripOverviewEmptyTimelineRow()
             contentStack.addArrangedSubview(emptyRow)
             if newActivityAvailable {
@@ -657,10 +661,13 @@ final class NativeTripOverviewActionsView: UIView {
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
     deinit { NotificationCenter.default.removeObserver(self) }
 
-    func render(actions: [NativeTripOverviewAction]) {
+    func render(actions: [NativeTripOverviewAction], activityMode: TripOverviewActivityMode?) {
         actionStack.arrangedSubviews.forEach { $0.removeFromSuperview() }
-        actions.filter { $0.isAvailable && ![.flights, .stays].contains($0.kind) }.forEach { action in
-            let button = NativeTripOverviewActionButton(action: action)
+        NativeTripOverviewActivityPresentation.visibleActions(from: actions, mode: activityMode).forEach { action in
+            let button = NativeTripOverviewActionButton(
+                action: action,
+                displayLabel: NativeTripOverviewActivityPresentation.label(for: action, mode: activityMode)
+            )
             button.addTarget(self, action: #selector(activate(_:)), for: .touchUpInside)
             actionStack.addArrangedSubview(button)
         }
@@ -687,7 +694,7 @@ private final class NativeTripOverviewActionButton: UIButton {
     private let iconView = UIImageView()
     private let actionLabel = UILabel()
 
-    init(action: NativeTripOverviewAction) {
+    init(action: NativeTripOverviewAction, displayLabel: String) {
         self.action = action
         super.init(frame: .zero)
         backgroundColor = .clear
@@ -705,7 +712,7 @@ private final class NativeTripOverviewActionButton: UIButton {
         iconView.isUserInteractionEnabled = false
         iconView.translatesAutoresizingMaskIntoConstraints = false
 
-        actionLabel.text = action.label
+        actionLabel.text = displayLabel
         actionLabel.font = UIFontMetrics(forTextStyle: .caption1).scaledFont(for: AlmidyDesignTokens.Font.body(12))
         actionLabel.adjustsFontForContentSizeCategory = true
         actionLabel.textColor = AlmidyDesignTokens.Color.tripOverviewActionLabel
@@ -731,7 +738,7 @@ private final class NativeTripOverviewActionButton: UIButton {
             actionLabel.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -4),
             actionLabel.bottomAnchor.constraint(lessThanOrEqualTo: bottomAnchor, constant: -2)
         ])
-        accessibilityLabel = action.label
+        accessibilityLabel = displayLabel
         accessibilityIdentifier = "trip-action-\(action.kind.rawValue)"
         accessibilityValue = "Available"
         switch action.destination {
