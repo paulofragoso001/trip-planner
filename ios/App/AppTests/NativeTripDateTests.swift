@@ -72,6 +72,28 @@ final class NativeTripDateTests: XCTestCase {
     }
 }
 
+final class NativeTripCardMenuTests: XCTestCase {
+    func testMenuActionsRemainInReferenceOrder() {
+        XCTAssertEqual(
+            NativeTripCardMenuAction.allCases.map(\.title),
+            [
+                "Share Trip",
+                "Edit Name",
+                "Change Dates",
+                "Change Background",
+                "Duplicate Trip",
+                "Merge into another Trip",
+                "Remove Trip",
+            ]
+        )
+    }
+
+    func testMenuActionsUseDistinctSystemImages() {
+        let images = NativeTripCardMenuAction.allCases.map(\.systemImage)
+        XCTAssertEqual(Set(images).count, images.count)
+    }
+}
+
 final class NativeTripOverviewActivityModeTests: XCTestCase {
     private let newActivity = NativeTripOverviewAction(
         kind: .newActivity,

@@ -112,6 +112,40 @@ struct NativeTripDraft {
     }
 }
 
+enum NativeTripCardMenuAction: CaseIterable, Equatable {
+    case shareTrip
+    case editName
+    case changeDates
+    case changeBackground
+    case duplicateTrip
+    case mergeTrip
+    case removeTrip
+
+    var title: String {
+        switch self {
+        case .shareTrip: return "Share Trip"
+        case .editName: return "Edit Name"
+        case .changeDates: return "Change Dates"
+        case .changeBackground: return "Change Background"
+        case .duplicateTrip: return "Duplicate Trip"
+        case .mergeTrip: return "Merge into another Trip"
+        case .removeTrip: return "Remove Trip"
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .shareTrip: return "square.and.arrow.up"
+        case .editName: return "character.cursor.ibeam"
+        case .changeDates: return "calendar"
+        case .changeBackground: return "photo"
+        case .duplicateTrip: return "plus.square.on.square"
+        case .mergeTrip: return "arrow.triangle.merge"
+        case .removeTrip: return "trash"
+        }
+    }
+}
+
 enum NativeTripStoreError: LocalizedError {
     case invalidResponse
     case unauthorized
@@ -342,6 +376,12 @@ final class NativeTripStore {
 
     func deleteTrip(id: String, completion: @escaping (Result<Void, Error>) -> Void) {
         send(path: "/api/trips/\(id)", method: "DELETE", body: nil) { result in
+            completion(result.map { _ in () })
+        }
+    }
+
+    func enableTripSharing(id: String, completion: @escaping (Result<Void, Error>) -> Void) {
+        send(path: "/api/trips/\(id)/share", method: "POST", body: Data("{}".utf8)) { result in
             completion(result.map { _ in () })
         }
     }
@@ -2629,7 +2669,9 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         let button = NativeGradientButton(type: .custom)
         button.accessibilityIdentifier = trip.id
         button.accessibilityLabel = "Open \(trip.displayName)"
+        button.accessibilityHint = "Double tap to open. Touch and hold for trip actions."
         button.addTarget(self, action: #selector(openTripAction(_:)), for: .touchUpInside)
+        button.addInteraction(UIContextMenuInteraction(delegate: self))
         button.translatesAutoresizingMaskIntoConstraints = false
         card.addSubview(button)
 
@@ -3458,6 +3500,10 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
 
     @objc private func editTripAction(_ sender: NativeTripActionButton) {
         guard let trip = trips.first(where: { $0.id == sender.tripId }) else { return }
+        presentTripEditor(trip)
+    }
+
+    private func presentTripEditor(_ trip: NativeMapTrip, focus: NativeTripEditorFocus = .all) {
         let presentEditor = { [weak self] in
             guard let self, self.presentedViewController == nil else { return }
             let form = NativeCreateTripViewController(
@@ -3480,6 +3526,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
                     }
                     tripStore.resolveDestinationImageBank(query: query, completion: completion)
                 },
+                initialFocus: focus,
                 onCreate: { [weak self] draft, completion in
                     guard let self else { return }
                     self.updateTripFromServer(id: trip.id, draft: draft, completion: completion)
@@ -3530,6 +3577,10 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
 
     @objc private func deleteTripAction(_ sender: NativeTripActionButton) {
         guard let trip = trips.first(where: { $0.id == sender.tripId }) else { return }
+        confirmTripRemoval(trip)
+    }
+
+    private func confirmTripRemoval(_ trip: NativeMapTrip) {
         let alert = UIAlertController(
             title: "Delete \(trip.displayName)?",
             message: "This removes the trip from your wallet and globe.",
@@ -3684,6 +3735,157 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
             let gradient = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: colors as CFArray, locations: [0, 1])!
             context.cgContext.drawLinearGradient(gradient, start: CGPoint(x: 0, y: 0), end: CGPoint(x: 720, y: 520), options: [])
         }
+    }
+}
+
+extension NativeMapViewController: UIContextMenuInteractionDelegate {
+    func contextMenuInteraction(
+        _ interaction: UIContextMenuInteraction,
+        configurationForMenuAtLocation location: CGPoint
+    ) -> UIContextMenuConfiguration? {
+        guard let id = interaction.view?.accessibilityIdentifier,
+              let trip = trips.first(where: { $0.id == id }) else { return nil }
+
+        return UIContextMenuConfiguration(identifier: id as NSString, previewProvider: nil) { [weak self] _ in
+            guard let self else { return nil }
+            let action: (NativeTripCardMenuAction, UIMenuElement.Attributes) -> UIAction = { item, attributes in
+                UIAction(
+                    title: item.title,
+                    image: UIImage(systemName: item.systemImage),
+                    attributes: attributes
+                ) { [weak self] _ in
+                    self?.performTripCardMenuAction(item, trip: trip, sourceView: interaction.view)
+                }
+            }
+
+            let primary = UIMenu(options: .displayInline, children: [
+                action(.shareTrip, []),
+                action(.editName, []),
+                action(.changeDates, []),
+                action(.changeBackground, [])
+            ])
+            let organization = UIMenu(options: .displayInline, children: [
+                action(.duplicateTrip, []),
+                action(.mergeTrip, self.trips.count > 1 ? [] : [.disabled])
+            ])
+            let removal = UIMenu(options: .displayInline, children: [
+                action(.removeTrip, [.destructive])
+            ])
+            return UIMenu(title: trip.displayName, children: [primary, organization, removal])
+        }
+    }
+
+    private func performTripCardMenuAction(
+        _ action: NativeTripCardMenuAction,
+        trip: NativeMapTrip,
+        sourceView: UIView?
+    ) {
+        switch action {
+        case .shareTrip:
+            shareTrip(trip, sourceView: sourceView)
+        case .editName:
+            presentTripEditor(trip, focus: .name)
+        case .changeDates:
+            presentTripEditor(trip, focus: .dates)
+        case .changeBackground:
+            presentTripEditor(trip, focus: .background)
+        case .duplicateTrip:
+            duplicateTrip(trip)
+        case .mergeTrip:
+            chooseMergeTarget(for: trip)
+        case .removeTrip:
+            confirmTripRemoval(trip)
+        }
+    }
+
+    private func shareTrip(_ trip: NativeMapTrip, sourceView: UIView?) {
+        guard let tripStore else {
+            showTripMenuError("Share Trip", message: "Sharing is unavailable right now.")
+            return
+        }
+        tripStore.enableTripSharing(id: trip.id) { [weak self] result in
+            DispatchQueue.main.async {
+                guard let self else { return }
+                switch result {
+                case .success:
+                    let url = NativeServiceConfiguration.appBaseURL
+                        .appendingPathComponent("trip")
+                        .appendingPathComponent(trip.id)
+                    let activity = UIActivityViewController(
+                        activityItems: ["Join my \(trip.displayName) trip on Almidy", url],
+                        applicationActivities: nil
+                    )
+                    activity.popoverPresentationController?.sourceView = sourceView ?? self.view
+                    activity.popoverPresentationController?.sourceRect = sourceView?.bounds ?? CGRect(
+                        x: self.view.bounds.midX,
+                        y: self.view.bounds.midY,
+                        width: 1,
+                        height: 1
+                    )
+                    self.present(activity, animated: true)
+                case .failure(let error):
+                    self.showTripMenuError("Share Trip", message: error.localizedDescription)
+                }
+            }
+        }
+    }
+
+    private func duplicateTrip(_ trip: NativeMapTrip) {
+        guard let coordinate = trip.coordinate else {
+            showTripMenuError("Duplicate Trip", message: "This trip does not have a resolved destination.")
+            return
+        }
+        let draft = NativeTripDraft(
+            name: "\(trip.displayName) Copy",
+            destination: trip.destination ?? trip.displayName,
+            coordinate: coordinate,
+            startDate: trip.startDate,
+            endDate: trip.endDate,
+            imageURL: trip.imageUrl.flatMap(URL.init(string:))
+        )
+        createTripFromServer(draft) { [weak self] result in
+            DispatchQueue.main.async {
+                switch result {
+                case .success(let duplicate):
+                    self?.addNativeTrip(duplicate)
+                case .failure(let error):
+                    self?.showTripMenuError("Duplicate Trip", message: error.localizedDescription)
+                }
+            }
+        }
+    }
+
+    private func chooseMergeTarget(for sourceTrip: NativeMapTrip) {
+        let targets = trips.filter { $0.id != sourceTrip.id }
+        guard !targets.isEmpty else { return }
+        let picker = UIAlertController(
+            title: "Merge \(sourceTrip.displayName)",
+            message: "Choose the trip that should receive this trip's content.",
+            preferredStyle: .actionSheet
+        )
+        for target in targets {
+            picker.addAction(UIAlertAction(title: target.displayName, style: .default) { [weak self] _ in
+                self?.showTripMenuError(
+                    "Merge Trips",
+                    message: "A safe transactional merge is not available yet. Neither trip was changed."
+                )
+            })
+        }
+        picker.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        picker.popoverPresentationController?.sourceView = view
+        picker.popoverPresentationController?.sourceRect = CGRect(
+            x: view.bounds.midX,
+            y: view.bounds.midY,
+            width: 1,
+            height: 1
+        )
+        present(picker, animated: true)
+    }
+
+    private func showTripMenuError(_ title: String, message: String) {
+        let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "OK", style: .default))
+        present(alert, animated: true)
     }
 }
 

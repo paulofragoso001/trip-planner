@@ -1,12 +1,21 @@
 import MapKit
 import UIKit
 
+enum NativeTripEditorFocus {
+    case all
+    case name
+    case dates
+    case background
+}
+
 final class NativeCreateTripViewController: UIViewController,
     MKLocalSearchCompleterDelegate,
     UITextFieldDelegate
 {
     private let onCreate: (NativeTripDraft, @escaping (Result<NativeMapTrip, Error>) -> Void) -> Void
     private let onSuccessfulSaveDismissed: ((NativeMapTrip) -> Void)?
+    private let initialFocus: NativeTripEditorFocus
+    private var hasAppliedInitialFocus = false
     let existingTrip: NativeMapTrip?
     let backgroundContext: NativeCreateTripBackgroundContext
     let dateContext: NativeCreateTripDateContext
@@ -28,10 +37,12 @@ final class NativeCreateTripViewController: UIViewController,
         onResolveBackground: ((String, @escaping (URL?) -> Void) -> Void)? = nil,
         onResolveBackgroundBank: ((String, @escaping ([NativeDestinationImageChoice]) -> Void) -> Void)? = nil,
         onSuccessfulSaveDismissed: ((NativeMapTrip) -> Void)? = nil,
+        initialFocus: NativeTripEditorFocus = .all,
         onCreate: @escaping (NativeTripDraft, @escaping (Result<NativeMapTrip, Error>) -> Void) -> Void
     ) {
         self.onCreate = onCreate
         self.onSuccessfulSaveDismissed = onSuccessfulSaveDismissed
+        self.initialFocus = initialFocus
         self.existingTrip = existingTrip
         backgroundContext = NativeCreateTripBackgroundContext(
             resolver: onResolveBackground,
@@ -70,6 +81,23 @@ final class NativeCreateTripViewController: UIViewController,
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         updateCreateTripLayout()
+    }
+
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        guard existingTrip != nil, !hasAppliedInitialFocus else { return }
+        hasAppliedInitialFocus = true
+        switch initialFocus {
+        case .all:
+            break
+        case .name:
+            nameField.becomeFirstResponder()
+            nameField.selectAll(nil)
+        case .dates:
+            setDates()
+        case .background:
+            selectBackground()
+        }
     }
 
     private func observeKeyboardFrameChanges() {
