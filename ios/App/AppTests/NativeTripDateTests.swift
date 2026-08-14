@@ -138,6 +138,65 @@ final class NativeTripOverviewActivityModeTests: XCTestCase {
     }
 }
 
+final class NativeTripOverviewItineraryCardTests: XCTestCase {
+    func testEmptyCardKeepsTruthfulRangeAndUsesCompactTimelineLayout() {
+        let card = NativeTripOverviewItineraryCard()
+
+        card.render(fixture(count: 0, dateRange: "Aug 11 - Sep 2", categories: []), newActivityAvailable: true)
+
+        XCTAssertEqual(card.renderedDateRange, "Aug 11 → Sep 2")
+        XCTAssertEqual(card.totalText, "0 activities")
+        XCTAssertTrue(card.hasAddFirstActivityAction)
+        XCTAssertTrue(card.isUsingCompactEmptyInsets)
+        XCTAssertEqual(card.verticalContentInset, AlmidyDesignTokens.Spacing.sm)
+        XCTAssertEqual(card.layer.cornerRadius, AlmidyDesignTokens.Radius.card)
+    }
+
+    func testWholeCardOpensItinerary() {
+        let card = NativeTripOverviewItineraryCard()
+        var openCount = 0
+        card.onOpen = { openCount += 1 }
+        card.render(fixture(count: 0, dateRange: "Aug 11 → Sep 2", categories: []), newActivityAvailable: true)
+
+        card.sendActions(for: .touchUpInside)
+
+        XCTAssertEqual(openCount, 1)
+    }
+
+    func testPopulatedCardShowsExactCountCentralizedCategoriesAndOverflow() {
+        let card = NativeTripOverviewItineraryCard()
+        let categories = ["flights", "stays", "restaurants", "bars", "routes", "shopping", "places"].map {
+            NativeTripOverview.ItineraryCategory(key: $0, label: $0.capitalized, count: 1, icon: "ellipsis")
+        }
+
+        card.render(fixture(count: 11, dateRange: "Aug 11 → Sep 2", categories: categories), newActivityAvailable: true)
+
+        XCTAssertEqual(card.totalText, "11 activities")
+        XCTAssertEqual(card.renderedCategoryKeys, Array(categories.prefix(5).map(\.key)))
+        XCTAssertEqual(card.overflowCount, 2)
+        XCTAssertFalse(card.hasAddFirstActivityAction)
+        XCTAssertFalse(card.isUsingCompactEmptyInsets)
+        XCTAssertEqual(card.verticalContentInset, AlmidyDesignTokens.Spacing.md)
+        XCTAssertNotEqual(
+            NativeTripOverviewCategoryCatalog.presentation(key: "flights").symbol,
+            NativeTripOverviewCategoryCatalog.presentation(key: "restaurants").symbol
+        )
+    }
+
+    private func fixture(
+        count: Int,
+        dateRange: String,
+        categories: [NativeTripOverview.ItineraryCategory]
+    ) -> NativeTripOverview.Itinerary {
+        .init(
+            status: .init(state: count == 0 ? .empty : .available),
+            exactCount: count,
+            dateRange: dateRange,
+            categories: categories
+        )
+    }
+}
+
 private extension UIView {
     func descendant(withAccessibilityIdentifier identifier: String) -> UIView? {
         if accessibilityIdentifier == identifier { return self }

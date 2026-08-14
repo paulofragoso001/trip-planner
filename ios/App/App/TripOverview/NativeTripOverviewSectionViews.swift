@@ -28,8 +28,11 @@ enum NativeTripOverviewCategoryCatalog {
 class NativeTripOverviewCard: UIControl, UIGestureRecognizerDelegate {
     let contentStack = UIStackView()
     let stateLabel = UILabel()
+    private var contentTopConstraint: NSLayoutConstraint!
+    private var contentBottomConstraint: NSLayoutConstraint!
     var onOpen: (() -> Void)?
     var onRetry: (() -> Void)?
+    private(set) var verticalContentInset = AlmidyDesignTokens.Spacing.md
     var hasRetryAction: Bool { contentStack.arrangedSubviews.contains { ($0 as? UIButton)?.title(for: .normal) == "Retry this section" } }
 
     override init(frame: CGRect) {
@@ -54,17 +57,25 @@ class NativeTripOverviewCard: UIControl, UIGestureRecognizerDelegate {
         let openGesture = UITapGestureRecognizer(target: self, action: #selector(open))
         openGesture.delegate = self
         addGestureRecognizer(openGesture)
+        contentTopConstraint = contentStack.topAnchor.constraint(equalTo: topAnchor, constant: AlmidyDesignTokens.Spacing.md)
+        contentBottomConstraint = contentStack.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -AlmidyDesignTokens.Spacing.md)
         NSLayoutConstraint.activate([
             contentStack.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 18),
             contentStack.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -18),
-            contentStack.topAnchor.constraint(equalTo: topAnchor, constant: 16),
-            contentStack.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -16),
+            contentTopConstraint,
+            contentBottomConstraint,
             heightAnchor.constraint(greaterThanOrEqualToConstant: 44)
         ])
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
     @objc private func open() { onOpen?() }
+
+    func setVerticalContentInset(_ inset: CGFloat) {
+        verticalContentInset = inset
+        contentTopConstraint.constant = inset
+        contentBottomConstraint.constant = -inset
+    }
 
     func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
         var touchedView: UIView? = touch.view
@@ -101,16 +112,21 @@ final class NativeTripOverviewItineraryCard: NativeTripOverviewCard {
     private let header = NativeTripOverviewCardHeader(
         icon: "calendar",
         title: "Itinerary",
-        accentColor: AlmidyDesignTokens.Color.goldMuted
+        accentColor: AlmidyDesignTokens.Color.goldMuted,
+        titleFont: AlmidyDesignTokens.Font.regular(17)
     )
     private(set) var renderedCategoryKeys: [String] = []
     private(set) var overflowCount = 0
     private(set) var totalText: String?
+    private(set) var renderedDateRange: String?
+    private(set) var isUsingCompactEmptyInsets = false
+    var hasAddFirstActivityAction: Bool {
+        contentStack.arrangedSubviews.contains { ($0 as? UIButton)?.title(for: .normal) == "Add First Activity" }
+    }
 
     override init(frame: CGRect) {
         super.init(frame: frame)
         accessibilityIdentifier = "overview-itinerary-card"
-        layer.cornerRadius = 22
         contentStack.spacing = 8
         contentStack.insertArrangedSubview(header, at: 0)
         accessibilityLabel = "Itinerary"
@@ -120,12 +136,15 @@ final class NativeTripOverviewItineraryCard: NativeTripOverviewCard {
 
     func render(_ itinerary: NativeTripOverview.Itinerary, newActivityAvailable: Bool) {
         reset(after: header); apply(itinerary.status)
-        header.trailingText = itinerary.dateRange
+        renderedDateRange = itinerary.dateRange
             .replacingOccurrences(of: " – ", with: " → ")
             .replacingOccurrences(of: " - ", with: " → ")
+        header.trailingText = renderedDateRange
         renderedCategoryKeys = []
         overflowCount = 0
         totalText = "\(itinerary.exactCount) \(itinerary.exactCount == 1 ? "activity" : "activities")"
+        isUsingCompactEmptyInsets = itinerary.activityMode == .empty
+        setVerticalContentInset(isUsingCompactEmptyInsets ? AlmidyDesignTokens.Spacing.sm : AlmidyDesignTokens.Spacing.md)
         contentStack.addArrangedSubview(NativeTripOverviewDivider())
         if itinerary.status.state == .failed {
             accessibilityValue = "Temporarily unavailable"
@@ -319,7 +338,12 @@ private final class NativeTripOverviewCardHeader: UIView {
     private var action: (() -> Void)?
     var trailingText: String? { get { trailingLabel.text } set { trailingLabel.text = newValue; trailingLabel.isHidden = newValue == nil } }
 
-    init(icon: String, title: String, accentColor: UIColor = AlmidyDesignTokens.Color.goldMuted) {
+    init(
+        icon: String,
+        title: String,
+        accentColor: UIColor = AlmidyDesignTokens.Color.goldMuted,
+        titleFont: UIFont = AlmidyDesignTokens.Font.medium(17)
+    ) {
         super.init(frame: .zero)
         iconSurface.backgroundColor = AlmidyDesignTokens.Color.goldMutedSurface
         iconSurface.layer.cornerRadius = 18
@@ -329,7 +353,9 @@ private final class NativeTripOverviewCardHeader: UIView {
         iconView.tintColor = accentColor
         iconView.contentMode = .scaleAspectFit
         titleLabel.text = title
-        titleLabel.font = UIFontMetrics(forTextStyle: .headline).scaledFont(for: AlmidyDesignTokens.Font.medium(17))
+        titleLabel.font = UIFontMetrics(forTextStyle: .headline).scaledFont(
+            for: titleFont
+        )
         titleLabel.adjustsFontForContentSizeCategory = true
         titleLabel.accessibilityTraits.insert(.header)
         titleLabel.numberOfLines = 2; titleLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
