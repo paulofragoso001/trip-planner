@@ -224,6 +224,50 @@ final class NativeTripOverviewCardSystemTests: XCTestCase {
     }
 }
 
+final class NativeTripOverviewReleaseScopeTests: XCTestCase {
+    func testUnsupportedReferenceActionsNeverBecomeVisible() {
+        let available: (NativeTripOverviewActionKind) -> NativeTripOverviewAction = { kind in
+            NativeTripOverviewAction(
+                kind: kind,
+                label: kind.rawValue,
+                destination: .webHandoff(URL(string: "https://almidy.app/\(kind.rawValue)")!)
+            )
+        }
+        let actions = [available(.newActivity), available(.places), available(.routes), available(.flights), available(.stays)]
+
+        XCTAssertEqual(
+            NativeTripOverviewActivityPresentation.visibleActions(from: actions, mode: .populated).map(\.kind),
+            [.newActivity, .places, .routes]
+        )
+        XCTAssertEqual(NativeTripOverviewReleaseScope.importedItemsTitle, "Imported items")
+        XCTAssertEqual(NativeTripOverviewReleaseScope.expenseLedger, "budget_records")
+    }
+
+    func testRecentItemsUseCreationTimestampThenIDAndLimitToFive() {
+        let card = NativeTripOverviewRecentCard()
+        let items = [
+            recent("z", "2026-08-13T10:00:00Z"), recent("a", "2026-08-13T10:00:00Z"),
+            recent("b", "2026-08-13T12:00:00Z"), recent("c", "2026-08-13T11:00:00Z"),
+            recent("d", "2026-08-13T09:00:00Z"), recent("e", "2026-08-13T08:00:00Z")
+        ]
+
+        card.render(.init(status: .init(state: .available), items: items))
+
+        XCTAssertEqual(card.renderedItemIDs, ["b", "c", "a", "z", "d"])
+    }
+
+    private func recent(_ id: String, _ createdAt: String) -> NativeTripOverview.RecentItem {
+        .init(
+            id: id,
+            title: id,
+            category: "place",
+            icon: "mappin",
+            createdAt: createdAt,
+            url: URL(string: "https://almidy.app/items/\(id)")!
+        )
+    }
+}
+
 private extension UIView {
     func descendant(withAccessibilityIdentifier identifier: String) -> UIView? {
         if accessibilityIdentifier == identifier { return self }

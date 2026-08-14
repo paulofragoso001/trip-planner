@@ -118,6 +118,15 @@ enum NativeTripOverviewActionKind: String, Codable, Equatable {
     case stays
 }
 
+/// Product boundaries for the first native Trip Overview release. Keep these
+/// separate from transport models so reference-only affordances cannot leak
+/// into presentation when the API evolves.
+enum NativeTripOverviewReleaseScope {
+    static let importedItemsTitle = "Imported items"
+    static let supportedActionKinds: Set<NativeTripOverviewActionKind> = [.newActivity, .places, .routes]
+    static let expenseLedger = "budget_records"
+}
+
 enum TripOverviewActivityMode: Equatable {
     case empty
     case populated
@@ -297,8 +306,8 @@ enum NativeTripOverviewActivityPresentation {
         from actions: [NativeTripOverviewAction],
         mode: TripOverviewActivityMode?
     ) -> [NativeTripOverviewAction] {
-        let supported = actions.filter { action in
-            action.isAvailable && ![.flights, .stays].contains(action.kind)
+        let supported = actions.filter {
+            $0.isAvailable && NativeTripOverviewReleaseScope.supportedActionKinds.contains($0.kind)
         }
         guard mode == .empty else { return supported }
         return supported.filter { $0.kind == .newActivity }

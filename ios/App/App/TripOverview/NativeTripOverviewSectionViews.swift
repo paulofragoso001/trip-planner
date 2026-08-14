@@ -192,12 +192,12 @@ final class NativeTripOverviewItineraryCard: NativeTripOverviewCard {
 }
 
 final class NativeTripOverviewDocumentsCard: NativeTripOverviewCard {
-    private let header = NativeTripOverviewCardHeader(icon: "folder.fill", title: "Imported items")
+    private let header = NativeTripOverviewCardHeader(icon: "folder.fill", title: NativeTripOverviewReleaseScope.importedItemsTitle)
     private(set) var renderedDocumentIDs: [String] = []
 
     override init(frame: CGRect) {
         super.init(frame: frame); accessibilityIdentifier = "overview-documents-card"; contentStack.insertArrangedSubview(header, at: 0)
-        accessibilityLabel = "Imported items"
+        accessibilityLabel = NativeTripOverviewReleaseScope.importedItemsTitle
         accessibilityHint = "Opens imported trip documents"
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
