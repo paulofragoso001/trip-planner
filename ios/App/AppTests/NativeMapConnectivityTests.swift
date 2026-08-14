@@ -162,6 +162,26 @@ final class NativeMapConnectivityTests: XCTestCase {
         XCTAssertNil(releasedController, "NWPathMonitor must not retain the native map controller.")
     }
 
+    func testPopulatedGlobeKeepsImageryPresentationAcrossCameraChanges() {
+        let trip = NativeMapTrip(
+            id: "trip-map-style",
+            name: "Rome",
+            destination: "Rome",
+            latitude: 41.9028,
+            longitude: 12.4964
+        )
+        let controller = NativeMapViewController(
+            trips: [trip],
+            monitorsNetworkConnectivity: false
+        )
+        controller.loadViewIfNeeded()
+
+        XCTAssertTrue(
+            controller.usesImageryPresentationForTesting,
+            "A populated globe should use one consistent satellite presentation instead of adding MapKit's hybrid label layer at a zoom threshold."
+        )
+    }
+
     func testOfflineFallbackPreservesCameraAndRestoresMapSurface() {
         let controller = NativeMapViewController(
             trips: [],
