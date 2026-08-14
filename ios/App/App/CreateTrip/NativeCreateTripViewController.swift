@@ -6,6 +6,7 @@ final class NativeCreateTripViewController: UIViewController,
     UITextFieldDelegate
 {
     private let onCreate: (NativeTripDraft, @escaping (Result<NativeMapTrip, Error>) -> Void) -> Void
+    private let onSuccessfulSaveDismissed: ((NativeMapTrip) -> Void)?
     let existingTrip: NativeMapTrip?
     let backgroundContext: NativeCreateTripBackgroundContext
     let dateContext: NativeCreateTripDateContext
@@ -26,9 +27,11 @@ final class NativeCreateTripViewController: UIViewController,
         existingTrip: NativeMapTrip? = nil,
         onResolveBackground: ((String, @escaping (URL?) -> Void) -> Void)? = nil,
         onResolveBackgroundBank: ((String, @escaping ([NativeDestinationImageChoice]) -> Void) -> Void)? = nil,
+        onSuccessfulSaveDismissed: ((NativeMapTrip) -> Void)? = nil,
         onCreate: @escaping (NativeTripDraft, @escaping (Result<NativeMapTrip, Error>) -> Void) -> Void
     ) {
         self.onCreate = onCreate
+        self.onSuccessfulSaveDismissed = onSuccessfulSaveDismissed
         self.existingTrip = existingTrip
         backgroundContext = NativeCreateTripBackgroundContext(
             resolver: onResolveBackground,
@@ -251,7 +254,9 @@ final class NativeCreateTripViewController: UIViewController,
                        let image = self.backgroundContext.imageView.image {
                         NativeTripBackgroundImageCache.shared.store(image, for: trip)
                     }
-                    self.dismiss(animated: true)
+                    self.dismiss(animated: true) { [onSuccessfulSaveDismissed = self.onSuccessfulSaveDismissed] in
+                        onSuccessfulSaveDismissed?(trip)
+                    }
                 case .failure(let error):
                     self.setLocationStatus(error.localizedDescription, announce: true)
                     self.updateCreateState()

@@ -3420,14 +3420,13 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
                 }
                 tripStore.resolveDestinationImageBank(query: query, completion: completion)
             },
+            onSuccessfulSaveDismissed: { [weak self] trip in
+                self?.presentTripOverview(for: trip)
+            },
             onCreate: { [weak self] draft, completion in
                 guard let self else { return }
-                self.createTripFromServer(draft) { [weak self] result in
+                self.createTripFromServer(draft) { result in
                     completion(result)
-                    guard case .success(let trip) = result else { return }
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) {
-                        self?.presentTripOverview(for: trip)
-                    }
                 }
             }
         )
