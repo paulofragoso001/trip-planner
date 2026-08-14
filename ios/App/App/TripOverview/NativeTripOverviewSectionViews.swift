@@ -313,14 +313,19 @@ final class NativeTripOverviewRecentCard: NativeTripOverviewCard {
             retry.heightAnchor.constraint(greaterThanOrEqualToConstant: 44).isActive = true
             retry.addAction(UIAction { [weak self] _ in self?.onRetry?() }, for: .touchUpInside)
             contentStack.addArrangedSubview(retry)
+            accessibilityValue = "Temporarily unavailable"
         }
         if visible.isEmpty && recent.status.state != .failed {
             let empty = UILabel.almidyBody("No recently added activities.")
             empty.textColor = AlmidyDesignTokens.Color.overviewMetadata
             empty.textAlignment = .center
             contentStack.addArrangedSubview(empty)
+            accessibilityValue = "No recently added activities"
         }
         visible.forEach { contentStack.addArrangedSubview(NativeTripOverviewRecentRow(item: $0)) }
+        if !visible.isEmpty {
+            accessibilityValue = "\(visible.count) recently added \(visible.count == 1 ? "activity" : "activities")"
+        }
         isHidden = false
     }
 }

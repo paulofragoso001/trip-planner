@@ -570,14 +570,15 @@ final class NativeTripBackgroundTests: XCTestCase {
     }
 
     func testCancellingControllerCancelsActiveImageTask() {
+        let resumed = expectation(description: "download started")
         let cancelled = expectation(description: "download cancelled")
         let controller = NativeTripBackgroundController(
             resolver: { _, completion in completion(URL(string: "https://almidy.app/photo")!) },
             fallbackImage: nil,
-            downloader: { _, _ in TestBackgroundTask(onResume: {}, onCancel: { cancelled.fulfill() }) }
+            downloader: { _, _ in TestBackgroundTask(onResume: { resumed.fulfill() }, onCancel: { cancelled.fulfill() }) }
         )
         controller.schedule(destination: destination, debounce: 0, loading: { _ in }, completion: { _ in })
-        RunLoop.main.run(until: Date().addingTimeInterval(0.03))
+        wait(for: [resumed], timeout: 1)
         controller.cancelAll()
         wait(for: [cancelled], timeout: 1)
     }

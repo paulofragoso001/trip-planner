@@ -75,6 +75,23 @@ final class NativeTripOverviewViewController: UIViewController, UIScrollViewDele
     var currentHeaderHeight: CGFloat { headerHeightConstraint?.constant ?? expandedHeaderHeight }
     var currentScrollOffset: CGPoint { scrollView.contentOffset }
     var hasSignInRecovery: Bool { signInButton.superview != nil }
+    var renderedHeroImageForVerification: UIImage? { headerView.renderedHeroImage }
+    var visualVerificationSnapshot: NativeTripOverviewVisualVerificationSnapshot {
+        .init(
+            statusBarStyle: preferredStatusBarStyle,
+            headerSummary: headerView.activeSummaryAccessibilityLabel,
+            actionKinds: actionsView.renderedActionKinds,
+            itineraryValue: itineraryView.accessibilityValue,
+            importedItemsValue: documentsView.accessibilityValue,
+            expensesValue: expensesView.accessibilityValue,
+            latestAddedValue: recentView.accessibilityValue,
+            statusMessage: statusLabel.text,
+            headerHeight: currentHeaderHeight,
+            headerFrame: headerView.frame,
+            scrollFrame: scrollView.frame,
+            contentFrame: contentStack.frame
+        )
+    }
 
     func setScrollOffsetForTesting(_ offset: CGPoint) {
         scrollView.contentOffset = offset
@@ -261,6 +278,21 @@ final class NativeTripOverviewViewController: UIViewController, UIScrollViewDele
         backgroundGradient.colors = [color.cgColor, color.darkerForAlmidy.cgColor]
         setNeedsStatusBarAppearanceUpdate()
     }
+}
+
+struct NativeTripOverviewVisualVerificationSnapshot: Equatable {
+    let statusBarStyle: UIStatusBarStyle
+    let headerSummary: String?
+    let actionKinds: [NativeTripOverviewActionKind]
+    let itineraryValue: String?
+    let importedItemsValue: String?
+    let expensesValue: String?
+    let latestAddedValue: String?
+    let statusMessage: String?
+    let headerHeight: CGFloat
+    let headerFrame: CGRect
+    let scrollFrame: CGRect
+    let contentFrame: CGRect
 }
 
 enum NativeTripOverviewScrollPosition {

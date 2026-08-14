@@ -50,6 +50,15 @@ final class NativeTripOverviewHeaderView: UIView {
     var grabberAlpha: CGFloat { grabberView.alpha }
     var expandedContentTransform: CGAffineTransform { expandedLabels.transform }
     var compactContentTransform: CGAffineTransform { compactLabels.transform }
+    var activeSummaryAccessibilityLabel: String? {
+        transitionProgress < 0.5 ? expandedLabels.accessibilityLabel : compactLabels.accessibilityLabel
+    }
+    var controlAccessibilityHints: [String?] {
+        [moreButton, searchButton, closeButton].map(\.accessibilityHint)
+    }
+    var controlBorderWidths: [CGFloat] { [moreButton, searchButton, closeButton].map(\.layer.borderWidth) }
+    var renderedHeroImage: UIImage? { imageView.image }
+    var isShowingHeroLoadingState: Bool { imageLoadingIndicator.isAnimating }
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -165,6 +174,8 @@ final class NativeTripOverviewHeaderView: UIView {
         expandedLabels.spacing = 3
         expandedLabels.alignment = .center
         expandedLabels.translatesAutoresizingMaskIntoConstraints = false
+        expandedLabels.isAccessibilityElement = true
+        expandedLabels.accessibilityTraits = [.header]
         [flagLabel, titleLabel, timingLabel, dateLabel, attributionLabel].forEach(expandedLabels.addArrangedSubview)
         expandedLabels.setCustomSpacing(10, after: flagLabel)
         expandedLabels.setCustomSpacing(7, after: dateLabel)
@@ -179,14 +190,16 @@ final class NativeTripOverviewHeaderView: UIView {
         compactLabels.spacing = 2
         compactLabels.alignment = .fill
         compactLabels.translatesAutoresizingMaskIntoConstraints = false
+        compactLabels.isAccessibilityElement = true
+        compactLabels.accessibilityTraits = [.header]
         compactLabels.addArrangedSubview(compactTitleLabel)
         compactLabels.addArrangedSubview(compactDateLabel)
     }
 
     private func configureControls() {
-        configureButton(moreButton, systemName: "ellipsis", label: "More trip options")
-        configureButton(searchButton, systemName: "magnifyingglass", label: "Search trip places")
-        configureButton(closeButton, systemName: "xmark", label: "Close trip overview")
+        configureButton(moreButton, systemName: "ellipsis", label: "More trip options", hint: "Shows additional actions for this trip")
+        configureButton(searchButton, systemName: "magnifyingglass", label: "Search trip places", hint: "Opens places for this trip")
+        configureButton(closeButton, systemName: "xmark", label: "Close trip overview", hint: "Returns to the globe")
     }
 
     private func configureLayout() {
@@ -245,7 +258,10 @@ final class NativeTripOverviewHeaderView: UIView {
         attributionLabel.isHidden = attribution == nil
         flagLabel.text = Self.flagEmoji(countryCode: countryCode)
         flagLabel.isHidden = flagLabel.text == nil
-        accessibilityLabel = [title, timing, dateRange, attribution].compactMap { $0 }.joined(separator: ", ")
+        let expandedSummary = [title, timing, displayedDateRange, attribution].compactMap { $0 }.joined(separator: ", ")
+        expandedLabels.accessibilityLabel = expandedSummary
+        compactLabels.accessibilityLabel = [title, displayedDateRange].joined(separator: ", ")
+        accessibilityLabel = expandedSummary
 
         let fallback = UIColor(almidyHex: fallbackColor) ?? AlmidyDesignTokens.Color.generatedTripImageBase
         let fallbackPalette = NativeTripOverviewHeroColorProcessor.palette(
@@ -342,7 +358,7 @@ final class NativeTripOverviewHeaderView: UIView {
         label.textAlignment = .center
     }
 
-    private func configureButton(_ button: UIButton, systemName: String, label: String) {
+    private func configureButton(_ button: UIButton, systemName: String, label: String, hint: String) {
         let symbol = UIImage.SymbolConfiguration(pointSize: 20, weight: .semibold)
         button.setImage(UIImage(systemName: systemName, withConfiguration: symbol), for: .normal)
         button.tintColor = .white
@@ -365,6 +381,8 @@ final class NativeTripOverviewHeaderView: UIView {
         ])
         controlMaterialViews.append(material)
         button.accessibilityLabel = label
+        button.accessibilityHint = hint
+        button.accessibilityTraits.insert(.button)
         button.translatesAutoresizingMaskIntoConstraints = false
     }
 
