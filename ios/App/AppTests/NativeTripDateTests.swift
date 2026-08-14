@@ -531,6 +531,23 @@ final class NativeTripOverviewVisualFixtureTests: XCTestCase {
         XCTAssertTrue(header.controlBorderWidths.allSatisfy { $0 >= 1 })
     }
 
+    func testHeaderDoesNotExposeInternalDestinationResolverAsPhotoCredit() {
+        let header = NativeTripOverviewHeaderView(frame: CGRect(x: 0, y: 0, width: 393, height: 340))
+        let fixture = NativeTripOverviewVisualFixture.newTripZeroActivities.overview
+        let internalHero = NativeTripOverview.Hero(
+            imageURL: fixture.hero.imageURL,
+            alt: fixture.hero.alt,
+            attribution: nil,
+            sourceLabel: "native_destination_resolver",
+            fallbackColor: fixture.hero.fallbackColor
+        )
+
+        header.render(hero: internalHero, trip: fixture.trip, stale: false)
+
+        XCTAssertNil(header.displayedAttribution)
+        XCTAssertFalse(header.activeSummaryAccessibilityLabel?.contains("native_destination_resolver") == true)
+    }
+
     func testExpandedAndCompactStatesKeepLightStatusBarAndOneActiveHeading() {
         let fixture = NativeTripOverviewVisualFixture.oneActivity
         let controller = makeController(fixture)

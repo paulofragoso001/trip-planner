@@ -401,10 +401,19 @@ final class NativeTripOverviewHeaderView: UIView {
     private static func attributionText(source: String?, attribution: String?) -> String? {
         var values: [String] = []
         for value in [source, attribution].compactMap({ $0?.trimmingCharacters(in: .whitespacesAndNewlines) }) where !value.isEmpty {
+            // Resolver/source identifiers are internal provenance, not photo credits.
+            // Existing trips may already contain this value in persisted metadata, so
+            // filter it at the final presentation boundary as well as on the server.
+            guard !isInternalAttributionIdentifier(value) else { continue }
             if !values.contains(where: { $0.caseInsensitiveCompare(value) == .orderedSame }) { values.append(value) }
         }
         guard !values.isEmpty else { return nil }
         return "Photo: " + values.joined(separator: " · ")
+    }
+
+    private static func isInternalAttributionIdentifier(_ value: String) -> Bool {
+        let normalized = value.lowercased().replacingOccurrences(of: "-", with: "_")
+        return normalized == "native_destination_resolver" || normalized.hasPrefix("internal_")
     }
 
     private static func flagEmoji(countryCode: String?) -> String? {

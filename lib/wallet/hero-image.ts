@@ -96,10 +96,11 @@ export function imageFromProviderMetadata(
 ): Omit<WalletHeroImage, "fallbackGradient"> | null {
   const persistedImageUrl = readString(metadata?.image_url);
   if (persistedImageUrl) {
+    const persistedSource = readString(metadata?.image_source);
     return {
       imageAlt: readString(metadata?.image_alt) || fallbackAlt,
       imageAttribution: readString(metadata?.image_attribution),
-      imageSourceLabel: readString(metadata?.image_source) || sourceLabel,
+      imageSourceLabel: isDisplayableImageSource(persistedSource) ? persistedSource : null,
       imageUrl: persistedImageUrl
     };
   }
@@ -114,6 +115,12 @@ export function imageFromProviderMetadata(
     imageSourceLabel: sourceLabel,
     imageUrl
   };
+}
+
+function isDisplayableImageSource(value: string | null): value is string {
+  if (!value) return false;
+  const normalized = value.trim().toLowerCase().replaceAll("-", "_");
+  return normalized !== "native_destination_resolver" && !normalized.startsWith("internal_");
 }
 
 export function compareHeroSegments(a: WalletHeroSegment, b: WalletHeroSegment) {
