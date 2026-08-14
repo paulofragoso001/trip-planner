@@ -162,10 +162,14 @@ final class NativeTripOverviewViewController: UIViewController, UIScrollViewDele
         let distance = expandedHeaderHeight - compactHeaderHeight
         let offset = max(0, scrollView.contentOffset.y)
         let rawProgress = min(1, offset / distance)
-        let heightProgress = UIAccessibility.isReduceMotionEnabled
-            ? rawProgress
-            : rawProgress * rawProgress * (3 - 2 * rawProgress)
-        headerHeightConstraint.constant = expandedHeaderHeight - heightProgress * distance
+        let transition = NativeTripOverviewHeaderTransition(
+            progress: rawProgress,
+            reduceMotion: UIAccessibility.isReduceMotionEnabled
+        )
+        headerHeightConstraint.constant = transition.headerHeight(
+            expanded: expandedHeaderHeight,
+            compact: compactHeaderHeight
+        )
         headerView.updateTransition(progress: rawProgress)
     }
 
@@ -231,8 +235,14 @@ final class NativeTripOverviewViewController: UIViewController, UIScrollViewDele
             UIAccessibility.post(notification: .announcement, argument: message)
         }
         view.layoutIfNeeded()
-        let maximumY = max(0, scrollView.contentSize.height - scrollView.bounds.height)
-        scrollView.setContentOffset(CGPoint(x: preservedOffset.x, y: min(preservedOffset.y, maximumY)), animated: false)
+        scrollView.setContentOffset(
+            NativeTripOverviewScrollPosition.restored(
+                preservedOffset,
+                contentHeight: scrollView.contentSize.height,
+                viewportHeight: scrollView.bounds.height
+            ),
+            animated: false
+        )
         scrollViewDidScroll(scrollView)
     }
 
@@ -250,6 +260,13 @@ final class NativeTripOverviewViewController: UIViewController, UIScrollViewDele
         view.backgroundColor = color
         backgroundGradient.colors = [color.cgColor, color.darkerForAlmidy.cgColor]
         setNeedsStatusBarAppearanceUpdate()
+    }
+}
+
+enum NativeTripOverviewScrollPosition {
+    static func restored(_ preserved: CGPoint, contentHeight: CGFloat, viewportHeight: CGFloat) -> CGPoint {
+        let maximumY = max(0, contentHeight - viewportHeight)
+        return CGPoint(x: preserved.x, y: min(max(0, preserved.y), maximumY))
     }
 }
 

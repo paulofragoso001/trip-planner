@@ -4,6 +4,62 @@ import XCTest
 @testable import App
 
 final class NativeTripBackgroundTests: XCTestCase {
+    func testHeaderTransitionKeepsHeroContinuousAndCrossfadesTitles() {
+        let expanded = NativeTripOverviewHeaderTransition(progress: 0, reduceMotion: false)
+        let middle = NativeTripOverviewHeaderTransition(progress: 0.5, reduceMotion: false)
+        let compact = NativeTripOverviewHeaderTransition(progress: 1, reduceMotion: false)
+
+        XCTAssertEqual(expanded.imageAlpha, 1, accuracy: 0.001)
+        XCTAssertGreaterThan(middle.imageAlpha, compact.imageAlpha)
+        XCTAssertGreaterThanOrEqual(compact.imageAlpha, 0.58)
+        XCTAssertGreaterThanOrEqual(compact.gradientAlpha, 0.90)
+        XCTAssertEqual(expanded.compactBackgroundAlpha, 0, accuracy: 0.001)
+        XCTAssertGreaterThan(compact.compactBackgroundAlpha, 0.90)
+        XCTAssertGreaterThan(expanded.expandedAlpha, middle.expandedAlpha)
+        XCTAssertGreaterThan(compact.compactAlpha, middle.compactAlpha)
+    }
+
+    func testReducedMotionTransitionUsesCrossfadeAndShortPositionChangeWithoutScale() {
+        let middle = NativeTripOverviewHeaderTransition(progress: 0.5, reduceMotion: true)
+
+        XCTAssertEqual(middle.expandedTransform.a, 1, accuracy: 0.001)
+        XCTAssertEqual(middle.expandedTransform.d, 1, accuracy: 0.001)
+        XCTAssertEqual(middle.expandedTransform.ty, -2, accuracy: 0.001)
+        XCTAssertEqual(middle.compactTransform.ty, 2, accuracy: 0.001)
+        XCTAssertGreaterThan(middle.imageAlpha, 0.70)
+        XCTAssertGreaterThan(middle.expandedAlpha, 0)
+        XCTAssertGreaterThan(middle.compactAlpha, 0)
+    }
+
+    func testHeaderTransitionClampsOverscrollWithoutHidingGrabberOrHero() {
+        let beforeStart = NativeTripOverviewHeaderTransition(progress: -1, reduceMotion: false)
+        let afterEnd = NativeTripOverviewHeaderTransition(progress: 2, reduceMotion: false)
+
+        XCTAssertEqual(beforeStart.progress, 0)
+        XCTAssertEqual(afterEnd.progress, 1)
+        XCTAssertEqual(beforeStart.imageAlpha, 1, accuracy: 0.001)
+        XCTAssertGreaterThan(afterEnd.imageAlpha, 0)
+    }
+
+    func testHeaderHeightAndScrollPositionRemainStableAcrossSectionRefresh() {
+        let transition = NativeTripOverviewHeaderTransition(progress: 0.6, reduceMotion: false)
+        let height = transition.headerHeight(expanded: 340, compact: 112)
+        XCTAssertGreaterThan(height, 112)
+        XCTAssertLessThan(height, 340)
+
+        let preserved = CGPoint(x: 0, y: 226)
+        XCTAssertEqual(
+            NativeTripOverviewScrollPosition.restored(preserved, contentHeight: 1_400, viewportHeight: 800),
+            preserved,
+            "A partial refresh with sufficient content must retain the exact viewport offset."
+        )
+        XCTAssertEqual(
+            NativeTripOverviewScrollPosition.restored(preserved, contentHeight: 900, viewportHeight: 800).y,
+            100,
+            "If refreshed content becomes shorter, clamp to its valid end instead of jumping to the top."
+        )
+    }
+
     func testOverviewExpandedTypographyKeepsLongDestinationDominantWithoutCrowdingMetadata() {
         let header = NativeTripOverviewHeaderView()
 

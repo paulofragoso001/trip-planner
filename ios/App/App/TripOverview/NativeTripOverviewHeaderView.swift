@@ -23,6 +23,7 @@ final class NativeTripOverviewHeaderView: UIView {
     private let compactDateLabel = UILabel()
     private let compactLabels = UIStackView()
     private var imageTask: URLSessionDataTask?
+    private var displayedImageURL: URL?
     private var seedImageURL: URL?
     private var seedImage: UIImage?
     private var heroTintColor = NativeTripOverviewHeroColorProcessor.guardrailSurface
@@ -42,6 +43,13 @@ final class NativeTripOverviewHeaderView: UIView {
     var expandedTitleMaximumLines: Int { titleLabel.numberOfLines }
     var expandedTimingPointSize: CGFloat { timingLabel.font.pointSize }
     var expandedTitleBottomInset: CGFloat { 10 }
+    var heroImageAlpha: CGFloat { imageView.alpha }
+    var heroGradientAlpha: CGFloat { gradientView.alpha }
+    var compactBackgroundAlpha: CGFloat { compactBackground.alpha }
+    var expandedContentAlpha: CGFloat { expandedLabels.alpha }
+    var grabberAlpha: CGFloat { grabberView.alpha }
+    var expandedContentTransform: CGAffineTransform { expandedLabels.transform }
+    var compactContentTransform: CGAffineTransform { compactLabels.transform }
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -89,34 +97,27 @@ final class NativeTripOverviewHeaderView: UIView {
     }
 
     func updateTransition(progress: CGFloat) {
-        let rawValue = min(1, max(0, progress))
-        transitionProgress = rawValue
-        let reduceMotion = UIAccessibility.isReduceMotionEnabled
-        let value = reduceMotion ? rawValue : rawValue * rawValue * (3 - 2 * rawValue)
+        let state = NativeTripOverviewHeaderTransition(
+            progress: progress,
+            reduceMotion: UIAccessibility.isReduceMotionEnabled
+        )
+        transitionProgress = state.progress
 
         // Keep the hero visually continuous as its container collapses. The compact
         // material supplies contrast without replacing the image with a black panel.
-        imageView.alpha = 1 - value * 0.42
-        gradientView.alpha = 1 - value * 0.10
-        compactBackground.alpha = max(0, min(1, (value - 0.18) / 0.82)) * 0.94
+        imageView.alpha = state.imageAlpha
+        gradientView.alpha = state.gradientAlpha
+        compactBackground.alpha = state.compactBackgroundAlpha
+        expandedLabels.alpha = state.expandedAlpha
+        compactLabels.alpha = state.compactAlpha
+        expandedLabels.transform = state.expandedTransform
+        compactLabels.transform = state.compactTransform
+        expandedLabels.accessibilityElementsHidden = state.progress >= 0.5
+        compactLabels.accessibilityElementsHidden = state.progress < 0.5
+        grabberView.alpha = 1
 
-        let expandedFade = max(0, 1 - value * 1.55)
-        let compactFade = max(0, min(1, (value - 0.34) / 0.54))
-        expandedLabels.alpha = expandedFade
-        compactLabels.alpha = compactFade
-        if reduceMotion {
-            expandedLabels.transform = .identity
-            compactLabels.transform = .identity
-        } else {
-            expandedLabels.transform = CGAffineTransform(translationX: 0, y: -value * 18)
-                .scaledBy(x: 1 - value * 0.08, y: 1 - value * 0.08)
-            compactLabels.transform = CGAffineTransform(translationX: 0, y: (1 - value) * 12)
-        }
-        expandedLabels.accessibilityElementsHidden = rawValue >= 0.5
-        compactLabels.accessibilityElementsHidden = rawValue < 0.5
-
-        controlMaterialViews.forEach { $0.alpha = 0.94 + value * 0.06 }
-        let borderAlpha: CGFloat = 0.42 + value * 0.10
+        controlMaterialViews.forEach { $0.alpha = state.controlMaterialAlpha }
+        let borderAlpha = state.controlBorderAlpha
         let highlight = heroTintColor.almidyControlHighlight
         [moreButton, searchButton, closeButton].forEach {
             $0.tintColor = .white
@@ -259,19 +260,24 @@ final class NativeTripOverviewHeaderView: UIView {
         applyContrast()
         onBackgroundColor?(fallbackPalette.sheet)
 
+        let resolvedURL = imageURL.flatMap {
+            URL(string: $0.relativeString, relativeTo: NativeServiceConfiguration.appBaseURL)?.absoluteURL
+        }
+        let retainedImage = seedImage ?? (resolvedURL == displayedImageURL ? imageView.image : nil)
         imageTask?.cancel()
-        imageView.image = seedImage
+        imageView.image = retainedImage
         imagePlaceholder.isHidden = true
         imagePlaceholder.accessibilityLabel = nil
         imageLoadingIndicator.stopAnimating()
 
-        if let image = seedImage {
+        if let image = retainedImage {
+            displayedImageURL = resolvedURL
             applyHeroColors(from: image)
             return
         }
 
-        guard let rawURL = imageURL,
-              let url = URL(string: rawURL.relativeString, relativeTo: NativeServiceConfiguration.appBaseURL)?.absoluteURL else { return }
+        displayedImageURL = nil
+        guard let url = resolvedURL else { return }
         imageLoadingIndicator.startAnimating()
         imageTask = URLSession.shared.dataTask(with: url) { [weak self] data, _, _ in
             guard let self else { return }
@@ -280,6 +286,7 @@ final class NativeTripOverviewHeaderView: UIView {
                 guard let data, let image = UIImage(data: data) else {
                     return
                 }
+                self.displayedImageURL = url
                 self.imageView.image = image
                 self.imagePlaceholder.isHidden = true
                 self.applyHeroColors(from: image)
@@ -386,6 +393,51 @@ final class NativeTripOverviewHeaderView: UIView {
         guard let code = countryCode?.uppercased(), code.count == 2,
               code.unicodeScalars.allSatisfy({ (65...90).contains($0.value) }) else { return nil }
         return code.unicodeScalars.compactMap { UnicodeScalar(127397 + $0.value).map(String.init) }.joined()
+    }
+}
+
+struct NativeTripOverviewHeaderTransition: Equatable {
+    let progress: CGFloat
+    let easedProgress: CGFloat
+    let imageAlpha: CGFloat
+    let gradientAlpha: CGFloat
+    let compactBackgroundAlpha: CGFloat
+    let expandedAlpha: CGFloat
+    let compactAlpha: CGFloat
+    let expandedTransform: CGAffineTransform
+    let compactTransform: CGAffineTransform
+    let controlMaterialAlpha: CGFloat
+    let controlBorderAlpha: CGFloat
+
+    func headerHeight(expanded: CGFloat, compact: CGFloat) -> CGFloat {
+        expanded - easedProgress * max(0, expanded - compact)
+    }
+
+    init(progress: CGFloat, reduceMotion: Bool) {
+        let clamped = min(1, max(0, progress))
+        let eased = reduceMotion ? clamped : clamped * clamped * (3 - 2 * clamped)
+        self.progress = clamped
+        self.easedProgress = eased
+        // The image never disappears. At the compact endpoint it remains visible
+        // behind the material, so collapse reads as one continuous surface.
+        imageAlpha = 1 - eased * 0.42
+        gradientAlpha = 1 - eased * 0.10
+        compactBackgroundAlpha = max(0, min(1, (eased - 0.18) / 0.82)) * 0.94
+        expandedAlpha = max(0, 1 - eased * 1.55)
+        compactAlpha = max(0, min(1, (eased - 0.34) / 0.54))
+        controlMaterialAlpha = 0.94 + eased * 0.06
+        controlBorderAlpha = 0.42 + eased * 0.10
+
+        if reduceMotion {
+            // Reduce Motion uses only a short linear position change plus crossfade;
+            // it deliberately omits the scale interpolation used in normal motion.
+            expandedTransform = CGAffineTransform(translationX: 0, y: -clamped * 4)
+            compactTransform = CGAffineTransform(translationX: 0, y: (1 - clamped) * 4)
+        } else {
+            expandedTransform = CGAffineTransform(translationX: 0, y: -eased * 18)
+                .scaledBy(x: 1 - eased * 0.08, y: 1 - eased * 0.08)
+            compactTransform = CGAffineTransform(translationX: 0, y: (1 - eased) * 12)
+        }
     }
 }
 
