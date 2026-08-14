@@ -121,6 +121,20 @@ enum AlmidyDesignTokens {
         static let capsule: CGFloat = 999
     }
 
+    enum TripOverview {
+        static let outerHorizontalInset: CGFloat = 20
+        static let cardHorizontalInset: CGFloat = 20
+        static let cardVerticalInset: CGFloat = 16
+        static let compactCardVerticalInset: CGFloat = 12
+        static let interCardGap: CGFloat = 20
+        static let cardContentGap: CGFloat = 10
+        static let headerHeight: CGFloat = 44
+        static let headerIconSurface: CGFloat = 36
+        static let headerIcon: CGFloat = 18
+        static let separatorInset: CGFloat = 0
+        static let bottomBreathingRoom: CGFloat = 40
+    }
+
     enum Control {
         static let buttonHeight: CGFloat = 60
         static let compactButtonHeight: CGFloat = 48

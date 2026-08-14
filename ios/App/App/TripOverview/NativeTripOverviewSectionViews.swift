@@ -32,7 +32,7 @@ class NativeTripOverviewCard: UIControl, UIGestureRecognizerDelegate {
     private var contentBottomConstraint: NSLayoutConstraint!
     var onOpen: (() -> Void)?
     var onRetry: (() -> Void)?
-    private(set) var verticalContentInset = AlmidyDesignTokens.Spacing.md
+    private(set) var verticalContentInset = AlmidyDesignTokens.TripOverview.cardVerticalInset
     var hasRetryAction: Bool { contentStack.arrangedSubviews.contains { ($0 as? UIButton)?.title(for: .normal) == "Retry this section" } }
 
     override init(frame: CGRect) {
@@ -45,7 +45,7 @@ class NativeTripOverviewCard: UIControl, UIGestureRecognizerDelegate {
         shouldGroupAccessibilityChildren = true
         accessibilityContainerType = .semanticGroup
         contentStack.axis = .vertical
-        contentStack.spacing = 10
+        contentStack.spacing = AlmidyDesignTokens.TripOverview.cardContentGap
         contentStack.translatesAutoresizingMaskIntoConstraints = false
         stateLabel.font = UIFontMetrics(forTextStyle: .caption1).scaledFont(for: AlmidyDesignTokens.Font.body(13))
         stateLabel.adjustsFontForContentSizeCategory = true
@@ -57,11 +57,11 @@ class NativeTripOverviewCard: UIControl, UIGestureRecognizerDelegate {
         let openGesture = UITapGestureRecognizer(target: self, action: #selector(open))
         openGesture.delegate = self
         addGestureRecognizer(openGesture)
-        contentTopConstraint = contentStack.topAnchor.constraint(equalTo: topAnchor, constant: AlmidyDesignTokens.Spacing.md)
-        contentBottomConstraint = contentStack.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -AlmidyDesignTokens.Spacing.md)
+        contentTopConstraint = contentStack.topAnchor.constraint(equalTo: topAnchor, constant: AlmidyDesignTokens.TripOverview.cardVerticalInset)
+        contentBottomConstraint = contentStack.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -AlmidyDesignTokens.TripOverview.cardVerticalInset)
         NSLayoutConstraint.activate([
-            contentStack.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 18),
-            contentStack.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -18),
+            contentStack.leadingAnchor.constraint(equalTo: leadingAnchor, constant: AlmidyDesignTokens.TripOverview.cardHorizontalInset),
+            contentStack.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -AlmidyDesignTokens.TripOverview.cardHorizontalInset),
             contentTopConstraint,
             contentBottomConstraint,
             heightAnchor.constraint(greaterThanOrEqualToConstant: 44)
@@ -127,7 +127,7 @@ final class NativeTripOverviewItineraryCard: NativeTripOverviewCard {
     override init(frame: CGRect) {
         super.init(frame: frame)
         accessibilityIdentifier = "overview-itinerary-card"
-        contentStack.spacing = 8
+        contentStack.spacing = AlmidyDesignTokens.TripOverview.cardContentGap
         contentStack.insertArrangedSubview(header, at: 0)
         accessibilityLabel = "Itinerary"
         accessibilityHint = "Opens the complete itinerary"
@@ -144,7 +144,11 @@ final class NativeTripOverviewItineraryCard: NativeTripOverviewCard {
         overflowCount = 0
         totalText = "\(itinerary.exactCount) \(itinerary.exactCount == 1 ? "activity" : "activities")"
         isUsingCompactEmptyInsets = itinerary.activityMode == .empty
-        setVerticalContentInset(isUsingCompactEmptyInsets ? AlmidyDesignTokens.Spacing.sm : AlmidyDesignTokens.Spacing.md)
+        setVerticalContentInset(
+            isUsingCompactEmptyInsets
+                ? AlmidyDesignTokens.TripOverview.compactCardVerticalInset
+                : AlmidyDesignTokens.TripOverview.cardVerticalInset
+        )
         contentStack.addArrangedSubview(NativeTripOverviewDivider())
         if itinerary.status.state == .failed {
             accessibilityValue = "Temporarily unavailable"
@@ -277,30 +281,22 @@ final class NativeTripOverviewExpensesCard: NativeTripOverviewCard {
     }
 }
 
-final class NativeTripOverviewRecentCard: UIView {
-    private let contentStack = UIStackView()
+final class NativeTripOverviewRecentCard: NativeTripOverviewCard {
     private let header = NativeTripOverviewCardHeader(icon: "arrow.down.square.fill", title: "Latest Added")
     private(set) var renderedItemIDs: [String] = []
-    var onRetry: (() -> Void)?
-    var hasRetryAction: Bool { contentStack.arrangedSubviews.contains { ($0 as? UIButton)?.title(for: .normal) == "Retry this section" } }
 
     override init(frame: CGRect) {
         super.init(frame: frame)
-        backgroundColor = AlmidyDesignTokens.Color.surface
-        layer.cornerRadius = AlmidyDesignTokens.Radius.card
-        layer.cornerCurve = .continuous
+        accessibilityIdentifier = "overview-latest-added-card"
+        accessibilityLabel = "Latest Added"
+        accessibilityTraits.remove(.button)
         shouldGroupAccessibilityChildren = true; accessibilityContainerType = .semanticGroup
-        contentStack.axis = .vertical; contentStack.spacing = 10; contentStack.translatesAutoresizingMaskIntoConstraints = false
-        contentStack.addArrangedSubview(header); addSubview(contentStack)
-        NSLayoutConstraint.activate([
-            contentStack.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 18), contentStack.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -18),
-            contentStack.topAnchor.constraint(equalTo: topAnchor, constant: 16), contentStack.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -16)
-        ])
+        contentStack.insertArrangedSubview(header, at: 0)
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
     func render(_ recent: NativeTripOverview.RecentItems) {
-        while contentStack.arrangedSubviews.count > 1 { contentStack.arrangedSubviews.last?.removeFromSuperview() }
+        reset(after: header)
         contentStack.addArrangedSubview(NativeTripOverviewDivider())
         let sorted = recent.items.sorted {
             let lhs = ISO8601DateFormatter.almidy.date(from: $0.createdAt) ?? .distantPast
@@ -346,7 +342,7 @@ private final class NativeTripOverviewCardHeader: UIView {
     ) {
         super.init(frame: .zero)
         iconSurface.backgroundColor = AlmidyDesignTokens.Color.goldMutedSurface
-        iconSurface.layer.cornerRadius = 18
+        iconSurface.layer.cornerRadius = AlmidyDesignTokens.TripOverview.headerIconSurface / 2
         iconSurface.layer.cornerCurve = .continuous
         iconSurface.translatesAutoresizingMaskIntoConstraints = false
         iconView.image = UIImage(systemName: icon)
@@ -371,11 +367,11 @@ private final class NativeTripOverviewCardHeader: UIView {
         [titleLabel, trailingLabel, actionButton].forEach { $0.translatesAutoresizingMaskIntoConstraints = false; addSubview($0) }
         iconView.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
-            heightAnchor.constraint(greaterThanOrEqualToConstant: 36),
+            heightAnchor.constraint(equalToConstant: AlmidyDesignTokens.TripOverview.headerHeight),
             iconSurface.leadingAnchor.constraint(equalTo: leadingAnchor), iconSurface.centerYAnchor.constraint(equalTo: centerYAnchor),
-            iconSurface.widthAnchor.constraint(equalToConstant: 36), iconSurface.heightAnchor.constraint(equalToConstant: 36),
+            iconSurface.widthAnchor.constraint(equalToConstant: AlmidyDesignTokens.TripOverview.headerIconSurface), iconSurface.heightAnchor.constraint(equalToConstant: AlmidyDesignTokens.TripOverview.headerIconSurface),
             iconView.centerXAnchor.constraint(equalTo: iconSurface.centerXAnchor), iconView.centerYAnchor.constraint(equalTo: iconSurface.centerYAnchor),
-            iconView.widthAnchor.constraint(equalToConstant: 18), iconView.heightAnchor.constraint(equalToConstant: 18),
+            iconView.widthAnchor.constraint(equalToConstant: AlmidyDesignTokens.TripOverview.headerIcon), iconView.heightAnchor.constraint(equalToConstant: AlmidyDesignTokens.TripOverview.headerIcon),
             titleLabel.leadingAnchor.constraint(equalTo: iconSurface.trailingAnchor, constant: 10), titleLabel.centerYAnchor.constraint(equalTo: centerYAnchor),
             trailingLabel.leadingAnchor.constraint(greaterThanOrEqualTo: titleLabel.trailingAnchor, constant: 8), trailingLabel.centerYAnchor.constraint(equalTo: centerYAnchor),
             actionButton.leadingAnchor.constraint(greaterThanOrEqualTo: trailingLabel.trailingAnchor, constant: 4), actionButton.trailingAnchor.constraint(equalTo: trailingAnchor),
@@ -396,6 +392,12 @@ private final class NativeTripOverviewDivider: UIView {
     override init(frame: CGRect) {
         super.init(frame: frame)
         backgroundColor = AlmidyDesignTokens.Color.line
+        directionalLayoutMargins = NSDirectionalEdgeInsets(
+            top: 0,
+            leading: AlmidyDesignTokens.TripOverview.separatorInset,
+            bottom: 0,
+            trailing: AlmidyDesignTokens.TripOverview.separatorInset
+        )
         heightAnchor.constraint(equalToConstant: 1 / UIScreen.main.scale).isActive = true
         isAccessibilityElement = false
     }

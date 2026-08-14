@@ -102,7 +102,9 @@ final class NativeTripOverviewViewController: UIViewController, UIScrollViewDele
         scrollView.accessibilityIdentifier = "trip-overview-scroll-view"
         scrollView.contentInsetAdjustmentBehavior = .never
         scrollView.translatesAutoresizingMaskIntoConstraints = false
-        contentStack.axis = .vertical; contentStack.spacing = 16; contentStack.translatesAutoresizingMaskIntoConstraints = false
+        contentStack.axis = .vertical
+        contentStack.spacing = AlmidyDesignTokens.TripOverview.interCardGap
+        contentStack.translatesAutoresizingMaskIntoConstraints = false
         heroSpacer.translatesAutoresizingMaskIntoConstraints = false
         contentStack.addArrangedSubview(heroSpacer)
         contentStack.addArrangedSubview(statusLabel); contentStack.addArrangedSubview(spinner)
@@ -140,11 +142,14 @@ final class NativeTripOverviewViewController: UIViewController, UIScrollViewDele
         NSLayoutConstraint.activate([
             scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor), scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             scrollView.topAnchor.constraint(equalTo: view.topAnchor), scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
-            contentStack.leadingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.leadingAnchor, constant: 16),
-            contentStack.trailingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.trailingAnchor, constant: -16),
+            contentStack.leadingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.leadingAnchor, constant: AlmidyDesignTokens.TripOverview.outerHorizontalInset),
+            contentStack.trailingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.trailingAnchor, constant: -AlmidyDesignTokens.TripOverview.outerHorizontalInset),
             contentStack.topAnchor.constraint(equalTo: scrollView.contentLayoutGuide.topAnchor),
-            contentStack.bottomAnchor.constraint(equalTo: scrollView.contentLayoutGuide.bottomAnchor, constant: -40),
-            contentStack.widthAnchor.constraint(equalTo: scrollView.frameLayoutGuide.widthAnchor, constant: -32),
+            contentStack.bottomAnchor.constraint(equalTo: scrollView.contentLayoutGuide.bottomAnchor, constant: -AlmidyDesignTokens.TripOverview.bottomBreathingRoom),
+            contentStack.widthAnchor.constraint(
+                equalTo: scrollView.frameLayoutGuide.widthAnchor,
+                constant: -(AlmidyDesignTokens.TripOverview.outerHorizontalInset * 2)
+            ),
             heroSpacer.heightAnchor.constraint(equalToConstant: expandedHeaderHeight),
             headerView.leadingAnchor.constraint(equalTo: view.leadingAnchor), headerView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             headerView.topAnchor.constraint(equalTo: view.topAnchor), headerHeightConstraint

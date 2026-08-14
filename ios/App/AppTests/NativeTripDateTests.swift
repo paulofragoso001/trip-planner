@@ -148,7 +148,7 @@ final class NativeTripOverviewItineraryCardTests: XCTestCase {
         XCTAssertEqual(card.totalText, "0 activities")
         XCTAssertTrue(card.hasAddFirstActivityAction)
         XCTAssertTrue(card.isUsingCompactEmptyInsets)
-        XCTAssertEqual(card.verticalContentInset, AlmidyDesignTokens.Spacing.sm)
+        XCTAssertEqual(card.verticalContentInset, AlmidyDesignTokens.TripOverview.compactCardVerticalInset)
         XCTAssertEqual(card.layer.cornerRadius, AlmidyDesignTokens.Radius.card)
     }
 
@@ -194,6 +194,33 @@ final class NativeTripOverviewItineraryCardTests: XCTestCase {
             dateRange: dateRange,
             categories: categories
         )
+    }
+}
+
+final class NativeTripOverviewCardSystemTests: XCTestCase {
+    func testAllOverviewCardsUseSharedSurfaceRadiusAndInsets() {
+        let cards: [NativeTripOverviewCard] = [
+            NativeTripOverviewItineraryCard(),
+            NativeTripOverviewDocumentsCard(),
+            NativeTripOverviewExpensesCard(),
+            NativeTripOverviewRecentCard()
+        ]
+
+        cards.forEach { card in
+            XCTAssertEqual(card.backgroundColor, AlmidyDesignTokens.Color.surface)
+            XCTAssertEqual(card.layer.cornerRadius, AlmidyDesignTokens.Radius.card)
+            XCTAssertEqual(card.verticalContentInset, AlmidyDesignTokens.TripOverview.cardVerticalInset)
+            XCTAssertEqual(card.contentStack.spacing, AlmidyDesignTokens.TripOverview.cardContentGap)
+        }
+    }
+
+    func testOverviewGridUsesReleaseRhythmAndSafeAreaBreathingRoom() {
+        XCTAssertEqual(AlmidyDesignTokens.TripOverview.outerHorizontalInset, 20)
+        XCTAssertEqual(AlmidyDesignTokens.TripOverview.interCardGap, 20)
+        XCTAssertEqual(AlmidyDesignTokens.TripOverview.headerHeight, 44)
+        XCTAssertEqual(AlmidyDesignTokens.TripOverview.headerIconSurface, 36)
+        XCTAssertEqual(AlmidyDesignTokens.TripOverview.headerIcon, 18)
+        XCTAssertGreaterThanOrEqual(AlmidyDesignTokens.TripOverview.bottomBreathingRoom, 40)
     }
 }
 
