@@ -1,5 +1,5 @@
 import XCTest
-@testable import App
+@testable import Almidy
 
 final class NativeSettingsTests: XCTestCase {
     func testEveryVisibleRowHasTruthfulEnabledAndDisclosureState() {

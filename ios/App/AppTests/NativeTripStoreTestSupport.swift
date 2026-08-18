@@ -1,6 +1,6 @@
 import Foundation
 import XCTest
-@testable import App
+@testable import Almidy
 
 func nativeTripStoreSession() -> URLSession {
     let configuration = URLSessionConfiguration.ephemeral

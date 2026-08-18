@@ -1221,7 +1221,7 @@ public final class MapGatewayPlugin: CAPPlugin, CAPBridgedPlugin {
         }
         mapView.cameraZoomRange = MKMapView.CameraZoomRange(
             minCenterCoordinateDistance: 500,
-            maxCenterCoordinateDistance: 30_000_000
+            maxCenterCoordinateDistance: 90_000_000
         )
     }
 
@@ -1301,7 +1301,7 @@ public final class MapGatewayPlugin: CAPPlugin, CAPBridgedPlugin {
     private func nativeUnderlayGlobeCamera() -> MKMapCamera {
         MKMapCamera(
             lookingAtCenter: CLLocationCoordinate2D(latitude: 37.7749, longitude: -122.4194),
-            fromDistance: 24_000_000,
+            fromDistance: 90_000_000,
             pitch: 0,
             heading: 0
         )
@@ -1363,6 +1363,13 @@ public final class MapGatewayPlugin: CAPPlugin, CAPBridgedPlugin {
 }
 
 struct NativeMapTrip: Decodable {
+    enum ScheduleState: Int, Equatable {
+        case active
+        case future
+        case past
+        case undated
+    }
+
     let dateRange: String?
     let destination: String?
     let endDate: String?
@@ -1492,6 +1499,35 @@ struct NativeMapTrip: Decodable {
         relativeStatus(relativeTo: Date())
     }
 
+    func scheduleState(relativeTo referenceDate: Date) -> ScheduleState {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0) ?? .current
+        let today = calendar.startOfDay(for: referenceDate)
+        guard let start = Self.dateValue(startDate) else { return .undated }
+        let end = Self.dateValue(endDate) ?? start
+
+        if today < start { return .future }
+        if today <= end { return .active }
+        return .past
+    }
+
+    static func scheduled(_ trips: [NativeMapTrip], relativeTo referenceDate: Date = Date()) -> [NativeMapTrip] {
+        trips.enumerated().sorted { left, right in
+            let leftState = left.element.scheduleState(relativeTo: referenceDate)
+            let rightState = right.element.scheduleState(relativeTo: referenceDate)
+            if leftState.rawValue != rightState.rawValue {
+                return leftState.rawValue < rightState.rawValue
+            }
+
+            switch (Self.dateValue(left.element.startDate), Self.dateValue(right.element.startDate)) {
+            case let (leftDate?, rightDate?) where leftDate != rightDate:
+                return leftDate < rightDate
+            default:
+                return left.offset < right.offset
+            }
+        }.map(\.element)
+    }
+
     func relativeStatus(relativeTo referenceDate: Date) -> String {
         var calendar = Calendar(identifier: .gregorian)
         if let utc = TimeZone(secondsFromGMT: 0) {
@@ -1534,10 +1570,24 @@ struct NativeMapTrip: Decodable {
     }
 }
 
-final class NativeMapViewController: UIViewController, CLLocationManagerDelegate, MKMapViewDelegate {
-    private static let populatedGlobeDistance: CLLocationDistance = 25_000_000
+enum NativeTripCardLayout {
+    static let activeHeight: CGFloat = 354
+    static let futureHeight: CGFloat = 224
+    static let titleFontSize: CGFloat = 32
+    static let dateFontSize: CGFloat = 17
+    static let statusFontSize: CGFloat = 17
+
+    static func height(for state: NativeMapTrip.ScheduleState) -> CGFloat {
+        state == .active ? activeHeight : futureHeight
+    }
+}
+
+final class NativeMapViewController: UIViewController, CLLocationManagerDelegate, MKMapViewDelegate, UIAdaptivePresentationControllerDelegate {
+    private static let populatedGlobeDistance: CLLocationDistance = 90_000_000
     private static let populatedGlobeVerticalOffset: CGFloat = 0
     private static let populatedGlobeLongitude: CLLocationDegrees = -108
+    private static let activityDiscoveryDiameter: CLLocationDistance = 30_000
+    private static let activityCameraMaximumDistance: CLLocationDistance = 80_000
 
     private enum SheetState: CaseIterable {
         case collapsed
@@ -1557,6 +1607,49 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
     }
 
     private let mapView = MKMapView()
+    private var activityResultSelectionHandler: ((String) -> Void)?
+    // Keep the exact collection that backs the results sheet alive for as long
+    // as the filter is active. The sheet can transition between detents while
+    // MapKit rebuilds its visible annotation views; retaining the model here
+    // prevents the search overlay from becoming a camera-only update.
+    private var activitySearchAnnotations: [NativeActivitySearchAnnotation] = []
+
+    func setActivityResultSelectionHandler(_ handler: ((String) -> Void)?) {
+        activityResultSelectionHandler = handler
+    }
+
+    var activitySearchRegion: MKCoordinateRegion {
+        MKCoordinateRegion(
+            center: mapView.region.center,
+            latitudinalMeters: Self.activityDiscoveryDiameter,
+            longitudinalMeters: Self.activityDiscoveryDiameter
+        )
+    }
+
+    func activitySearchRegion(for tripID: String) -> MKCoordinateRegion {
+        guard let trip = trips.first(where: { $0.id == tripID }),
+              let coordinate = trip.coordinate ?? resolvedLegacyTripCoordinates[tripID] else {
+            return activitySearchRegion
+        }
+        return MKCoordinateRegion(
+            center: coordinate,
+            latitudinalMeters: Self.activityDiscoveryDiameter,
+            longitudinalMeters: Self.activityDiscoveryDiameter
+        )
+    }
+
+    func activitySearchLocality(for tripID: String) -> String? {
+        trips.first(where: { $0.id == tripID })?.destination
+    }
+
+    var nearbyActivitySearchRegion: MKCoordinateRegion? {
+        guard let coordinate = locationManager.location?.coordinate else { return nil }
+        return MKCoordinateRegion(
+            center: coordinate,
+            latitudinalMeters: Self.activityDiscoveryDiameter,
+            longitudinalMeters: Self.activityDiscoveryDiameter
+        )
+    }
     private let locationManager = CLLocationManager()
     private let networkMonitor = NWPathMonitor()
     private let networkMonitorQueue = DispatchQueue(label: "app.almidy.native-map.network-monitor", qos: .utility)
@@ -1568,8 +1661,9 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
     private let sheetHandle = UIView()
     private let headerStack = UIStackView()
     private let titleButton = UIButton(type: .system)
-    private let chevronImageView = UIImageView(image: UIImage(systemName: "chevron.down"))
+    private let chevronButton = UIButton(type: .system)
     private let settingsButton = UIButton(type: .system)
+    private weak var overviewYearPill: UILabel?
     private let collapsedActions = UIStackView()
     private let expandedScrollView = UIScrollView()
     private let expandedContentStack = UIStackView()
@@ -1598,6 +1692,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
     private var preservedCamera: MKMapCamera?
     private var resolvedLegacyTripCoordinates: [String: CLLocationCoordinate2D] = [:]
     private var resolvingLegacyTripIDs: Set<String> = []
+    private var activityFilterSearch: MKLocalSearch?
     private var isRequestingLocationAuthorization = false
     private var hasRequestedInitialLocation = false
     private var hasCenteredInitialLocation = false
@@ -1609,7 +1704,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         tripStore: NativeTripStore? = nil,
         sourceWebView: WKWebView? = nil
     ) {
-        self.trips = trips
+        self.trips = NativeMapTrip.scheduled(trips)
         self.monitorsNetworkConnectivity = monitorsNetworkConnectivity
         self.tripStore = tripStore
         self.sourceWebView = sourceWebView
@@ -1730,13 +1825,14 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
 
     private func replaceTrips(_ nextTrips: [NativeMapTrip]) {
         let previouslyHadTrips = !trips.isEmpty
-        trips = nextTrips
-        let activeTripIDs = Set(nextTrips.map(\.id))
+        let scheduledTrips = NativeMapTrip.scheduled(nextTrips)
+        trips = scheduledTrips
+        let activeTripIDs = Set(scheduledTrips.map(\.id))
         resolvedLegacyTripCoordinates = resolvedLegacyTripCoordinates.filter { activeTripIDs.contains($0.key) }
         resolvingLegacyTripIDs.formIntersection(activeTripIDs)
-        nextTrips.forEach { warmTripBackground($0) }
+        scheduledTrips.forEach { warmTripBackground($0) }
         updateMapFramingForTripAvailability(
-            zoomsToPopulatedGlobe: !previouslyHadTrips && !nextTrips.isEmpty
+            zoomsToPopulatedGlobe: !previouslyHadTrips && !scheduledTrips.isEmpty
         )
         addTripPins()
         renderSheetContent()
@@ -1750,7 +1846,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
     private func configureMap() {
         mapView.translatesAutoresizingMaskIntoConstraints = false
         mapView.delegate = self
-        mapView.pointOfInterestFilter = trips.isEmpty ? .includingAll : .excludingAll
+        mapView.pointOfInterestFilter = .includingAll
         mapView.showsCompass = false
         mapView.showsScale = false
         mapView.showsBuildings = true
@@ -1768,7 +1864,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
             mapView.setCameraZoomRange(
                 MKMapView.CameraZoomRange(
                     minCenterCoordinateDistance: 900,
-                    maxCenterCoordinateDistance: 90_000_000
+                    maxCenterCoordinateDistance: Self.populatedGlobeDistance
                 ),
                 animated: false
             )
@@ -1807,7 +1903,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         let verticalOffset: CGFloat = trips.isEmpty ? 0 : Self.populatedGlobeVerticalOffset
         mapTopConstraint?.constant = verticalOffset
         mapBottomConstraint?.constant = verticalOffset
-        mapView.pointOfInterestFilter = trips.isEmpty ? .includingAll : .excludingAll
+        mapView.pointOfInterestFilter = .includingAll
         mapControlStack.isHidden = !trips.isEmpty
         applyMapPresentation(mapPresentationMode)
 
@@ -1866,29 +1962,29 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
 
     private func applyMapPresentation(_ mode: MapPresentationMode) {
         mapPresentationMode = mode
+
         if #available(iOS 16.0, *) {
             switch mode {
             case .hybrid:
-                if !trips.isEmpty {
-                    mapView.preferredConfiguration = MKImageryMapConfiguration(elevationStyle: .realistic)
-                    return
-                }
                 let configuration = MKHybridMapConfiguration(elevationStyle: .realistic)
-                configuration.pointOfInterestFilter = trips.isEmpty ? .includingAll : .excludingAll
+                configuration.pointOfInterestFilter = .includingAll
                 configuration.showsTraffic = false
                 mapView.preferredConfiguration = configuration
             case .imagery:
                 mapView.preferredConfiguration = MKImageryMapConfiguration(elevationStyle: .realistic)
             case .standard:
-                let configuration = MKStandardMapConfiguration(elevationStyle: .realistic, emphasisStyle: .default)
-                configuration.pointOfInterestFilter = trips.isEmpty ? .includingAll : .excludingAll
+                let configuration = MKStandardMapConfiguration(
+                    elevationStyle: .realistic,
+                    emphasisStyle: .default
+                )
+                configuration.pointOfInterestFilter = .includingAll
                 configuration.showsTraffic = false
                 mapView.preferredConfiguration = configuration
             }
         } else {
             switch mode {
             case .hybrid:
-                mapView.mapType = trips.isEmpty ? .hybridFlyover : .satelliteFlyover
+                mapView.mapType = .hybridFlyover
             case .imagery:
                 mapView.mapType = .satelliteFlyover
             case .standard:
@@ -2103,11 +2199,101 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         mapView.camera
     }
 
-    var usesImageryPresentationForTesting: Bool {
+    var usesScaleAwareHybridPresentationForTesting: Bool {
         if #available(iOS 16.0, *) {
-            return mapView.preferredConfiguration is MKImageryMapConfiguration
+            return mapView.preferredConfiguration is MKHybridMapConfiguration
         }
-        return mapView.mapType == .satelliteFlyover
+        return mapView.mapType == .hybridFlyover
+    }
+
+    var isZoomEnabledForTesting: Bool {
+        mapView.isZoomEnabled
+    }
+
+    func setMapCameraDistanceForTesting(_ distance: CLLocationDistance) {
+        let camera = MKMapCamera(
+            lookingAtCenter: mapView.camera.centerCoordinate,
+            fromDistance: distance,
+            pitch: mapView.camera.pitch,
+            heading: mapView.camera.heading
+        )
+        mapView.setCamera(camera, animated: false)
+    }
+
+    var geographicLabelOverlayCountForTesting: Int {
+        mapView.annotations.filter { $0 is NativeGeographicLabelAnnotation }.count
+    }
+
+    var tripFlagAnchorForTesting: (
+        centerOffset: CGPoint,
+        badgeCenter: CGPoint,
+        badgeSize: CGSize,
+        badgeCornerRadius: CGFloat,
+        flagClipsToCircle: Bool,
+        badgeBackgroundIsClear: Bool,
+        flagFontSize: CGFloat,
+        canShowCallout: Bool
+    )? {
+        guard let annotation = mapView.annotations.first(where: { $0 is NativeTripAnnotation }),
+              let annotationView = self.mapView(mapView, viewFor: annotation) as? NativeTripFlagAnnotationView else {
+            return nil
+        }
+        let layout = annotationView.anchoredBadgeLayoutForTesting
+        return (
+            centerOffset: annotationView.centerOffset,
+            badgeCenter: layout.badgeCenter,
+            badgeSize: layout.badgeSize,
+            badgeCornerRadius: layout.badgeCornerRadius,
+            flagClipsToCircle: layout.flagClipsToCircle,
+            badgeBackgroundIsClear: layout.badgeBackgroundIsClear,
+            flagFontSize: layout.flagFontSize,
+            canShowCallout: annotationView.canShowCallout
+        )
+    }
+
+    var expandedHeaderChromeForTesting: (
+        settingsSize: CGSize,
+        settingsCornerRadius: CGFloat,
+        settingsBackground: UIColor?,
+        settingsTint: UIColor,
+        settingsTranslation: CGPoint,
+        yearFontSize: CGFloat,
+        yearBackground: UIColor?,
+        yearTextColor: UIColor?
+    )? {
+        view.layoutIfNeeded()
+        guard let overviewYearPill else { return nil }
+        return (
+            settingsSize: settingsButton.bounds.size,
+            settingsCornerRadius: settingsButton.layer.cornerRadius,
+            settingsBackground: settingsButton.backgroundColor,
+            settingsTint: settingsButton.tintColor,
+            settingsTranslation: CGPoint(x: settingsButton.transform.tx, y: settingsButton.transform.ty),
+            yearFontSize: overviewYearPill.font.pointSize,
+            yearBackground: overviewYearPill.backgroundColor,
+            yearTextColor: overviewYearPill.textColor
+        )
+    }
+
+    var tripCollectionMenuForTesting: (
+        titles: [String],
+        selectedTitle: String?,
+        disabledTitles: [String],
+        opensAsPrimaryAction: Bool,
+        chevronIsInteractive: Bool,
+        sheetSupportsPan: Bool,
+        titleHasLegacyToggleAction: Bool
+    ) {
+        let actions = titleButton.menu?.children.compactMap { $0 as? UIAction } ?? []
+        return (
+            titles: actions.map(\.title),
+            selectedTitle: actions.first(where: { $0.state == .on })?.title,
+            disabledTitles: actions.filter { $0.attributes.contains(.disabled) }.map(\.title),
+            opensAsPrimaryAction: titleButton.showsMenuAsPrimaryAction,
+            chevronIsInteractive: chevronButton.showsMenuAsPrimaryAction && chevronButton.menu != nil,
+            sheetSupportsPan: (sheetView.gestureRecognizers ?? []).contains { $0 is UIPanGestureRecognizer },
+            titleHasLegacyToggleAction: !(titleButton.actions(forTarget: self, forControlEvent: .touchUpInside) ?? []).isEmpty
+        )
     }
 
     var preservedCameraForTesting: MKMapCamera? {
@@ -2222,31 +2408,37 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         titleButton.titleLabel?.minimumScaleFactor = 0.72
         titleButton.contentHorizontalAlignment = .left
         titleButton.accessibilityLabel = "My Trips"
-        titleButton.accessibilityHint = "Expands or collapses the trip wallet"
-        titleButton.addTarget(self, action: #selector(toggleSheetFromTitle), for: .touchUpInside)
+        titleButton.accessibilityHint = "Shows trip collection options"
+        let tripCollectionMenu = makeTripCollectionMenu()
+        titleButton.menu = tripCollectionMenu
+        titleButton.showsMenuAsPrimaryAction = true
 
-        chevronImageView.tintColor = AlmidyDesignTokens.Color.textSecondary
-        chevronImageView.contentMode = .scaleAspectFit
-        chevronImageView.translatesAutoresizingMaskIntoConstraints = false
+        chevronButton.setImage(UIImage(systemName: "chevron.down"), for: .normal)
+        chevronButton.tintColor = AlmidyDesignTokens.Color.textSecondary
+        chevronButton.imageView?.contentMode = .scaleAspectFit
+        chevronButton.accessibilityLabel = "Choose trip collection"
+        chevronButton.menu = tripCollectionMenu
+        chevronButton.showsMenuAsPrimaryAction = true
+        chevronButton.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
-            chevronImageView.widthAnchor.constraint(equalToConstant: 24),
-            chevronImageView.heightAnchor.constraint(equalToConstant: 24)
+            chevronButton.widthAnchor.constraint(equalToConstant: 32),
+            chevronButton.heightAnchor.constraint(equalToConstant: 32)
         ])
 
-        settingsButton.backgroundColor = AlmidyDesignTokens.Color.avatarPeachSurface
-        settingsButton.tintColor = AlmidyDesignTokens.Color.gold
-        settingsButton.layer.cornerRadius = 23
+        settingsButton.backgroundColor = AlmidyDesignTokens.Color.goldMutedSurface
+        settingsButton.tintColor = AlmidyDesignTokens.Color.goldMuted
+        settingsButton.layer.cornerRadius = 21
         settingsButton.setImage(NativeLaunchSettingsIcon.image, for: .normal)
-        settingsButton.transform = CGAffineTransform(translationX: 6, y: -4)
+        settingsButton.transform = CGAffineTransform(translationX: 0, y: -2)
         settingsButton.accessibilityLabel = "Open Settings"
         settingsButton.addTarget(self, action: #selector(openSettings), for: .touchUpInside)
         settingsButton.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
-            settingsButton.widthAnchor.constraint(equalToConstant: 46),
-            settingsButton.heightAnchor.constraint(equalToConstant: 46)
+            settingsButton.widthAnchor.constraint(equalToConstant: 42),
+            settingsButton.heightAnchor.constraint(equalToConstant: 42)
         ])
 
-        let titleGroup = UIStackView(arrangedSubviews: [titleButton, chevronImageView])
+        let titleGroup = UIStackView(arrangedSubviews: [titleButton, chevronButton])
         titleGroup.axis = .horizontal
         titleGroup.alignment = .center
         titleGroup.spacing = 4
@@ -2278,7 +2470,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
 
         let expandedContentWidthConstraint = expandedContentStack.widthAnchor.constraint(
             equalTo: expandedScrollView.frameLayoutGuide.widthAnchor,
-            constant: -24
+            constant: -32
         )
         expandedContentWidthConstraint.priority = .defaultHigh
         self.expandedContentWidthConstraint = expandedContentWidthConstraint
@@ -2313,16 +2505,16 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
             collapsedActions.bottomAnchor.constraint(equalTo: sheetView.bottomAnchor, constant: -24),
             collapsedActions.heightAnchor.constraint(equalToConstant: 48),
 
-            expandedScrollView.topAnchor.constraint(equalTo: headerStack.bottomAnchor, constant: 26),
+            expandedScrollView.topAnchor.constraint(equalTo: headerStack.bottomAnchor, constant: 8),
             expandedScrollView.leadingAnchor.constraint(equalTo: sheetView.leadingAnchor),
             expandedScrollView.trailingAnchor.constraint(equalTo: sheetView.trailingAnchor),
 
             expandedContentStack.topAnchor.constraint(equalTo: expandedScrollView.contentLayoutGuide.topAnchor),
             expandedContentStack.centerXAnchor.constraint(equalTo: expandedScrollView.frameLayoutGuide.centerXAnchor),
-            expandedContentStack.leadingAnchor.constraint(greaterThanOrEqualTo: expandedScrollView.contentLayoutGuide.leadingAnchor, constant: 12),
-            expandedContentStack.trailingAnchor.constraint(lessThanOrEqualTo: expandedScrollView.contentLayoutGuide.trailingAnchor, constant: -12),
+            expandedContentStack.leadingAnchor.constraint(greaterThanOrEqualTo: expandedScrollView.contentLayoutGuide.leadingAnchor, constant: 16),
+            expandedContentStack.trailingAnchor.constraint(lessThanOrEqualTo: expandedScrollView.contentLayoutGuide.trailingAnchor, constant: -16),
             expandedContentStack.bottomAnchor.constraint(equalTo: expandedScrollView.contentLayoutGuide.bottomAnchor, constant: -40),
-            expandedContentStack.widthAnchor.constraint(lessThanOrEqualTo: expandedScrollView.frameLayoutGuide.widthAnchor, constant: -24),
+            expandedContentStack.widthAnchor.constraint(lessThanOrEqualTo: expandedScrollView.frameLayoutGuide.widthAnchor, constant: -32),
             expandedContentStack.widthAnchor.constraint(lessThanOrEqualToConstant: NativeAdaptiveLayout.cardMaxWidth),
             expandedContentWidthConstraint
         ])
@@ -2439,10 +2631,11 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         let yearRow = UIView()
         let year = pillLabel(
             overviewYear,
-            fontSize: 22,
-            textColor: AlmidyDesignTokens.Color.gold,
-            backgroundColor: AlmidyDesignTokens.Color.avatarPeachSurface
+            fontSize: 18,
+            textColor: AlmidyDesignTokens.Color.goldMuted,
+            backgroundColor: AlmidyDesignTokens.Color.goldMutedSurface
         )
+        overviewYearPill = year
         year.translatesAutoresizingMaskIntoConstraints = false
         yearRow.addSubview(year)
         NSLayoutConstraint.activate([
@@ -2476,6 +2669,20 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         if reservationCardVisible {
             expandedContentStack.addArrangedSubview(reservationAutomationCard())
         }
+    }
+
+    private func makeTripCollectionMenu() -> UIMenu {
+        let myTrips = UIAction(
+            title: "My Trips",
+            image: UIImage(systemName: "suitcase.fill"),
+            state: .on
+        ) { _ in }
+        let friendsTrips = UIAction(
+            title: "Friends' Trips",
+            image: UIImage(systemName: "eye"),
+            attributes: [.disabled]
+        ) { _ in }
+        return UIMenu(title: "", children: [myTrips, friendsTrips])
     }
 
     private var overviewYear: String {
@@ -2641,74 +2848,71 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
     }
 
     private func tripCard(for trip: NativeMapTrip) -> UIView {
-        let card = UIView()
+        let card = NativeGradientButton(type: .custom)
         card.layer.cornerRadius = 36
         card.clipsToBounds = true
         card.backgroundColor = AlmidyDesignTokens.Color.card
-
-        let button = NativeGradientButton(type: .custom)
-        button.accessibilityIdentifier = trip.id
-        button.accessibilityLabel = "Open \(trip.displayName)"
-        button.accessibilityHint = "Double tap to open. Touch and hold for trip actions."
-        button.addTarget(self, action: #selector(openTripAction(_:)), for: .touchUpInside)
-        button.addInteraction(UIContextMenuInteraction(delegate: self))
-        button.translatesAutoresizingMaskIntoConstraints = false
-        card.addSubview(button)
+        card.accessibilityIdentifier = trip.id
+        card.accessibilityLabel = "Open \(trip.displayName)"
+        card.accessibilityHint = "Double tap to open. Touch and hold for trip actions."
+        card.accessibilityTraits = .button
+        card.addTarget(self, action: #selector(openTripAction(_:)), for: .touchUpInside)
+        card.addInteraction(UIContextMenuInteraction(delegate: self))
 
         let imageView = UIImageView()
         imageView.contentMode = .scaleAspectFill
+        imageView.isUserInteractionEnabled = false
         imageView.translatesAutoresizingMaskIntoConstraints = false
-        button.addSubview(imageView)
+        card.addSubview(imageView)
         loadTripImage(into: imageView, trip: trip)
 
-        button.overlayGradient.colors = [
+        card.overlayGradient.colors = [
             AlmidyDesignTokens.Color.tripCardGradientStart.cgColor,
             AlmidyDesignTokens.Color.tripCardGradientEnd.cgColor
         ]
-        button.overlayGradient.locations = [0.40, 1.0]
-        button.layer.addSublayer(button.overlayGradient)
+        card.overlayGradient.locations = [0.40, 1.0]
+        card.layer.addSublayer(card.overlayGradient)
 
         let textStack = UIStackView()
         textStack.axis = .vertical
         textStack.alignment = .leading
         textStack.spacing = 3
+        textStack.isUserInteractionEnabled = false
         textStack.translatesAutoresizingMaskIntoConstraints = false
-        button.addSubview(textStack)
+        card.addSubview(textStack)
 
         let title = UILabel()
         title.text = trip.displayName
         title.textColor = AlmidyDesignTokens.Color.tripCardTextPrimary
-        title.font = AlmidyDesignTokens.Font.title(36)
+        title.font = AlmidyDesignTokens.Font.title(NativeTripCardLayout.titleFontSize)
         title.adjustsFontSizeToFitWidth = true
         title.minimumScaleFactor = 0.72
 
         let dates = UILabel()
         dates.text = trip.displayDateRange
         dates.textColor = AlmidyDesignTokens.Color.tripCardTextSecondary
-        dates.font = .systemFont(ofSize: 20, weight: .semibold)
+        dates.font = .systemFont(ofSize: NativeTripCardLayout.dateFontSize, weight: .regular)
 
         let status = UILabel()
         status.text = trip.displayStatus
         status.textColor = AlmidyDesignTokens.Color.tripCardTextTertiary
-        status.font = .systemFont(ofSize: 18, weight: .regular)
+        status.font = .systemFont(ofSize: NativeTripCardLayout.statusFontSize, weight: .regular)
 
         textStack.addArrangedSubview(title)
         textStack.addArrangedSubview(dates)
         textStack.addArrangedSubview(status)
 
+        let cardHeight = NativeTripCardLayout.height(for: trip.scheduleState(relativeTo: Date()))
+
         NSLayoutConstraint.activate([
-            card.heightAnchor.constraint(equalToConstant: 300),
-            button.topAnchor.constraint(equalTo: card.topAnchor),
-            button.leadingAnchor.constraint(equalTo: card.leadingAnchor),
-            button.trailingAnchor.constraint(equalTo: card.trailingAnchor),
-            button.bottomAnchor.constraint(equalTo: card.bottomAnchor),
-            imageView.topAnchor.constraint(equalTo: button.topAnchor),
-            imageView.leadingAnchor.constraint(equalTo: button.leadingAnchor),
-            imageView.trailingAnchor.constraint(equalTo: button.trailingAnchor),
-            imageView.bottomAnchor.constraint(equalTo: button.bottomAnchor),
-            textStack.leadingAnchor.constraint(equalTo: button.leadingAnchor, constant: 24),
-            textStack.trailingAnchor.constraint(equalTo: button.trailingAnchor, constant: -24),
-            textStack.bottomAnchor.constraint(equalTo: button.bottomAnchor, constant: -42)
+            card.heightAnchor.constraint(equalToConstant: cardHeight),
+            imageView.topAnchor.constraint(equalTo: card.topAnchor),
+            imageView.leadingAnchor.constraint(equalTo: card.leadingAnchor),
+            imageView.trailingAnchor.constraint(equalTo: card.trailingAnchor),
+            imageView.bottomAnchor.constraint(equalTo: card.bottomAnchor),
+            textStack.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 24),
+            textStack.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -24),
+            textStack.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -42)
         ])
         return card
     }
@@ -2846,7 +3050,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
     }
 
     private func pillLabel(_ text: String, fontSize: CGFloat, textColor: UIColor, backgroundColor: UIColor) -> UILabel {
-        let label = PaddingLabel(insets: UIEdgeInsets(top: 9, left: 17, bottom: 9, right: 17))
+        let label = PaddingLabel(insets: UIEdgeInsets(top: 7, left: 12, bottom: 7, right: 12))
         label.text = text
         label.textColor = textColor
         label.font = AlmidyDesignTokens.Font.title(fontSize)
@@ -2861,7 +3065,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         collapsedActions.isHidden = trips.isEmpty
         expandedScrollView.isHidden = sheetState == .collapsed
         firstTripCard?.isHidden = !(trips.isEmpty && sheetState == .collapsed)
-        chevronImageView.transform = .identity
+        chevronButton.transform = .identity
         syncExpandedScrollBottomConstraint()
     }
 
@@ -2932,9 +3136,6 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         mapView.removeAnnotations(mapView.annotations.filter {
             $0 is NativeTripAnnotation || $0 is NativeGeographicLabelAnnotation
         })
-        if !trips.isEmpty {
-            mapView.addAnnotations(NativeGeographicLabelAnnotation.majorLabels)
-        }
         let annotations = trips.compactMap { trip -> NativeTripAnnotation? in
             guard let coordinate = trip.coordinate ?? resolvedLegacyTripCoordinates[trip.id] else {
                 resolveLegacyTripCoordinateIfNeeded(for: trip)
@@ -2974,6 +3175,23 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         if mapFallbackReason == .serviceUnavailable && isConnected != false {
             restoreOnlineMap()
         }
+
+        // A tile/style reload can finish after the activity results arrive.
+        // Reconcile the overlay so the collapsed sheet never exposes a
+        // correctly framed map without its corresponding result pins.
+        let missingAnnotations = activitySearchAnnotations.filter { candidate in
+            !mapView.annotations.contains { ($0 as AnyObject) === candidate }
+        }
+        if !missingAnnotations.isEmpty {
+            mapView.addAnnotations(missingAnnotations)
+        }
+    }
+
+    func mapView(_ mapView: MKMapView, didAdd views: [MKAnnotationView]) {
+        for view in views where view.annotation is NativeActivitySearchAnnotation {
+            view.isHidden = false
+            view.alpha = 1
+        }
     }
 
     func mapViewDidFailLoadingMap(_ mapView: MKMapView, withError error: Error) {
@@ -3005,18 +3223,40 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
             return annotationView
         }
 
+        if let activity = annotation as? NativeActivitySearchAnnotation {
+            let identifier = "activity-search-result"
+            let annotationView = mapView.dequeueReusableAnnotationView(withIdentifier: identifier) as? NativeActivitySearchAnnotationView
+                ?? NativeActivitySearchAnnotationView(annotation: activity, reuseIdentifier: identifier)
+            annotationView.annotation = activity
+            annotationView.configure(with: activity)
+            return annotationView
+        }
+
         guard let tripAnnotation = annotation as? NativeTripAnnotation else { return nil }
         let identifier = "trip-country-flag"
         let annotationView = mapView.dequeueReusableAnnotationView(withIdentifier: identifier) as? NativeTripFlagAnnotationView
             ?? NativeTripFlagAnnotationView(annotation: tripAnnotation, reuseIdentifier: identifier)
         annotationView.annotation = annotation
-        annotationView.canShowCallout = true
-        annotationView.rightCalloutAccessoryView = UIButton(type: .detailDisclosure)
+        annotationView.canShowCallout = false
+        annotationView.rightCalloutAccessoryView = nil
         annotationView.configure(with: tripAnnotation.countryPresentation)
         return annotationView
     }
 
     func mapView(_ mapView: MKMapView, didSelect annotation: MKAnnotation) {
+        if let activity = annotation as? NativeActivitySearchAnnotation {
+            activityResultSelectionHandler?(activity.resultID)
+            mapView.setCamera(
+                MKMapCamera(
+                    lookingAtCenter: activity.coordinate,
+                    fromDistance: activity.isFocused ? 8_000 : 25_000,
+                    pitch: 42,
+                    heading: mapView.camera.heading
+                ),
+                animated: true
+            )
+            return
+        }
         guard let tripAnnotation = annotation as? NativeTripAnnotation else { return }
         mapView.setCamera(MKMapCamera(lookingAtCenter: tripAnnotation.coordinate, fromDistance: 90_000, pitch: 52, heading: mapView.camera.heading), animated: true)
     }
@@ -3094,10 +3334,6 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
     }
 
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {}
-
-    @objc private func toggleSheetFromTitle() {
-        applySheetState(sheetState == .collapsed ? .medium : .collapsed, animated: true)
-    }
 
     @objc private func openSettings() {
         let settings = NativeSettingsViewController(
@@ -3385,7 +3621,250 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
     }
 
     @objc private func openSearch() {
-        let search = NativeMapSearchViewController { [weak self] coordinate in
+        presentMapSearch(purpose: nil)
+    }
+
+    private func openActivitySearch(for category: NativeActivityCategory) {
+        presentMapSearch(purpose: NativeActivityPurposeRegistry.purpose(for: category))
+    }
+
+    private func updateGlobeActivityFilter(
+        category: NativeActivityCategory?,
+        query: String,
+        nearby: Bool,
+        selectedResultID: String?,
+        searchRegion: MKCoordinateRegion?,
+        orderedResults: [MKMapItem]? = nil
+    ) {
+        activityFilterSearch?.cancel()
+        activityFilterSearch = nil
+        mapView.removeAnnotations(activitySearchAnnotations)
+        // Also remove annotations created before the retained collection was
+        // introduced, then atomically replace both the list and globe model.
+        mapView.removeAnnotations(mapView.annotations.filter { $0 is NativeActivitySearchAnnotation })
+        activitySearchAnnotations = []
+
+        guard let category else { return }
+        if let orderedResults {
+            let annotations = orderedResults.enumerated().map { index, item in
+                NativeActivitySearchAnnotation(
+                    mapItem: item,
+                    category: category,
+                    isFocused: NativeActivityPlaceIdentity.value(for: item) == selectedResultID,
+                    rank: index
+                )
+            }
+            activitySearchAnnotations = annotations
+            mapView.addAnnotations(annotations)
+            guard !annotations.isEmpty else { return }
+            if let selectedResultID,
+               let annotation = annotations.first(where: { $0.resultID == selectedResultID }) {
+                mapView.setCamera(
+                    MKMapCamera(
+                        lookingAtCenter: annotation.coordinate,
+                        fromDistance: 8_000,
+                        pitch: 42,
+                        heading: mapView.camera.heading
+                    ),
+                    animated: true
+                )
+                mapView.selectAnnotation(annotation, animated: true)
+            } else {
+                fitActivitySearchAnnotations(annotations)
+            }
+            return
+        }
+        let trimmedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        let purpose = NativeActivityPurposeRegistry.purpose(for: category)
+        let filter = purpose.queryTerms.first ?? purpose.searchToken
+        let request = MKLocalSearch.Request()
+        var requestedRegion: MKCoordinateRegion?
+        if selectedResultID != nil {
+            request.naturalLanguageQuery = trimmedQuery
+            request.resultTypes = [.pointOfInterest, .address]
+        } else {
+            let alreadyContainsFilter = trimmedQuery.localizedCaseInsensitiveContains(filter)
+            request.naturalLanguageQuery = trimmedQuery.isEmpty
+                ? filter
+                : (alreadyContainsFilter ? trimmedQuery : "\(filter) \(trimmedQuery)")
+            request.resultTypes = .pointOfInterest
+        }
+        if let searchRegion {
+            // Discovery is deliberately city-scoped. Camera framing is handled
+            // independently after MapKit returns the matching annotations.
+            request.region = MKCoordinateRegion(
+                center: searchRegion.center,
+                latitudinalMeters: Self.activityDiscoveryDiameter,
+                longitudinalMeters: Self.activityDiscoveryDiameter
+            )
+            requestedRegion = request.region
+        } else {
+            request.region = activitySearchRegion
+            requestedRegion = request.region
+        }
+
+        let search = MKLocalSearch(request: request)
+        activityFilterSearch = search
+        search.start { [weak self, weak search] response, _ in
+            DispatchQueue.main.async {
+                guard let self, self.activityFilterSearch === search else { return }
+                self.activityFilterSearch = nil
+                let returnedItems = response?.mapItems ?? []
+                let mapItems: [MKMapItem]
+                if selectedResultID == nil,
+                   !trimmedQuery.localizedCaseInsensitiveContains(" in "),
+                   let requestedRegion {
+                    let center = CLLocation(
+                        latitude: requestedRegion.center.latitude,
+                        longitude: requestedRegion.center.longitude
+                    )
+                    let north = CLLocation(
+                        latitude: requestedRegion.center.latitude + requestedRegion.span.latitudeDelta / 2,
+                        longitude: requestedRegion.center.longitude
+                    )
+                    let east = CLLocation(
+                        latitude: requestedRegion.center.latitude,
+                        longitude: requestedRegion.center.longitude + requestedRegion.span.longitudeDelta / 2
+                    )
+                    let radius = max(center.distance(from: north), center.distance(from: east)) * 1.25
+                    mapItems = returnedItems.filter {
+                        center.distance(from: CLLocation(
+                            latitude: $0.placemark.coordinate.latitude,
+                            longitude: $0.placemark.coordinate.longitude
+                        )) <= radius
+                    }
+                } else {
+                    mapItems = returnedItems
+                }
+                let selectedTitle = trimmedQuery.split(separator: ",", maxSplits: 1).first.map(String.init)
+                let visibleItems: [MKMapItem]
+                if selectedResultID != nil {
+                    let exactMatch = mapItems.first {
+                        guard let name = $0.name, let selectedTitle else { return false }
+                        return name.localizedCaseInsensitiveCompare(selectedTitle) == .orderedSame
+                    }
+                    visibleItems = Array([exactMatch ?? mapItems.first].compactMap { $0 })
+                } else {
+                    var seen = Set<String>()
+                    visibleItems = mapItems.filter { item in
+                        let coordinate = item.placemark.coordinate
+                        let key = "\(item.name?.lowercased() ?? "")|\(String(format: "%.4f", coordinate.latitude))|\(String(format: "%.4f", coordinate.longitude))"
+                        return seen.insert(key).inserted
+                    }.prefix(10).map { $0 }
+                }
+                let annotations = visibleItems.enumerated().map { index, item in
+                    NativeActivitySearchAnnotation(
+                        mapItem: item,
+                        category: category,
+                        isFocused: NativeActivityPlaceIdentity.value(for: item) == selectedResultID,
+                        rank: index
+                    )
+                }
+                self.activitySearchAnnotations = annotations
+                self.mapView.addAnnotations(Array(annotations))
+                guard !annotations.isEmpty else { return }
+                if let selectedResultID,
+                   let annotation = annotations.first(where: { $0.resultID == selectedResultID }) {
+                    self.mapView.setCamera(
+                        MKMapCamera(
+                            lookingAtCenter: annotation.coordinate,
+                            fromDistance: 8_000,
+                            pitch: 42,
+                            heading: self.mapView.camera.heading
+                        ),
+                        animated: true
+                    )
+                    self.mapView.selectAnnotation(annotation, animated: true)
+                } else {
+                    self.fitActivitySearchAnnotations(annotations)
+                }
+            }
+        }
+    }
+
+    private func fitActivitySearchAnnotations(_ annotations: [NativeActivitySearchAnnotation]) {
+        let mapPoints = annotations.map { MKMapPoint($0.coordinate) }
+        let bounds = mapPoints.reduce(MKMapRect.null) { rect, point in
+            let pointRect = MKMapRect(x: point.x, y: point.y, width: 1, height: 1)
+            return rect.isNull ? pointRect : rect.union(pointRect)
+        }
+        let centerLatitude = annotations
+            .map(\.coordinate.latitude)
+            .reduce(0, +) / Double(annotations.count)
+        let minimumPaddingMeters: CLLocationDistance
+        switch annotations.count {
+        case 1:
+            minimumPaddingMeters = 1_800
+        case 2...4:
+            minimumPaddingMeters = 1_200
+        case 5...10:
+            minimumPaddingMeters = 2_200
+        default:
+            minimumPaddingMeters = 3_200
+        }
+        let minimumPadding = minimumPaddingMeters * MKMapPointsPerMeterAtLatitude(centerLatitude)
+        let expandedBounds = bounds.insetBy(
+            dx: -max(bounds.width * 0.25, minimumPadding),
+            dy: -max(bounds.height * 0.25, minimumPadding)
+        )
+        let resultCenter = MKMapPoint(
+            x: expandedBounds.midX,
+            y: expandedBounds.midY
+        ).coordinate
+        let cameraInsets = activitySearchCameraInsets()
+        mapView.setVisibleMapRect(expandedBounds, edgePadding: cameraInsets, animated: true)
+
+        // setVisibleMapRect may zoom far beyond a useful city view when MapKit
+        // returns an outlier. Preserve its fitted center while enforcing a
+        // presentation-only maximum distance. Always retain the result-bounds
+        // center here. Retaining MapKit's padded camera center can move a dense
+        // city result set miles offshore when a sheet occupies much of the
+        // viewport, leaving every annotation outside the visible map.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) { [weak self] in
+            guard let self,
+                  self.mapView.camera.centerCoordinateDistance > Self.activityCameraMaximumDistance else { return }
+            self.mapView.setCamera(
+                MKMapCamera(
+                    lookingAtCenter: resultCenter,
+                    fromDistance: Self.activityCameraMaximumDistance,
+                    pitch: 42,
+                    heading: self.mapView.camera.heading
+                ),
+                animated: true
+            )
+        }
+    }
+
+    private func activitySearchCameraInsets() -> UIEdgeInsets {
+        let availableHeight = max(0, view.bounds.height - view.safeAreaInsets.top)
+        var collapsedSheetHeight = NativeActivitySheetMetrics.previewHeight(
+            maximumDetentValue: availableHeight,
+            screenHeight: view.window?.screen.bounds.height ?? view.bounds.height,
+            safeAreaInsets: view.safeAreaInsets
+        )
+        if #available(iOS 16.0, *),
+           let presented = presentedViewController,
+           presented.sheetPresentationController?.selectedDetentIdentifier == NativeActivitySheetMetrics.previewIdentifier,
+           presented.viewIfLoaded?.window != nil {
+            let sheetFrame = view.convert(presented.view.bounds, from: presented.view)
+            collapsedSheetHeight = max(0, view.bounds.maxY - sheetFrame.minY)
+        }
+        // MapKit produces unstable camera centers when vertical edge padding
+        // consumes nearly the entire map. The preview is allowed to cover the
+        // lower portion of the map, but a useful city-scale canvas must remain.
+        let maximumBottomInset = max(0, availableHeight * 0.48)
+        let fittedBottomInset = min(collapsedSheetHeight + 24, maximumBottomInset)
+        return UIEdgeInsets(
+            top: view.safeAreaInsets.top + 32,
+            left: 40,
+            bottom: fittedBottomInset,
+            right: 40
+        )
+    }
+
+    private func presentMapSearch(purpose: NativeActivityPurpose?) {
+        let search = NativeMapSearchViewController(purpose: purpose) { [weak self] coordinate in
             guard let self else { return }
             self.mapView.setCamera(
                 MKMapCamera(
@@ -3446,7 +3925,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
 
     private func addNativeTrip(_ trip: NativeMapTrip) {
         guard !trips.contains(where: { $0.id == trip.id }) else { return }
-        trips.insert(trip, at: 0)
+        trips = NativeMapTrip.scheduled(trips + [trip])
         warmTripBackground(trip)
         addTripPins()
         renderSheetContent()
@@ -3570,8 +4049,9 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         if let index = trips.firstIndex(where: { $0.id == updatedTrip.id }) {
             trips[index] = updatedTrip
         } else {
-            trips.insert(updatedTrip, at: 0)
+            trips.append(updatedTrip)
         }
+        trips = NativeMapTrip.scheduled(trips)
         warmTripBackground(updatedTrip)
         addTripPins()
         renderSheetContent()
@@ -3666,13 +4146,44 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
                     }
                 }
             },
+            activitySearchRoute: { [weak self] category, _ in
+                self?.openActivitySearch(for: category)
+            },
+            activityFilterRoute: { [weak self] category, query, nearby, selectedResultID, region, results in
+                self?.updateGlobeActivityFilter(
+                    category: category,
+                    query: query,
+                    nearby: nearby,
+                    selectedResultID: selectedResultID,
+                    searchRegion: region,
+                    orderedResults: results
+                )
+            },
             authenticationRecovery: { [weak self, weak overview] in
                 overview?.dismiss(animated: true) { self?.presentNativeAuth() }
+            },
+            onClose: { [weak self] in
+                self?.setPrimarySheetHiddenForModalFlow(false)
             }
         )
         overview.router = router
         overview.configureForGlobePresentation()
+        setPrimarySheetHiddenForModalFlow(true)
+        overview.presentationController?.delegate = self
         present(overview, animated: true)
+    }
+
+    func setPrimarySheetHiddenForModalFlow(_ isHidden: Bool) {
+        UIView.animate(withDuration: 0.2) {
+            self.sheetView.alpha = isHidden ? 0 : 1
+        }
+        sheetView.isUserInteractionEnabled = !isHidden
+        sheetView.accessibilityElementsHidden = isHidden
+    }
+
+    func presentationControllerDidDismiss(_ presentationController: UIPresentationController) {
+        activityResultSelectionHandler = nil
+        setPrimarySheetHiddenForModalFlow(false)
     }
 
     private func showUnavailableRouteMessage() {
@@ -5333,6 +5844,7 @@ private final class NativeAccountViewController: UIViewController {
 }
 
 private final class NativeMapSearchViewController: UIViewController, MKLocalSearchCompleterDelegate, UITableViewDataSource, UITableViewDelegate, UITextFieldDelegate {
+    private let purpose: NativeActivityPurpose?
     private let onSelect: (CLLocationCoordinate2D) -> Void
     private let completer = MKLocalSearchCompleter()
     private var completions: [MKLocalSearchCompletion] = []
@@ -5341,7 +5853,8 @@ private final class NativeMapSearchViewController: UIViewController, MKLocalSear
     private let suggestionTable = UITableView(frame: .zero, style: .plain)
     private let statusLabel = UILabel()
 
-    init(onSelect: @escaping (CLLocationCoordinate2D) -> Void) {
+    init(purpose: NativeActivityPurpose? = nil, onSelect: @escaping (CLLocationCoordinate2D) -> Void) {
+        self.purpose = purpose
         self.onSelect = onSelect
         super.init(nibName: nil, bundle: nil)
     }
@@ -5358,7 +5871,13 @@ private final class NativeMapSearchViewController: UIViewController, MKLocalSear
         configureSearch()
     }
 
+    private var initialStatusText: String {
+        guard let purpose else { return "Start typing to search the globe." }
+        return "Start typing to search for \(purpose.canonicalName.lowercased())."
+    }
+
     private func configureSearch() {
+        let searchPlaceholder = purpose?.searchPlaceholder ?? "Search a city or place"
         let cancelButton = UIButton(type: .system)
         cancelButton.setTitle("Cancel", for: .normal)
         cancelButton.titleLabel?.font = AlmidyDesignTokens.Font.button(17)
@@ -5367,16 +5886,17 @@ private final class NativeMapSearchViewController: UIViewController, MKLocalSear
         cancelButton.accessibilityLabel = "Close globe search"
 
         let title = UILabel()
-        title.text = "Search the globe"
+        title.text = purpose.map { "Find \($0.canonicalName)" } ?? "Search the globe"
         title.font = AlmidyDesignTokens.Font.display(30)
         title.textColor = AlmidyDesignTokens.Color.textPrimary
 
         let subtitle = UILabel()
-        subtitle.text = "Find a place and move the globe there."
+        subtitle.text = purpose.map { "Search places for \($0.canonicalName.lowercased()) on the globe." }
+            ?? "Find a place and move the globe there."
         subtitle.font = .systemFont(ofSize: 17, weight: .regular)
         subtitle.textColor = AlmidyDesignTokens.Color.textSecondary
 
-        queryField.placeholder = "Search a city or place"
+        queryField.placeholder = searchPlaceholder
         queryField.font = AlmidyDesignTokens.Font.body(18)
         queryField.textColor = AlmidyDesignTokens.Color.textPrimary
         queryField.backgroundColor = AlmidyDesignTokens.Color.darkInput
@@ -5384,7 +5904,7 @@ private final class NativeMapSearchViewController: UIViewController, MKLocalSear
         queryField.layer.borderWidth = 1
         queryField.layer.borderColor = AlmidyDesignTokens.Color.darkInputBorder.cgColor
         queryField.attributedPlaceholder = NSAttributedString(
-            string: "Search a city or place",
+            string: searchPlaceholder,
             attributes: [.foregroundColor: AlmidyDesignTokens.Color.darkPlaceholder]
         )
         queryField.setPadding(16)
@@ -5392,13 +5912,13 @@ private final class NativeMapSearchViewController: UIViewController, MKLocalSear
         queryField.returnKeyType = .search
         queryField.delegate = self
         queryField.addTarget(self, action: #selector(queryChanged), for: .editingChanged)
-        queryField.accessibilityLabel = "Search for a city or place"
+        queryField.accessibilityLabel = searchPlaceholder
 
         statusLabel.font = AlmidyDesignTokens.Font.body(16)
         statusLabel.textColor = AlmidyDesignTokens.Color.searchEmptyState
         statusLabel.numberOfLines = 0
         statusLabel.textAlignment = .center
-        statusLabel.text = "Start typing to search the globe."
+        statusLabel.text = initialStatusText
         statusLabel.isAccessibilityElement = true
 
         suggestionTable.register(UITableViewCell.self, forCellReuseIdentifier: "map-search-suggestion")
@@ -5455,9 +5975,10 @@ private final class NativeMapSearchViewController: UIViewController, MKLocalSear
         completions = []
         suggestionTable.reloadData()
         suggestionTable.isHidden = query.count < 2
-        statusLabel.text = query.count < 2 ? "Start typing to search the globe." : "Searching…"
+        statusLabel.text = query.count < 2 ? initialStatusText : "Searching…"
         if query.count >= 2 {
-            completer.queryFragment = query
+            let purposeTerm = purpose?.queryTerms.first ?? purpose?.searchToken ?? ""
+            completer.queryFragment = purposeTerm.isEmpty ? query : "\(purposeTerm) \(query)"
         }
     }
 
@@ -5784,6 +6305,152 @@ private enum NativeLaunchSettingsIcon {
     }()
 }
 
+private final class NativeActivitySearchAnnotation: NSObject, MKAnnotation {
+    let resultID: String
+    let coordinate: CLLocationCoordinate2D
+    let title: String?
+    let subtitle: String?
+    let tintColor: UIColor
+    let image: UIImage
+    let isFocused: Bool
+    let rank: Int
+
+    init(mapItem: MKMapItem, category: NativeActivityCategory, isFocused: Bool = false, rank: Int = 0) {
+        resultID = NativeActivityPlaceIdentity.value(for: mapItem)
+        coordinate = mapItem.placemark.coordinate
+        title = mapItem.name
+        subtitle = [
+            mapItem.placemark.locality,
+            mapItem.placemark.administrativeArea,
+            mapItem.placemark.country,
+        ].compactMap { $0 }.joined(separator: ", ")
+        tintColor = category.palette.tint
+        image = category.image
+        self.isFocused = isFocused
+        self.rank = rank
+        super.init()
+    }
+}
+
+private final class NativeActivitySearchAnnotationView: MKAnnotationView {
+    private enum Metrics {
+        static let width: CGFloat = 132
+        static let height: CGFloat = 78
+        static let badgeSize: CGFloat = 48
+        static let glyphSize: CGFloat = 24
+        static let labelHeight: CGFloat = 22
+    }
+
+    private let badgeView = UIView()
+    private let glyphView = UIImageView()
+    private let titleLabel = UILabel()
+    private var keepsTitleVisible = false
+
+    override init(annotation: MKAnnotation?, reuseIdentifier: String?) {
+        super.init(annotation: annotation, reuseIdentifier: reuseIdentifier)
+
+        // Only the circular badge participates in collision. The title may
+        // extend outside these bounds when selected without causing every
+        // nearby result to collide as a 132-point-wide annotation.
+        frame = CGRect(x: 0, y: 0, width: Metrics.badgeSize, height: Metrics.badgeSize)
+        clipsToBounds = false
+        centerOffset = .zero
+        collisionMode = .circle
+        canShowCallout = false
+        clusteringIdentifier = nil
+
+        badgeView.frame = CGRect(
+            x: 0,
+            y: 0,
+            width: Metrics.badgeSize,
+            height: Metrics.badgeSize
+        )
+        badgeView.layer.cornerRadius = Metrics.badgeSize / 2
+        badgeView.layer.borderColor = UIColor.white.cgColor
+        badgeView.layer.borderWidth = 3
+        badgeView.layer.shadowColor = UIColor.black.cgColor
+        badgeView.layer.shadowOpacity = 0.24
+        badgeView.layer.shadowRadius = 5
+        badgeView.layer.shadowOffset = CGSize(width: 0, height: 2)
+        addSubview(badgeView)
+
+        glyphView.frame = CGRect(
+            x: (Metrics.badgeSize - Metrics.glyphSize) / 2,
+            y: (Metrics.badgeSize - Metrics.glyphSize) / 2,
+            width: Metrics.glyphSize,
+            height: Metrics.glyphSize
+        )
+        glyphView.contentMode = .scaleAspectFit
+        glyphView.tintColor = .white
+        badgeView.addSubview(glyphView)
+
+        titleLabel.frame = CGRect(
+            x: (Metrics.badgeSize - Metrics.width) / 2,
+            y: Metrics.badgeSize + 5,
+            width: Metrics.width,
+            height: Metrics.labelHeight
+        )
+        titleLabel.font = .systemFont(ofSize: 13, weight: .semibold)
+        titleLabel.textColor = .white
+        titleLabel.textAlignment = .center
+        titleLabel.numberOfLines = 1
+        titleLabel.lineBreakMode = .byTruncatingTail
+        titleLabel.layer.shadowColor = UIColor.black.cgColor
+        titleLabel.layer.shadowOpacity = 1
+        titleLabel.layer.shadowRadius = 2
+        titleLabel.layer.shadowOffset = .zero
+        titleLabel.isHidden = true
+        addSubview(titleLabel)
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override func prepareForReuse() {
+        super.prepareForReuse()
+        glyphView.image = nil
+        titleLabel.text = nil
+        titleLabel.isHidden = true
+        keepsTitleVisible = false
+        clusteringIdentifier = nil
+    }
+
+    func configure(with annotation: NativeActivitySearchAnnotation) {
+        badgeView.backgroundColor = annotation.tintColor
+        glyphView.image = annotation.image.withRenderingMode(.alwaysTemplate)
+        titleLabel.text = annotation.title
+        keepsTitleVisible = annotation.isFocused
+        // Keep the leading result visible while allowing nearby annotations to
+        // participate in MapKit's collision system. Requiring several dense pins
+        // makes them stack into a single unreadable marker group.
+        if annotation.isFocused || annotation.rank == 0 {
+            displayPriority = .required
+        } else if annotation.rank < 10 {
+            displayPriority = .defaultHigh
+        } else {
+            displayPriority = .defaultLow
+        }
+        clusteringIdentifier = nil
+        isHidden = false
+        alpha = 1
+        layer.zPosition = annotation.isFocused ? 10_001 : CGFloat(10_000 - annotation.rank)
+        if #available(iOS 14.0, *) {
+            zPriority = annotation.isFocused || annotation.rank == 0 ? .max : .defaultUnselected
+        }
+        titleLabel.isHidden = !keepsTitleVisible
+        accessibilityLabel = [annotation.title, annotation.subtitle]
+            .compactMap { $0 }
+            .filter { !$0.isEmpty }
+            .joined(separator: ", ")
+    }
+
+    override func setSelected(_ selected: Bool, animated: Bool) {
+        super.setSelected(selected, animated: animated)
+        titleLabel.isHidden = !(selected || keepsTitleVisible)
+    }
+}
+
 private final class NativeGeographicLabelAnnotation: NSObject, MKAnnotation {
     enum Kind {
         case continent
@@ -5973,6 +6640,7 @@ private final class NativeUserLocationAnnotationView: MKAnnotationView {
 }
 
 private final class NativeTripFlagAnnotationView: MKAnnotationView {
+    private let flagBadgeView = UIView()
     private let flagLabel = UILabel()
     private let countryLabel = UILabel()
 
@@ -5980,26 +6648,33 @@ private final class NativeTripFlagAnnotationView: MKAnnotationView {
         super.init(annotation: annotation, reuseIdentifier: reuseIdentifier)
 
         frame = CGRect(x: 0, y: 0, width: 160, height: 78)
-        centerOffset = CGPoint(x: 0, y: -55)
-        collisionMode = .none
+        // The badge center, rather than the annotation view's full label stack,
+        // is anchored to the trip coordinate.
+        centerOffset = CGPoint(x: 0, y: 19)
+        collisionMode = .circle
         displayPriority = .required
         if #available(iOS 14.0, *) {
             zPriority = .max
         }
 
-        flagLabel.backgroundColor = .white
-        flagLabel.font = .systemFont(ofSize: 30)
+        flagBadgeView.backgroundColor = .white
+        flagBadgeView.layer.cornerRadius = 20
+        flagBadgeView.layer.borderColor = UIColor.white.cgColor
+        flagBadgeView.layer.borderWidth = 3
+        flagBadgeView.layer.shadowColor = UIColor.black.cgColor
+        flagBadgeView.layer.shadowOpacity = 0.24
+        flagBadgeView.layer.shadowRadius = 5
+        flagBadgeView.layer.shadowOffset = CGSize(width: 0, height: 2)
+        flagBadgeView.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(flagBadgeView)
+
+        flagLabel.backgroundColor = .clear
+        flagLabel.font = .systemFont(ofSize: 36)
         flagLabel.textAlignment = .center
-        flagLabel.layer.cornerRadius = 24
-        flagLabel.layer.borderColor = UIColor.white.cgColor
-        flagLabel.layer.borderWidth = 3
-        flagLabel.layer.shadowColor = UIColor.black.cgColor
-        flagLabel.layer.shadowOpacity = 0.24
-        flagLabel.layer.shadowRadius = 5
-        flagLabel.layer.shadowOffset = CGSize(width: 0, height: 2)
-        flagLabel.clipsToBounds = false
+        flagLabel.layer.cornerRadius = 20
+        flagLabel.clipsToBounds = true
         flagLabel.translatesAutoresizingMaskIntoConstraints = false
-        addSubview(flagLabel)
+        flagBadgeView.addSubview(flagLabel)
 
         countryLabel.textColor = .white
         countryLabel.font = .systemFont(ofSize: 14, weight: .bold)
@@ -6014,11 +6689,15 @@ private final class NativeTripFlagAnnotationView: MKAnnotationView {
         addSubview(countryLabel)
 
         NSLayoutConstraint.activate([
-            flagLabel.topAnchor.constraint(equalTo: topAnchor),
-            flagLabel.centerXAnchor.constraint(equalTo: centerXAnchor),
-            flagLabel.widthAnchor.constraint(equalToConstant: 48),
-            flagLabel.heightAnchor.constraint(equalToConstant: 48),
-            countryLabel.topAnchor.constraint(equalTo: flagLabel.bottomAnchor, constant: 2),
+            flagBadgeView.topAnchor.constraint(equalTo: topAnchor),
+            flagBadgeView.centerXAnchor.constraint(equalTo: centerXAnchor),
+            flagBadgeView.widthAnchor.constraint(equalToConstant: 40),
+            flagBadgeView.heightAnchor.constraint(equalToConstant: 40),
+            flagLabel.topAnchor.constraint(equalTo: flagBadgeView.topAnchor),
+            flagLabel.leadingAnchor.constraint(equalTo: flagBadgeView.leadingAnchor),
+            flagLabel.trailingAnchor.constraint(equalTo: flagBadgeView.trailingAnchor),
+            flagLabel.bottomAnchor.constraint(equalTo: flagBadgeView.bottomAnchor),
+            countryLabel.topAnchor.constraint(equalTo: flagBadgeView.bottomAnchor, constant: 2),
             countryLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 4),
             countryLabel.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -4),
             countryLabel.bottomAnchor.constraint(lessThanOrEqualTo: bottomAnchor)
@@ -6033,6 +6712,25 @@ private final class NativeTripFlagAnnotationView: MKAnnotationView {
         flagLabel.text = presentation.flag
         countryLabel.text = presentation.name
         accessibilityLabel = "Trip in \(presentation.name)"
+    }
+
+    var anchoredBadgeLayoutForTesting: (
+        badgeCenter: CGPoint,
+        badgeSize: CGSize,
+        badgeCornerRadius: CGFloat,
+        flagClipsToCircle: Bool,
+        badgeBackgroundIsClear: Bool,
+        flagFontSize: CGFloat
+    ) {
+        layoutIfNeeded()
+        return (
+            badgeCenter: flagBadgeView.center,
+            badgeSize: flagBadgeView.bounds.size,
+            badgeCornerRadius: flagBadgeView.layer.cornerRadius,
+            flagClipsToCircle: flagLabel.clipsToBounds,
+            badgeBackgroundIsClear: flagBadgeView.backgroundColor == .clear,
+            flagFontSize: flagLabel.font.pointSize
+        )
     }
 }
 

@@ -2,7 +2,7 @@ import Capacitor
 import Foundation
 import MapKit
 import XCTest
-@testable import App
+@testable import Almidy
 
 @MainActor
 final class NativeAuthConnectivityTests: XCTestCase {

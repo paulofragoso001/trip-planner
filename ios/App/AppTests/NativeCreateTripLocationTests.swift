@@ -1,6 +1,6 @@
 import CoreLocation
 import XCTest
-@testable import App
+@testable import Almidy
 
 final class NativeCreateTripLocationTests: XCTestCase {
     func testTripNameAloneCannotCreateLocationBackedTrip() {

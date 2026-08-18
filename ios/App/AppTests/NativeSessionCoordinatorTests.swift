@@ -1,7 +1,7 @@
 import Foundation
 import XCTest
-#if canImport(App)
-@testable import App
+#if canImport(Almidy)
+@testable import Almidy
 #endif
 
 final class NativeSessionCoordinatorTests: XCTestCase {

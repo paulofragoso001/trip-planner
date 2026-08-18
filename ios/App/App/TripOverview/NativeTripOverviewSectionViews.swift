@@ -38,7 +38,7 @@ class NativeTripOverviewCard: UIControl, UIGestureRecognizerDelegate {
     override init(frame: CGRect) {
         super.init(frame: frame)
         backgroundColor = AlmidyDesignTokens.Color.surface
-        layer.cornerRadius = AlmidyDesignTokens.Radius.card
+        layer.cornerRadius = AlmidyDesignTokens.TripOverview.cardCornerRadius
         layer.cornerCurve = .continuous
         accessibilityTraits.insert(.button)
         isAccessibilityElement = false
@@ -47,9 +47,9 @@ class NativeTripOverviewCard: UIControl, UIGestureRecognizerDelegate {
         contentStack.axis = .vertical
         contentStack.spacing = AlmidyDesignTokens.TripOverview.cardContentGap
         contentStack.translatesAutoresizingMaskIntoConstraints = false
-        stateLabel.font = UIFontMetrics(forTextStyle: .caption1).scaledFont(for: AlmidyDesignTokens.Font.body(13))
+        stateLabel.font = UIFontMetrics(forTextStyle: .caption1).scaledFont(for: AlmidyDesignTokens.TripOverview.metadataFont)
         stateLabel.adjustsFontForContentSizeCategory = true
-        stateLabel.textColor = AlmidyDesignTokens.Color.overviewMetadata
+        stateLabel.textColor = AlmidyDesignTokens.Color.tripOverviewNeutralText
         stateLabel.numberOfLines = 0
         contentStack.addArrangedSubview(stateLabel)
         addSubview(contentStack)
@@ -112,8 +112,9 @@ final class NativeTripOverviewItineraryCard: NativeTripOverviewCard {
     private let header = NativeTripOverviewCardHeader(
         icon: "calendar",
         title: "Itinerary",
-        accentColor: AlmidyDesignTokens.Color.goldMuted,
-        titleFont: AlmidyDesignTokens.Font.regular(17)
+        accentColor: AlmidyDesignTokens.Color.tripOverviewAccent,
+        surfaceColor: AlmidyDesignTokens.Color.tripOverviewAccentSurface,
+        titleFont: AlmidyDesignTokens.TripOverview.headingFont
     )
     private(set) var renderedCategoryKeys: [String] = []
     private(set) var overflowCount = 0
@@ -123,20 +124,38 @@ final class NativeTripOverviewItineraryCard: NativeTripOverviewCard {
     var hasAddFirstActivityAction: Bool {
         contentStack.arrangedSubviews.contains { ($0 as? UIButton)?.title(for: .normal) == "Add First Activity" }
     }
+    var hasViewAllDaysAction: Bool {
+        contentStack.arrangedSubviews.contains { ($0 as? UIButton)?.title(for: .normal) == "View All Days" }
+    }
 
     override init(frame: CGRect) {
         super.init(frame: frame)
         accessibilityIdentifier = "overview-itinerary-card"
-        contentStack.spacing = AlmidyDesignTokens.TripOverview.cardContentGap
+        contentStack.spacing = AlmidyDesignTokens.TripOverview.itineraryContentGap
         contentStack.insertArrangedSubview(header, at: 0)
         accessibilityLabel = "Itinerary"
         accessibilityHint = "Opens the complete itinerary"
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
-    func render(_ itinerary: NativeTripOverview.Itinerary, newActivityAvailable: Bool) {
+    func render(
+        _ itinerary: NativeTripOverview.Itinerary,
+        trip: NativeTripOverview.Trip? = nil,
+        newActivityAvailable: Bool,
+        now: Date = Date(),
+        timeZone: TimeZone = .current,
+        locale: Locale = .current
+    ) {
         reset(after: header); apply(itinerary.status)
-        renderedDateRange = itinerary.dateRange
+        renderedDateRange = trip.flatMap {
+            NativeTripOverviewDateCalculator.itineraryHeaderDate(
+                startDate: $0.startDate,
+                endDate: $0.endDate,
+                now: now,
+                timeZone: timeZone,
+                locale: locale
+            )
+        } ?? itinerary.dateRange
             .replacingOccurrences(of: " – ", with: " → ")
             .replacingOccurrences(of: " - ", with: " → ")
         header.trailingText = renderedDateRange
@@ -146,34 +165,46 @@ final class NativeTripOverviewItineraryCard: NativeTripOverviewCard {
         isUsingCompactEmptyInsets = itinerary.activityMode == .empty
         setVerticalContentInset(
             isUsingCompactEmptyInsets
-                ? AlmidyDesignTokens.TripOverview.compactCardVerticalInset
+                ? AlmidyDesignTokens.TripOverview.itineraryCardVerticalInset
                 : AlmidyDesignTokens.TripOverview.cardVerticalInset
         )
-        contentStack.addArrangedSubview(NativeTripOverviewDivider())
+        contentStack.addArrangedSubview(NativeTripOverviewDivider(
+            identifier: "trip-overview-measure-itinerary-divider-primary",
+            extendsThroughCardInsets: true
+        ))
         if itinerary.status.state == .failed {
             accessibilityValue = "Temporarily unavailable"
             return
         }
         if itinerary.activityMode == .empty {
             let emptyRow = NativeTripOverviewEmptyTimelineRow()
+            emptyRow.accessibilityIdentifier = "trip-overview-measure-itinerary-empty-row"
             contentStack.addArrangedSubview(emptyRow)
             if newActivityAvailable {
                 let add = UIButton(type: .system)
                 add.setTitle("Add First Activity", for: .normal)
-                add.setTitleColor(AlmidyDesignTokens.Color.goldDeep, for: .normal)
-                add.titleLabel?.font = UIFontMetrics(forTextStyle: .callout).scaledFont(for: AlmidyDesignTokens.Font.medium(14))
+                add.setTitleColor(AlmidyDesignTokens.Color.tripOverviewAccent, for: .normal)
+                add.titleLabel?.font = UIFontMetrics(forTextStyle: .callout).scaledFont(for: AlmidyDesignTokens.TripOverview.actionFont)
                 add.titleLabel?.adjustsFontForContentSizeCategory = true
                 add.contentHorizontalAlignment = .leading
                 add.accessibilityHint = "Opens the new activity form"
+                add.accessibilityIdentifier = "trip-overview-measure-itinerary-action"
                 add.heightAnchor.constraint(greaterThanOrEqualToConstant: 44).isActive = true
                 add.addAction(UIAction { [weak self] _ in self?.onNewActivity?() }, for: .touchUpInside)
-                contentStack.addArrangedSubview(NativeTripOverviewDivider())
+                contentStack.addArrangedSubview(NativeTripOverviewDivider(
+                    identifier: "trip-overview-measure-itinerary-divider-action",
+                    extendsThroughCardInsets: true
+                ))
                 contentStack.addArrangedSubview(add)
             }
             accessibilityValue = "Empty"
             return
         }
 
+        // The overview contract currently supplies activity totals and trip dates,
+        // but not a trustworthy count of distinct itinerary days. Do not infer a
+        // multi-day itinerary from the trip duration or present "View All Days"
+        // until that day-level contract and a working destination are available.
         let categoryRow = UIStackView(); categoryRow.axis = .horizontal; categoryRow.spacing = -5; categoryRow.alignment = .center
         let visible = Array(itinerary.categories.filter { $0.count > 0 }.prefix(5))
         renderedCategoryKeys = visible.map(\.key)
@@ -192,11 +223,22 @@ final class NativeTripOverviewItineraryCard: NativeTripOverviewCard {
 }
 
 final class NativeTripOverviewDocumentsCard: NativeTripOverviewCard {
-    private let header = NativeTripOverviewCardHeader(icon: "folder.fill", title: NativeTripOverviewReleaseScope.importedItemsTitle)
+    private let header = NativeTripOverviewCardHeader(
+        icon: "folder.fill",
+        title: NativeTripOverviewReleaseScope.importedItemsTitle,
+        titleFont: AlmidyDesignTokens.TripOverview.importedItemsHeadingFont,
+        height: AlmidyDesignTokens.TripOverview.importedItemsHeaderHeight,
+        iconSurfaceDiameter: AlmidyDesignTokens.TripOverview.importedItemsHeaderIconSurface,
+        iconDiameter: AlmidyDesignTokens.TripOverview.importedItemsHeaderIcon
+    )
     private(set) var renderedDocumentIDs: [String] = []
 
     override init(frame: CGRect) {
-        super.init(frame: frame); accessibilityIdentifier = "overview-documents-card"; contentStack.insertArrangedSubview(header, at: 0)
+        super.init(frame: frame)
+        accessibilityIdentifier = "overview-documents-card"
+        contentStack.spacing = AlmidyDesignTokens.TripOverview.importedItemsContentGap
+        setVerticalContentInset(AlmidyDesignTokens.TripOverview.importedItemsCardVerticalInset)
+        contentStack.insertArrangedSubview(header, at: 0)
         accessibilityLabel = NativeTripOverviewReleaseScope.importedItemsTitle
         accessibilityHint = "Opens imported trip documents"
     }
@@ -205,18 +247,27 @@ final class NativeTripOverviewDocumentsCard: NativeTripOverviewCard {
     func render(_ documents: NativeTripOverview.Documents) {
         reset(after: header); apply(documents.status)
         renderedDocumentIDs = documents.items.map(\.id)
-        contentStack.addArrangedSubview(NativeTripOverviewDivider())
+        contentStack.addArrangedSubview(NativeTripOverviewDivider(identifier: "trip-overview-measure-documents-divider"))
         guard !documents.items.isEmpty else {
-            contentStack.addArrangedSubview(NativeTripOverviewIllustrationRow(items: [
+            let illustration = NativeTripOverviewIllustrationRow(items: [
                 ("envelope.fill", AlmidyDesignTokens.Color.goldMuted),
                 ("photo.on.rectangle.angled", AlmidyDesignTokens.Color.info),
-                ("doc.text.fill", AlmidyDesignTokens.Color.textSecondary),
+                ("doc.text.fill", AlmidyDesignTokens.Color.tripOverviewNeutralIcon),
                 ("link", AlmidyDesignTokens.Color.goldMuted)
-            ], accessibilityLabel: "Reservation email, photo, note, and link types"))
-            let explanation = UILabel.almidyBody("Reservation emails, photos, notes, and links imported for this trip will appear here.")
-            explanation.textColor = AlmidyDesignTokens.Color.textSecondary
-            explanation.textAlignment = .center
-            contentStack.addArrangedSubview(NativeTripOverviewCenteredContent(explanation, maximumWidth: 290))
+            ], accessibilityLabel: "Reservation email, photo, note, and link types",
+               diameter: AlmidyDesignTokens.TripOverview.importedItemsIconClusterDiameter,
+               iconDiameter: AlmidyDesignTokens.TripOverview.importedItemsIconClusterIcon,
+               overlap: AlmidyDesignTokens.TripOverview.importedItemsIconClusterOverlap,
+               rowHeight: AlmidyDesignTokens.TripOverview.importedItemsIconRowHeight)
+            illustration.accessibilityIdentifier = "trip-overview-measure-documents-icons"
+            contentStack.addArrangedSubview(illustration)
+            let explanation = UILabel.almidyImportedItemsBody("Reservation emails, photos, notes, and links imported for this trip will appear here.")
+            let body = NativeTripOverviewCenteredContent(
+                explanation,
+                maximumWidth: AlmidyDesignTokens.TripOverview.importedItemsBodyMaximumWidth
+            )
+            body.accessibilityIdentifier = "trip-overview-measure-documents-body"
+            contentStack.addArrangedSubview(body)
             accessibilityValue = "No imported items"
             return
         }
@@ -228,7 +279,14 @@ final class NativeTripOverviewDocumentsCard: NativeTripOverviewCard {
 }
 
 final class NativeTripOverviewExpensesCard: NativeTripOverviewCard {
-    private let header = NativeTripOverviewCardHeader(icon: "creditcard.fill", title: "Expenses")
+    private let header = NativeTripOverviewCardHeader(
+        icon: "creditcard.fill",
+        title: "Expenses",
+        titleFont: AlmidyDesignTokens.TripOverview.expensesHeadingFont,
+        height: AlmidyDesignTokens.TripOverview.expensesHeaderHeight,
+        iconSurfaceDiameter: AlmidyDesignTokens.TripOverview.expensesHeaderIconSurface,
+        iconDiameter: AlmidyDesignTokens.TripOverview.expensesHeaderIcon
+    )
     private let preferenceKey = "almidy.trip-overview.expenses-hidden"
     private var expenses: NativeTripOverview.Expenses?
     private(set) var renderedCurrencies: [String] = []
@@ -236,7 +294,11 @@ final class NativeTripOverviewExpensesCard: NativeTripOverviewCard {
 
     override init(frame: CGRect) {
         amountsHidden = UserDefaults.standard.bool(forKey: preferenceKey)
-        super.init(frame: frame); accessibilityIdentifier = "overview-expenses-card"; contentStack.insertArrangedSubview(header, at: 0)
+        super.init(frame: frame)
+        accessibilityIdentifier = "overview-expenses-card"
+        contentStack.spacing = AlmidyDesignTokens.TripOverview.expensesContentGap
+        setVerticalContentInset(AlmidyDesignTokens.TripOverview.expensesCardVerticalInset)
+        contentStack.insertArrangedSubview(header, at: 0)
         header.setAction(symbol: amountsHidden ? "eye.slash" : "eye", label: amountsHidden ? "Reveal expense amounts" : "Hide expense amounts") { [weak self] in self?.toggleAmounts() }
         accessibilityLabel = "Expenses"
         accessibilityHint = "Opens the detailed trip budget"
@@ -246,20 +308,33 @@ final class NativeTripOverviewExpensesCard: NativeTripOverviewCard {
     func render(_ expenses: NativeTripOverview.Expenses) {
         self.expenses = expenses; reset(after: header); apply(expenses.status)
         renderedCurrencies = expenses.currencies.map { $0.total.currency }
-        contentStack.addArrangedSubview(NativeTripOverviewDivider())
+        contentStack.addArrangedSubview(NativeTripOverviewDivider(identifier: "trip-overview-measure-expenses-divider-primary"))
         guard !expenses.currencies.isEmpty else {
-            contentStack.addArrangedSubview(NativeTripOverviewIllustrationRow(items: [
+            let illustration = NativeTripOverviewIllustrationRow(items: [
                 ("creditcard.fill", AlmidyDesignTokens.Color.goldMuted),
                 ("bed.double.fill", AlmidyDesignTokens.Color.generatedTripGradientStart),
                 ("fork.knife", AlmidyDesignTokens.Color.goldMuted),
-                ("dollarsign.circle.fill", AlmidyDesignTokens.Color.textSecondary)
-            ], accessibilityLabel: "Payment, stay, dining, and other expense categories"))
-            let explanation = UILabel.almidyBody("Costs added from activities or the trip budget will appear here, grouped by category and currency.")
-            explanation.textColor = AlmidyDesignTokens.Color.textSecondary
-            explanation.textAlignment = .center
-            contentStack.addArrangedSubview(NativeTripOverviewCenteredContent(explanation, maximumWidth: 300))
-            contentStack.addArrangedSubview(NativeTripOverviewDivider())
-            let budgetAffordance = UILabel.almidyAction("View Budget")
+                ("dollarsign.circle.fill", AlmidyDesignTokens.Color.tripOverviewNeutralIcon)
+            ], accessibilityLabel: "Payment, stay, dining, and other expense categories",
+               diameter: AlmidyDesignTokens.TripOverview.expensesIconClusterDiameter,
+               iconDiameter: AlmidyDesignTokens.TripOverview.expensesIconClusterIcon,
+               overlap: AlmidyDesignTokens.TripOverview.expensesIconClusterOverlap,
+               rowHeight: AlmidyDesignTokens.TripOverview.expensesIconRowHeight)
+            illustration.accessibilityIdentifier = "trip-overview-measure-expenses-icons"
+            contentStack.addArrangedSubview(illustration)
+            let explanation = UILabel.almidyExpensesBody("Costs added from activities or the trip budget will appear here, grouped by category and currency.")
+            let body = NativeTripOverviewCenteredContent(
+                explanation,
+                maximumWidth: AlmidyDesignTokens.TripOverview.expensesBodyMaximumWidth
+            )
+            body.accessibilityIdentifier = "trip-overview-measure-expenses-body"
+            contentStack.addArrangedSubview(body)
+            contentStack.addArrangedSubview(NativeTripOverviewDivider(identifier: "trip-overview-measure-expenses-divider-action"))
+            let budgetAffordance = UILabel.almidyAction(NativeTripOverviewReleaseScope.expensesEmptyActionTitle)
+            budgetAffordance.textAlignment = .center
+            budgetAffordance.accessibilityLabel = NativeTripOverviewReleaseScope.expensesEmptyActionTitle
+            budgetAffordance.accessibilityHint = "Opens the detailed trip budget"
+            budgetAffordance.accessibilityIdentifier = "trip-overview-measure-expenses-action"
             contentStack.addArrangedSubview(budgetAffordance)
             accessibilityValue = "No expenses recorded"
             return
@@ -337,17 +412,30 @@ private final class NativeTripOverviewCardHeader: UIView {
     private let trailingLabel = UILabel()
     private let actionButton = UIButton(type: .system)
     private var action: (() -> Void)?
+    private var trailingToEdgeConstraint: NSLayoutConstraint!
+    private var trailingToActionConstraint: NSLayoutConstraint!
+    private var actionAfterMetadataConstraint: NSLayoutConstraint!
     var trailingText: String? { get { trailingLabel.text } set { trailingLabel.text = newValue; trailingLabel.isHidden = newValue == nil } }
 
     init(
         icon: String,
         title: String,
-        accentColor: UIColor = AlmidyDesignTokens.Color.goldMuted,
-        titleFont: UIFont = AlmidyDesignTokens.Font.medium(17)
+        accentColor: UIColor = AlmidyDesignTokens.Color.tripOverviewNeutralIcon,
+        surfaceColor: UIColor = AlmidyDesignTokens.Color.tripOverviewNeutralSurface,
+        titleFont: UIFont = AlmidyDesignTokens.TripOverview.headingFont,
+        height: CGFloat = AlmidyDesignTokens.TripOverview.headerHeight,
+        iconSurfaceDiameter: CGFloat = AlmidyDesignTokens.TripOverview.headerIconSurface,
+        iconDiameter: CGFloat = AlmidyDesignTokens.TripOverview.headerIcon
     ) {
         super.init(frame: .zero)
-        iconSurface.backgroundColor = AlmidyDesignTokens.Color.goldMutedSurface
-        iconSurface.layer.cornerRadius = AlmidyDesignTokens.TripOverview.headerIconSurface / 2
+        let measurementName = title.lowercased().replacingOccurrences(of: " ", with: "-")
+        accessibilityIdentifier = "trip-overview-measure-\(measurementName)-header"
+        iconSurface.accessibilityIdentifier = "trip-overview-measure-\(measurementName)-header-icon"
+        titleLabel.accessibilityIdentifier = "trip-overview-measure-\(measurementName)-title"
+        trailingLabel.accessibilityIdentifier = "trip-overview-measure-\(measurementName)-metadata"
+        actionButton.accessibilityIdentifier = "trip-overview-measure-\(measurementName)-header-action"
+        iconSurface.backgroundColor = surfaceColor
+        iconSurface.layer.cornerRadius = iconSurfaceDiameter / 2
         iconSurface.layer.cornerCurve = .continuous
         iconSurface.translatesAutoresizingMaskIntoConstraints = false
         iconView.image = UIImage(systemName: icon)
@@ -360,43 +448,55 @@ private final class NativeTripOverviewCardHeader: UIView {
         titleLabel.adjustsFontForContentSizeCategory = true
         titleLabel.accessibilityTraits.insert(.header)
         titleLabel.numberOfLines = 2; titleLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
-        trailingLabel.font = UIFontMetrics(forTextStyle: .caption1).scaledFont(for: AlmidyDesignTokens.Font.body(13))
-        trailingLabel.textColor = AlmidyDesignTokens.Color.overviewMetadata
+        trailingLabel.font = UIFontMetrics(forTextStyle: .caption1).scaledFont(for: AlmidyDesignTokens.TripOverview.metadataFont)
+        trailingLabel.textColor = AlmidyDesignTokens.Color.tripOverviewNeutralText
         trailingLabel.adjustsFontForContentSizeCategory = true
         trailingLabel.numberOfLines = 2; trailingLabel.textAlignment = .right
         actionButton.isHidden = true
-        actionButton.tintColor = AlmidyDesignTokens.Color.goldDark
+        actionButton.tintColor = AlmidyDesignTokens.Color.tripOverviewAccent
         actionButton.addTarget(self, action: #selector(runAction), for: .touchUpInside)
         addSubview(iconSurface)
         iconSurface.addSubview(iconView)
         [titleLabel, trailingLabel, actionButton].forEach { $0.translatesAutoresizingMaskIntoConstraints = false; addSubview($0) }
         iconView.translatesAutoresizingMaskIntoConstraints = false
+        trailingToEdgeConstraint = trailingLabel.trailingAnchor.constraint(equalTo: trailingAnchor)
+        trailingToActionConstraint = trailingLabel.trailingAnchor.constraint(lessThanOrEqualTo: actionButton.leadingAnchor)
+        actionAfterMetadataConstraint = actionButton.leadingAnchor.constraint(greaterThanOrEqualTo: trailingLabel.trailingAnchor, constant: 4)
         NSLayoutConstraint.activate([
-            heightAnchor.constraint(equalToConstant: AlmidyDesignTokens.TripOverview.headerHeight),
+            heightAnchor.constraint(equalToConstant: height),
             iconSurface.leadingAnchor.constraint(equalTo: leadingAnchor), iconSurface.centerYAnchor.constraint(equalTo: centerYAnchor),
-            iconSurface.widthAnchor.constraint(equalToConstant: AlmidyDesignTokens.TripOverview.headerIconSurface), iconSurface.heightAnchor.constraint(equalToConstant: AlmidyDesignTokens.TripOverview.headerIconSurface),
+            iconSurface.widthAnchor.constraint(equalToConstant: iconSurfaceDiameter), iconSurface.heightAnchor.constraint(equalToConstant: iconSurfaceDiameter),
             iconView.centerXAnchor.constraint(equalTo: iconSurface.centerXAnchor), iconView.centerYAnchor.constraint(equalTo: iconSurface.centerYAnchor),
-            iconView.widthAnchor.constraint(equalToConstant: AlmidyDesignTokens.TripOverview.headerIcon), iconView.heightAnchor.constraint(equalToConstant: AlmidyDesignTokens.TripOverview.headerIcon),
-            titleLabel.leadingAnchor.constraint(equalTo: iconSurface.trailingAnchor, constant: 10), titleLabel.centerYAnchor.constraint(equalTo: centerYAnchor),
-            trailingLabel.leadingAnchor.constraint(greaterThanOrEqualTo: titleLabel.trailingAnchor, constant: 8), trailingLabel.centerYAnchor.constraint(equalTo: centerYAnchor),
-            actionButton.leadingAnchor.constraint(greaterThanOrEqualTo: trailingLabel.trailingAnchor, constant: 4), actionButton.trailingAnchor.constraint(equalTo: trailingAnchor),
+            iconView.widthAnchor.constraint(equalToConstant: iconDiameter), iconView.heightAnchor.constraint(equalToConstant: iconDiameter),
+            titleLabel.leadingAnchor.constraint(equalTo: iconSurface.trailingAnchor, constant: AlmidyDesignTokens.TripOverview.headerTitleGap), titleLabel.centerYAnchor.constraint(equalTo: centerYAnchor),
+            trailingLabel.leadingAnchor.constraint(greaterThanOrEqualTo: titleLabel.trailingAnchor, constant: AlmidyDesignTokens.TripOverview.headerMetadataGap), trailingLabel.centerYAnchor.constraint(equalTo: centerYAnchor),
+            trailingToEdgeConstraint,
+            actionButton.trailingAnchor.constraint(equalTo: trailingAnchor),
             actionButton.centerYAnchor.constraint(equalTo: centerYAnchor), actionButton.widthAnchor.constraint(greaterThanOrEqualToConstant: 44),
-            actionButton.heightAnchor.constraint(greaterThanOrEqualToConstant: 44), trailingLabel.trailingAnchor.constraint(lessThanOrEqualTo: actionButton.leadingAnchor)
+            actionButton.heightAnchor.constraint(greaterThanOrEqualToConstant: 44)
         ])
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
     func setAction(symbol: String, label: String, action: @escaping () -> Void) {
         self.action = action; actionButton.setImage(UIImage(systemName: symbol), for: .normal)
-        actionButton.tintColor = AlmidyDesignTokens.Color.goldDark
+        actionButton.tintColor = AlmidyDesignTokens.Color.tripOverviewAccent
         actionButton.accessibilityLabel = label; actionButton.isHidden = false
+        trailingToEdgeConstraint.isActive = false
+        NSLayoutConstraint.activate([trailingToActionConstraint, actionAfterMetadataConstraint])
     }
     @objc private func runAction() { action?() }
 }
 
 private final class NativeTripOverviewDivider: UIView {
-    override init(frame: CGRect) {
-        super.init(frame: frame)
-        backgroundColor = AlmidyDesignTokens.Color.line
+    init(identifier: String? = nil, extendsThroughCardInsets: Bool = false) {
+        super.init(frame: .zero)
+        accessibilityIdentifier = identifier
+        clipsToBounds = false
+        let line = UIView()
+        line.backgroundColor = AlmidyDesignTokens.Color.tripOverviewDivider
+        line.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(line)
+        let extensionAmount = extendsThroughCardInsets ? AlmidyDesignTokens.TripOverview.cardHorizontalInset : 0
         directionalLayoutMargins = NSDirectionalEdgeInsets(
             top: 0,
             leading: AlmidyDesignTokens.TripOverview.separatorInset,
@@ -404,6 +504,12 @@ private final class NativeTripOverviewDivider: UIView {
             trailing: AlmidyDesignTokens.TripOverview.separatorInset
         )
         heightAnchor.constraint(equalToConstant: 1 / UIScreen.main.scale).isActive = true
+        NSLayoutConstraint.activate([
+            line.topAnchor.constraint(equalTo: topAnchor),
+            line.bottomAnchor.constraint(equalTo: bottomAnchor),
+            line.leadingAnchor.constraint(equalTo: leadingAnchor, constant: -extensionAmount),
+            line.trailingAnchor.constraint(equalTo: trailingAnchor, constant: extensionAmount)
+        ])
         isAccessibilityElement = false
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
@@ -413,23 +519,33 @@ private final class NativeTripOverviewEmptyTimelineRow: UIView {
     override init(frame: CGRect) {
         super.init(frame: frame)
         let iconSurface = UIView()
-        iconSurface.backgroundColor = AlmidyDesignTokens.Color.goldMutedSurface
-        iconSurface.layer.cornerRadius = 18
+        iconSurface.backgroundColor = AlmidyDesignTokens.Color.tripOverviewAccentSurface
+        iconSurface.layer.cornerRadius = AlmidyDesignTokens.TripOverview.headerIconSurface / 2
         iconSurface.translatesAutoresizingMaskIntoConstraints = false
         let icon = UIImageView(image: UIImage(systemName: "plus"))
-        icon.tintColor = AlmidyDesignTokens.Color.goldMuted
+        icon.tintColor = AlmidyDesignTokens.Color.tripOverviewAccent
         icon.translatesAutoresizingMaskIntoConstraints = false
         let label = UILabel.almidyBody("Start organizing your itinerary")
-        label.textColor = AlmidyDesignTokens.Color.overviewMetadata
+        label.textColor = AlmidyDesignTokens.Color.tripOverviewNeutralText
         let row = UIStackView(arrangedSubviews: [iconSurface, label])
         row.axis = .horizontal; row.spacing = 12; row.alignment = .center
         row.translatesAutoresizingMaskIntoConstraints = false
+        let connector = UIView()
+        connector.accessibilityIdentifier = "trip-overview-measure-itinerary-timeline-connector"
+        connector.backgroundColor = AlmidyDesignTokens.Color.tripOverviewDivider
+        connector.layer.cornerRadius = AlmidyDesignTokens.TripOverview.itineraryTimelineConnectorWidth / 2
+        connector.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(connector)
         addSubview(row); iconSurface.addSubview(icon)
         NSLayoutConstraint.activate([
-            heightAnchor.constraint(greaterThanOrEqualToConstant: 48),
-            iconSurface.widthAnchor.constraint(equalToConstant: 36), iconSurface.heightAnchor.constraint(equalToConstant: 36),
+            heightAnchor.constraint(equalToConstant: AlmidyDesignTokens.TripOverview.itineraryRowHeight),
+            iconSurface.widthAnchor.constraint(equalToConstant: AlmidyDesignTokens.TripOverview.headerIconSurface), iconSurface.heightAnchor.constraint(equalToConstant: AlmidyDesignTokens.TripOverview.headerIconSurface),
             icon.centerXAnchor.constraint(equalTo: iconSurface.centerXAnchor), icon.centerYAnchor.constraint(equalTo: iconSurface.centerYAnchor),
-            icon.widthAnchor.constraint(equalToConstant: 18), icon.heightAnchor.constraint(equalToConstant: 18),
+            icon.widthAnchor.constraint(equalToConstant: AlmidyDesignTokens.TripOverview.headerIcon), icon.heightAnchor.constraint(equalToConstant: AlmidyDesignTokens.TripOverview.headerIcon),
+            connector.centerXAnchor.constraint(equalTo: iconSurface.centerXAnchor),
+            connector.bottomAnchor.constraint(equalTo: iconSurface.topAnchor, constant: -2),
+            connector.widthAnchor.constraint(equalToConstant: AlmidyDesignTokens.TripOverview.itineraryTimelineConnectorWidth),
+            connector.heightAnchor.constraint(equalToConstant: AlmidyDesignTokens.TripOverview.itineraryTimelineConnectorHeight),
             row.leadingAnchor.constraint(equalTo: leadingAnchor), row.trailingAnchor.constraint(equalTo: trailingAnchor),
             row.topAnchor.constraint(equalTo: topAnchor), row.bottomAnchor.constraint(equalTo: bottomAnchor)
         ])
@@ -440,19 +556,26 @@ private final class NativeTripOverviewEmptyTimelineRow: UIView {
 }
 
 private final class NativeTripOverviewIllustrationRow: UIView {
-    init(items: [(symbol: String, color: UIColor)], accessibilityLabel: String) {
+    init(
+        items: [(symbol: String, color: UIColor)],
+        accessibilityLabel: String,
+        diameter: CGFloat = AlmidyDesignTokens.TripOverview.iconClusterDiameter,
+        iconDiameter: CGFloat = AlmidyDesignTokens.TripOverview.iconClusterIcon,
+        overlap: CGFloat = AlmidyDesignTokens.TripOverview.iconClusterOverlap,
+        rowHeight: CGFloat = 54
+    ) {
         super.init(frame: .zero)
         let stack = UIStackView()
         stack.axis = .horizontal
         stack.alignment = .center
         stack.distribution = .equalCentering
-        stack.spacing = -7
+        stack.spacing = overlap
         stack.translatesAutoresizingMaskIntoConstraints = false
 
         for item in items {
             let surface = UIView()
             surface.backgroundColor = item.color.withAlphaComponent(0.12)
-            surface.layer.cornerRadius = 22
+            surface.layer.cornerRadius = diameter / 2
             surface.layer.cornerCurve = .continuous
             surface.translatesAutoresizingMaskIntoConstraints = false
             let image = UIImageView(image: UIImage(systemName: item.symbol))
@@ -461,19 +584,19 @@ private final class NativeTripOverviewIllustrationRow: UIView {
             image.translatesAutoresizingMaskIntoConstraints = false
             surface.addSubview(image)
             NSLayoutConstraint.activate([
-                surface.widthAnchor.constraint(equalToConstant: 44),
-                surface.heightAnchor.constraint(equalToConstant: 44),
+                surface.widthAnchor.constraint(equalToConstant: diameter),
+                surface.heightAnchor.constraint(equalToConstant: diameter),
                 image.centerXAnchor.constraint(equalTo: surface.centerXAnchor),
                 image.centerYAnchor.constraint(equalTo: surface.centerYAnchor),
-                image.widthAnchor.constraint(equalToConstant: 21),
-                image.heightAnchor.constraint(equalToConstant: 21)
+                image.widthAnchor.constraint(equalToConstant: iconDiameter),
+                image.heightAnchor.constraint(equalToConstant: iconDiameter)
             ])
             stack.addArrangedSubview(surface)
         }
 
         addSubview(stack)
         NSLayoutConstraint.activate([
-            heightAnchor.constraint(greaterThanOrEqualToConstant: 54),
+            heightAnchor.constraint(equalToConstant: rowHeight),
             stack.centerXAnchor.constraint(equalTo: centerXAnchor),
             stack.centerYAnchor.constraint(equalTo: centerYAnchor),
             stack.leadingAnchor.constraint(greaterThanOrEqualTo: leadingAnchor),
@@ -617,20 +740,52 @@ private final class NativeTripOverviewRecentRow: UIView {
 private extension UILabel {
     static func almidyBody(_ text: String) -> UILabel {
         let label = UILabel(); label.text = text
-        label.font = UIFontMetrics(forTextStyle: .body).scaledFont(for: AlmidyDesignTokens.Font.body(15))
+        label.font = UIFontMetrics(forTextStyle: .body).scaledFont(for: AlmidyDesignTokens.TripOverview.bodyFont)
         label.textColor = AlmidyDesignTokens.Color.textPrimary
         label.adjustsFontForContentSizeCategory = true; label.numberOfLines = 0; return label
     }
     static func almidyCaption(_ text: String) -> UILabel {
         let label = UILabel.almidyBody(text)
-        label.font = UIFontMetrics(forTextStyle: .caption1).scaledFont(for: AlmidyDesignTokens.Font.body(12))
-        label.textColor = AlmidyDesignTokens.Color.textSecondary
+        label.font = UIFontMetrics(forTextStyle: .caption1).scaledFont(for: AlmidyDesignTokens.TripOverview.captionFont)
+        label.textColor = AlmidyDesignTokens.Color.tripOverviewNeutralText
+        return label
+    }
+    static func almidyImportedItemsBody(_ text: String) -> UILabel {
+        let label = UILabel.almidyBody(text)
+        label.font = UIFontMetrics(forTextStyle: .body).scaledFont(
+            for: AlmidyDesignTokens.TripOverview.importedItemsBodyFont
+        )
+        label.textColor = AlmidyDesignTokens.Color.tripOverviewNeutralText
+        label.textAlignment = .center
+        let paragraph = NSMutableParagraphStyle()
+        paragraph.alignment = .center
+        paragraph.lineSpacing = AlmidyDesignTokens.TripOverview.importedItemsBodyLineSpacing
+        label.attributedText = NSAttributedString(
+            string: text,
+            attributes: [.font: label.font as Any, .paragraphStyle: paragraph]
+        )
+        return label
+    }
+    static func almidyExpensesBody(_ text: String) -> UILabel {
+        let label = UILabel.almidyBody(text)
+        label.font = UIFontMetrics(forTextStyle: .body).scaledFont(
+            for: AlmidyDesignTokens.TripOverview.expensesBodyFont
+        )
+        label.textColor = AlmidyDesignTokens.Color.tripOverviewNeutralText
+        label.textAlignment = .center
+        let paragraph = NSMutableParagraphStyle()
+        paragraph.alignment = .center
+        paragraph.lineSpacing = AlmidyDesignTokens.TripOverview.expensesBodyLineSpacing
+        label.attributedText = NSAttributedString(
+            string: text,
+            attributes: [.font: label.font as Any, .paragraphStyle: paragraph]
+        )
         return label
     }
     static func almidyAction(_ text: String) -> UILabel {
         let label = UILabel.almidyBody(text)
-        label.font = UIFontMetrics(forTextStyle: .callout).scaledFont(for: AlmidyDesignTokens.Font.semibold(15))
-        label.textColor = AlmidyDesignTokens.Color.goldDark
+        label.font = UIFontMetrics(forTextStyle: .callout).scaledFont(for: AlmidyDesignTokens.TripOverview.actionFont)
+        label.textColor = AlmidyDesignTokens.Color.tripOverviewAccent
         label.textAlignment = .left
         label.accessibilityTraits.insert(.link)
         return label
@@ -664,6 +819,12 @@ final class NativeTripOverviewActionsView: UIView {
     var renderedAccessibilityValues: [String] {
         actionStack.arrangedSubviews.compactMap { $0.accessibilityValue }
     }
+    var emptyActionCircleDiameter: CGFloat? {
+        (actionStack.arrangedSubviews.first as? NativeTripOverviewEmptyActivityAction)?.circleDiameter
+    }
+    var emptyActionLabelGap: CGFloat? {
+        (actionStack.arrangedSubviews.first as? NativeTripOverviewEmptyActivityAction)?.labelGap
+    }
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -695,6 +856,11 @@ final class NativeTripOverviewActionsView: UIView {
             object: nil
         )
         updateLargeTextLayout()
+    }
+
+    func updateTransition(progress: CGFloat) {
+        (actionStack.arrangedSubviews.first as? NativeTripOverviewEmptyActivityAction)?
+            .updateTransition(progress: progress)
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
@@ -738,33 +904,42 @@ final class NativeTripOverviewActionsView: UIView {
 
 private final class NativeTripOverviewEmptyActivityAction: UIControl {
     let action: NativeTripOverviewAction
-    private let materialView = UIVisualEffectView(effect: UIBlurEffect(style: .systemThinMaterialDark))
+    private let materialView = UIVisualEffectView(effect: nil)
     private let materialWash = UIView()
     private let iconView = UIImageView()
     private let actionLabel = UILabel()
+    private var circleWidthConstraint: NSLayoutConstraint!
+    private var circleHeightConstraint: NSLayoutConstraint!
+    private var labelTopConstraint: NSLayoutConstraint!
+    private(set) var circleDiameter = AlmidyDesignTokens.TripOverview.emptyActionCircleDiameter
+    private(set) var labelGap = AlmidyDesignTokens.TripOverview.emptyActionLabelGap
 
     init(action: NativeTripOverviewAction) {
         self.action = action
         super.init(frame: .zero)
+        accessibilityIdentifier = "trip-overview-measure-empty-action-group"
 
         materialView.isUserInteractionEnabled = false
         materialView.clipsToBounds = true
-        materialView.layer.cornerRadius = 38
+        materialView.backgroundColor = AlmidyDesignTokens.Color.tripOverviewNeutralSurface.withAlphaComponent(0.94)
+        materialView.layer.cornerRadius = circleDiameter / 2
         materialView.layer.cornerCurve = .continuous
         materialView.layer.borderWidth = 1
-        materialView.layer.borderColor = UIColor.white.withAlphaComponent(0.24).cgColor
+        materialView.layer.borderColor = AlmidyDesignTokens.Color.tripOverviewAccent.withAlphaComponent(0.28).cgColor
         materialView.translatesAutoresizingMaskIntoConstraints = false
+        materialView.accessibilityIdentifier = "trip-overview-measure-empty-action-circle"
 
-        materialWash.backgroundColor = UIColor.white.withAlphaComponent(0.14)
+        materialWash.backgroundColor = UIColor.white.withAlphaComponent(0.10)
         materialWash.isUserInteractionEnabled = false
         materialWash.translatesAutoresizingMaskIntoConstraints = false
 
         let symbol = UIImage.SymbolConfiguration(pointSize: 30, weight: .regular)
         iconView.image = UIImage(systemName: "plus", withConfiguration: symbol)
-        iconView.tintColor = AlmidyDesignTokens.Color.tripOverviewActionIcon
+        iconView.tintColor = AlmidyDesignTokens.Color.tripOverviewAccent
         iconView.contentMode = .scaleAspectFit
         iconView.isUserInteractionEnabled = false
         iconView.translatesAutoresizingMaskIntoConstraints = false
+        iconView.accessibilityIdentifier = "trip-overview-measure-empty-action-icon"
 
         actionLabel.text = "Add First Activity"
         actionLabel.font = UIFontMetrics(forTextStyle: .callout).scaledFont(for: AlmidyDesignTokens.Font.body(15))
@@ -774,32 +949,38 @@ private final class NativeTripOverviewEmptyActivityAction: UIControl {
         actionLabel.numberOfLines = 0
         actionLabel.isUserInteractionEnabled = false
         actionLabel.translatesAutoresizingMaskIntoConstraints = false
+        actionLabel.accessibilityIdentifier = "trip-overview-measure-empty-action-label"
 
         addSubview(materialView)
         materialView.contentView.addSubview(materialWash)
         materialView.contentView.addSubview(iconView)
         addSubview(actionLabel)
 
+        circleWidthConstraint = materialView.widthAnchor.constraint(equalToConstant: circleDiameter)
+        circleHeightConstraint = materialView.heightAnchor.constraint(equalToConstant: circleDiameter)
+        labelTopConstraint = actionLabel.topAnchor.constraint(equalTo: materialView.bottomAnchor, constant: labelGap)
+
         NSLayoutConstraint.activate([
-            materialView.topAnchor.constraint(equalTo: topAnchor, constant: 8),
+            materialView.topAnchor.constraint(equalTo: topAnchor, constant: AlmidyDesignTokens.TripOverview.emptyActionTopInset),
             materialView.centerXAnchor.constraint(equalTo: centerXAnchor),
-            materialView.widthAnchor.constraint(equalToConstant: 76),
-            materialView.heightAnchor.constraint(equalToConstant: 76),
+            circleWidthConstraint,
+            circleHeightConstraint,
             materialWash.leadingAnchor.constraint(equalTo: materialView.contentView.leadingAnchor),
             materialWash.trailingAnchor.constraint(equalTo: materialView.contentView.trailingAnchor),
             materialWash.topAnchor.constraint(equalTo: materialView.contentView.topAnchor),
             materialWash.bottomAnchor.constraint(equalTo: materialView.contentView.bottomAnchor),
             iconView.centerXAnchor.constraint(equalTo: materialView.contentView.centerXAnchor),
             iconView.centerYAnchor.constraint(equalTo: materialView.contentView.centerYAnchor),
-            iconView.widthAnchor.constraint(equalToConstant: 34),
-            iconView.heightAnchor.constraint(equalToConstant: 34),
-            actionLabel.topAnchor.constraint(equalTo: materialView.bottomAnchor, constant: 9),
+            iconView.widthAnchor.constraint(equalToConstant: AlmidyDesignTokens.TripOverview.emptyActionIconDiameter),
+            iconView.heightAnchor.constraint(equalToConstant: AlmidyDesignTokens.TripOverview.emptyActionIconDiameter),
+            labelTopConstraint,
             actionLabel.leadingAnchor.constraint(greaterThanOrEqualTo: leadingAnchor, constant: 8),
             actionLabel.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor, constant: -8),
             actionLabel.centerXAnchor.constraint(equalTo: centerXAnchor),
-            actionLabel.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -8),
+            actionLabel.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -AlmidyDesignTokens.TripOverview.emptyActionBottomInset),
             widthAnchor.constraint(greaterThanOrEqualToConstant: 160),
-            heightAnchor.constraint(greaterThanOrEqualToConstant: 122)
+            widthAnchor.constraint(greaterThanOrEqualToConstant: AlmidyDesignTokens.TripOverview.minimumInteractiveTarget),
+            heightAnchor.constraint(greaterThanOrEqualToConstant: AlmidyDesignTokens.TripOverview.minimumInteractiveTarget)
         ])
 
         isAccessibilityElement = true
@@ -808,6 +989,19 @@ private final class NativeTripOverviewEmptyActivityAction: UIControl {
         accessibilityHint = "Opens the new activity form for this trip"
         accessibilityIdentifier = "trip-overview-empty-add-activity"
         accessibilityValue = "Available"
+    }
+
+    func updateTransition(progress: CGFloat) {
+        let clamped = min(max(progress, 0), 1)
+        let collapsed = AlmidyDesignTokens.TripOverview.CollapsedComposition.self
+        circleDiameter = AlmidyDesignTokens.TripOverview.emptyActionCircleDiameter
+            + (collapsed.activityCircleDiameter - AlmidyDesignTokens.TripOverview.emptyActionCircleDiameter) * clamped
+        labelGap = AlmidyDesignTokens.TripOverview.emptyActionLabelGap
+            + (collapsed.activityCircleToLabelGap - AlmidyDesignTokens.TripOverview.emptyActionLabelGap) * clamped
+        circleWidthConstraint.constant = circleDiameter
+        circleHeightConstraint.constant = circleDiameter
+        labelTopConstraint.constant = labelGap
+        materialView.layer.cornerRadius = circleDiameter / 2
     }
 
     override var isHighlighted: Bool {

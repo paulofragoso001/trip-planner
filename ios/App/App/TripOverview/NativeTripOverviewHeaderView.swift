@@ -2,14 +2,15 @@ import CoreImage
 import UIKit
 
 final class NativeTripOverviewHeaderView: UIView {
-    let moreButton = UIButton(type: .system)
-    let searchButton = UIButton(type: .system)
-    let closeButton = UIButton(type: .system)
+    let moreButton = NativeTripOverviewMinimumHitButton(type: .system)
+    let searchButton = NativeTripOverviewMinimumHitButton(type: .system)
+    let closeButton = NativeTripOverviewMinimumHitButton(type: .system)
     var onBackgroundColor: ((UIColor) -> Void)?
+    var onHeroContinuation: ((UIImage?, UIColor, UIColor) -> Void)?
 
-    private let imageView = UIImageView()
+    private let imageView = NativeTripOverviewFocalImageView()
     private let gradientView = NativeTripOverviewGradientView()
-    private let compactBackground = UIVisualEffectView(effect: UIBlurEffect(style: .systemChromeMaterialDark))
+    private let compactBackground = NativeTripOverviewCompactSurfaceView()
     private let imagePlaceholder = UIImageView(image: UIImage(systemName: "photo"))
     private let imageLoadingIndicator = UIActivityIndicatorView(style: .medium)
     private let grabberView = UIView()
@@ -28,7 +29,9 @@ final class NativeTripOverviewHeaderView: UIView {
     private var seedImage: UIImage?
     private var heroTintColor = NativeTripOverviewHeroColorProcessor.guardrailSurface
     private var sheetTintColor = NativeTripOverviewHeroColorProcessor.guardrailSurface
+    private var compactTintColor = NativeTripOverviewHeroColorProcessor.guardrailCompactSurface
     private var controlMaterialViews: [UIVisualEffectView] = []
+    private var usesExternalHeroBackdrop = false
     private(set) var transitionProgress: CGFloat = 0
 
     // Test-visible presentation values keep the contract verifiable without exposing mutable labels.
@@ -42,14 +45,32 @@ final class NativeTripOverviewHeaderView: UIView {
     var expandedTitleWeight: UIFont.Weight { titleLabel.font.almidyWeight }
     var expandedTitleMaximumLines: Int { titleLabel.numberOfLines }
     var expandedTimingPointSize: CGFloat { timingLabel.font.pointSize }
-    var expandedTitleBottomInset: CGFloat { 10 }
+    var expandedTitleBottomInset: CGFloat { 6 }
     var heroImageAlpha: CGFloat { imageView.alpha }
     var heroGradientAlpha: CGFloat { gradientView.alpha }
     var compactBackgroundAlpha: CGFloat { compactBackground.alpha }
+    var compactSurfaceColorForVerification: UIColor { compactTintColor }
+    var sheetSurfaceColorForVerification: UIColor { sheetTintColor }
     var expandedContentAlpha: CGFloat { expandedLabels.alpha }
     var grabberAlpha: CGFloat { grabberView.alpha }
+    var grabberFrame: CGRect { grabberView.frame }
+    var grabberColor: UIColor? { grabberView.backgroundColor }
+
+    func setGrabberHidden(_ hidden: Bool) {
+        grabberView.isHidden = hidden
+    }
     var expandedContentTransform: CGAffineTransform { expandedLabels.transform }
     var compactContentTransform: CGAffineTransform { compactLabels.transform }
+    var compactDestinationFrame: CGRect { compactLabels.frame }
+    var compactTitleFrame: CGRect { compactTitleLabel.frame }
+    var compactDateFrame: CGRect { compactDateLabel.frame }
+    var compactDestinationSpacing: CGFloat { compactLabels.spacing }
+    var compactTitleMaximumLines: Int { compactTitleLabel.numberOfLines }
+    var compactTitleLineBreakMode: NSLineBreakMode { compactTitleLabel.lineBreakMode }
+    var compactLabelsUseDynamicType: Bool {
+        compactTitleLabel.adjustsFontForContentSizeCategory
+            && compactDateLabel.adjustsFontForContentSizeCategory
+    }
     var activeSummaryAccessibilityLabel: String? {
         transitionProgress < 0.5 ? expandedLabels.accessibilityLabel : compactLabels.accessibilityLabel
     }
@@ -57,13 +78,45 @@ final class NativeTripOverviewHeaderView: UIView {
         [moreButton, searchButton, closeButton].map(\.accessibilityHint)
     }
     var controlBorderWidths: [CGFloat] { [moreButton, searchButton, closeButton].map(\.layer.borderWidth) }
+    var controlBackgroundColors: [UIColor?] { [moreButton, searchButton, closeButton].map(\.backgroundColor) }
+    var controlMaterialAlphas: [CGFloat] { controlMaterialViews.map(\.alpha) }
+    var controlMinimumHitTargets: [CGSize] { [moreButton, searchButton, closeButton].map(\.minimumHitTarget) }
+    var accessibilityReadingOrderLabels: [String] {
+        (accessibilityElements as? [UIView] ?? []).compactMap { element in
+            guard !element.isHidden, !element.accessibilityElementsHidden else { return nil }
+            return element.accessibilityLabel
+        }
+    }
+    var accessibleTitleContainerCount: Int {
+        [expandedLabels, compactLabels].filter { !$0.accessibilityElementsHidden }.count
+    }
     var renderedHeroImage: UIImage? { imageView.image }
+    var heroSourceCropRect: CGRect { imageView.sourceCropRect }
+    var heroVerticalFocalPosition: CGFloat { imageView.verticalFocalPosition }
+    /// `scaleAspectFill` currently uses UIKit's centered crop. Recording this
+    /// anchor makes a later subject-aware focal adjustment measurable.
+    var heroFocalPointInBounds: CGPoint {
+        CGPoint(
+            x: imageView.frame.midX,
+            y: imageView.frame.minY + (imageView.frame.height * imageView.verticalFocalPosition)
+        )
+    }
     var isShowingHeroLoadingState: Bool { imageLoadingIndicator.isAnimating }
+    var topCornerRadius: CGFloat { layer.cornerRadius }
+    var topCornerMask: CACornerMask { layer.maskedCorners }
+    var heroImageFrame: CGRect { imageView.frame }
+    var heroFadeFrame: CGRect { gradientView.frame }
+    var customGrabberCount: Int {
+        subviews.filter { $0.accessibilityIdentifier == "trip-overview-measure-header-grabber" }.count
+    }
 
     override init(frame: CGRect) {
         super.init(frame: frame)
         accessibilityIdentifier = "trip-overview-header"
-        clipsToBounds = true
+        layer.cornerRadius = AlmidyDesignTokens.TripOverview.sheetCornerRadius
+        layer.cornerCurve = .continuous
+        layer.maskedCorners = [.layerMinXMinYCorner, .layerMaxXMinYCorner]
+        layer.masksToBounds = true
         configureContent()
         configureControls()
         configureLayout()
@@ -112,10 +165,10 @@ final class NativeTripOverviewHeaderView: UIView {
         )
         transitionProgress = state.progress
 
-        // Keep the hero visually continuous as its container collapses. The compact
-        // material supplies contrast without replacing the image with a black panel.
-        imageView.alpha = state.imageAlpha
-        gradientView.alpha = state.gradientAlpha
+        // Crossfade from the photographic hero to a darker compact contrast field.
+        // The field dissolves into the terminal fog instead of reading as a panel.
+        imageView.alpha = usesExternalHeroBackdrop ? 0 : state.imageAlpha
+        gradientView.alpha = usesExternalHeroBackdrop ? 0 : state.gradientAlpha
         compactBackground.alpha = state.compactBackgroundAlpha
         expandedLabels.alpha = state.expandedAlpha
         compactLabels.alpha = state.compactAlpha
@@ -125,18 +178,20 @@ final class NativeTripOverviewHeaderView: UIView {
         compactLabels.accessibilityElementsHidden = state.progress < 0.5
         grabberView.alpha = 1
 
-        controlMaterialViews.forEach { $0.alpha = state.controlMaterialAlpha }
-        let borderAlpha = state.controlBorderAlpha
-        let highlight = heroTintColor.almidyControlHighlight
-        [moreButton, searchButton, closeButton].forEach {
-            $0.tintColor = .white
-            $0.imageView?.alpha = 1
-            $0.layer.borderColor = highlight.withAlphaComponent(borderAlpha).cgColor
-        }
+        applyControlStyle(state)
+    }
+
+    func setUsesExternalHeroBackdrop(_ enabled: Bool) {
+        usesExternalHeroBackdrop = enabled
+        if enabled { backgroundColor = .clear }
+        updateTransition(progress: transitionProgress)
     }
 
     private func configureContent() {
-        imageView.contentMode = .scaleAspectFill
+        grabberView.accessibilityIdentifier = "trip-overview-measure-header-grabber"
+        imageView.accessibilityIdentifier = "trip-overview-measure-header-image-region"
+        gradientView.accessibilityIdentifier = "trip-overview-measure-header-fade-region"
+        imageView.clipsToBounds = true
         imageView.accessibilityIgnoresInvertColors = true
         imageView.translatesAutoresizingMaskIntoConstraints = false
         imagePlaceholder.isHidden = true
@@ -162,33 +217,39 @@ final class NativeTripOverviewHeaderView: UIView {
         flagLabel.widthAnchor.constraint(equalToConstant: 50).isActive = true
         flagLabel.heightAnchor.constraint(equalToConstant: 50).isActive = true
 
-        configureLabel(titleLabel, font: AlmidyDesignTokens.Font.semibold(34), textStyle: .largeTitle, color: AlmidyDesignTokens.Color.tripCardTextPrimary)
+        configureLabel(titleLabel, font: AlmidyDesignTokens.Font.semibold(30), textStyle: .title1, color: AlmidyDesignTokens.Color.tripCardTextPrimary)
+        titleLabel.accessibilityIdentifier = "trip-overview-measure-header-title"
         titleLabel.numberOfLines = 2
         titleLabel.lineBreakMode = .byWordWrapping
-        configureLabel(timingLabel, font: AlmidyDesignTokens.Font.body(15), textStyle: .subheadline, color: AlmidyDesignTokens.Color.tripOverviewMetadataPrimary)
-        configureLabel(dateLabel, font: AlmidyDesignTokens.Font.body(14), textStyle: .subheadline, color: AlmidyDesignTokens.Color.tripOverviewMetadataSecondary)
+        configureLabel(timingLabel, font: AlmidyDesignTokens.Font.body(14), textStyle: .subheadline, color: AlmidyDesignTokens.Color.tripOverviewMetadataPrimary)
+        timingLabel.accessibilityIdentifier = "trip-overview-measure-header-timing"
+        configureLabel(dateLabel, font: AlmidyDesignTokens.Font.body(13), textStyle: .caption1, color: AlmidyDesignTokens.Color.tripOverviewMetadataSecondary)
+        dateLabel.accessibilityIdentifier = "trip-overview-measure-header-date"
         configureLabel(attributionLabel, font: AlmidyDesignTokens.Font.body(11), textStyle: .caption2, color: AlmidyDesignTokens.Color.tripCardTextTertiary)
         attributionLabel.numberOfLines = 2
 
         expandedLabels.axis = .vertical
-        expandedLabels.spacing = 3
+        expandedLabels.accessibilityIdentifier = "trip-overview-measure-header-expanded-labels"
+        expandedLabels.spacing = 2
         expandedLabels.alignment = .center
         expandedLabels.translatesAutoresizingMaskIntoConstraints = false
         expandedLabels.isAccessibilityElement = true
         expandedLabels.accessibilityTraits = [.header]
         [flagLabel, titleLabel, timingLabel, dateLabel, attributionLabel].forEach(expandedLabels.addArrangedSubview)
-        expandedLabels.setCustomSpacing(10, after: flagLabel)
-        expandedLabels.setCustomSpacing(7, after: dateLabel)
+        expandedLabels.setCustomSpacing(8, after: flagLabel)
+        expandedLabels.setCustomSpacing(4, after: dateLabel)
 
-        configureLabel(compactTitleLabel, font: AlmidyDesignTokens.Font.semibold(17), textStyle: .headline, color: AlmidyDesignTokens.Color.tripCardTextPrimary)
+        configureLabel(compactTitleLabel, font: AlmidyDesignTokens.Font.semibold(16), textStyle: .headline, color: AlmidyDesignTokens.Color.tripCardTextPrimary)
         compactTitleLabel.numberOfLines = 2
-        compactTitleLabel.accessibilityIdentifier = "trip-overview-compact-title"
+        compactTitleLabel.accessibilityIdentifier = "trip-overview-measure-header-compact-title"
         compactTitleLabel.lineBreakMode = .byTruncatingTail
-        configureLabel(compactDateLabel, font: AlmidyDesignTokens.Font.body(13), textStyle: .caption1, color: AlmidyDesignTokens.Color.tripCardTextTertiary)
+        configureLabel(compactDateLabel, font: AlmidyDesignTokens.Font.body(12), textStyle: .caption2, color: AlmidyDesignTokens.Color.tripCardTextTertiary)
         compactDateLabel.numberOfLines = 2
+        compactDateLabel.accessibilityIdentifier = "trip-overview-measure-header-compact-date"
         compactLabels.axis = .vertical
-        compactLabels.spacing = 2
-        compactLabels.alignment = .fill
+        compactLabels.spacing = 0
+        compactLabels.alignment = .center
+        compactLabels.accessibilityIdentifier = "trip-overview-measure-header-compact-labels"
         compactLabels.translatesAutoresizingMaskIntoConstraints = false
         compactLabels.isAccessibilityElement = true
         compactLabels.accessibilityTraits = [.header]
@@ -198,11 +259,20 @@ final class NativeTripOverviewHeaderView: UIView {
 
     private func configureControls() {
         configureButton(moreButton, systemName: "ellipsis", label: "More trip options", hint: "Shows additional actions for this trip")
-        configureButton(searchButton, systemName: "magnifyingglass", label: "Search trip places", hint: "Opens places for this trip")
+        configureButton(
+            searchButton,
+            systemName: "magnifyingglass",
+            label: "Search saved activities and documents",
+            hint: "Searches items saved to this trip"
+        )
         configureButton(closeButton, systemName: "xmark", label: "Close trip overview", hint: "Returns to the globe")
+        moreButton.accessibilityIdentifier = "trip-overview-measure-header-more"
+        searchButton.accessibilityIdentifier = "trip-overview-measure-header-search"
+        closeButton.accessibilityIdentifier = "trip-overview-measure-header-close"
     }
 
     private func configureLayout() {
+        compactBackground.accessibilityIdentifier = "trip-overview-measure-header-compact-background"
         [imageView, gradientView, compactBackground, expandedLabels, compactLabels, imageLoadingIndicator, moreButton, searchButton, closeButton, grabberView].forEach(addSubview)
         accessibilityElements = [moreButton, searchButton, closeButton, expandedLabels, compactLabels, imageLoadingIndicator]
         NSLayoutConstraint.activate([
@@ -210,6 +280,9 @@ final class NativeTripOverviewHeaderView: UIView {
             imageView.trailingAnchor.constraint(equalTo: trailingAnchor), imageView.bottomAnchor.constraint(equalTo: bottomAnchor),
             imageLoadingIndicator.centerXAnchor.constraint(equalTo: centerXAnchor), imageLoadingIndicator.centerYAnchor.constraint(equalTo: centerYAnchor),
             grabberView.centerXAnchor.constraint(equalTo: centerXAnchor),
+            // This fixed anchor is shared by expanded, midpoint, and compact states.
+            // Five points matches the lower reference placement without allowing
+            // the handle to drift as the header height collapses.
             grabberView.topAnchor.constraint(equalTo: safeAreaLayoutGuide.topAnchor, constant: 5),
             grabberView.widthAnchor.constraint(equalToConstant: 38),
             grabberView.heightAnchor.constraint(equalToConstant: 5),
@@ -218,22 +291,44 @@ final class NativeTripOverviewHeaderView: UIView {
             compactBackground.topAnchor.constraint(equalTo: topAnchor), compactBackground.leadingAnchor.constraint(equalTo: leadingAnchor),
             compactBackground.trailingAnchor.constraint(equalTo: trailingAnchor), compactBackground.bottomAnchor.constraint(equalTo: bottomAnchor),
 
-            moreButton.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 16),
-            moreButton.topAnchor.constraint(equalTo: safeAreaLayoutGuide.topAnchor, constant: 8),
-            searchButton.leadingAnchor.constraint(equalTo: moreButton.trailingAnchor, constant: 8),
+            moreButton.leadingAnchor.constraint(
+                equalTo: leadingAnchor,
+                constant: AlmidyDesignTokens.TripOverview.headerControlSideInset
+            ),
+            moreButton.topAnchor.constraint(
+                equalTo: safeAreaLayoutGuide.topAnchor,
+                constant: AlmidyDesignTokens.TripOverview.headerControlTopInset
+            ),
+            searchButton.leadingAnchor.constraint(
+                equalTo: moreButton.trailingAnchor,
+                constant: AlmidyDesignTokens.TripOverview.headerControlGap
+            ),
             searchButton.topAnchor.constraint(equalTo: moreButton.topAnchor),
-            closeButton.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -16),
+            closeButton.trailingAnchor.constraint(
+                equalTo: trailingAnchor,
+                constant: -AlmidyDesignTokens.TripOverview.headerControlSideInset
+            ),
             closeButton.topAnchor.constraint(equalTo: moreButton.topAnchor),
-            moreButton.widthAnchor.constraint(equalToConstant: 44), moreButton.heightAnchor.constraint(equalToConstant: 44),
-            searchButton.widthAnchor.constraint(equalToConstant: 44), searchButton.heightAnchor.constraint(equalToConstant: 44),
-            closeButton.widthAnchor.constraint(equalToConstant: 44), closeButton.heightAnchor.constraint(equalToConstant: 44),
+            moreButton.widthAnchor.constraint(equalToConstant: AlmidyDesignTokens.TripOverview.headerControlDiameter),
+            moreButton.heightAnchor.constraint(equalToConstant: AlmidyDesignTokens.TripOverview.headerControlDiameter),
+            searchButton.widthAnchor.constraint(equalToConstant: AlmidyDesignTokens.TripOverview.headerControlDiameter),
+            searchButton.heightAnchor.constraint(equalToConstant: AlmidyDesignTokens.TripOverview.headerControlDiameter),
+            closeButton.widthAnchor.constraint(equalToConstant: AlmidyDesignTokens.TripOverview.headerControlDiameter),
+            closeButton.heightAnchor.constraint(equalToConstant: AlmidyDesignTokens.TripOverview.headerControlDiameter),
 
             expandedLabels.leadingAnchor.constraint(greaterThanOrEqualTo: leadingAnchor, constant: 24),
             expandedLabels.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor, constant: -24),
             expandedLabels.centerXAnchor.constraint(equalTo: centerXAnchor),
-            expandedLabels.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -10),
-            compactLabels.leadingAnchor.constraint(equalTo: searchButton.trailingAnchor, constant: 12),
-            compactLabels.trailingAnchor.constraint(equalTo: closeButton.leadingAnchor, constant: -12),
+            expandedLabels.bottomAnchor.constraint(
+                equalTo: bottomAnchor,
+                constant: -AlmidyDesignTokens.TripOverview.destinationBlockBottomInset
+            ),
+            // Keep the compact destination on the sheet's horizontal axis. The
+            // inequalities protect it from both controls and provide the width
+            // needed for a long title to wrap/truncate without shifting left.
+            compactLabels.centerXAnchor.constraint(equalTo: centerXAnchor),
+            compactLabels.leadingAnchor.constraint(greaterThanOrEqualTo: searchButton.trailingAnchor, constant: 12),
+            compactLabels.trailingAnchor.constraint(lessThanOrEqualTo: closeButton.leadingAnchor, constant: -12),
             compactLabels.centerYAnchor.constraint(equalTo: moreButton.centerYAnchor)
         ])
     }
@@ -271,8 +366,11 @@ final class NativeTripOverviewHeaderView: UIView {
         )
         heroTintColor = fallbackPalette.transition
         sheetTintColor = fallbackPalette.sheet
-        backgroundColor = fallbackPalette.sheet
-        grabberView.backgroundColor = fallbackPalette.topContrast
+        compactTintColor = fallbackPalette.compact
+        backgroundColor = usesExternalHeroBackdrop ? .clear : fallbackPalette.sheet
+        grabberView.backgroundColor = NativeTripOverviewHeroColorProcessor.compactGrabberColor(
+            for: fallbackPalette.compact
+        )
         applyContrast()
         onBackgroundColor?(fallbackPalette.sheet)
 
@@ -280,8 +378,9 @@ final class NativeTripOverviewHeaderView: UIView {
             URL(string: $0.relativeString, relativeTo: NativeServiceConfiguration.appBaseURL)?.absoluteURL
         }
         let retainedImage = seedImage ?? (resolvedURL == displayedImageURL ? imageView.image : nil)
+        onHeroContinuation?(retainedImage, fallbackPalette.transition, fallbackPalette.sheet)
         imageTask?.cancel()
-        imageView.image = retainedImage
+        imageView.setHeroImage(retainedImage)
         imagePlaceholder.isHidden = true
         imagePlaceholder.accessibilityLabel = nil
         imageLoadingIndicator.stopAnimating()
@@ -303,7 +402,7 @@ final class NativeTripOverviewHeaderView: UIView {
                     return
                 }
                 self.displayedImageURL = url
-                self.imageView.image = image
+                self.imageView.setHeroImage(image)
                 self.imagePlaceholder.isHidden = true
                 self.applyHeroColors(from: image)
             }
@@ -320,9 +419,13 @@ final class NativeTripOverviewHeaderView: UIView {
         )
         heroTintColor = palette.transition
         sheetTintColor = palette.sheet
-        grabberView.backgroundColor = palette.topContrast
+        compactTintColor = palette.compact
+        grabberView.backgroundColor = NativeTripOverviewHeroColorProcessor.compactGrabberColor(
+            for: palette.compact
+        )
         applyContrast()
         onBackgroundColor?(palette.sheet)
+        onHeroContinuation?(image, palette.transition, palette.sheet)
     }
 
     override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
@@ -337,13 +440,34 @@ final class NativeTripOverviewHeaderView: UIView {
             sheet: sheetTintColor,
             increasedContrast: increased
         )
-        let borderAlpha: CGFloat = increased ? 0.72 : 0.46
+        compactBackground.colors = NativeTripOverviewCompactGradient.colors(
+            compact: compactTintColor,
+            sheet: sheetTintColor,
+            increasedContrast: increased
+        )
+        applyControlStyle(
+            NativeTripOverviewHeaderTransition(
+                progress: transitionProgress,
+                reduceMotion: UIAccessibility.isReduceMotionEnabled
+            )
+        )
+    }
+
+    private func applyControlStyle(_ state: NativeTripOverviewHeaderTransition) {
+        let increased = traitCollection.accessibilityContrast == .high || UIAccessibility.isDarkerSystemColorsEnabled
         let highlight = heroTintColor.almidyControlHighlight
+        let collapsedFill = compactTintColor.blended(with: .black, fraction: 0.34) ?? compactTintColor
+        controlMaterialViews.forEach { $0.alpha = state.controlMaterialAlpha }
         [moreButton, searchButton, closeButton].forEach {
             $0.tintColor = .white
             $0.imageView?.alpha = 1
-            $0.layer.borderColor = highlight.withAlphaComponent(borderAlpha).cgColor
-            $0.layer.borderWidth = increased ? 1.5 : 1
+            $0.backgroundColor = collapsedFill.withAlphaComponent(state.controlFillAlpha)
+            $0.layer.borderColor = highlight.withAlphaComponent(
+                increased ? max(0.46, state.controlBorderAlpha) : state.controlBorderAlpha
+            ).cgColor
+            $0.layer.borderWidth = increased
+                ? max(1.25, state.controlBorderWidth)
+                : state.controlBorderWidth
         }
     }
 
@@ -359,11 +483,11 @@ final class NativeTripOverviewHeaderView: UIView {
     }
 
     private func configureButton(_ button: UIButton, systemName: String, label: String, hint: String) {
-        let symbol = UIImage.SymbolConfiguration(pointSize: 20, weight: .semibold)
+        let symbol = UIImage.SymbolConfiguration(pointSize: 18, weight: .semibold)
         button.setImage(UIImage(systemName: systemName, withConfiguration: symbol), for: .normal)
         button.tintColor = .white
         button.backgroundColor = .clear
-        button.layer.cornerRadius = 22
+        button.layer.cornerRadius = AlmidyDesignTokens.TripOverview.headerControlDiameter / 2
         button.layer.cornerCurve = .continuous
         button.layer.borderWidth = 1
         button.layer.borderColor = UIColor.white.withAlphaComponent(0.46).cgColor
@@ -423,6 +547,74 @@ final class NativeTripOverviewHeaderView: UIView {
     }
 }
 
+/// Aspect-fill image view with a stable center-biased focal rule. The expanded
+/// hero retains a larger source window while this anchor favors enough lower-image
+/// content to keep a landmark's base visible along with its upper subject.
+final class NativeTripOverviewFocalImageView: UIImageView {
+    static let defaultVerticalFocalPosition: CGFloat = 0.48
+    let verticalFocalPosition: CGFloat
+    private(set) var sourceCropRect = CGRect(x: 0, y: 0, width: 1, height: 1)
+
+    init(verticalFocalPosition: CGFloat = defaultVerticalFocalPosition) {
+        self.verticalFocalPosition = min(max(verticalFocalPosition, 0), 1)
+        super.init(frame: .zero)
+        contentMode = .scaleToFill
+        layer.contentsGravity = .resize
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    func setHeroImage(_ image: UIImage?) {
+        self.image = image
+        updateSourceCrop()
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        updateSourceCrop()
+    }
+
+    static func sourceCropRect(
+        imageSize: CGSize,
+        containerSize: CGSize,
+        verticalFocalPosition: CGFloat = defaultVerticalFocalPosition
+    ) -> CGRect {
+        guard imageSize.width > 0, imageSize.height > 0,
+              containerSize.width > 0, containerSize.height > 0 else {
+            return CGRect(x: 0, y: 0, width: 1, height: 1)
+        }
+        let imageAspect = imageSize.width / imageSize.height
+        let containerAspect = containerSize.width / containerSize.height
+        if imageAspect >= containerAspect {
+            let width = containerAspect / imageAspect
+            return CGRect(x: (1 - width) / 2, y: 0, width: width, height: 1)
+        }
+        let height = imageAspect / containerAspect
+        let focal = min(max(verticalFocalPosition, 0), 1)
+        let originY = min(max(focal - (height / 2), 0), 1 - height)
+        return CGRect(x: 0, y: originY, width: 1, height: height)
+    }
+
+    private func updateSourceCrop() {
+        sourceCropRect = Self.sourceCropRect(
+            imageSize: image?.size ?? .zero,
+            containerSize: bounds.size,
+            verticalFocalPosition: verticalFocalPosition
+        )
+        layer.contentsRect = sourceCropRect
+    }
+}
+
+final class NativeTripOverviewMinimumHitButton: UIButton {
+    let minimumHitTarget = CGSize(width: 44, height: 44)
+
+    override func point(inside point: CGPoint, with event: UIEvent?) -> Bool {
+        let horizontal = max(0, (minimumHitTarget.width - bounds.width) / 2)
+        let vertical = max(0, (minimumHitTarget.height - bounds.height) / 2)
+        return bounds.insetBy(dx: -horizontal, dy: -vertical).contains(point)
+    }
+}
+
 struct NativeTripOverviewHeaderTransition: Equatable {
     let progress: CGFloat
     let easedProgress: CGFloat
@@ -434,7 +626,9 @@ struct NativeTripOverviewHeaderTransition: Equatable {
     let expandedTransform: CGAffineTransform
     let compactTransform: CGAffineTransform
     let controlMaterialAlpha: CGFloat
+    let controlFillAlpha: CGFloat
     let controlBorderAlpha: CGFloat
+    let controlBorderWidth: CGFloat
 
     func headerHeight(expanded: CGFloat, compact: CGFloat) -> CGFloat {
         expanded - easedProgress * max(0, expanded - compact)
@@ -449,11 +643,16 @@ struct NativeTripOverviewHeaderTransition: Equatable {
         // behind the material, so collapse reads as one continuous surface.
         imageAlpha = 1 - eased * 0.42
         gradientAlpha = 1 - eased * 0.10
-        compactBackgroundAlpha = max(0, min(1, (eased - 0.18) / 0.82)) * 0.94
+        compactBackgroundAlpha = max(0, min(1, (eased - 0.18) / 0.82))
         expandedAlpha = max(0, 1 - eased * 1.55)
         compactAlpha = max(0, min(1, (eased - 0.34) / 0.54))
-        controlMaterialAlpha = 0.94 + eased * 0.06
-        controlBorderAlpha = 0.42 + eased * 0.10
+        // Expanded controls retain their photographic material. During collapse,
+        // that material recedes while a darker translucent fill takes over; the
+        // border simultaneously becomes quieter instead of forming a bright ring.
+        controlMaterialAlpha = 0.90 - eased * 0.48
+        controlFillAlpha = 0.10 + eased * 0.62
+        controlBorderAlpha = 0.46 - eased * 0.22
+        controlBorderWidth = 1.0 - eased * 0.25
 
         if reduceMotion {
             // Reduce Motion uses only a short linear position change plus crossfade;
@@ -468,7 +667,7 @@ struct NativeTripOverviewHeaderTransition: Equatable {
     }
 }
 
-private final class NativeTripOverviewGradientView: UIView {
+final class NativeTripOverviewGradientView: UIView {
     override class var layerClass: AnyClass { CAGradientLayer.self }
     var colors: [UIColor] = [] { didSet { gradient.colors = colors.map(\.cgColor) } }
     private var gradient: CAGradientLayer { layer as! CAGradientLayer }
@@ -481,15 +680,50 @@ private final class NativeTripOverviewGradientView: UIView {
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 }
 
+final class NativeTripOverviewCompactSurfaceView: UIView {
+    override class var layerClass: AnyClass { CAGradientLayer.self }
+    var colors: [UIColor] = [] { didSet { gradient.colors = colors.map(\.cgColor) } }
+    private var gradient: CAGradientLayer { layer as! CAGradientLayer }
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        gradient.startPoint = CGPoint(x: 0.5, y: 0)
+        gradient.endPoint = CGPoint(x: 0.5, y: 1)
+        gradient.locations = NativeTripOverviewCompactGradient.locations
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+}
+
+enum NativeTripOverviewCompactGradient {
+    // Keep enough darkness behind the compact metadata for contrast, then use most
+    // of the lower header to dissolve into the terminal fog. The last stop exactly
+    // matches the overview canvas, so the compact header has no rectangular edge.
+    static let locations: [NSNumber] = [0.0, 0.32, 0.70, 1.0]
+
+    static func colors(compact: UIColor, sheet: UIColor, increasedContrast: Bool) -> [UIColor] {
+        let boundaryBlend = compact.blended(
+            with: sheet,
+            fraction: increasedContrast ? 0.48 : 0.62
+        ) ?? compact
+        return [compact, compact, boundaryBlend, sheet]
+    }
+}
+
 enum NativeTripOverviewHeroGradient {
-    static let locations: [NSNumber] = [0.0, 0.62, 0.84, 1.0]
+    // A broad neutral wash creates the reference's fog-like transition: the upper
+    // photograph remains clear, detail softens around the destination metadata,
+    // and the lower action region resolves into the exact sheet surface.
+    static let locations: [NSNumber] = [0.0, 0.36, 0.50, 0.62, 0.74, 0.88]
 
     static func colors(transition: UIColor, sheet: UIColor, increasedContrast: Bool) -> [UIColor] {
         [
             .clear,
-            UIColor.black.withAlphaComponent(increasedContrast ? 0.10 : 0.07),
-            transition.withAlphaComponent(increasedContrast ? 0.60 : 0.52),
-            sheet.withAlphaComponent(increasedContrast ? 1.00 : 0.98)
+            transition.withAlphaComponent(increasedContrast ? 0.12 : 0.08),
+            transition.withAlphaComponent(increasedContrast ? 0.40 : 0.32),
+            transition.withAlphaComponent(increasedContrast ? 0.80 : 0.72),
+            sheet,
+            sheet
         ]
     }
 
@@ -499,18 +733,44 @@ struct NativeTripOverviewHeroPalette {
     let topContrast: UIColor
     let transition: UIColor
     let sheet: UIColor
+    let compact: UIColor
 }
 
 enum NativeTripOverviewHeroColorProcessor {
     static let guardrailSurface = AlmidyDesignTokens.Color.generatedTripImageBase
+    static let guardrailCompactSurface = compactSurface(from: guardrailSurface)
 
     static func palette(top: UIColor?, bottom: UIColor?, dominant: UIColor?) -> NativeTripOverviewHeroPalette {
-        let source = dominant ?? bottom ?? top ?? guardrailSurface
+        // The terminal surface visually grows out of the photograph's lower edge.
+        // Prefer that region over the whole-image average, which can be dominated
+        // by a large sky and incorrectly turn a warm destination neutral gray.
+        let source = bottom ?? dominant ?? top ?? guardrailSurface
         return NativeTripOverviewHeroPalette(
             topContrast: (top ?? source).almidyGrabberColor,
             transition: mutedSurface(from: bottom ?? source, burgundyBias: 0.04),
-            sheet: mutedSurface(from: source, burgundyBias: 0.10)
+            sheet: mutedSurface(from: source, burgundyBias: 0.02),
+            compact: compactSurface(from: source)
         )
+    }
+
+    static func compactSurface(from color: UIColor) -> UIColor {
+        var hue: CGFloat = 0, saturation: CGFloat = 0, brightness: CGFloat = 0, alpha: CGFloat = 0
+        guard color.getHue(&hue, saturation: &saturation, brightness: &brightness, alpha: &alpha) else {
+            return UIColor(red: 0.20, green: 0.20, blue: 0.21, alpha: 1)
+        }
+        // Retain enough of the photograph's hue to make the compact surface belong
+        // to the trip, but cap luminance for dependable white-label contrast.
+        let derived = UIColor(
+            hue: hue,
+            saturation: min(0.28, max(0.08, saturation * 0.42)),
+            brightness: min(0.34, max(0.24, brightness * 0.48)),
+            alpha: 1
+        )
+        return derived.scaledToMaximumRelativeLuminance(0.09)
+    }
+
+    static func compactGrabberColor(for surface: UIColor) -> UIColor {
+        surface.almidyCompactGrabberColor
     }
 
     static func mutedSurface(from color: UIColor, burgundyBias: CGFloat) -> UIColor {
@@ -527,8 +787,8 @@ enum NativeTripOverviewHeroColorProcessor {
 
         // Preserve the destination hue while keeping white metadata comfortably
         // readable. Only low-chroma inputs receive a small saturation lift.
-        let safeSaturation = min(0.52, max(0.10, saturation * 0.72))
-        let safeBrightness = min(0.34, max(0.20, brightness * 0.62))
+        let safeSaturation = min(0.18, max(0.04, saturation * 0.30))
+        let safeBrightness = min(0.52, max(0.42, brightness * 0.80))
         let huePreserving = UIColor(hue: hue, saturation: safeSaturation, brightness: safeBrightness, alpha: 1)
         let burgundy = UIColor(red: 0.30, green: 0.17, blue: 0.22, alpha: 1)
         let biased = huePreserving.blended(with: burgundy, fraction: burgundyBias) ?? huePreserving
@@ -556,6 +816,22 @@ private extension UIColor {
         return luminance > 0.58
             ? UIColor.black.withAlphaComponent(0.68)
             : UIColor.white.withAlphaComponent(0.82)
+    }
+
+    var almidyCompactGrabberColor: UIColor {
+        var red: CGFloat = 0, green: CGFloat = 0, blue: CGFloat = 0, alpha: CGFloat = 0
+        guard getRed(&red, green: &green, blue: &blue, alpha: &alpha) else {
+            return UIColor.black.withAlphaComponent(0.72)
+        }
+        func linear(_ component: CGFloat) -> CGFloat {
+            component <= 0.04045 ? component / 12.92 : pow((component + 0.055) / 1.055, 2.4)
+        }
+        let luminance = 0.2126 * linear(red) + 0.7152 * linear(green) + 0.0722 * linear(blue)
+        // The reference uses a charcoal handle whenever the adaptive compact
+        // surface is light enough to support it; only truly dark surfaces invert.
+        return luminance > 0.055
+            ? UIColor.black.withAlphaComponent(0.72)
+            : UIColor.white.withAlphaComponent(0.80)
     }
 
     var almidyControlHighlight: UIColor {

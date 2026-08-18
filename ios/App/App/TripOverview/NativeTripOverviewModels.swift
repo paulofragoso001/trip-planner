@@ -66,6 +66,38 @@ enum NativeTripOverviewMoneyFormatter {
 }
 
 enum NativeTripOverviewDateCalculator {
+    static func itineraryHeaderDate(
+        startDate: String?,
+        endDate: String?,
+        now: Date,
+        timeZone: TimeZone,
+        locale: Locale = .current
+    ) -> String? {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = timeZone
+
+        let parser = DateFormatter()
+        parser.calendar = calendar
+        parser.locale = Locale(identifier: "en_US_POSIX")
+        parser.timeZone = timeZone
+        parser.dateFormat = "yyyy-MM-dd"
+
+        guard let startDate, let start = parser.date(from: startDate) else { return nil }
+        let startOfTrip = calendar.startOfDay(for: start)
+        let endOfTrip = endDate.flatMap(parser.date).map(calendar.startOfDay) ?? startOfTrip
+        guard endOfTrip >= startOfTrip else { return nil }
+
+        let today = calendar.startOfDay(for: now)
+        let displayDate = min(max(today, startOfTrip), endOfTrip)
+        let formatter = DateFormatter()
+        formatter.calendar = calendar
+        formatter.locale = locale
+        formatter.timeZone = timeZone
+        formatter.setLocalizedDateFormatFromTemplate("EEEE, MMM d")
+        let dateText = formatter.string(from: displayDate)
+        return calendar.isDate(displayDate, inSameDayAs: today) ? "Today, \(dateText)" : dateText
+    }
+
     static func inclusiveDurationDays(startDate: String?, endDate: String?, timeZone: TimeZone) -> Int? {
         guard let startDate, let endDate else { return nil }
         var calendar = Calendar(identifier: .gregorian)
@@ -122,7 +154,19 @@ enum NativeTripOverviewActionKind: String, Codable, Equatable {
 /// separate from transport models so reference-only affordances cannot leak
 /// into presentation when the API evolves.
 enum NativeTripOverviewReleaseScope {
+    // Product decisions intentionally live beside the release contract so visual
+    // reference work cannot introduce unsupported actions, badges, or semantics.
     static let importedItemsTitle = "Imported items"
+    static let importedItemsDestinationTitle = "Documents"
+    static let importedItemsRequiresEntitlement = false
+    static let supportsDedicatedDocumentImportAction = false
+    static let expensesRequiresEntitlement = false
+    static let supportsDedicatedExpenseCreationAction = false
+    static let supportsExpenseAmountPrivacyControl = true
+    static let supportsBudgetHandoff = true
+    static let expensesEmptyActionTitle = "View Budget"
+    static let usesBrandMutedGoldAccent = true
+    static let itineraryMetadataUsesContextualDate = true
     static let supportedActionKinds: Set<NativeTripOverviewActionKind> = [.newActivity, .places, .routes]
     static let expenseLedger = "budget_records"
 }

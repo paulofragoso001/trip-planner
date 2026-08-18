@@ -2,7 +2,7 @@ import Capacitor
 import Foundation
 import MapKit
 import XCTest
-@testable import App
+@testable import Almidy
 
 @MainActor
 final class NativeMapConnectivityTests: XCTestCase {
@@ -20,8 +20,12 @@ final class NativeMapConnectivityTests: XCTestCase {
         }
         XCTAssertEqual(mapView.camera.centerCoordinate.latitude, 37.7749, accuracy: 0.0001)
         XCTAssertEqual(mapView.camera.centerCoordinate.longitude, -122.4194, accuracy: 0.0001)
-        XCTAssertEqual(mapView.camera.centerCoordinateDistance, 24_000_000, accuracy: 1)
-        XCTAssertEqual(mapView.cameraZoomRange.maxCenterCoordinateDistance, 30_000_000, accuracy: 1)
+        XCTAssertGreaterThanOrEqual(
+            mapView.camera.centerCoordinateDistance,
+            29_000_000,
+            "MapKit should clamp the requested maximum distance to its full-Earth framing for the current viewport."
+        )
+        XCTAssertEqual(mapView.cameraZoomRange.maxCenterCoordinateDistance, 90_000_000, accuracy: 1)
     }
 
     func testNativeUnderlayTransparencySweepClearsContainersButPreservesMap() {
@@ -162,7 +166,7 @@ final class NativeMapConnectivityTests: XCTestCase {
         XCTAssertNil(releasedController, "NWPathMonitor must not retain the native map controller.")
     }
 
-    func testPopulatedGlobeKeepsImageryPresentationAcrossCameraChanges() {
+    func testPopulatedGlobeKeepsScaleAwareHybridLabelsAcrossCameraChanges() {
         let trip = NativeMapTrip(
             id: "trip-map-style",
             name: "Rome",
@@ -176,10 +180,100 @@ final class NativeMapConnectivityTests: XCTestCase {
         )
         controller.loadViewIfNeeded()
 
-        XCTAssertTrue(
-            controller.usesImageryPresentationForTesting,
-            "A populated globe should use one consistent satellite presentation instead of adding MapKit's hybrid label layer at a zoom threshold."
+        XCTAssertTrue(controller.isZoomEnabledForTesting)
+        XCTAssertGreaterThanOrEqual(
+            controller.mapCameraForTesting.centerCoordinateDistance,
+            29_000_000,
+            "A populated globe should launch completely zoomed out with the whole Earth visible."
         )
+        for distance in [2_000_000.0, 10_000_000.0, 65_000_000.0, 90_000_000.0] {
+            controller.setMapCameraDistanceForTesting(distance)
+            XCTAssertTrue(
+                controller.usesScaleAwareHybridPresentationForTesting,
+                "A populated globe must stay hybrid so MapKit can adapt city, country, continent, ocean, and boundary labels to the current zoom level."
+            )
+        }
+        XCTAssertEqual(
+            controller.geographicLabelOverlayCountForTesting,
+            0,
+            "MapKit should own scale-aware geographic labels; Almidy must not add a competing static label overlay."
+        )
+    }
+
+    func testTripFlagBadgeIsCircularAndAnchoredToItsCoordinate() throws {
+        let trip = NativeMapTrip(
+            id: "trip-flag-anchor",
+            name: "Italy",
+            destination: "Rome, Italy",
+            latitude: 41.9028,
+            longitude: 12.4964
+        )
+        let controller = NativeMapViewController(
+            trips: [trip],
+            monitorsNetworkConnectivity: false
+        )
+        controller.loadViewIfNeeded()
+
+        let layout = try XCTUnwrap(controller.tripFlagAnchorForTesting)
+        XCTAssertEqual(layout.badgeSize.width, 40, accuracy: 0.5)
+        XCTAssertEqual(layout.badgeSize.height, 40, accuracy: 0.5)
+        XCTAssertEqual(layout.badgeCornerRadius, layout.badgeSize.width / 2, accuracy: 0.5)
+        XCTAssertTrue(layout.flagClipsToCircle)
+        XCTAssertFalse(layout.badgeBackgroundIsClear)
+        XCTAssertGreaterThanOrEqual(layout.flagFontSize, layout.badgeSize.width * 0.9)
+        XCTAssertLessThan(layout.flagFontSize, layout.badgeSize.width)
+        XCTAssertFalse(layout.canShowCallout)
+
+        let badgeCenterRelativeToAnnotation = CGPoint(
+            x: layout.badgeCenter.x - 80,
+            y: layout.badgeCenter.y - 39
+        )
+        XCTAssertEqual(layout.centerOffset.x + badgeCenterRelativeToAnnotation.x, 0, accuracy: 0.5)
+        XCTAssertEqual(layout.centerOffset.y + badgeCenterRelativeToAnnotation.y, 0, accuracy: 0.5)
+    }
+
+    func testExpandedHeaderUsesCompactMutedGoldControls() throws {
+        let trip = NativeMapTrip(
+            id: "trip-expanded-header",
+            name: "New York",
+            destination: "New York, United States",
+            latitude: 40.7128,
+            longitude: -74.0060
+        )
+        let controller = NativeMapViewController(
+            trips: [trip],
+            monitorsNetworkConnectivity: false
+        )
+        controller.loadViewIfNeeded()
+
+        let chrome = try XCTUnwrap(controller.expandedHeaderChromeForTesting)
+        XCTAssertEqual(chrome.settingsSize.width, 42, accuracy: 0.5)
+        XCTAssertEqual(chrome.settingsSize.height, 42, accuracy: 0.5)
+        XCTAssertEqual(chrome.settingsCornerRadius, 21, accuracy: 0.5)
+        XCTAssertEqual(chrome.settingsTranslation.x, 0, accuracy: 0.5)
+        XCTAssertEqual(chrome.settingsTranslation.y, -2, accuracy: 0.5)
+        XCTAssertTrue(chrome.settingsBackground?.isEqual(AlmidyDesignTokens.Color.goldMutedSurface) == true)
+        XCTAssertTrue(chrome.settingsTint.isEqual(AlmidyDesignTokens.Color.goldMuted))
+        XCTAssertEqual(chrome.yearFontSize, 18, accuracy: 0.5)
+        XCTAssertTrue(chrome.yearBackground?.isEqual(AlmidyDesignTokens.Color.goldMutedSurface) == true)
+        XCTAssertTrue(chrome.yearTextColor?.isEqual(AlmidyDesignTokens.Color.goldMuted) == true)
+    }
+
+    func testTripCollectionArrowOpensMenuWhileSheetExpansionRemainsGestureDriven() {
+        let controller = NativeMapViewController(
+            trips: [],
+            monitorsNetworkConnectivity: false
+        )
+        controller.loadViewIfNeeded()
+
+        let menu = controller.tripCollectionMenuForTesting
+        XCTAssertEqual(menu.titles, ["My Trips", "Friends' Trips"])
+        XCTAssertEqual(menu.selectedTitle, "My Trips")
+        XCTAssertEqual(menu.disabledTitles, ["Friends' Trips"])
+        XCTAssertTrue(menu.opensAsPrimaryAction)
+        XCTAssertTrue(menu.chevronIsInteractive)
+        XCTAssertTrue(menu.sheetSupportsPan)
+        XCTAssertFalse(menu.titleHasLegacyToggleAction)
     }
 
     func testOfflineFallbackPreservesCameraAndRestoresMapSurface() {
