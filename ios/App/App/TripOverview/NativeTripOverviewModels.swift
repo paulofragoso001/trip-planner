@@ -158,6 +158,7 @@ enum NativeTripOverviewReleaseScope {
     // reference work cannot introduce unsupported actions, badges, or semantics.
     static let importedItemsTitle = "Imported items"
     static let importedItemsDestinationTitle = "Documents"
+    static let importedItemsEmptyActionTitle = "View Documents"
     static let importedItemsRequiresEntitlement = false
     static let supportsDedicatedDocumentImportAction = false
     static let expensesRequiresEntitlement = false
@@ -167,7 +168,7 @@ enum NativeTripOverviewReleaseScope {
     static let expensesEmptyActionTitle = "View Budget"
     static let usesBrandMutedGoldAccent = true
     static let itineraryMetadataUsesContextualDate = true
-    static let supportedActionKinds: Set<NativeTripOverviewActionKind> = [.newActivity, .places, .routes]
+    static let supportedActionKinds: Set<NativeTripOverviewActionKind> = [.newActivity, .flights, .stays, .places, .routes]
     static let expenseLedger = "budget_records"
 }
 
@@ -431,7 +432,9 @@ private struct ActionWire: Codable {
         let destination: NativeTripOverviewActionDestination?
         switch (available, key, handoff, href) {
         case (true, .newActivity, "web", .some(let url)),
-             (true, .places, "web", .some(let url)): destination = .webHandoff(url)
+             (true, .places, "web", .some(let url)),
+             (true, .flights, "web", .some(let url)),
+             (true, .stays, "web", .some(let url)): destination = .webHandoff(url)
         case (true, .places, "native-route", .some(let url)): destination = .nativePlaces(url)
         case (true, .routes, "native-route", .some(let url)): destination = .nativeRoutes(url)
         default: destination = nil

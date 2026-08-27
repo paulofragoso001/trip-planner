@@ -33,6 +33,8 @@
 		A77500000000000000000001 /* NativeTripOverviewRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A77500000000000000000011 /* NativeTripOverviewRouter.swift */; };
 		A77600000000000000000001 /* NativeTripSavedSearchViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A77600000000000000000011 /* NativeTripSavedSearchViewController.swift */; };
 		A77700000000000000000001 /* NativeNewActivityViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A77700000000000000000011 /* NativeNewActivityViewController.swift */; };
+		A77800000000000000000001 /* TransportationActivityDraft.swift in Sources */ = {isa = PBXBuildFile; fileRef = A77800000000000000000011 /* TransportationActivityDraft.swift */; };
+		A77900000000000000000001 /* NativeItineraryViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A77900000000000000000011 /* NativeItineraryViewController.swift */; };
 		B10000000000000000000001 /* AlmidyDesignTokens.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000002 /* AlmidyDesignTokens.swift */; };
 		C32000000000000000000001 /* NativeSessionPayload.swift in Sources */ = {isa = PBXBuildFile; fileRef = C32000000000000000000011 /* NativeSessionPayload.swift */; };
 		C32000000000000000000002 /* NativeSessionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = C32000000000000000000012 /* NativeSessionStore.swift */; };
@@ -63,6 +65,52 @@
 		E44100000000000000000001 /* NativeCreateTripViewController+Dates.swift in Sources */ = {isa = PBXBuildFile; fileRef = E44100000000000000000011 /* NativeCreateTripViewController+Dates.swift */; };
 		F55000000000000000000001 /* NativeSettingsModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F55000000000000000000011 /* NativeSettingsModel.swift */; };
 		F55000000000000000000002 /* NativeSettingsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F55000000000000000000012 /* NativeSettingsTests.swift */; };
+		F61000000000000000000001 /* AlmidyDesignFoundation.swift in Sources */ = {isa = PBXBuildFile; fileRef = F61000000000000000000011 /* AlmidyDesignFoundation.swift */; };
+		F61000000000000000000002 /* AlmidyDesignSystemTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F61000000000000000000012 /* AlmidyDesignSystemTests.swift */; };
+		F62000000000000000000001 /* AlmidyIconButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = F62000000000000000000011 /* AlmidyIconButton.swift */; };
+		F62000000000000000000002 /* AlmidyButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = F62000000000000000000012 /* AlmidyButton.swift */; };
+		F62000000000000000000003 /* AlmidyDivider.swift in Sources */ = {isa = PBXBuildFile; fileRef = F62000000000000000000013 /* AlmidyDivider.swift */; };
+		F62000000000000000000004 /* AlmidyBadge.swift in Sources */ = {isa = PBXBuildFile; fileRef = F62000000000000000000014 /* AlmidyBadge.swift */; };
+		F62000000000000000000005 /* AlmidySurfaceStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = F62000000000000000000015 /* AlmidySurfaceStyle.swift */; };
+		F62000000000000000000006 /* AlmidyInputStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = F62000000000000000000016 /* AlmidyInputStyle.swift */; };
+		F63000000000000000000001 /* AlmidySheetConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = F63000000000000000000011 /* AlmidySheetConfiguration.swift */; };
+		F63000000000000000000002 /* AlmidySheetHeader.swift in Sources */ = {isa = PBXBuildFile; fileRef = F63000000000000000000012 /* AlmidySheetHeader.swift */; };
+		F63000000000000000000003 /* AlmidyCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = F63000000000000000000013 /* AlmidyCard.swift */; };
+		F63000000000000000000004 /* AlmidyListRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = F63000000000000000000014 /* AlmidyListRow.swift */; };
+		F63000000000000000000005 /* AlmidyFormSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = F63000000000000000000015 /* AlmidyFormSection.swift */; };
+		F63000000000000000000006 /* AlmidyActionRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = F63000000000000000000016 /* AlmidyActionRow.swift */; };
+		F63000000000000000000007 /* AlmidyEmptyState.swift in Sources */ = {isa = PBXBuildFile; fileRef = F63000000000000000000017 /* AlmidyEmptyState.swift */; };
+		F63000000000000000000008 /* AlmidyFloatingControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = F63000000000000000000018 /* AlmidyFloatingControl.swift */; };
+		F64000000000000000000001 /* NativeMapSearchViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F64000000000000000000011 /* NativeMapSearchViewController.swift */; };
+		F65000000000000000000001 /* NativeTotalCostInputViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F65000000000000000000011 /* NativeTotalCostInputViewController.swift */; };
+		F65000000000000000000002 /* NativeTotalCostInputTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F65000000000000000000012 /* NativeTotalCostInputTests.swift */; };
+		F66000000000000000000001 /* NativeNoteInputViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F66000000000000000000011 /* NativeNoteInputViewController.swift */; };
+		F66000000000000000000002 /* NativeNoteInputTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F66000000000000000000012 /* NativeNoteInputTests.swift */; };
+		F67000000000000000000001 /* NativeFlightDateInputViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F67000000000000000000011 /* NativeFlightDateInputViewController.swift */; };
+		F67000000000000000000002 /* NativeFlightDateInputTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F67000000000000000000012 /* NativeFlightDateInputTests.swift */; };
+		F68000000000000000000001 /* NativeFlightTimeInputViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F68000000000000000000011 /* NativeFlightTimeInputViewController.swift */; };
+		F68000000000000000000002 /* NativeFlightTimeInputTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F68000000000000000000012 /* NativeFlightTimeInputTests.swift */; };
+		F69000000000000000000001 /* NativeReservationDetailsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F69000000000000000000011 /* NativeReservationDetailsView.swift */; };
+		F69000000000000000000002 /* NativeLinkInputAlert.swift in Sources */ = {isa = PBXBuildFile; fileRef = F69000000000000000000012 /* NativeLinkInputAlert.swift */; };
+		F69000000000000000000003 /* NativeAttachmentActionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F69000000000000000000013 /* NativeAttachmentActionView.swift */; };
+		F69000000000000000000004 /* NativeActivityUtilityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F69000000000000000000014 /* NativeActivityUtilityTests.swift */; };
+		F6A000000000000000000001 /* NativeLocationEditorViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6A000000000000000000011 /* NativeLocationEditorViews.swift */; };
+		F6A000000000000000000002 /* NativeLocationEditorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6A000000000000000000012 /* NativeLocationEditorTests.swift */; };
+		F6B000000000000000000001 /* NativeSavedPlaceEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6B000000000000000000011 /* NativeSavedPlaceEditorView.swift */; };
+		F6B000000000000000000002 /* NativeSavedPlaceEditorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6B000000000000000000012 /* NativeSavedPlaceEditorTests.swift */; };
+		F6C000000000000000000001 /* NativeTransportationEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6C000000000000000000011 /* NativeTransportationEditorView.swift */; };
+		F6C000000000000000000002 /* NativeTransportationEditorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6C000000000000000000012 /* NativeTransportationEditorTests.swift */; };
+		F6D000000000000000000001 /* NativeFlightEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6D000000000000000000011 /* NativeFlightEditorView.swift */; };
+		F6D000000000000000000002 /* NativeFlightEditorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6D000000000000000000012 /* NativeFlightEditorTests.swift */; };
+		F70000000000000000000001 /* NativeMapControlsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F70000000000000000000011 /* NativeMapControlsView.swift */; };
+		F70000000000000000000002 /* NativeMapPresentationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F70000000000000000000012 /* NativeMapPresentationTests.swift */; };
+		F71000000000000000000001 /* NativeMapAnnotationPresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = F71000000000000000000011 /* NativeMapAnnotationPresentation.swift */; };
+		F71000000000000000000002 /* NativeMapAnnotationPresentationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F71000000000000000000012 /* NativeMapAnnotationPresentationTests.swift */; };
+		F72000000000000000000001 /* NativePlaceTravelModesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F72000000000000000000011 /* NativePlaceTravelModesView.swift */; };
+		F72000000000000000000002 /* NativePlaceCardPresentationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F72000000000000000000012 /* NativePlaceCardPresentationTests.swift */; };
+		F73000000000000000000001 /* NativeGlobeCardViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = F73000000000000000000011 /* NativeGlobeCardViews.swift */; };
+		F73000000000000000000002 /* NativeGlobeCardPresentationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F73000000000000000000012 /* NativeGlobeCardPresentationTests.swift */; };
+		F80000000000000000000002 /* NativeTripOverviewDesignSystemTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F80000000000000000000012 /* NativeTripOverviewDesignSystemTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -87,6 +135,36 @@
 		50B271D01FEDC1A000F3C39B /* public */ = {isa = PBXFileReference; lastKnownFileType = folder; path = public; sourceTree = "<group>"; };
 		7A56D0002C399A4300A1F940 /* NativeMapPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeMapPlugin.swift; sourceTree = "<group>"; };
 		7A56D0022C399A4300A1F940 /* MainViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainViewController.swift; sourceTree = "<group>"; };
+		F64000000000000000000011 /* NativeMapSearchViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeMapSearchViewController.swift; sourceTree = "<group>"; };
+		F65000000000000000000011 /* NativeTotalCostInputViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeTotalCostInputViewController.swift; sourceTree = "<group>"; };
+		F65000000000000000000012 /* NativeTotalCostInputTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeTotalCostInputTests.swift; sourceTree = "<group>"; };
+		F66000000000000000000011 /* NativeNoteInputViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeNoteInputViewController.swift; sourceTree = "<group>"; };
+		F66000000000000000000012 /* NativeNoteInputTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeNoteInputTests.swift; sourceTree = "<group>"; };
+		F67000000000000000000011 /* NativeFlightDateInputViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeFlightDateInputViewController.swift; sourceTree = "<group>"; };
+		F67000000000000000000012 /* NativeFlightDateInputTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeFlightDateInputTests.swift; sourceTree = "<group>"; };
+		F68000000000000000000011 /* NativeFlightTimeInputViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeFlightTimeInputViewController.swift; sourceTree = "<group>"; };
+		F68000000000000000000012 /* NativeFlightTimeInputTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeFlightTimeInputTests.swift; sourceTree = "<group>"; };
+		F69000000000000000000011 /* NativeReservationDetailsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeReservationDetailsView.swift; sourceTree = "<group>"; };
+		F69000000000000000000012 /* NativeLinkInputAlert.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeLinkInputAlert.swift; sourceTree = "<group>"; };
+		F69000000000000000000013 /* NativeAttachmentActionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeAttachmentActionView.swift; sourceTree = "<group>"; };
+		F69000000000000000000014 /* NativeActivityUtilityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeActivityUtilityTests.swift; sourceTree = "<group>"; };
+		F6A000000000000000000011 /* NativeLocationEditorViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeLocationEditorViews.swift; sourceTree = "<group>"; };
+		F6A000000000000000000012 /* NativeLocationEditorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeLocationEditorTests.swift; sourceTree = "<group>"; };
+		F6B000000000000000000011 /* NativeSavedPlaceEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeSavedPlaceEditorView.swift; sourceTree = "<group>"; };
+		F6B000000000000000000012 /* NativeSavedPlaceEditorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeSavedPlaceEditorTests.swift; sourceTree = "<group>"; };
+		F6C000000000000000000011 /* NativeTransportationEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeTransportationEditorView.swift; sourceTree = "<group>"; };
+		F6C000000000000000000012 /* NativeTransportationEditorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeTransportationEditorTests.swift; sourceTree = "<group>"; };
+		F6D000000000000000000011 /* NativeFlightEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeFlightEditorView.swift; sourceTree = "<group>"; };
+		F6D000000000000000000012 /* NativeFlightEditorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeFlightEditorTests.swift; sourceTree = "<group>"; };
+		F70000000000000000000011 /* NativeMapControlsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeMapControlsView.swift; sourceTree = "<group>"; };
+		F70000000000000000000012 /* NativeMapPresentationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeMapPresentationTests.swift; sourceTree = "<group>"; };
+		F71000000000000000000011 /* NativeMapAnnotationPresentation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeMapAnnotationPresentation.swift; sourceTree = "<group>"; };
+		F71000000000000000000012 /* NativeMapAnnotationPresentationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeMapAnnotationPresentationTests.swift; sourceTree = "<group>"; };
+		F72000000000000000000011 /* NativePlaceTravelModesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativePlaceTravelModesView.swift; sourceTree = "<group>"; };
+		F72000000000000000000012 /* NativePlaceCardPresentationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativePlaceCardPresentationTests.swift; sourceTree = "<group>"; };
+		F73000000000000000000011 /* NativeGlobeCardViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeGlobeCardViews.swift; sourceTree = "<group>"; };
+		F73000000000000000000012 /* NativeGlobeCardPresentationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeGlobeCardPresentationTests.swift; sourceTree = "<group>"; };
+		F80000000000000000000012 /* NativeTripOverviewDesignSystemTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeTripOverviewDesignSystemTests.swift; sourceTree = "<group>"; };
 		958DCC722DB07C7200EA8C5F /* debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = debug.xcconfig; path = ../debug.xcconfig; sourceTree = SOURCE_ROOT; };
 		958DCC732DB07C7200EA8C5F /* release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = release.xcconfig; path = ../release.xcconfig; sourceTree = SOURCE_ROOT; };
 		A10000000000000000000002 /* NativeMapConnectivityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeMapConnectivityTests.swift; sourceTree = "<group>"; };
@@ -106,6 +184,8 @@
 		A77500000000000000000011 /* NativeTripOverviewRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeTripOverviewRouter.swift; sourceTree = "<group>"; };
 		A77600000000000000000011 /* NativeTripSavedSearchViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeTripSavedSearchViewController.swift; sourceTree = "<group>"; };
 		A77700000000000000000011 /* NativeNewActivityViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeNewActivityViewController.swift; sourceTree = "<group>"; };
+		A77800000000000000000011 /* TransportationActivityDraft.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransportationActivityDraft.swift; sourceTree = "<group>"; };
+		A77900000000000000000011 /* NativeItineraryViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeItineraryViewController.swift; sourceTree = "<group>"; };
 		B10000000000000000000002 /* AlmidyDesignTokens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlmidyDesignTokens.swift; sourceTree = "<group>"; };
 		C32000000000000000000011 /* NativeSessionPayload.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeSessionPayload.swift; sourceTree = "<group>"; };
 		C32000000000000000000012 /* NativeSessionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeSessionStore.swift; sourceTree = "<group>"; };
@@ -136,6 +216,22 @@
 		E44100000000000000000011 /* NativeCreateTripViewController+Dates.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NativeCreateTripViewController+Dates.swift"; sourceTree = "<group>"; };
 		F55000000000000000000011 /* NativeSettingsModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeSettingsModel.swift; sourceTree = "<group>"; };
 		F55000000000000000000012 /* NativeSettingsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeSettingsTests.swift; sourceTree = "<group>"; };
+		F61000000000000000000011 /* AlmidyDesignFoundation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlmidyDesignFoundation.swift; sourceTree = "<group>"; };
+		F61000000000000000000012 /* AlmidyDesignSystemTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlmidyDesignSystemTests.swift; sourceTree = "<group>"; };
+		F62000000000000000000011 /* AlmidyIconButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlmidyIconButton.swift; sourceTree = "<group>"; };
+		F62000000000000000000012 /* AlmidyButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlmidyButton.swift; sourceTree = "<group>"; };
+		F62000000000000000000013 /* AlmidyDivider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlmidyDivider.swift; sourceTree = "<group>"; };
+		F62000000000000000000014 /* AlmidyBadge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlmidyBadge.swift; sourceTree = "<group>"; };
+		F62000000000000000000015 /* AlmidySurfaceStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlmidySurfaceStyle.swift; sourceTree = "<group>"; };
+		F62000000000000000000016 /* AlmidyInputStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlmidyInputStyle.swift; sourceTree = "<group>"; };
+		F63000000000000000000011 /* AlmidySheetConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlmidySheetConfiguration.swift; sourceTree = "<group>"; };
+		F63000000000000000000012 /* AlmidySheetHeader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlmidySheetHeader.swift; sourceTree = "<group>"; };
+		F63000000000000000000013 /* AlmidyCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlmidyCard.swift; sourceTree = "<group>"; };
+		F63000000000000000000014 /* AlmidyListRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlmidyListRow.swift; sourceTree = "<group>"; };
+		F63000000000000000000015 /* AlmidyFormSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlmidyFormSection.swift; sourceTree = "<group>"; };
+		F63000000000000000000016 /* AlmidyActionRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlmidyActionRow.swift; sourceTree = "<group>"; };
+		F63000000000000000000017 /* AlmidyEmptyState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlmidyEmptyState.swift; sourceTree = "<group>"; };
+		F63000000000000000000018 /* AlmidyFloatingControl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlmidyFloatingControl.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -180,6 +276,7 @@
 		504EC3061FED79650016851F /* App */ = {
 			isa = PBXGroup;
 			children = (
+				F61000000000000000000020 /* DesignSystem */,
 				C32000000000000000000020 /* Auth */,
 				D33000000000000000000020 /* CreateTrip */,
 				A77000000000000000000020 /* TripOverview */,
@@ -187,6 +284,22 @@
 				504EC3071FED79650016851F /* AppDelegate.swift */,
 				7A56D0022C399A4300A1F940 /* MainViewController.swift */,
 				7A56D0002C399A4300A1F940 /* NativeMapPlugin.swift */,
+				F64000000000000000000011 /* NativeMapSearchViewController.swift */,
+				F65000000000000000000011 /* NativeTotalCostInputViewController.swift */,
+				F66000000000000000000011 /* NativeNoteInputViewController.swift */,
+				F67000000000000000000011 /* NativeFlightDateInputViewController.swift */,
+				F68000000000000000000011 /* NativeFlightTimeInputViewController.swift */,
+				F69000000000000000000011 /* NativeReservationDetailsView.swift */,
+				F69000000000000000000012 /* NativeLinkInputAlert.swift */,
+				F69000000000000000000013 /* NativeAttachmentActionView.swift */,
+				F6A000000000000000000011 /* NativeLocationEditorViews.swift */,
+				F6B000000000000000000011 /* NativeSavedPlaceEditorView.swift */,
+				F6C000000000000000000011 /* NativeTransportationEditorView.swift */,
+				F6D000000000000000000011 /* NativeFlightEditorView.swift */,
+				F70000000000000000000011 /* NativeMapControlsView.swift */,
+				F71000000000000000000011 /* NativeMapAnnotationPresentation.swift */,
+				F72000000000000000000011 /* NativePlaceTravelModesView.swift */,
+				F73000000000000000000011 /* NativeGlobeCardViews.swift */,
 				B10000000000000000000002 /* AlmidyDesignTokens.swift */,
 				A24000000000000000000011 /* NativeTextFieldPadding.swift */,
 				A66000000000000000000011 /* NativeAdaptiveLayout.swift */,
@@ -205,6 +318,20 @@
 		A10000000000000000000007 /* AppTests */ = {
 			isa = PBXGroup;
 			children = (
+				F65000000000000000000012 /* NativeTotalCostInputTests.swift */,
+				F66000000000000000000012 /* NativeNoteInputTests.swift */,
+				F67000000000000000000012 /* NativeFlightDateInputTests.swift */,
+				F68000000000000000000012 /* NativeFlightTimeInputTests.swift */,
+				F69000000000000000000014 /* NativeActivityUtilityTests.swift */,
+				F6A000000000000000000012 /* NativeLocationEditorTests.swift */,
+				F6B000000000000000000012 /* NativeSavedPlaceEditorTests.swift */,
+				F6C000000000000000000012 /* NativeTransportationEditorTests.swift */,
+				F6D000000000000000000012 /* NativeFlightEditorTests.swift */,
+				F70000000000000000000012 /* NativeMapPresentationTests.swift */,
+				F71000000000000000000012 /* NativeMapAnnotationPresentationTests.swift */,
+				F72000000000000000000012 /* NativePlaceCardPresentationTests.swift */,
+				F73000000000000000000012 /* NativeGlobeCardPresentationTests.swift */,
+				F80000000000000000000012 /* NativeTripOverviewDesignSystemTests.swift */,
 				A10000000000000000000002 /* NativeMapConnectivityTests.swift */,
 				A21000000000000000000011 /* NativeTripStoreTestSupport.swift */,
 				A21000000000000000000012 /* NativeTravelImageConnectivityTests.swift */,
@@ -217,8 +344,31 @@
 				E44000000000000000000015 /* NativeTripDateTests.swift */,
 				E44000000000000000000016 /* NativeTripDateConnectivityTests.swift */,
 				F55000000000000000000012 /* NativeSettingsTests.swift */,
+				F61000000000000000000012 /* AlmidyDesignSystemTests.swift */,
 			);
 			path = AppTests;
+			sourceTree = "<group>";
+		};
+		F61000000000000000000020 /* DesignSystem */ = {
+			isa = PBXGroup;
+			children = (
+				F61000000000000000000011 /* AlmidyDesignFoundation.swift */,
+				F62000000000000000000011 /* AlmidyIconButton.swift */,
+				F62000000000000000000012 /* AlmidyButton.swift */,
+				F62000000000000000000013 /* AlmidyDivider.swift */,
+				F62000000000000000000014 /* AlmidyBadge.swift */,
+				F62000000000000000000015 /* AlmidySurfaceStyle.swift */,
+				F62000000000000000000016 /* AlmidyInputStyle.swift */,
+				F63000000000000000000011 /* AlmidySheetConfiguration.swift */,
+				F63000000000000000000012 /* AlmidySheetHeader.swift */,
+				F63000000000000000000013 /* AlmidyCard.swift */,
+				F63000000000000000000014 /* AlmidyListRow.swift */,
+				F63000000000000000000015 /* AlmidyFormSection.swift */,
+				F63000000000000000000016 /* AlmidyActionRow.swift */,
+				F63000000000000000000017 /* AlmidyEmptyState.swift */,
+				F63000000000000000000018 /* AlmidyFloatingControl.swift */,
+			);
+			path = DesignSystem;
 			sourceTree = "<group>";
 		};
 		A77000000000000000000020 /* TripOverview */ = {
@@ -232,6 +382,8 @@
 				A77500000000000000000011 /* NativeTripOverviewRouter.swift */,
 				A77600000000000000000011 /* NativeTripSavedSearchViewController.swift */,
 				A77700000000000000000011 /* NativeNewActivityViewController.swift */,
+				A77800000000000000000011 /* TransportationActivityDraft.swift */,
+				A77900000000000000000011 /* NativeItineraryViewController.swift */,
 			);
 			path = TripOverview;
 			sourceTree = "<group>";
@@ -409,6 +561,8 @@
 				A77500000000000000000001 /* NativeTripOverviewRouter.swift in Sources */,
 				A77600000000000000000001 /* NativeTripSavedSearchViewController.swift in Sources */,
 				A77700000000000000000001 /* NativeNewActivityViewController.swift in Sources */,
+				A77800000000000000000001 /* TransportationActivityDraft.swift in Sources */,
+				A77900000000000000000001 /* NativeItineraryViewController.swift in Sources */,
 				C32000000000000000000001 /* NativeSessionPayload.swift in Sources */,
 				C32000000000000000000002 /* NativeSessionStore.swift in Sources */,
 				C32000000000000000000003 /* NativeSessionCoordinator.swift in Sources */,
@@ -436,7 +590,38 @@
 				504EC3081FED79650016851F /* AppDelegate.swift in Sources */,
 				7A56D0032C399A4300A1F940 /* MainViewController.swift in Sources */,
 				7A56D0012C399A4300A1F940 /* NativeMapPlugin.swift in Sources */,
+				F64000000000000000000001 /* NativeMapSearchViewController.swift in Sources */,
+				F65000000000000000000001 /* NativeTotalCostInputViewController.swift in Sources */,
+				F66000000000000000000001 /* NativeNoteInputViewController.swift in Sources */,
+				F67000000000000000000001 /* NativeFlightDateInputViewController.swift in Sources */,
+				F68000000000000000000001 /* NativeFlightTimeInputViewController.swift in Sources */,
+				F69000000000000000000001 /* NativeReservationDetailsView.swift in Sources */,
+				F69000000000000000000002 /* NativeLinkInputAlert.swift in Sources */,
+				F69000000000000000000003 /* NativeAttachmentActionView.swift in Sources */,
+				F6A000000000000000000001 /* NativeLocationEditorViews.swift in Sources */,
+				F6B000000000000000000001 /* NativeSavedPlaceEditorView.swift in Sources */,
+				F6C000000000000000000001 /* NativeTransportationEditorView.swift in Sources */,
+				F6D000000000000000000001 /* NativeFlightEditorView.swift in Sources */,
+				F70000000000000000000001 /* NativeMapControlsView.swift in Sources */,
+				F71000000000000000000001 /* NativeMapAnnotationPresentation.swift in Sources */,
+				F72000000000000000000001 /* NativePlaceTravelModesView.swift in Sources */,
+				F73000000000000000000001 /* NativeGlobeCardViews.swift in Sources */,
 				B10000000000000000000001 /* AlmidyDesignTokens.swift in Sources */,
+				F61000000000000000000001 /* AlmidyDesignFoundation.swift in Sources */,
+				F62000000000000000000001 /* AlmidyIconButton.swift in Sources */,
+				F62000000000000000000002 /* AlmidyButton.swift in Sources */,
+				F62000000000000000000003 /* AlmidyDivider.swift in Sources */,
+				F62000000000000000000004 /* AlmidyBadge.swift in Sources */,
+				F62000000000000000000005 /* AlmidySurfaceStyle.swift in Sources */,
+				F62000000000000000000006 /* AlmidyInputStyle.swift in Sources */,
+				F63000000000000000000001 /* AlmidySheetConfiguration.swift in Sources */,
+				F63000000000000000000002 /* AlmidySheetHeader.swift in Sources */,
+				F63000000000000000000003 /* AlmidyCard.swift in Sources */,
+				F63000000000000000000004 /* AlmidyListRow.swift in Sources */,
+				F63000000000000000000005 /* AlmidyFormSection.swift in Sources */,
+				F63000000000000000000006 /* AlmidyActionRow.swift in Sources */,
+				F63000000000000000000007 /* AlmidyEmptyState.swift in Sources */,
+				F63000000000000000000008 /* AlmidyFloatingControl.swift in Sources */,
 				A24000000000000000000001 /* NativeTextFieldPadding.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -445,6 +630,20 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F65000000000000000000002 /* NativeTotalCostInputTests.swift in Sources */,
+				F66000000000000000000002 /* NativeNoteInputTests.swift in Sources */,
+				F67000000000000000000002 /* NativeFlightDateInputTests.swift in Sources */,
+				F68000000000000000000002 /* NativeFlightTimeInputTests.swift in Sources */,
+				F69000000000000000000004 /* NativeActivityUtilityTests.swift in Sources */,
+				F6A000000000000000000002 /* NativeLocationEditorTests.swift in Sources */,
+				F6B000000000000000000002 /* NativeSavedPlaceEditorTests.swift in Sources */,
+				F6C000000000000000000002 /* NativeTransportationEditorTests.swift in Sources */,
+				F6D000000000000000000002 /* NativeFlightEditorTests.swift in Sources */,
+				F70000000000000000000002 /* NativeMapPresentationTests.swift in Sources */,
+				F71000000000000000000002 /* NativeMapAnnotationPresentationTests.swift in Sources */,
+				F72000000000000000000002 /* NativePlaceCardPresentationTests.swift in Sources */,
+				F73000000000000000000002 /* NativeGlobeCardPresentationTests.swift in Sources */,
+				F80000000000000000000002 /* NativeTripOverviewDesignSystemTests.swift in Sources */,
 				A10000000000000000000001 /* NativeMapConnectivityTests.swift in Sources */,
 				A21000000000000000000001 /* NativeTripStoreTestSupport.swift in Sources */,
 				A21000000000000000000002 /* NativeTravelImageConnectivityTests.swift in Sources */,
@@ -457,6 +656,7 @@
 				E44000000000000000000005 /* NativeTripDateTests.swift in Sources */,
 				E44000000000000000000006 /* NativeTripDateConnectivityTests.swift in Sources */,
 				F55000000000000000000002 /* NativeSettingsTests.swift in Sources */,
+				F61000000000000000000002 /* AlmidyDesignSystemTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

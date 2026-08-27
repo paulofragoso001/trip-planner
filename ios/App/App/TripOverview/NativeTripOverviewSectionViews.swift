@@ -37,8 +37,12 @@ class NativeTripOverviewCard: UIControl, UIGestureRecognizerDelegate {
 
     override init(frame: CGRect) {
         super.init(frame: frame)
-        backgroundColor = AlmidyDesignTokens.Color.surface
-        layer.cornerRadius = AlmidyDesignTokens.TripOverview.cardCornerRadius
+        AlmidySurfaceStyle(
+            backgroundColor: AlmidyDesignTokens.Color.surface,
+            cornerRadius: AlmidyDesignTokens.Component.TripOverview.cardCornerRadius,
+            border: nil,
+            elevation: nil
+        ).apply(to: self)
         layer.cornerCurve = .continuous
         accessibilityTraits.insert(.button)
         isAccessibilityElement = false
@@ -121,6 +125,7 @@ final class NativeTripOverviewItineraryCard: NativeTripOverviewCard {
     private(set) var totalText: String?
     private(set) var renderedDateRange: String?
     private(set) var isUsingCompactEmptyInsets = false
+    private(set) var isUsingCompactPresentation = false
     var hasAddFirstActivityAction: Bool {
         contentStack.arrangedSubviews.contains { ($0 as? UIButton)?.title(for: .normal) == "Add First Activity" }
     }
@@ -138,6 +143,19 @@ final class NativeTripOverviewItineraryCard: NativeTripOverviewCard {
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
+    func setCompactPresentation(_ isCompact: Bool) {
+        isUsingCompactPresentation = isCompact
+        contentStack.arrangedSubviews.forEach { view in
+            switch view.accessibilityIdentifier {
+            case "trip-overview-measure-itinerary-divider-action",
+                 "trip-overview-measure-itinerary-action":
+                view.isHidden = isCompact
+            default:
+                break
+            }
+        }
+    }
+
     func render(
         _ itinerary: NativeTripOverview.Itinerary,
         trip: NativeTripOverview.Trip? = nil,
@@ -147,15 +165,7 @@ final class NativeTripOverviewItineraryCard: NativeTripOverviewCard {
         locale: Locale = .current
     ) {
         reset(after: header); apply(itinerary.status)
-        renderedDateRange = trip.flatMap {
-            NativeTripOverviewDateCalculator.itineraryHeaderDate(
-                startDate: $0.startDate,
-                endDate: $0.endDate,
-                now: now,
-                timeZone: timeZone,
-                locale: locale
-            )
-        } ?? itinerary.dateRange
+        renderedDateRange = itinerary.dateRange
             .replacingOccurrences(of: " – ", with: " → ")
             .replacingOccurrences(of: " - ", with: " → ")
         header.trailingText = renderedDateRange
@@ -196,6 +206,7 @@ final class NativeTripOverviewItineraryCard: NativeTripOverviewCard {
                     extendsThroughCardInsets: true
                 ))
                 contentStack.addArrangedSubview(add)
+                setCompactPresentation(isUsingCompactPresentation)
             }
             accessibilityValue = "Empty"
             return
@@ -232,6 +243,7 @@ final class NativeTripOverviewDocumentsCard: NativeTripOverviewCard {
         iconDiameter: AlmidyDesignTokens.TripOverview.importedItemsHeaderIcon
     )
     private(set) var renderedDocumentIDs: [String] = []
+    private var emptyMinimumHeightConstraint: NSLayoutConstraint?
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -246,9 +258,17 @@ final class NativeTripOverviewDocumentsCard: NativeTripOverviewCard {
 
     func render(_ documents: NativeTripOverview.Documents) {
         reset(after: header); apply(documents.status)
+        emptyMinimumHeightConstraint?.isActive = false
+        emptyMinimumHeightConstraint = nil
         renderedDocumentIDs = documents.items.map(\.id)
         contentStack.addArrangedSubview(NativeTripOverviewDivider(identifier: "trip-overview-measure-documents-divider"))
         guard !documents.items.isEmpty else {
+            let minimumHeight = heightAnchor.constraint(
+                greaterThanOrEqualToConstant: AlmidyDesignTokens.TripOverview.importedItemsEmptyMinimumHeight
+            )
+            minimumHeight.priority = .defaultHigh
+            minimumHeight.isActive = true
+            emptyMinimumHeightConstraint = minimumHeight
             let illustration = NativeTripOverviewIllustrationRow(items: [
                 ("envelope.fill", AlmidyDesignTokens.Color.goldMuted),
                 ("photo.on.rectangle.angled", AlmidyDesignTokens.Color.info),
@@ -260,14 +280,20 @@ final class NativeTripOverviewDocumentsCard: NativeTripOverviewCard {
                overlap: AlmidyDesignTokens.TripOverview.importedItemsIconClusterOverlap,
                rowHeight: AlmidyDesignTokens.TripOverview.importedItemsIconRowHeight)
             illustration.accessibilityIdentifier = "trip-overview-measure-documents-icons"
-            contentStack.addArrangedSubview(illustration)
             let explanation = UILabel.almidyImportedItemsBody("Reservation emails, photos, notes, and links imported for this trip will appear here.")
             let body = NativeTripOverviewCenteredContent(
                 explanation,
                 maximumWidth: AlmidyDesignTokens.TripOverview.importedItemsBodyMaximumWidth
             )
             body.accessibilityIdentifier = "trip-overview-measure-documents-body"
-            contentStack.addArrangedSubview(body)
+            let action = UIButton.almidyEmptyStateAction(NativeTripOverviewReleaseScope.importedItemsEmptyActionTitle)
+            action.accessibilityHint = "Opens imported trip documents"
+            action.accessibilityIdentifier = "trip-overview-measure-documents-action"
+            action.addAction(UIAction { [weak self] _ in self?.onOpen?() }, for: .touchUpInside)
+            contentStack.addArrangedSubview(NativeTripOverviewEmptyStateContent(
+                views: [illustration, body, action],
+                spacing: AlmidyDesignTokens.TripOverview.importedItemsEmptyContentGap
+            ))
             accessibilityValue = "No imported items"
             return
         }
@@ -291,6 +317,7 @@ final class NativeTripOverviewExpensesCard: NativeTripOverviewCard {
     private var expenses: NativeTripOverview.Expenses?
     private(set) var renderedCurrencies: [String] = []
     private(set) var amountsHidden: Bool
+    private var emptyMinimumHeightConstraint: NSLayoutConstraint?
 
     override init(frame: CGRect) {
         amountsHidden = UserDefaults.standard.bool(forKey: preferenceKey)
@@ -307,9 +334,17 @@ final class NativeTripOverviewExpensesCard: NativeTripOverviewCard {
 
     func render(_ expenses: NativeTripOverview.Expenses) {
         self.expenses = expenses; reset(after: header); apply(expenses.status)
+        emptyMinimumHeightConstraint?.isActive = false
+        emptyMinimumHeightConstraint = nil
         renderedCurrencies = expenses.currencies.map { $0.total.currency }
         contentStack.addArrangedSubview(NativeTripOverviewDivider(identifier: "trip-overview-measure-expenses-divider-primary"))
         guard !expenses.currencies.isEmpty else {
+            let minimumHeight = heightAnchor.constraint(
+                greaterThanOrEqualToConstant: AlmidyDesignTokens.TripOverview.expensesEmptyMinimumHeight
+            )
+            minimumHeight.priority = .defaultHigh
+            minimumHeight.isActive = true
+            emptyMinimumHeightConstraint = minimumHeight
             let illustration = NativeTripOverviewIllustrationRow(items: [
                 ("creditcard.fill", AlmidyDesignTokens.Color.goldMuted),
                 ("bed.double.fill", AlmidyDesignTokens.Color.generatedTripGradientStart),
@@ -321,21 +356,20 @@ final class NativeTripOverviewExpensesCard: NativeTripOverviewCard {
                overlap: AlmidyDesignTokens.TripOverview.expensesIconClusterOverlap,
                rowHeight: AlmidyDesignTokens.TripOverview.expensesIconRowHeight)
             illustration.accessibilityIdentifier = "trip-overview-measure-expenses-icons"
-            contentStack.addArrangedSubview(illustration)
             let explanation = UILabel.almidyExpensesBody("Costs added from activities or the trip budget will appear here, grouped by category and currency.")
             let body = NativeTripOverviewCenteredContent(
                 explanation,
                 maximumWidth: AlmidyDesignTokens.TripOverview.expensesBodyMaximumWidth
             )
             body.accessibilityIdentifier = "trip-overview-measure-expenses-body"
-            contentStack.addArrangedSubview(body)
-            contentStack.addArrangedSubview(NativeTripOverviewDivider(identifier: "trip-overview-measure-expenses-divider-action"))
-            let budgetAffordance = UILabel.almidyAction(NativeTripOverviewReleaseScope.expensesEmptyActionTitle)
-            budgetAffordance.textAlignment = .center
-            budgetAffordance.accessibilityLabel = NativeTripOverviewReleaseScope.expensesEmptyActionTitle
+            let budgetAffordance = UIButton.almidyEmptyStateAction(NativeTripOverviewReleaseScope.expensesEmptyActionTitle)
             budgetAffordance.accessibilityHint = "Opens the detailed trip budget"
             budgetAffordance.accessibilityIdentifier = "trip-overview-measure-expenses-action"
-            contentStack.addArrangedSubview(budgetAffordance)
+            budgetAffordance.addAction(UIAction { [weak self] _ in self?.onOpen?() }, for: .touchUpInside)
+            contentStack.addArrangedSubview(NativeTripOverviewEmptyStateContent(
+                views: [illustration, body, budgetAffordance],
+                spacing: AlmidyDesignTokens.TripOverview.expensesEmptyContentGap
+            ))
             accessibilityValue = "No expenses recorded"
             return
         }
@@ -354,6 +388,140 @@ final class NativeTripOverviewExpensesCard: NativeTripOverviewCard {
         header.setAction(symbol: amountsHidden ? "eye.slash" : "eye", label: amountsHidden ? "Reveal expense amounts" : "Hide expense amounts") { [weak self] in self?.toggleAmounts() }
         if let expenses { render(expenses) }
     }
+}
+
+final class NativeTripOverviewEmailForwardingCard: UIView {
+    var onManage: (() -> Void)?
+    var onDismiss: (() -> Void)?
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        accessibilityIdentifier = "overview-email-forwarding-card"
+        backgroundColor = AlmidyDesignTokens.Color.surface
+        layer.cornerRadius = AlmidyDesignTokens.TripOverview.cardCornerRadius
+        layer.cornerCurve = .continuous
+
+        let icon = UIImageView(image: UIImage(systemName: "envelope.fill"))
+        icon.tintColor = AlmidyDesignTokens.Color.tripOverviewNeutralIcon
+        icon.contentMode = .scaleAspectFit
+        icon.translatesAutoresizingMaskIntoConstraints = false
+
+        let title = UILabel.almidyBody("Email Forwarding")
+        title.font = UIFontMetrics(forTextStyle: .headline).scaledFont(for: AlmidyDesignTokens.TripOverview.headingFont)
+        title.accessibilityTraits.insert(.header)
+
+        let dismiss = UIButton(type: .system)
+        dismiss.setImage(UIImage(systemName: "xmark"), for: .normal)
+        dismiss.tintColor = AlmidyDesignTokens.Color.tripOverviewNeutralIcon
+        dismiss.accessibilityLabel = "Hide Email Forwarding"
+        dismiss.addAction(UIAction { [weak self] _ in self?.onDismiss?() }, for: .touchUpInside)
+        dismiss.translatesAutoresizingMaskIntoConstraints = false
+
+        let header = UIStackView(arrangedSubviews: [icon, title, UIView(), dismiss])
+        header.axis = .horizontal
+        header.alignment = .center
+        header.spacing = 12
+
+        let body = UILabel.almidyBody("Forward reservation emails into this trip when email forwarding becomes available. You can continue adding reservation details from Imported items.")
+        body.textColor = AlmidyDesignTokens.Color.tripOverviewNeutralText
+        body.numberOfLines = 0
+
+        let manage = UIButton(type: .system)
+        manage.setTitle("Manage Imports", for: .normal)
+        manage.setTitleColor(AlmidyDesignTokens.Color.tripOverviewAccent, for: .normal)
+        manage.titleLabel?.font = UIFontMetrics(forTextStyle: .callout).scaledFont(for: AlmidyDesignTokens.TripOverview.actionFont)
+        manage.contentHorizontalAlignment = .leading
+        manage.accessibilityHint = "Opens imported trip documents"
+        manage.heightAnchor.constraint(greaterThanOrEqualToConstant: 44).isActive = true
+        manage.addAction(UIAction { [weak self] _ in self?.onManage?() }, for: .touchUpInside)
+
+        let stack = UIStackView(arrangedSubviews: [header, body, manage])
+        stack.axis = .vertical
+        stack.spacing = AlmidyDesignTokens.TripOverview.utilityCardContentGap
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(stack)
+
+        NSLayoutConstraint.activate([
+            icon.widthAnchor.constraint(equalToConstant: AlmidyDesignTokens.TripOverview.utilityCardIcon),
+            icon.heightAnchor.constraint(equalToConstant: AlmidyDesignTokens.TripOverview.utilityCardIcon),
+            dismiss.widthAnchor.constraint(greaterThanOrEqualToConstant: 44),
+            dismiss.heightAnchor.constraint(greaterThanOrEqualToConstant: 44),
+            stack.leadingAnchor.constraint(equalTo: leadingAnchor, constant: AlmidyDesignTokens.TripOverview.cardHorizontalInset),
+            stack.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -AlmidyDesignTokens.TripOverview.cardHorizontalInset),
+            stack.topAnchor.constraint(equalTo: topAnchor, constant: AlmidyDesignTokens.TripOverview.utilityCardVerticalInset),
+            stack.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -AlmidyDesignTokens.TripOverview.utilityCardVerticalInset),
+            heightAnchor.constraint(greaterThanOrEqualToConstant: AlmidyDesignTokens.TripOverview.utilityCardMinimumHeight)
+        ])
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+}
+
+final class NativeTripOverviewInviteGuestsCard: UIView {
+    var onShare: (() -> Void)?
+    var onDismiss: (() -> Void)?
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        accessibilityIdentifier = "overview-invite-guests-card"
+        backgroundColor = AlmidyDesignTokens.Color.surface
+        layer.cornerRadius = AlmidyDesignTokens.TripOverview.cardCornerRadius
+        layer.cornerCurve = .continuous
+
+        let icon = UIImageView(image: UIImage(systemName: "person.crop.circle.badge.plus"))
+        icon.tintColor = AlmidyDesignTokens.Color.tripOverviewNeutralIcon
+        icon.contentMode = .scaleAspectFit
+        icon.translatesAutoresizingMaskIntoConstraints = false
+
+        let title = UILabel.almidyBody("Invite Guests")
+        title.font = UIFontMetrics(forTextStyle: .headline).scaledFont(for: AlmidyDesignTokens.TripOverview.headingFont)
+        title.accessibilityTraits.insert(.header)
+
+        let dismiss = UIButton(type: .system)
+        dismiss.setImage(UIImage(systemName: "xmark"), for: .normal)
+        dismiss.tintColor = AlmidyDesignTokens.Color.tripOverviewNeutralIcon
+        dismiss.accessibilityLabel = "Hide Invite Guests"
+        dismiss.addAction(UIAction { [weak self] _ in self?.onDismiss?() }, for: .touchUpInside)
+        dismiss.translatesAutoresizingMaskIntoConstraints = false
+
+        let header = UIStackView(arrangedSubviews: [icon, title, UIView(), dismiss])
+        header.axis = .horizontal
+        header.alignment = .center
+        header.spacing = 12
+
+        let body = UILabel.almidyBody("Add frequent guests. They can view, add, edit, and remove trip items while you remain the admin.")
+        body.textColor = AlmidyDesignTokens.Color.tripOverviewNeutralText
+        body.numberOfLines = 0
+
+        let share = UIButton(type: .system)
+        share.setTitle("Share Trip", for: .normal)
+        share.setTitleColor(AlmidyDesignTokens.Color.tripOverviewAccent, for: .normal)
+        share.titleLabel?.font = UIFontMetrics(forTextStyle: .callout).scaledFont(for: AlmidyDesignTokens.TripOverview.actionFont)
+        share.contentHorizontalAlignment = .leading
+        share.accessibilityHint = "Opens the system share sheet for this trip"
+        share.heightAnchor.constraint(greaterThanOrEqualToConstant: 44).isActive = true
+        share.addAction(UIAction { [weak self] _ in self?.onShare?() }, for: .touchUpInside)
+
+        let stack = UIStackView(arrangedSubviews: [header, body, share])
+        stack.axis = .vertical
+        stack.spacing = AlmidyDesignTokens.TripOverview.utilityCardContentGap
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(stack)
+
+        NSLayoutConstraint.activate([
+            icon.widthAnchor.constraint(equalToConstant: AlmidyDesignTokens.TripOverview.utilityCardIcon),
+            icon.heightAnchor.constraint(equalToConstant: AlmidyDesignTokens.TripOverview.utilityCardIcon),
+            dismiss.widthAnchor.constraint(greaterThanOrEqualToConstant: 44),
+            dismiss.heightAnchor.constraint(greaterThanOrEqualToConstant: 44),
+            stack.leadingAnchor.constraint(equalTo: leadingAnchor, constant: AlmidyDesignTokens.TripOverview.cardHorizontalInset),
+            stack.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -AlmidyDesignTokens.TripOverview.cardHorizontalInset),
+            stack.topAnchor.constraint(equalTo: topAnchor, constant: AlmidyDesignTokens.TripOverview.utilityCardVerticalInset),
+            stack.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -AlmidyDesignTokens.TripOverview.utilityCardVerticalInset),
+            heightAnchor.constraint(greaterThanOrEqualToConstant: AlmidyDesignTokens.TripOverview.utilityCardMinimumHeight)
+        ])
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 }
 
 final class NativeTripOverviewRecentCard: NativeTripOverviewCard {
@@ -492,8 +660,10 @@ private final class NativeTripOverviewDivider: UIView {
         super.init(frame: .zero)
         accessibilityIdentifier = identifier
         clipsToBounds = false
-        let line = UIView()
-        line.backgroundColor = AlmidyDesignTokens.Color.tripOverviewDivider
+        let line = AlmidyDivider(
+            thickness: AlmidyDesignTokens.Border.hairline.width,
+            color: AlmidyDesignTokens.Color.tripOverviewDivider
+        )
         line.translatesAutoresizingMaskIntoConstraints = false
         addSubview(line)
         let extensionAmount = extendsThroughCardInsets ? AlmidyDesignTokens.TripOverview.cardHorizontalInset : 0
@@ -503,7 +673,7 @@ private final class NativeTripOverviewDivider: UIView {
             bottom: 0,
             trailing: AlmidyDesignTokens.TripOverview.separatorInset
         )
-        heightAnchor.constraint(equalToConstant: 1 / UIScreen.main.scale).isActive = true
+        heightAnchor.constraint(equalToConstant: line.thickness).isActive = true
         NSLayoutConstraint.activate([
             line.topAnchor.constraint(equalTo: topAnchor),
             line.bottomAnchor.constraint(equalTo: bottomAnchor),
@@ -627,18 +797,39 @@ private final class NativeTripOverviewCenteredContent: UIView {
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 }
 
+private final class NativeTripOverviewEmptyStateContent: UIView {
+    init(views: [UIView], spacing: CGFloat) {
+        super.init(frame: .zero)
+        let stack = UIStackView(arrangedSubviews: views)
+        stack.axis = .vertical
+        stack.alignment = .fill
+        stack.spacing = spacing
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(stack)
+        NSLayoutConstraint.activate([
+            stack.centerYAnchor.constraint(equalTo: centerYAnchor),
+            stack.leadingAnchor.constraint(equalTo: leadingAnchor),
+            stack.trailingAnchor.constraint(equalTo: trailingAnchor),
+            stack.topAnchor.constraint(greaterThanOrEqualTo: topAnchor),
+            stack.bottomAnchor.constraint(lessThanOrEqualTo: bottomAnchor)
+        ])
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+}
+
 private final class NativeTripOverviewCategoryBubble: UIView {
     init(key: String, symbol: String?, accessibilityText: String) {
         super.init(frame: .zero)
         let presentation = NativeTripOverviewCategoryCatalog.presentation(key: key, suggestedSymbol: symbol)
-        backgroundColor = presentation.background; layer.cornerRadius = 22
+        backgroundColor = presentation.background; layer.cornerRadius = 18
         let image = UIImageView(image: UIImage(systemName: presentation.symbol)); image.tintColor = presentation.color
         image.contentMode = .scaleAspectFit; image.translatesAutoresizingMaskIntoConstraints = false; addSubview(image)
         isAccessibilityElement = true; accessibilityLabel = accessibilityText
         NSLayoutConstraint.activate([
-            widthAnchor.constraint(equalToConstant: 44), heightAnchor.constraint(equalToConstant: 44),
+            widthAnchor.constraint(equalToConstant: 36), heightAnchor.constraint(equalToConstant: 36),
             image.centerXAnchor.constraint(equalTo: centerXAnchor), image.centerYAnchor.constraint(equalTo: centerYAnchor),
-            image.widthAnchor.constraint(equalToConstant: 22), image.heightAnchor.constraint(equalToConstant: 22)
+            image.widthAnchor.constraint(equalToConstant: 19), image.heightAnchor.constraint(equalToConstant: 19)
         ])
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
@@ -650,8 +841,8 @@ private final class NativeTripOverviewOverflowBubble: UILabel {
         font = AlmidyDesignTokens.Font.body(15)
         textColor = AlmidyDesignTokens.Color.textSecondary
         backgroundColor = AlmidyDesignTokens.Color.textTertiary.withAlphaComponent(0.12)
-        layer.cornerRadius = 22; layer.masksToBounds = true; accessibilityLabel = "\(count) more categories"
-        widthAnchor.constraint(equalToConstant: 44).isActive = true; heightAnchor.constraint(equalToConstant: 44).isActive = true
+        layer.cornerRadius = 18; layer.masksToBounds = true; accessibilityLabel = "\(count) more categories"
+        widthAnchor.constraint(equalToConstant: 36).isActive = true; heightAnchor.constraint(equalToConstant: 36).isActive = true
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 }
@@ -792,6 +983,21 @@ private extension UILabel {
     }
 }
 
+private extension UIButton {
+    static func almidyEmptyStateAction(_ title: String) -> UIButton {
+        let button = UIButton(type: .system)
+        button.setTitle(title, for: .normal)
+        button.accessibilityLabel = title
+        button.titleLabel?.font = UIFontMetrics(forTextStyle: .callout).scaledFont(
+            for: AlmidyDesignTokens.TripOverview.actionFont
+        )
+        button.titleLabel?.adjustsFontForContentSizeCategory = true
+        button.tintColor = AlmidyDesignTokens.Color.tripOverviewAccent
+        button.heightAnchor.constraint(greaterThanOrEqualToConstant: 44).isActive = true
+        return button
+    }
+}
+
 private extension ISO8601DateFormatter {
     static let almidy = ISO8601DateFormatter()
 }
@@ -802,8 +1008,8 @@ private extension DateFormatter {
 }
 
 final class NativeTripOverviewActionsView: UIView {
-    static let populatedCircleDiameter: CGFloat = 52
-    static let populatedMinimumTarget: CGFloat = 88
+    static let populatedCircleDiameter = AlmidyDesignTokens.Component.TripOverview.populatedActionCircleDiameter
+    static let populatedMinimumTarget = AlmidyDesignTokens.Component.TripOverview.populatedActionMinimumTarget
     var onAction: ((NativeTripOverviewAction) -> Void)?
     private let scrollView = UIScrollView()
     private let actionStack = UIStackView()
@@ -819,6 +1025,10 @@ final class NativeTripOverviewActionsView: UIView {
     var renderedAccessibilityValues: [String] {
         actionStack.arrangedSubviews.compactMap { $0.accessibilityValue }
     }
+    func accessibilityActivateActionForTesting(at index: Int) -> Bool {
+        guard actionStack.arrangedSubviews.indices.contains(index) else { return false }
+        return actionStack.arrangedSubviews[index].accessibilityActivate()
+    }
     var emptyActionCircleDiameter: CGFloat? {
         (actionStack.arrangedSubviews.first as? NativeTripOverviewEmptyActivityAction)?.circleDiameter
     }
@@ -830,9 +1040,12 @@ final class NativeTripOverviewActionsView: UIView {
         super.init(frame: frame)
         scrollView.showsHorizontalScrollIndicator = false
         scrollView.alwaysBounceHorizontal = false
+        // The compact empty-state circle slightly crosses the action region's
+        // visual boundary. Keep the scroll mechanics but do not crop its top arc.
+        scrollView.clipsToBounds = false
         scrollView.translatesAutoresizingMaskIntoConstraints = false
         actionStack.axis = .horizontal
-        actionStack.spacing = 18
+        actionStack.spacing = 8
         actionStack.translatesAutoresizingMaskIntoConstraints = false
         addSubview(scrollView)
         scrollView.addSubview(actionStack)
@@ -847,7 +1060,7 @@ final class NativeTripOverviewActionsView: UIView {
             actionStack.topAnchor.constraint(equalTo: scrollView.contentLayoutGuide.topAnchor),
             actionStack.bottomAnchor.constraint(equalTo: scrollView.contentLayoutGuide.bottomAnchor),
             actionStack.heightAnchor.constraint(equalTo: scrollView.frameLayoutGuide.heightAnchor),
-            heightAnchor.constraint(greaterThanOrEqualToConstant: 104)
+            heightAnchor.constraint(greaterThanOrEqualToConstant: 116)
         ])
         NotificationCenter.default.addObserver(
             self,
@@ -1014,6 +1227,12 @@ private final class NativeTripOverviewEmptyActivityAction: UIControl {
         }
     }
 
+    override func accessibilityActivate() -> Bool {
+        guard isEnabled else { return false }
+        sendActions(for: .touchUpInside)
+        return true
+    }
+
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 }
 
@@ -1034,7 +1253,10 @@ private final class NativeTripOverviewActionButton: UIButton {
         iconSurface.isUserInteractionEnabled = false
         iconSurface.translatesAutoresizingMaskIntoConstraints = false
 
-        let symbol = UIImage.SymbolConfiguration(pointSize: 20, weight: .medium)
+        let symbol = UIImage.SymbolConfiguration(
+            pointSize: AlmidyDesignTokens.Component.TripOverview.populatedActionIconDiameter - 2,
+            weight: .medium
+        )
         iconView.image = UIImage(systemName: Self.symbolName(for: action.kind), withConfiguration: symbol)
         iconView.tintColor = AlmidyDesignTokens.Color.tripOverviewActionIcon
         iconView.contentMode = .scaleAspectFit
@@ -1042,7 +1264,7 @@ private final class NativeTripOverviewActionButton: UIButton {
         iconView.translatesAutoresizingMaskIntoConstraints = false
 
         actionLabel.text = displayLabel
-        actionLabel.font = UIFontMetrics(forTextStyle: .caption2).scaledFont(for: AlmidyDesignTokens.Font.body(11))
+        actionLabel.font = UIFontMetrics(forTextStyle: .caption1).scaledFont(for: AlmidyDesignTokens.Font.body(13))
         actionLabel.adjustsFontForContentSizeCategory = true
         actionLabel.textColor = AlmidyDesignTokens.Color.tripOverviewActionLabel
         actionLabel.textAlignment = .center
@@ -1060,9 +1282,9 @@ private final class NativeTripOverviewActionButton: UIButton {
             iconSurface.heightAnchor.constraint(equalToConstant: NativeTripOverviewActionsView.populatedCircleDiameter),
             iconView.centerXAnchor.constraint(equalTo: iconSurface.centerXAnchor),
             iconView.centerYAnchor.constraint(equalTo: iconSurface.centerYAnchor),
-            iconView.widthAnchor.constraint(equalToConstant: 22),
-            iconView.heightAnchor.constraint(equalToConstant: 22),
-            actionLabel.topAnchor.constraint(equalTo: iconSurface.bottomAnchor, constant: 6),
+            iconView.widthAnchor.constraint(equalToConstant: AlmidyDesignTokens.Component.TripOverview.populatedActionIconDiameter),
+            iconView.heightAnchor.constraint(equalToConstant: AlmidyDesignTokens.Component.TripOverview.populatedActionIconDiameter),
+            actionLabel.topAnchor.constraint(equalTo: iconSurface.bottomAnchor, constant: AlmidyDesignTokens.Component.TripOverview.populatedActionLabelGap),
             actionLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 4),
             actionLabel.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -4),
             actionLabel.bottomAnchor.constraint(lessThanOrEqualTo: bottomAnchor, constant: -2)
@@ -1078,7 +1300,7 @@ private final class NativeTripOverviewActionButton: UIButton {
         }
         accessibilityTraits.insert(.button)
         widthAnchor.constraint(greaterThanOrEqualToConstant: NativeTripOverviewActionsView.populatedMinimumTarget).isActive = true
-        heightAnchor.constraint(greaterThanOrEqualToConstant: 96).isActive = true
+        heightAnchor.constraint(greaterThanOrEqualToConstant: 112).isActive = true
     }
 
     private static func symbolName(for kind: NativeTripOverviewActionKind) -> String {
@@ -1089,6 +1311,12 @@ private final class NativeTripOverviewActionButton: UIButton {
         case .flights: return "airplane"
         case .stays: return "bed.double.fill"
         }
+    }
+
+    override func accessibilityActivate() -> Bool {
+        guard isEnabled else { return false }
+        sendActions(for: .touchUpInside)
+        return true
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }

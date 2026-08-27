@@ -21,10 +21,10 @@ export type TripOverviewSupportedAction = {
 export function buildFirstReleaseTripOverviewActions(base: string): TripOverviewSupportedAction[] {
   return [
     { key: "newActivity", label: "New Activity", available: true, href: `${base}/timeline#new-plan`, handoff: "web" },
+    { key: "flights", label: "Flights", available: true, href: `${base}/timeline#new-plan`, handoff: "web" },
+    { key: "stays", label: "Stays", available: true, href: `${base}/timeline#new-plan`, handoff: "web" },
     { key: "places", label: "Places", available: true, href: `${base}/ideas`, handoff: "native-route" },
-    { key: "routes", label: "Routes", available: true, href: `${base}/map`, handoff: "native-route" },
-    { key: "flights", label: "Flights", available: false, href: null, handoff: null },
-    { key: "stays", label: "Stays", available: false, href: null, handoff: null }
+    { key: "routes", label: "Routes", available: true, href: `${base}/map`, handoff: "native-route" }
   ];
 }
 

@@ -82,7 +82,7 @@ extension NativeCreateTripViewController {
         }
         controller.modalPresentationStyle = .pageSheet
         if let sheet = controller.sheetPresentationController {
-            sheet.detents = [.large()]
+            NativeActivitySheetMetrics.applyMyTripsExpandedHeight(to: sheet)
             sheet.selectedDetentIdentifier = .large
             sheet.prefersGrabberVisible = true
         }

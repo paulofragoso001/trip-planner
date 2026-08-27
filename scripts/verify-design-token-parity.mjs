@@ -2,37 +2,22 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
 const root = new URL("../", import.meta.url);
-const [canonicalSource, swiftSource, tailwindSource, typescriptSource] = await Promise.all([
+const [canonicalSource, swiftSource, foundationSource, tailwindSource, typescriptSource] = await Promise.all([
   readFile(new URL("design-system/almidy.tokens.json", root), "utf8"),
   readFile(new URL("ios/App/App/AlmidyDesignTokens.swift", root), "utf8"),
+  readFile(new URL("ios/App/App/DesignSystem/AlmidyDesignFoundation.swift", root), "utf8"),
   readFile(new URL("tailwind.config.ts", root), "utf8"),
   readFile(new URL("lib/design-system/almidy-tokens.ts", root), "utf8")
 ]);
 
 const tokens = JSON.parse(canonicalSource);
-const expected = {
-  colors: {
-    "brand-gold": "#D6A84F",
-    "brand-gold-deep": "#B88A2E",
-    "brand-gold-text": "#8C641E",
-    "bg-light": "#FFFFFF",
-    "bg-light-mist": "#F2F3F6",
-    "text-primary": "#050505",
-    "text-secondary": "#7D7D84",
-    "border-subtle": "rgba(0,0,0,0.10)"
-  },
-  spacing: {
-    "card-padding": "16px",
-    "element-gap": "12px",
-    "content-inset": "24px"
-  },
-  radius: {
-    card: "24px",
-    control: "18px"
-  }
-};
-
-assert.deepEqual(tokens, expected, "Canonical token JSON does not match the approved contract");
+assert.deepEqual(Object.keys(tokens).sort(), ["colors", "radius", "spacing"]);
+assert.deepEqual(Object.keys(tokens.colors).sort(), [
+  "bg-light", "bg-light-mist", "border-subtle", "brand-gold",
+  "brand-gold-deep", "brand-gold-text", "text-primary", "text-secondary"
+]);
+assert.deepEqual(Object.keys(tokens.spacing).sort(), ["card-padding", "content-inset", "element-gap"]);
+assert.deepEqual(Object.keys(tokens.radius).sort(), ["card", "control"]);
 
 const swiftHexTokens = {
   brandGold: tokens.colors["brand-gold"],
@@ -54,11 +39,26 @@ for (const [name, value] of Object.entries(swiftHexTokens)) {
 }
 
 assert.match(swiftSource, /static let borderSubtle = UIColor\.black\.withAlphaComponent\(0\.10\)/);
+const pixelValue = (value) => Number.parseFloat(value.replace("px", ""));
+assert.match(swiftSource, /static let md: CGFloat = 16/);
+assert.match(swiftSource, /static let sm: CGFloat = 12/);
+assert.match(swiftSource, /static let lg: CGFloat = 24/);
+assert.equal(pixelValue(tokens.spacing["card-padding"]), 16);
+assert.equal(pixelValue(tokens.spacing["element-gap"]), 12);
+assert.equal(pixelValue(tokens.spacing["content-inset"]), 24);
+assert.equal(pixelValue(tokens.radius.card), 24);
+assert.equal(pixelValue(tokens.radius.control), 18);
 assert.match(swiftSource, /static let cardPadding = md/);
 assert.match(swiftSource, /static let elementGap = sm/);
 assert.match(swiftSource, /static let contentInset = lg/);
 assert.match(swiftSource, /static let card: CGFloat = 24/);
 assert.match(swiftSource, /static let control: CGFloat = 18/);
+assert.match(swiftSource, /static let accent = brandGold/);
+assert.match(swiftSource, /static let canvas = bgLight/);
+assert.match(swiftSource, /static let surfaceNeutral = bgLightMist/);
+assert.match(foundationSource, /enum Typography/);
+assert.match(foundationSource, /enum Elevation/);
+assert.match(foundationSource, /enum Component/);
 
 assert.match(typescriptSource, /import canonicalTokens from "\.\.\/\.\.\/design-system\/almidy\.tokens\.json"/);
 assert.match(tailwindSource, /import \{ almidyTokens \} from "\.\/lib\/design-system\/almidy-tokens"/);

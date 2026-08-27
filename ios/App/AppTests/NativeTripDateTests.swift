@@ -3,6 +3,43 @@ import UIKit
 @testable import Almidy
 
 final class NativeTripDateTests: XCTestCase {
+    func testSavedPlaceCreateResponsePreservesCanonicalSegmentIdentity() throws {
+        let payload = Data(#"{"id":"segment-123","start_time":"2026-08-24T16:00:00.000Z"}"#.utf8)
+        let segment = try JSONDecoder().decode(NativeSavedPlaceSegment.self, from: payload)
+
+        XCTAssertEqual(segment.id, "segment-123")
+        XCTAssertEqual(segment.startTime, "2026-08-24T16:00:00.000Z")
+    }
+
+    func testSavedPlacePatchDraftCarriesEditableDetailsWithoutTripID() throws {
+        let draft = NativeSavedPlaceDetailDraft(
+            title: "Example Stay",
+            location: "1 Main Street",
+            startTime: "2026-08-24T16:00:00.000Z",
+            endTime: "2026-08-27T15:00:00.000Z",
+            bookingUrl: "https://example.com",
+            confirmationCode: "ABC123",
+            notes: "Late arrival",
+            reservation: .init(
+                phone: "+1 555 0100",
+                website: "https://example.com",
+                costAmount: Decimal(string: "425.50"),
+                costCurrency: "USD",
+                links: ["https://example.com/booking"]
+            )
+        )
+
+        let object = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: JSONEncoder().encode(draft)) as? [String: Any]
+        )
+        XCTAssertNil(object["tripId"])
+        XCTAssertEqual(object["title"] as? String, "Example Stay")
+        XCTAssertEqual(object["endTime"] as? String, "2026-08-27T15:00:00.000Z")
+        let reservation = try XCTUnwrap(object["reservation"] as? [String: Any])
+        XCTAssertEqual(reservation["costCurrency"] as? String, "USD")
+        XCTAssertEqual(reservation["links"] as? [String], ["https://example.com/booking"])
+    }
+
     func testActivityPreviewDetentScalesAcrossCompactAndTallPhones() {
         let compact = NativeActivitySheetMetrics.previewHeight(
             maximumDetentValue: 620,
@@ -16,7 +53,7 @@ final class NativeTripDateTests: XCTestCase {
         )
 
         XCTAssertGreaterThanOrEqual(compact, 320)
-        XCTAssertLessThanOrEqual(tall, 390)
+        XCTAssertLessThanOrEqual(tall, 360)
         XCTAssertLessThan(compact, tall)
     }
 
@@ -280,6 +317,57 @@ final class NativeActivityCatalogTests: XCTestCase {
     }
 }
 
+final class TransportationActivityDraftTests: XCTestCase {
+    func testEveryTransportationCategoryMapsToATypedKind() {
+        let transportation = NativeActivityCatalog.sections.first { $0.title == "Transportation" }?.items ?? []
+
+        XCTAssertEqual(transportation.count, TransportationActivityDraft.Kind.allCases.count)
+        XCTAssertTrue(transportation.allSatisfy {
+            TransportationActivityDraft.Kind(categoryName: $0.name) != nil
+        })
+    }
+
+    func testDraftRoundTripsAllPersistenceBoundaryValues() throws {
+        let start = Date(timeIntervalSince1970: 1_787_425_200)
+        let end = start.addingTimeInterval(24_300)
+        let draft = TransportationActivityDraft(
+            tripID: "trip-123",
+            kind: .flight,
+            title: "Miami to Barcelona",
+            company: "American Airlines",
+            transportNumber: "AA1546",
+            departure: .init(name: "Miami International Airport", address: "Miami, FL", latitude: 25.7959, longitude: -80.2870),
+            arrival: .init(name: "Barcelona-El Prat Airport", address: "Barcelona", latitude: 41.2974, longitude: 2.0833),
+            startAt: start,
+            endAt: end,
+            reservation: .init(
+                confirmationCode: "AA1544", seat: "3A", seatClass: "Business",
+                coachNumber: nil, vehicle: nil, phone: nil, website: URL(string: "https://aa.com")
+            ),
+            cost: .init(amount: Decimal(string: "1500.00")!, currency: "usd"),
+            note: "Window seat",
+            attachments: [
+                .init(
+                    id: UUID(uuidString: "00000000-0000-0000-0000-000000000001")!,
+                    kind: .link,
+                    displayName: "Reservation",
+                    sourceURL: URL(string: "https://aa.com/reservation")!
+                )
+            ]
+        )
+
+        let decoded = try JSONDecoder().decode(
+            TransportationActivityDraft.self,
+            from: JSONEncoder().encode(draft)
+        )
+
+        XCTAssertEqual(decoded, draft)
+        XCTAssertEqual(decoded.cost?.currency, "USD")
+        XCTAssertEqual(decoded.departure?.hasCoordinate, true)
+        XCTAssertEqual(decoded.arrival?.hasCoordinate, true)
+    }
+}
+
 final class NativeTripOverviewMenuTests: XCTestCase {
     func testOverviewMenuMatchesReferenceOrder() {
         XCTAssertEqual(
@@ -392,7 +480,7 @@ final class NativeTripOverviewActivityModeTests: XCTestCase {
         view.render(actions: [newActivity, unavailablePlaces, routes, unavailableFlight], activityMode: itinerary.activityMode)
         XCTAssertFalse(view.isUsingDedicatedEmptyAction)
         XCTAssertEqual(view.renderedActionKinds, [.newActivity, .routes])
-        XCTAssertEqual(NativeTripOverviewActionsView.populatedCircleDiameter, 52)
+        XCTAssertEqual(NativeTripOverviewActionsView.populatedCircleDiameter, 64)
         XCTAssertGreaterThanOrEqual(NativeTripOverviewActionsView.populatedMinimumTarget, 44)
     }
 
@@ -433,7 +521,7 @@ final class NativeTripOverviewActivityModeTests: XCTestCase {
 }
 
 final class NativeTripOverviewItineraryCardTests: XCTestCase {
-    func testCardUsesContextualTripDateInsteadOfFullRange() throws {
+    func testCardUsesFullTripDateRange() throws {
         let card = NativeTripOverviewItineraryCard()
         let timeZone = try XCTUnwrap(TimeZone(identifier: "America/New_York"))
         let now = try XCTUnwrap(ISO8601DateFormatter().date(from: "2026-08-15T16:00:00Z"))
@@ -452,7 +540,7 @@ final class NativeTripOverviewItineraryCardTests: XCTestCase {
             locale: Locale(identifier: "en_US")
         )
 
-        XCTAssertEqual(card.renderedDateRange, "Today, Saturday, Aug 15")
+        XCTAssertEqual(card.renderedDateRange, "Aug 15 → Sep 9")
     }
 
     func testEmptyCardKeepsTruthfulRangeAndUsesCompactTimelineLayout() {
@@ -590,11 +678,13 @@ final class NativeTripOverviewCardSystemTests: XCTestCase {
         XCTAssertEqual(AlmidyDesignTokens.TripOverview.headerControlDiameter, 48)
         XCTAssertEqual(AlmidyDesignTokens.TripOverview.headerControlSideInset, 20)
         XCTAssertEqual(AlmidyDesignTokens.TripOverview.headerControlGap, 12)
-        XCTAssertEqual(AlmidyDesignTokens.TripOverview.headerControlTopInset, 6)
+        XCTAssertEqual(AlmidyDesignTokens.TripOverview.headerControlTopInset, 14)
         XCTAssertEqual(AlmidyDesignTokens.TripOverview.emptyActionTopInset, 15)
+        XCTAssertEqual(AlmidyDesignTokens.TripOverview.countryFlagDiameter, 52)
+        XCTAssertEqual(AlmidyDesignTokens.TripOverview.countryFlagTitleGap, 10)
         XCTAssertEqual(AlmidyDesignTokens.TripOverview.emptyActionLabelGap, 3)
         XCTAssertGreaterThanOrEqual(AlmidyDesignTokens.TripOverview.minimumInteractiveTarget, 44)
-        XCTAssertEqual(AlmidyDesignTokens.TripOverview.cardCornerRadius, 20)
+        XCTAssertEqual(AlmidyDesignTokens.TripOverview.cardCornerRadius, 28)
         XCTAssertEqual(AlmidyDesignTokens.TripOverview.cardHorizontalInset, 16)
         XCTAssertEqual(AlmidyDesignTokens.TripOverview.cardVerticalInset, 14)
         XCTAssertEqual(AlmidyDesignTokens.TripOverview.interCardGap, 18)
@@ -612,19 +702,22 @@ final class NativeTripOverviewCardSystemTests: XCTestCase {
         XCTAssertEqual(AlmidyDesignTokens.TripOverview.itineraryRowHeight, 40)
         XCTAssertEqual(AlmidyDesignTokens.TripOverview.itineraryTimelineConnectorHeight, 14)
         XCTAssertEqual(AlmidyDesignTokens.TripOverview.importedItemsCardVerticalInset, 10)
-        XCTAssertEqual(AlmidyDesignTokens.TripOverview.importedItemsContentGap, 6)
-        XCTAssertEqual(AlmidyDesignTokens.TripOverview.importedItemsHeaderHeight, 36)
-        XCTAssertEqual(AlmidyDesignTokens.TripOverview.importedItemsHeaderIconSurface, 28)
-        XCTAssertEqual(AlmidyDesignTokens.TripOverview.importedItemsHeadingFont.pointSize, 16)
-        XCTAssertEqual(AlmidyDesignTokens.TripOverview.importedItemsBodyFont.pointSize, 14)
+        XCTAssertEqual(AlmidyDesignTokens.TripOverview.importedItemsContentGap, 8)
+        XCTAssertEqual(AlmidyDesignTokens.TripOverview.importedItemsHeaderHeight, 40)
+        XCTAssertEqual(AlmidyDesignTokens.TripOverview.importedItemsHeaderIconSurface, 32)
+        XCTAssertEqual(AlmidyDesignTokens.TripOverview.importedItemsHeadingFont.pointSize, 17)
+        XCTAssertEqual(AlmidyDesignTokens.TripOverview.importedItemsBodyFont.pointSize, 15)
         XCTAssertEqual(AlmidyDesignTokens.TripOverview.importedItemsIconClusterDiameter, 36)
+        XCTAssertEqual(AlmidyDesignTokens.TripOverview.importedItemsEmptyMinimumHeight, 276)
         XCTAssertEqual(AlmidyDesignTokens.TripOverview.expensesCardVerticalInset, 10)
-        XCTAssertEqual(AlmidyDesignTokens.TripOverview.expensesContentGap, 6)
-        XCTAssertEqual(AlmidyDesignTokens.TripOverview.expensesHeaderHeight, 36)
-        XCTAssertEqual(AlmidyDesignTokens.TripOverview.expensesHeaderIconSurface, 28)
-        XCTAssertEqual(AlmidyDesignTokens.TripOverview.expensesHeadingFont.pointSize, 16)
-        XCTAssertEqual(AlmidyDesignTokens.TripOverview.expensesBodyFont.pointSize, 14)
+        XCTAssertEqual(AlmidyDesignTokens.TripOverview.expensesContentGap, 8)
+        XCTAssertEqual(AlmidyDesignTokens.TripOverview.expensesHeaderHeight, 40)
+        XCTAssertEqual(AlmidyDesignTokens.TripOverview.expensesHeaderIconSurface, 32)
+        XCTAssertEqual(AlmidyDesignTokens.TripOverview.expensesHeadingFont.pointSize, 17)
+        XCTAssertEqual(AlmidyDesignTokens.TripOverview.expensesBodyFont.pointSize, 15)
         XCTAssertEqual(AlmidyDesignTokens.TripOverview.expensesIconClusterDiameter, 36)
+        XCTAssertEqual(AlmidyDesignTokens.TripOverview.expensesEmptyMinimumHeight, 276)
+        XCTAssertEqual(AlmidyDesignTokens.TripOverview.utilityCardMinimumHeight, 136)
         XCTAssertEqual(AlmidyDesignTokens.TripOverview.separatorInset, 0)
         XCTAssertGreaterThanOrEqual(AlmidyDesignTokens.TripOverview.bottomBreathingRoom, 40)
     }
@@ -647,6 +740,7 @@ final class NativeTripOverviewReleaseScopeTests: XCTestCase {
         )
         XCTAssertEqual(NativeTripOverviewReleaseScope.importedItemsTitle, "Imported items")
         XCTAssertEqual(NativeTripOverviewReleaseScope.importedItemsDestinationTitle, "Documents")
+        XCTAssertEqual(NativeTripOverviewReleaseScope.importedItemsEmptyActionTitle, "View Documents")
         XCTAssertFalse(NativeTripOverviewReleaseScope.importedItemsRequiresEntitlement)
         XCTAssertFalse(NativeTripOverviewReleaseScope.supportsDedicatedDocumentImportAction)
         XCTAssertEqual(NativeTripOverviewReleaseScope.expenseLedger, "budget_records")
@@ -674,6 +768,7 @@ final class NativeTripOverviewReleaseScopeTests: XCTestCase {
         XCTAssertEqual(itinerary.renderedDateRange, empty.trip.dateRange)
         XCTAssertTrue(itinerary.hasAddFirstActivityAction)
         XCTAssertEqual(importedItems.accessibilityLabel, "Imported items")
+        XCTAssertEqual(importedItems.descendant(withAccessibilityIdentifier: "trip-overview-measure-documents-action")?.accessibilityLabel, "View Documents")
         XCTAssertEqual(expenses.descendant(withAccessibilityIdentifier: "trip-overview-measure-expenses-action")?.accessibilityLabel, "View Budget")
 
         let visibleSemantics = (importedItems.recursiveAccessibilityLabels + expenses.recursiveAccessibilityLabels)
@@ -982,6 +1077,7 @@ final class NativeTripOverviewVisualFixtureTests: XCTestCase {
             "trip-overview-measure-imported-items-title",
             "trip-overview-measure-documents-icons",
             "trip-overview-measure-documents-body",
+            "trip-overview-measure-documents-action",
             "trip-overview-measure-expenses-card",
             "trip-overview-measure-expenses-title",
             "trip-overview-measure-expenses-icons",
@@ -1194,6 +1290,29 @@ final class NativeTripOverviewVisualFixtureTests: XCTestCase {
             Array(header.accessibilityReadingOrderLabels.prefix(4)),
             ["More trip options", "Search saved activities and documents", "Close trip overview", "Barcelona, Aug 11 → Sep 2"]
         )
+    }
+
+    func testCountryFlagFollowsTripCountryAndCustomizationPreference() {
+        let header = NativeTripOverviewHeaderView(frame: CGRect(x: 0, y: 0, width: 393, height: 370))
+        let trip = NativeTripOverview.Trip(
+            id: "flag-trip", title: "New York City", destination: "New York City", countryCode: "us",
+            startDate: "2026-08-01", endDate: "2026-08-07", dateRange: "Aug 1 → Aug 7",
+            relativeTiming: "2 weeks ago", durationDays: 7, status: "past"
+        )
+        let hero = NativeTripOverview.Hero(
+            imageURL: nil, alt: "New York City", attribution: nil, sourceLabel: nil, fallbackColor: "#4B4741"
+        )
+
+        header.render(hero: hero, trip: trip, stale: false)
+        header.layoutIfNeeded()
+        XCTAssertEqual(header.displayedFlag, "🇺🇸")
+        XCTAssertTrue(header.isCountryFlagVisible)
+        XCTAssertEqual(header.countryFlagFrame.size, CGSize(width: 52, height: 52))
+
+        header.setShowsCountryFlag(false)
+        XCTAssertFalse(header.isCountryFlagVisible)
+        header.setShowsCountryFlag(true)
+        XCTAssertTrue(header.isCountryFlagVisible)
     }
 
     func testCollapseKeepsControlsFixedAndMovesFirstCardWithScrollContent() throws {

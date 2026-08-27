@@ -1,4 +1,6 @@
 import Foundation
+import CoreLocation
+import GeoToolbox
 import MapKit
 import UIKit
 
@@ -11,17 +13,295 @@ protocol NativeTripOverviewRouting: AnyObject {
     func focusGlobeResult(for category: NativeActivityCategory, query: String, nearby: Bool, region: MKCoordinateRegion?, results: [MKMapItem], selectedResultID: String)
     func clearGlobeActivityFilter()
     func recoverAuthentication()
+    func finishPeerPresentation()
     func close()
 }
 
 enum NativeActivityPlaceIdentity {
     static func value(for mapItem: MKMapItem) -> String {
+        if #available(iOS 18.0, *), let identifier = mapItem.identifier {
+            return "apple-place:\(identifier.rawValue)"
+        }
+        return legacyValue(for: mapItem)
+    }
+
+    static func persistentPlaceID(for mapItem: MKMapItem) -> String? {
+        guard #available(iOS 18.0, *), let identifier = mapItem.identifier else { return nil }
+        return identifier.rawValue
+    }
+
+    private static func legacyValue(for mapItem: MKMapItem) -> String {
         let coordinate = mapItem.placemark.coordinate
         let name = (mapItem.name ?? "")
             .folding(options: [.caseInsensitive, .diacriticInsensitive], locale: .current)
             .lowercased()
             .trimmingCharacters(in: .whitespacesAndNewlines)
-        return "\(name)|\(String(format: "%.5f", coordinate.latitude))|\(String(format: "%.5f", coordinate.longitude))"
+        return "legacy-place:\(name)|\(String(format: "%.5f", coordinate.latitude))|\(String(format: "%.5f", coordinate.longitude))"
+    }
+}
+
+enum NativeCoordinatePlace {
+    @available(iOS 26.0, *)
+    static func resolve(_ descriptor: PlaceDescriptor) async throws -> MKMapItem {
+        let request = MKMapItemRequest(placeDescriptor: descriptor)
+        return try await request.mapItem
+    }
+
+    @available(iOS 26.0, *)
+    static func descriptor(for mapItem: MKMapItem) -> PlaceDescriptor? {
+        PlaceDescriptor(item: mapItem)
+    }
+
+    /// Creates a MapKit-compatible place immediately from user or imported
+    /// coordinates. The resolver enriches it later without changing the pin.
+    static func mapItem(title: String, coordinate: CLLocationCoordinate2D) -> MKMapItem? {
+        guard CLLocationCoordinate2DIsValid(coordinate) else { return nil }
+        let item = MKMapItem(placemark: MKPlacemark(coordinate: coordinate))
+        let cleanTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        item.name = cleanTitle.isEmpty ? "Pinned Place" : cleanTitle
+        return item
+    }
+
+    @available(iOS 26.0, *)
+    static func descriptor(
+        title: String,
+        coordinate: CLLocationCoordinate2D,
+        serviceIdentifiers: [String: String] = [:]
+    ) -> PlaceDescriptor? {
+        guard CLLocationCoordinate2DIsValid(coordinate) else { return nil }
+        let cleanTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        if serviceIdentifiers.isEmpty {
+            return PlaceDescriptor(
+                representations: [.coordinate(coordinate)],
+                commonName: cleanTitle.isEmpty ? "Pinned Place" : cleanTitle
+            )
+        }
+        return PlaceDescriptor(
+            representations: [.coordinate(coordinate)],
+            commonName: cleanTitle.isEmpty ? "Pinned Place" : cleanTitle,
+            supportingRepresentations: [.serviceIdentifiers(serviceIdentifiers)]
+        )
+    }
+
+    static func resolveCoordinate(
+        title: String,
+        coordinate: CLLocationCoordinate2D,
+        serviceIdentifiers: [String: String] = [:],
+        completion: @escaping (MKMapItem?) -> Void
+    ) {
+        guard let fallbackItem = mapItem(title: title, coordinate: coordinate) else {
+            completion(nil)
+            return
+        }
+        if #available(iOS 26.0, *),
+           let descriptor = descriptor(
+               title: title,
+               coordinate: coordinate,
+               serviceIdentifiers: serviceIdentifiers
+           ) {
+            Task {
+                do {
+                    let item = try await resolve(descriptor)
+                    await MainActor.run { completion(item) }
+                } catch {
+                    NativeActivityPlaceResolver.resolveLatest(fallbackItem) { completion($0) }
+                }
+            }
+            return
+        }
+        NativeActivityPlaceResolver.resolveLatest(fallbackItem) { completion($0) }
+    }
+
+    @available(iOS 26.0, *)
+    static func descriptor(commonName: String, address: String) -> PlaceDescriptor? {
+        let cleanAddress = address.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleanAddress.isEmpty else { return nil }
+        let cleanName = commonName.trimmingCharacters(in: .whitespacesAndNewlines)
+        return PlaceDescriptor(
+            representations: [.address(cleanAddress)],
+            commonName: cleanName.isEmpty ? cleanAddress : cleanName
+        )
+    }
+
+    static func resolveAddress(
+        _ address: String,
+        commonName: String,
+        completion: @escaping (MKMapItem?) -> Void
+    ) {
+        if #available(iOS 26.0, *),
+           let descriptor = descriptor(commonName: commonName, address: address) {
+            Task {
+                do {
+                    let item = try await resolve(descriptor)
+                    await MainActor.run { completion(item) }
+                } catch {
+                    forwardGeocode(
+                        address,
+                        commonName: commonName,
+                        completion: completion
+                    )
+                }
+            }
+            return
+        }
+        if #available(iOS 26.0, *) {
+            forwardGeocode(address, commonName: commonName, completion: completion)
+        } else {
+            legacyAddressSearch(address, commonName: commonName, completion: completion)
+        }
+    }
+
+    @available(iOS 26.0, *)
+    private static func forwardGeocode(
+        _ address: String,
+        commonName: String,
+        completion: @escaping (MKMapItem?) -> Void
+    ) {
+        guard let request = MKGeocodingRequest(addressString: address) else {
+            legacyAddressSearch(address, commonName: commonName, completion: completion)
+            return
+        }
+        Task {
+            do {
+                let item = try await request.mapItems.first
+                await MainActor.run {
+                    guard let item else {
+                        legacyAddressSearch(address, commonName: commonName, completion: completion)
+                        return
+                    }
+                    let cleanName = commonName.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if !cleanName.isEmpty { item.name = cleanName }
+                    completion(item)
+                }
+            } catch {
+                legacyAddressSearch(address, commonName: commonName, completion: completion)
+            }
+        }
+    }
+
+    private static func legacyAddressSearch(
+        _ address: String,
+        commonName: String,
+        completion: @escaping (MKMapItem?) -> Void
+    ) {
+        let request = MKLocalSearch.Request()
+        request.naturalLanguageQuery = [commonName, address]
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .joined(separator: ", ")
+        request.resultTypes = [.address, .pointOfInterest]
+        MKLocalSearch(request: request).start { response, _ in
+            DispatchQueue.main.async { completion(response?.mapItems.first) }
+        }
+    }
+}
+
+enum NativeActivityPlaceResolver {
+    /// Refreshes an Apple Maps place before presenting details. Place IDs are
+    /// available on iOS 18 and later; older systems keep the search result that
+    /// already contains the best MapKit data available on that OS.
+    static func resolveLatest(_ mapItem: MKMapItem, completion: @escaping (MKMapItem) -> Void) {
+        if #available(iOS 18.0, *), let identifier = mapItem.identifier {
+            let request = MKMapItemRequest(mapItemIdentifier: identifier)
+            request.getMapItem { refreshedItem, _ in
+                DispatchQueue.main.async {
+                    completion(refreshedItem ?? mapItem)
+                }
+            }
+            return
+        }
+
+        let coordinate = mapItem.placemark.coordinate
+        if #available(iOS 26.0, *),
+           let descriptor = NativeCoordinatePlace.descriptor(for: mapItem)
+               ?? NativeCoordinatePlace.descriptor(
+                   title: mapItem.name ?? "Pinned Place",
+                   coordinate: coordinate
+               ) {
+            Task {
+                do {
+                    let resolvedItem = try await NativeCoordinatePlace.resolve(descriptor)
+                    await MainActor.run {
+                        completion(resolvedItem)
+                    }
+                } catch {
+                    reverseGeocode(mapItem, completion: completion)
+                }
+            }
+            return
+        }
+
+        reverseGeocode(mapItem, completion: completion)
+    }
+
+    private static func reverseGeocode(_ mapItem: MKMapItem, completion: @escaping (MKMapItem) -> Void) {
+        let placemark = mapItem.placemark
+        let hasStructuredAddress = placemark.thoroughfare != nil
+            || placemark.locality != nil
+            || placemark.administrativeArea != nil
+            || placemark.country != nil
+        let coordinate = placemark.coordinate
+        guard !hasStructuredAddress, CLLocationCoordinate2DIsValid(coordinate) else {
+            completion(mapItem)
+            return
+        }
+
+        let location = CLLocation(
+            latitude: coordinate.latitude,
+            longitude: coordinate.longitude
+        )
+        if #available(iOS 26.0, *),
+           let request = MKReverseGeocodingRequest(location: location) {
+            Task {
+                do {
+                    let resolvedItem = try await request.mapItems.first
+                    await MainActor.run {
+                        guard let resolvedItem else {
+                            legacyReverseGeocode(location, originalItem: mapItem, completion: completion)
+                            return
+                        }
+                        mergeOriginalDetails(from: mapItem, into: resolvedItem)
+                        completion(resolvedItem)
+                    }
+                } catch {
+                    legacyReverseGeocode(location, originalItem: mapItem, completion: completion)
+                }
+            }
+            return
+        }
+
+        legacyReverseGeocode(location, originalItem: mapItem, completion: completion)
+    }
+
+    private static func legacyReverseGeocode(
+        _ location: CLLocation,
+        originalItem mapItem: MKMapItem,
+        completion: @escaping (MKMapItem) -> Void
+    ) {
+        CLGeocoder().reverseGeocodeLocation(location) { placemarks, _ in
+            DispatchQueue.main.async {
+                guard let resolvedPlacemark = placemarks?.first else {
+                    completion(mapItem)
+                    return
+                }
+                let enriched = MKMapItem(placemark: MKPlacemark(placemark: resolvedPlacemark))
+                enriched.name = mapItem.name ?? resolvedPlacemark.name ?? "Pinned Place"
+                enriched.phoneNumber = mapItem.phoneNumber
+                enriched.url = mapItem.url
+                enriched.timeZone = mapItem.timeZone ?? resolvedPlacemark.timeZone
+                completion(enriched)
+            }
+        }
+    }
+
+    private static func mergeOriginalDetails(from original: MKMapItem, into resolved: MKMapItem) {
+        let originalName = original.name?.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let originalName, !originalName.isEmpty, originalName != "Pinned Place" {
+            resolved.name = originalName
+        }
+        resolved.phoneNumber = original.phoneNumber ?? resolved.phoneNumber
+        resolved.url = original.url ?? resolved.url
+        resolved.timeZone = original.timeZone ?? resolved.timeZone
     }
 }
 
@@ -125,6 +405,8 @@ final class NativeTripOverviewRouter: NativeTripOverviewRouting {
     }
 
     func recoverAuthentication() { authenticationRecovery() }
+
+    func finishPeerPresentation() { onClose() }
 
     func filterGlobe(for category: NativeActivityCategory, query: String, nearby: Bool, region: MKCoordinateRegion?, results: [MKMapItem]) {
         activityFilterRoute(category, query, nearby, nil, region, results)

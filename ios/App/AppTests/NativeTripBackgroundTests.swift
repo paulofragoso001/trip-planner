@@ -273,22 +273,35 @@ final class NativeTripBackgroundTests: XCTestCase {
         XCTAssertEqual(alpha, 0.80, accuracy: 0.001)
     }
 
-    func testHeaderTransitionKeepsHeroContinuousAndCrossfadesTitles() {
+    func testHeaderTransitionKeepsHeroContinuousAndMasksTitleBeforeCompactHandoff() {
         let expanded = NativeTripOverviewHeaderTransition(progress: 0, reduceMotion: false)
         let middle = NativeTripOverviewHeaderTransition(progress: 0.5, reduceMotion: false)
         let compact = NativeTripOverviewHeaderTransition(progress: 1, reduceMotion: false)
 
         XCTAssertEqual(expanded.imageAlpha, 1, accuracy: 0.001)
         XCTAssertGreaterThan(middle.imageAlpha, compact.imageAlpha)
-        XCTAssertGreaterThanOrEqual(compact.imageAlpha, 0.58)
+        XCTAssertEqual(compact.imageAlpha, 0, accuracy: 0.001)
         XCTAssertGreaterThanOrEqual(compact.gradientAlpha, 0.90)
         XCTAssertEqual(expanded.compactBackgroundAlpha, 0, accuracy: 0.001)
         XCTAssertEqual(compact.compactBackgroundAlpha, 1, accuracy: 0.001)
-        XCTAssertGreaterThan(expanded.expandedAlpha, middle.expandedAlpha)
+        XCTAssertEqual(middle.expandedAlpha, 1, accuracy: 0.001)
         XCTAssertGreaterThan(compact.compactAlpha, middle.compactAlpha)
     }
 
-    func testCompactHeaderUsesDistinctImageDerivedSurfaceAndExactSheetBoundary() {
+    func testTitleHandoffNeverLeavesBothTitlesEquallyReadable() {
+        let beforeHandoff = NativeTripOverviewHeaderTransition(progress: 0.86, reduceMotion: false)
+        let boundary = NativeTripOverviewHeaderTransition(progress: 0.92, reduceMotion: false)
+        let afterHandoff = NativeTripOverviewHeaderTransition(progress: 0.96, reduceMotion: false)
+
+        XCTAssertGreaterThan(beforeHandoff.expandedAlpha, beforeHandoff.compactAlpha)
+        XCTAssertEqual(beforeHandoff.compactAlpha, 0, accuracy: 0.001)
+        XCTAssertLessThan(boundary.expandedAlpha, 0.05)
+        XCTAssertEqual(boundary.compactAlpha, 0, accuracy: 0.001)
+        XCTAssertGreaterThan(afterHandoff.compactAlpha, afterHandoff.expandedAlpha)
+        XCTAssertEqual(afterHandoff.expandedAlpha, 0, accuracy: 0.001)
+    }
+
+    func testCompactHeaderUsesDistinctImageDerivedSurfaceAndTransparentHeroBoundary() {
         let palette = NativeTripOverviewHeroColorProcessor.palette(
             top: UIColor(red: 0.70, green: 0.52, blue: 0.34, alpha: 1),
             bottom: UIColor(red: 0.48, green: 0.32, blue: 0.20, alpha: 1),
@@ -300,12 +313,88 @@ final class NativeTripBackgroundTests: XCTestCase {
             increasedContrast: false
         )
 
-        XCTAssertEqual(NativeTripOverviewCompactGradient.locations, [0.0, 0.32, 0.70, 1.0])
+        XCTAssertEqual(NativeTripOverviewCompactGradient.locations, [0.0, 0.44, 0.76, 1.0])
         XCTAssertEqual(colors.count, 4)
-        XCTAssertTrue(colors[0].isEqual(colors[1]))
         XCTAssertFalse(colors[0].isEqual(palette.sheet), "The compact header must remain visually distinct from the activity surface.")
-        XCTAssertTrue(colors.last?.isEqual(palette.sheet) == true, "The boundary stop must exactly match the terminal fog surface.")
+        XCTAssertEqual(colors[0].cgColor.alpha, 0.56, accuracy: 0.001)
+        XCTAssertGreaterThan(colors[0].cgColor.alpha, colors[1].cgColor.alpha)
+        XCTAssertGreaterThan(colors[1].cgColor.alpha, colors[2].cgColor.alpha)
+        XCTAssertEqual(colors.last?.cgColor.alpha ?? 1, 0, accuracy: 0.001, "The fixed header must dissolve without a visible lower edge.")
         XCTAssertLessThan(Self.relativeLuminance(palette.compact), Self.relativeLuminance(palette.sheet))
+    }
+
+    func testCompactHeaderBackdropNeverCoversExpandedHero() {
+        let header = NativeTripOverviewHeaderView()
+        header.frame = CGRect(x: 0, y: 0, width: 390, height: AlmidyDesignTokens.TripOverview.expandedHeaderHeight)
+        header.layoutIfNeeded()
+
+        XCTAssertEqual(
+            header.compactBackgroundFrame.height,
+            NativeTripOverviewCompactGradient.surfaceHeight,
+            accuracy: 0.001
+        )
+        XCTAssertLessThan(header.compactBackgroundFrame.height, header.bounds.height)
+        XCTAssertGreaterThan(
+            NativeTripOverviewCompactGradient.surfaceHeight,
+            AlmidyDesignTokens.TripOverview.compactHeaderHeight,
+            "The tint must extend beyond the structural toolbar so its lower edge can dissolve smoothly."
+        )
+    }
+
+    func testScrollingContentFadesCompletelyUnderCompactHeader() {
+        let viewportHeight: CGFloat = 852
+        let locations = NativeTripOverviewScrollOcclusion.locations(
+            viewportHeight: viewportHeight
+        ).map(\.doubleValue)
+
+        XCTAssertEqual(locations.count, 4)
+        XCTAssertEqual(locations[0], 0, accuracy: 0.001)
+        XCTAssertEqual(
+            locations[1],
+            Double(NativeTripOverviewScrollOcclusion.fadeStart / viewportHeight),
+            accuracy: 0.001
+        )
+        XCTAssertEqual(
+            locations[2],
+            Double(NativeTripOverviewScrollOcclusion.fadeEnd / viewportHeight),
+            accuracy: 0.001
+        )
+        XCTAssertEqual(locations[1], locations[2], accuracy: 0.001)
+        XCTAssertLessThan(locations[2], locations[3])
+        XCTAssertEqual(
+            NativeTripOverviewScrollOcclusion.fadeEnd - NativeTripOverviewScrollOcclusion.fadeStart,
+            0,
+            accuracy: 0.001,
+            "The reference uses a clean cutoff with no fog-producing interpolation."
+        )
+        XCTAssertLessThan(
+            NativeTripOverviewScrollOcclusion.boundary,
+            AlmidyDesignTokens.TripOverview.compactHeaderHeight,
+            "The reference clips content directly below the controls, before the structural header ends."
+        )
+    }
+
+    func testExternalHeroBackdropDoesNotStackASecondCompactFogLayer() {
+        let header = NativeTripOverviewHeaderView()
+        header.setUsesExternalHeroBackdrop(true)
+        header.updateTransition(progress: 1)
+
+        XCTAssertEqual(header.compactBackgroundAlpha, 0, accuracy: 0.001)
+    }
+
+    func testFullyCollapsedOverviewHidesItineraryWithoutRemovingItsLayoutSpace() {
+        XCTAssertEqual(
+            NativeTripOverviewDetentVisibility.itineraryAlpha(isFullyCollapsed: true),
+            0,
+            accuracy: 0.001,
+            "The smallest detent must not expose the white edge of the Itinerary card."
+        )
+        XCTAssertEqual(
+            NativeTripOverviewDetentVisibility.itineraryAlpha(isFullyCollapsed: false),
+            1,
+            accuracy: 0.001,
+            "The itinerary preview remains visible in the taller collapsed and expanded detents."
+        )
     }
 
     func testCollapsePresentationChangesContinuouslyAndMonotonically() {
@@ -315,6 +404,7 @@ final class NativeTripBackgroundTests: XCTestCase {
 
         for pair in zip(samples, samples.dropFirst()) {
             XCTAssertLessThanOrEqual(pair.1.imageAlpha, pair.0.imageAlpha)
+            XCTAssertEqual(pair.1.externalHeroAlpha, 1, accuracy: 0.001)
             XCTAssertLessThanOrEqual(pair.1.gradientAlpha, pair.0.gradientAlpha)
             XCTAssertLessThanOrEqual(pair.1.expandedAlpha, pair.0.expandedAlpha)
             XCTAssertGreaterThanOrEqual(pair.1.compactAlpha, pair.0.compactAlpha)
@@ -325,23 +415,47 @@ final class NativeTripBackgroundTests: XCTestCase {
             XCTAssertLessThanOrEqual(pair.1.controlBorderWidth, pair.0.controlBorderWidth)
 
             // Small progress steps must not introduce a visible discontinuity.
-            XCTAssertLessThan(abs(pair.1.imageAlpha - pair.0.imageAlpha), 0.08)
+            XCTAssertLessThan(abs(pair.1.imageAlpha - pair.0.imageAlpha), 0.11)
             XCTAssertLessThan(abs(pair.1.gradientAlpha - pair.0.gradientAlpha), 0.08)
         }
     }
 
-    func testCollapsedControlsUseDarkerFillAndQuieterBordersWithoutGeometryChanges() {
+    func testExpandedAndCollapsedHeaderShareApprovedTopInset() {
+        let expanded = NativeTripOverviewHeaderTransition(progress: 0, reduceMotion: false)
+        let collapsed = NativeTripOverviewHeaderTransition(progress: 1, reduceMotion: false)
+
+        XCTAssertEqual(expanded.toolbarVerticalOffset, 0, accuracy: 0.001)
+        XCTAssertEqual(
+            NativeTripOverviewHeaderTransition.compactToolbarVerticalOffset,
+            0,
+            accuracy: 0.001
+        )
+        XCTAssertEqual(collapsed.toolbarVerticalOffset, 0, accuracy: 0.001)
+        XCTAssertEqual(
+            AlmidyDesignTokens.TripOverview.headerControlTopInset,
+            14,
+            accuracy: 0.001,
+            "Expanded controls must use the same reference inset instead of sitting against the sheet top."
+        )
+        XCTAssertEqual(
+            AlmidyDesignTokens.TripOverview.headerControlTopInset + collapsed.toolbarVerticalOffset,
+            AlmidyDesignTokens.TripOverview.CollapsedComposition.controlTopInset,
+            accuracy: 0.001
+        )
+    }
+
+    func testControlsRemainLightFrostedGlassThroughoutTransition() {
         let expanded = NativeTripOverviewHeaderTransition(progress: 0, reduceMotion: false)
         let compact = NativeTripOverviewHeaderTransition(progress: 1, reduceMotion: false)
 
-        XCTAssertEqual(expanded.controlMaterialAlpha, 0.90, accuracy: 0.001)
-        XCTAssertEqual(compact.controlMaterialAlpha, 0.42, accuracy: 0.001)
-        XCTAssertEqual(expanded.controlFillAlpha, 0.10, accuracy: 0.001)
-        XCTAssertEqual(compact.controlFillAlpha, 0.72, accuracy: 0.001)
-        XCTAssertEqual(expanded.controlBorderAlpha, 0.46, accuracy: 0.001)
-        XCTAssertEqual(compact.controlBorderAlpha, 0.24, accuracy: 0.001)
+        XCTAssertEqual(expanded.controlMaterialAlpha, 0.72, accuracy: 0.001)
+        XCTAssertEqual(compact.controlMaterialAlpha, 0.57, accuracy: 0.001)
+        XCTAssertEqual(expanded.controlFillAlpha, 0.72, accuracy: 0.001)
+        XCTAssertEqual(compact.controlFillAlpha, 0.80, accuracy: 0.001)
+        XCTAssertEqual(expanded.controlBorderAlpha, 0.28, accuracy: 0.001)
+        XCTAssertEqual(compact.controlBorderAlpha, 0.20, accuracy: 0.001)
         XCTAssertEqual(expanded.controlBorderWidth, 1.0, accuracy: 0.001)
-        XCTAssertEqual(compact.controlBorderWidth, 0.75, accuracy: 0.001)
+        XCTAssertEqual(compact.controlBorderWidth, 1.0, accuracy: 0.001)
         XCTAssertEqual(AlmidyDesignTokens.TripOverview.headerControlSideInset, 20)
         XCTAssertEqual(AlmidyDesignTokens.TripOverview.headerControlDiameter, 48)
     }
@@ -375,16 +489,13 @@ final class NativeTripBackgroundTests: XCTestCase {
         XCTAssertEqual(header.accessibleTitleContainerCount, 1)
     }
 
-    func testReducedMotionTransitionUsesCrossfadeAndShortPositionChangeWithoutScale() {
+    func testReducedMotionTransitionUsesOpacityOnlyForPinnedCompactIdentity() {
         let middle = NativeTripOverviewHeaderTransition(progress: 0.5, reduceMotion: true)
 
-        XCTAssertEqual(middle.expandedTransform.a, 1, accuracy: 0.001)
-        XCTAssertEqual(middle.expandedTransform.d, 1, accuracy: 0.001)
-        XCTAssertEqual(middle.expandedTransform.ty, -2, accuracy: 0.001)
-        XCTAssertEqual(middle.compactTransform.ty, 2, accuracy: 0.001)
-        XCTAssertGreaterThan(middle.imageAlpha, 0.70)
+        XCTAssertEqual(middle.compactTransform, .identity)
+        XCTAssertEqual(middle.imageAlpha, 0.5, accuracy: 0.001)
         XCTAssertGreaterThan(middle.expandedAlpha, 0)
-        XCTAssertGreaterThan(middle.compactAlpha, 0)
+        XCTAssertEqual(middle.compactAlpha, 0, accuracy: 0.001)
     }
 
     func testHeaderTransitionClampsOverscrollWithoutHidingGrabberOrHero() {
@@ -394,18 +505,12 @@ final class NativeTripBackgroundTests: XCTestCase {
         XCTAssertEqual(beforeStart.progress, 0)
         XCTAssertEqual(afterEnd.progress, 1)
         XCTAssertEqual(beforeStart.imageAlpha, 1, accuracy: 0.001)
-        XCTAssertGreaterThan(afterEnd.imageAlpha, 0)
+        XCTAssertEqual(afterEnd.imageAlpha, 0, accuracy: 0.001)
+        XCTAssertEqual(beforeStart.externalHeroAlpha, 1, accuracy: 0.001)
+        XCTAssertEqual(afterEnd.externalHeroAlpha, 1, accuracy: 0.001)
     }
 
-    func testHeaderHeightAndScrollPositionRemainStableAcrossSectionRefresh() {
-        let transition = NativeTripOverviewHeaderTransition(progress: 0.6, reduceMotion: false)
-        let height = transition.headerHeight(
-            expanded: AlmidyDesignTokens.TripOverview.expandedHeaderHeight,
-            compact: AlmidyDesignTokens.TripOverview.compactHeaderHeight
-        )
-        XCTAssertGreaterThan(height, AlmidyDesignTokens.TripOverview.compactHeaderHeight)
-        XCTAssertLessThan(height, AlmidyDesignTokens.TripOverview.expandedHeaderHeight)
-
+    func testScrollPositionRemainsStableAcrossSectionRefresh() {
         let preserved = CGPoint(x: 0, y: 226)
         XCTAssertEqual(
             NativeTripOverviewScrollPosition.restored(preserved, contentHeight: 1_400, viewportHeight: 800),
@@ -419,19 +524,157 @@ final class NativeTripBackgroundTests: XCTestCase {
         )
     }
 
-    func testFinalExpandedHeightRecalculatesCollapseDistanceWithoutChangingCompactHeight() {
+    func testExpandedSheetKeepsHeroSpacerFixedWhileCardsScrollNaturally() {
+        let expanded = AlmidyDesignTokens.TripOverview.expandedHeaderHeight
+        let downshift = AlmidyDesignTokens.TripOverview.CollapsedComposition.contentFlowDownshift
+
+        XCTAssertEqual(
+            NativeTripOverviewHeroSpacer.height(
+                expandedHeight: expanded,
+                compactDownshift: downshift,
+                transitionProgress: 1,
+                isExpandedDetent: true
+            ),
+            expanded,
+            accuracy: 0.001
+        )
+        XCTAssertEqual(
+            NativeTripOverviewHeroSpacer.height(
+                expandedHeight: expanded,
+                compactDownshift: downshift,
+                transitionProgress: 1,
+                isExpandedDetent: false
+            ),
+            expanded + downshift,
+            accuracy: 0.001,
+            "Compact detents retain their tuned content-flow downshift."
+        )
+    }
+
+    func testHeroParallaxMovesSubjectInsideFixedViewport() {
+        let distance: CGFloat = 240
+        let start = NativeTripOverviewHeroParallax.translation(
+            offset: 0,
+            collapseDistance: distance,
+            reduceMotion: false
+        )
+        let middle = NativeTripOverviewHeroParallax.translation(
+            offset: distance / 2,
+            collapseDistance: distance,
+            reduceMotion: false
+        )
+        let end = NativeTripOverviewHeroParallax.translation(
+            offset: distance * 2,
+            collapseDistance: distance,
+            reduceMotion: false
+        )
+
+        XCTAssertEqual(start, 0, accuracy: 0.001)
+        XCTAssertGreaterThan(middle, start, "The subject must drift downward as content scrolls up.")
+        XCTAssertGreaterThan(end, middle)
+        XCTAssertEqual(
+            NativeTripOverviewHeroParallax.translation(
+                offset: distance,
+                collapseDistance: distance,
+                reduceMotion: true
+            ),
+            0,
+            accuracy: 0.001,
+            "Reduce Motion disables the parallax transform."
+        )
+
+        let restingCrop = NativeTripOverviewFocalImageView.sourceCropRect(
+            imageSize: CGSize(width: 900, height: 1_600),
+            containerSize: CGSize(width: 393, height: 485),
+            verticalContentTranslation: start
+        )
+        let movedCrop = NativeTripOverviewFocalImageView.sourceCropRect(
+            imageSize: CGSize(width: 900, height: 1_600),
+            containerSize: CGSize(width: 393, height: 485),
+            verticalContentTranslation: end
+        )
+        XCTAssertLessThan(movedCrop.minY, restingCrop.minY)
+        XCTAssertGreaterThanOrEqual(movedCrop.minY, 0)
+        XCTAssertLessThanOrEqual(movedCrop.maxY, 1)
+    }
+
+    func testExpandedMetadataTravelsWithScrollingActivityContent() {
+        let header = NativeTripOverviewHeaderView()
+        header.updateTransition(progress: 0, expandedContentOffset: 48)
+
+        XCTAssertEqual(header.expandedContentTransform.ty, -48, accuracy: 0.001)
+        XCTAssertEqual(header.compactContentTransform.ty, 12, accuracy: 0.001)
+        XCTAssertEqual(header.expandedContentAlpha, 1, accuracy: 0.001)
+    }
+
+    func testInitialExpandedOverviewResetsRestoredScrollPositionToTop() {
+        let preserved = CGPoint(x: 0, y: 226)
+        XCTAssertEqual(
+            NativeTripOverviewScrollPosition.restored(
+                preserved,
+                contentHeight: 1_400,
+                viewportHeight: 800,
+                resetToTop: true
+            ),
+            CGPoint(x: 0, y: 0),
+            "The first loaded overview in the expanded detent must reveal the full hero."
+        )
+    }
+
+    func testHeaderStructureChangesOnlyWithSheetDetent() {
         let expanded = AlmidyDesignTokens.TripOverview.expandedHeaderHeight
         let compact = AlmidyDesignTokens.TripOverview.compactHeaderHeight
         XCTAssertEqual(expanded, 370)
         XCTAssertEqual(compact, 100)
-        XCTAssertEqual(expanded - compact, 270)
+        XCTAssertEqual(
+            NativeTripOverviewHeaderStructure.height(
+                expandedHeight: expanded,
+                compactHeight: compact,
+                isExpandedDetent: true
+            ),
+            expanded
+        )
+        XCTAssertEqual(
+            NativeTripOverviewHeaderStructure.height(
+                expandedHeight: expanded,
+                compactHeight: compact,
+                isExpandedDetent: false
+            ),
+            compact
+        )
+    }
 
-        let start = NativeTripOverviewHeaderTransition(progress: 0, reduceMotion: false)
-        let midpoint = NativeTripOverviewHeaderTransition(progress: 0.5, reduceMotion: false)
-        let end = NativeTripOverviewHeaderTransition(progress: 1, reduceMotion: false)
-        XCTAssertEqual(start.headerHeight(expanded: expanded, compact: compact), expanded)
-        XCTAssertEqual(midpoint.headerHeight(expanded: expanded, compact: compact), 235, accuracy: 0.5)
-        XCTAssertEqual(end.headerHeight(expanded: expanded, compact: compact), compact)
+    func testCardChromeChangesOnlyWithCompactSheetDetents() {
+        XCTAssertEqual(
+            NativeTripOverviewContentChrome.progress(
+                transitionProgress: 1,
+                isExpandedDetent: true
+            ),
+            0,
+            accuracy: 0.001,
+            "Scrolling the large sheet must preserve expanded card dimensions."
+        )
+        XCTAssertEqual(
+            NativeTripOverviewContentChrome.progress(
+                transitionProgress: 1,
+                isExpandedDetent: false
+            ),
+            1,
+            accuracy: 0.001,
+            "Compact detents retain their dedicated card composition."
+        )
+    }
+
+    func testTallHeaderPassesNonControlTouchesThrough() {
+        let header = NativeTripOverviewHeaderView(
+            frame: CGRect(x: 0, y: 0, width: 393, height: AlmidyDesignTokens.TripOverview.expandedHeaderHeight)
+        )
+        header.layoutIfNeeded()
+
+        XCTAssertFalse(header.point(inside: CGPoint(x: 196, y: 300), with: nil))
+        XCTAssertTrue(header.point(inside: header.moreButton.center, with: nil))
+        XCTAssertTrue(header.point(inside: header.searchButton.center, with: nil))
+        XCTAssertTrue(header.point(inside: header.closeButton.center, with: nil))
     }
 
     func testExpandedCompositionReallocatesSixtyPointsWithoutMovingItineraryBudget() {
@@ -500,6 +743,88 @@ final class NativeTripBackgroundTests: XCTestCase {
             accuracy: 0.001,
             "The terminal opaque stop must conceal the photograph before the Itinerary boundary."
         )
+    }
+
+    func testOverviewHeroOpaqueShadeExpandsUpwardDuringCollapse() {
+        let expanded = NativeTripOverviewHeroGradient.locations(progress: 0).map(\.doubleValue)
+        let middle = NativeTripOverviewHeroGradient.locations(progress: 0.5).map(\.doubleValue)
+        let collapsed = NativeTripOverviewHeroGradient.locations(progress: 1).map(\.doubleValue)
+
+        XCTAssertEqual(expanded, NativeTripOverviewHeroGradient.locations.map(\.doubleValue))
+        for index in 1..<expanded.count {
+            XCTAssertLessThan(middle[index], expanded[index])
+            XCTAssertLessThan(collapsed[index], middle[index])
+        }
+        XCTAssertEqual(collapsed[4], 0.62, accuracy: 0.001, "The opaque terminal shade must rise without flattening the full hero.")
+        XCTAssertEqual(collapsed[0], 0, accuracy: 0.001, "The top remains available beneath the pinned header material.")
+    }
+
+    func testTitleCollisionGeometryDrivesOneStableMasterProgress() {
+        let initialY: CGFloat = 220
+        let targetY: CGFloat = 55
+        let distance = NativeTripOverviewTitleCollisionTransition.distance(
+            initialCenterY: initialY,
+            targetCenterY: targetY
+        )
+
+        XCTAssertEqual(distance, 165, accuracy: 0.001)
+        XCTAssertEqual(
+            NativeTripOverviewTitleCollisionTransition.progress(
+                offset: 0,
+                initialCenterY: initialY,
+                targetCenterY: targetY
+            ),
+            0,
+            accuracy: 0.001
+        )
+        XCTAssertEqual(
+            NativeTripOverviewTitleCollisionTransition.progress(
+                offset: distance,
+                initialCenterY: initialY,
+                targetCenterY: targetY
+            ),
+            1,
+            accuracy: 0.001
+        )
+    }
+
+    func testStableTransitionGeometryMeasuresTitleLabelsRatherThanStackCenters() {
+        let header = NativeTripOverviewHeaderView(
+            frame: CGRect(x: 0, y: 0, width: 393, height: AlmidyDesignTokens.TripOverview.expandedHeaderHeight)
+        )
+        header.render(seed: NativeTripOverviewSeed(
+            tripID: "title-geometry",
+            title: "New York",
+            dateRange: "Aug 15 → Aug 25",
+            imageURL: nil,
+            fallbackColor: "#737A84"
+        ))
+        header.layoutIfNeeded()
+
+        let geometry = header.stableTransitionGeometry(
+            expandedHeaderHeight: AlmidyDesignTokens.TripOverview.expandedHeaderHeight
+        )
+        XCTAssertLessThan(
+            geometry.compactCenterY,
+            header.moreButton.frame.midY,
+            "The compact title sits above the center of the complete title/date stack."
+        )
+        XCTAssertGreaterThan(geometry.expandedCenterY, geometry.compactCenterY)
+    }
+
+    func testHeroWashUsesMasterProgressInsteadOfFormerHoldDistance() {
+        XCTAssertEqual(NativeTripOverviewHeroGradient.washProgress(progress: 0), 0, accuracy: 0.001)
+        XCTAssertGreaterThan(NativeTripOverviewHeroGradient.washProgress(progress: 0.36), 0)
+        XCTAssertLessThan(NativeTripOverviewHeroGradient.washProgress(progress: 0.36), 1)
+        XCTAssertEqual(NativeTripOverviewHeroGradient.washProgress(progress: 0.94), 1, accuracy: 0.001)
+    }
+
+    func testOverviewHeroImageFadesIndependentlyOfPersistentBackdrop() {
+        XCTAssertEqual(NativeTripOverviewHeroGradient.imageAlpha(progress: 0), 1, accuracy: 0.001)
+        XCTAssertEqual(NativeTripOverviewHeroGradient.imageAlpha(progress: 0.14), 1, accuracy: 0.001)
+        XCTAssertEqual(NativeTripOverviewHeroGradient.imageAlpha(progress: 0.56), 0.5, accuracy: 0.001)
+        XCTAssertEqual(NativeTripOverviewHeroGradient.imageAlpha(progress: 0.98), 0, accuracy: 0.001)
+        XCTAssertEqual(NativeTripOverviewHeroGradient.imageAlpha(progress: 1), 0, accuracy: 0.001)
     }
 
     func testTitleWashKeepsWhiteTextReadableOverBrightAndDarkPhotos() {

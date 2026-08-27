@@ -10,7 +10,7 @@ export type TripSegmentsClient = {
 };
 
 const segmentSelect =
-  "id,trip_id,user_id,title,location,kind,start_time,end_time,lat,lng,notes,provider,provider_metadata,provider_place_id,location_status,confirmation_code,booking_url,position,inserted_at,updated_at";
+  "id,trip_id,user_id,title,location,kind,start_time,end_time,lat,lng,notes,provider,provider_metadata,provider_place_id,location_status,confirmation_code,booking_url,position,inserted_at,updated_at,company,transport_kind,transport_number,departure_location,departure_address,departure_lat,departure_lng,arrival_location,arrival_address,arrival_lat,arrival_lng,reservation_details";
 
 export async function listTripSegments(
   supabase: TripSegmentsClient,
@@ -140,6 +140,30 @@ export async function updateTripSegment(
     updates.provider_metadata = withScheduleMetadata(currentMetadata, input);
   }
   if ("title" in input) updates.title = input.title;
+  if ("company" in input) {
+    updates.company = input.company;
+    if (input.transportKind === "flight") updates.airline = input.company;
+  }
+  if ("transportKind" in input) updates.transport_kind = input.transportKind;
+  if ("transportNumber" in input) {
+    updates.transport_number = input.transportNumber;
+    if (input.transportKind === "flight") updates.flight_number = input.transportNumber;
+  }
+  if ("departureLocation" in input) {
+    updates.departure_location = input.departureLocation;
+    if (input.transportKind === "flight") updates.departure_airport = input.departureLocation;
+  }
+  if ("departureAddress" in input) updates.departure_address = input.departureAddress;
+  if ("departureLat" in input) updates.departure_lat = input.departureLat;
+  if ("departureLng" in input) updates.departure_lng = input.departureLng;
+  if ("arrivalLocation" in input) {
+    updates.arrival_location = input.arrivalLocation;
+    if (input.transportKind === "flight") updates.arrival_airport = input.arrivalLocation;
+  }
+  if ("arrivalAddress" in input) updates.arrival_address = input.arrivalAddress;
+  if ("arrivalLat" in input) updates.arrival_lat = input.arrivalLat;
+  if ("arrivalLng" in input) updates.arrival_lng = input.arrivalLng;
+  if ("reservationDetails" in input) updates.reservation_details = input.reservationDetails;
 
   const { data, error } = await supabase
     .from("trip_segments")

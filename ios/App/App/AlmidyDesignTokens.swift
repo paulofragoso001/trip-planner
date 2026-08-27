@@ -2,6 +2,11 @@ import UIKit
 
 /// Native Almidy visual language. Keep product behavior in the controllers; keep visual decisions here.
 enum AlmidyDesignTokens {
+    /// Almidy currently presents a light branded planning surface with selected
+    /// adaptive UIKit utilities. This is an explicit compatibility contract,
+    /// not a complete native Dark Mode definition.
+    static let appearanceContract = "light-branded-planning-surface"
+
     enum Color {
         // Canonical values: design-system/almidy.tokens.json.
         static let brandGold = UIColor(hex: 0xD6A84F)
@@ -12,6 +17,23 @@ enum AlmidyDesignTokens {
         static let canonicalTextPrimary = UIColor(hex: 0x050505)
         static let canonicalTextSecondary = UIColor(hex: 0x7D7D84)
         static let borderSubtle = UIColor.black.withAlphaComponent(0.10)
+
+        // Semantic foundation. These aliases preserve the existing pixels while
+        // allowing new components to describe intent instead of legacy names.
+        static let accent = brandGold
+        static let accentPressed = brandGoldDeep
+        static let accentText = brandGoldText
+        static let canvas = bgLight
+        static let canvasGrouped = bgLightMist
+        static let surfaceNeutral = bgLightMist
+        static let dividerSubtle = UIColor.black.withAlphaComponent(0.08)
+        static let borderStrong = UIColor.black.withAlphaComponent(0.12)
+        static let stateDisabledFill = UIColor.black.withAlphaComponent(0.06)
+        static let stateDisabledText = UIColor.black.withAlphaComponent(0.38)
+        static let onMediaPrimary = UIColor.white
+        static let onMediaSecondary = UIColor.white.withAlphaComponent(0.92)
+        static let onMediaTertiary = UIColor.white.withAlphaComponent(0.82)
+        static let overlayScrim = UIColor.black.withAlphaComponent(0.48)
 
         // Native sheets use the same airy white-and-mist foundation as Settings.
         static let background = bgLight
@@ -37,6 +59,8 @@ enum AlmidyDesignTokens {
         static let goldDark = brandGoldText
         static let goldMuted = UIColor(hex: 0x9F8857)
         static let goldMutedSurface = UIColor(hex: 0xF2EBDD)
+        static let accentMuted = goldMuted
+        static let accentMutedSurface = goldMutedSurface
         // Text accents sit on light surfaces, so use the contrast-safe dark gold.
         static let goldSoft = goldDark
 
@@ -111,6 +135,7 @@ enum AlmidyDesignTokens {
         static let xs: CGFloat = 8
         static let sm: CGFloat = 12
         static let md: CGFloat = 16
+        static let nativeContent: CGFloat = 20
         static let lg: CGFloat = 24
         static let xl: CGFloat = 32
         static let xxl: CGFloat = 48
@@ -121,12 +146,19 @@ enum AlmidyDesignTokens {
         static let cardPadding = md
         static let elementGap = sm
         static let contentInset = lg
+        static let sheetContentInset = nativeContent
     }
 
     enum Radius {
+        static let small: CGFloat = 8
+        static let field: CGFloat = 12
         static let sheet: CGFloat = 36
         static let card: CGFloat = 24
         static let control: CGFloat = 18
+        static let cardLarge: CGFloat = 28
+        static let sheetUtility: CGFloat = 28
+        static let sheetEditor: CGFloat = 34
+        static let sheetProminent: CGFloat = 36
         static let capsule: CGFloat = 999
     }
 
@@ -146,13 +178,18 @@ enum AlmidyDesignTokens {
             static let controlSideInset: CGFloat = 18
             static let controlTopInset: CGFloat = 14
             static let titleDateSpacing: CGFloat = 1
-            static let activityRegionHeight: CGFloat = 93.3
-            static let activityCircleDiameter: CGFloat = 64
+            static let outerHorizontalInset: CGFloat = 15
+            static let cardCornerRadius: CGFloat = 28
+            // The compact action block is slightly taller than the expanded
+            // block, preserving the reference's breathing room before the card.
+            static let activityRegionHeight: CGFloat = 124
+            static let activityCircleDiameter: CGFloat = 70
             static let activityCircleToLabelGap: CGFloat = 2
             static let itineraryTopBaseline: CGFloat = 209.3
-            // Moves the entire activity-to-Itinerary flow at the collapsed
-            // endpoint. At 3x this is 105 screenshot pixels.
-            static let contentFlowDownshift: CGFloat = 35
+            // Pull the activity group up beneath the compact header. A negative
+            // value is intentional: the compact header occupies much less visual
+            // depth than the expanded destination hero.
+            static let contentFlowDownshift: CGFloat = -22
 
             static func contentFlowDownshift(for sheetWidth: CGFloat) -> CGFloat {
                 contentFlowDownshift * sheetWidth / 393
@@ -160,6 +197,9 @@ enum AlmidyDesignTokens {
         }
 
         // The expanded hero and action region share a measured composition budget.
+        // Preserve the tall photographic composition from the approved
+        // reference. Scroll presentation moves this content; the resting layout
+        // must not pre-collapse the destination, action, and first card.
         static let expandedHeaderHeight: CGFloat = 370
         static let accessibilityExpandedHeaderHeight: CGFloat = 446
         static let compactHeaderHeight: CGFloat = 100
@@ -167,17 +207,27 @@ enum AlmidyDesignTokens {
         static let headerControlDiameter: CGFloat = 48
         static let headerControlSideInset: CGFloat = 20
         static let headerControlGap: CGFloat = 12
-        static let headerControlTopInset: CGFloat = 6
+        // The expanded and collapsed references share the same comfortable
+        // toolbar inset beneath the sheet's rounded top and grabber.
+        static let headerControlTopInset: CGFloat = 14
         // Bottom anchoring makes long destinations grow upward while preserving
         // the reference block position established by the expanded composition.
         static let destinationBlockBottomInset: CGFloat = 14
+        static let countryFlagDiameter: CGFloat = 52
+        static let countryFlagFont = Font.body(30)
+        static let countryFlagBorderWidth: CGFloat = 1.5
+        static let countryFlagTitleGap: CGFloat = 10
         static let emptyActionTopInset: CGFloat = 15
         static let emptyActionCircleDiameter: CGFloat = 72
         static let emptyActionIconDiameter: CGFloat = 34
         static let emptyActionLabelGap: CGFloat = 3
         static let emptyActionBottomInset: CGFloat = 2
-        // Updated from the 440pt / 3x comparison to move the activity group and
-        // Itinerary upward by 12pt while preserving the destination block frame.
+        static let populatedActionCircleDiameter: CGFloat = 64
+        static let populatedActionMinimumTarget: CGFloat = 60
+        static let populatedActionIconDiameter: CGFloat = 29
+        static let populatedActionLabelGap: CGFloat = 8
+        // Measured from the sheet's rounded top to the first card in the resting
+        // reference composition.
         static let expandedItineraryTopBaseline: CGFloat = 502.7
         // Four pixels at the reference capture's 3x scale.
         static let expandedItineraryTopTolerance: CGFloat = 4 / 3
@@ -185,7 +235,7 @@ enum AlmidyDesignTokens {
             expandedItineraryTopBaseline - expandedHeaderHeight - interCardGap
         static let minimumInteractiveTarget: CGFloat = 44
         static let outerHorizontalInset: CGFloat = 20
-        static let cardCornerRadius: CGFloat = 20
+        static let cardCornerRadius: CGFloat = 28
         static let cardHorizontalInset: CGFloat = 16
         static let cardVerticalInset: CGFloat = 14
         static let compactCardVerticalInset: CGFloat = 10
@@ -210,18 +260,20 @@ enum AlmidyDesignTokens {
         static let itineraryTimelineConnectorHeight: CGFloat = 14
         static let itineraryTimelineConnectorWidth: CGFloat = 2
         static let importedItemsCardVerticalInset: CGFloat = 10
-        static let importedItemsContentGap: CGFloat = 6
-        static let importedItemsHeaderHeight: CGFloat = 36
-        static let importedItemsHeaderIconSurface: CGFloat = 28
-        static let importedItemsHeaderIcon: CGFloat = 14
-        static let importedItemsHeadingFont = Font.medium(16)
-        static let importedItemsBodyFont = Font.body(14)
+        static let importedItemsContentGap: CGFloat = cardContentGap
+        static let importedItemsHeaderHeight: CGFloat = headerHeight
+        static let importedItemsHeaderIconSurface: CGFloat = headerIconSurface
+        static let importedItemsHeaderIcon: CGFloat = headerIcon
+        static let importedItemsHeadingFont = headingFont
+        static let importedItemsBodyFont = bodyFont
         static let importedItemsBodyMaximumWidth: CGFloat = 272
         static let importedItemsBodyLineSpacing: CGFloat = 1
+        static let importedItemsEmptyContentGap: CGFloat = cardContentGap
         static let importedItemsIconClusterDiameter: CGFloat = 36
         static let importedItemsIconClusterIcon: CGFloat = 18
         static let importedItemsIconClusterOverlap: CGFloat = -5
         static let importedItemsIconRowHeight: CGFloat = 44
+        static let importedItemsEmptyMinimumHeight: CGFloat = 276
         static let expensesCardVerticalInset: CGFloat = importedItemsCardVerticalInset
         static let expensesContentGap: CGFloat = importedItemsContentGap
         static let expensesHeaderHeight: CGFloat = importedItemsHeaderHeight
@@ -231,10 +283,16 @@ enum AlmidyDesignTokens {
         static let expensesBodyFont = importedItemsBodyFont
         static let expensesBodyMaximumWidth: CGFloat = 280
         static let expensesBodyLineSpacing: CGFloat = importedItemsBodyLineSpacing
+        static let expensesEmptyContentGap: CGFloat = importedItemsEmptyContentGap
         static let expensesIconClusterDiameter: CGFloat = importedItemsIconClusterDiameter
         static let expensesIconClusterIcon: CGFloat = importedItemsIconClusterIcon
         static let expensesIconClusterOverlap: CGFloat = importedItemsIconClusterOverlap
         static let expensesIconRowHeight: CGFloat = importedItemsIconRowHeight
+        static let expensesEmptyMinimumHeight: CGFloat = 276
+        static let utilityCardVerticalInset: CGFloat = 12
+        static let utilityCardContentGap: CGFloat = cardContentGap
+        static let utilityCardIcon: CGFloat = headerIconSurface
+        static let utilityCardMinimumHeight: CGFloat = 136
         static let separatorInset: CGFloat = 0
         static let bottomBreathingRoom: CGFloat = 40
     }

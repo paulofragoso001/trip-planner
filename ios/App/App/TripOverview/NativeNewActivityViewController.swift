@@ -212,6 +212,51 @@ struct NativeActivityPurpose: Equatable {
     let domain: NativeActivitySearchDomain
 
     var opensDedicatedActivityForm: Bool { domain == .transportation }
+
+    var pointOfInterestCategories: [MKPointOfInterestCategory] {
+        mapPlaceKinds.compactMap { kind in
+            switch kind {
+            case .lodging: return .hotel
+            case .campground: return .campground
+            case .airport: return .airport
+            case .carRental: return .carRental
+            case .bakery: return .bakery
+            case .brewery: return .brewery
+            case .cafe: return .cafe
+            case .pizzeria, .restaurant: return .restaurant
+            case .winery: return .winery
+            case .amusementPark: return .amusementPark
+            case .movieTheater: return .movieTheater
+            case .museum: return .museum
+            case .nightlife: return .nightlife
+            case .theater: return .theater
+            case .library: return .library
+            case .school: return .school
+            case .university: return .university
+            case .beach: return .beach
+            case .nationalPark: return .nationalPark
+            case .park: return .park
+            case .fitnessCenter: return .fitnessCenter
+            case .stadium: return .stadium
+            case .atm: return .atm
+            case .bank: return .bank
+            case .evCharger: return .evCharger
+            case .fireStation: return .fireStation
+            case .gasStation: return .gasStation
+            case .laundry: return .laundry
+            case .marina: return .marina
+            case .parking: return .parking
+            case .police: return .police
+            case .postOffice: return .postOffice
+            case .publicTransit, .busStop, .railwayStation, .ferryTerminal: return .publicTransport
+            case .hospital: return .hospital
+            case .pharmacy: return .pharmacy
+            case .foodMarket: return .foodMarket
+            case .store: return .store
+            default: return nil
+            }
+        }
+    }
 }
 
 enum NativeActivityPurposeRegistry {
@@ -339,30 +384,17 @@ enum NativeActivityPurposeRegistry {
     }
 }
 
-private final class NativeNonFloatingHeaderTableView: UITableView {
-    override func layoutSubviews() {
-        super.layoutSubviews()
-
-        for section in 0..<numberOfSections {
-            guard let header = headerView(forSection: section) else { continue }
-            let naturalFrame = rectForHeader(inSection: section)
-            guard naturalFrame.height > 0, header.frame != naturalFrame else { continue }
-            header.frame = naturalFrame
-        }
-    }
-}
-
 final class NativeNewActivityViewController: UIViewController, UITableViewDataSource, UITableViewDelegate {
     fileprivate enum Typography {
-        static let title = UIFont.systemFont(ofSize: 38, weight: .bold)
+        static let title = UIFont.systemFont(ofSize: 36, weight: .bold)
         static let search = UIFontMetrics(forTextStyle: .body).scaledFont(
-            for: .systemFont(ofSize: 16), maximumPointSize: 17
+            for: .systemFont(ofSize: 17), maximumPointSize: 19
         )
         static let section = UIFontMetrics(forTextStyle: .headline).scaledFont(
-            for: .systemFont(ofSize: 15, weight: .semibold), maximumPointSize: 16
+            for: .systemFont(ofSize: 16, weight: .semibold), maximumPointSize: 18
         )
         static let row = UIFontMetrics(forTextStyle: .body).scaledFont(
-            for: .systemFont(ofSize: 16, weight: .semibold), maximumPointSize: 17
+            for: .systemFont(ofSize: 18, weight: .semibold), maximumPointSize: 20
         )
         static let quick = UIFontMetrics(forTextStyle: .caption1).scaledFont(
             for: .systemFont(ofSize: 13), maximumPointSize: 14
@@ -387,7 +419,10 @@ final class NativeNewActivityViewController: UIViewController, UITableViewDataSo
     private let sheetBlurView = UIVisualEffectView(effect: UIBlurEffect(style: .systemChromeMaterial))
     private let sheetReadabilityVeil = UIView()
     private let headerResultsDivider = UIView()
-    private let tableView = NativeNonFloatingHeaderTableView(frame: .zero, style: .plain)
+    // Grouped tables scroll section headers with their content. A plain table
+    // pins its current header, which collides with rows at the compact sheet
+    // detent and makes the collapsed New Activity view appear broken.
+    private let tableView = UITableView(frame: .zero, style: .grouped)
     private let searchField = UISearchTextField()
     private let filterPromptLabel = UILabel()
     private var filterPromptLeadingConstraint: NSLayoutConstraint!
@@ -477,6 +512,8 @@ final class NativeNewActivityViewController: UIViewController, UITableViewDataSo
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    override var preferredStatusBarStyle: UIStatusBarStyle { .lightContent }
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -664,8 +701,11 @@ final class NativeNewActivityViewController: UIViewController, UITableViewDataSo
         tableView.contentInsetAdjustmentBehavior = .never
         tableView.separatorInset = UIEdgeInsets(top: 0, left: 56, bottom: 0, right: 0)
         tableView.rowHeight = 56
-        tableView.sectionHeaderHeight = UITableView.automaticDimension
-        tableView.estimatedSectionHeaderHeight = 52
+        tableView.sectionHeaderHeight = 56
+        tableView.estimatedSectionHeaderHeight = 56
+        if #available(iOS 15.0, *) {
+            tableView.sectionHeaderTopPadding = 0
+        }
         tableView.backgroundColor = .clear
         tableView.register(NativeActivityCategoryCell.self, forCellReuseIdentifier: NativeActivityCategoryCell.reuseIdentifier)
         tableView.tableHeaderView = makeQuickHeader()
@@ -688,7 +728,7 @@ final class NativeNewActivityViewController: UIViewController, UITableViewDataSo
     }
 
     private func makeQuickHeader() -> UIView {
-        let header = UIView(frame: CGRect(x: 0, y: 0, width: view.bounds.width, height: 102))
+        let header = UIView(frame: CGRect(x: 0, y: 0, width: view.bounds.width, height: 120))
         let scrollView = UIScrollView()
         scrollView.translatesAutoresizingMaskIntoConstraints = false
         scrollView.showsHorizontalScrollIndicator = false
@@ -723,11 +763,11 @@ final class NativeNewActivityViewController: UIViewController, UITableViewDataSo
             scrollView.leadingAnchor.constraint(equalTo: header.leadingAnchor, constant: 8),
             scrollView.trailingAnchor.constraint(equalTo: header.trailingAnchor, constant: -8),
             scrollView.bottomAnchor.constraint(equalTo: header.bottomAnchor),
-            stack.topAnchor.constraint(equalTo: scrollView.contentLayoutGuide.topAnchor, constant: 4),
+            stack.topAnchor.constraint(equalTo: scrollView.contentLayoutGuide.topAnchor, constant: 12),
             stack.leadingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.leadingAnchor),
             stack.trailingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.trailingAnchor),
-            stack.bottomAnchor.constraint(lessThanOrEqualTo: scrollView.contentLayoutGuide.bottomAnchor, constant: -4),
-            stack.heightAnchor.constraint(equalTo: scrollView.frameLayoutGuide.heightAnchor, constant: -8),
+            stack.bottomAnchor.constraint(lessThanOrEqualTo: scrollView.contentLayoutGuide.bottomAnchor, constant: -8),
+            stack.heightAnchor.constraint(equalTo: scrollView.frameLayoutGuide.heightAnchor, constant: -20),
         ])
         return header
     }
@@ -772,11 +812,51 @@ final class NativeNewActivityViewController: UIViewController, UITableViewDataSo
         activeSearchCategory == nil ? visibleSections[section].title : nil
     }
 
-    func tableView(_ tableView: UITableView, willDisplayHeaderView view: UIView, forSection section: Int) {
-        guard let header = view as? UITableViewHeaderFooterView else { return }
-        header.textLabel?.font = Typography.section
-        header.textLabel?.adjustsFontForContentSizeCategory = true
-        header.textLabel?.textColor = .secondaryLabel
+    func tableView(_ tableView: UITableView, heightForHeaderInSection section: Int) -> CGFloat {
+        activeSearchCategory == nil ? 56 : .leastNormalMagnitude
+    }
+
+    func tableView(_ tableView: UITableView, estimatedHeightForHeaderInSection section: Int) -> CGFloat {
+        activeSearchCategory == nil ? 56 : .leastNormalMagnitude
+    }
+
+    func tableView(_ tableView: UITableView, heightForFooterInSection section: Int) -> CGFloat {
+        .leastNormalMagnitude
+    }
+
+    func tableView(_ tableView: UITableView, estimatedHeightForFooterInSection section: Int) -> CGFloat {
+        .leastNormalMagnitude
+    }
+
+    func tableView(_ tableView: UITableView, viewForHeaderInSection section: Int) -> UIView? {
+        guard activeSearchCategory == nil else { return nil }
+
+        let header = UIView()
+        header.backgroundColor = .systemBackground
+
+        let label = UILabel()
+        label.text = visibleSections[section].title
+        label.font = Typography.section
+        label.adjustsFontForContentSizeCategory = true
+        label.textColor = .secondaryLabel
+        label.translatesAutoresizingMaskIntoConstraints = false
+
+        let rule = UIView()
+        rule.backgroundColor = .separator
+        rule.translatesAutoresizingMaskIntoConstraints = false
+
+        header.addSubview(label)
+        header.addSubview(rule)
+        NSLayoutConstraint.activate([
+            label.leadingAnchor.constraint(equalTo: header.leadingAnchor, constant: 16),
+            label.trailingAnchor.constraint(lessThanOrEqualTo: header.trailingAnchor, constant: -16),
+            label.centerYAnchor.constraint(equalTo: header.centerYAnchor, constant: 4),
+            rule.leadingAnchor.constraint(equalTo: header.leadingAnchor, constant: 16),
+            rule.trailingAnchor.constraint(equalTo: header.trailingAnchor),
+            rule.bottomAnchor.constraint(equalTo: header.bottomAnchor),
+            rule.heightAnchor.constraint(equalToConstant: 1 / UIScreen.main.scale),
+        ])
+        return header
     }
 
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
@@ -860,7 +940,7 @@ final class NativeNewActivityViewController: UIViewController, UITableViewDataSo
         let navigation = UINavigationController(rootViewController: controller)
         navigation.modalPresentationStyle = .pageSheet
         if let sheet = navigation.sheetPresentationController {
-            sheet.detents = [.large()]
+            NativeActivitySheetMetrics.applyMyTripsExpandedHeight(to: sheet)
             sheet.prefersGrabberVisible = false
             NativeActivitySheetMetrics.applySharedChrome(to: sheet)
         }
@@ -929,7 +1009,16 @@ final class NativeNewActivityViewController: UIViewController, UITableViewDataSo
         let request = MKLocalSearch.Request()
         request.naturalLanguageQuery = queries[index]
         request.resultTypes = .pointOfInterest
-        if let region { request.region = region }
+        let poiCategories = purpose.pointOfInterestCategories
+        if !poiCategories.isEmpty {
+            request.pointOfInterestFilter = MKPointOfInterestFilter(including: poiCategories)
+        }
+        if let region {
+            request.region = region
+            if #available(iOS 18.0, *) {
+                request.regionPriority = .required
+            }
+        }
         let search = MKLocalSearch(request: request)
         placeSearch = search
         search.start { [weak self, weak search] response, _ in
@@ -984,6 +1073,28 @@ final class NativeNewActivityViewController: UIViewController, UITableViewDataSo
             animated: true,
             scrollPosition: .middle
         )
+    }
+
+    func replaceResult(withID resultID: String, mapItem: MKMapItem) {
+        guard let row = placeResults.firstIndex(where: {
+            NativeActivityPlaceIdentity.value(for: $0) == resultID
+        }) else { return }
+        placeResults[row] = mapItem
+        let refreshedID = NativeActivityPlaceIdentity.value(for: mapItem)
+        if selectedResultID == resultID {
+            selectedResultID = refreshedID
+        }
+        let indexPath = IndexPath(row: row, section: 0)
+        tableView.reloadRows(at: [indexPath], with: .none)
+        if selectedResultID == refreshedID {
+            tableView.selectRow(at: indexPath, animated: false, scrollPosition: .none)
+        }
+    }
+
+    func clearSelectedResult() {
+        selectedResultID = nil
+        guard let indexPath = tableView.indexPathForSelectedRow else { return }
+        tableView.deselectRow(at: indexPath, animated: true)
     }
 
     private func rankPlaceResults(
@@ -1145,7 +1256,7 @@ final class NativeNewActivityViewController: UIViewController, UITableViewDataSo
         let navigation = UINavigationController(rootViewController: controller)
         navigation.modalPresentationStyle = .pageSheet
         if let sheet = navigation.sheetPresentationController {
-            sheet.detents = [.large()]
+            NativeActivitySheetMetrics.applyMyTripsExpandedHeight(to: sheet)
             sheet.prefersGrabberVisible = true
             NativeActivitySheetMetrics.applySharedChrome(to: sheet)
         }
@@ -1163,7 +1274,7 @@ final class NativeNewActivityViewController: UIViewController, UITableViewDataSo
         let navigation = UINavigationController(rootViewController: controller)
         navigation.modalPresentationStyle = .pageSheet
         if let sheet = navigation.sheetPresentationController {
-            sheet.detents = [.large()]
+            NativeActivitySheetMetrics.applyMyTripsExpandedHeight(to: sheet)
             sheet.prefersGrabberVisible = true
             NativeActivitySheetMetrics.applySharedChrome(to: sheet)
         }
@@ -1177,7 +1288,7 @@ final class NativeNewActivityViewController: UIViewController, UITableViewDataSo
         let navigation = UINavigationController(rootViewController: controller)
         navigation.modalPresentationStyle = .pageSheet
         if let sheet = navigation.sheetPresentationController {
-            sheet.detents = [.large()]
+            NativeActivitySheetMetrics.applyMyTripsExpandedHeight(to: sheet)
             sheet.prefersGrabberVisible = true
             NativeActivitySheetMetrics.applySharedChrome(to: sheet)
         }
@@ -1261,6 +1372,8 @@ final class NativeNewActivityViewController: UIViewController, UITableViewDataSo
         filteredManualStack.isHidden = !isVisible
         filteredManualTopConstraint.constant = isVisible ? 8 : 0
         filteredManualHeightConstraint.constant = isVisible ? 40 : 0
+        view.setNeedsLayout()
+        view.layoutIfNeeded()
     }
 
     private func updateClearButtonVisibility(for query: String) {
@@ -1283,11 +1396,29 @@ final class NativeNewActivityViewController: UIViewController, UITableViewDataSo
     }
 
     private func finish(_ category: NativeActivityCategory) {
+        // Dedicated route forms are presented as child sheets of New Activity.
+        // Keep this controller in the presentation stack so cancelling either
+        // route form reveals the category picker instead of an empty globe.
+        if category.name.localizedCaseInsensitiveCompare("Flights") == .orderedSame
+            || category.name.localizedCaseInsensitiveCompare("Flight") == .orderedSame
+            || category.name.localizedCaseInsensitiveCompare("Car") == .orderedSame
+            || category.name.localizedCaseInsensitiveCompare("Train") == .orderedSame
+            || category.name.localizedCaseInsensitiveCompare("Car Rental") == .orderedSame
+            || category.name.localizedCaseInsensitiveCompare("Transfer") == .orderedSame
+            || category.name.localizedCaseInsensitiveCompare("Cruise") == .orderedSame
+            || category.name.localizedCaseInsensitiveCompare("Walk") == .orderedSame
+            || category.name.localizedCaseInsensitiveCompare("Bus") == .orderedSame
+            || category.name.localizedCaseInsensitiveCompare("Bike") == .orderedSame
+            || category.name.localizedCaseInsensitiveCompare("Ferry") == .orderedSame
+            || category.name.localizedCaseInsensitiveCompare("Motorcycle") == .orderedSame {
+            onSelect(category)
+            return
+        }
         dismiss(animated: true) { [onSelect] in onSelect(category) }
     }
 
     @objc private func finishManually() {
-        dismiss(animated: true, completion: onEnterManually)
+        onEnterManually()
     }
 }
 
@@ -1349,7 +1480,10 @@ private final class NativeActivityLocationViewController: UIViewController,
         ])
 
         completer.delegate = self
-        completer.resultTypes = [.address, .pointOfInterest, .query]
+        completer.resultTypes = .address
+        if #available(iOS 18.0, *) {
+            completer.addressFilter = MKAddressFilter(including: [.locality])
+        }
         locationManager.delegate = self
         locationManager.desiredAccuracy = kCLLocationAccuracyHundredMeters
         requestCurrentLocationIfNeeded()
@@ -1446,21 +1580,40 @@ private final class NativeActivityLocationViewController: UIViewController,
             let completion = completions[indexPath.row - offset]
             let locality = [completion.title, completion.subtitle].filter { !$0.isEmpty }.joined(separator: ", ")
             let request = MKLocalSearch.Request(completion: completion)
+            request.resultTypes = .address
+            if #available(iOS 18.0, *) {
+                request.addressFilter = MKAddressFilter(including: [.locality])
+            }
             MKLocalSearch(request: request).start { [weak self] response, _ in
                 guard let self,
-                      let coordinate = response?.mapItems.first?.placemark.coordinate else { return }
+                      let response,
+                      let coordinate = response.mapItems.first?.placemark.coordinate else { return }
                 DispatchQueue.main.async {
-                    self.finish(locality: locality, coordinate: coordinate)
+                    self.finish(
+                        locality: locality,
+                        coordinate: coordinate,
+                        suggestedRegion: response.boundingRegion
+                    )
                 }
             }
         }
     }
 
-    private func finish(locality: String, coordinate: CLLocationCoordinate2D) {
+    private func finish(
+        locality: String,
+        coordinate: CLLocationCoordinate2D,
+        suggestedRegion: MKCoordinateRegion? = nil
+    ) {
+        // Use MapKit's resolved locality center, but deliberately search the
+        // compact downtown area first. This mirrors MapCameraPosition.automatic
+        // discovery: search narrowly, then let the globe frame every result.
+        let center = suggestedRegion.flatMap { candidate in
+            guard CLLocationCoordinate2DIsValid(candidate.center) else { return nil }
+            return candidate.center
+        } ?? coordinate
         let region = MKCoordinateRegion(
-            center: coordinate,
-            latitudinalMeters: 30_000,
-            longitudinalMeters: 30_000
+            center: center,
+            span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
         )
         dismiss(animated: true) { [onSelect] in onSelect(locality, region) }
     }
@@ -1768,7 +1921,7 @@ private final class NativeCustomCategoriesViewController: UITableViewController 
         let navigation = UINavigationController(rootViewController: controller)
         navigation.modalPresentationStyle = .pageSheet
         if let sheet = navigation.sheetPresentationController {
-            sheet.detents = [.large()]
+            NativeActivitySheetMetrics.applyMyTripsExpandedHeight(to: sheet)
             sheet.prefersGrabberVisible = true
             NativeActivitySheetMetrics.applySharedChrome(to: sheet)
         }
@@ -2016,7 +2169,7 @@ private final class NativeActivityCategoryCell: UITableViewCell {
 
         iconContainer.translatesAutoresizingMaskIntoConstraints = false
         iconContainer.isUserInteractionEnabled = false
-        iconContainer.layer.cornerRadius = 24
+        iconContainer.layer.cornerRadius = 14
 
         iconView.translatesAutoresizingMaskIntoConstraints = false
         iconView.contentMode = .scaleAspectFit
@@ -2050,19 +2203,19 @@ private final class NativeActivityCategoryCell: UITableViewCell {
         NSLayoutConstraint.activate([
             iconContainer.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
             iconContainer.centerYAnchor.constraint(equalTo: contentView.centerYAnchor),
-            iconContainer.widthAnchor.constraint(equalToConstant: 48),
-            iconContainer.heightAnchor.constraint(equalToConstant: 48),
+            iconContainer.widthAnchor.constraint(equalToConstant: 28),
+            iconContainer.heightAnchor.constraint(equalToConstant: 28),
             iconView.centerXAnchor.constraint(equalTo: iconContainer.centerXAnchor),
             iconView.centerYAnchor.constraint(equalTo: iconContainer.centerYAnchor),
-            iconView.widthAnchor.constraint(equalToConstant: 22),
-            iconView.heightAnchor.constraint(equalToConstant: 22),
-            labelsStack.leadingAnchor.constraint(equalTo: iconContainer.trailingAnchor, constant: 16),
-            labelsStack.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
+            iconView.widthAnchor.constraint(equalToConstant: 17),
+            iconView.heightAnchor.constraint(equalToConstant: 17),
+            labelsStack.leadingAnchor.constraint(equalTo: iconContainer.trailingAnchor, constant: 12),
+            labelsStack.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -44),
             labelsStack.centerYAnchor.constraint(equalTo: contentView.centerYAnchor),
         ])
 
         backgroundColor = .systemBackground
-        separatorInset = UIEdgeInsets(top: 0, left: 80, bottom: 0, right: 16)
+        separatorInset = UIEdgeInsets(top: 0, left: 56, bottom: 0, right: 0)
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
@@ -2087,7 +2240,7 @@ private final class NativeActivityCategoryCell: UITableViewCell {
         titleLabel.text = category.name
         subtitleLabel.text = nil
         subtitleLabel.isHidden = true
-        iconContainer.backgroundColor = .clear
+        iconContainer.backgroundColor = category.palette.surface
         iconView.image = category.image
         iconView.tintColor = category.palette.tint
         accessoryType = .disclosureIndicator

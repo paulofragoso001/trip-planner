@@ -200,7 +200,7 @@ extension NativeCreateTripViewController: PHPickerViewControllerDelegate {
         }
         picker.modalPresentationStyle = .pageSheet
         if let sheet = picker.sheetPresentationController {
-            sheet.detents = [.large()]
+            NativeActivitySheetMetrics.applyMyTripsExpandedHeight(to: sheet)
             sheet.selectedDetentIdentifier = .large
             sheet.prefersGrabberVisible = false
             sheet.preferredCornerRadius = 32

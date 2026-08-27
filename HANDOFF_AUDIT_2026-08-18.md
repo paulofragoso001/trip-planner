@@ -1,442 +1,282 @@
 # Almidy Complete Handoff Audit
 
-> **Validation update (2026-08-18):** CoreSimulatorService was restored after this snapshot. The Debug and Release simulator builds succeeded, `git diff --check` passed, and the complete `AppTests` suite passed with 188 tests and 0 failures. Physical-device and live MapKit verification remain release gates.
-
 **Audit date:** 2026-08-18
 **Repository:** `/Users/fragoso/Documents/Codex/Almidy-Commit-Stack`
 **Branch:** `codex/recovered-new-ui-release`
-**Purpose:** Current-state engineering handoff for the native iOS New Activity category, search, globe, annotation, results-list, and sheet work.
-
-## 1. Executive verdict
-
-**Status: implementation in progress; release HOLD.**
-
-The current source contains most of the requested New Activity search-and-globe architecture: non-transport categories operate as search filters, results are shared between the list and globe, the sheet supports a preview detent, map annotations use Almidy styling, and result cells have normalized layouts. Swift syntax parsing and whitespace validation pass.
+**Release posture:** Ready for physical-device QA; not yet release-certified
 
-This is not yet a production-ready handoff because:
+## Executive verdict
 
-- the working tree is broad and uncommitted;
-- a full Xcode build could not be completed in the current sandbox;
-- the screenshot history documents several runtime defects, while the latest source has not been revalidated end-to-end on supported devices;
-- transportation regressions, location-mode semantics, sheet geometry, map/list synchronization, and iOS 15 compatibility still require device testing;
-- broader backend security and persistence release gates identified by the prior production audit remain open unless another workstream has independently closed them.
+The recovered native iOS work is intact, builds successfully in both Debug and Release configurations, and passes the complete simulator test suite. The repository contains no untracked files and no missing untracked Swift sources. The branch is three commits ahead of its remote tracking branch, with the current map, New Activity, trip-overview restoration, place-details, and travel-time refinements preserved as four tracked working-tree modifications.
 
-The next engineer should treat the source behavior described below as **implemented but not fully runtime-certified**.
-
-## 2. Supersession and scope
-
-This audit supersedes the 2026-08-17 pasted handoff as the current repository snapshot. That earlier audit remains useful historical context, but the working tree has changed materially: it now contains 20 modified tracked files and 4 untracked files.
-
-This document focuses on the native iOS activity workflow requested during the latest iteration:
-
-- New Activity categories;
-- filtered place discovery;
-- Nearby versus Everywhere origin selection;
-- list and globe population;
-- branded map annotations;
-- map/list selection synchronization;
-- half-height and full-height sheet behavior;
-- preservation of transportation-specific activity forms;
-- visual consistency using existing Almidy colors.
-
-It does not claim that unrelated modified files are complete or owned by this workstream.
-
-## 3. Repository snapshot
-
-### Git position
+The remaining work is primarily physical-device and visual acceptance testing. The current automated evidence does not reveal a release-blocking source or test failure. Release certification should wait until the interactive map flows, sheet detents, status-bar treatment, true MapKit result data, and route actions are exercised on a device.
 
-The local branch is two commits ahead of its remote tracking branch.
+## Source-control state
 
-Recent commits:
+- Branch: `codex/recovered-new-ui-release`
+- Remote relationship: three commits ahead of `origin/codex/recovered-new-ui-release`
+- Tracked implementation/test files modified before this audit: 4
+- Untracked files: 0
+- Untracked Swift files: 0
+- Merge conflicts: none observed
+- Whitespace errors: none (`git diff --check` passed)
+- This audit document is also a tracked working-tree modification after being refreshed.
 
-1. `a197c0e Keep native globe imagery consistent while zooming`
-2. `ed5f887 Add native trip card context menu`
-3. Remote baseline: `9659659 hide internal hero attribution identifiers`
-
-### Dirty working tree
-
-Modified tracked files:
+### Local commits not yet on the remote
 
-- `ios/App/App.xcodeproj/project.pbxproj`
-- `ios/App/App.xcodeproj/xcshareddata/xcschemes/App.xcscheme`
-- `ios/App/App/AlmidyDesignTokens.swift`
-- `ios/App/App/Info.plist`
-- `ios/App/App/NativeMapPlugin.swift`
-- `ios/App/App/TripOverview/NativeTripOverviewHeaderView.swift`
-- `ios/App/App/TripOverview/NativeTripOverviewModels.swift`
-- `ios/App/App/TripOverview/NativeTripOverviewRouter.swift`
-- `ios/App/App/TripOverview/NativeTripOverviewSectionViews.swift`
-- `ios/App/App/TripOverview/NativeTripOverviewViewController.swift`
-- `ios/App/AppTests/NativeAuthConnectivityTests.swift`
-- `ios/App/AppTests/NativeCreateTripLocationTests.swift`
-- `ios/App/AppTests/NativeMapConnectivityTests.swift`
-- `ios/App/AppTests/NativeSessionCoordinatorTests.swift`
-- `ios/App/AppTests/NativeSettingsTests.swift`
-- `ios/App/AppTests/NativeTravelImageConnectivityTests.swift`
-- `ios/App/AppTests/NativeTripBackgroundTests.swift`
-- `ios/App/AppTests/NativeTripDateConnectivityTests.swift`
-- `ios/App/AppTests/NativeTripDateTests.swift`
-- `ios/App/AppTests/NativeTripStoreTestSupport.swift`
+1. `afec563` — Complete native trip overview recovery
+2. `a197c0e` — Keep native globe imagery consistent while zooming
+3. `ed5f887` — Add native trip card context menu
 
-Untracked files:
+Remote tracking tip: `9659659` — hide internal hero attribution identifiers
 
-- `docs/almidy-complete-production-audit.md`
-- `ios/App/App/TripOverview/NativeNewActivityViewController.swift`
-- `ios/App/App/TripOverview/NativeTripSavedSearchViewController.swift`
-- `ios/App/App/config 2.xml`
+### Preserved dirty-worktree inventory
 
-The tracked diff observed during this audit was approximately 4,099 insertions and 432 deletions. Do not discard, reset, or bulk-stage this worktree without first identifying ownership of every path.
+| File | Change scope | Handoff significance |
+| --- | --- | --- |
+| `ios/App/App/NativeMapPlugin.swift` | Map controls, preferences, activity-result annotations, selection behavior, place-details sheets, travel-time presentation, status shading, trip-overview restoration hooks | Main current implementation; preserve in full |
+| `ios/App/App/TripOverview/NativeNewActivityViewController.swift` | New Activity typography, status-bar style, search-result spacing, layout refresh | Removes the result-list gap and aligns the activity sheet with the reference |
+| `ios/App/App/TripOverview/NativeTripOverviewViewController.swift` | Preview detent sizing, light status bar, activity dismissal restoration, interactive sheet behavior | Restores Trip Overview after New Activity closes and keeps map interaction available |
+| `ios/App/AppTests/NativeTripDateTests.swift` | Expected compact-sheet maximum updated from 390 to 360 points | Keeps the layout contract aligned with the revised compact detent |
+| `HANDOFF_AUDIT_2026-08-18.md` | Current audit | Replaces the stale, contradictory recovery report |
 
-## 4. Product contract captured from the iteration
+The implementation diff before refreshing this audit was approximately 1,061 insertions and 77 deletions across the four source/test files. No file was discarded, reset, or rewritten outside the requested work.
 
-The intended behavior is:
+## Functional recovery summary
 
-1. Transportation activities retain their dedicated creation forms.
-2. Every other New Activity category acts as a search filter.
-3. Selecting a category places a category token in the search field and immediately starts place discovery.
-4. Search results populate both the list and globe from one ordered result collection.
-5. The globe updates as soon as a usable result snapshot is available.
-6. Nearby searches around the user's current location.
-7. Everywhere searches around the selected trip locality or explicit location.
-8. The visible map center is only a last-resort origin.
-9. Search bounds remain city-scale; camera fitting happens after discovery.
-10. Distant outliers must not force a statewide camera.
-11. The camera accounts for the visible collapsed sheet.
-12. Pins preserve Almidy teal, use a circular white-bordered treatment, and use a consistently sized category glyph.
-13. Default unwanted clustering is disabled at the intended zoom.
-14. Selecting a list row focuses its pin; selecting a pin highlights or scrolls to its row.
-15. The New Activity sheet supports a lower preview/half state and a full-height state.
-16. Activity screens use consistent sheet width, corner radius, placement, and presentation ownership so sheets do not visibly stack.
-17. The header is compact, the clear button remains available for active searches, and result rows follow a stable two-line layout.
-18. Existing Almidy teal and gold are preserved; readability improvements must not replace the brand palette.
+### New Activity and map interaction
 
-## 5. Current implementation architecture
+- The New Activity title uses a smaller regular-weight presentation closer to the supplied reference.
+- The status bar is forced to light content over the map.
+- Empty section header/footer heights collapse while an activity category is active, removing the large blank gap between the Nearby/Everywhere controls and results.
+- Search results remain represented on the map and carry their originating `MKMapItem` data.
+- Selecting a result annotation presents the details sheet using that annotation's actual map item rather than placeholder details.
+- The selected annotation uses an enlarged anchored marker treatment with a tail/endpoint, while normal pins remain category-colored.
+- Camera fitting is constrained to avoid an excessively distant result view.
 
-### `NativeNewActivityViewController.swift`
+### Floating map controls
 
-This untracked source file is the primary New Activity UI and search controller. Current source inspection found:
+- The floating globe control opens Map Preferences.
+- Map Preferences offers Map and Hybrid styles plus transportation-route and flight-route preferences.
+- The location control recenters the map.
+- The orientation control resets heading/orientation.
+- Controls are kept above presented card content when the map view is active.
+- Controls are hidden from the launch view and are scoped to open map experiences.
 
-- non-transport categories are filters;
-- transportation categories are identified by `opensDedicatedActivityForm` and remain routed to dedicated forms;
-- category selection installs a search token and category-specific search configuration;
-- the clear affordance remains visible while a query or category is active;
-- search publishes the first nonempty ranked snapshot immediately, then continues enrichment until its target count or search terms are exhausted;
-- `replacePlaceResults` atomically replaces the ordered results, reloads the list, and publishes the same collection to the map callback;
-- the controller exposes map-to-list selection through a stable result identifier;
-- result cells use fixed icon containers, two text labels, a stable row height, truncation, and `prepareForReuse` resets;
-- the view requests collapse to the preview detent after initial results become available;
-- colors are derived from the current Almidy teal/gold language.
+### Sheet lifecycle and restoration
 
-Important caveat: this file is not tracked by Git. Until it is intentionally added, a clone or clean checkout will not contain this implementation.
+- The New Activity sheet uses a shorter compact preview detent.
+- The map remains interactive at supported sheet detents.
+- Closing New Activity schedules the Trip Overview card to reopen.
+- Navigating away through another activity flow cancels an obsolete restoration request.
+- A custom navigation controller preserves the light status-bar appearance.
 
-### `NativeMapPlugin.swift`
+### Place details
 
-Current source inspection found:
+- Result selection supports compact/half and expanded details presentations.
+- The sheet contains share and close actions, title and locality, contact data, address data, travel-time information, directions, and Save Place.
+- Phone, website, address, and title are populated from the selected map result when provided by MapKit.
+- Category coloring is preserved rather than forcibly matching the reference screenshot's orange/purple palette.
+- The most recent layout adjustment tightened vertical spacing in travel endpoints and connects the itinerary line precisely to the endpoint icon containers.
 
-- one ordered `[MKMapItem]` model feeds annotations and selection;
-- search has region-based ranking, deduplication, filtering, and progressive publication;
-- camera fitting uses dynamic padding and a maximum camera distance;
-- bottom map padding incorporates the collapsed sheet height;
-- custom selected detent identifier use is guarded for iOS 16 availability;
-- annotations use a circular 48-point badge, 3-point white border, 24-point white glyph, circular collision mode, disabled clustering, and stable display priorities;
-- annotation labels are constrained and truncated rather than allowed to expand indefinitely;
-- selected/focused annotations receive higher priority.
+## Build and test audit
 
-### `NativeTripOverviewViewController.swift`
+### Xcode project discovery
 
-Current source inspection found shared sheet geometry through `NativeActivitySheetMetrics`:
-
-- preview height is derived from safe height and bottom inset;
-- preview height is bounded to approximately 320–390 points;
-- iOS 16 uses a custom preview detent plus large;
-- iOS 15 falls back to medium plus large;
-- the sheet supports expansion to full height;
-- the grabber is visible;
-- the New Activity callback hides the prior primary sheet/modal before presenting the activity sheet and synchronizes map selection.
-
-This is directionally consistent with the request to avoid visibly stacked activity views, but it still requires runtime verification across all entry paths.
-
-## 6. Search origin and bounds assessment
-
-### Implemented direction
-
-The controller distinguishes Nearby and Everywhere search modes and exposes a resolved region to the map callback. Search and map receive the same result replacement event rather than running independent result pipelines.
-
-### Remaining risk
-
-The deterministic precedence must be verified with actual trip data:
-
-1. explicit selected locality;
-2. active trip destination;
-3. user location only for Nearby;
-4. visible map center only when no higher-priority location exists.
-
-The current filtering is primarily region/radius based. It is not evidence of a true municipal or metropolitan polygon boundary. Searches near dense metro borders can still admit semantically distant results, and MapKit can return generic or unexpectedly distant matches. The screenshot history showing Chicago, Connecticut, New York, Miami, and other displaced result regions makes this the highest-priority runtime verification area.
-
-## 7. Result retrieval and quality assessment
-
-Implemented source behavior includes progressive search-term enrichment, deduplication, distance-based ranking, generic-result rejection, and a result target of roughly 12 items.
-
-Open questions:
-
-- Twelve results may be insufficient for some categories or map densities.
-- Generic-result filtering needs validation against real MapKit responses.
-- The current metro rejection is radius-based and may not match locality boundaries.
-- Search cancellation and atomic replacement must be stress-tested while changing query, category, and location rapidly.
-- The catalog contains a duplicate `Park` purpose entry that should be removed or intentionally differentiated.
-
-## 8. Map annotation and camera assessment
-
-### Implemented in source
-
-- Almidy teal is retained.
-- Custom circular annotations replace the default teardrop visual.
-- A white border and uniform glyph treatment are applied.
-- Clustering is disabled for these search annotations.
-- Selection priority is stable.
-- Camera fitting is separate from search bounds.
-- Camera distance is capped at approximately 80 km.
-- Fit padding changes with result count.
-- Bottom padding accounts for collapsed sheet height.
-
-### Runtime risks documented by screenshots
-
-Historical snapshots show all of the following at different stages:
-
-- no annotations despite visible list results;
-- a statewide or multi-state camera caused by distant outliers;
-- all pins stacked at one coordinate;
-- many overlapping labels and pins;
-- single oversized annotations that hide result density;
-- default or inconsistent annotation treatments;
-- camera centering on the wrong locality;
-- list and globe containing different result sets.
-
-The source now addresses several likely causes, but screenshots alone do not prove the latest implementation is correct. Device validation must confirm the final state.
-
-## 9. Sheet geometry and visual assessment
-
-The requested reference state exposes a substantial portion of the globe while retaining the title, search controls, location mode, and two result rows in the preview sheet.
-
-Current source includes a bounded custom preview height and large expansion. Historical snapshots, however, show:
-
-- sheets beginning too high;
-- different sheet widths and corner radii between screens;
-- prior sheets visibly stacked behind the active sheet;
-- oversized empty space between the location controls and results;
-- title/search controls clipped into each other;
-- inconsistent placement when the keyboard appears;
-- the preview sheet occupying too much of the globe;
-- result rows partially clipped at the bottom.
-
-The final implementation should derive preview geometry from safe-area dimensions and actual content needs, use one presentation owner, and ensure only the active sheet is visible.
-
-## 10. Verification performed
-
-### Passed
-
-`git diff --check`
-
-- Result: passed with no whitespace errors.
-
-Swift frontend syntax parsing:
+Command:
 
 ```sh
-xcrun swiftc -frontend -parse \
-  ios/App/App/NativeMapPlugin.swift \
-  ios/App/App/TripOverview/NativeNewActivityViewController.swift
+xcodebuild -list -project ios/App/App.xcodeproj
 ```
 
-- Result: exit code 0 with no parser errors.
-- Scope: syntax only. This does not type-check imports, resolve packages, compile the target, link, or run tests.
+Result: passed.
 
-### Blocked by the current environment
+Observed targets:
 
-`xcodebuild -list -project ios/App/App.xcodeproj`
+- `Almidy`
+- `AppTests`
 
-and an isolated generic iOS Debug build with code signing disabled both failed before source compilation because:
+Observed schemes:
 
-- CoreSimulatorService was unavailable;
-- the sandbox denied access to Xcode/SwiftPM diagnostic and cache paths under the user's Library;
-- package dependencies could not be resolved in the restricted environment.
+- `App`
+- `CapacitorApp`
+- `CapacitorBrowser`
+- `CapacitorPreferences`
+- `CapApp-SPM`
 
-The isolated build exited with code 74. This is an environment failure, not evidence that the source either passes or fails compilation.
+Resolved dependencies include the local Capacitor packages and `capacitor-swift-pm` 8.4.1.
 
-### Not completed
+### Simulator availability
 
-- full Xcode compile;
-- unit/UI test suite;
-- device or simulator interaction tests;
-- iOS 15 compatibility build;
-- supported iPhone size matrix;
-- live MapKit result-quality testing;
-- transportation form regression testing;
-- VoiceOver, Dynamic Type, keyboard, and rotation checks.
+`xcodebuild -showdestinations` succeeded and listed the connected physical device plus iOS 26.5 simulators, including iPhone 17 Pro. This confirms that CoreSimulatorService and the installed iOS runtime are currently usable.
 
-## 11. Readiness matrix
+### Debug build
 
-| Area | Source status | Verification status | Handoff status |
-|---|---|---|---|
-| Non-transport categories as filters | Implemented | Syntax inspected | Needs device QA |
-| Transportation dedicated forms | Preserved by routing intent | Not regression tested | At risk until QA |
-| Progressive result publication | Implemented | Source inspected | Needs live MapKit QA |
-| Shared list/map result model | Implemented | Source inspected | Needs synchronization QA |
-| Nearby/Everywhere separation | Implemented directionally | Not fully runtime verified | High-priority QA |
-| Explicit locality origin | Present in region flow | Precedence not proven | High-priority QA |
-| Deduplication/ranking/filtering | Implemented | Real-result quality unverified | Needs tuning |
-| Branded circular annotations | Implemented | Not visually certified | Needs screenshot QA |
-| Clustering disabled | Implemented | Not runtime certified | Needs density QA |
-| Camera fit and zoom cap | Implemented | Outlier behavior unverified | High-priority QA |
-| Row/pin two-way selection | Implemented callbacks | Not interaction tested | Needs QA |
-| Half/full sheet detents | Implemented with OS fallback | Device geometry unverified | High-priority QA |
-| Sheet stacking prevention | Presentation cleanup present | All paths unverified | Needs navigation QA |
-| Header and rows | Normalized in source | Multiple sizes unverified | Needs visual QA |
-| Almidy colors | Preserved in inspected code | Visual QA pending | Expected complete |
-| Full build | Unknown | Environment blocked | Release blocker |
+```sh
+xcodebuild \
+  -project ios/App/App.xcodeproj \
+  -scheme App \
+  -configuration Debug \
+  -destination 'generic/platform=iOS Simulator' \
+  CODE_SIGNING_ALLOWED=NO \
+  build
+```
 
-## 12. Known defects and risks
+Result: `** BUILD SUCCEEDED **`
 
-### P0 — must resolve before release
+### Release build
 
-1. **No clean full build result.** Run Xcode build and tests in an unrestricted local environment.
-2. **Untracked core feature files.** Add intended New Activity and saved-search files to version control.
-3. **Broad dirty worktree.** Separate, review, and commit coherent changes; do not ship an unidentified working tree.
-4. **Search-origin correctness.** Prove Nearby, Everywhere, selected locality, trip destination, and map-center fallback separately.
-5. **Map/list parity.** Prove every row has one annotation and every search annotation derives from the same ordered result collection.
-6. **Transportation regression.** Confirm every transportation category still opens its established form and never enters place-filter search.
+```sh
+xcodebuild \
+  -project ios/App/App.xcodeproj \
+  -scheme App \
+  -configuration Release \
+  -destination 'generic/platform=iOS Simulator' \
+  CODE_SIGNING_ALLOWED=NO \
+  build
+```
 
-### P1 — required for feature acceptance
+Result: `** BUILD SUCCEEDED **`
 
-1. Tune city/metro bounds so searches cannot jump across states.
-2. Confirm camera zoom cap, map padding, and outlier handling.
-3. Confirm preview detent matches the reference on small and large iPhones.
-4. Eliminate all sheet stacking and mismatched sheet dimensions.
-5. Confirm the globe populates on the first usable search snapshot.
-6. Validate pin selection scrolls the list and row selection focuses the correct pin.
-7. Remove the duplicate `Park` purpose or document why both entries are needed.
-8. Validate result-cell reuse so icon and subtitle states never collapse.
+### Full simulator test suite
 
-### P2 — polish and resilience
+```sh
+xcodebuild test \
+  -project ios/App/App.xcodeproj \
+  -scheme App \
+  -destination 'platform=iOS Simulator,id=4F2E19F4-0C72-476F-A279-7DB47F38BDDC' \
+  CODE_SIGNING_ALLOWED=NO
+```
 
-1. Tune result count by category and density.
-2. Improve semantic locality filtering beyond a radial metro approximation if MapKit quality remains inconsistent.
-3. Add loading, empty, error, and permission-denied states without reintroducing large blank regions.
-4. Validate accessibility labels, Dynamic Type, reduced motion, and keyboard transitions.
-5. Reduce map bleed-through while preserving the existing glass language and brand colors.
+Result:
 
-## 13. Required QA matrix
+```text
+Test Suite 'All tests' passed
+Executed 188 tests, with 1 test skipped and 0 failures (0 unexpected)
+** TEST SUCCEEDED **
+```
 
-### Search origin
+The skipped test was `NativeAuthConnectivityTests.testKeychainSessionRestoresAndAutomaticallyRefreshesBeforeUse`. The test reports that the AppTests bundle cannot access Keychain items in this simulator runtime. This is an environment-specific skip, not an application assertion failure. An earlier preserved run on the same date executed all 188 tests with zero skips and zero failures, including all formerly failing visual-fixture tests.
 
-- Active trip destination, no explicit selection, Everywhere.
-- Explicit locality selected, Everywhere.
-- Location permission granted, Nearby.
-- Location permission denied, Nearby fallback.
-- No trip locality and no user location, map-center fallback.
-- Switch Nearby → Everywhere → Nearby during an active query.
+Current result bundle:
 
-### Category routing
+`/Users/fragoso/Library/Developer/Xcode/DerivedData/App-axcuzkmbaheflnczciuxfhdkqsrt/Logs/Test/Test-App-2026.08.18_17-20-11--0400.xcresult`
 
-- Stay, restaurant, tour, health, shopping, services, and other non-transport categories create filter searches.
-- Flight, car, train, car rental, transfer, cruise, walk, and all remaining transportation categories retain their existing forms.
+### Swift parser and repository hygiene
 
-### Search behavior
+- `xcrun swiftc -frontend -parse ios/App/App/NativeMapPlugin.swift`: passed
+- `git diff --check`: passed
 
-- Category token with empty free-text query.
-- Category token plus free-text query.
-- Clear query while retaining/removing category as designed.
-- Rapid query edits and rapid category changes.
-- Explicit location change during an active search.
-- Empty, network-limited, and permission-denied states.
+### Audit caveat: parallel Xcode invocations
 
-### Globe behavior
+An initial test invocation overlapped the Release build and failed to attach to the shared DerivedData `build.db` because it was locked. The same full test command passed when run sequentially. This was a build-orchestration collision, not a source, compilation, or test failure. Future Xcode validation should be serialized or use isolated DerivedData paths.
 
-- First result snapshot appears immediately.
-- List and map counts and stable identifiers match.
-- Camera remains metro-scale.
-- Distant outlier cannot zoom to state or country scale.
-- Preview sheet does not cover the fitted annotations.
-- Dense results remain individually selectable at intended zoom.
-- Row selection focuses a pin; pin selection scrolls/highlights its row.
+## Warnings and non-blocking observations
 
-### Sheet and layout
+### Build warnings
 
-- Preview and large detents on the smallest supported iPhone.
-- Preview and large detents on a current Pro Max-size iPhone.
-- iOS 15 medium fallback and iOS 16+ custom preview.
-- Keyboard shown and hidden in both detents.
-- Repeated navigation through trip overview → new activity → location → results.
-- Confirm previous sheets are hidden/dismissed rather than visible behind the active sheet.
+- `contentEdgeInsets` is deprecated from iOS 15 when `UIButtonConfiguration` is used. Current references were observed in `NativeCreateTripViewController+Layout.swift` and `NativeMapPlugin.swift`.
+- App Intents metadata extraction is skipped because the target does not link AppIntents. This is nonfatal unless App Intents are intended for this release.
 
-## 14. Recommended implementation sequence
+### Runtime/test logging
 
-1. **Stabilize source control.** Review all modified/untracked paths, add intended files, split unrelated work, and create a safety commit.
-2. **Restore build certainty.** Resolve packages and run a clean Debug build plus tests outside the sandbox.
-3. **Write origin-unit tests.** Centralize origin resolution into a pure, testable policy covering trip, explicit locality, Nearby location, and map fallback.
-4. **Write one search snapshot model.** Keep query, category, origin, region, ordered results, and generation ID together; publish one atomic state to list and map.
-5. **Harden metro filtering.** Add category-aware quality checks, distance limits, dedupe keys, and cancellation/generation guards.
-6. **Finalize camera policy.** Fit only accepted results, cap distance, incorporate measured sheet height, and reject outlier influence.
-7. **Finalize annotations.** Retain teal circular pins, stable identifiers, predictable labels, priorities, and explicit non-clustering behavior.
-8. **Finalize presentation ownership.** Route every activity-related view through one sheet presenter and common metrics; hide/dismiss the previous sheet before the next appears.
-9. **Visual normalization.** Compress header spacing, remove blank regions, normalize two-line rows, and tune glass opacity without changing colors.
-10. **Run the full QA matrix.** Capture reference screenshots for collapsed, expanded, keyboard, pin selection, and transportation paths.
+- UIKit warns that UIScene lifecycle support will eventually be required.
+- `ResourceManifest` reports that it cannot locate `default.csv` in the test environment.
+- Map/Metal tests can emit a transient zero-sized `CAMetalLayer` warning.
+- WebKit networking configuration emits test-environment noise.
+- The suite reports unbalanced appearance-transition calls for `NativeTripOverviewViewController` after several tests. Tests still pass, but this should be investigated before treating the presentation lifecycle as fully hardened.
 
-## 15. Next-engineer runbook
+## Risk assessment
 
-From `/Users/fragoso/Documents/Codex/Almidy-Commit-Stack`:
+### P0 — release blockers
+
+No reproducible P0 source, build, or automated-test blocker remains.
+
+### P1 — must verify before release certification
+
+1. Validate all map gestures on a physical device while compact and half-height sheets are visible.
+2. Tap several different result pins and verify title, locality, phone, website, and address all belong to the selected pin.
+3. Verify the selected pin remains anchored to the correct coordinate and selection changes cleanly between nearby overlapping results.
+4. Open and close Map Preferences from New Activity; confirm map style and route toggles apply and persist as intended.
+5. Verify globe, recenter, and orientation controls are hidden on launch, visible only on map screens, and remain tappable above sheets.
+6. Close New Activity with the close button and interactive dismissal; confirm Trip Overview reopens exactly once.
+7. Verify compact-to-large place-details transitions, scrolling, and bottom actions on the target phone size.
+8. Exercise phone, website, share, directions, search, route, and Save Place actions with real data.
+9. Confirm current-location permission denial, restricted permission, unavailable location, and restored permission states.
+10. Investigate the unbalanced appearance-transition logs and confirm there is no duplicated or out-of-order presentation on device.
+
+### P2 — follow-up quality work
+
+1. Replace deprecated `contentEdgeInsets` usage with configuration-based padding.
+2. Decide whether the app should adopt the UIScene lifecycle now or document the migration window.
+3. Determine whether `default.csv` should be included in tests or whether the warning should be suppressed by an explicit test fixture.
+4. Add targeted tests for true `MKMapItem` propagation, selected-pin identity, New Activity dismissal restoration, and map-control visibility.
+5. Add lifecycle regression coverage around Trip Overview presentation and dismissal.
+
+## Physical-device visual QA matrix
+
+| Flow | Compact/half state | Expanded state | Rotation/gesture checks | Data/action checks |
+| --- | --- | --- | --- | --- |
+| Launch / My Trips | Controls hidden | N/A | Globe pan/zoom before opening cards | Trip and country totals |
+| Trip Overview | Preview detent and safe-area placement | Full card content | Map remains usable where intended | Cards and destinations route correctly |
+| New Activity | Header, search field, no result gap | Scroll all results | Pan, zoom, pitch, rotate with sheet open | Nearby/Everywhere and category searches |
+| Map Preferences | Reference-like detent and controls | N/A | Underlying map behavior | Map/Hybrid and both route toggles |
+| Result pins | Normal pins distributed and readable | Selected pin elevated/anchored | Selection while changing camera | Correct result identity per tap |
+| Place details | Header/contact/actions without overlap | Full contact and Travel Time cards | Drag between detents | Share, phone, website, directions, save |
+| Travel Time | Preview visible at compact boundary | Four transport modes and endpoint rows | Scroll and detent stability | Plausible durations, distance, arrival time |
+
+Test at minimum on the connected `Paulo's iPhone` and one iPhone 17 Pro simulator. Repeat critical presentation tests after a cold launch and after background/foreground transitions.
+
+## Recommended next move
+
+1. Preserve the current five-file dirty worktree exactly as-is.
+2. Run the P1 physical-device matrix, capturing compact and expanded screenshots for New Activity, Map Preferences, and Place Details.
+3. Fix only reproducible device failures, starting with data identity or presentation-lifecycle defects before visual polish.
+4. Re-run Debug build, Release build, and the 188-test suite sequentially.
+5. Review the final diff and intentionally commit the four implementation/test files plus this audit.
+6. Push the three existing local commits and the final validated recovery commit only after device QA is accepted.
+
+## Reproduction commands
+
+Run from `/Users/fragoso/Documents/Codex/Almidy-Commit-Stack`:
 
 ```sh
 git status -sb
 git diff --check
-git diff --stat
-xcodebuild -resolvePackageDependencies -project ios/App/App.xcodeproj -scheme App
-xcodebuild -project ios/App/App.xcodeproj \
+
+xcodebuild \
+  -project ios/App/App.xcodeproj \
   -scheme App \
   -configuration Debug \
-  -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
+  -destination 'generic/platform=iOS Simulator' \
+  CODE_SIGNING_ALLOWED=NO \
   build
-xcodebuild -project ios/App/App.xcodeproj \
+
+xcodebuild \
+  -project ios/App/App.xcodeproj \
   -scheme App \
-  -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
-  test
+  -configuration Release \
+  -destination 'generic/platform=iOS Simulator' \
+  CODE_SIGNING_ALLOWED=NO \
+  build
+
+xcodebuild test \
+  -project ios/App/App.xcodeproj \
+  -scheme App \
+  -destination 'platform=iOS Simulator,id=4F2E19F4-0C72-476F-A279-7DB47F38BDDC' \
+  CODE_SIGNING_ALLOWED=NO
 ```
 
-If the simulator name differs, list destinations first:
+Do not run build and test commands concurrently against the same DerivedData directory.
 
-```sh
-xcodebuild -project ios/App/App.xcodeproj -scheme App -showdestinations
-```
+## Handoff status
 
-Then perform the QA matrix with network access and Location Services enabled. Record the exact OS/device, origin source, query, category, result count, map region, and screenshot for every failure.
-
-## 16. Safe handoff rules
-
-- Do not run destructive Git cleanup commands against this worktree.
-- Do not assume untracked files are disposable; two are core feature implementations.
-- Do not stage all changes blindly.
-- Preserve Almidy teal and gold unless the product owner explicitly changes the palette.
-- Do not “fix” transportation by routing it into the generic search flow.
-- Do not let list and map execute separate discovery requests.
-- Do not fit the camera before quality filtering and outlier rejection.
-- Do not claim release readiness from parser success alone.
-
-## 17. Definition of done
-
-The activity-search work is ready to hand off as complete only when:
-
-- the intended source files are tracked and coherently committed;
-- a clean build and automated tests pass;
-- all non-transport categories filter search;
-- all transportation categories retain dedicated forms;
-- deterministic origin tests pass for Nearby and Everywhere;
-- list and globe consume the same ordered results atomically;
-- first results appear on the globe immediately;
-- metro bounds and camera caps prevent statewide zoom-outs;
-- annotations match the Almidy circular teal/white treatment;
-- row/pin selection works both directions;
-- preview and large sheets match across supported iPhone sizes;
-- no prior sheet is visible behind the active sheet;
-- header, location controls, and rows match the reference geometry without color changes;
-- the complete QA matrix is documented with passing evidence.
-
-Until those conditions are met, the correct release decision remains **HOLD**.
+- Recovery changes preserved: **yes**
+- Required Swift sources tracked: **yes**
+- Untracked files remaining: **no**
+- Debug simulator build: **passed**
+- Release simulator build: **passed**
+- Full simulator tests: **passed, 188 executed, 1 environment-specific skip, 0 failures**
+- Physical-device acceptance: **pending**
+- Release certification: **pending physical-device QA**
+- Commit or push performed during this audit: **no**

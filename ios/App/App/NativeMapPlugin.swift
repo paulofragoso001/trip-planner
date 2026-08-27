@@ -12,6 +12,8 @@ import UIKit
 import WebKit
 import UniformTypeIdentifiers
 import AuthenticationServices
+import ARKit
+import SceneKit
 
 enum NativeServiceConfiguration {
     static let appBaseURL = URL(string: "https://almidy.app")!
@@ -1582,12 +1584,4219 @@ enum NativeTripCardLayout {
     }
 }
 
-final class NativeMapViewController: UIViewController, CLLocationManagerDelegate, MKMapViewDelegate, UIAdaptivePresentationControllerDelegate {
+final class NativeMapPreferencesViewController: UIViewController {
+    static let titleFontSize: CGFloat = 34
+    static let closeSize: CGFloat = 48
+    static let styleCardHeight: CGFloat = 170
+    static let selectedBorderWidth: CGFloat = 3
+
+    static var sheetConfiguration: AlmidySheetConfiguration {
+        let selected: UISheetPresentationController.Detent.Identifier
+        let detents: [UISheetPresentationController.Detent]
+        if #available(iOS 16.0, *) {
+            let reference = UISheetPresentationController.Detent.custom(
+                identifier: .init("map-preferences-reference")
+            ) { context in context.maximumDetentValue * 0.494 }
+            selected = reference.identifier
+            detents = [reference, .large()]
+        } else {
+            selected = .medium
+            detents = [.medium(), .large()]
+        }
+        return AlmidySheetConfiguration.prominent.overriding(
+            detents: detents,
+            selectedDetentIdentifier: selected,
+            cornerRadius: AlmidyDesignTokens.TripOverview.sheetCornerRadius,
+            grabberVisible: false,
+            largestUndimmedDetentIdentifier: .large
+        )
+    }
+
+    private let onChange: (Bool, Bool, Bool) -> Void
+    private var usesHybridMap: Bool
+    private let transportationSwitch = UISwitch()
+    private let flightSwitch = UISwitch()
+    private let mapButton = UIButton(type: .system)
+    private let hybridButton = UIButton(type: .system)
+    private let mapPreview = UIImageView()
+    private let hybridPreview = UIImageView()
+    private let previewCoordinate: CLLocationCoordinate2D
+
+    init(
+        usesHybridMap: Bool,
+        showsTransportationRoutes: Bool,
+        showsFlightRoutes: Bool,
+        previewCoordinate: CLLocationCoordinate2D,
+        onChange: @escaping (Bool, Bool, Bool) -> Void
+    ) {
+        self.usesHybridMap = usesHybridMap
+        self.previewCoordinate = previewCoordinate
+        self.onChange = onChange
+        transportationSwitch.isOn = showsTransportationRoutes
+        flightSwitch.isOn = showsFlightRoutes
+        super.init(nibName: nil, bundle: nil)
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    override var preferredStatusBarStyle: UIStatusBarStyle { .lightContent }
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        view.isOpaque = false
+        view.backgroundColor = .clear
+
+        let sheetMaterial = UIVisualEffectView(effect: UIBlurEffect(style: .systemUltraThinMaterialLight))
+        sheetMaterial.contentView.backgroundColor = UIColor.systemGray6.withAlphaComponent(0.34)
+        sheetMaterial.isUserInteractionEnabled = false
+        sheetMaterial.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(sheetMaterial)
+        NSLayoutConstraint.activate([
+            sheetMaterial.topAnchor.constraint(equalTo: view.topAnchor),
+            sheetMaterial.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            sheetMaterial.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            sheetMaterial.bottomAnchor.constraint(equalTo: view.bottomAnchor)
+        ])
+
+        let titleLabel = UILabel()
+        titleLabel.text = "Map Preferences"
+        titleLabel.font = .systemFont(ofSize: Self.titleFontSize, weight: .regular)
+        titleLabel.adjustsFontForContentSizeCategory = true
+
+        let closeButton = AlmidyIconButton(
+            symbol: "xmark",
+            accessibilityLabel: "Close map preferences",
+            overrides: .init(
+                diameter: Self.closeSize,
+                foregroundColor: .label,
+                backgroundColor: .secondarySystemGroupedBackground
+            )
+        )
+        closeButton.layer.borderWidth = 0
+        closeButton.addTarget(self, action: #selector(closePreferences), for: .touchUpInside)
+
+        let header = UIStackView(arrangedSubviews: [titleLabel, closeButton])
+        header.axis = .horizontal
+        header.alignment = .center
+        header.spacing = 12
+
+        configureStyleButton(mapButton, preview: mapPreview, title: "Map", tag: 0)
+        configureStyleButton(hybridButton, preview: hybridPreview, title: "Hybrid", tag: 1)
+        let styleRow = UIStackView(arrangedSubviews: [mapButton, hybridButton])
+        styleRow.axis = .horizontal
+        styleRow.distribution = .fillEqually
+        styleRow.spacing = 12
+
+        transportationSwitch.onTintColor = AlmidyDesignTokens.Color.tripOverviewAccent
+        flightSwitch.onTintColor = AlmidyDesignTokens.Color.tripOverviewAccent
+        transportationSwitch.addTarget(self, action: #selector(preferenceChanged), for: .valueChanged)
+        flightSwitch.addTarget(self, action: #selector(preferenceChanged), for: .valueChanged)
+
+        let routeCard = UIStackView(arrangedSubviews: [
+            preferenceRow(title: "Show Transportation Routes", toggle: transportationSwitch),
+            AlmidyDivider(color: .separator),
+            preferenceRow(title: "Show Flight Routes", toggle: flightSwitch)
+        ])
+        routeCard.axis = .vertical
+        routeCard.backgroundColor = AlmidyDesignTokens.Color.settingsCard
+        routeCard.layer.cornerRadius = 20
+        routeCard.clipsToBounds = true
+
+        let content = UIStackView(arrangedSubviews: [header, styleRow, routeCard])
+        content.axis = .vertical
+        content.spacing = 19
+        content.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(content)
+        NSLayoutConstraint.activate([
+            content.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 20),
+            content.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 24),
+            content.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -24)
+        ])
+        updateStyleSelection()
+        loadMapPreview(into: mapPreview, mapType: .standard)
+        loadMapPreview(into: hybridPreview, mapType: .hybrid)
+    }
+
+    private func configureStyleButton(_ button: UIButton, preview: UIImageView, title: String, tag: Int) {
+        button.backgroundColor = AlmidyDesignTokens.Color.settingsCard
+        button.clipsToBounds = true
+        button.tag = tag
+        button.accessibilityLabel = title
+        button.accessibilityHint = "Changes the active globe appearance"
+        button.addTarget(self, action: #selector(selectMapStyle(_:)), for: .touchUpInside)
+        button.heightAnchor.constraint(equalToConstant: Self.styleCardHeight).isActive = true
+
+        preview.contentMode = .scaleAspectFill
+        preview.clipsToBounds = true
+        preview.isUserInteractionEnabled = false
+        preview.translatesAutoresizingMaskIntoConstraints = false
+        button.addSubview(preview)
+
+        let label = UILabel()
+        label.text = title
+        label.font = .systemFont(ofSize: 20, weight: .regular)
+        label.textColor = .label
+        label.textAlignment = .center
+        label.backgroundColor = AlmidyDesignTokens.Color.settingsCard
+        label.isUserInteractionEnabled = false
+        label.translatesAutoresizingMaskIntoConstraints = false
+        button.addSubview(label)
+
+        NSLayoutConstraint.activate([
+            preview.topAnchor.constraint(equalTo: button.topAnchor),
+            preview.leadingAnchor.constraint(equalTo: button.leadingAnchor),
+            preview.trailingAnchor.constraint(equalTo: button.trailingAnchor),
+            preview.bottomAnchor.constraint(equalTo: label.topAnchor),
+            label.leadingAnchor.constraint(equalTo: button.leadingAnchor),
+            label.trailingAnchor.constraint(equalTo: button.trailingAnchor),
+            label.bottomAnchor.constraint(equalTo: button.bottomAnchor),
+            label.heightAnchor.constraint(equalToConstant: 50)
+        ])
+    }
+
+    private func loadMapPreview(into imageView: UIImageView, mapType: MKMapType) {
+        let options = MKMapSnapshotter.Options()
+        options.mapType = mapType
+        options.region = MKCoordinateRegion(
+            center: previewCoordinate,
+            latitudinalMeters: 8_000,
+            longitudinalMeters: 8_000
+        )
+        options.size = CGSize(width: 320, height: 120)
+        options.scale = UIScreen.main.scale
+        options.pointOfInterestFilter = .includingAll
+        MKMapSnapshotter(options: options).start(with: .main) { snapshot, _ in
+            imageView.image = snapshot?.image
+        }
+    }
+
+    private func preferenceRow(title: String, toggle: UISwitch) -> UIView {
+        let label = UILabel()
+        label.text = title
+        label.font = .preferredFont(forTextStyle: .body)
+        label.adjustsFontForContentSizeCategory = true
+        let row = UIStackView(arrangedSubviews: [label, toggle])
+        row.axis = .horizontal
+        row.alignment = .center
+        row.spacing = 12
+        row.isLayoutMarginsRelativeArrangement = true
+        row.layoutMargins = UIEdgeInsets(top: 18, left: 18, bottom: 18, right: 18)
+        return row
+    }
+
+    @objc private func selectMapStyle(_ sender: UIButton) {
+        usesHybridMap = sender.tag == 1
+        updateStyleSelection()
+        notifyChange()
+    }
+
+    @objc private func preferenceChanged() { notifyChange() }
+
+    private func notifyChange() {
+        onChange(usesHybridMap, transportationSwitch.isOn, flightSwitch.isOn)
+    }
+
+    private func updateStyleSelection() {
+        updateStyleButton(mapButton, selected: !usesHybridMap)
+        updateStyleButton(hybridButton, selected: usesHybridMap)
+    }
+
+    private func updateStyleButton(_ button: UIButton, selected: Bool) {
+        button.layer.cornerRadius = 20
+        button.layer.masksToBounds = true
+        button.layer.borderWidth = selected ? Self.selectedBorderWidth : 0
+        button.layer.borderColor = AlmidyDesignTokens.Color.tripOverviewAccent.cgColor
+        button.accessibilityTraits = selected ? [.button, .selected] : .button
+    }
+
+    @objc private func closePreferences() { dismiss(animated: true) }
+}
+
+struct NativeSavedPlaceSegment: Decodable, Equatable {
+    let id: String
+    let startTime: String?
+
+    private enum CodingKeys: String, CodingKey {
+        case id
+        case startTime = "start_time"
+    }
+}
+
+struct NativeSavedPlaceDetailDraft: Encodable, Equatable {
+    struct ReservationDetails: Encodable, Equatable {
+        let phone: String?
+        let website: String?
+        let costAmount: Decimal?
+        let costCurrency: String?
+        let links: [String]
+    }
+
+    let title: String
+    let location: String?
+    let startTime: String?
+    let endTime: String?
+    let bookingUrl: String?
+    let confirmationCode: String?
+    let notes: String?
+    let reservation: ReservationDetails
+}
+
+private final class NativePlaceItineraryAPIClient {
+    private struct Response: Decodable {
+        struct DataPayload: Decodable { let segment: NativeSavedPlaceSegment }
+        let data: DataPayload
+    }
+    private struct Payload: Encodable {
+        let tripId: String
+        let title: String
+        let startTime: String
+        let kind: String
+        let location: String?
+        let locationStatus: String
+        let lat: Double
+        let lng: Double
+        let bookingUrl: String?
+        let notes: String?
+        let provider: String
+        let providerPlaceId: String?
+    }
+
+    private let client: NativeAuthenticatedHTTPClient
+
+    init(webView: AnyObject?) {
+        client = NativeAuthenticatedHTTPClient(
+            webView: webView,
+            baseURL: NativeServiceConfiguration.appBaseURL,
+            session: .shared
+        )
+    }
+
+    func save(
+        mapItem: MKMapItem,
+        category: NativeActivityCategory,
+        tripID: String,
+        startAt: Date,
+        completion: @escaping (Result<NativeSavedPlaceSegment, Error>) -> Void
+    ) {
+        let coordinate = mapItem.placemark.coordinate
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        let categoryName = category.name.lowercased()
+        let segmentType: String
+        if categoryName.contains("hotel") || categoryName.contains("stay") {
+            segmentType = "hotel"
+        } else if categoryName.contains("restaurant") || categoryName.contains("food") || categoryName.contains("cafe") {
+            segmentType = "restaurant"
+        } else {
+            segmentType = "activity"
+        }
+        let cleanedName = mapItem.name?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let address = mapItem.placemark.title?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let payload = Payload(
+            tripId: tripID,
+            title: cleanedName.flatMap { $0.isEmpty ? nil : $0 } ?? "Saved Place",
+            startTime: formatter.string(from: startAt),
+            kind: segmentType,
+            location: address.flatMap { $0.isEmpty ? nil : $0 },
+            locationStatus: "resolved",
+            lat: coordinate.latitude,
+            lng: coordinate.longitude,
+            bookingUrl: mapItem.url?.absoluteString,
+            notes: "Saved from Apple Maps place card",
+            provider: "apple_maps",
+            providerPlaceId: NativeActivityPlaceIdentity.persistentPlaceID(for: mapItem)
+        )
+        do {
+            let body = try JSONEncoder().encode(payload)
+            client.request(path: "/api/trip-segments", method: "POST", body: body) { result in
+                completion(result.flatMap { data in
+                    do { return .success(try JSONDecoder().decode(Response.self, from: data).data.segment) }
+                    catch { return .failure(error) }
+                })
+            }
+        } catch {
+            completion(.failure(error))
+        }
+    }
+
+    func update(
+        segmentID: String,
+        draft: NativeSavedPlaceDetailDraft,
+        completion: @escaping (Result<NativeSavedPlaceSegment, Error>) -> Void
+    ) {
+        do {
+            let body = try JSONEncoder().encode(draft)
+            let encodedID = segmentID.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? segmentID
+            client.request(path: "/api/trip-segments/\(encodedID)", method: "PATCH", body: body) { result in
+                completion(result.flatMap { data in
+                    do { return .success(try JSONDecoder().decode(Response.self, from: data).data.segment) }
+                    catch { return .failure(error) }
+                })
+            }
+        } catch {
+            completion(.failure(error))
+        }
+    }
+}
+
+final class NativeActivityPlaceDetailsViewController: UIViewController {
+    static let headerHeight: CGFloat = 62
+    static let headerControlSize: CGFloat = 44
+    static let cardCornerRadius: CGFloat = 22
+    static let bottomBarHeight: CGFloat = 56
+
+    static var sheetConfiguration: AlmidySheetConfiguration {
+        let selected: UISheetPresentationController.Detent.Identifier
+        let detents: [UISheetPresentationController.Detent]
+        if #available(iOS 16.0, *) {
+            let summary = UISheetPresentationController.Detent.custom(
+                identifier: .init("place-details-summary")
+            ) { context in context.maximumDetentValue * 0.396 }
+            selected = summary.identifier
+            detents = [summary, .large()]
+        } else {
+            selected = .medium
+            detents = [.medium(), .large()]
+        }
+        return AlmidySheetConfiguration.prominent.overriding(
+            detents: detents,
+            selectedDetentIdentifier: selected,
+            cornerRadius: 38,
+            grabberVisible: true,
+            scrollingExpandsWhenScrolledToEdge: true,
+            largestUndimmedDetentIdentifier: .large
+        )
+    }
+
+    private enum LookAroundReadyState: String {
+        case idle, loading, ready, error, closed, fullScreen
+    }
+
+    private let mapItem: MKMapItem
+    let selectionPlaceID: String
+    private let category: NativeActivityCategory
+    private let origin: CLLocationCoordinate2D
+    private let onSave: (@escaping (Result<NativeSavedPlaceSegment, Error>) -> Void) -> Void
+    private let onSaved: (NativeSavedPlaceSegment) -> Void
+    private let onRouteChanged: ([MKRoute]) -> Void
+    private let onClose: () -> Void
+    private weak var travelModesView: NativePlaceTravelModesView?
+    private var travelModeMinutes: [Int] = []
+    private var travelModeDistancesMiles: [Double] = []
+    private var etaDirections: [Int: MKDirections] = [:]
+    private var etaGeneration = 0
+    private var routeDirections: MKDirections?
+    private var routeGeneration = 0
+    private var returnedRoutes: [MKRoute] = []
+    private var selectedTravelModeIndex = 0
+    private var travelDistanceMiles = 0.0
+    private weak var travelSummaryLabel: UILabel?
+    private weak var routeDestinationLabel: UILabel?
+    private var routeDestinationMapItem: MKMapItem?
+    // Type-erased so the Place Card itself remains available on iOS 15.
+    private var lookAroundRequest: NSObject?
+    private weak var lookAroundContainer: UIView?
+    private var lookAroundController: UIViewController?
+    private var lookAroundReadyState: LookAroundReadyState = .idle
+    private let lookAroundLogger = Logger(subsystem: "app.almidy", category: "look-around")
+    private weak var saveButton: UIButton?
+    private var isSaving = false
+
+    init(
+        mapItem: MKMapItem,
+        selectionPlaceID: String,
+        category: NativeActivityCategory,
+        origin: CLLocationCoordinate2D,
+        onSave: @escaping (@escaping (Result<NativeSavedPlaceSegment, Error>) -> Void) -> Void,
+        onSaved: @escaping (NativeSavedPlaceSegment) -> Void,
+        onRouteChanged: @escaping ([MKRoute]) -> Void,
+        onClose: @escaping () -> Void
+    ) {
+        self.mapItem = mapItem
+        self.selectionPlaceID = selectionPlaceID
+        self.category = category
+        self.origin = origin
+        self.onSave = onSave
+        self.onSaved = onSaved
+        self.onRouteChanged = onRouteChanged
+        self.onClose = onClose
+        super.init(nibName: nil, bundle: nil)
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    override var preferredStatusBarStyle: UIStatusBarStyle { .lightContent }
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        view.isOpaque = true
+        view.backgroundColor = AlmidyDesignTokens.Color.settingsBackground
+
+        let scrollView = UIScrollView()
+        scrollView.alwaysBounceVertical = true
+        scrollView.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(scrollView)
+
+        let content = UIStackView()
+        content.axis = .vertical
+        content.spacing = 16
+        content.translatesAutoresizingMaskIntoConstraints = false
+        scrollView.addSubview(content)
+
+        let header = makeHeader()
+        let travelCard = makeTravelCard()
+        content.addArrangedSubview(header)
+        if #available(iOS 16.0, *) {
+            content.addArrangedSubview(makeLookAroundPreview())
+            loadLookAroundScene()
+        }
+        let informationCard = makePlaceInformationCard()
+        content.addArrangedSubview(informationCard)
+        if let contactCard = makeContactCard() {
+            content.addArrangedSubview(contactCard)
+        }
+        content.addArrangedSubview(travelCard)
+
+        let bottomBar = makeBottomBar()
+        bottomBar.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(bottomBar)
+
+        NSLayoutConstraint.activate([
+            scrollView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 8),
+            scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            // Keep the details content moving beneath the floating actions, as
+            // in the reference sheet. Ending the scroll view above the bar
+            // clipped the Address value at the compact detent.
+            scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            content.topAnchor.constraint(equalTo: scrollView.contentLayoutGuide.topAnchor),
+            content.leadingAnchor.constraint(equalTo: scrollView.frameLayoutGuide.leadingAnchor, constant: 20),
+            content.trailingAnchor.constraint(equalTo: scrollView.frameLayoutGuide.trailingAnchor, constant: -20),
+            content.bottomAnchor.constraint(equalTo: scrollView.contentLayoutGuide.bottomAnchor, constant: -96),
+            bottomBar.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
+            bottomBar.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
+            bottomBar.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: 4),
+            bottomBar.heightAnchor.constraint(equalToConstant: Self.bottomBarHeight)
+        ])
+    }
+
+    @available(iOS 16.0, *)
+    private func makeLookAroundPreview() -> UIView {
+        let wrapper = UIView()
+        wrapper.isHidden = true
+        let preview = UIView()
+        preview.translatesAutoresizingMaskIntoConstraints = false
+        preview.layer.cornerRadius = 10
+        preview.clipsToBounds = true
+        preview.accessibilityIdentifier = "place-card-look-around-preview"
+        wrapper.addSubview(preview)
+        NSLayoutConstraint.activate([
+            preview.topAnchor.constraint(equalTo: wrapper.topAnchor, constant: 8),
+            preview.leadingAnchor.constraint(equalTo: wrapper.leadingAnchor),
+            preview.bottomAnchor.constraint(equalTo: wrapper.bottomAnchor, constant: -8),
+            preview.widthAnchor.constraint(equalToConstant: 230),
+            preview.heightAnchor.constraint(equalToConstant: 140),
+            preview.trailingAnchor.constraint(lessThanOrEqualTo: wrapper.trailingAnchor)
+        ])
+        lookAroundContainer = preview
+        return wrapper
+    }
+
+    @available(iOS 16.0, *)
+    private func loadLookAroundScene() {
+        (lookAroundRequest as? MKLookAroundSceneRequest)?.cancel()
+        updateLookAroundReadyState(.loading)
+        let request = MKLookAroundSceneRequest(mapItem: mapItem)
+        lookAroundRequest = request
+        request.getSceneWithCompletionHandler { [weak self, weak request] scene, error in
+            guard let self,
+                  self.lookAroundRequest === request,
+                  let container = self.lookAroundContainer else { return }
+            guard let scene, error == nil else {
+                self.updateLookAroundReadyState(.error)
+                self.fadeOutLookAroundPreview()
+                return
+            }
+            let controller = MKLookAroundViewController(scene: scene)
+            controller.delegate = self
+            controller.isNavigationEnabled = true
+            controller.showsRoadLabels = true
+            controller.pointOfInterestFilter = .includingAll
+            self.addChild(controller)
+            controller.view.translatesAutoresizingMaskIntoConstraints = false
+            container.addSubview(controller.view)
+            NSLayoutConstraint.activate([
+                controller.view.topAnchor.constraint(equalTo: container.topAnchor),
+                controller.view.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+                controller.view.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+                controller.view.bottomAnchor.constraint(equalTo: container.bottomAnchor)
+            ])
+            controller.didMove(toParent: self)
+            self.lookAroundController = controller
+            let expand = self.lookAroundControl(
+                symbol: "arrow.up.left.and.arrow.down.right",
+                accessibilityLabel: "Open Look Around full screen",
+                action: #selector(self.expandLookAround)
+            )
+            let close = self.lookAroundControl(
+                symbol: "xmark",
+                accessibilityLabel: "Close Look Around preview",
+                action: #selector(self.closeLookAroundPreview)
+            )
+            let controls = UIStackView(arrangedSubviews: [expand, close])
+            controls.axis = .horizontal
+            controls.spacing = 6
+            controls.translatesAutoresizingMaskIntoConstraints = false
+            container.addSubview(controls)
+            NSLayoutConstraint.activate([
+                controls.topAnchor.constraint(equalTo: container.topAnchor, constant: 8),
+                controls.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -8)
+            ])
+            self.updateLookAroundReadyState(.ready)
+            let wrapper = container.superview
+            wrapper?.alpha = 0
+            wrapper?.isHidden = false
+            UIView.animate(withDuration: 0.24) { wrapper?.alpha = 1 }
+            container.accessibilityLabel = "Interactive Look Around preview for \(self.mapItem.name ?? "this place")"
+        }
+    }
+
+    private func lookAroundControl(
+        symbol: String,
+        accessibilityLabel: String,
+        action: Selector
+    ) -> UIButton {
+        let button = UIButton(type: .system)
+        var configuration = UIButton.Configuration.filled()
+        configuration.image = UIImage(systemName: symbol)
+        configuration.baseForegroundColor = .label
+        configuration.baseBackgroundColor = UIColor.systemBackground.withAlphaComponent(0.82)
+        configuration.cornerStyle = .capsule
+        configuration.contentInsets = NSDirectionalEdgeInsets(top: 7, leading: 7, bottom: 7, trailing: 7)
+        button.configuration = configuration
+        button.accessibilityLabel = accessibilityLabel
+        button.addTarget(self, action: action, for: .touchUpInside)
+        return button
+    }
+
+    @available(iOS 16.0, *)
+    @objc private func expandLookAround() {
+        guard let embedded = lookAroundController as? MKLookAroundViewController,
+              let scene = embedded.scene else { return }
+        let expanded = MKLookAroundViewController(scene: scene)
+        expanded.delegate = self
+        expanded.isNavigationEnabled = true
+        expanded.showsRoadLabels = true
+        expanded.pointOfInterestFilter = .includingAll
+        expanded.modalPresentationStyle = .fullScreen
+        present(expanded, animated: true)
+    }
+
+    @available(iOS 16.0, *)
+    @objc private func closeLookAroundPreview() {
+        (lookAroundRequest as? MKLookAroundSceneRequest)?.cancel()
+        lookAroundRequest = nil
+        updateLookAroundReadyState(.closed)
+        fadeOutLookAroundPreview()
+    }
+
+    private func fadeOutLookAroundPreview() {
+        guard let wrapper = lookAroundContainer?.superview else { return }
+        UIView.animate(withDuration: 0.2, animations: {
+            wrapper.alpha = 0
+        }) { [weak self] _ in
+            guard let self else { return }
+            self.lookAroundController?.willMove(toParent: nil)
+            self.lookAroundController?.view.removeFromSuperview()
+            self.lookAroundController?.removeFromParent()
+            self.lookAroundController = nil
+            wrapper.isHidden = true
+            wrapper.alpha = 1
+        }
+    }
+
+    private func updateLookAroundReadyState(_ state: LookAroundReadyState) {
+        lookAroundReadyState = state
+        lookAroundLogger.debug("Look Around readyState: \(state.rawValue, privacy: .public)")
+    }
+
+    private func makeHeader() -> UIView {
+        let share = roundButton(symbol: "square.and.arrow.up", label: "Share place")
+        share.addTarget(self, action: #selector(sharePlace), for: .touchUpInside)
+        let close = roundButton(symbol: "xmark", label: "Close place details")
+        close.addTarget(self, action: #selector(closeDetails), for: .touchUpInside)
+
+        let title = UILabel()
+        title.text = mapItem.name ?? "Place"
+        title.font = .systemFont(ofSize: 24, weight: .semibold)
+        title.textAlignment = .center
+        title.numberOfLines = 2
+        title.lineBreakMode = .byTruncatingTail
+        title.adjustsFontSizeToFitWidth = false
+        title.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+
+        let subtitle = UILabel()
+        let locality = placeLocality()
+        subtitle.text = [placeCategoryName(), locality]
+            .compactMap { $0 }.joined(separator: " in ")
+        subtitle.font = .systemFont(ofSize: 16, weight: .regular)
+        subtitle.textColor = UIColor.secondaryLabel.withAlphaComponent(0.78)
+        subtitle.textAlignment = .center
+
+        let labels = UIStackView(arrangedSubviews: [title, subtitle])
+        labels.axis = .vertical
+        labels.spacing = 3
+        let header = UIStackView(arrangedSubviews: [share, labels, close])
+        header.axis = .horizontal
+        header.alignment = .center
+        header.spacing = 14
+        header.isLayoutMarginsRelativeArrangement = true
+        header.layoutMargins = UIEdgeInsets(top: 8, left: 0, bottom: 0, right: 0)
+        header.heightAnchor.constraint(greaterThanOrEqualToConstant: Self.headerHeight).isActive = true
+        share.widthAnchor.constraint(equalToConstant: Self.headerControlSize).isActive = true
+        close.widthAnchor.constraint(equalToConstant: Self.headerControlSize).isActive = true
+        return header
+    }
+
+    private func makePlaceInformationCard() -> UIView {
+        let stack = cardStack()
+        var rows: [UIView] = [detailRow(label: "Category", value: placeCategoryName(), action: nil)]
+        if let locality = placeLocality() {
+            rows.append(detailRow(label: "Location", value: locality, action: nil))
+        }
+        if let timeZone = mapItem.timeZone {
+            rows.append(detailRow(label: "Time Zone", value: timeZone.localizedName(for: .generic, locale: .current) ?? timeZone.identifier, action: nil))
+        }
+        addDetailRows(rows, to: stack)
+        return stack
+    }
+
+    private func makeContactCard() -> UIView? {
+        let stack = cardStack()
+        var rows: [UIView] = []
+        if let phone = clean(mapItem.phoneNumber) {
+            rows.append(detailRow(label: "Phone", value: phone, action: { [weak self] in self?.callPlace() }))
+        }
+        if let website = mapItem.url {
+            rows.append(detailRow(label: "Website", value: website.host ?? website.absoluteString, action: { [weak self] in self?.openWebsite() }))
+        }
+        if let address = availableFormattedAddress() {
+            rows.append(detailRow(label: "Address", value: address, action: nil))
+        }
+        guard !rows.isEmpty else { return nil }
+        addDetailRows(rows, to: stack)
+        return stack
+    }
+
+    private func addDetailRows(_ rows: [UIView], to stack: UIStackView) {
+        for (index, row) in rows.enumerated() {
+            stack.addArrangedSubview(row)
+            if index < rows.count - 1 { stack.addArrangedSubview(divider()) }
+        }
+    }
+
+    private func placeLocality() -> String? {
+        let placemark = mapItem.placemark
+        let locality = clean(placemark.locality) ?? clean(placemark.subLocality)
+        let region = clean(placemark.administrativeArea)
+        let country = clean(placemark.country)
+        let values = [locality, region, country].compactMap { $0 }
+        guard !values.isEmpty else { return nil }
+        return values.reduce(into: [String]()) { result, value in
+            if !result.contains(where: { $0.localizedCaseInsensitiveCompare(value) == .orderedSame }) {
+                result.append(value)
+            }
+        }.joined(separator: ", ")
+    }
+
+    private func placeCategoryName() -> String {
+        guard let rawValue = mapItem.pointOfInterestCategory?.rawValue else {
+            return NativeActivityPurposeRegistry.purpose(for: category).searchToken
+        }
+        let value = rawValue.replacingOccurrences(of: "MKPOICategory", with: "")
+        let separated = value.reduce(into: "") { result, character in
+            if character.isUppercase, !result.isEmpty { result.append(" ") }
+            result.append(character)
+        }
+        return separated.capitalized
+    }
+
+    private func makeTravelCard() -> UIView {
+        let stack = cardStack()
+        let title = UILabel()
+        title.text = "Travel Time"
+        title.font = .systemFont(ofSize: 22, weight: .semibold)
+        stack.addArrangedSubview(padded(title, insets: UIEdgeInsets(top: 18, left: 16, bottom: 8, right: 16)))
+
+        let meters = CLLocation(latitude: origin.latitude, longitude: origin.longitude).distance(
+            from: CLLocation(latitude: mapItem.placemark.coordinate.latitude, longitude: mapItem.placemark.coordinate.longitude)
+        )
+        updateTravelMetrics(meters: meters)
+        let durations = travelModeMinutes.map(formattedTravelDuration(minutes:))
+        let modesRow = NativePlaceTravelModesView(
+            durations: durations,
+            selectedIndex: selectedTravelModeIndex
+        ) { [weak self] index in
+            guard let self else { return }
+            self.selectedTravelModeIndex = index
+            self.updateTravelModeSelection()
+            self.fetchSelectedRoute()
+        }
+        travelModesView = modesRow
+        updateTravelModeSelection()
+        stack.addArrangedSubview(padded(modesRow, insets: UIEdgeInsets(top: 0, left: 16, bottom: 12, right: 16)))
+        stack.addArrangedSubview(divider())
+
+        stack.addArrangedSubview(travelEndpoint(
+            symbol: category.image,
+            tint: category.palette.tint,
+            title: mapItem.name ?? "Place",
+            connectsBelow: true
+        ))
+        stack.addArrangedSubview(divider(leftInset: 66))
+        stack.addArrangedSubview(travelEndpoint(
+            symbol: UIImage(systemName: "location.fill")!,
+            tint: AlmidyDesignTokens.Color.tripOverviewAccent,
+            title: "Current Location",
+            accessorySymbol: "magnifyingglass",
+            connectsAbove: true,
+            connectsBelow: true,
+            accessoryAction: #selector(openRouteDestinationSearch),
+            capturesRouteDestinationLabel: true
+        ))
+        stack.addArrangedSubview(divider(leftInset: 66))
+        stack.addArrangedSubview(travelEndpoint(
+            symbol: UIImage(systemName: "clock")!,
+            tint: .secondaryLabel,
+            title: "",
+            accessorySymbol: "arrow.turn.up.right",
+            connectsAbove: true,
+            capturesTitleLabel: true,
+            accessoryMenu: makeTravelMapMenu()
+        ))
+        updateTravelModeSelection()
+        refreshTravelETAs()
+        return stack
+    }
+
+    private func updateTravelModeSelection() {
+        travelModesView?.update(
+            durations: travelModeMinutes.map(formattedTravelDuration(minutes:)),
+            selectedIndex: selectedTravelModeIndex
+        )
+        guard travelModeMinutes.indices.contains(selectedTravelModeIndex) else { return }
+        let arrival = Date().addingTimeInterval(TimeInterval(travelModeMinutes[selectedTravelModeIndex] * 60))
+        let formatter = DateFormatter()
+        formatter.timeStyle = .short
+        let distance = travelModeDistancesMiles.indices.contains(selectedTravelModeIndex)
+            ? travelModeDistancesMiles[selectedTravelModeIndex]
+            : travelDistanceMiles
+        travelSummaryLabel?.text = String(
+            format: "%.2f mi • %@",
+            distance,
+            formatter.string(from: arrival)
+        )
+    }
+
+    private func updateTravelMetrics(meters: CLLocationDistance) {
+        travelDistanceMiles = meters / 1_609.344
+        travelModeDistancesMiles = Array(repeating: travelDistanceMiles, count: 4)
+        let speeds: [Double] = [1.35, 10.5, 7.0, 4.5]
+        travelModeMinutes = speeds.map { max(1, Int(ceil(meters / $0 / 60))) }
+        updateTravelModeSelection()
+    }
+
+    private func refreshTravelETAs() {
+        etaGeneration += 1
+        let generation = etaGeneration
+        etaDirections.values.forEach { $0.cancel() }
+        etaDirections.removeAll()
+
+        let source: MKMapItem
+        let destination: MKMapItem
+        if let routeDestinationMapItem {
+            source = mapItem
+            destination = routeDestinationMapItem
+        } else {
+            source = MKMapItem(placemark: MKPlacemark(coordinate: origin))
+            destination = mapItem
+        }
+        var supportedModes: [(Int, MKDirectionsTransportType)] = [
+            (0, .walking), (1, .automobile), (2, .transit)
+        ]
+        if #available(iOS 26.0, *) {
+            supportedModes.append((3, .cycling))
+        }
+        for (index, transportType) in supportedModes {
+            let request = MKDirections.Request()
+            request.source = source
+            request.destination = destination
+            request.transportType = transportType
+            request.requestsAlternateRoutes = false
+            let directions = MKDirections(request: request)
+            etaDirections[index] = directions
+            directions.calculateETA { [weak self, weak directions] response, _ in
+                DispatchQueue.main.async {
+                    guard let self,
+                          let directions,
+                          generation == self.etaGeneration,
+                          self.etaDirections[index] === directions else { return }
+                    self.etaDirections[index] = nil
+                    guard let response else { return }
+                    if self.travelModeMinutes.indices.contains(index) {
+                        self.travelModeMinutes[index] = max(1, Int(ceil(response.expectedTravelTime / 60)))
+                    }
+                    if self.travelModeDistancesMiles.indices.contains(index) {
+                        self.travelModeDistancesMiles[index] = response.distance / 1_609.344
+                    }
+                    self.updateTravelMetricsDisplay(at: index)
+                    self.updateTravelModeSelection()
+                }
+            }
+        }
+        fetchSelectedRoute()
+    }
+
+    private func fetchSelectedRoute() {
+        routeGeneration += 1
+        let generation = routeGeneration
+        routeDirections?.cancel()
+        returnedRoutes = []
+        onRouteChanged([])
+
+        let request = MKDirections.Request()
+        if let routeDestinationMapItem {
+            request.source = mapItem
+            request.destination = routeDestinationMapItem
+        } else {
+            request.source = .forCurrentLocation()
+            request.destination = mapItem
+        }
+        switch selectedTravelModeIndex {
+        case 0: request.transportType = .walking
+        case 1: request.transportType = .automobile
+        case 2: request.transportType = .transit
+        case 3:
+            if #available(iOS 26.0, *) {
+                request.transportType = .cycling
+            } else {
+                request.transportType = .walking
+            }
+        default: request.transportType = .automobile
+        }
+        request.requestsAlternateRoutes = true
+
+        let directions = MKDirections(request: request)
+        routeDirections = directions
+        Task { [weak self, weak directions] in
+            guard let directions else { return }
+            do {
+                let response = try await directions.calculate()
+                await MainActor.run {
+                    guard let self,
+                          generation == self.routeGeneration,
+                          self.routeDirections === directions else { return }
+                    self.routeDirections = nil
+                    self.returnedRoutes = response.routes
+                    self.onRouteChanged(response.routes)
+                    guard let route = response.routes.first else { return }
+                    let index = self.selectedTravelModeIndex
+                    if self.travelModeMinutes.indices.contains(index) {
+                        self.travelModeMinutes[index] = max(1, Int(ceil(route.expectedTravelTime / 60)))
+                    }
+                    if self.travelModeDistancesMiles.indices.contains(index) {
+                        self.travelModeDistancesMiles[index] = route.distance / 1_609.344
+                    }
+                    self.updateTravelMetricsDisplay(at: index)
+                    self.updateTravelModeSelection()
+                }
+            } catch {
+                await MainActor.run {
+                    guard let self, generation == self.routeGeneration else { return }
+                    self.routeDirections = nil
+                    self.returnedRoutes = []
+                    self.onRouteChanged([])
+                }
+            }
+        }
+    }
+
+    private func updateTravelMetricsDisplay(at index: Int) {
+        guard travelModeMinutes.indices.contains(index) else { return }
+        travelModesView?.update(
+            durations: travelModeMinutes.map(formattedTravelDuration(minutes:)),
+            selectedIndex: selectedTravelModeIndex
+        )
+    }
+
+    private func makeBottomBar() -> UIView {
+        let route = roundButton(symbol: "arrow.turn.up.right", label: "Open directions")
+        route.menu = makeDirectionsMenu()
+        route.showsMenuAsPrimaryAction = true
+        route.widthAnchor.constraint(equalToConstant: 48).isActive = true
+
+        let save = UIButton(type: .system)
+        save.setTitle("Save Place", for: .normal)
+        save.titleLabel?.font = .systemFont(ofSize: 20, weight: .semibold)
+        save.setTitleColor(
+            UIColor(red: 1.0, green: 0.91, blue: 0.67, alpha: 1),
+            for: .normal
+        )
+        save.backgroundColor = category.palette.tint
+        save.layer.cornerRadius = 26
+        save.layer.shadowColor = UIColor.black.cgColor
+        save.layer.shadowOpacity = 0.18
+        save.layer.shadowRadius = 10
+        save.layer.shadowOffset = CGSize(width: 0, height: 4)
+        save.layer.masksToBounds = false
+        save.accessibilityHint = "Adds this place to the trip"
+        save.addTarget(self, action: #selector(savePlace), for: .touchUpInside)
+        save.widthAnchor.constraint(greaterThanOrEqualToConstant: 124).isActive = true
+        save.heightAnchor.constraint(equalToConstant: 52).isActive = true
+        saveButton = save
+
+        let spacer = UIView()
+        let row = UIStackView(arrangedSubviews: [route, spacer, save])
+        row.axis = .horizontal
+        row.alignment = .center
+        row.spacing = 12
+        return row
+    }
+
+    private func makeDirectionsMenu() -> UIMenu {
+        let menuTitle = [mapItem.name, formattedAddress(), "activity.get_directions"]
+            .compactMap { $0 }
+            .joined(separator: "\n")
+        let services: [(String, String)] = [
+            ("Uber", "car.fill"),
+            ("Lyft", "car.side.fill"),
+            ("Waze", "location.fill"),
+            ("Google Maps", "map.fill"),
+            ("Apple Maps", "map")
+        ]
+        let serviceActions = services.map { service, symbol in
+            UIAction(title: service, image: UIImage(systemName: symbol)) { [weak self] _ in
+                self?.openDirections(using: service)
+            }
+        }
+        let copy = UIAction(title: "Copy Address", image: UIImage(systemName: "doc.on.doc")) { [weak self] _ in
+            guard let self else { return }
+            UIPasteboard.general.string = self.formattedAddress().replacingOccurrences(of: "\n", with: ", ")
+            UIAccessibility.post(notification: .announcement, argument: "Address copied")
+        }
+        return UIMenu(
+            title: menuTitle,
+            children: serviceActions + [UIMenu(options: .displayInline, children: [copy])]
+        )
+    }
+
+    private func makeTravelMapMenu() -> UIMenu {
+        let appleMaps = UIAction(title: "Apple Maps", image: UIImage(systemName: "map")) { [weak self] _ in
+            self?.openDirections()
+        }
+        let googleMaps = UIAction(title: "Google Maps", image: UIImage(systemName: "map.fill")) { [weak self] _ in
+            self?.openDirections(using: "Google Maps")
+        }
+        return UIMenu(children: [appleMaps, googleMaps])
+    }
+
+    private func openDirections(using service: String) {
+        let destination = routeDestinationMapItem ?? mapItem
+        let coordinate = destination.placemark.coordinate
+        let latitude = String(format: "%.6f", coordinate.latitude)
+        let longitude = String(format: "%.6f", coordinate.longitude)
+        let name = destination.name ?? destination.placemark.title ?? "Destination"
+        let encodedName = name.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "Destination"
+        let encodedAddress = formattedAddress()
+            .replacingOccurrences(of: "\n", with: ", ")
+            .addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+
+        switch service {
+        case "Uber":
+            openExternalApp(
+                URL(string: "uber://?action=setPickup&pickup=my_location&dropoff[latitude]=\(latitude)&dropoff[longitude]=\(longitude)&dropoff[nickname]=\(encodedName)"),
+                fallback: URL(string: "https://m.uber.com/ul/?action=setPickup&pickup=my_location&dropoff[latitude]=\(latitude)&dropoff[longitude]=\(longitude)&dropoff[nickname]=\(encodedName)")
+            )
+        case "Lyft":
+            openExternalApp(
+                URL(string: "lyft://ridetype?id=lyft&destination[latitude]=\(latitude)&destination[longitude]=\(longitude)"),
+                fallback: URL(string: "https://ride.lyft.com/?destination[latitude]=\(latitude)&destination[longitude]=\(longitude)")
+            )
+        case "Waze":
+            openExternalApp(
+                URL(string: "waze://?ll=\(latitude),\(longitude)&navigate=yes"),
+                fallback: URL(string: "https://www.waze.com/ul?ll=\(latitude)%2C\(longitude)&navigate=yes")
+            )
+        case "Google Maps":
+            openExternalApp(
+                URL(string: "comgooglemaps://?daddr=\(latitude),\(longitude)&directionsmode=driving"),
+                fallback: URL(string: "https://www.google.com/maps/dir/?api=1&destination=\(latitude)%2C\(longitude)&destination_place_id=\(encodedAddress)")
+            )
+        default:
+            openDirections()
+        }
+    }
+
+    private func openExternalApp(_ appURL: URL?, fallback: URL?) {
+        guard let appURL else {
+            if let fallback { UIApplication.shared.open(fallback) }
+            return
+        }
+        UIApplication.shared.open(appURL, options: [:]) { opened in
+            guard !opened, let fallback else { return }
+            UIApplication.shared.open(fallback)
+        }
+    }
+
+    private func cardStack() -> UIStackView {
+        let stack = UIStackView()
+        stack.axis = .vertical
+        stack.backgroundColor = AlmidyDesignTokens.Color.settingsCard
+        stack.layer.cornerRadius = Self.cardCornerRadius
+        stack.clipsToBounds = true
+        return stack
+    }
+
+    private func detailRow(label: String, value: String, action: (() -> Void)?) -> UIView {
+        let caption = UILabel()
+        caption.text = label
+        caption.font = .systemFont(ofSize: 14, weight: .regular)
+        caption.textColor = UIColor.secondaryLabel.withAlphaComponent(0.72)
+        let detail = UILabel()
+        detail.text = value
+        detail.font = .systemFont(ofSize: 16, weight: .regular)
+        detail.textColor = action == nil ? .label : category.palette.tint
+        detail.numberOfLines = 0
+        let stack = UIStackView(arrangedSubviews: [caption, detail])
+        stack.axis = .vertical
+        stack.spacing = 4
+        let insets = UIEdgeInsets(top: 10, left: 16, bottom: 10, right: 16)
+        let container: UIView
+        if let action {
+            container = NativePlaceAccessibleActionView(child: stack, insets: insets, onActivate: action)
+        } else {
+            container = padded(stack, insets: insets)
+            container.isAccessibilityElement = true
+        }
+        container.isAccessibilityElement = true
+        container.accessibilityLabel = label
+        container.accessibilityValue = value.replacingOccurrences(of: "\n", with: ", ")
+        return container
+    }
+
+    private func travelEndpoint(
+        symbol: UIImage,
+        tint: UIColor,
+        title: String,
+        accessorySymbol: String? = nil,
+        connectsAbove: Bool = false,
+        connectsBelow: Bool = false,
+        capturesTitleLabel: Bool = false,
+        accessoryAction: Selector? = nil,
+        capturesRouteDestinationLabel: Bool = false,
+        accessoryMenu: UIMenu? = nil
+    ) -> UIView {
+        let icon = UIImageView(image: symbol.withRenderingMode(.alwaysTemplate))
+        icon.tintColor = tint
+        icon.contentMode = .scaleAspectFit
+        icon.translatesAutoresizingMaskIntoConstraints = false
+        let iconContainer = UIView()
+        iconContainer.backgroundColor = tint.withAlphaComponent(0.10)
+        iconContainer.layer.cornerRadius = 18
+        iconContainer.addSubview(icon)
+        iconContainer.widthAnchor.constraint(equalToConstant: 36).isActive = true
+        iconContainer.heightAnchor.constraint(equalToConstant: 36).isActive = true
+        NSLayoutConstraint.activate([
+            icon.centerXAnchor.constraint(equalTo: iconContainer.centerXAnchor),
+            icon.centerYAnchor.constraint(equalTo: iconContainer.centerYAnchor),
+            icon.widthAnchor.constraint(equalToConstant: 22),
+            icon.heightAnchor.constraint(equalToConstant: 22)
+        ])
+        let label = UILabel()
+        label.text = title
+        label.font = .systemFont(ofSize: 16, weight: .regular)
+        label.numberOfLines = 1
+        if capturesTitleLabel {
+            travelSummaryLabel = label
+        }
+        if capturesRouteDestinationLabel {
+            routeDestinationLabel = label
+        }
+        let spacer = UIView()
+        var arrangedSubviews: [UIView] = [iconContainer, label, spacer]
+        if let accessorySymbol {
+            let accessory = UIButton(type: .system)
+            accessory.setImage(UIImage(systemName: accessorySymbol), for: .normal)
+            accessory.tintColor = .secondaryLabel
+            accessory.accessibilityLabel = accessoryAction == nil ? nil : "Choose route destination"
+            if let accessoryAction {
+                accessory.addTarget(self, action: accessoryAction, for: .touchUpInside)
+            } else if let accessoryMenu {
+                accessory.menu = accessoryMenu
+                accessory.showsMenuAsPrimaryAction = true
+            } else {
+                accessory.isUserInteractionEnabled = false
+            }
+            accessory.widthAnchor.constraint(equalToConstant: 44).isActive = true
+            accessory.heightAnchor.constraint(equalToConstant: 44).isActive = true
+            arrangedSubviews.append(accessory)
+        }
+        let row = UIStackView(arrangedSubviews: arrangedSubviews)
+        row.axis = .horizontal
+        row.alignment = .center
+        row.spacing = 14
+        let container = padded(row, insets: UIEdgeInsets(top: 8, left: 16, bottom: 8, right: 16))
+        let routeLineColor = UIColor.separator.withAlphaComponent(0.20)
+        if connectsAbove {
+            let line = UIView()
+            line.backgroundColor = routeLineColor
+            line.translatesAutoresizingMaskIntoConstraints = false
+            container.insertSubview(line, at: 0)
+            NSLayoutConstraint.activate([
+                line.widthAnchor.constraint(equalToConstant: 1.5),
+                line.centerXAnchor.constraint(equalTo: container.leadingAnchor, constant: 34),
+                line.topAnchor.constraint(equalTo: container.topAnchor),
+                line.bottomAnchor.constraint(equalTo: iconContainer.topAnchor)
+            ])
+        }
+        if connectsBelow {
+            let line = UIView()
+            line.backgroundColor = routeLineColor
+            line.translatesAutoresizingMaskIntoConstraints = false
+            container.insertSubview(line, at: 0)
+            NSLayoutConstraint.activate([
+                line.widthAnchor.constraint(equalToConstant: 1.5),
+                line.centerXAnchor.constraint(equalTo: container.leadingAnchor, constant: 34),
+                line.topAnchor.constraint(equalTo: iconContainer.bottomAnchor),
+                line.bottomAnchor.constraint(equalTo: container.bottomAnchor)
+            ])
+        }
+        return container
+    }
+
+    private func roundButton(symbol: String, label: String) -> UIButton {
+        let button = AlmidyIconButton(
+            symbol: symbol,
+            style: .floating,
+            accessibilityLabel: label,
+            overrides: .init(
+                diameter: Self.headerControlSize,
+                symbolPointSize: 18,
+                symbolWeight: .regular,
+                foregroundColor: .label,
+                backgroundColor: AlmidyDesignTokens.Color.settingsCard.withAlphaComponent(0.76),
+                elevation: .init(
+                    color: .black,
+                    opacity: 0.10,
+                    radius: 10,
+                    offset: CGSize(width: 0, height: 4)
+                )
+            )
+        )
+        return button
+    }
+
+    private func padded(_ child: UIView, insets: UIEdgeInsets) -> UIView {
+        let container = UIView()
+        child.translatesAutoresizingMaskIntoConstraints = false
+        container.addSubview(child)
+        NSLayoutConstraint.activate([
+            child.topAnchor.constraint(equalTo: container.topAnchor, constant: insets.top),
+            child.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: insets.left),
+            child.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -insets.right),
+            child.bottomAnchor.constraint(equalTo: container.bottomAnchor, constant: -insets.bottom)
+        ])
+        return container
+    }
+
+    private func divider(leftInset: CGFloat = 16) -> UIView {
+        let line = AlmidyDivider(color: UIColor.separator.withAlphaComponent(0.22))
+        return padded(line, insets: UIEdgeInsets(top: 0, left: leftInset, bottom: 0, right: 16))
+    }
+
+    private func formattedTravelDuration(minutes: Int) -> String {
+        guard minutes >= 60 else { return "\(minutes)m" }
+        let hours = minutes / 60
+        let remainingMinutes = minutes % 60
+        if hours >= 24 {
+            return remainingMinutes >= 30 ? "\(hours + 1)h" : "\(hours)h"
+        }
+        return remainingMinutes == 0 ? "\(hours)h" : "\(hours)h \(remainingMinutes)m"
+    }
+
+    private func availableFormattedAddress() -> String? {
+        let placemark = mapItem.placemark
+        let street = [clean(placemark.subThoroughfare), clean(placemark.thoroughfare)]
+            .compactMap { $0 }
+            .joined(separator: " ")
+        let cityRegionPostal = [clean(placemark.locality), clean(placemark.administrativeArea), clean(placemark.postalCode)]
+            .compactMap { $0 }
+            .joined(separator: " ")
+        let semanticLines = [clean(street), clean(cityRegionPostal), clean(placemark.country)]
+            .compactMap { $0 }
+        if !semanticLines.isEmpty {
+            return semanticLines.joined(separator: "\n")
+        }
+        return clean(placemark.title)
+    }
+
+    private func formattedAddress() -> String {
+        availableFormattedAddress() ?? "Address unavailable"
+    }
+
+    private func clean(_ value: String?) -> String? {
+        guard let value = value?.trimmingCharacters(in: .whitespacesAndNewlines), !value.isEmpty else { return nil }
+        return value
+    }
+
+    @objc private func closeDetails() {
+        dismiss(animated: true, completion: onClose)
+    }
+    @objc private func sharePlace(_ sender: UIButton) {
+        let values: [Any] = [mapItem.name, mapItem.url?.absoluteString, mapItem.placemark.title].compactMap { $0 }
+        let controller = UIActivityViewController(activityItems: values, applicationActivities: nil)
+        controller.popoverPresentationController?.sourceView = sender
+        present(controller, animated: true)
+    }
+    @objc private func callPlace() {
+        guard let phone = clean(mapItem.phoneNumber), let url = URL(string: "tel:\(phone.filter { $0.isNumber || $0 == "+" })") else { return }
+        UIApplication.shared.open(url)
+    }
+    @objc private func openWebsite() {
+        guard let url = mapItem.url else { return }
+        UIApplication.shared.open(url)
+    }
+    @objc private func openDirections() {
+        let options = [MKLaunchOptionsDirectionsModeKey: MKLaunchOptionsDirectionsModeDriving]
+        if let routeDestinationMapItem {
+            MKMapItem.openMaps(with: [mapItem, routeDestinationMapItem], launchOptions: options)
+        } else {
+            mapItem.openInMaps(launchOptions: options)
+        }
+    }
+
+    @objc private func openRouteDestinationSearch() {
+        let controller = NativeRouteDestinationSearchViewController(
+            accent: category.palette.tint,
+            nearbyCoordinate: origin
+        ) { [weak self] destination in
+            guard let self else { return }
+            self.routeDestinationMapItem = destination
+            self.routeDestinationLabel?.text = destination.name ?? destination.placemark.title ?? "Destination"
+            let start = CLLocation(
+                latitude: self.mapItem.placemark.coordinate.latitude,
+                longitude: self.mapItem.placemark.coordinate.longitude
+            )
+            let end = CLLocation(
+                latitude: destination.placemark.coordinate.latitude,
+                longitude: destination.placemark.coordinate.longitude
+            )
+            self.updateTravelMetrics(meters: start.distance(from: end))
+            self.refreshTravelETAs()
+        }
+        controller.modalPresentationStyle = .pageSheet
+        if let sheet = controller.sheetPresentationController {
+            NativeActivitySheetMetrics.applyMyTripsExpandedHeight(to: sheet)
+            sheet.prefersGrabberVisible = false
+            sheet.preferredCornerRadius = 36
+        }
+        present(controller, animated: true)
+    }
+    @objc private func savePlace() {
+        guard !isSaving else { return }
+        isSaving = true
+        saveButton?.isEnabled = false
+        saveButton?.setTitle("Saving…", for: .normal)
+        onSave { [weak self] result in
+            DispatchQueue.main.async {
+                guard let self else { return }
+                self.isSaving = false
+                self.saveButton?.isEnabled = true
+                self.saveButton?.setTitle("Save Place", for: .normal)
+                switch result {
+                case .success(let segment):
+                    let categoryName = NativeActivityPurposeRegistry.purpose(for: self.category).searchToken.uppercased()
+                    let confirmation = UIAlertController(
+                        title: "SAVED IN \(categoryName)",
+                        message: nil,
+                        preferredStyle: .alert
+                    )
+                    self.present(confirmation, animated: true)
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { [weak self, weak confirmation] in
+                        guard let self else { return }
+                        confirmation?.dismiss(animated: true) {
+                            self.dismiss(animated: true) { self.onSaved(segment) }
+                        }
+                    }
+                case .failure(let error):
+                    let message: String
+                    if let storeError = error as? NativeTripStoreError,
+                       case .unauthorized = storeError {
+                        message = "Your Almidy session expired. Sign in again, then retry saving this place."
+                    } else if (error as NSError).domain == "app.almidy.place-card" {
+                        message = "Open this place from a trip’s New Activity search, then try again."
+                    } else {
+                        message = "Almidy couldn’t add this place to the itinerary. Please try again."
+                    }
+                    let alert = UIAlertController(
+                        title: "Place Not Saved",
+                        message: message,
+                        preferredStyle: .alert
+                    )
+                    alert.addAction(UIAlertAction(title: "OK", style: .default))
+                    self.present(alert, animated: true)
+                }
+            }
+        }
+    }
+}
+
+private final class NativeVerticalCalendarView: UIView {
+    var onSelectDate: ((Date) -> Void)?
+
+    private let calendar = Calendar.current
+    private let selectedDate: Date
+    private let startOfToday: Date
+
+    init(selectedDate: Date = Date()) {
+        self.selectedDate = selectedDate
+        self.startOfToday = Calendar.current.startOfDay(for: Date())
+        super.init(frame: .zero)
+        buildView()
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    private func buildView() {
+        backgroundColor = .systemBackground
+
+        let weekdayRow = UIStackView()
+        weekdayRow.axis = .horizontal
+        weekdayRow.distribution = .fillEqually
+        weekdayRow.translatesAutoresizingMaskIntoConstraints = false
+        for weekday in calendar.veryShortStandaloneWeekdaySymbols {
+            let label = UILabel()
+            label.text = weekday.uppercased()
+            label.textAlignment = .center
+            label.textColor = .secondaryLabel
+            label.font = .systemFont(ofSize: 13, weight: .semibold)
+            weekdayRow.addArrangedSubview(label)
+        }
+
+        let scrollView = UIScrollView()
+        scrollView.alwaysBounceVertical = true
+        scrollView.showsVerticalScrollIndicator = true
+        scrollView.translatesAutoresizingMaskIntoConstraints = false
+
+        let monthsStack = UIStackView()
+        monthsStack.axis = .vertical
+        monthsStack.spacing = 26
+        monthsStack.translatesAutoresizingMaskIntoConstraints = false
+        scrollView.addSubview(monthsStack)
+
+        addSubview(weekdayRow)
+        addSubview(scrollView)
+        NSLayoutConstraint.activate([
+            weekdayRow.topAnchor.constraint(equalTo: topAnchor, constant: 12),
+            weekdayRow.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 24),
+            weekdayRow.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -24),
+            weekdayRow.heightAnchor.constraint(equalToConstant: 28),
+            scrollView.topAnchor.constraint(equalTo: weekdayRow.bottomAnchor, constant: 8),
+            scrollView.leadingAnchor.constraint(equalTo: leadingAnchor),
+            scrollView.trailingAnchor.constraint(equalTo: trailingAnchor),
+            scrollView.bottomAnchor.constraint(equalTo: bottomAnchor),
+            monthsStack.topAnchor.constraint(equalTo: scrollView.contentLayoutGuide.topAnchor),
+            monthsStack.leadingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.leadingAnchor, constant: 24),
+            monthsStack.trailingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.trailingAnchor, constant: -24),
+            monthsStack.bottomAnchor.constraint(equalTo: scrollView.contentLayoutGuide.bottomAnchor, constant: -24),
+            monthsStack.widthAnchor.constraint(equalTo: scrollView.frameLayoutGuide.widthAnchor, constant: -48)
+        ])
+
+        let monthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: startOfToday)) ?? startOfToday
+        for offset in 0..<24 {
+            guard let month = calendar.date(byAdding: .month, value: offset, to: monthStart) else { continue }
+            monthsStack.addArrangedSubview(makeMonthView(month))
+        }
+    }
+
+    private func makeMonthView(_ month: Date) -> UIView {
+        let container = UIStackView()
+        container.axis = .vertical
+        container.spacing = 10
+
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMMM yyyy"
+        let title = UILabel()
+        title.text = formatter.string(from: month)
+        title.font = .systemFont(ofSize: 23, weight: .semibold)
+        container.addArrangedSubview(title)
+
+        let grid = UIStackView()
+        grid.axis = .vertical
+        grid.distribution = .fillEqually
+        grid.spacing = 5
+        container.addArrangedSubview(grid)
+
+        let dayRange = calendar.range(of: .day, in: .month, for: month) ?? 1..<1
+        let weekday = calendar.component(.weekday, from: month)
+        let leadingBlanks = (weekday - calendar.firstWeekday + 7) % 7
+        let cellCount = leadingBlanks + dayRange.count
+        let rowCount = Int(ceil(Double(cellCount) / 7.0))
+
+        for rowIndex in 0..<rowCount {
+            let row = UIStackView()
+            row.axis = .horizontal
+            row.distribution = .fillEqually
+            row.spacing = 4
+            grid.addArrangedSubview(row)
+            for column in 0..<7 {
+                let index = rowIndex * 7 + column
+                let day = index - leadingBlanks + 1
+                let button = UIButton(type: .system)
+                button.titleLabel?.font = .systemFont(ofSize: 20, weight: .regular)
+                button.heightAnchor.constraint(equalToConstant: 42).isActive = true
+                guard day >= 1, day <= dayRange.count,
+                      let date = calendar.date(byAdding: .day, value: day - 1, to: month) else {
+                    button.isEnabled = false
+                    row.addArrangedSubview(button)
+                    continue
+                }
+                button.setTitle("\(day)", for: .normal)
+                button.accessibilityLabel = DateFormatter.localizedString(from: date, dateStyle: .long, timeStyle: .none)
+                button.tag = Int(date.timeIntervalSince1970)
+                button.addTarget(self, action: #selector(dayTapped(_:)), for: .touchUpInside)
+                let isPast = calendar.startOfDay(for: date) < startOfToday
+                button.isEnabled = !isPast
+                button.setTitleColor(isPast ? .tertiaryLabel : .label, for: .normal)
+                if calendar.isDate(date, inSameDayAs: selectedDate) {
+                    button.backgroundColor = AlmidyDesignTokens.Color.goldDark
+                    button.setTitleColor(.white, for: .normal)
+                    button.layer.cornerRadius = 21
+                }
+                row.addArrangedSubview(button)
+            }
+        }
+        return container
+    }
+
+    @objc private func dayTapped(_ sender: UIButton) {
+        onSelectDate?(Date(timeIntervalSince1970: TimeInterval(sender.tag)))
+    }
+}
+
+typealias NativeFlightDraftSubmission = (
+    TransportationActivityDraft,
+    @escaping (Result<Void, Error>) -> Void
+) -> Void
+
+final class NativeFlightSearchViewController: UIViewController,
+    MKLocalSearchCompleterDelegate, UITableViewDataSource, UITableViewDelegate, UITextFieldDelegate {
+    private let accent: UIColor
+    private let tripID: String?
+    private let onSubmitFlight: NativeFlightDraftSubmission?
+    private let onFlightSaved: (() -> Void)?
+    private let completer = MKLocalSearchCompleter()
+    private var completions: [MKLocalSearchCompletion] = []
+    private let searchField = UITextField()
+    private let resultsTable = UITableView(frame: .zero, style: .plain)
+    private let forwardingCard = UIView()
+    private weak var flightNumberField: UITextField?
+    private weak var airlineField: UITextField?
+    private weak var dateField: UITextField?
+    private weak var flightSuggestion: UIView?
+    private weak var arrivalPrompt: UIView?
+    private weak var verticalCalendar: NativeVerticalCalendarView?
+    private weak var emptySearchPrompt: UIView?
+    private weak var matchedFlightView: UIView?
+    private weak var flightEntryView: UIView?
+    private var selectedAirline: (name: String, codes: String)?
+    private var inferredFlightNumber: String?
+    private var selectedDate: Date?
+    private var airlineResults: [(name: String, codes: String)] = []
+    private let airlines: [(String, String)] = [
+        ("American Air Charter", "GTW"), ("American Airlines", "AAL · AA"),
+        ("American Falcon", "AF"), ("American Jet International", "SCM"),
+        ("Latin American Wings", "JMR · LW"), ("Native American Air Ambulance", "NVT"),
+        ("North American Airlines", "NAO · NA"), ("North American Charters", "NC"),
+        ("North American Jet", "SFH")
+    ]
+
+    init(
+        accent: UIColor,
+        tripID: String? = nil,
+        onSubmitFlight: NativeFlightDraftSubmission? = nil,
+        onFlightSaved: (() -> Void)? = nil
+    ) {
+        self.accent = accent
+        self.tripID = tripID
+        self.onSubmitFlight = onSubmitFlight
+        self.onFlightSaved = onFlightSaved
+        super.init(nibName: nil, bundle: nil)
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        view.backgroundColor = .systemBackground
+        completer.delegate = self
+        completer.resultTypes = [.address, .pointOfInterest, .query]
+
+        let cancel = UIButton(type: .system)
+        cancel.setTitle("Cancel", for: .normal)
+        cancel.setTitleColor(.label, for: .normal)
+        cancel.titleLabel?.font = .systemFont(ofSize: 18, weight: .medium)
+        cancel.backgroundColor = UIColor.secondarySystemBackground.withAlphaComponent(0.82)
+        cancel.layer.cornerRadius = 22
+        cancel.layer.shadowColor = UIColor.black.cgColor
+        cancel.layer.shadowOpacity = 0.08
+        cancel.layer.shadowRadius = 10
+        cancel.layer.shadowOffset = CGSize(width: 0, height: 4)
+        cancel.addTarget(self, action: #selector(cancelSearch), for: .touchUpInside)
+
+        let title = UILabel()
+        title.text = "Search Flight"
+        title.font = .systemFont(ofSize: 22, weight: .semibold)
+        title.textAlignment = .center
+
+        searchField.placeholder = "Airport, Airline or Flight Number (e.g AA107)"
+        searchField.font = .systemFont(ofSize: 17)
+        searchField.backgroundColor = .secondarySystemFill
+        searchField.layer.cornerRadius = 12
+        searchField.clearButtonMode = .whileEditing
+        searchField.returnKeyType = .search
+        searchField.autocapitalizationType = .allCharacters
+        searchField.autocorrectionType = .no
+        searchField.tintColor = AlmidyDesignTokens.Color.goldDark
+        searchField.setPadding(12)
+        searchField.delegate = self
+        searchField.accessibilityIdentifier = "native-flight-search-query"
+        searchField.addTarget(self, action: #selector(queryChanged), for: .editingChanged)
+
+        configureForwardingCard()
+
+        resultsTable.register(UITableViewCell.self, forCellReuseIdentifier: "flight-search-result")
+        resultsTable.dataSource = self
+        resultsTable.delegate = self
+        resultsTable.rowHeight = 68
+        resultsTable.keyboardDismissMode = .interactive
+        resultsTable.tableFooterView = UIView()
+        resultsTable.isHidden = true
+
+        let separator = UIView()
+        separator.backgroundColor = UIColor.separator.withAlphaComponent(0.22)
+        [cancel, title, searchField, separator, forwardingCard, resultsTable].forEach {
+            $0.translatesAutoresizingMaskIntoConstraints = false
+            view.addSubview($0)
+        }
+        NSLayoutConstraint.activate([
+            cancel.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 20),
+            cancel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+            cancel.widthAnchor.constraint(equalToConstant: 76),
+            cancel.heightAnchor.constraint(equalToConstant: 34),
+            title.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            title.centerYAnchor.constraint(equalTo: cancel.centerYAnchor),
+            searchField.topAnchor.constraint(equalTo: cancel.bottomAnchor, constant: 18),
+            searchField.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+            searchField.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            searchField.heightAnchor.constraint(equalToConstant: 44),
+            separator.topAnchor.constraint(equalTo: searchField.bottomAnchor, constant: 8),
+            separator.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            separator.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            separator.heightAnchor.constraint(equalToConstant: 1 / UIScreen.main.scale),
+            forwardingCard.topAnchor.constraint(equalTo: separator.bottomAnchor, constant: 16),
+            forwardingCard.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+            forwardingCard.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            forwardingCard.heightAnchor.constraint(equalToConstant: 130),
+            resultsTable.topAnchor.constraint(equalTo: separator.bottomAnchor, constant: 8),
+            resultsTable.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            resultsTable.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            resultsTable.bottomAnchor.constraint(equalTo: view.bottomAnchor)
+        ])
+        searchField.becomeFirstResponder()
+    }
+
+    private func configureForwardingCard() {
+        forwardingCard.backgroundColor = AlmidyDesignTokens.Color.goldMutedSurface
+        forwardingCard.layer.cornerRadius = 16
+
+        let icon = UIImageView(image: UIImage(systemName: "arrowshape.turn.up.right"))
+        icon.tintColor = .secondaryLabel
+        icon.contentMode = .scaleAspectFit
+        let title = UILabel()
+        title.text = "Forward Reservations"
+        title.font = .systemFont(ofSize: 18, weight: .semibold)
+        let detail = UILabel()
+        detail.text = "Forward ticket reservations, and save in your itinerary automatically."
+        detail.font = .systemFont(ofSize: 14)
+        detail.textColor = .secondaryLabel
+        detail.numberOfLines = 2
+        let setup = UIButton(type: .system)
+        setup.setTitle("Set Up Now", for: .normal)
+        setup.setTitleColor(AlmidyDesignTokens.Color.goldDark, for: .normal)
+        setup.titleLabel?.font = .systemFont(ofSize: 17, weight: .semibold)
+        setup.contentHorizontalAlignment = .leading
+        setup.addTarget(self, action: #selector(setUpForwarding), for: .touchUpInside)
+        let close = UIButton(type: .system)
+        close.setImage(UIImage(systemName: "xmark"), for: .normal)
+        close.tintColor = .secondaryLabel
+        close.addTarget(self, action: #selector(hideForwardingCard), for: .touchUpInside)
+        close.accessibilityLabel = "Dismiss Forward Reservations"
+
+        [icon, title, detail, setup, close].forEach {
+            $0.translatesAutoresizingMaskIntoConstraints = false
+            forwardingCard.addSubview($0)
+        }
+        NSLayoutConstraint.activate([
+            icon.leadingAnchor.constraint(equalTo: forwardingCard.leadingAnchor, constant: 16),
+            icon.topAnchor.constraint(equalTo: forwardingCard.topAnchor, constant: 20),
+            icon.widthAnchor.constraint(equalToConstant: 28),
+            icon.heightAnchor.constraint(equalToConstant: 28),
+            close.trailingAnchor.constraint(equalTo: forwardingCard.trailingAnchor, constant: -12),
+            close.topAnchor.constraint(equalTo: forwardingCard.topAnchor, constant: 12),
+            close.widthAnchor.constraint(equalToConstant: 36),
+            close.heightAnchor.constraint(equalToConstant: 36),
+            title.leadingAnchor.constraint(equalTo: icon.trailingAnchor, constant: 14),
+            title.topAnchor.constraint(equalTo: forwardingCard.topAnchor, constant: 16),
+            title.trailingAnchor.constraint(lessThanOrEqualTo: close.leadingAnchor, constant: -8),
+            detail.leadingAnchor.constraint(equalTo: title.leadingAnchor),
+            detail.trailingAnchor.constraint(equalTo: forwardingCard.trailingAnchor, constant: -24),
+            detail.topAnchor.constraint(equalTo: title.bottomAnchor, constant: 5),
+            setup.leadingAnchor.constraint(equalTo: title.leadingAnchor),
+            setup.topAnchor.constraint(equalTo: detail.bottomAnchor, constant: 6),
+            setup.trailingAnchor.constraint(equalTo: detail.trailingAnchor),
+            setup.bottomAnchor.constraint(lessThanOrEqualTo: forwardingCard.bottomAnchor, constant: -10)
+        ])
+    }
+
+    @objc private func cancelSearch() { dismiss(animated: true) }
+    @objc private func hideForwardingCard() {
+        forwardingCard.isHidden = true
+        showFlightEmptyState()
+    }
+    @objc private func setUpForwarding() {
+        let alert = UIAlertController(
+            title: "Forward Reservations",
+            message: "Reservation forwarding setup will connect your travel inbox to this itinerary.",
+            preferredStyle: .alert
+        )
+        alert.addAction(UIAlertAction(title: "OK", style: .default))
+        present(alert, animated: true)
+    }
+
+    @objc private func queryChanged() {
+        let query = searchField.text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if query.count < 2 {
+            inferredFlightNumber = nil
+            airlineResults = []
+            completions = []
+            resultsTable.isHidden = true
+            forwardingCard.isHidden = false
+            resultsTable.reloadData()
+            completer.queryFragment = ""
+            return
+        }
+        forwardingCard.isHidden = true
+        emptySearchPrompt?.removeFromSuperview()
+        inferredFlightNumber = Self.flightNumberComponent(in: query)
+        airlineResults = airlines.filter {
+            $0.0.localizedCaseInsensitiveContains(query) || $0.1.localizedCaseInsensitiveContains(query)
+                || Self.airlineCodes(in: $0.1).contains { query.uppercased().hasPrefix($0) }
+        }
+        if !airlineResults.isEmpty {
+            resultsTable.isHidden = false
+            resultsTable.reloadData()
+        }
+        completer.queryFragment = "airport airline \(query)"
+    }
+
+    func completerDidUpdateResults(_ completer: MKLocalSearchCompleter) {
+        let query = searchField.text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        guard query.count >= 2, airlineResults.isEmpty, selectedAirline == nil else { return }
+        completions = Array(completer.results.prefix(6))
+        resultsTable.isHidden = completions.isEmpty
+        resultsTable.reloadData()
+    }
+
+    func completer(_ completer: MKLocalSearchCompleter, didFailWithError error: Error) {
+        completions = []
+        resultsTable.isHidden = true
+        resultsTable.reloadData()
+    }
+
+    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        airlineResults.isEmpty ? completions.count : airlineResults.count
+    }
+
+    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        let cell = tableView.dequeueReusableCell(withIdentifier: "flight-search-result", for: indexPath)
+        var content = cell.defaultContentConfiguration()
+        if !airlineResults.isEmpty {
+            let airline = airlineResults[indexPath.row]
+            content.image = UIImage(systemName: "airplane.circle.fill")
+            content.text = airline.name
+            content.secondaryText = airline.codes
+        } else {
+            let completion = completions[indexPath.row]
+            content.image = UIImage(systemName: "airplane")
+            content.text = completion.title
+            content.secondaryText = completion.subtitle
+        }
+        content.imageProperties.tintColor = AlmidyDesignTokens.Color.goldDark
+        content.textProperties.font = .systemFont(ofSize: 16, weight: .medium)
+        content.secondaryTextProperties.color = .secondaryLabel
+        cell.contentConfiguration = content
+        return cell
+    }
+
+    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        if !airlineResults.isEmpty {
+            showFlightEntry(for: airlineResults[indexPath.row])
+            return
+        }
+        let completion = completions[indexPath.row]
+        searchField.text = completion.title
+        searchField.resignFirstResponder()
+        tableView.isHidden = true
+        openManualFlightRoute()
+    }
+
+    private func showFlightEntry(for airline: (name: String, codes: String)) {
+        selectedAirline = airline
+        searchField.resignFirstResponder()
+        forwardingCard.isHidden = true
+        resultsTable.isHidden = true
+        searchField.isHidden = true
+
+        let airlineField = flightField(symbol: "airplane", text: Self.threeLetterAirlineCode(in: airline.codes) ?? airline.codes)
+        self.airlineField = airlineField
+        let clearAirline = UIButton(type: .system)
+        clearAirline.setImage(UIImage(systemName: "xmark.circle.fill"), for: .normal)
+        clearAirline.tintColor = .tertiaryLabel
+        clearAirline.frame = CGRect(x: 0, y: 0, width: 40, height: 44)
+        clearAirline.addTarget(self, action: #selector(clearSelectedAirline), for: .touchUpInside)
+        clearAirline.accessibilityLabel = "Clear airline"
+        airlineField.rightView = clearAirline
+        airlineField.rightViewMode = .always
+        let numberField = flightField(symbol: "number.circle", text: "Flight Number")
+        numberField.tag = 100
+        numberField.keyboardType = .default
+        numberField.autocapitalizationType = .allCharacters
+        numberField.autocorrectionType = .no
+        numberField.delegate = self
+        numberField.addTarget(self, action: #selector(flightNumberChanged), for: .editingChanged)
+        numberField.text = inferredFlightNumber
+        numberField.accessibilityIdentifier = "native-flight-number"
+        flightNumberField = numberField
+        let dateField = flightField(symbol: "calendar", text: "Date")
+        dateField.tag = 101
+        dateField.delegate = self
+        dateField.accessibilityIdentifier = "native-flight-date"
+        self.dateField = dateField
+        let topRow = UIStackView(arrangedSubviews: [airlineField, numberField])
+        topRow.axis = .horizontal
+        topRow.distribution = .fillEqually
+        topRow.spacing = 8
+        let fields = UIStackView(arrangedSubviews: [topRow, dateField])
+        fields.axis = .vertical
+        fields.spacing = 8
+        flightEntryView = fields
+
+        let icons = flightPromptIcons()
+        let prompt = UILabel()
+        prompt.text = "Enter Arrival"
+        prompt.font = .systemFont(ofSize: 24, weight: .semibold)
+        prompt.textAlignment = .center
+        let subtitle = UILabel()
+        subtitle.text = "You can search by arrival city or airport"
+        subtitle.font = .systemFont(ofSize: 17)
+        subtitle.textColor = .secondaryLabel
+        subtitle.textAlignment = .center
+        let empty = UIStackView(arrangedSubviews: [icons, prompt, subtitle])
+        empty.axis = .vertical
+        empty.spacing = 0
+        empty.setCustomSpacing(28, after: icons)
+        empty.setCustomSpacing(16, after: prompt)
+        arrivalPrompt = empty
+
+        let suggestion = makeFlightSuggestion()
+        suggestion.isHidden = true
+        flightSuggestion = suggestion
+
+        [fields, suggestion, empty].forEach { $0.translatesAutoresizingMaskIntoConstraints = false; view.addSubview($0) }
+        NSLayoutConstraint.activate([
+            fields.topAnchor.constraint(equalTo: searchField.topAnchor),
+            fields.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+            fields.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            suggestion.topAnchor.constraint(equalTo: fields.bottomAnchor),
+            suggestion.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+            suggestion.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            suggestion.heightAnchor.constraint(equalToConstant: 72),
+            empty.topAnchor.constraint(equalTo: fields.bottomAnchor, constant: 34),
+            empty.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 32),
+            empty.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -32)
+        ])
+        if numberField.text?.isEmpty == false {
+            flightNumberChanged()
+        }
+        numberField.becomeFirstResponder()
+    }
+
+    private func flightPromptIcons() -> UIView {
+        let symbols = ["calendar", "airplane", "clock"]
+        let iconAccent = accent
+        let circleFill = UIColor { traits in
+            let foreground = iconAccent.resolvedColor(with: traits)
+            let background = UIColor.systemBackground.resolvedColor(with: traits)
+            var foregroundRed: CGFloat = 0
+            var foregroundGreen: CGFloat = 0
+            var foregroundBlue: CGFloat = 0
+            var foregroundAlpha: CGFloat = 0
+            var backgroundRed: CGFloat = 0
+            var backgroundGreen: CGFloat = 0
+            var backgroundBlue: CGFloat = 0
+            var backgroundAlpha: CGFloat = 0
+            guard foreground.getRed(
+                &foregroundRed,
+                green: &foregroundGreen,
+                blue: &foregroundBlue,
+                alpha: &foregroundAlpha
+            ), background.getRed(
+                &backgroundRed,
+                green: &backgroundGreen,
+                blue: &backgroundBlue,
+                alpha: &backgroundAlpha
+            ) else {
+                return background
+            }
+            let blend: CGFloat = 0.12
+            return UIColor(
+                red: foregroundRed * blend + backgroundRed * (1 - blend),
+                green: foregroundGreen * blend + backgroundGreen * (1 - blend),
+                blue: foregroundBlue * blend + backgroundBlue * (1 - blend),
+                alpha: 1
+            )
+        }
+        let row = UIStackView()
+        row.axis = .horizontal
+        row.alignment = .center
+        row.spacing = -7
+        row.translatesAutoresizingMaskIntoConstraints = false
+        for symbol in symbols {
+            let circle = UIView()
+            circle.backgroundColor = circleFill
+            circle.layer.cornerRadius = 27
+            circle.translatesAutoresizingMaskIntoConstraints = false
+            let image = UIImageView(image: UIImage(systemName: symbol))
+            image.tintColor = accent
+            image.contentMode = .scaleAspectFit
+            image.translatesAutoresizingMaskIntoConstraints = false
+            circle.addSubview(image)
+            NSLayoutConstraint.activate([
+                circle.widthAnchor.constraint(equalToConstant: 54),
+                circle.heightAnchor.constraint(equalToConstant: 54),
+                image.centerXAnchor.constraint(equalTo: circle.centerXAnchor),
+                image.centerYAnchor.constraint(equalTo: circle.centerYAnchor),
+                image.widthAnchor.constraint(equalToConstant: 27),
+                image.heightAnchor.constraint(equalToConstant: 27)
+            ])
+            row.addArrangedSubview(circle)
+        }
+        let container = UIView()
+        container.addSubview(row)
+        NSLayoutConstraint.activate([
+            container.heightAnchor.constraint(equalToConstant: 54),
+            row.centerXAnchor.constraint(equalTo: container.centerXAnchor),
+            row.topAnchor.constraint(equalTo: container.topAnchor),
+            row.bottomAnchor.constraint(equalTo: container.bottomAnchor)
+        ])
+        return container
+    }
+
+    private func flightField(symbol: String, text: String) -> UITextField {
+        let field = UITextField()
+        field.placeholder = text
+        field.text = text == "Flight Number" || text == "Date" ? nil : text
+        field.font = .systemFont(ofSize: 17)
+        field.backgroundColor = .secondarySystemFill
+        field.layer.cornerRadius = 12
+        field.setPadding(44)
+        let iconContainer = UIView(frame: CGRect(x: 0, y: 0, width: 44, height: 44))
+        let icon = UIImageView(image: UIImage(systemName: symbol))
+        icon.tintColor = .label
+        icon.frame = CGRect(x: 10, y: 0, width: 24, height: 44)
+        icon.contentMode = .center
+        iconContainer.addSubview(icon)
+        field.leftView = iconContainer
+        field.leftViewMode = .always
+        field.heightAnchor.constraint(equalToConstant: 44).isActive = true
+        return field
+    }
+
+    @objc private func clearSelectedAirline() {
+        view.endEditing(true)
+        verticalCalendar?.removeFromSuperview()
+        matchedFlightView?.removeFromSuperview()
+        flightSuggestion?.removeFromSuperview()
+        arrivalPrompt?.removeFromSuperview()
+        flightEntryView?.removeFromSuperview()
+        selectedAirline = nil
+        inferredFlightNumber = nil
+        airlineResults = []
+        completions = []
+        searchField.text = nil
+        searchField.isHidden = false
+        forwardingCard.isHidden = false
+        resultsTable.isHidden = true
+        resultsTable.reloadData()
+        searchField.becomeFirstResponder()
+    }
+
+    private func makeFlightSuggestion() -> UIView {
+        let icon = UILabel()
+        icon.text = selectedAirline?.codes.components(separatedBy: " · ").last ?? "✈"
+        icon.textColor = AlmidyDesignTokens.Color.goldDark
+        icon.font = .systemFont(ofSize: 16, weight: .medium)
+        let title = UILabel()
+        title.tag = 201
+        title.font = .systemFont(ofSize: 20, weight: .semibold)
+        let subtitle = UILabel()
+        subtitle.text = selectedAirline?.name
+        subtitle.font = .systemFont(ofSize: 14)
+        subtitle.textColor = .secondaryLabel
+        let labels = UIStackView(arrangedSubviews: [title, subtitle])
+        labels.axis = .vertical
+        let arrow = UIImageView(image: UIImage(systemName: "arrow.up.right"))
+        arrow.tintColor = .secondaryLabel
+        let row = UIStackView(arrangedSubviews: [icon, labels, UIView(), arrow])
+        row.axis = .horizontal
+        row.alignment = .center
+        row.spacing = 14
+        row.isUserInteractionEnabled = true
+        row.accessibilityTraits = .button
+        row.accessibilityLabel = "Select \(selectedAirline?.name ?? "flight")"
+        row.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(selectFlightSuggestion)))
+        return row
+    }
+
+    @objc private func selectFlightSuggestion() {
+        guard let number = flightNumberField?.text?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !number.isEmpty else { return }
+        flightNumberField?.text = number
+        flightNumberField?.resignFirstResponder()
+        flightSuggestion?.isHidden = true
+        dateField?.becomeFirstResponder()
+    }
+
+    @objc private func flightNumberChanged() {
+        let number = flightNumberField?.text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        guard !number.isEmpty else {
+            flightSuggestion?.isHidden = true
+            arrivalPrompt?.isHidden = false
+            return
+        }
+        let code = selectedAirline?.codes.components(separatedBy: " · ").last ?? ""
+        flightSuggestion?.viewWithTag(201).flatMap { $0 as? UILabel }?.text = "\(code) \(number)"
+        flightSuggestion?.isHidden = false
+        arrivalPrompt?.isHidden = true
+    }
+
+    func textFieldShouldBeginEditing(_ textField: UITextField) -> Bool {
+        guard textField.tag == 101 else { return true }
+        view.endEditing(true)
+        showCalendar()
+        return false
+    }
+
+    private func showCalendar() {
+        verticalCalendar?.removeFromSuperview()
+        flightSuggestion?.isHidden = true
+        arrivalPrompt?.isHidden = true
+        let calendarView = NativeVerticalCalendarView()
+        calendarView.onSelectDate = { [weak self, weak calendarView] date in
+            self?.selectCalendarDate(date)
+            calendarView?.removeFromSuperview()
+        }
+        calendarView.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(calendarView)
+        verticalCalendar = calendarView
+        NSLayoutConstraint.activate([
+            calendarView.topAnchor.constraint(equalTo: dateField!.bottomAnchor, constant: 8),
+            calendarView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            calendarView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            calendarView.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor)
+        ])
+    }
+
+    private func selectCalendarDate(_ date: Date) {
+        selectedDate = date
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        dateField?.text = formatter.string(from: date)
+        showMatchedFlight(on: date)
+    }
+
+    private func showFlightEmptyState() {
+        guard emptySearchPrompt == nil, selectedAirline == nil else { return }
+        resultsTable.isHidden = true
+
+        func makeSymbolBadge(_ systemName: String) -> UIView {
+            let badge = UIView()
+            badge.translatesAutoresizingMaskIntoConstraints = false
+            badge.backgroundColor = AlmidyDesignTokens.Color.goldMutedSurface
+            badge.layer.cornerRadius = 27
+
+            let imageView = UIImageView(image: UIImage(systemName: systemName))
+            imageView.translatesAutoresizingMaskIntoConstraints = false
+            imageView.tintColor = AlmidyDesignTokens.Color.goldDark
+            imageView.contentMode = .scaleAspectFit
+            badge.addSubview(imageView)
+
+            NSLayoutConstraint.activate([
+                badge.widthAnchor.constraint(equalToConstant: 54),
+                badge.heightAnchor.constraint(equalToConstant: 54),
+                imageView.centerXAnchor.constraint(equalTo: badge.centerXAnchor),
+                imageView.centerYAnchor.constraint(equalTo: badge.centerYAnchor),
+                imageView.widthAnchor.constraint(equalToConstant: 27),
+                imageView.heightAnchor.constraint(equalToConstant: 27)
+            ])
+            return badge
+        }
+
+        let symbols = UIStackView(arrangedSubviews: [
+            makeSymbolBadge("calendar"),
+            makeSymbolBadge("airplane"),
+            makeSymbolBadge("clock")
+        ])
+        symbols.axis = .horizontal
+        symbols.spacing = -7
+        symbols.alignment = .center
+        let heading = UILabel()
+        heading.text = "Search Flight"
+        heading.font = .systemFont(ofSize: 24, weight: .semibold)
+        heading.textAlignment = .center
+        let detail = UILabel()
+        detail.text = "Search by Airport, Airline, or Flight Number. If it’s not a commercial flight, add it manually."
+        detail.font = .systemFont(ofSize: 16)
+        detail.textColor = .secondaryLabel
+        detail.textAlignment = .center
+        detail.numberOfLines = 3
+        let manual = UIButton(type: .system)
+        manual.setTitle("Enter manually", for: .normal)
+        manual.setTitleColor(AlmidyDesignTokens.Color.goldDark, for: .normal)
+        manual.titleLabel?.font = .systemFont(ofSize: 18, weight: .semibold)
+        manual.addTarget(self, action: #selector(openManualFlightRoute), for: .touchUpInside)
+        let stack = UIStackView(arrangedSubviews: [symbols, heading, detail, manual])
+        stack.axis = .vertical
+        stack.alignment = .center
+        stack.spacing = 0
+        stack.setCustomSpacing(28, after: symbols)
+        stack.setCustomSpacing(16, after: heading)
+        stack.setCustomSpacing(18, after: detail)
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(stack)
+        emptySearchPrompt = stack
+        NSLayoutConstraint.activate([
+            stack.topAnchor.constraint(equalTo: searchField.bottomAnchor, constant: 40),
+            stack.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 56),
+            stack.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -56),
+            detail.widthAnchor.constraint(lessThanOrEqualToConstant: 300)
+        ])
+        searchField.becomeFirstResponder()
+    }
+
+    private func showMatchedFlight(on date: Date) {
+        matchedFlightView?.removeFromSuperview()
+        flightSuggestion?.isHidden = true
+        arrivalPrompt?.isHidden = true
+        let airline = selectedAirline?.name ?? "Airline"
+        let code = selectedAirline?.codes.components(separatedBy: " · ").last ?? ""
+        let number = flightNumberField?.text ?? ""
+        let dayFormatter = DateFormatter()
+        dayFormatter.dateFormat = "EEE, MMM d"
+
+        let airlineLabel = UILabel()
+        airlineLabel.text = airline
+        airlineLabel.font = .systemFont(ofSize: 19, weight: .semibold)
+        let route = UILabel()
+        route.text = "Flight details will be confirmed when you save."
+        route.font = .systemFont(ofSize: 15)
+        route.textColor = .secondaryLabel
+        route.numberOfLines = 2
+        let dateLabel = UILabel()
+        dateLabel.text = "\(dayFormatter.string(from: date))\n\(code)\(number)"
+        dateLabel.textColor = .secondaryLabel
+        dateLabel.font = .systemFont(ofSize: 16, weight: .medium)
+        dateLabel.textAlignment = .right
+        dateLabel.numberOfLines = 2
+        let left = UIStackView(arrangedSubviews: [airlineLabel, route])
+        left.axis = .vertical
+        left.spacing = 8
+        let row = UIStackView(arrangedSubviews: [left, UIView(), dateLabel])
+        row.axis = .horizontal
+        row.alignment = .center
+        let question = UILabel()
+        question.text = "Unable to find what you want?"
+        question.textColor = .secondaryLabel
+        question.font = .systemFont(ofSize: 16)
+        let manual = UIButton(type: .system)
+        manual.setTitle("Enter manually", for: .normal)
+        manual.setTitleColor(AlmidyDesignTokens.Color.goldDark, for: .normal)
+        manual.titleLabel?.font = .systemFont(ofSize: 17, weight: .semibold)
+        manual.addTarget(self, action: #selector(openManualFlightRoute), for: .touchUpInside)
+        let footer = UIStackView(arrangedSubviews: [question, UIView(), manual])
+        footer.axis = .horizontal
+        let container = UIStackView(arrangedSubviews: [row, footer])
+        container.axis = .vertical
+        container.spacing = 20
+        container.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(container)
+        matchedFlightView = container
+        container.accessibilityIdentifier = "native-flight-match"
+        NSLayoutConstraint.activate([
+            container.topAnchor.constraint(equalTo: dateField!.bottomAnchor, constant: 20),
+            container.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+            container.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16)
+        ])
+    }
+
+    @objc private func openManualFlightRoute() {
+        let controller = NativeManualFlightRouteViewController(
+            accent: accent,
+            tripID: tripID,
+            initialCompany: selectedAirline?.name,
+            initialAirlineIATACode: selectedAirline.flatMap { Self.threeLetterAirlineCode(in: $0.codes) },
+            initialTransportNumber: flightNumberField?.text,
+            initialDepartureDate: selectedDate,
+            onSubmitFlight: onSubmitFlight,
+            onFlightSaved: onFlightSaved
+        )
+        controller.modalPresentationStyle = .pageSheet
+        if let sheet = controller.sheetPresentationController {
+            NativeActivitySheetMetrics.applyMyTripsExpandedHeight(to: sheet)
+            sheet.prefersGrabberVisible = false
+            sheet.preferredCornerRadius = 34
+        }
+        present(controller, animated: true)
+    }
+
+    func textFieldShouldReturn(_ textField: UITextField) -> Bool {
+        if textField === searchField {
+            guard tableView(resultsTable, numberOfRowsInSection: 0) > 0 else { return false }
+            tableView(resultsTable, didSelectRowAt: IndexPath(row: 0, section: 0))
+            return true
+        }
+        if textField.tag == 100 {
+            selectFlightSuggestion()
+            return true
+        }
+        textField.resignFirstResponder()
+        return true
+    }
+
+    private static func airlineCodes(in codes: String) -> [String] {
+        codes.components(separatedBy: " · ")
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines).uppercased() }
+            .filter { !$0.isEmpty }
+    }
+
+    private static func threeLetterAirlineCode(in codes: String) -> String? {
+        airlineCodes(in: codes).first { $0.range(of: "^[A-Z]{3}$", options: .regularExpression) != nil }
+    }
+
+    private static func flightNumberComponent(in query: String) -> String? {
+        let compact = query.uppercased().filter { $0.isLetter || $0.isNumber }
+        guard let firstDigit = compact.firstIndex(where: \.isNumber) else { return nil }
+        let number = String(compact[firstDigit...])
+        return number.isEmpty ? nil : number
+    }
+}
+
+final class NativeManualFlightRouteViewController: UIViewController,
+    UIDocumentPickerDelegate, PHPickerViewControllerDelegate, UIImagePickerControllerDelegate,
+    UINavigationControllerDelegate {
+    private enum RouteKind {
+        case flight
+        case car
+        case train
+        case carRental
+        case transfer
+        case cruise
+        case walk
+        case bus
+        case bike
+        case ferry
+        case motorcycle
+        case location
+
+        init(transportationKind: TransportationActivityDraft.Kind) {
+            switch transportationKind {
+            case .flight: self = .flight
+            case .car: self = .car
+            case .train: self = .train
+            case .carRental: self = .carRental
+            case .transfer: self = .transfer
+            case .cruise: self = .cruise
+            case .walk: self = .walk
+            case .bus: self = .bus
+            case .bike: self = .bike
+            case .ferry: self = .ferry
+            case .motorcycle: self = .motorcycle
+            }
+        }
+
+        var transportationKind: TransportationActivityDraft.Kind? {
+            switch self {
+            case .flight: return .flight
+            case .car: return .car
+            case .train: return .train
+            case .carRental: return .carRental
+            case .transfer: return .transfer
+            case .cruise: return .cruise
+            case .walk: return .walk
+            case .bus: return .bus
+            case .bike: return .bike
+            case .ferry: return .ferry
+            case .motorcycle: return .motorcycle
+            case .location: return nil
+            }
+        }
+
+        var title: String {
+            switch self {
+            case .flight: return "Flight Route"
+            case .car: return "Car Route"
+            case .train: return "Train Route"
+            case .carRental: return "Car Rental"
+            case .transfer: return "Transfer Route"
+            case .cruise: return "Cruise Route"
+            case .walk: return "Walk Route"
+            case .bus: return "Bus Route"
+            case .bike: return "Bike Route"
+            case .ferry: return "Ferry Route"
+            case .motorcycle: return "Motorcycle Route"
+            case .location: return "Location"
+            }
+        }
+    }
+
+    private let accent: UIColor
+    private let routeKind: RouteKind
+    private let tripID: String?
+    private let initialCompany: String?
+    private let initialAirlineIATACode: String?
+    private let initialTransportNumber: String?
+    private let initialDepartureDate: Date?
+    private let initialDraft: TransportationActivityDraft?
+    private let initialLocationMapItem: MKMapItem?
+    private let initialLocationCategory: String?
+    private let savedPlaceSegmentID: String?
+    private let onSubmitSavedPlace: ((NativeSavedPlaceDetailDraft, @escaping (Result<Void, Error>) -> Void) -> Void)?
+    private let onSavedPlaceUpdated: (() -> Void)?
+    private let onSubmitFlight: NativeFlightDraftSubmission?
+    private let onFlightSaved: (() -> Void)?
+    private weak var saveButton: UIButton?
+    private let submissionStatusLabel = UILabel()
+    private var primaryFields: [String: UITextField] = [:]
+    private var detailFields: [String: UITextField] = [:]
+    private weak var totalCostLabel: UILabel?
+    private weak var noteLabel: UILabel?
+    private weak var attachmentLabel: UILabel?
+    private weak var departureButton: UIButton?
+    private weak var arrivalButton: UIButton?
+    private weak var departureEditIcon: UIImageView?
+    private weak var arrivalEditIcon: UIImageView?
+    private weak var invertRouteCard: UIView?
+    private weak var distanceCard: UIView?
+    private weak var distanceValueLabel: UILabel?
+    private weak var departureDateButton: UIButton?
+    private weak var arrivalDateButton: UIButton?
+    private weak var departureTimeButton: UIButton?
+    private weak var arrivalTimeButton: UIButton?
+    private var departureDate: Date?
+    private var arrivalDate: Date?
+    private var departureTime: Date?
+    private var arrivalTime: Date?
+    private var departureLocation: MKMapItem?
+    private var arrivalLocation: MKMapItem?
+    private var totalCost: TransportationActivityDraft.Money?
+    private var note: String?
+    private var attachments: [TransportationActivityDraft.Attachment] = []
+    private var isSaving = false
+    private let savedPlaceAutosaveGeneration = NativeSavedPlaceAutosaveGeneration()
+    private var distanceRequest: MKDirections?
+    private let nearbyCoordinate: CLLocationCoordinate2D?
+    init(accent: UIColor, transportKind: TransportationActivityDraft.Kind? = nil, isCarRoute: Bool = false, isTrainRoute: Bool = false, isCarRental: Bool = false, isTransferRoute: Bool = false, isCruiseRoute: Bool = false, isWalkRoute: Bool = false, isBusRoute: Bool = false, isBikeRoute: Bool = false, isFerryRoute: Bool = false, isMotorcycleRoute: Bool = false, isLocation: Bool = false, nearbyCoordinate: CLLocationCoordinate2D? = nil, tripID: String? = nil, initialCompany: String? = nil, initialAirlineIATACode: String? = nil, initialTransportNumber: String? = nil, initialDepartureDate: Date? = nil, initialDraft: TransportationActivityDraft? = nil, initialLocationMapItem: MKMapItem? = nil, initialLocationCategory: String? = nil, savedPlaceSegmentID: String? = nil, onSubmitSavedPlace: ((NativeSavedPlaceDetailDraft, @escaping (Result<Void, Error>) -> Void) -> Void)? = nil, onSavedPlaceUpdated: (() -> Void)? = nil, onSubmitFlight: NativeFlightDraftSubmission? = nil, onFlightSaved: (() -> Void)? = nil) {
+        self.accent = accent
+        routeKind = transportKind.map(RouteKind.init(transportationKind:))
+            ?? (isLocation ? .location : (isMotorcycleRoute ? .motorcycle : (isFerryRoute ? .ferry : (isBikeRoute ? .bike : (isBusRoute ? .bus : (isWalkRoute ? .walk : (isCruiseRoute ? .cruise : (isTransferRoute ? .transfer : (isCarRental ? .carRental : (isTrainRoute ? .train : (isCarRoute ? .car : .flight)))))))))))
+        self.nearbyCoordinate = nearbyCoordinate
+        self.tripID = tripID
+        self.initialCompany = initialCompany
+        self.initialAirlineIATACode = initialAirlineIATACode
+        self.initialTransportNumber = initialTransportNumber
+        self.initialDepartureDate = initialDepartureDate
+        self.initialDraft = initialDraft
+        self.initialLocationMapItem = initialLocationMapItem
+        self.initialLocationCategory = initialLocationCategory
+        self.savedPlaceSegmentID = savedPlaceSegmentID
+        self.onSubmitSavedPlace = onSubmitSavedPlace
+        self.onSavedPlaceUpdated = onSavedPlaceUpdated
+        self.onSubmitFlight = onSubmitFlight
+        self.onFlightSaved = onFlightSaved
+        super.init(nibName: nil, bundle: nil)
+    }
+    @available(*, unavailable) required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        view.backgroundColor = .systemGroupedBackground
+        let back = UIButton(type: .system)
+        back.setImage(UIImage(systemName: "chevron.left"), for: .normal)
+        back.tintColor = .label
+        back.backgroundColor = .systemBackground
+        back.layer.cornerRadius = 22
+        back.addTarget(self, action: #selector(close), for: .touchUpInside)
+        let title = UILabel()
+        title.text = routeKind == .location
+            ? "\(initialLocationCategory ?? "Place") Details"
+            : routeKind.title
+        title.font = .systemFont(ofSize: 22, weight: .semibold)
+        title.textAlignment = .center
+        let save = UIButton(type: .system)
+        saveButton = save
+        save.setTitle("Save", for: .normal)
+        save.isEnabled = false
+        save.titleLabel?.font = .systemFont(ofSize: 18, weight: .semibold)
+        save.backgroundColor = .tertiarySystemFill
+        save.layer.cornerRadius = 20
+        save.accessibilityIdentifier = "native-flight-save"
+        save.addTarget(self, action: #selector(saveTransportationActivity), for: .touchUpInside)
+
+        let scrollView = UIScrollView()
+        scrollView.alwaysBounceVertical = true
+        scrollView.keyboardDismissMode = .interactive
+        scrollView.showsVerticalScrollIndicator = false
+        let stack = UIStackView()
+        stack.axis = .vertical
+        stack.spacing = 14
+        submissionStatusLabel.font = .systemFont(ofSize: 15, weight: .medium)
+        submissionStatusLabel.textColor = .systemRed
+        submissionStatusLabel.numberOfLines = 0
+        submissionStatusLabel.textAlignment = .center
+        submissionStatusLabel.isHidden = true
+        submissionStatusLabel.accessibilityIdentifier = "native-flight-save-status"
+        stack.addArrangedSubview(submissionStatusLabel)
+        if routeKind == .location {
+            let content = NativeSavedPlaceEditorView(
+                category: initialLocationCategory ?? "Location",
+                accent: accent,
+                costAction: actionCard(symbol: "creditcard", title: "Total Cost", action: #selector(openTotalCost)),
+                noteAction: actionCard(symbol: "square.and.pencil", title: "Write a note", action: #selector(openNote)),
+                attachmentAction: attachmentActionCard(),
+                onChangeCategory: { [weak self] in self?.close() },
+                onChange: { [weak self] in self?.formValueChanged() },
+                onCheckInDate: { [weak self] in self?.openDepartureDate() },
+                onCheckInTime: { [weak self] in self?.openDepartureTime() },
+                onCheckOutDate: { [weak self] in self?.openArrivalDate() },
+                onCheckOutTime: { [weak self] in self?.openArrivalTime() }
+            )
+            primaryFields = content.primaryFields
+            detailFields = content.detailFields
+            departureDateButton = content.checkInDateButton
+            departureTimeButton = content.checkInTimeButton
+            arrivalDateButton = content.checkOutDateButton
+            arrivalTimeButton = content.checkOutTimeButton
+            stack.addArrangedSubview(content)
+        } else if routeKind == .flight {
+            let configuration = NativeFlightEditorConfiguration()
+            let content = NativeFlightEditorView(
+                configuration: configuration,
+                initialAirline: initialCompany,
+                initialAirlineIATACode: initialAirlineIATACode,
+                initialFlightNumber: initialTransportNumber,
+                routeSections: [
+                    routeCard(title: configuration.departureTitle, footer: "Departure", action: #selector(openDepartureSearch)),
+                    routeCard(title: configuration.arrivalTitle, footer: "Arrival", action: #selector(openArrivalSearch)),
+                    actionCard(symbol: "arkit", title: "View Flight Route in AR", action: #selector(openFlightARPreview))
+                ],
+                costAction: actionCard(symbol: "creditcard", title: "Total Cost", action: #selector(openTotalCost)),
+                noteAction: actionCard(symbol: "square.and.pencil", title: "Write a note", action: #selector(openNote)),
+                attachmentAction: attachmentActionCard(),
+                onChange: { [weak self] in self?.formValueChanged() }
+            )
+            primaryFields = content.primaryFields
+            detailFields = content.detailFields
+            stack.addArrangedSubview(content)
+        } else if let kind = routeKind.transportationKind {
+            guard let configuration = NativeTransportationEditorConfiguration(kind: kind) else { return }
+            var routeSections: [UIView] = []
+            if kind == .carRental {
+                routeSections.append(routeCard(title: configuration.departureTitle, footer: "Pick-up", action: #selector(openDepartureSearch)))
+                routeSections.append(sameDropOffAddressCard())
+                routeSections.append(transportationTimeOnlyCard(footer: "Drop-off"))
+            } else {
+                routeSections.append(routeCard(title: configuration.departureTitle, footer: "Departure", action: #selector(openDepartureSearch)))
+                routeSections.append(routeCard(title: configuration.arrivalTitle, footer: "Arrival", action: #selector(openArrivalSearch)))
+                let invert = actionCard(symbol: "arrow.triangle.swap", title: "Invert Route Locations", action: #selector(invertRouteLocations))
+                invertRouteCard = invert
+                setInvertRouteEnabled(false)
+                routeSections.append(invert)
+            }
+            if kind == .car {
+                let routeDistanceCard = makeDistanceCard()
+                distanceCard = routeDistanceCard
+                routeDistanceCard.isHidden = true
+                routeSections.append(routeDistanceCard)
+            }
+            let content = NativeTransportationEditorView(
+                configuration: configuration,
+                routeSections: routeSections,
+                costAction: actionCard(symbol: "creditcard", title: "Total Cost", action: #selector(openTotalCost)),
+                noteAction: actionCard(symbol: "square.and.pencil", title: "Write a note", action: #selector(openNote)),
+                attachmentAction: attachmentActionCard(),
+                onChange: { [weak self] in self?.formValueChanged() }
+            )
+            primaryFields = content.primaryFields
+            detailFields = content.detailFields
+            stack.addArrangedSubview(content)
+        }
+        [back, title, save, scrollView, stack].forEach { $0.translatesAutoresizingMaskIntoConstraints = false }
+        view.addSubview(back); view.addSubview(title); view.addSubview(save)
+        view.addSubview(scrollView); scrollView.addSubview(stack)
+        NSLayoutConstraint.activate([
+            back.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 14), back.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20), back.widthAnchor.constraint(equalToConstant: 44), back.heightAnchor.constraint(equalToConstant: 44),
+            title.centerXAnchor.constraint(equalTo: view.centerXAnchor), title.centerYAnchor.constraint(equalTo: back.centerYAnchor),
+            save.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20), save.centerYAnchor.constraint(equalTo: back.centerYAnchor), save.widthAnchor.constraint(equalToConstant: 76), save.heightAnchor.constraint(equalToConstant: 40),
+            scrollView.topAnchor.constraint(equalTo: back.bottomAnchor, constant: 16),
+            scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            stack.topAnchor.constraint(equalTo: scrollView.contentLayoutGuide.topAnchor),
+            stack.leadingAnchor.constraint(equalTo: scrollView.frameLayoutGuide.leadingAnchor, constant: 20),
+            stack.trailingAnchor.constraint(equalTo: scrollView.frameLayoutGuide.trailingAnchor, constant: -20),
+            stack.bottomAnchor.constraint(equalTo: scrollView.contentLayoutGuide.bottomAnchor, constant: -28)
+        ])
+        if routeKind == .flight, let initialDepartureDate {
+            setDepartureDate(initialDepartureDate)
+        }
+        if let initialDraft {
+            apply(initialDraft)
+        }
+        if routeKind == .location, let initialLocationMapItem {
+            applyInitialLocation(initialLocationMapItem)
+            save.isHidden = true
+        }
+        refreshSaveState()
+    }
+
+    // MARK: - Initial feature state
+
+    private func applyInitialLocation(_ item: MKMapItem) {
+        primaryFields["Name"]?.text = item.name
+        primaryFields["Address"]?.text = item.placemark.title
+        detailFields["Phone"]?.text = item.phoneNumber
+        detailFields["Website"]?.text = item.url?.absoluteString
+        departureLocation = item
+        arrivalLocation = item
+        departureDate = initialDepartureDate ?? Date()
+        departureTime = initialDepartureDate
+        updateDateButton(departureDateButton, with: departureDate)
+        updateTimeButton(departureTimeButton, with: departureTime)
+    }
+
+    private func apply(_ draft: TransportationActivityDraft) {
+        primaryFields["Company"]?.text = draft.company
+        primaryFields["Transport Number"]?.text = draft.transportNumber
+        primaryFields["Airline"]?.text = draft.flight?.provider.name ?? draft.company
+        primaryFields["Airline IATA Code"]?.text = draft.flight?.provider.iataCode
+        primaryFields["Flight Number"]?.text = draft.flight?.flightNumber ?? draft.transportNumber
+        primaryFields["Route Name"]?.text = draft.title
+        primaryFields["Name"]?.text = draft.title
+        detailFields["Reservation Code"]?.text = draft.reservation.confirmationCode
+        detailFields["Seat"]?.text = draft.reservation.seat
+        detailFields["Seat Class"]?.text = draft.reservation.seatClass
+        detailFields["Coach Number"]?.text = draft.reservation.coachNumber
+        detailFields["Vehicle"]?.text = draft.reservation.vehicle
+        detailFields["Train Type"]?.text = draft.reservation.serviceType
+        detailFields["Phone"]?.text = draft.reservation.phone
+        detailFields["Website"]?.text = draft.reservation.website?.absoluteString
+        detailFields["Departure Terminal"]?.text = draft.flight?.departureTerminal
+        detailFields["Departure Airport Code"]?.text = draft.flight?.departureAirport.iataCode
+        detailFields["Departure Gate"]?.text = draft.flight?.departureGate
+        detailFields["Arrival Terminal"]?.text = draft.flight?.arrivalTerminal
+        detailFields["Arrival Airport Code"]?.text = draft.flight?.arrivalAirport.iataCode
+        detailFields["Arrival Gate"]?.text = draft.flight?.arrivalGate
+        departureDate = draft.startAt.map { Calendar.current.startOfDay(for: $0) }
+        departureTime = draft.startAt
+        arrivalDate = draft.endAt.map { Calendar.current.startOfDay(for: $0) }
+        arrivalTime = draft.endAt
+        updateDateButton(departureDateButton, with: departureDate)
+        updateTimeButton(departureTimeButton, with: departureTime)
+        updateDateButton(arrivalDateButton, with: arrivalDate)
+        updateTimeButton(arrivalTimeButton, with: arrivalTime)
+        if let location = draft.departure {
+            departureLocation = mapItem(
+                from: location,
+                timeZoneIdentifier: draft.flight?.departureAirport.timeZoneIdentifier
+            )
+            renderSelectedLocation(departureLocation!, button: departureButton, icon: departureEditIcon)
+        }
+        if let location = draft.arrival {
+            arrivalLocation = mapItem(
+                from: location,
+                timeZoneIdentifier: draft.flight?.arrivalAirport.timeZoneIdentifier
+            )
+            renderSelectedLocation(arrivalLocation!, button: arrivalButton, icon: arrivalEditIcon)
+        }
+        note = draft.note
+        noteLabel?.text = draft.note == nil ? "Write a note" : "Note added"
+        refreshRouteDistance()
+    }
+
+    private func mapItem(
+        from location: TransportationActivityDraft.Location,
+        timeZoneIdentifier: String? = nil
+    ) -> MKMapItem {
+        let coordinate = CLLocationCoordinate2D(latitude: location.latitude ?? 0, longitude: location.longitude ?? 0)
+        let placemark = MKPlacemark(coordinate: coordinate)
+        let item = MKMapItem(placemark: placemark)
+        item.name = location.name
+        if let timeZoneIdentifier {
+            item.timeZone = TimeZone(identifier: timeZoneIdentifier)
+        }
+        return item
+    }
+
+    private func routeCard(title: String, footer: String, action: Selector) -> UIView {
+        let addIcon: UIView
+        if routeKind != .flight {
+            let icon = UIImageView(image: UIImage(systemName: "plus"))
+            icon.tintColor = AlmidyDesignTokens.Color.goldDark
+            icon.contentMode = .center
+            if footer == "Departure" || footer == "Pick-up" { departureEditIcon = icon } else { arrivalEditIcon = icon }
+            addIcon = icon
+        } else {
+            let icon = UILabel()
+            icon.text = "+"
+            icon.textAlignment = .center
+            icon.textColor = AlmidyDesignTokens.Color.goldDark
+            icon.font = .systemFont(ofSize: 27)
+            addIcon = icon
+        }
+        addIcon.backgroundColor = AlmidyDesignTokens.Color.goldDark.withAlphaComponent(0.12)
+        addIcon.layer.cornerRadius = 24
+        addIcon.clipsToBounds = true
+        addIcon.widthAnchor.constraint(equalToConstant: 48).isActive = true
+        addIcon.heightAnchor.constraint(equalToConstant: 48).isActive = true
+        addIcon.setContentHuggingPriority(.required, for: .horizontal)
+        addIcon.setContentCompressionResistancePriority(.required, for: .horizontal)
+        addIcon.setContentCompressionResistancePriority(.required, for: .vertical)
+        let add = UIButton(type: .system); add.setTitle(title, for: .normal); add.setTitleColor(AlmidyDesignTokens.Color.goldDark, for: .normal); add.titleLabel?.font = .systemFont(ofSize: 18, weight: .semibold); add.contentHorizontalAlignment = .leading; add.isUserInteractionEnabled = false
+        if footer == "Departure" || footer == "Pick-up" { departureButton = add } else { arrivalButton = add }
+        let addRow = UIStackView(arrangedSubviews: [addIcon, add]); addRow.axis = .horizontal; addRow.alignment = .center; addRow.spacing = 14
+        addRow.isUserInteractionEnabled = true
+        addRow.accessibilityTraits = .button
+        addRow.accessibilityLabel = title
+        addRow.addGestureRecognizer(UITapGestureRecognizer(target: self, action: action))
+        let separator = UIView(); separator.backgroundColor = .separator; separator.heightAnchor.constraint(equalToConstant: 0.5).isActive = true
+        let footerLabel = UILabel(); footerLabel.text = footer; footerLabel.textColor = .secondaryLabel; footerLabel.font = .systemFont(ofSize: 18, weight: .semibold)
+        let date = UIButton(type: .system); date.setTitle("Date", for: .normal); date.tintColor = .label; date.backgroundColor = .secondarySystemFill; date.layer.cornerRadius = 8
+        date.contentEdgeInsets = UIEdgeInsets(top: 0, left: 12, bottom: 0, right: 12)
+        date.setContentHuggingPriority(.required, for: .horizontal)
+        date.setContentCompressionResistancePriority(.required, for: .horizontal)
+        if footer == "Departure" || footer == "Pick-up" || footer == "Check-in" {
+            departureDateButton = date
+            date.addTarget(self, action: #selector(openDepartureDate), for: .touchUpInside)
+        } else {
+            arrivalDateButton = date
+            date.addTarget(self, action: #selector(openArrivalDate), for: .touchUpInside)
+        }
+        let time = UIButton(type: .system); time.setTitle("Time", for: .normal); time.tintColor = .label; time.backgroundColor = .secondarySystemFill; time.layer.cornerRadius = 8
+        time.contentEdgeInsets = UIEdgeInsets(top: 0, left: 12, bottom: 0, right: 12)
+        time.setContentHuggingPriority(.required, for: .horizontal)
+        time.setContentCompressionResistancePriority(.required, for: .horizontal)
+        if footer == "Departure" || footer == "Pick-up" || footer == "Check-in" {
+            departureTimeButton = time
+            time.addTarget(self, action: #selector(openDepartureTime), for: .touchUpInside)
+        } else {
+            arrivalTimeButton = time
+            time.addTarget(self, action: #selector(openArrivalTime), for: .touchUpInside)
+        }
+        date.widthAnchor.constraint(greaterThanOrEqualToConstant: 60).isActive = true
+        time.widthAnchor.constraint(greaterThanOrEqualToConstant: 60).isActive = true
+        let row = UIStackView(arrangedSubviews: [footerLabel, UIView(), date, time]); row.axis = .horizontal; row.spacing = 4
+        let stack = UIStackView(arrangedSubviews: [addRow, separator, row]); stack.axis = .vertical; stack.spacing = 10; stack.backgroundColor = .systemBackground; stack.layer.cornerRadius = 18; stack.isLayoutMarginsRelativeArrangement = true; stack.layoutMargins = UIEdgeInsets(top: 12, left: 16, bottom: 12, right: 16); row.heightAnchor.constraint(equalToConstant: 38).isActive = true
+        return stack
+    }
+
+    private func sameDropOffAddressCard() -> UIView {
+        let icon = UIImageView(image: UIImage(systemName: "mappin.and.ellipse"))
+        icon.tintColor = .secondaryLabel
+        icon.contentMode = .scaleAspectFit
+        icon.widthAnchor.constraint(equalToConstant: 28).isActive = true
+        icon.heightAnchor.constraint(equalToConstant: 28).isActive = true
+        let label = UILabel()
+        label.text = "Same Drop-off Address"
+        label.textColor = .secondaryLabel
+        label.font = .systemFont(ofSize: 19, weight: .semibold)
+        let toggle = UISwitch()
+        toggle.isOn = true
+        toggle.onTintColor = accent
+        toggle.accessibilityLabel = "Same drop-off address"
+        let row = UIStackView(arrangedSubviews: [icon, label, UIView(), toggle])
+        row.axis = .horizontal
+        row.alignment = .center
+        row.spacing = 18
+        row.backgroundColor = .systemBackground
+        row.layer.cornerRadius = 18
+        row.isLayoutMarginsRelativeArrangement = true
+        row.layoutMargins = UIEdgeInsets(top: 15, left: 18, bottom: 15, right: 18)
+        row.heightAnchor.constraint(equalToConstant: 64).isActive = true
+        return row
+    }
+
+    private func transportationTimeOnlyCard(footer: String) -> UIView {
+        let footerLabel = UILabel()
+        footerLabel.text = footer
+        footerLabel.textColor = .secondaryLabel
+        footerLabel.font = .systemFont(ofSize: 18, weight: .semibold)
+        let date = UIButton(type: .system)
+        date.setTitle("Date", for: .normal)
+        date.tintColor = .label
+        date.backgroundColor = .secondarySystemFill
+        date.layer.cornerRadius = 8
+        date.contentEdgeInsets = UIEdgeInsets(top: 0, left: 12, bottom: 0, right: 12)
+        date.addTarget(self, action: #selector(openArrivalDate), for: .touchUpInside)
+        arrivalDateButton = date
+        let time = UIButton(type: .system)
+        time.setTitle("Time", for: .normal)
+        time.tintColor = .label
+        time.backgroundColor = .secondarySystemFill
+        time.layer.cornerRadius = 8
+        time.contentEdgeInsets = UIEdgeInsets(top: 0, left: 12, bottom: 0, right: 12)
+        time.addTarget(self, action: #selector(openArrivalTime), for: .touchUpInside)
+        arrivalTimeButton = time
+        date.widthAnchor.constraint(greaterThanOrEqualToConstant: 60).isActive = true
+        time.widthAnchor.constraint(greaterThanOrEqualToConstant: 60).isActive = true
+        let row = UIStackView(arrangedSubviews: [footerLabel, UIView(), date, time])
+        row.axis = .horizontal
+        row.alignment = .center
+        row.spacing = 4
+        row.backgroundColor = .systemBackground
+        row.layer.cornerRadius = 18
+        row.isLayoutMarginsRelativeArrangement = true
+        row.layoutMargins = UIEdgeInsets(top: 12, left: 16, bottom: 12, right: 16)
+        row.heightAnchor.constraint(equalToConstant: 64).isActive = true
+        return row
+    }
+
+    // MARK: - Save state and Saved Place autosave
+
+    @objc private func formValueChanged() {
+        submissionStatusLabel.isHidden = true
+        refreshSaveState()
+        scheduleSavedPlaceUpdate()
+    }
+
+    private func refreshSaveState() {
+        guard routeKind.transportationKind != nil, !isSaving else {
+            saveButton?.isEnabled = false
+            saveButton?.backgroundColor = .tertiarySystemFill
+            return
+        }
+        let enabled = transportationDraft() != nil && onSubmitFlight != nil
+        saveButton?.isEnabled = enabled
+        saveButton?.backgroundColor = enabled ? accent : .tertiarySystemFill
+        saveButton?.setTitleColor(enabled ? .white : .tertiaryLabel, for: .normal)
+        saveButton?.accessibilityTraits = enabled ? .button : [.button, .notEnabled]
+    }
+
+    private func savedPlaceDraft() -> NativeSavedPlaceDetailDraft? {
+        guard routeKind == .location,
+              let title = clean(primaryFields["Name"]?.text) else { return nil }
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        let start = combinedDate(
+            day: departureDate,
+            time: departureTime ?? departureDate,
+            timeZone: NativeTimeZonePreference.timeZone
+        )
+        let end = combinedDate(
+            day: arrivalDate,
+            time: arrivalTime ?? arrivalDate,
+            timeZone: NativeTimeZonePreference.timeZone
+        )
+        let website = clean(detailFields["Website"]?.text)
+        return NativeSavedPlaceDetailDraft(
+            title: title,
+            location: clean(primaryFields["Address"]?.text),
+            startTime: start.map { formatter.string(from: $0) },
+            endTime: end.map { formatter.string(from: $0) },
+            bookingUrl: website,
+            confirmationCode: clean(detailFields["Reservation Code"]?.text),
+            notes: note,
+            reservation: .init(
+                phone: clean(detailFields["Phone"]?.text),
+                website: website,
+                costAmount: totalCost?.amount,
+                costCurrency: totalCost?.currency,
+                links: attachments.compactMap { attachment in
+                    attachment.kind == .link ? attachment.sourceURL.absoluteString : nil
+                }
+            )
+        )
+    }
+
+    private func scheduleSavedPlaceUpdate(delay: TimeInterval = 0.45) {
+        guard savedPlaceSegmentID != nil, onSubmitSavedPlace != nil else { return }
+        let generation = savedPlaceAutosaveGeneration.advance()
+        submissionStatusLabel.isHidden = false
+        submissionStatusLabel.textColor = .secondaryLabel
+        submissionStatusLabel.text = "Unsaved changes…"
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+            guard let self, self.savedPlaceAutosaveGeneration.isCurrent(generation),
+                  !self.isSaving, let draft = self.savedPlaceDraft(),
+                  let submit = self.onSubmitSavedPlace else { return }
+            self.isSaving = true
+            self.submissionStatusLabel.text = "Saving place details…"
+            submit(draft) { [weak self] result in
+                guard let self else { return }
+                self.isSaving = false
+                guard self.savedPlaceAutosaveGeneration.isCurrent(generation) else {
+                    self.scheduleSavedPlaceUpdate(delay: 0)
+                    return
+                }
+                switch result {
+                case .success:
+                    self.submissionStatusLabel.textColor = .systemGreen
+                    self.submissionStatusLabel.text = "Place details saved"
+                    self.onSavedPlaceUpdated?()
+                    UIAccessibility.post(notification: .announcement, argument: "Place details saved")
+                case .failure(let error):
+                    self.submissionStatusLabel.textColor = .systemRed
+                    self.submissionStatusLabel.text = self.saveErrorMessage(error)
+                    UIAccessibility.post(notification: .announcement, argument: self.submissionStatusLabel.text)
+                }
+            }
+        }
+    }
+
+    // MARK: - Flight and Transportation domain drafts
+
+    private func transportationDraft() -> TransportationActivityDraft? {
+        guard let kind = routeKind.transportationKind,
+              let tripID,
+              let departureLocation else { return nil }
+        let resolvedArrival = routeKind == .carRental ? departureLocation : arrivalLocation
+        guard let resolvedArrival else { return nil }
+        let departureTimeZone = departureLocation.timeZone ?? .current
+        let arrivalTimeZone = resolvedArrival.timeZone ?? .current
+        guard let startAt = combinedDate(
+                  day: departureDate,
+                  time: departureTime,
+                  timeZone: kind == .flight ? departureTimeZone : .current
+              ),
+              let endAt = combinedDate(
+                  day: arrivalDate,
+                  time: arrivalTime,
+                  timeZone: kind == .flight ? arrivalTimeZone : .current
+              ),
+              endAt >= startAt else { return nil }
+        let company = clean(primaryFields[kind == .flight ? "Airline" : "Company"]?.text)
+        let number = clean(primaryFields[kind == .flight ? "Flight Number" : "Transport Number"]?.text)
+        let airlineCode = validatedAirlineCode(primaryFields["Airline IATA Code"]?.text)
+        let departureAirportCode = validatedAirportCode(detailFields["Departure Airport Code"]?.text)
+        let arrivalAirportCode = validatedAirportCode(detailFields["Arrival Airport Code"]?.text)
+        let enteredTitle = clean(primaryFields["Route Name"]?.text)
+            ?? clean(primaryFields["Name"]?.text)
+        let title: String
+        if kind == .flight {
+            guard let company, let number, airlineCode != nil,
+                  departureAirportCode != nil, arrivalAirportCode != nil else { return nil }
+            title = "\(company) \(number)"
+        } else {
+            guard let enteredTitle else { return nil }
+            title = enteredTitle
+        }
+        let departureName = clean(departureLocation.name) ?? "Departure"
+        let arrivalName = clean(resolvedArrival.name) ?? "Arrival"
+        let departureDraft = draftLocation(from: departureLocation, fallbackName: departureName)
+        let arrivalDraft = draftLocation(from: resolvedArrival, fallbackName: arrivalName)
+        let flightDetails: TransportationActivityDraft.FlightDetails?
+        if kind == .flight,
+           let company,
+           let number,
+           let airlineCode,
+           let departureAirportCode,
+           let arrivalAirportCode {
+            flightDetails = .init(
+                provider: .init(name: company, iataCode: airlineCode),
+                flightNumber: number,
+                departureAirport: .init(
+                    iataCode: departureAirportCode,
+                    name: departureDraft.name,
+                    address: postalAddress(from: departureDraft),
+                    location: departureDraft,
+                    timeZoneIdentifier: departureTimeZone.identifier
+                ),
+                arrivalAirport: .init(
+                    iataCode: arrivalAirportCode,
+                    name: arrivalDraft.name,
+                    address: postalAddress(from: arrivalDraft),
+                    location: arrivalDraft,
+                    timeZoneIdentifier: arrivalTimeZone.identifier
+                ),
+                departureTime: startAt,
+                arrivalTime: endAt,
+                departureTerminal: clean(detailFields["Departure Terminal"]?.text),
+                departureGate: clean(detailFields["Departure Gate"]?.text),
+                arrivalTerminal: clean(detailFields["Arrival Terminal"]?.text),
+                arrivalGate: clean(detailFields["Arrival Gate"]?.text)
+            )
+        } else {
+            flightDetails = nil
+        }
+        return TransportationActivityDraft(
+            tripID: tripID,
+            kind: kind,
+            title: title,
+            company: company,
+            transportNumber: number,
+            departure: departureDraft,
+            arrival: arrivalDraft,
+            startAt: startAt,
+            endAt: endAt,
+            reservation: .init(
+                confirmationCode: clean(detailFields["Reservation Code"]?.text),
+                seat: clean(detailFields["Seat"]?.text),
+                seatClass: clean(detailFields["Seat Class"]?.text),
+                coachNumber: clean(detailFields["Coach Number"]?.text),
+                vehicle: clean(detailFields["Vehicle"]?.text),
+                serviceType: clean(detailFields["Train Type"]?.text),
+                phone: clean(detailFields["Phone"]?.text),
+                website: clean(detailFields["Website"]?.text).flatMap(URL.init(string:))
+            ),
+            cost: totalCost,
+            note: note,
+            attachments: attachments,
+            flight: flightDetails
+        )
+    }
+
+    private func draftLocation(
+        from item: MKMapItem,
+        fallbackName: String
+    ) -> TransportationActivityDraft.Location {
+        let coordinate = item.placemark.coordinate
+        return .init(
+            name: clean(item.name) ?? fallbackName,
+            address: clean(fullAddress(for: item.placemark)),
+            latitude: CLLocationCoordinate2DIsValid(coordinate) ? coordinate.latitude : nil,
+            longitude: CLLocationCoordinate2DIsValid(coordinate) ? coordinate.longitude : nil,
+            streetAddress: clean([item.placemark.subThoroughfare, item.placemark.thoroughfare]
+                .compactMap { $0 }.joined(separator: " ")),
+            addressLocality: clean(item.placemark.locality),
+            addressRegion: clean(item.placemark.administrativeArea),
+            postalCode: clean(item.placemark.postalCode),
+            addressCountry: clean(item.placemark.country)
+        )
+    }
+
+    private func combinedDate(day: Date?, time: Date?, timeZone: TimeZone) -> Date? {
+        guard let day, let time else { return nil }
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = timeZone
+        let components = calendar.dateComponents(in: timeZone, from: time)
+        return calendar.date(
+            bySettingHour: components.hour ?? 0,
+            minute: components.minute ?? 0,
+            second: 0,
+            of: day
+        )
+    }
+
+    private func clean(_ value: String?) -> String? {
+        let value = value?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return value.isEmpty ? nil : value
+    }
+
+    private func validatedAirlineCode(_ value: String?) -> String? {
+        guard let code = clean(value)?.uppercased(),
+              code.range(of: "^[A-Z]{3}$", options: .regularExpression) != nil else { return nil }
+        return code
+    }
+
+    private func validatedAirportCode(_ value: String?) -> String? {
+        guard let code = clean(value)?.uppercased(),
+              code.range(of: "^[A-Z]{3}$", options: .regularExpression) != nil else { return nil }
+        return code
+    }
+
+    // MARK: - Flight AR
+
+    @objc private func openFlightARPreview() {
+        guard let departureLocation, let arrivalLocation else {
+            let alert = UIAlertController(
+                title: "Choose Both Airports",
+                message: "Add departure and arrival airports before opening the AR route.",
+                preferredStyle: .alert
+            )
+            alert.addAction(UIAlertAction(title: "OK", style: .default))
+            present(alert, animated: true)
+            return
+        }
+        guard ARWorldTrackingConfiguration.isSupported else {
+            let alert = UIAlertController(
+                title: "AR Unavailable",
+                message: "This device can still show the flight route on the map, but it does not support ARKit world tracking.",
+                preferredStyle: .alert
+            )
+            alert.addAction(UIAlertAction(title: "OK", style: .default))
+            present(alert, animated: true)
+            return
+        }
+        let controller = NativeFlightARPreviewViewController(
+            departure: departureLocation,
+            arrival: arrivalLocation,
+            accent: accent
+        )
+        controller.modalPresentationStyle = .fullScreen
+        present(controller, animated: true)
+    }
+
+    private func postalAddress(
+        from location: TransportationActivityDraft.Location
+    ) -> TransportationActivityDraft.FlightDetails.Airport.PostalAddress? {
+        let address = TransportationActivityDraft.FlightDetails.Airport.PostalAddress(
+            streetAddress: location.streetAddress,
+            addressLocality: location.addressLocality,
+            addressRegion: location.addressRegion,
+            postalCode: location.postalCode,
+            addressCountry: location.addressCountry
+        )
+        return [address.streetAddress, address.addressLocality, address.addressRegion, address.postalCode, address.addressCountry]
+            .contains(where: { $0 != nil }) ? address : nil
+    }
+
+    @objc private func saveTransportationActivity() {
+        guard !isSaving, let draft = transportationDraft(), let onSubmitFlight else {
+            refreshSaveState()
+            return
+        }
+        isSaving = true
+        submissionStatusLabel.isHidden = false
+        submissionStatusLabel.textColor = .secondaryLabel
+        submissionStatusLabel.text = "Saving activity…"
+        saveButton?.setTitle("Saving…", for: .normal)
+        saveButton?.isEnabled = false
+        view.isUserInteractionEnabled = false
+        view.accessibilityViewIsModal = true
+        UIAccessibility.post(notification: .announcement, argument: "Saving activity")
+
+        onSubmitFlight(draft) { [weak self] result in
+            guard let self else { return }
+            isSaving = false
+            view.isUserInteractionEnabled = true
+            saveButton?.setTitle("Save", for: .normal)
+            switch result {
+            case .success:
+                submissionStatusLabel.textColor = .secondaryLabel
+                submissionStatusLabel.text = "Activity saved"
+                UIAccessibility.post(notification: .announcement, argument: "Activity saved")
+                if let onFlightSaved {
+                    onFlightSaved()
+                } else {
+                    dismiss(animated: true)
+                }
+            case .failure(let error):
+                submissionStatusLabel.textColor = .systemRed
+                submissionStatusLabel.text = saveErrorMessage(error)
+                submissionStatusLabel.isHidden = false
+                UIAccessibility.post(notification: .announcement, argument: submissionStatusLabel.text)
+                refreshSaveState()
+            }
+        }
+    }
+
+    private func saveErrorMessage(_ error: Error) -> String {
+        if case NativeTripStoreError.unauthorized = error {
+            return "Your session expired. Sign in again and retry."
+        }
+        return "Activity couldn’t be saved. Check your connection and try again."
+    }
+
+    // MARK: - Shared feature composition factories
+
+    private func actionCard(symbol: String, title: String, action: Selector? = nil) -> UIView {
+        let icon = UIImageView(image: UIImage(systemName: symbol))
+        icon.tintColor = .secondaryLabel
+        icon.contentMode = .scaleAspectFit
+        icon.widthAnchor.constraint(equalToConstant: 28).isActive = true
+        icon.heightAnchor.constraint(equalToConstant: 28).isActive = true
+        let label = UILabel()
+        label.text = title
+        label.textColor = .secondaryLabel
+        label.font = .systemFont(ofSize: 19, weight: .semibold)
+        if title == "Total Cost" { totalCostLabel = label }
+        if title == "Write a note" { noteLabel = label }
+        let row = UIStackView(arrangedSubviews: [icon, label])
+        row.axis = .horizontal
+        row.alignment = .center
+        row.spacing = 18
+        row.backgroundColor = .systemBackground
+        row.layer.cornerRadius = 18
+        row.isLayoutMarginsRelativeArrangement = true
+        row.layoutMargins = UIEdgeInsets(top: 15, left: 18, bottom: 15, right: 18)
+        row.heightAnchor.constraint(equalToConstant: 64).isActive = true
+        if let action {
+            row.isUserInteractionEnabled = true
+            row.accessibilityTraits = .button
+            row.accessibilityLabel = title
+            row.addGestureRecognizer(UITapGestureRecognizer(target: self, action: action))
+        }
+        return row
+    }
+
+    private func makeDistanceCard() -> UIView {
+        let title = UILabel()
+        title.text = "Distance"
+        title.textColor = .secondaryLabel
+        title.font = .systemFont(ofSize: 17, weight: .regular)
+        let value = UILabel()
+        value.textColor = .label
+        value.font = .systemFont(ofSize: 17, weight: .regular)
+        value.textAlignment = .right
+        distanceValueLabel = value
+        let row = UIStackView(arrangedSubviews: [title, UIView(), value])
+        row.axis = .horizontal
+        row.alignment = .center
+        row.backgroundColor = .systemBackground
+        row.layer.cornerRadius = 18
+        row.isLayoutMarginsRelativeArrangement = true
+        row.layoutMargins = UIEdgeInsets(top: 15, left: 18, bottom: 15, right: 18)
+        row.heightAnchor.constraint(equalToConstant: 64).isActive = true
+        row.accessibilityLabel = "Route distance"
+        return row
+    }
+
+    private func setInvertRouteEnabled(_ enabled: Bool) {
+        invertRouteCard?.isUserInteractionEnabled = enabled
+        invertRouteCard?.alpha = enabled ? 1 : 0.52
+        invertRouteCard?.accessibilityTraits = enabled ? .button : [.button, .notEnabled]
+    }
+
+    private func attachmentActionCard() -> UIView {
+        let view = NativeAttachmentActionView(
+            onImportDocument: { [weak self] in self?.importDocument() },
+            onSaveLink: { [weak self] in self?.saveLink() },
+            onChoosePhoto: { [weak self] in self?.choosePhoto() },
+            onTakePhoto: { [weak self] in self?.takePhoto() }
+        )
+        attachmentLabel = view.titleLabel
+        return view
+    }
+    @objc private func openTotalCost() {
+        let controller = NativeTotalCostInputViewController(accent: accent) { [weak self] amount, currency, displayAmount in
+            self?.totalCost = .init(amount: amount, currency: currency)
+            self?.totalCostLabel?.text = "Total Cost · \(displayAmount)"
+            self?.refreshSaveState()
+            self?.scheduleSavedPlaceUpdate()
+        }
+        NativeTotalCostInputViewController.sheetConfiguration.apply(to: controller)
+        if let sheet = controller.sheetPresentationController {
+            NativeActivitySheetMetrics.applyMyTripsExpandedHeight(to: sheet)
+        }
+        present(controller, animated: true)
+    }
+    // MARK: - Flight and Transportation route orchestration
+
+    @objc private func openDepartureSearch() {
+        presentLocationSearch(title: "From") { [weak self] item, airportCode in
+            self?.departureLocation = item
+            if let airportCode { self?.detailFields["Departure Airport Code"]?.text = airportCode }
+            self?.renderSelectedLocation(item, button: self?.departureButton, icon: self?.departureEditIcon)
+            self?.refreshRouteDistance()
+            self?.refreshSaveState()
+        }
+    }
+
+    @objc private func openArrivalSearch() {
+        presentLocationSearch(title: "To") { [weak self] item, airportCode in
+            self?.arrivalLocation = item
+            if let airportCode { self?.detailFields["Arrival Airport Code"]?.text = airportCode }
+            self?.renderSelectedLocation(item, button: self?.arrivalButton, icon: self?.arrivalEditIcon)
+            self?.refreshRouteDistance()
+            self?.refreshSaveState()
+        }
+    }
+
+    @objc private func invertRouteLocations() {
+        guard departureLocation != nil, arrivalLocation != nil else { return }
+        swap(&departureLocation, &arrivalLocation)
+        if let departureLocation {
+            renderSelectedLocation(departureLocation, button: departureButton, icon: departureEditIcon)
+        }
+        if let arrivalLocation {
+            renderSelectedLocation(arrivalLocation, button: arrivalButton, icon: arrivalEditIcon)
+        }
+
+        swap(&departureDate, &arrivalDate)
+        swap(&departureTime, &arrivalTime)
+        updateDateButton(departureDateButton, with: departureDate)
+        updateDateButton(arrivalDateButton, with: arrivalDate)
+        updateTimeButton(departureTimeButton, with: departureTime)
+        updateTimeButton(arrivalTimeButton, with: arrivalTime)
+        refreshRouteDistance()
+    }
+
+    private func presentLocationSearch(title: String, onSelect: @escaping (MKMapItem, String?) -> Void) {
+        if routeKind != .flight, let nearbyCoordinate {
+            let controller = NativeRouteDestinationSearchViewController(
+                title: title,
+                accent: accent,
+                nearbyCoordinate: nearbyCoordinate,
+                onSelect: { item in onSelect(item, nil) }
+            )
+            controller.modalPresentationStyle = .pageSheet
+            if let sheet = controller.sheetPresentationController {
+            NativeActivitySheetMetrics.applyMyTripsExpandedHeight(to: sheet)
+                sheet.prefersGrabberVisible = false
+                sheet.preferredCornerRadius = 34
+            }
+            present(controller, animated: true)
+            return
+        }
+        let controller = NativeFlightLocationSearchViewController(title: title, onSelect: onSelect)
+        controller.modalPresentationStyle = .pageSheet
+        if let sheet = controller.sheetPresentationController {
+            NativeActivitySheetMetrics.applyMyTripsExpandedHeight(to: sheet)
+            sheet.prefersGrabberVisible = false
+            sheet.preferredCornerRadius = 34
+        }
+        present(controller, animated: true)
+    }
+
+    private func renderSelectedLocation(_ item: MKMapItem, button: UIButton?, icon: UIImageView?) {
+        guard routeKind != .flight else {
+            button?.setTitle(item.name ?? "Location selected", for: .normal)
+            return
+        }
+        let name = item.name ?? "Selected location"
+        let address = fullAddress(for: item.placemark)
+        let text = NSMutableAttributedString(
+            string: name,
+            attributes: [
+                .font: UIFont.systemFont(ofSize: 18, weight: .semibold),
+                .foregroundColor: UIColor.label,
+            ]
+        )
+        if !address.isEmpty, address.localizedCaseInsensitiveCompare(name) != .orderedSame {
+            text.append(NSAttributedString(
+                string: "\n\(address)",
+                attributes: [
+                    .font: UIFont.systemFont(ofSize: 15, weight: .regular),
+                    .foregroundColor: UIColor.secondaryLabel,
+                ]
+            ))
+        }
+        button?.setAttributedTitle(text, for: .normal)
+        button?.titleLabel?.numberOfLines = 0
+        button?.titleLabel?.lineBreakMode = .byWordWrapping
+        icon?.image = UIImage(systemName: "pencil")
+        icon?.accessibilityLabel = "Edit location"
+    }
+
+    private func fullAddress(for placemark: MKPlacemark) -> String {
+        let street = [placemark.subThoroughfare, placemark.thoroughfare]
+            .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
+        let locality = [placemark.locality, placemark.administrativeArea, placemark.postalCode]
+            .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .joined(separator: ", ")
+        let structured = [street, locality, placemark.country]
+            .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .joined(separator: ", ")
+        return structured.isEmpty
+            ? (placemark.title?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "")
+            : structured
+    }
+
+    private func refreshRouteDistance() {
+        distanceRequest?.cancel()
+        distanceRequest = nil
+        guard let departureLocation, let arrivalLocation else {
+            distanceCard?.isHidden = true
+            distanceValueLabel?.text = nil
+            setInvertRouteEnabled(false)
+            return
+        }
+
+        setInvertRouteEnabled(true)
+        guard routeKind == .car else { return }
+        distanceCard?.isHidden = false
+        distanceValueLabel?.text = "Calculating…"
+        let request = MKDirections.Request()
+        request.source = departureLocation
+        request.destination = arrivalLocation
+        request.transportType = .automobile
+        request.requestsAlternateRoutes = false
+        let directions = MKDirections(request: request)
+        distanceRequest = directions
+        directions.calculate { [weak self, weak directions] response, _ in
+            DispatchQueue.main.async {
+                guard let self, self.distanceRequest === directions else { return }
+                self.distanceRequest = nil
+                guard let meters = response?.routes.first?.distance else {
+                    self.distanceValueLabel?.text = "Unavailable"
+                    return
+                }
+                let measurement = Measurement(value: meters, unit: UnitLength.meters)
+                let formatter = MeasurementFormatter()
+                formatter.unitOptions = .naturalScale
+                formatter.unitStyle = .short
+                formatter.numberFormatter.maximumFractionDigits = 2
+                self.distanceValueLabel?.text = formatter.string(from: measurement)
+                self.distanceCard?.accessibilityValue = self.distanceValueLabel?.text
+            }
+        }
+    }
+
+    // MARK: - Shared date and time orchestration
+
+    @objc private func openDepartureDate() {
+        presentDatePicker { [weak self] date in
+            self?.setDepartureDate(date)
+        }
+    }
+
+    @objc private func openArrivalDate() {
+        presentDatePicker { [weak self] date in
+            self?.arrivalDate = date
+            self?.updateDateButton(self?.arrivalDateButton, with: date)
+            self?.refreshSaveState()
+            self?.scheduleSavedPlaceUpdate()
+        }
+    }
+
+    private func presentDatePicker(onSave: @escaping (Date?) -> Void) {
+        let controller = NativeFlightDateInputViewController(accent: AlmidyDesignTokens.Color.goldDark, onSave: onSave)
+        NativeFlightDateInputViewController.sheetConfiguration.apply(to: controller)
+        if let sheet = controller.sheetPresentationController {
+            if #available(iOS 16.0, *) {
+                sheet.detents = [.custom(identifier: .init("flightDate")) { context in
+                    min(700, context.maximumDetentValue * 0.79)
+                }]
+            } else {
+            NativeActivitySheetMetrics.applyMyTripsExpandedHeight(to: sheet)
+            }
+        }
+        present(controller, animated: true)
+    }
+
+    @objc private func openDepartureTime() {
+        presentTimePicker(date: departureTime ?? defaultTime(for: departureDate)) { [weak self] date in
+            self?.setDepartureTime(date)
+        }
+    }
+
+    @objc private func openArrivalTime() {
+        presentTimePicker(date: arrivalTime ?? defaultTime(for: arrivalDate)) { [weak self] date in
+            self?.arrivalTime = date
+            self?.updateTimeButton(self?.arrivalTimeButton, with: date)
+            self?.refreshSaveState()
+            self?.scheduleSavedPlaceUpdate()
+        }
+    }
+
+    private func defaultTime(for selectedDay: Date?) -> Date {
+        guard let selectedDay else { return Date() }
+        let calendar = Calendar.current
+        let nowTime = calendar.dateComponents([.hour, .minute], from: Date())
+        return calendar.date(
+            bySettingHour: nowTime.hour ?? 0,
+            minute: nowTime.minute ?? 0,
+            second: 0,
+            of: selectedDay
+        ) ?? selectedDay
+    }
+
+    private func setDepartureDate(_ date: Date?) {
+        departureDate = date
+        updateDateButton(departureDateButton, with: date)
+        defer { scheduleSavedPlaceUpdate() }
+        guard let date else {
+            departureTime = nil
+            arrivalDate = nil
+            arrivalTime = nil
+            updateTimeButton(departureTimeButton, with: nil)
+            updateDateButton(arrivalDateButton, with: nil)
+            updateTimeButton(arrivalTimeButton, with: nil)
+            refreshSaveState()
+            return
+        }
+
+        if let existingTime = departureTime {
+            let calendar = Calendar.current
+            let components = calendar.dateComponents([.hour, .minute], from: existingTime)
+            departureTime = calendar.date(
+                bySettingHour: components.hour ?? 0,
+                minute: components.minute ?? 0,
+                second: 0,
+                of: date
+            )
+            setAutomaticArrival(from: departureTime ?? date)
+        } else {
+            arrivalDate = date
+            updateDateButton(arrivalDateButton, with: date)
+        }
+        refreshSaveState()
+    }
+
+    private func setDepartureTime(_ date: Date?) {
+        departureTime = date
+        updateTimeButton(departureTimeButton, with: date)
+        defer { scheduleSavedPlaceUpdate() }
+        guard let date else {
+            arrivalTime = nil
+            updateTimeButton(arrivalTimeButton, with: nil)
+            refreshSaveState()
+            return
+        }
+        departureDate = Calendar.current.startOfDay(for: date)
+        updateDateButton(departureDateButton, with: departureDate)
+        setAutomaticArrival(from: date)
+        refreshSaveState()
+    }
+
+    private func setAutomaticArrival(from departure: Date) {
+        let arrival = Calendar.current.date(byAdding: .minute, value: 45, to: departure) ?? departure
+        arrivalDate = Calendar.current.startOfDay(for: arrival)
+        arrivalTime = arrival
+        updateDateButton(arrivalDateButton, with: arrivalDate)
+        updateTimeButton(arrivalTimeButton, with: arrival)
+        refreshSaveState()
+    }
+
+    private func presentTimePicker(date: Date, onSave: @escaping (Date?) -> Void) {
+        let controller = NativeFlightTimeInputViewController(date: date, accent: AlmidyDesignTokens.Color.goldDark, onSave: onSave)
+        NativeFlightTimeInputViewController.sheetConfiguration.apply(to: controller)
+        if let sheet = controller.sheetPresentationController {
+            if #available(iOS 16.0, *) {
+                sheet.detents = [.custom(identifier: .init("flightTime")) { context in
+                    min(410, context.maximumDetentValue * 0.47)
+                }]
+            } else {
+                sheet.detents = [.medium(), .large()]
+            }
+        }
+        present(controller, animated: true)
+    }
+
+    private func updateDateButton(_ button: UIButton?, with date: Date?) {
+        guard let date else {
+            button?.setTitle("Date", for: .normal)
+            return
+        }
+        let formatter = DateFormatter()
+        formatter.dateFormat = "EEE, MMM d"
+        formatter.timeZone = NativeTimeZonePreference.timeZone
+        button?.setTitle(formatter.string(from: date), for: .normal)
+    }
+
+    private func updateTimeButton(_ button: UIButton?, with date: Date?) {
+        guard let date else {
+            button?.setTitle("Time", for: .normal)
+            return
+        }
+        let formatter = DateFormatter()
+        formatter.timeStyle = .short
+        formatter.timeZone = NativeTimeZonePreference.timeZone
+        button?.setTitle(formatter.string(from: date), for: .normal)
+    }
+    // MARK: - Extracted utility integrations
+
+    @objc private func openNote() {
+        let controller = NativeNoteInputViewController(accent: AlmidyDesignTokens.Color.goldDark) { [weak self] note in
+            self?.note = note.isEmpty ? nil : note
+            self?.noteLabel?.text = note.isEmpty ? "Write a note" : "Note added"
+            self?.refreshSaveState()
+            self?.scheduleSavedPlaceUpdate()
+        }
+        NativeNoteInputViewController.sheetConfiguration.apply(to: controller)
+        if let sheet = controller.sheetPresentationController {
+            NativeActivitySheetMetrics.applyMyTripsExpandedHeight(to: sheet)
+        }
+        present(controller, animated: true)
+    }
+
+    private func importDocument() {
+        let picker = UIDocumentPickerViewController(forOpeningContentTypes: [.item], asCopy: true)
+        picker.delegate = self
+        present(picker, animated: true)
+    }
+
+    private func saveLink() {
+        let alert = NativeLinkInputAlert.make { [weak self] url, displayName in
+            self?.attachments.append(.init(kind: .link, displayName: displayName, sourceURL: url))
+            self?.attachmentLabel?.text = "Link added"
+            self?.refreshSaveState()
+            self?.scheduleSavedPlaceUpdate()
+        }
+        present(alert, animated: true)
+    }
+
+    private func choosePhoto() {
+        var configuration = PHPickerConfiguration(photoLibrary: .shared())
+        configuration.filter = .images
+        configuration.selectionLimit = 1
+        let picker = PHPickerViewController(configuration: configuration)
+        picker.delegate = self
+        present(picker, animated: true)
+    }
+
+    private func takePhoto() {
+        guard UIImagePickerController.isSourceTypeAvailable(.camera) else {
+            let alert = UIAlertController(title: "Camera Unavailable", message: "Choose a photo from your library instead.", preferredStyle: .alert)
+            alert.addAction(UIAlertAction(title: "OK", style: .default))
+            present(alert, animated: true)
+            return
+        }
+        let picker = UIImagePickerController()
+        picker.sourceType = .camera
+        picker.delegate = self
+        present(picker, animated: true)
+    }
+
+    func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
+        guard let name = urls.first?.lastPathComponent else { return }
+        attachmentLabel?.text = name
+    }
+
+    func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult]) {
+        picker.dismiss(animated: true)
+        if !results.isEmpty { attachmentLabel?.text = "Photo added" }
+    }
+
+    func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
+        picker.dismiss(animated: true)
+        attachmentLabel?.text = "Photo added"
+    }
+
+    func imagePickerControllerDidCancel(_ picker: UIImagePickerController) { picker.dismiss(animated: true) }
+    @objc private func close() { dismiss(animated: true) }
+}
+
+enum NativeTimeZonePreference {
+    static let changedNotification = Notification.Name("almidy.native.timeZoneChanged")
+    private static let defaultsKey = "almidy.native.selectedTimeZoneIdentifier"
+
+    static var selectedIdentifier: String? {
+        guard let identifier = UserDefaults.standard.string(forKey: defaultsKey),
+              TimeZone(identifier: identifier) != nil else { return nil }
+        return identifier
+    }
+
+    static var timeZone: TimeZone {
+        selectedIdentifier.flatMap(TimeZone.init(identifier:)) ?? .autoupdatingCurrent
+    }
+
+    static func applyStoredSelection() {
+        if selectedIdentifier == nil {
+            NSTimeZone.resetSystemTimeZone()
+        } else {
+            NSTimeZone.default = timeZone
+        }
+    }
+
+    static func select(_ identifier: String?) {
+        if let identifier, TimeZone(identifier: identifier) != nil {
+            UserDefaults.standard.set(identifier, forKey: defaultsKey)
+        } else {
+            UserDefaults.standard.removeObject(forKey: defaultsKey)
+        }
+        applyStoredSelection()
+        NotificationCenter.default.post(name: changedNotification, object: nil)
+    }
+}
+
+struct NativeTimeZoneEntry {
+    let city: String
+    let country: String
+    let identifier: String
+    let aliases: [String]
+
+    var displayName: String { "\(city), \(country)" }
+    var searchText: String {
+        ([city, country, identifier] + aliases).joined(separator: " ").folding(
+            options: [.caseInsensitive, .diacriticInsensitive], locale: .current
+        )
+    }
+
+    func offsetText(at date: Date = Date()) -> String {
+        guard let zone = TimeZone(identifier: identifier) else { return "GMT" }
+        let seconds = zone.secondsFromGMT(for: date)
+        if seconds == 0 { return "GMT" }
+        let sign = seconds < 0 ? "-" : "+"
+        let absolute = abs(seconds)
+        let hours = absolute / 3600
+        let minutes = (absolute % 3600) / 60
+        return minutes == 0 ? "GMT\(sign)\(hours)" : String(format: "GMT%@%d:%02d", sign, hours, minutes)
+    }
+
+    static let representative: [NativeTimeZoneEntry] = [
+        .init(city: "Miami", country: "United States", identifier: "America/New_York", aliases: ["New York", "Eastern", "EST", "EDT"]),
+        .init(city: "Chicago", country: "United States", identifier: "America/Chicago", aliases: ["Central", "CST", "CDT"]),
+        .init(city: "Denver", country: "United States", identifier: "America/Denver", aliases: ["Mountain", "MST", "MDT"]),
+        .init(city: "Phoenix", country: "United States", identifier: "America/Phoenix", aliases: ["Arizona", "MST"]),
+        .init(city: "Los Angeles", country: "United States", identifier: "America/Los_Angeles", aliases: ["Pacific", "PST", "PDT"]),
+        .init(city: "Anchorage", country: "United States", identifier: "America/Anchorage", aliases: ["Alaska", "AKST", "AKDT"]),
+        .init(city: "Honolulu", country: "United States", identifier: "Pacific/Honolulu", aliases: ["Hawaii", "HST"]),
+        .init(city: "Toronto", country: "Canada", identifier: "America/Toronto", aliases: ["Eastern", "EST", "EDT"]),
+        .init(city: "Vancouver", country: "Canada", identifier: "America/Vancouver", aliases: ["Pacific", "PST", "PDT"]),
+        .init(city: "Mexico City", country: "Mexico", identifier: "America/Mexico_City", aliases: ["Central"]),
+        .init(city: "São Paulo", country: "Brazil", identifier: "America/Sao_Paulo", aliases: ["Sao Paulo", "Brasilia", "BRT"]),
+        .init(city: "Buenos Aires", country: "Argentina", identifier: "America/Argentina/Buenos_Aires", aliases: ["Argentina", "ART"]),
+        .init(city: "Bogotá", country: "Colombia", identifier: "America/Bogota", aliases: ["Bogota", "COT"]),
+        .init(city: "Lima", country: "Peru", identifier: "America/Lima", aliases: ["PET"]),
+        .init(city: "Santiago", country: "Chile", identifier: "America/Santiago", aliases: ["Chile", "CLT", "CLST"]),
+        .init(city: "London", country: "United Kingdom", identifier: "Europe/London", aliases: ["British", "GMT", "BST"]),
+        .init(city: "Paris", country: "France", identifier: "Europe/Paris", aliases: ["Central European", "CET", "CEST"]),
+        .init(city: "Berlin", country: "Germany", identifier: "Europe/Berlin", aliases: ["Central European", "CET", "CEST"]),
+        .init(city: "Rome", country: "Italy", identifier: "Europe/Rome", aliases: ["Central European", "CET", "CEST"]),
+        .init(city: "Madrid", country: "Spain", identifier: "Europe/Madrid", aliases: ["Central European", "CET", "CEST"]),
+        .init(city: "Athens", country: "Greece", identifier: "Europe/Athens", aliases: ["Eastern European", "EET", "EEST"]),
+        .init(city: "Istanbul", country: "Türkiye", identifier: "Europe/Istanbul", aliases: ["Turkey", "TRT"]),
+        .init(city: "Kyiv", country: "Ukraine", identifier: "Europe/Kyiv", aliases: ["Kiev", "EET", "EEST"]),
+        .init(city: "Cairo", country: "Egypt", identifier: "Africa/Cairo", aliases: ["EET", "EEST"]),
+        .init(city: "Johannesburg", country: "South Africa", identifier: "Africa/Johannesburg", aliases: ["SAST"]),
+        .init(city: "Lagos", country: "Nigeria", identifier: "Africa/Lagos", aliases: ["WAT"]),
+        .init(city: "Nairobi", country: "Kenya", identifier: "Africa/Nairobi", aliases: ["EAT"]),
+        .init(city: "Dubai", country: "United Arab Emirates", identifier: "Asia/Dubai", aliases: ["Gulf", "GST"]),
+        .init(city: "Riyadh", country: "Saudi Arabia", identifier: "Asia/Riyadh", aliases: ["Arabia", "AST"]),
+        .init(city: "Jerusalem", country: "Israel", identifier: "Asia/Jerusalem", aliases: ["Israel", "IST", "IDT"]),
+        .init(city: "Delhi", country: "India", identifier: "Asia/Kolkata", aliases: ["New Delhi", "Calcutta", "India Standard", "IST"]),
+        .init(city: "Bangkok", country: "Thailand", identifier: "Asia/Bangkok", aliases: ["Indochina", "ICT"]),
+        .init(city: "Singapore", country: "Singapore", identifier: "Asia/Singapore", aliases: ["SGT"]),
+        .init(city: "Hong Kong", country: "Hong Kong", identifier: "Asia/Hong_Kong", aliases: ["HKT"]),
+        .init(city: "Shanghai", country: "China", identifier: "Asia/Shanghai", aliases: ["Beijing", "China Standard", "CST"]),
+        .init(city: "Tokyo", country: "Japan", identifier: "Asia/Tokyo", aliases: ["Japan Standard", "JST"]),
+        .init(city: "Seoul", country: "South Korea", identifier: "Asia/Seoul", aliases: ["Korea Standard", "KST"]),
+        .init(city: "Sydney", country: "Australia", identifier: "Australia/Sydney", aliases: ["Australian Eastern", "AEST", "AEDT"]),
+        .init(city: "Adelaide", country: "Australia", identifier: "Australia/Adelaide", aliases: ["Australian Central", "ACST", "ACDT"]),
+        .init(city: "Perth", country: "Australia", identifier: "Australia/Perth", aliases: ["Australian Western", "AWST"]),
+        .init(city: "Auckland", country: "New Zealand", identifier: "Pacific/Auckland", aliases: ["New Zealand", "NZST", "NZDT"]),
+        .init(city: "UTC", country: "Coordinated Universal Time", identifier: "UTC", aliases: ["GMT", "Zulu"])
+    ]
+}
+
+@available(iOS 16.0, *)
+extension NativeActivityPlaceDetailsViewController: MKLookAroundViewControllerDelegate {
+    func lookAroundViewControllerWillPresentFullScreen(_ viewController: MKLookAroundViewController) {
+        updateLookAroundReadyState(.fullScreen)
+    }
+
+    func lookAroundViewControllerDidDismissFullScreen(_ viewController: MKLookAroundViewController) {
+        updateLookAroundReadyState(.ready)
+    }
+
+    func lookAroundViewControllerDidUpdateScene(_ viewController: MKLookAroundViewController) {
+        updateLookAroundReadyState(.ready)
+    }
+}
+
+private final class NativeFlightARPreviewViewController: UIViewController, MKMapViewDelegate {
+    private let departure: MKMapItem
+    private let arrival: MKMapItem
+    private let accent: UIColor
+    private let sceneView = ARSCNView(frame: .zero)
+    private let mapView = MKMapView(frame: .zero)
+
+    init(departure: MKMapItem, arrival: MKMapItem, accent: UIColor) {
+        self.departure = departure
+        self.arrival = arrival
+        self.accent = accent
+        super.init(nibName: nil, bundle: nil)
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        view.backgroundColor = .black
+        sceneView.translatesAutoresizingMaskIntoConstraints = false
+        sceneView.automaticallyUpdatesLighting = true
+        view.addSubview(sceneView)
+        NSLayoutConstraint.activate([
+            sceneView.topAnchor.constraint(equalTo: view.topAnchor),
+            sceneView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            sceneView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            sceneView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
+        ])
+
+        let close = UIButton(type: .system)
+        close.setImage(UIImage(systemName: "xmark"), for: .normal)
+        close.tintColor = .label
+        close.accessibilityLabel = "Close AR flight route"
+        close.addTarget(self, action: #selector(closePreview), for: .touchUpInside)
+        close.widthAnchor.constraint(equalToConstant: 44).isActive = true
+        close.heightAnchor.constraint(equalToConstant: 44).isActive = true
+
+        let title = UILabel()
+        title.text = "\(departure.name ?? "Departure")  →  \(arrival.name ?? "Arrival")"
+        title.font = .systemFont(ofSize: 17, weight: .semibold)
+        title.textColor = .label
+        title.numberOfLines = 2
+
+        mapView.delegate = self
+        mapView.isUserInteractionEnabled = false
+        mapView.pointOfInterestFilter = .excludingAll
+        mapView.layer.cornerRadius = 18
+        mapView.clipsToBounds = true
+        mapView.heightAnchor.constraint(equalToConstant: 170).isActive = true
+        let departureAnnotation = MKPointAnnotation()
+        departureAnnotation.coordinate = departure.placemark.coordinate
+        departureAnnotation.title = departure.name
+        let arrivalAnnotation = MKPointAnnotation()
+        arrivalAnnotation.coordinate = arrival.placemark.coordinate
+        arrivalAnnotation.title = arrival.name
+        mapView.addAnnotations([departureAnnotation, arrivalAnnotation])
+        let route = MKGeodesicPolyline(coordinates: [departureAnnotation.coordinate, arrivalAnnotation.coordinate], count: 2)
+        mapView.addOverlay(route)
+        mapView.setVisibleMapRect(
+            route.boundingMapRect,
+            edgePadding: UIEdgeInsets(top: 32, left: 32, bottom: 32, right: 32),
+            animated: false
+        )
+
+        let header = UIStackView(arrangedSubviews: [title, UIView(), close])
+        header.axis = .horizontal
+        header.alignment = .center
+        header.spacing = 12
+        let content = UIStackView(arrangedSubviews: [header, mapView])
+        content.axis = .vertical
+        content.spacing = 12
+        content.translatesAutoresizingMaskIntoConstraints = false
+
+        let panel: UIVisualEffectView
+        if #available(iOS 26.0, *) {
+            let effect = UIGlassEffect(style: .regular)
+            effect.isInteractive = true
+            effect.tintColor = accent.withAlphaComponent(0.18)
+            panel = UIVisualEffectView(effect: effect)
+        } else {
+            panel = UIVisualEffectView(effect: UIBlurEffect(style: .systemChromeMaterial))
+        }
+        panel.layer.cornerRadius = 28
+        panel.clipsToBounds = true
+        panel.translatesAutoresizingMaskIntoConstraints = false
+        panel.contentView.addSubview(content)
+        view.addSubview(panel)
+        NSLayoutConstraint.activate([
+            panel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 18),
+            panel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -18),
+            panel.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -12),
+            content.topAnchor.constraint(equalTo: panel.contentView.topAnchor, constant: 16),
+            content.leadingAnchor.constraint(equalTo: panel.contentView.leadingAnchor, constant: 16),
+            content.trailingAnchor.constraint(equalTo: panel.contentView.trailingAnchor, constant: -16),
+            content.bottomAnchor.constraint(equalTo: panel.contentView.bottomAnchor, constant: -16)
+        ])
+        addPlaneNode()
+    }
+
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        let configuration = ARWorldTrackingConfiguration()
+        configuration.worldAlignment = .gravityAndHeading
+        sceneView.session.run(configuration, options: [.resetTracking, .removeExistingAnchors])
+    }
+
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        sceneView.session.pause()
+    }
+
+    private func addPlaneNode() {
+        let text = SCNText(string: "✈︎", extrusionDepth: 0.02)
+        text.font = .systemFont(ofSize: 0.34, weight: .semibold)
+        text.firstMaterial?.diffuse.contents = accent
+        let node = SCNNode(geometry: text)
+        let bounds = text.boundingBox
+        node.pivot = SCNMatrix4MakeTranslation(
+            (bounds.max.x - bounds.min.x) / 2,
+            (bounds.max.y - bounds.min.y) / 2,
+            0
+        )
+        node.position = SCNVector3(0, 0, -1.5)
+        node.constraints = [SCNBillboardConstraint()]
+        sceneView.scene.rootNode.addChildNode(node)
+    }
+
+    func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
+        let renderer = MKPolylineRenderer(overlay: overlay)
+        renderer.strokeColor = accent
+        renderer.lineWidth = 4
+        renderer.lineCap = .round
+        return renderer
+    }
+
+    @objc private func closePreview() { dismiss(animated: true) }
+}
+
+private final class NativeFlightLocationSearchViewController: UIViewController,
+    MKLocalSearchCompleterDelegate, UITableViewDataSource, UITableViewDelegate, UITextFieldDelegate {
+    private let screenTitle: String
+    private let onSelect: (MKMapItem, String?) -> Void
+    private let completer = MKLocalSearchCompleter()
+    private var completions: [MKLocalSearchCompletion] = []
+    private var hasActivatedSearch = false
+
+    private let cancelButton = UIButton(type: .system)
+    private let titleLabel = UILabel()
+    private let searchContainer = UIView()
+    private let searchField = UITextField()
+    private let closeButton = UIButton(type: .system)
+    private let resultsTable = UITableView(frame: .zero, style: .plain)
+    private var initialSearchTop: NSLayoutConstraint!
+    private var focusedSearchTop: NSLayoutConstraint!
+    private var initialSearchTrailing: NSLayoutConstraint!
+    private var focusedSearchTrailing: NSLayoutConstraint!
+
+    init(title: String, onSelect: @escaping (MKMapItem, String?) -> Void) {
+        screenTitle = title
+        self.onSelect = onSelect
+        super.init(nibName: nil, bundle: nil)
+    }
+
+    @available(*, unavailable) required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        view.backgroundColor = .systemBackground
+
+        cancelButton.setTitle("Cancel", for: .normal)
+        cancelButton.setTitleColor(.label, for: .normal)
+        cancelButton.titleLabel?.font = .systemFont(ofSize: 18, weight: .medium)
+        cancelButton.backgroundColor = .secondarySystemBackground
+        cancelButton.layer.cornerRadius = 22
+        cancelButton.addTarget(self, action: #selector(close), for: .touchUpInside)
+
+        titleLabel.text = screenTitle
+        titleLabel.font = .systemFont(ofSize: 22, weight: .semibold)
+        titleLabel.textAlignment = .center
+
+        searchContainer.backgroundColor = .systemBackground
+        searchContainer.layer.cornerRadius = 24
+        searchContainer.layer.shadowColor = UIColor.black.cgColor
+        searchContainer.layer.shadowOpacity = 0.06
+        searchContainer.layer.shadowRadius = 14
+        searchContainer.layer.shadowOffset = CGSize(width: 0, height: 7)
+        let searchIcon = UIImageView(image: UIImage(systemName: "magnifyingglass"))
+        searchIcon.tintColor = .label
+        searchIcon.contentMode = .scaleAspectFit
+        searchField.placeholder = "City or Airport"
+        searchField.font = .systemFont(ofSize: 20)
+        searchField.textColor = .label
+        searchField.tintColor = AlmidyDesignTokens.Color.goldDark
+        searchField.clearButtonMode = .never
+        searchField.returnKeyType = .search
+        searchField.autocorrectionType = .no
+        searchField.autocapitalizationType = .words
+        searchField.delegate = self
+        searchField.addTarget(self, action: #selector(queryChanged), for: .editingChanged)
+        searchField.accessibilityIdentifier = screenTitle == "From" ? "flightDepartureSearchField" : "flightArrivalSearchField"
+
+        closeButton.setImage(UIImage(systemName: "xmark"), for: .normal)
+        closeButton.tintColor = .label
+        closeButton.backgroundColor = .systemBackground
+        closeButton.layer.cornerRadius = 24
+        closeButton.layer.shadowColor = UIColor.black.cgColor
+        closeButton.layer.shadowOpacity = 0.06
+        closeButton.layer.shadowRadius = 14
+        closeButton.layer.shadowOffset = CGSize(width: 0, height: 7)
+        closeButton.alpha = 0
+        closeButton.isHidden = true
+        closeButton.accessibilityLabel = "Close location search"
+        closeButton.addTarget(self, action: #selector(resetSearch), for: .touchUpInside)
+
+        resultsTable.backgroundColor = .clear
+        resultsTable.separatorStyle = .singleLine
+        resultsTable.keyboardDismissMode = .interactive
+        resultsTable.dataSource = self
+        resultsTable.delegate = self
+        resultsTable.register(UITableViewCell.self, forCellReuseIdentifier: "LocationResult")
+
+        [cancelButton, titleLabel, searchContainer, searchIcon, searchField, closeButton, resultsTable].forEach {
+            $0.translatesAutoresizingMaskIntoConstraints = false
+        }
+        view.addSubview(cancelButton)
+        view.addSubview(titleLabel)
+        view.addSubview(searchContainer)
+        searchContainer.addSubview(searchIcon)
+        searchContainer.addSubview(searchField)
+        view.addSubview(closeButton)
+        view.addSubview(resultsTable)
+
+        initialSearchTop = searchContainer.topAnchor.constraint(equalTo: cancelButton.bottomAnchor, constant: 14)
+        focusedSearchTop = searchContainer.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 28)
+        initialSearchTrailing = searchContainer.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20)
+        focusedSearchTrailing = searchContainer.trailingAnchor.constraint(equalTo: closeButton.leadingAnchor, constant: -12)
+        focusedSearchTop.isActive = false
+        focusedSearchTrailing.isActive = false
+
+        NSLayoutConstraint.activate([
+            cancelButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 16),
+            cancelButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
+            cancelButton.widthAnchor.constraint(equalToConstant: 90),
+            cancelButton.heightAnchor.constraint(equalToConstant: 44),
+            titleLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            titleLabel.centerYAnchor.constraint(equalTo: cancelButton.centerYAnchor),
+            initialSearchTop,
+            searchContainer.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
+            initialSearchTrailing,
+            searchContainer.heightAnchor.constraint(equalToConstant: 48),
+            searchIcon.leadingAnchor.constraint(equalTo: searchContainer.leadingAnchor, constant: 16),
+            searchIcon.centerYAnchor.constraint(equalTo: searchContainer.centerYAnchor),
+            searchIcon.widthAnchor.constraint(equalToConstant: 22),
+            searchIcon.heightAnchor.constraint(equalToConstant: 22),
+            searchField.leadingAnchor.constraint(equalTo: searchIcon.trailingAnchor, constant: 12),
+            searchField.trailingAnchor.constraint(equalTo: searchContainer.trailingAnchor, constant: -14),
+            searchField.topAnchor.constraint(equalTo: searchContainer.topAnchor),
+            searchField.bottomAnchor.constraint(equalTo: searchContainer.bottomAnchor),
+            closeButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
+            closeButton.centerYAnchor.constraint(equalTo: searchContainer.centerYAnchor),
+            closeButton.widthAnchor.constraint(equalToConstant: 48),
+            closeButton.heightAnchor.constraint(equalToConstant: 48),
+            resultsTable.topAnchor.constraint(equalTo: searchContainer.bottomAnchor, constant: 12),
+            resultsTable.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
+            resultsTable.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
+            resultsTable.bottomAnchor.constraint(equalTo: view.keyboardLayoutGuide.topAnchor)
+        ])
+
+        completer.delegate = self
+        completer.resultTypes = [.address, .pointOfInterest]
+    }
+
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        guard !hasActivatedSearch else { return }
+        hasActivatedSearch = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) { [weak self] in
+            self?.activateSearch()
+        }
+    }
+
+    private func activateSearch() {
+        guard !focusedSearchTop.isActive else { return }
+        initialSearchTop.isActive = false
+        initialSearchTrailing.isActive = false
+        focusedSearchTop.isActive = true
+        focusedSearchTrailing.isActive = true
+        closeButton.isHidden = false
+        searchField.becomeFirstResponder()
+        UIView.animate(withDuration: 0.24) {
+            self.cancelButton.alpha = 0
+            self.titleLabel.alpha = 0
+            self.closeButton.alpha = 1
+            self.view.layoutIfNeeded()
+        }
+    }
+
+    @objc private func resetSearch() {
+        searchField.text = nil
+        completer.queryFragment = ""
+        completions = []
+        resultsTable.reloadData()
+        searchField.resignFirstResponder()
+
+        focusedSearchTop.isActive = false
+        focusedSearchTrailing.isActive = false
+        initialSearchTop.isActive = true
+        initialSearchTrailing.isActive = true
+        UIView.animate(withDuration: 0.24, animations: {
+            self.cancelButton.alpha = 1
+            self.titleLabel.alpha = 1
+            self.closeButton.alpha = 0
+            self.view.layoutIfNeeded()
+        }, completion: { _ in
+            self.closeButton.isHidden = true
+        })
+    }
+
+    @objc private func queryChanged() {
+        let query = searchField.text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if query.isEmpty {
+            completions = []
+            resultsTable.reloadData()
+        }
+        completer.queryFragment = query
+    }
+
+    func completerDidUpdateResults(_ completer: MKLocalSearchCompleter) {
+        completions = completer.results
+        resultsTable.reloadData()
+    }
+
+    func completer(_ completer: MKLocalSearchCompleter, didFailWithError error: Error) {
+        completions = []
+        resultsTable.reloadData()
+    }
+
+    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { completions.count }
+
+    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        let cell = tableView.dequeueReusableCell(withIdentifier: "LocationResult", for: indexPath)
+        var content = cell.defaultContentConfiguration()
+        let result = completions[indexPath.row]
+        content.text = result.title
+        content.secondaryText = result.subtitle
+        content.image = UIImage(systemName: "mappin.and.ellipse")
+        cell.contentConfiguration = content
+        return cell
+    }
+
+    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        let completion = completions[indexPath.row]
+        let request = MKLocalSearch.Request(completion: completion)
+        MKLocalSearch(request: request).start { [weak self] response, _ in
+            guard let self, let item = response?.mapItems.first else { return }
+            let airportCode = Self.airportCode(
+                in: [completion.title, completion.subtitle, item.name, item.placemark.title]
+            )
+            self.dismiss(animated: true) { self.onSelect(item, airportCode) }
+        }
+    }
+
+    private static func airportCode(in values: [String?]) -> String? {
+        let expression = try? NSRegularExpression(pattern: "(?:\\(|\\b)([A-Z]{3})(?:\\)|\\b)")
+        for value in values.compactMap({ $0 }) {
+            let uppercased = value.uppercased()
+            let range = NSRange(uppercased.startIndex..., in: uppercased)
+            guard let match = expression?.firstMatch(in: uppercased, range: range),
+                  match.numberOfRanges > 1,
+                  let codeRange = Range(match.range(at: 1), in: uppercased) else { continue }
+            return String(uppercased[codeRange])
+        }
+        return nil
+    }
+
+    func textFieldShouldReturn(_ textField: UITextField) -> Bool {
+        if completions.indices.contains(0) { tableView(resultsTable, didSelectRowAt: IndexPath(row: 0, section: 0)) }
+        return false
+    }
+
+    func textFieldDidBeginEditing(_ textField: UITextField) {
+        activateSearch()
+    }
+
+    @objc private func close() { dismiss(animated: true) }
+}
+
+private final class NativeRouteDestinationSearchViewController: UIViewController,
+    MKLocalSearchCompleterDelegate, UITableViewDataSource, UITableViewDelegate, UITextFieldDelegate {
+    private let screenTitle: String
+    private let accent: UIColor
+    private let nearbyCoordinate: CLLocationCoordinate2D
+    private let onSelect: (MKMapItem) -> Void
+    private let completer = MKLocalSearchCompleter()
+    private var completions: [MKLocalSearchCompletion] = []
+    private let searchField = UITextField()
+    private let tableView = UITableView(frame: .zero, style: .plain)
+    private let nearbyButton = UIButton(type: .system)
+    private let everywhereButton = UIButton(type: .system)
+    private var searchesNearby = false
+
+    init(title: String = "To", accent: UIColor, nearbyCoordinate: CLLocationCoordinate2D, onSelect: @escaping (MKMapItem) -> Void) {
+        screenTitle = title
+        self.accent = accent
+        self.nearbyCoordinate = nearbyCoordinate
+        self.onSelect = onSelect
+        super.init(nibName: nil, bundle: nil)
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        view.backgroundColor = .systemBackground
+        completer.delegate = self
+        completer.resultTypes = [.address, .pointOfInterest, .query]
+
+        let cancel = UIButton(type: .system)
+        cancel.setTitle("Cancel", for: .normal)
+        cancel.setTitleColor(.label, for: .normal)
+        cancel.titleLabel?.font = .systemFont(ofSize: 18, weight: .medium)
+        cancel.backgroundColor = UIColor.secondarySystemBackground.withAlphaComponent(0.82)
+        cancel.layer.cornerRadius = 22
+        cancel.layer.shadowColor = UIColor.black.cgColor
+        cancel.layer.shadowOpacity = 0.08
+        cancel.layer.shadowRadius = 10
+        cancel.layer.shadowOffset = CGSize(width: 0, height: 4)
+        cancel.addTarget(self, action: #selector(cancelSearch), for: .touchUpInside)
+
+        let title = UILabel()
+        title.text = screenTitle
+        title.font = .systemFont(ofSize: 22, weight: .semibold)
+        title.textAlignment = .center
+
+        searchField.placeholder = "Search by a locality"
+        searchField.font = .systemFont(ofSize: 17)
+        searchField.backgroundColor = .secondarySystemFill
+        searchField.layer.cornerRadius = 12
+        searchField.clearButtonMode = .whileEditing
+        searchField.returnKeyType = .search
+        searchField.delegate = self
+        searchField.addTarget(self, action: #selector(queryChanged), for: .editingChanged)
+        let searchIcon = UIImageView(image: UIImage(systemName: "magnifyingglass"))
+        searchIcon.tintColor = .secondaryLabel
+        searchIcon.contentMode = .center
+        searchIcon.frame = CGRect(x: 0, y: 0, width: 42, height: 44)
+        searchField.leftView = searchIcon
+        searchField.leftViewMode = .always
+
+        configureScopeButton(nearbyButton, title: "Nearby", action: #selector(selectNearby))
+        configureScopeButton(everywhereButton, title: "Everywhere", action: #selector(selectEverywhere))
+        let scopeRow = UIStackView(arrangedSubviews: [nearbyButton, everywhereButton, UIView()])
+        scopeRow.axis = .horizontal
+        scopeRow.spacing = 8
+        updateScopeAppearance()
+
+        tableView.register(UITableViewCell.self, forCellReuseIdentifier: "route-destination")
+        tableView.dataSource = self
+        tableView.delegate = self
+        tableView.rowHeight = 76
+        tableView.keyboardDismissMode = .interactive
+        tableView.tableFooterView = UIView()
+
+        [cancel, title, searchField, scopeRow, tableView].forEach {
+            $0.translatesAutoresizingMaskIntoConstraints = false
+            view.addSubview($0)
+        }
+        NSLayoutConstraint.activate([
+            cancel.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 20),
+            cancel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
+            cancel.widthAnchor.constraint(equalToConstant: 92),
+            cancel.heightAnchor.constraint(equalToConstant: 44),
+            title.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            title.centerYAnchor.constraint(equalTo: cancel.centerYAnchor),
+            searchField.topAnchor.constraint(equalTo: cancel.bottomAnchor, constant: 20),
+            searchField.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+            searchField.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            searchField.heightAnchor.constraint(equalToConstant: 44),
+            scopeRow.topAnchor.constraint(equalTo: searchField.bottomAnchor, constant: 12),
+            scopeRow.leadingAnchor.constraint(equalTo: searchField.leadingAnchor),
+            scopeRow.trailingAnchor.constraint(equalTo: searchField.trailingAnchor),
+            scopeRow.heightAnchor.constraint(equalToConstant: 34),
+            tableView.topAnchor.constraint(equalTo: scopeRow.bottomAnchor, constant: 8),
+            tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
+        ])
+        searchField.becomeFirstResponder()
+    }
+
+    private func configureScopeButton(_ button: UIButton, title: String, action: Selector) {
+        button.setTitle(title, for: .normal)
+        button.titleLabel?.font = .systemFont(ofSize: 17, weight: .regular)
+        button.addTarget(self, action: action, for: .touchUpInside)
+    }
+
+    private func updateScopeAppearance() {
+        nearbyButton.setTitleColor(searchesNearby ? accent : .secondaryLabel, for: .normal)
+        everywhereButton.setTitleColor(searchesNearby ? .secondaryLabel : accent, for: .normal)
+        if searchesNearby {
+            completer.region = MKCoordinateRegion(
+                center: nearbyCoordinate,
+                latitudinalMeters: 50_000,
+                longitudinalMeters: 50_000
+            )
+        } else {
+            completer.region = MKCoordinateRegion()
+        }
+        refreshQuery()
+    }
+
+    @objc private func cancelSearch() { dismiss(animated: true) }
+    @objc private func selectNearby() { searchesNearby = true; updateScopeAppearance() }
+    @objc private func selectEverywhere() { searchesNearby = false; updateScopeAppearance() }
+    @objc private func queryChanged() { refreshQuery() }
+
+    private func refreshQuery() {
+        let query = searchField.text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if query.count < 2 {
+            completions = []
+            tableView.reloadData()
+        }
+        completer.queryFragment = query
+    }
+
+    func completerDidUpdateResults(_ completer: MKLocalSearchCompleter) {
+        completions = Array(completer.results.prefix(8))
+        tableView.reloadData()
+    }
+
+    func completer(_ completer: MKLocalSearchCompleter, didFailWithError error: Error) {
+        completions = []
+        tableView.reloadData()
+    }
+
+    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { completions.count }
+
+    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        let cell = tableView.dequeueReusableCell(withIdentifier: "route-destination", for: indexPath)
+        let completion = completions[indexPath.row]
+        var content = cell.defaultContentConfiguration()
+        content.image = UIImage(systemName: "mappin.and.ellipse")
+        content.imageProperties.tintColor = accent
+        content.text = completion.title
+        content.secondaryText = completion.subtitle
+        content.textProperties.font = .systemFont(ofSize: 16, weight: .medium)
+        content.textProperties.numberOfLines = 1
+        content.secondaryTextProperties.color = .secondaryLabel
+        content.secondaryTextProperties.font = .systemFont(ofSize: 15, weight: .regular)
+        content.secondaryTextProperties.numberOfLines = 1
+        content.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 12)
+        cell.contentConfiguration = content
+        return cell
+    }
+
+    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        let completion = completions[indexPath.row]
+        searchField.resignFirstResponder()
+        let request = MKLocalSearch.Request(completion: completion)
+        MKLocalSearch(request: request).start { [weak self] response, _ in
+            DispatchQueue.main.async {
+                guard let self, let item = response?.mapItems.first else { return }
+                self.dismiss(animated: true) { self.onSelect(item) }
+            }
+        }
+    }
+
+    func textFieldShouldReturn(_ textField: UITextField) -> Bool {
+        guard !completions.isEmpty else { return false }
+        tableView(tableView, didSelectRowAt: IndexPath(row: 0, section: 0))
+        return true
+    }
+}
+
+final class NativeMapViewController: UIViewController, CLLocationManagerDelegate, MKMapViewDelegate, UISheetPresentationControllerDelegate {
+    var activityRouteNearbyCoordinate: CLLocationCoordinate2D { mapView.centerCoordinate }
     private static let populatedGlobeDistance: CLLocationDistance = 90_000_000
     private static let populatedGlobeVerticalOffset: CGFloat = 0
     private static let populatedGlobeLongitude: CLLocationDegrees = -108
     private static let activityDiscoveryDiameter: CLLocationDistance = 30_000
-    private static let activityCameraMaximumDistance: CLLocationDistance = 80_000
+    private static let activityCameraMaximumDistance: CLLocationDistance = 18_000
 
     private enum SheetState: CaseIterable {
         case collapsed
@@ -1607,15 +5816,55 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
     }
 
     private let mapView = MKMapView()
-    private var activityResultSelectionHandler: ((String) -> Void)?
+    private let statusBarShadeView = UIView()
+    private let statusBarShadeLayer = CAGradientLayer()
+    private var activityResultSelectionHandler: ((String?) -> Void)?
+    private var activityResolvedPlaceHandler: ((String, MKMapItem) -> Void)?
+    private var activitySelectionCameraToRestore: MKMapCamera?
+    private var activitySheetDetentToRestore: UISheetPresentationController.Detent.Identifier?
+    private var tripOverviewTripIDToRestoreAfterActivity: String?
+    private var activityPlaceResolutionGeneration = 0
+    private var activityCameraFitGeneration = 0
+    private var selectedActivityPlaceID: String?
+    private var selectedActivityMapItem: MKMapItem?
+    private var activityRouteOverlay: MKPolyline?
+    private var transportationRouteOverlays: [MKPolyline] = []
+    private var flightRouteOverlays: [MKGeodesicPolyline] = []
+    private var itineraryRouteDirections: [MKDirections] = []
+    private var itineraryRouteGeneration = 0
+    private var suppressedActivitySelectionID: String?
     // Keep the exact collection that backs the results sheet alive for as long
     // as the filter is active. The sheet can transition between detents while
     // MapKit rebuilds its visible annotation views; retaining the model here
     // prevents the search overlay from becoming a camera-only update.
     private var activitySearchAnnotations: [NativeActivitySearchAnnotation] = []
 
-    func setActivityResultSelectionHandler(_ handler: ((String) -> Void)?) {
+    func setActivityResultSelectionHandler(_ handler: ((String?) -> Void)?) {
         activityResultSelectionHandler = handler
+    }
+
+    func setActivityResolvedPlaceHandler(_ handler: ((String, MKMapItem) -> Void)?) {
+        activityResolvedPlaceHandler = handler
+    }
+
+    func prepareToRestoreTripOverviewAfterActivity(for tripID: String) {
+        tripOverviewTripIDToRestoreAfterActivity = tripID
+    }
+
+    func cancelTripOverviewRestorationAfterActivity() {
+        tripOverviewTripIDToRestoreAfterActivity = nil
+    }
+
+    func restoreTripOverviewAfterActivity(for tripID: String) {
+        tripOverviewTripIDToRestoreAfterActivity = nil
+        guard let trip = trips.first(where: { $0.id == tripID }) else {
+            setPrimarySheetHiddenForModalFlow(false)
+            return
+        }
+        DispatchQueue.main.async { [weak self] in
+            guard let self, self.presentedViewController == nil else { return }
+            self.presentTripOverview(for: trip)
+        }
     }
 
     var activitySearchRegion: MKCoordinateRegion {
@@ -1657,6 +5906,8 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
     private var trips: [NativeMapTrip]
     private let tripStore: NativeTripStore?
     private let sourceWebView: WKWebView?
+    private lazy var itineraryRequester: NativeItineraryRequesting = NativeItineraryAPIClient(webView: sourceWebView)
+    private lazy var placeItineraryClient = NativePlaceItineraryAPIClient(webView: sourceWebView)
     private let sheetView = UIView()
     private let sheetHandle = UIView()
     private let headerStack = UIStackView()
@@ -1670,7 +5921,11 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
     private var expandedContentWidthConstraint: NSLayoutConstraint?
     private var expandedScrollBottomToActionsConstraint: NSLayoutConstraint?
     private var expandedScrollBottomToSheetConstraint: NSLayoutConstraint?
-    private let mapControlStack = UIStackView()
+    private lazy var mapControlStack = NativeMapControlsView(
+        onMapStyle: { [weak self] in self?.toggleMapMode() },
+        onLocation: { [weak self] in self?.requestCurrentLocation() },
+        onOrientation: { [weak self] in self?.resetMapOrientation() }
+    )
     private var firstTripCard: UIView?
     private var sheetBottomConstraint: NSLayoutConstraint?
     private var sheetHeightConstraint: NSLayoutConstraint?
@@ -1694,6 +5949,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
     private var resolvingLegacyTripIDs: Set<String> = []
     private var activityFilterSearch: MKLocalSearch?
     private var isRequestingLocationAuthorization = false
+    private var shouldCenterRequestedLocation = false
     private var hasRequestedInitialLocation = false
     private var hasCenteredInitialLocation = false
     private var reservationCardVisible = !UserDefaults.standard.bool(forKey: "almidy.native.reservationCardDismissed")
@@ -1716,15 +5972,19 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         fatalError("init(coder:) has not been implemented")
     }
 
+    override var preferredStatusBarStyle: UIStatusBarStyle { .lightContent }
+
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = AlmidyDesignTokens.Color.mapSurface
         trips.forEach { warmTripBackground($0) }
         configureMap()
+        configureStatusBarShade()
         configureMapControls()
         configureSheet()
         renderSheetContent()
         addTripPins()
+        refreshItineraryRouteOverlays()
         applySheetState(sheetState, animated: false)
         if monitorsNetworkConnectivity {
             startNetworkMonitoring()
@@ -1743,7 +6003,8 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
 
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
-        mapControlTopConstraint?.constant = NativeAdaptiveLayout.isCompactHeight(view) ? 16 : 142
+        statusBarShadeLayer.frame = statusBarShadeView.bounds
+        mapControlTopConstraint?.constant = NativeAdaptiveLayout.isCompactHeight(view) ? 14 : 18
         updateExpandedContentWidthPriority(for: view.bounds.width)
         let nextHeight = height(for: sheetState)
         if abs((sheetHeightConstraint?.constant ?? 0) - nextHeight) > 0.5 {
@@ -1835,6 +6096,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
             zoomsToPopulatedGlobe: !previouslyHadTrips && !scheduledTrips.isEmpty
         )
         addTripPins()
+        refreshItineraryRouteOverlays()
         renderSheetContent()
     }
 
@@ -1847,6 +6109,9 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         mapView.translatesAutoresizingMaskIntoConstraints = false
         mapView.delegate = self
         mapView.pointOfInterestFilter = .includingAll
+        if #available(iOS 16.0, *) {
+            mapView.selectableMapFeatures = [.pointsOfInterest, .territories, .physicalFeatures]
+        }
         mapView.showsCompass = false
         mapView.showsScale = false
         mapView.showsBuildings = true
@@ -1904,7 +6169,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         mapTopConstraint?.constant = verticalOffset
         mapBottomConstraint?.constant = verticalOffset
         mapView.pointOfInterestFilter = .includingAll
-        mapControlStack.isHidden = !trips.isEmpty
+        mapControlStack.isHidden = true
         applyMapPresentation(mapPresentationMode)
 
         if zoomsToPopulatedGlobe {
@@ -1924,7 +6189,9 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         hasPlayedIntroCamera = true
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { [weak self] in
-            guard let self else { return }
+            guard let self,
+                  self.activitySearchAnnotations.isEmpty,
+                  self.mapControlStack.isHidden else { return }
             let launchDistance: CLLocationDistance = self.trips.isEmpty ? 7_800_000 : Self.populatedGlobeDistance
             let launchLongitude = self.trips.isEmpty ? -96.0 : Self.populatedGlobeLongitude
             self.mapView.setCamera(
@@ -2311,75 +6578,64 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
 #endif
 
     private func configureMapControls() {
-        mapControlStack.axis = .vertical
-        mapControlStack.alignment = .center
-        mapControlStack.spacing = 1
-        mapControlStack.backgroundColor = AlmidyDesignTokens.Color.surface.withAlphaComponent(0.92)
-        mapControlStack.layer.cornerRadius = AlmidyDesignTokens.Radius.card
-        mapControlStack.clipsToBounds = true
-        mapControlStack.isHidden = !trips.isEmpty
+        mapControlStack.isHidden = true
         mapControlStack.translatesAutoresizingMaskIntoConstraints = false
-
-        let mapModeButton = mapControlButton(systemName: "map", accessibilityLabel: "Change map mode")
-        mapModeButton.addTarget(self, action: #selector(toggleMapMode), for: .touchUpInside)
-
-        let separator = UIView()
-        separator.backgroundColor = AlmidyDesignTokens.Color.line
-        separator.translatesAutoresizingMaskIntoConstraints = false
-        NSLayoutConstraint.activate([
-            separator.widthAnchor.constraint(equalToConstant: 30),
-            separator.heightAnchor.constraint(equalToConstant: 1)
-        ])
-
-        let locationButton = mapControlButton(systemName: "location.fill", accessibilityLabel: "Use current location")
-        locationButton.addTarget(self, action: #selector(requestCurrentLocation), for: .touchUpInside)
-
-        mapControlStack.addArrangedSubview(mapModeButton)
-        mapControlStack.addArrangedSubview(separator)
-        mapControlStack.addArrangedSubview(locationButton)
         view.addSubview(mapControlStack)
 
-        mapControlTopConstraint = mapControlStack.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 142)
+        mapControlTopConstraint = mapControlStack.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 18)
         NSLayoutConstraint.activate([
-            mapControlStack.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -16),
+            mapControlStack.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -20),
             mapControlTopConstraint!,
-            mapControlStack.widthAnchor.constraint(equalToConstant: 58)
+            mapControlStack.widthAnchor.constraint(equalToConstant: NativeMapControlsView.controlSize)
         ])
     }
 
-    private func mapControlButton(systemName: String, accessibilityLabel: String) -> UIButton {
-        let button = UIButton(type: .system)
-        button.tintColor = AlmidyDesignTokens.Color.textPrimary
-        button.setImage(UIImage(systemName: systemName), for: .normal)
-        button.accessibilityLabel = accessibilityLabel
-        button.translatesAutoresizingMaskIntoConstraints = false
+    private func configureStatusBarShade() {
+        statusBarShadeView.isUserInteractionEnabled = false
+        statusBarShadeView.translatesAutoresizingMaskIntoConstraints = false
+        statusBarShadeLayer.colors = [
+            UIColor.black.withAlphaComponent(0.72).cgColor,
+            UIColor.black.withAlphaComponent(0.40).cgColor,
+            UIColor.black.withAlphaComponent(0.12).cgColor,
+            UIColor.clear.cgColor,
+        ]
+        statusBarShadeLayer.locations = [0, 0.38, 0.76, 1]
+        statusBarShadeView.layer.addSublayer(statusBarShadeLayer)
+        view.addSubview(statusBarShadeView)
         NSLayoutConstraint.activate([
-            button.widthAnchor.constraint(equalToConstant: 58),
-            button.heightAnchor.constraint(equalToConstant: 58)
+            statusBarShadeView.topAnchor.constraint(equalTo: view.topAnchor),
+            statusBarShadeView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            statusBarShadeView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            statusBarShadeView.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 64),
         ])
-        return button
     }
 
     private func configureSheet() {
         sheetView.translatesAutoresizingMaskIntoConstraints = false
         sheetView.backgroundColor = AlmidyDesignTokens.Color.surface
-        sheetView.layer.cornerRadius = 40
+        sheetView.layer.cornerRadius = AlmidyDesignTokens.Component.Map.globeSheetCornerRadius
         sheetView.layer.maskedCorners = [
             .layerMinXMinYCorner,
             .layerMaxXMinYCorner,
             .layerMinXMaxYCorner,
             .layerMaxXMaxYCorner
         ]
-        sheetView.layer.shadowColor = AlmidyDesignTokens.Color.shadowBlack.cgColor
-        sheetView.layer.shadowOpacity = 0.20
-        sheetView.layer.shadowRadius = 34
-        sheetView.layer.shadowOffset = CGSize(width: 0, height: -4)
+        AlmidyDesignTokens.Elevation.sheet.apply(to: sheetView)
         view.addSubview(sheetView)
 
-        sheetBottomConstraint = sheetView.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -12)
+        sheetBottomConstraint = sheetView.bottomAnchor.constraint(
+            equalTo: view.bottomAnchor,
+            constant: -AlmidyDesignTokens.Component.Map.globeSheetBottomInset
+        )
         sheetHeightConstraint = sheetView.heightAnchor.constraint(equalToConstant: height(for: sheetState))
-        sheetLeadingConstraint = sheetView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 8)
-        sheetTrailingConstraint = sheetView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -8)
+        sheetLeadingConstraint = sheetView.leadingAnchor.constraint(
+            equalTo: view.leadingAnchor,
+            constant: AlmidyDesignTokens.Component.Map.globeSheetHorizontalInset
+        )
+        sheetTrailingConstraint = sheetView.trailingAnchor.constraint(
+            equalTo: view.trailingAnchor,
+            constant: -AlmidyDesignTokens.Component.Map.globeSheetHorizontalInset
+        )
         NSLayoutConstraint.activate([
             sheetLeadingConstraint!,
             sheetTrailingConstraint!,
@@ -2546,13 +6802,17 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
             renderTripContent()
         }
         syncSheetVisibility()
+        keepActiveMapControlsFrontmost()
     }
 
     private func renderCollapsedActions() {
-        let search = circularButton(systemName: "magnifyingglass", backgroundColor: AlmidyDesignTokens.Color.card, tintColor: AlmidyDesignTokens.Color.textPrimary)
-        search.layer.cornerRadius = 24
+        let search = globeSheetIconButton(
+            systemName: "magnifyingglass",
+            accessibilityLabel: "Search the globe",
+            backgroundColor: AlmidyDesignTokens.Color.card,
+            tintColor: AlmidyDesignTokens.Color.textPrimary
+        )
         search.transform = CGAffineTransform(translationX: -6, y: 0)
-        search.accessibilityLabel = "Search the globe"
         search.addTarget(self, action: #selector(openSearch), for: .touchUpInside)
 
         let book = UIButton(type: .system)
@@ -2604,14 +6864,13 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
             bookContent.trailingAnchor.constraint(lessThanOrEqualTo: book.trailingAnchor, constant: -14)
         ])
 
-        let add = circularButton(
+        let add = globeSheetIconButton(
             systemName: "plus",
+            accessibilityLabel: "Create a trip",
             backgroundColor: AlmidyDesignTokens.Color.gold,
             tintColor: .white
         )
-        add.layer.cornerRadius = 24
         add.transform = CGAffineTransform(translationX: 6, y: 0)
-        add.accessibilityLabel = "Create a trip"
         add.addTarget(self, action: #selector(createTrip), for: .touchUpInside)
 
         collapsedActions.addArrangedSubview(search)
@@ -2667,7 +6926,12 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         }
 
         if reservationCardVisible {
-            expandedContentStack.addArrangedSubview(reservationAutomationCard())
+            expandedContentStack.addArrangedSubview(
+                NativeGlobeReservationAutomationView(
+                    onOpen: { [weak self] in self?.openManualReservationImporter() },
+                    onDismiss: { [weak self] in self?.dismissReservationCard() }
+                )
+            )
         }
     }
 
@@ -2848,72 +7112,16 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
     }
 
     private func tripCard(for trip: NativeMapTrip) -> UIView {
-        let card = NativeGradientButton(type: .custom)
-        card.layer.cornerRadius = 36
-        card.clipsToBounds = true
-        card.backgroundColor = AlmidyDesignTokens.Color.card
-        card.accessibilityIdentifier = trip.id
-        card.accessibilityLabel = "Open \(trip.displayName)"
-        card.accessibilityHint = "Double tap to open. Touch and hold for trip actions."
-        card.accessibilityTraits = .button
+        let card = NativeGlobeTripCardView(
+            identifier: trip.id,
+            title: trip.displayName,
+            dates: trip.displayDateRange,
+            status: trip.displayStatus,
+            height: NativeTripCardLayout.height(for: trip.scheduleState(relativeTo: Date()))
+        )
         card.addTarget(self, action: #selector(openTripAction(_:)), for: .touchUpInside)
         card.addInteraction(UIContextMenuInteraction(delegate: self))
-
-        let imageView = UIImageView()
-        imageView.contentMode = .scaleAspectFill
-        imageView.isUserInteractionEnabled = false
-        imageView.translatesAutoresizingMaskIntoConstraints = false
-        card.addSubview(imageView)
-        loadTripImage(into: imageView, trip: trip)
-
-        card.overlayGradient.colors = [
-            AlmidyDesignTokens.Color.tripCardGradientStart.cgColor,
-            AlmidyDesignTokens.Color.tripCardGradientEnd.cgColor
-        ]
-        card.overlayGradient.locations = [0.40, 1.0]
-        card.layer.addSublayer(card.overlayGradient)
-
-        let textStack = UIStackView()
-        textStack.axis = .vertical
-        textStack.alignment = .leading
-        textStack.spacing = 3
-        textStack.isUserInteractionEnabled = false
-        textStack.translatesAutoresizingMaskIntoConstraints = false
-        card.addSubview(textStack)
-
-        let title = UILabel()
-        title.text = trip.displayName
-        title.textColor = AlmidyDesignTokens.Color.tripCardTextPrimary
-        title.font = AlmidyDesignTokens.Font.title(NativeTripCardLayout.titleFontSize)
-        title.adjustsFontSizeToFitWidth = true
-        title.minimumScaleFactor = 0.72
-
-        let dates = UILabel()
-        dates.text = trip.displayDateRange
-        dates.textColor = AlmidyDesignTokens.Color.tripCardTextSecondary
-        dates.font = .systemFont(ofSize: NativeTripCardLayout.dateFontSize, weight: .regular)
-
-        let status = UILabel()
-        status.text = trip.displayStatus
-        status.textColor = AlmidyDesignTokens.Color.tripCardTextTertiary
-        status.font = .systemFont(ofSize: NativeTripCardLayout.statusFontSize, weight: .regular)
-
-        textStack.addArrangedSubview(title)
-        textStack.addArrangedSubview(dates)
-        textStack.addArrangedSubview(status)
-
-        let cardHeight = NativeTripCardLayout.height(for: trip.scheduleState(relativeTo: Date()))
-
-        NSLayoutConstraint.activate([
-            card.heightAnchor.constraint(equalToConstant: cardHeight),
-            imageView.topAnchor.constraint(equalTo: card.topAnchor),
-            imageView.leadingAnchor.constraint(equalTo: card.leadingAnchor),
-            imageView.trailingAnchor.constraint(equalTo: card.trailingAnchor),
-            imageView.bottomAnchor.constraint(equalTo: card.bottomAnchor),
-            textStack.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 24),
-            textStack.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -24),
-            textStack.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -42)
-        ])
+        loadTripImage(into: card.mediaView, trip: trip)
         return card
     }
 
@@ -2946,83 +7154,28 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         imageView.image = destinationGradientImage(named: trip.displayName)
     }
 
-    private func reservationAutomationCard() -> UIView {
-        let card = UIView()
-        card.backgroundColor = AlmidyDesignTokens.Color.card
-        card.layer.cornerRadius = AlmidyDesignTokens.Radius.card
-        card.layer.borderWidth = 1
-        card.layer.borderColor = UIColor.systemGray4.cgColor
-
-        let stack = UIStackView()
-        stack.axis = .vertical
-        stack.spacing = 8
-        stack.translatesAutoresizingMaskIntoConstraints = false
-        card.addSubview(stack)
-
-        let close = UIButton(type: .system)
-        close.setImage(UIImage(systemName: "xmark"), for: .normal)
-        close.accessibilityLabel = "Dismiss reservation suggestion"
-        close.tintColor = .systemGray
-        close.addTarget(self, action: #selector(dismissReservationCard), for: .touchUpInside)
-        close.translatesAutoresizingMaskIntoConstraints = false
-        card.addSubview(close)
-
-        let eyebrow = UILabel()
-        eyebrow.text = "IMPORT"
-        eyebrow.textColor = AlmidyDesignTokens.Color.goldSoft
-        eyebrow.font = AlmidyDesignTokens.Font.semibold(13)
-
-        let title = UILabel()
-        title.text = "Manual Reservation Importer"
-        title.font = AlmidyDesignTokens.Font.title(22)
-        title.textColor = AlmidyDesignTokens.Color.textPrimary
-        title.numberOfLines = 0
-
-        let body = UILabel()
-        body.text = "Add reservation details from the importer while email forwarding remains unavailable."
-        body.font = .systemFont(ofSize: 16, weight: .regular)
-        body.textColor = .systemGray
-        body.numberOfLines = 0
-
-        let cta = actionButton(
-            title: "Open Reservation Importer",
-            backgroundColor: AlmidyDesignTokens.Color.gold,
-            textColor: AlmidyDesignTokens.Color.settingsText,
-            action: #selector(openManualReservationImporter),
-            fontSize: 17,
-            minHeight: 46
+    private func globeSheetIconButton(
+        systemName: String,
+        accessibilityLabel: String,
+        backgroundColor: UIColor,
+        tintColor: UIColor
+    ) -> AlmidyIconButton {
+        AlmidyIconButton(
+            symbol: systemName,
+            style: .floating,
+            accessibilityLabel: accessibilityLabel,
+            overrides: .init(
+                diameter: 48,
+                foregroundColor: tintColor,
+                backgroundColor: backgroundColor,
+                elevation: .init(
+                    color: AlmidyDesignTokens.Color.shadowBlack,
+                    opacity: 0.08,
+                    radius: 18,
+                    offset: CGSize(width: 0, height: 9)
+                )
+            )
         )
-
-        stack.addArrangedSubview(eyebrow)
-        stack.addArrangedSubview(title)
-        stack.addArrangedSubview(body)
-        stack.addArrangedSubview(cta)
-
-        NSLayoutConstraint.activate([
-            stack.topAnchor.constraint(equalTo: card.topAnchor, constant: 18),
-            stack.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 18),
-            stack.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -18),
-            stack.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -18),
-            close.topAnchor.constraint(equalTo: card.topAnchor, constant: 12),
-            close.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -12),
-            close.widthAnchor.constraint(equalToConstant: 36),
-            close.heightAnchor.constraint(equalToConstant: 36)
-        ])
-
-        return card
-    }
-
-    private func circularButton(systemName: String, backgroundColor: UIColor, tintColor: UIColor) -> UIButton {
-        let button = UIButton(type: .system)
-        button.backgroundColor = backgroundColor
-        button.tintColor = tintColor
-        button.layer.cornerRadius = AlmidyDesignTokens.Radius.control
-        button.layer.shadowColor = AlmidyDesignTokens.Color.shadowBlack.cgColor
-        button.layer.shadowOpacity = 0.08
-        button.layer.shadowRadius = 18
-        button.layer.shadowOffset = CGSize(width: 0, height: 9)
-        button.setImage(UIImage(systemName: systemName), for: .normal)
-        return button
     }
 
     private func actionButton(
@@ -3083,6 +7236,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         sheetTrailingConstraint?.constant = -horizontalInset
         let changes = {
             self.syncSheetVisibility()
+            self.keepActiveMapControlsFrontmost()
             self.view.layoutIfNeeded()
         }
 
@@ -3104,7 +7258,11 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         case .medium:
             return min(fullHeight * (compactHeight ? 0.72 : 0.58), 520)
         case .expanded:
-            return fullHeight - view.safeAreaInsets.top - 10
+            // Match UIKit's maximum page-sheet boundary used by Trip Overview
+            // and every other full-height native destination. The My Trips
+            // surface is custom, so it must account for UIKit's additional
+            // top presentation clearance explicitly.
+            return fullHeight - view.safeAreaInsets.top - 22
         }
     }
 
@@ -3184,6 +7342,9 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         }
         if !missingAnnotations.isEmpty {
             mapView.addAnnotations(missingAnnotations)
+            if selectedActivityPlaceID == nil {
+                fitActivitySearchAnnotations(activitySearchAnnotations)
+            }
         }
     }
 
@@ -3243,48 +7404,557 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         return annotationView
     }
 
+    @available(iOS 18.0, *)
+    func mapView(
+        _ mapView: MKMapView,
+        selectionAccessoryFor annotation: MKAnnotation
+    ) -> MKSelectionAccessory? {
+        guard annotation is MKMapFeatureAnnotation || annotation is MKMapItemAnnotation else {
+            return nil
+        }
+        return .mapItemDetail(.callout(.full))
+    }
+
+    func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
+        let renderer = MKPolylineRenderer(overlay: overlay)
+        if overlay === activityRouteOverlay {
+            renderer.strokeColor = .systemBlue
+            renderer.lineWidth = 5
+        } else if transportationRouteOverlays.contains(where: { $0 === overlay }) {
+            renderer.strokeColor = AlmidyDesignTokens.Color.tripOverviewAccent
+            renderer.lineWidth = 4
+        } else if flightRouteOverlays.contains(where: { $0 === overlay }) {
+            renderer.strokeColor = AlmidyDesignTokens.Color.gold
+            renderer.lineWidth = 3
+            renderer.lineDashPattern = [8, 6]
+        } else {
+            return MKOverlayRenderer(overlay: overlay)
+        }
+        renderer.lineCap = .round
+        renderer.lineJoin = .round
+        return renderer
+    }
+
     func mapView(_ mapView: MKMapView, didSelect annotation: MKAnnotation) {
+        if #available(iOS 16.0, *), let feature = annotation as? MKMapFeatureAnnotation {
+            if #available(iOS 18.0, *) {
+                // MapKit owns the full Place Card callout through the selection
+                // accessory delegate on current systems.
+                return
+            }
+            presentMapFeaturePlaceDetails(feature)
+            return
+        }
         if let activity = annotation as? NativeActivitySearchAnnotation {
+            if suppressedActivitySelectionID == activity.resultID {
+                suppressedActivitySelectionID = nil
+                return
+            }
+            selectedActivityPlaceID = activity.resultID
+            selectedActivityMapItem = activity.mapItem
             activityResultSelectionHandler?(activity.resultID)
+            if activitySelectionCameraToRestore == nil {
+                activitySelectionCameraToRestore = mapView.camera.copy() as? MKMapCamera
+            }
             mapView.setCamera(
                 MKMapCamera(
                     lookingAtCenter: activity.coordinate,
-                    fromDistance: activity.isFocused ? 8_000 : 25_000,
+                    fromDistance: 12_000,
                     pitch: 42,
                     heading: mapView.camera.heading
                 ),
                 animated: true
             )
+            presentActivityPlaceDetails(activity)
             return
         }
         guard let tripAnnotation = annotation as? NativeTripAnnotation else { return }
-        mapView.setCamera(MKMapCamera(lookingAtCenter: tripAnnotation.coordinate, fromDistance: 90_000, pitch: 52, heading: mapView.camera.heading), animated: true)
+        mapView.deselectAnnotation(tripAnnotation, animated: false)
+        presentTripOverview(for: tripAnnotation.trip)
+    }
+
+    func mapView(_ mapView: MKMapView, didDeselect annotation: MKAnnotation) {
+        if #available(iOS 16.0, *), annotation is MKMapFeatureAnnotation {
+            dismissSelectedPlaceDetails(afterDeselecting: annotation)
+            return
+        }
+        guard let activity = annotation as? NativeActivitySearchAnnotation else { return }
+        dismissSelectedPlaceDetails(afterDeselecting: activity)
+    }
+
+    private func dismissSelectedPlaceDetails(afterDeselecting annotation: MKAnnotation) {
+        let selectionID = placeSelectionID(for: annotation)
+        DispatchQueue.main.async { [weak self] in
+            guard let self,
+                  self.selectedActivityPlaceID == selectionID,
+                  self.mapView.selectedAnnotations.isEmpty else { return }
+            self.selectedActivityPlaceID = nil
+            self.selectedActivityMapItem = nil
+            self.activityPlaceResolutionGeneration += 1
+            let presenter = self.topmostPresentedViewController(from: self)
+            if let details = presenter as? NativeActivityPlaceDetailsViewController,
+               details.selectionPlaceID == selectionID {
+                details.dismiss(animated: true) { [weak self] in
+                    self?.restoreActivitySelectionCamera()
+                }
+            } else {
+                self.restoreActivitySelectionCamera()
+            }
+        }
+    }
+
+    private func placeSelectionID(for annotation: MKAnnotation) -> String {
+        if let activity = annotation as? NativeActivitySearchAnnotation {
+            return activity.resultID
+        }
+        return String(
+            format: "map-feature:%.6f|%.6f",
+            annotation.coordinate.latitude,
+            annotation.coordinate.longitude
+        )
+    }
+
+    @available(iOS 16.0, *)
+    private func presentMapFeaturePlaceDetails(_ feature: MKMapFeatureAnnotation) {
+        let selectionID = placeSelectionID(for: feature)
+        selectedActivityPlaceID = selectionID
+        if activitySelectionCameraToRestore == nil {
+            activitySelectionCameraToRestore = mapView.camera.copy() as? MKMapCamera
+        }
+        activityPlaceResolutionGeneration += 1
+        let generation = activityPlaceResolutionGeneration
+        let request = MKMapItemRequest(mapFeatureAnnotation: feature)
+        request.getMapItem { [weak self, weak feature] mapItem, _ in
+            DispatchQueue.main.async {
+                guard let self,
+                      let feature,
+                      let mapItem,
+                      generation == self.activityPlaceResolutionGeneration,
+                      self.selectedActivityPlaceID == selectionID,
+                      self.mapView.selectedAnnotations.contains(where: { ($0 as AnyObject) === feature }) else { return }
+                let presenter = self.topmostPresentedViewController(from: self)
+                guard !(presenter is UIActivityViewController) else { return }
+                let category = self.activityCategory(for: mapItem, feature: feature)
+                self.presentActivityPlaceDetails(
+                    mapItem,
+                    selectionPlaceID: selectionID,
+                    category: category,
+                    from: presenter,
+                    onSave: { [weak self] completion in
+                        self?.savePlaceToActiveItinerary(
+                            mapItem,
+                            category: category,
+                            completion: completion
+                        )
+                    }
+                )
+            }
+        }
+    }
+
+    @available(iOS 16.0, *)
+    private func activityCategory(for mapItem: MKMapItem, feature: MKMapFeatureAnnotation) -> NativeActivityCategory {
+        let categoryText = (mapItem.pointOfInterestCategory ?? feature.pointOfInterestCategory)?.rawValue.lowercased() ?? ""
+        let categories = NativeActivityCatalog.quickItems + NativeActivityCatalog.sections.flatMap(\.items)
+        return categories.first { category in
+            let words = category.name.lowercased().split(separator: " ")
+            return words.allSatisfy { categoryText.contains($0) }
+        } ?? NativeActivityCatalog.category(named: "Location")!
+    }
+
+    private func presentActivityPlaceDetails(_ annotation: NativeActivitySearchAnnotation) {
+        let presenter = topmostPresentedViewController(from: self)
+        if let existingDetails = presenter as? NativeActivityPlaceDetailsViewController {
+            guard existingDetails.selectionPlaceID != annotation.resultID else { return }
+            // MapKit selects the newly tapped annotation before this callback.
+            // Replace the existing sheet so its content always comes from that
+            // annotation's MKMapItem instead of retaining the previous place.
+            existingDetails.dismiss(animated: false) { [weak self] in
+                self?.presentActivityPlaceDetails(annotation)
+            }
+            return
+        }
+        guard !(presenter is UIActivityViewController) else { return }
+        if activitySheetDetentToRestore == nil {
+            activitySheetDetentToRestore = presenter.sheetPresentationController?.selectedDetentIdentifier
+        }
+        activityPlaceResolutionGeneration += 1
+        let generation = activityPlaceResolutionGeneration
+        NativeActivityPlaceResolver.resolveLatest(annotation.mapItem) { [weak self, weak presenter] mapItem in
+            guard let self,
+                  let presenter,
+                  generation == self.activityPlaceResolutionGeneration,
+                  self.selectedActivityPlaceID == annotation.resultID else { return }
+            self.activityResolvedPlaceHandler?(annotation.resultID, mapItem)
+            self.selectedActivityMapItem = mapItem
+            let resolvedAnnotation = self.replaceActivityAnnotation(
+                annotation,
+                with: mapItem
+            )
+            self.presentActivityPlaceDetails(
+                mapItem,
+                selectionPlaceID: resolvedAnnotation.resultID,
+                category: resolvedAnnotation.category,
+                from: presenter,
+                onSave: { [weak self] completion in
+                    self?.savePlaceToActiveItinerary(
+                        mapItem,
+                        category: resolvedAnnotation.category,
+                        completion: completion
+                    )
+                }
+            )
+        }
+    }
+
+    private func replaceActivityAnnotation(
+        _ annotation: NativeActivitySearchAnnotation,
+        with mapItem: MKMapItem
+    ) -> NativeActivitySearchAnnotation {
+        let replacement = NativeActivitySearchAnnotation(
+            mapItem: mapItem,
+            category: annotation.category,
+            isFocused: true,
+            rank: annotation.rank
+        )
+        guard let index = activitySearchAnnotations.firstIndex(where: { $0 === annotation }) else {
+            return annotation
+        }
+        activitySearchAnnotations[index] = replacement
+        selectedActivityPlaceID = replacement.resultID
+        mapView.removeAnnotation(annotation)
+        mapView.addAnnotation(replacement)
+        suppressedActivitySelectionID = replacement.resultID
+        mapView.selectAnnotation(replacement, animated: false)
+        mapView.setCamera(
+            MKMapCamera(
+                lookingAtCenter: replacement.coordinate,
+                fromDistance: 12_000,
+                pitch: 42,
+                heading: mapView.camera.heading
+            ),
+            animated: true
+        )
+        return replacement
+    }
+
+    private func presentActivityPlaceDetails(
+        _ mapItem: MKMapItem,
+        selectionPlaceID: String,
+        category: NativeActivityCategory,
+        from presenter: UIViewController,
+        onSave: @escaping (@escaping (Result<NativeSavedPlaceSegment, Error>) -> Void) -> Void
+    ) {
+        guard presenter.presentedViewController == nil else { return }
+        let origin = locationManager.location?.coordinate
+            ?? mapView.userLocation.location?.coordinate
+            ?? activitySearchRegion.center
+        let routeMapItem = selectedActivityMapItem ?? mapItem
+        let details = NativeActivityPlaceDetailsViewController(
+            mapItem: routeMapItem,
+            selectionPlaceID: selectionPlaceID,
+            category: category,
+            origin: origin
+        ) { completion in
+            onSave(completion)
+        } onSaved: { [weak self] segment in
+            self?.presentSavedPlaceDetailsForm(mapItem, category: category, segment: segment)
+        } onRouteChanged: { [weak self] routes in
+            self?.displayActivityRoute(routes.first)
+        } onClose: { [weak self] in
+            self?.restoreActivitySelectionCamera()
+        }
+        NativeActivityPlaceDetailsViewController.sheetConfiguration.apply(to: details)
+        details.presentationController?.delegate = self
+        presenter.present(details, animated: true)
+    }
+
+    private func presentSavedPlaceDetailsForm(
+        _ mapItem: MKMapItem,
+        category: NativeActivityCategory,
+        segment: NativeSavedPlaceSegment
+    ) {
+        guard let tripID = tripOverviewTripIDToRestoreAfterActivity else { return }
+        let presenter = topmostPresentedViewController(from: self)
+        let form = NativeManualFlightRouteViewController(
+            accent: category.palette.tint,
+            isLocation: true,
+            nearbyCoordinate: mapItem.placemark.coordinate,
+            tripID: tripID,
+            initialDepartureDate: segment.startTime.flatMap { value in
+                let formatter = ISO8601DateFormatter()
+                formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+                return formatter.date(from: value)
+            },
+            initialLocationMapItem: mapItem,
+            initialLocationCategory: NativeActivityPurposeRegistry.purpose(for: category).searchToken,
+            savedPlaceSegmentID: segment.id,
+            onSubmitSavedPlace: { [weak self] draft, completion in
+                guard let self else { return }
+                self.placeItineraryClient.update(segmentID: segment.id, draft: draft) { result in
+                    completion(result.map { _ in () })
+                }
+            },
+            onSavedPlaceUpdated: { [weak self] in
+                self?.refreshTripsFromServer()
+                self?.refreshItineraryRouteOverlays()
+                self?.activityResultSelectionHandler?(NativeActivityPlaceIdentity.value(for: mapItem))
+            }
+        )
+        form.modalPresentationStyle = .pageSheet
+        form.modalPresentationCapturesStatusBarAppearance = true
+        if let sheet = form.sheetPresentationController {
+            NativeActivitySheetMetrics.applyMyTripsExpandedHeight(to: sheet)
+            sheet.prefersGrabberVisible = true
+            sheet.preferredCornerRadius = 36
+            sheet.prefersScrollingExpandsWhenScrolledToEdge = false
+        }
+        presenter.present(form, animated: true)
+    }
+
+    private func savePlaceToActiveItinerary(
+        _ mapItem: MKMapItem,
+        category: NativeActivityCategory,
+        completion: @escaping (Result<NativeSavedPlaceSegment, Error>) -> Void
+    ) {
+        guard let tripID = tripOverviewTripIDToRestoreAfterActivity,
+              let trip = trips.first(where: { $0.id == tripID }) else {
+            completion(.failure(NSError(
+                domain: "app.almidy.place-card",
+                code: 1,
+                userInfo: [NSLocalizedDescriptionKey: "No active trip was found."]
+            )))
+            return
+        }
+        placeItineraryClient.save(
+            mapItem: mapItem,
+            category: category,
+            tripID: tripID,
+            startAt: itineraryDate(for: trip)
+        ) { [weak self] result in
+            DispatchQueue.main.async {
+                if case .success = result {
+                    self?.activityResultSelectionHandler?(NativeActivityPlaceIdentity.value(for: mapItem))
+                    self?.refreshItineraryRouteOverlays()
+                }
+                completion(result)
+            }
+        }
+    }
+
+    private func itineraryDate(for trip: NativeMapTrip) -> Date {
+        let parser = DateFormatter()
+        parser.calendar = Calendar(identifier: .gregorian)
+        parser.locale = Locale(identifier: "en_US_POSIX")
+        parser.timeZone = NativeTimeZonePreference.timeZone
+        parser.dateFormat = "yyyy-MM-dd"
+        guard let start = trip.startDate.flatMap(parser.date) else { return Date() }
+        let end = trip.endDate.flatMap(parser.date) ?? start
+        let calendar = parser.calendar!
+        let today = calendar.startOfDay(for: Date())
+        let selectedDay = min(max(today, calendar.startOfDay(for: start)), calendar.startOfDay(for: end))
+        return calendar.date(bySettingHour: 12, minute: 0, second: 0, of: selectedDay) ?? selectedDay
+    }
+
+    private func restoreActivitySelectionCamera(animated: Bool = true) {
+        let camera = activitySelectionCameraToRestore
+        activitySelectionCameraToRestore = nil
+        selectedActivityPlaceID = nil
+        selectedActivityMapItem = nil
+        displayActivityRoute(nil)
+        suppressedActivitySelectionID = nil
+        mapView.selectedAnnotations.forEach { mapView.deselectAnnotation($0, animated: animated) }
+        activityResultSelectionHandler?(nil)
+        if let camera {
+            mapView.setCamera(camera, animated: animated)
+        }
+
+        let detent = activitySheetDetentToRestore
+        activitySheetDetentToRestore = nil
+        guard let detent,
+              let sheet = presentedViewController?.sheetPresentationController else { return }
+        sheet.animateChanges {
+            sheet.selectedDetentIdentifier = detent
+        }
+    }
+
+    private func displayActivityRoute(_ route: MKRoute?) {
+        if let activityRouteOverlay {
+            mapView.removeOverlay(activityRouteOverlay)
+        }
+        activityRouteOverlay = route?.polyline
+        if let activityRouteOverlay {
+            mapView.addOverlay(activityRouteOverlay, level: .aboveRoads)
+            if let selectedActivityPlaceID,
+               let destination = activitySearchAnnotations.first(where: { $0.resultID == selectedActivityPlaceID }),
+               !mapView.selectedAnnotations.contains(where: { $0 === destination }) {
+                mapView.selectAnnotation(destination, animated: false)
+            }
+            let routeRect = activityRouteOverlay.boundingMapRect
+            guard !routeRect.isNull, !routeRect.isEmpty else { return }
+            mapView.setVisibleMapRect(
+                routeRect,
+                edgePadding: UIEdgeInsets(
+                    top: max(96, view.safeAreaInsets.top + 56),
+                    left: 44,
+                    bottom: max(220, view.bounds.height * 0.42),
+                    right: 44
+                ),
+                animated: true
+            )
+        }
+    }
+
+    private func refreshItineraryRouteOverlays() {
+        itineraryRouteGeneration += 1
+        let generation = itineraryRouteGeneration
+        itineraryRouteDirections.forEach { $0.cancel() }
+        itineraryRouteDirections.removeAll()
+        mapView.removeOverlays(transportationRouteOverlays)
+        mapView.removeOverlays(flightRouteOverlays)
+        transportationRouteOverlays.removeAll()
+        flightRouteOverlays.removeAll()
+
+        for trip in trips {
+            itineraryRequester.load(tripID: trip.id) { [weak self] result in
+                guard let self, generation == self.itineraryRouteGeneration,
+                      case .success(let items) = result else { return }
+                items.forEach { self.buildItineraryRoute(for: $0, generation: generation) }
+            }
+        }
+    }
+
+    private func buildItineraryRoute(for item: NativeItineraryItem, generation: Int) {
+        guard let departureLatitude = item.departureLatitude,
+              let departureLongitude = item.departureLongitude,
+              let arrivalLatitude = item.arrivalLatitude,
+              let arrivalLongitude = item.arrivalLongitude else { return }
+        let departure = CLLocationCoordinate2D(latitude: departureLatitude, longitude: departureLongitude)
+        let arrival = CLLocationCoordinate2D(latitude: arrivalLatitude, longitude: arrivalLongitude)
+        guard CLLocationCoordinate2DIsValid(departure), CLLocationCoordinate2DIsValid(arrival) else { return }
+
+        if item.kind == .flight {
+            let coordinates = [departure, arrival]
+            let overlay = MKGeodesicPolyline(coordinates: coordinates, count: coordinates.count)
+            flightRouteOverlays.append(overlay)
+            applyItineraryRouteVisibility()
+            return
+        }
+
+        guard let kind = item.kind else { return }
+        let request = MKDirections.Request()
+        request.source = MKMapItem(placemark: MKPlacemark(coordinate: departure))
+        request.destination = MKMapItem(placemark: MKPlacemark(coordinate: arrival))
+        request.requestsAlternateRoutes = false
+        switch kind {
+        case .walk: request.transportType = .walking
+        case .bike:
+            if #available(iOS 26.0, *) { request.transportType = .cycling }
+            else { request.transportType = .walking }
+        case .train, .bus, .ferry, .cruise: request.transportType = .transit
+        default: request.transportType = .automobile
+        }
+        let directions = MKDirections(request: request)
+        itineraryRouteDirections.append(directions)
+        directions.calculate { [weak self, weak directions] response, _ in
+            DispatchQueue.main.async {
+                guard let self, let directions,
+                      generation == self.itineraryRouteGeneration else { return }
+                self.itineraryRouteDirections.removeAll { $0 === directions }
+                guard let overlay = response?.routes.first?.polyline else { return }
+                self.transportationRouteOverlays.append(overlay)
+                self.applyItineraryRouteVisibility()
+            }
+        }
+    }
+
+    private func applyItineraryRouteVisibility(
+        showsTransportation: Bool? = nil,
+        showsFlights: Bool? = nil
+    ) {
+        let defaults = UserDefaults.standard
+        let transportationKey = "almidy.native.map.showsTransportationRoutes"
+        let flightKey = "almidy.native.map.showsFlightRoutes"
+        let transportationIsVisible = showsTransportation
+            ?? (defaults.object(forKey: transportationKey) == nil ? true : defaults.bool(forKey: transportationKey))
+        let flightsAreVisible = showsFlights
+            ?? (defaults.object(forKey: flightKey) == nil ? true : defaults.bool(forKey: flightKey))
+
+        mapView.removeOverlays(transportationRouteOverlays)
+        mapView.removeOverlays(flightRouteOverlays)
+        if transportationIsVisible {
+            mapView.addOverlays(transportationRouteOverlays, level: .aboveRoads)
+        }
+        if flightsAreVisible {
+            mapView.addOverlays(flightRouteOverlays, level: .aboveLabels)
+        }
     }
 
     func mapView(_ mapView: MKMapView, annotationView view: MKAnnotationView, calloutAccessoryControlTapped control: UIControl) {
         guard let tripAnnotation = view.annotation as? NativeTripAnnotation else { return }
-        focusTrip(tripAnnotation.trip)
+        openTripOverview(tripAnnotation.trip)
     }
 
     @objc private func toggleMapMode() {
-        let nextMode: MapPresentationMode
-        switch mapPresentationMode {
-        case .hybrid:
-            nextMode = .imagery
-        case .imagery:
-            nextMode = .standard
-        case .standard:
-            nextMode = .hybrid
+        let defaults = UserDefaults.standard
+        let transportationKey = "almidy.native.map.showsTransportationRoutes"
+        let flightKey = "almidy.native.map.showsFlightRoutes"
+        let showsTransportationRoutes = defaults.object(forKey: transportationKey) == nil
+            ? true
+            : defaults.bool(forKey: transportationKey)
+        let showsFlightRoutes = defaults.object(forKey: flightKey) == nil
+            ? true
+            : defaults.bool(forKey: flightKey)
+        // This preference controls itinerary transportation overlays, not
+        // Apple's live congestion layer. Traffic colors would alter the map
+        // even when the itinerary has no transportation route to display.
+        mapView.showsTraffic = false
+
+        let preferences = NativeMapPreferencesViewController(
+            usesHybridMap: mapPresentationMode != .standard,
+            showsTransportationRoutes: showsTransportationRoutes,
+            showsFlightRoutes: showsFlightRoutes,
+            previewCoordinate: mapView.camera.centerCoordinate
+        ) { [weak self] usesHybridMap, showsTransportationRoutes, showsFlightRoutes in
+            guard let self else { return }
+            self.applyMapPresentation(usesHybridMap ? .hybrid : .standard)
+            self.mapView.showsTraffic = false
+            defaults.set(showsTransportationRoutes, forKey: transportationKey)
+            defaults.set(showsFlightRoutes, forKey: flightKey)
+            self.applyItineraryRouteVisibility(
+                showsTransportation: showsTransportationRoutes,
+                showsFlights: showsFlightRoutes
+            )
         }
 
-        applyMapPresentation(nextMode)
-        if nextMode == .hybrid || nextMode == .imagery {
-            mapView.setCamera(globeCamera(distance: max(mapView.camera.centerCoordinateDistance, 6_000_000), heading: mapView.camera.heading), animated: true)
+        let presenter = topmostPresentedViewController(from: self)
+        NativeMapPreferencesViewController.sheetConfiguration.apply(to: preferences)
+        presenter.present(preferences, animated: true)
+    }
+
+    private func topmostPresentedViewController(from root: UIViewController) -> UIViewController {
+        var top = root
+        while let presented = top.presentedViewController, !presented.isBeingDismissed {
+            top = presented
         }
+        return top
+    }
+
+    @objc private func resetMapOrientation() {
+        mapView.setCamera(
+            MKMapCamera(
+                lookingAtCenter: mapView.camera.centerCoordinate,
+                fromDistance: mapView.camera.centerCoordinateDistance,
+                pitch: 0,
+                heading: 0
+            ),
+            animated: true
+        )
     }
 
     @objc private func requestCurrentLocation() {
         guard !isRequestingLocationAuthorization else { return }
+        shouldCenterRequestedLocation = true
 
         locationManager.delegate = self
         locationManager.desiredAccuracy = kCLLocationAccuracyBest
@@ -3296,8 +7966,10 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
             mapView.showsUserLocation = true
             locationManager.requestLocation()
         case .denied, .restricted:
+            shouldCenterRequestedLocation = false
             break
         @unknown default:
+            shouldCenterRequestedLocation = false
             break
         }
     }
@@ -3314,18 +7986,20 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         guard let coordinate = locations.last?.coordinate else { return }
         mapView.showsUserLocation = true
-        guard !hasCenteredInitialLocation else { return }
+        let explicitlyRequested = shouldCenterRequestedLocation
+        shouldCenterRequestedLocation = false
+        guard explicitlyRequested || !hasCenteredInitialLocation else { return }
         hasCenteredInitialLocation = true
         mapView.setUserTrackingMode(.none, animated: false)
 
         // A populated globe has a deliberate launch composition. Location is
         // shown as an annotation, but it must not replace the user's camera or
-        // opt the map into follow mode after they begin interacting with it.
-        guard trips.isEmpty else { return }
+        // opt the map into follow mode unless the user explicitly asks it to.
+        guard explicitlyRequested || trips.isEmpty else { return }
         mapView.setCamera(
             MKMapCamera(
                 lookingAtCenter: coordinate,
-                fromDistance: 3_600_000,
+                fromDistance: explicitlyRequested ? 18_000 : 3_600_000,
                 pitch: 0,
                 heading: 0
             ),
@@ -3429,11 +8103,11 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
                 }
             }
         )
-        settings.modalPresentationStyle = .pageSheet
+        AlmidySheetConfiguration.utility.apply(to: settings)
         if let sheet = settings.sheetPresentationController {
-            sheet.detents = [.large()]
-            sheet.prefersGrabberVisible = true
-            sheet.preferredCornerRadius = 28
+            // Height and compact-width geometry remain feature-specific; the
+            // utility configuration owns the shared presentation chrome.
+            NativeActivitySheetMetrics.applyMyTripsExpandedHeight(to: sheet)
         }
         present(settings, animated: true)
     }
@@ -3478,7 +8152,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
             )
             account.modalPresentationStyle = .pageSheet
             if let sheet = account.sheetPresentationController {
-                sheet.detents = [.large()]
+            NativeActivitySheetMetrics.applyMyTripsExpandedHeight(to: sheet)
                 sheet.prefersGrabberVisible = true
                 sheet.preferredCornerRadius = 28
             }
@@ -3515,7 +8189,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         auth.startsInSignup = startsInSignup
         auth.modalPresentationStyle = UIModalPresentationStyle.pageSheet
         if let sheet = auth.sheetPresentationController {
-            sheet.detents = [UISheetPresentationController.Detent.large()]
+            NativeActivitySheetMetrics.applyMyTripsExpandedHeight(to: sheet)
             sheet.prefersGrabberVisible = true
             sheet.preferredCornerRadius = 28
         }
@@ -3625,6 +8299,168 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
     }
 
     private func openActivitySearch(for category: NativeActivityCategory) {
+        if category.name.localizedCaseInsensitiveCompare("Flights") == .orderedSame
+            || category.name.localizedCaseInsensitiveCompare("Flight") == .orderedSame {
+            let controller = NativeFlightSearchViewController(accent: category.palette.tint)
+            controller.modalPresentationStyle = .pageSheet
+            if let sheet = controller.sheetPresentationController {
+            NativeActivitySheetMetrics.applyMyTripsExpandedHeight(to: sheet)
+                sheet.prefersGrabberVisible = false
+                sheet.preferredCornerRadius = 36
+            }
+            present(controller, animated: true)
+            return
+        }
+        if category.name.localizedCaseInsensitiveCompare("Car") == .orderedSame {
+            let controller = NativeManualFlightRouteViewController(
+                accent: category.palette.tint,
+                isCarRoute: true,
+                nearbyCoordinate: mapView.centerCoordinate
+            )
+            controller.modalPresentationStyle = .pageSheet
+            if let sheet = controller.sheetPresentationController {
+            NativeActivitySheetMetrics.applyMyTripsExpandedHeight(to: sheet)
+                sheet.prefersGrabberVisible = false
+                sheet.preferredCornerRadius = 34
+            }
+            present(controller, animated: true)
+            return
+        }
+        if category.name.localizedCaseInsensitiveCompare("Train") == .orderedSame {
+            let controller = NativeManualFlightRouteViewController(
+                accent: category.palette.tint,
+                isTrainRoute: true,
+                nearbyCoordinate: mapView.centerCoordinate
+            )
+            controller.modalPresentationStyle = .pageSheet
+            if let sheet = controller.sheetPresentationController {
+            NativeActivitySheetMetrics.applyMyTripsExpandedHeight(to: sheet)
+                sheet.prefersGrabberVisible = false
+                sheet.preferredCornerRadius = 34
+            }
+            present(controller, animated: true)
+            return
+        }
+        if category.name.localizedCaseInsensitiveCompare("Car Rental") == .orderedSame {
+            let controller = NativeManualFlightRouteViewController(
+                accent: category.palette.tint,
+                isCarRental: true,
+                nearbyCoordinate: mapView.centerCoordinate
+            )
+            controller.modalPresentationStyle = .pageSheet
+            if let sheet = controller.sheetPresentationController {
+            NativeActivitySheetMetrics.applyMyTripsExpandedHeight(to: sheet)
+                sheet.prefersGrabberVisible = false
+                sheet.preferredCornerRadius = 34
+            }
+            present(controller, animated: true)
+            return
+        }
+        if category.name.localizedCaseInsensitiveCompare("Transfer") == .orderedSame {
+            let controller = NativeManualFlightRouteViewController(
+                accent: category.palette.tint,
+                isTransferRoute: true,
+                nearbyCoordinate: mapView.centerCoordinate
+            )
+            controller.modalPresentationStyle = .pageSheet
+            if let sheet = controller.sheetPresentationController {
+            NativeActivitySheetMetrics.applyMyTripsExpandedHeight(to: sheet)
+                sheet.prefersGrabberVisible = false
+                sheet.preferredCornerRadius = 34
+            }
+            present(controller, animated: true)
+            return
+        }
+        if category.name.localizedCaseInsensitiveCompare("Cruise") == .orderedSame {
+            let controller = NativeManualFlightRouteViewController(
+                accent: category.palette.tint,
+                isCruiseRoute: true,
+                nearbyCoordinate: mapView.centerCoordinate
+            )
+            controller.modalPresentationStyle = .pageSheet
+            if let sheet = controller.sheetPresentationController {
+            NativeActivitySheetMetrics.applyMyTripsExpandedHeight(to: sheet)
+                sheet.prefersGrabberVisible = false
+                sheet.preferredCornerRadius = 34
+            }
+            present(controller, animated: true)
+            return
+        }
+        if category.name.localizedCaseInsensitiveCompare("Walk") == .orderedSame {
+            let controller = NativeManualFlightRouteViewController(
+                accent: category.palette.tint,
+                isWalkRoute: true,
+                nearbyCoordinate: mapView.centerCoordinate
+            )
+            controller.modalPresentationStyle = .pageSheet
+            if let sheet = controller.sheetPresentationController {
+            NativeActivitySheetMetrics.applyMyTripsExpandedHeight(to: sheet)
+                sheet.prefersGrabberVisible = false
+                sheet.preferredCornerRadius = 34
+            }
+            present(controller, animated: true)
+            return
+        }
+        if category.name.localizedCaseInsensitiveCompare("Bus") == .orderedSame {
+            let controller = NativeManualFlightRouteViewController(
+                accent: category.palette.tint,
+                isBusRoute: true,
+                nearbyCoordinate: mapView.centerCoordinate
+            )
+            controller.modalPresentationStyle = .pageSheet
+            if let sheet = controller.sheetPresentationController {
+            NativeActivitySheetMetrics.applyMyTripsExpandedHeight(to: sheet)
+                sheet.prefersGrabberVisible = false
+                sheet.preferredCornerRadius = 34
+            }
+            present(controller, animated: true)
+            return
+        }
+        if category.name.localizedCaseInsensitiveCompare("Bike") == .orderedSame {
+            let controller = NativeManualFlightRouteViewController(
+                accent: category.palette.tint,
+                isBikeRoute: true,
+                nearbyCoordinate: mapView.centerCoordinate
+            )
+            controller.modalPresentationStyle = .pageSheet
+            if let sheet = controller.sheetPresentationController {
+            NativeActivitySheetMetrics.applyMyTripsExpandedHeight(to: sheet)
+                sheet.prefersGrabberVisible = false
+                sheet.preferredCornerRadius = 34
+            }
+            present(controller, animated: true)
+            return
+        }
+        if category.name.localizedCaseInsensitiveCompare("Ferry") == .orderedSame {
+            let controller = NativeManualFlightRouteViewController(
+                accent: category.palette.tint,
+                isFerryRoute: true,
+                nearbyCoordinate: mapView.centerCoordinate
+            )
+            controller.modalPresentationStyle = .pageSheet
+            if let sheet = controller.sheetPresentationController {
+            NativeActivitySheetMetrics.applyMyTripsExpandedHeight(to: sheet)
+                sheet.prefersGrabberVisible = false
+                sheet.preferredCornerRadius = 34
+            }
+            present(controller, animated: true)
+            return
+        }
+        if category.name.localizedCaseInsensitiveCompare("Motorcycle") == .orderedSame {
+            let controller = NativeManualFlightRouteViewController(
+                accent: category.palette.tint,
+                isMotorcycleRoute: true,
+                nearbyCoordinate: mapView.centerCoordinate
+            )
+            controller.modalPresentationStyle = .pageSheet
+            if let sheet = controller.sheetPresentationController {
+            NativeActivitySheetMetrics.applyMyTripsExpandedHeight(to: sheet)
+                sheet.prefersGrabberVisible = false
+                sheet.preferredCornerRadius = 34
+            }
+            present(controller, animated: true)
+            return
+        }
         presentMapSearch(purpose: NativeActivityPurposeRegistry.purpose(for: category))
     }
 
@@ -3636,6 +8472,19 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         searchRegion: MKCoordinateRegion?,
         orderedResults: [MKMapItem]? = nil
     ) {
+        activityCameraFitGeneration += 1
+        if category == nil {
+            // A Place ID lookup may still be in flight when the user clears or
+            // dismisses discovery. Invalidate it so a late response cannot
+            // reopen place details after that flow has ended.
+            activityPlaceResolutionGeneration += 1
+            selectedActivityPlaceID = nil
+            suppressedActivitySelectionID = nil
+        }
+        mapControlStack.isHidden = category == nil
+        if category != nil {
+            view.bringSubviewToFront(mapControlStack)
+        }
         activityFilterSearch?.cancel()
         activityFilterSearch = nil
         mapView.removeAnnotations(activitySearchAnnotations)
@@ -3645,12 +8494,13 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         activitySearchAnnotations = []
 
         guard let category else { return }
+        selectedActivityPlaceID = selectedResultID
         if let orderedResults {
             let annotations = orderedResults.enumerated().map { index, item in
                 NativeActivitySearchAnnotation(
                     mapItem: item,
                     category: category,
-                    isFocused: NativeActivityPlaceIdentity.value(for: item) == selectedResultID,
+                    isFocused: NativeActivityPlaceIdentity.value(for: item) == selectedActivityPlaceID,
                     rank: index
                 )
             }
@@ -3662,7 +8512,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
                 mapView.setCamera(
                     MKMapCamera(
                         lookingAtCenter: annotation.coordinate,
-                        fromDistance: 8_000,
+                        fromDistance: 12_000,
                         pitch: 42,
                         heading: mapView.camera.heading
                     ),
@@ -3757,7 +8607,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
                     NativeActivitySearchAnnotation(
                         mapItem: item,
                         category: category,
-                        isFocused: NativeActivityPlaceIdentity.value(for: item) == selectedResultID,
+                        isFocused: NativeActivityPlaceIdentity.value(for: item) == self.selectedActivityPlaceID,
                         rank: index
                     )
                 }
@@ -3769,7 +8619,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
                     self.mapView.setCamera(
                         MKMapCamera(
                             lookingAtCenter: annotation.coordinate,
-                            fromDistance: 8_000,
+                            fromDistance: 12_000,
                             pitch: 42,
                             heading: self.mapView.camera.heading
                         ),
@@ -3783,7 +8633,32 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         }
     }
 
+    private func keepActiveMapControlsFrontmost() {
+        guard !mapControlStack.isHidden else { return }
+        view.bringSubviewToFront(mapControlStack)
+    }
+
     private func fitActivitySearchAnnotations(_ annotations: [NativeActivitySearchAnnotation]) {
+        let generation = activityCameraFitGeneration
+        applyActivitySearchFit(annotations, animated: true)
+
+        // Results are published before the New Activity sheet finishes moving
+        // to its preview detent. Refit after that transition so edge padding is
+        // calculated from the final visible map instead of the expanded sheet.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.55) { [weak self] in
+            guard let self,
+                  generation == self.activityCameraFitGeneration,
+                  self.selectedActivityPlaceID == nil,
+                  !self.activitySearchAnnotations.isEmpty else { return }
+            self.applyActivitySearchFit(self.activitySearchAnnotations, animated: false)
+        }
+    }
+
+    private func applyActivitySearchFit(
+        _ annotations: [NativeActivitySearchAnnotation],
+        animated: Bool
+    ) {
+        guard !annotations.isEmpty else { return }
         let mapPoints = annotations.map { MKMapPoint($0.coordinate) }
         let bounds = mapPoints.reduce(MKMapRect.null) { rect, point in
             let pointRect = MKMapRect(x: point.x, y: point.y, width: 1, height: 1)
@@ -3808,30 +8683,28 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
             dx: -max(bounds.width * 0.25, minimumPadding),
             dy: -max(bounds.height * 0.25, minimumPadding)
         )
-        let resultCenter = MKMapPoint(
-            x: expandedBounds.midX,
-            y: expandedBounds.midY
-        ).coordinate
         let cameraInsets = activitySearchCameraInsets()
-        mapView.setVisibleMapRect(expandedBounds, edgePadding: cameraInsets, animated: true)
+        mapView.setVisibleMapRect(expandedBounds, edgePadding: cameraInsets, animated: animated)
 
         // setVisibleMapRect may zoom far beyond a useful city view when MapKit
         // returns an outlier. Preserve its fitted center while enforcing a
-        // presentation-only maximum distance. Always retain the result-bounds
-        // center here. Retaining MapKit's padded camera center can move a dense
-        // city result set miles offshore when a sheet occupies much of the
-        // viewport, leaving every annotation outside the visible map.
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) { [weak self] in
+        // presentation-only maximum distance. Preserve MapKit's padded center;
+        // replacing it with the raw result center would put the lower results
+        // back underneath the activity sheet.
+        DispatchQueue.main.asyncAfter(deadline: .now() + (animated ? 0.45 : 0.05)) { [weak self] in
             guard let self,
+                  !self.activitySearchAnnotations.isEmpty,
+                  self.selectedActivityPlaceID == nil,
                   self.mapView.camera.centerCoordinateDistance > Self.activityCameraMaximumDistance else { return }
+            let paddedCenter = self.mapView.camera.centerCoordinate
             self.mapView.setCamera(
                 MKMapCamera(
-                    lookingAtCenter: resultCenter,
+                    lookingAtCenter: paddedCenter,
                     fromDistance: Self.activityCameraMaximumDistance,
                     pitch: 42,
                     heading: self.mapView.camera.heading
                 ),
-                animated: true
+                animated: animated
             )
         }
     }
@@ -3877,12 +8750,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
             )
             self.applySheetState(.collapsed, animated: true)
         }
-        search.modalPresentationStyle = .pageSheet
-        if let sheet = search.sheetPresentationController {
-            sheet.detents = [.medium(), .large()]
-            sheet.prefersGrabberVisible = true
-            sheet.preferredCornerRadius = 28
-        }
+        NativeMapSearchViewController.sheetConfiguration.apply(to: search)
         present(search, animated: true)
     }
 
@@ -3929,12 +8797,6 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         warmTripBackground(trip)
         addTripPins()
         renderSheetContent()
-        if let coordinate = trip.coordinate {
-            mapView.setCamera(
-                MKMapCamera(lookingAtCenter: coordinate, fromDistance: 120_000, pitch: 42, heading: mapView.camera.heading),
-                animated: true
-            )
-        }
     }
 
     @objc private func openTripAction(_ sender: UIButton) {
@@ -3943,7 +8805,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         // Keep trip navigation inside the native globe and wallet. The WebView
         // route can still be opened by dedicated web navigation, but a native
         // wallet card must not dismiss this shell into the legacy trip form.
-        focusTrip(trip)
+        openTripOverview(trip)
     }
 
     @objc private func editTripAction(_ sender: NativeTripActionButton) {
@@ -4061,7 +8923,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
     private func presentTripForm(_ form: UIViewController) {
         form.modalPresentationStyle = .pageSheet
         if let sheet = form.sheetPresentationController {
-            sheet.detents = [.large()]
+            NativeActivitySheetMetrics.applyMyTripsExpandedHeight(to: sheet)
             sheet.selectedDetentIdentifier = .large
             sheet.prefersGrabberVisible = true
             sheet.preferredCornerRadius = 28
@@ -4078,7 +8940,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
 
     @objc private func openLatestTrip() {
         guard let trip = trips.first else { return }
-        focusTrip(trip)
+        openTripOverview(trip)
     }
 
     @objc private func openSampleTripPreview() {
@@ -4092,13 +8954,10 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         present(preview, animated: true)
     }
 
-    private func focusTrip(_ trip: NativeMapTrip) {
-        if let coordinate = trip.coordinate {
-            mapView.setCamera(
-                MKMapCamera(lookingAtCenter: coordinate, fromDistance: 120_000, pitch: 42, heading: mapView.camera.heading),
-                animated: true
-            )
-        }
+    private func openTripOverview(_ trip: NativeMapTrip) {
+        // The overview is an informational sheet layered over the user's
+        // current globe composition. Only an activity/place selection owns a
+        // coordinate-driven camera transition; a trip destination does not.
         presentTripOverview(for: trip)
     }
 
@@ -4182,8 +9041,33 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
     }
 
     func presentationControllerDidDismiss(_ presentationController: UIPresentationController) {
+        if presentationController.presentedViewController is NativeActivityPlaceDetailsViewController {
+            restoreActivitySelectionCamera()
+            return
+        }
         activityResultSelectionHandler = nil
+        activityResolvedPlaceHandler = nil
+        updateGlobeActivityFilter(
+            category: nil,
+            query: "",
+            nearby: false,
+            selectedResultID: nil,
+            searchRegion: nil,
+            orderedResults: []
+        )
         setPrimarySheetHiddenForModalFlow(false)
+        if let tripID = tripOverviewTripIDToRestoreAfterActivity {
+            restoreTripOverviewAfterActivity(for: tripID)
+        }
+    }
+
+    func sheetPresentationControllerDidChangeSelectedDetentIdentifier(
+        _ sheetPresentationController: UISheetPresentationController
+    ) {
+        guard let overview = sheetPresentationController.presentedViewController as? NativeTripOverviewViewController else {
+            return
+        }
+        overview.applySelectedDetent(sheetPresentationController.selectedDetentIdentifier, animated: true)
     }
 
     private func showUnavailableRouteMessage() {
@@ -4438,21 +9322,29 @@ private final class NativeSettingsViewController: UIViewController, UITableViewD
     }
 
     private func configureTable() {
-        let closeButton = UIButton(type: .system)
-        let closeSymbol = UIImage.SymbolConfiguration(pointSize: 24, weight: .regular)
-        closeButton.setImage(UIImage(systemName: "xmark", withConfiguration: closeSymbol), for: .normal)
-        closeButton.tintColor = AlmidyDesignTokens.Color.settingsText
-        closeButton.backgroundColor = AlmidyDesignTokens.Color.settingsCard
-        closeButton.layer.cornerRadius = 26
-        closeButton.layer.borderWidth = 1
-        closeButton.layer.borderColor = AlmidyDesignTokens.Color.settingsLine.cgColor
-        closeButton.accessibilityLabel = "Close Settings"
+        let closeButton = AlmidyIconButton(
+            symbol: "xmark",
+            style: .standard,
+            accessibilityLabel: "Close Settings",
+            overrides: .init(
+                diameter: 52,
+                symbolPointSize: 24,
+                symbolWeight: .regular,
+                foregroundColor: AlmidyDesignTokens.Color.settingsText,
+                backgroundColor: AlmidyDesignTokens.Color.settingsCard,
+                border: .init(width: 1, color: AlmidyDesignTokens.Color.settingsLine)
+            )
+        )
         closeButton.addTarget(self, action: #selector(close), for: .touchUpInside)
-
-        let title = UILabel()
-        title.text = "Settings"
-        title.font = AlmidyDesignTokens.Font.display(38)
-        title.textColor = AlmidyDesignTokens.Color.settingsText
+        let pageHeader = AlmidySheetHeader(
+            title: "Settings",
+            layout: .largeLeading,
+            trailingControl: closeButton,
+            metrics: .init(height: 0, horizontalInset: 20, controlSize: 52),
+            titleFont: AlmidyDesignTokens.Font.display(38)
+        )
+        pageHeader.backgroundColor = AlmidyDesignTokens.Color.settingsBackground
+        pageHeader.titleLabel.textColor = AlmidyDesignTokens.Color.settingsText
 
         tableView.dataSource = self
         tableView.delegate = self
@@ -4469,22 +9361,16 @@ private final class NativeSettingsViewController: UIViewController, UITableViewD
         tableView.tableHeaderView = settingsHeader
         tableView.tableFooterView = makeVersionFooter()
         tableView.translatesAutoresizingMaskIntoConstraints = false
-        closeButton.translatesAutoresizingMaskIntoConstraints = false
-        title.translatesAutoresizingMaskIntoConstraints = false
+        pageHeader.translatesAutoresizingMaskIntoConstraints = false
 
-        view.addSubview(closeButton)
-        view.addSubview(title)
+        view.addSubview(pageHeader)
         view.addSubview(tableView)
 
         NSLayoutConstraint.activate([
-            closeButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 14),
-            closeButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
-            closeButton.widthAnchor.constraint(equalToConstant: 52),
-            closeButton.heightAnchor.constraint(equalToConstant: 52),
-            title.topAnchor.constraint(equalTo: closeButton.bottomAnchor, constant: 24),
-            title.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 24),
-            title.trailingAnchor.constraint(lessThanOrEqualTo: view.trailingAnchor, constant: -24),
-            tableView.topAnchor.constraint(equalTo: title.bottomAnchor, constant: 20),
+            pageHeader.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+            pageHeader.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            pageHeader.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            tableView.topAnchor.constraint(equalTo: pageHeader.bottomAnchor),
             tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
@@ -4501,10 +9387,7 @@ private final class NativeSettingsViewController: UIViewController, UITableViewD
         header.addSubview(promoCard)
 
         let card = UIView()
-        card.backgroundColor = AlmidyDesignTokens.Color.settingsCard
-        card.layer.cornerRadius = AlmidyDesignTokens.Radius.card
-        card.layer.borderWidth = 1
-        card.layer.borderColor = AlmidyDesignTokens.Color.settingsLine.cgColor
+        AlmidySurfaceStyle.groupedCard.apply(to: card)
         card.translatesAutoresizingMaskIntoConstraints = false
         header.addSubview(card)
 
@@ -4600,10 +9483,7 @@ private final class NativeSettingsViewController: UIViewController, UITableViewD
 
     private func makePromoCard() -> UIView {
         let card = UIView()
-        card.backgroundColor = AlmidyDesignTokens.Color.settingsCard
-        card.layer.cornerRadius = AlmidyDesignTokens.Radius.card
-        card.layer.borderWidth = 1
-        card.layer.borderColor = AlmidyDesignTokens.Color.settingsLine.cgColor
+        AlmidySurfaceStyle.groupedCard.apply(to: card)
 
         let eyebrow = UILabel()
         eyebrow.text = "ALMIDY"
@@ -5843,212 +10723,6 @@ private final class NativeAccountViewController: UIViewController {
     }
 }
 
-private final class NativeMapSearchViewController: UIViewController, MKLocalSearchCompleterDelegate, UITableViewDataSource, UITableViewDelegate, UITextFieldDelegate {
-    private let purpose: NativeActivityPurpose?
-    private let onSelect: (CLLocationCoordinate2D) -> Void
-    private let completer = MKLocalSearchCompleter()
-    private var completions: [MKLocalSearchCompletion] = []
-
-    private let queryField = UITextField()
-    private let suggestionTable = UITableView(frame: .zero, style: .plain)
-    private let statusLabel = UILabel()
-
-    init(purpose: NativeActivityPurpose? = nil, onSelect: @escaping (CLLocationCoordinate2D) -> Void) {
-        self.purpose = purpose
-        self.onSelect = onSelect
-        super.init(nibName: nil, bundle: nil)
-    }
-
-    required init?(coder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
-    }
-
-    override func viewDidLoad() {
-        super.viewDidLoad()
-        view.backgroundColor = AlmidyDesignTokens.Color.surface
-        completer.delegate = self
-        completer.resultTypes = [.address, .pointOfInterest, .query]
-        configureSearch()
-    }
-
-    private var initialStatusText: String {
-        guard let purpose else { return "Start typing to search the globe." }
-        return "Start typing to search for \(purpose.canonicalName.lowercased())."
-    }
-
-    private func configureSearch() {
-        let searchPlaceholder = purpose?.searchPlaceholder ?? "Search a city or place"
-        let cancelButton = UIButton(type: .system)
-        cancelButton.setTitle("Cancel", for: .normal)
-        cancelButton.titleLabel?.font = AlmidyDesignTokens.Font.button(17)
-        cancelButton.setTitleColor(AlmidyDesignTokens.Color.goldSoft, for: .normal)
-        cancelButton.addTarget(self, action: #selector(cancel), for: .touchUpInside)
-        cancelButton.accessibilityLabel = "Close globe search"
-
-        let title = UILabel()
-        title.text = purpose.map { "Find \($0.canonicalName)" } ?? "Search the globe"
-        title.font = AlmidyDesignTokens.Font.display(30)
-        title.textColor = AlmidyDesignTokens.Color.textPrimary
-
-        let subtitle = UILabel()
-        subtitle.text = purpose.map { "Search places for \($0.canonicalName.lowercased()) on the globe." }
-            ?? "Find a place and move the globe there."
-        subtitle.font = .systemFont(ofSize: 17, weight: .regular)
-        subtitle.textColor = AlmidyDesignTokens.Color.textSecondary
-
-        queryField.placeholder = searchPlaceholder
-        queryField.font = AlmidyDesignTokens.Font.body(18)
-        queryField.textColor = AlmidyDesignTokens.Color.textPrimary
-        queryField.backgroundColor = AlmidyDesignTokens.Color.darkInput
-        queryField.layer.cornerRadius = AlmidyDesignTokens.Radius.control
-        queryField.layer.borderWidth = 1
-        queryField.layer.borderColor = AlmidyDesignTokens.Color.darkInputBorder.cgColor
-        queryField.attributedPlaceholder = NSAttributedString(
-            string: searchPlaceholder,
-            attributes: [.foregroundColor: AlmidyDesignTokens.Color.darkPlaceholder]
-        )
-        queryField.setPadding(16)
-        queryField.clearButtonMode = .whileEditing
-        queryField.returnKeyType = .search
-        queryField.delegate = self
-        queryField.addTarget(self, action: #selector(queryChanged), for: .editingChanged)
-        queryField.accessibilityLabel = searchPlaceholder
-
-        statusLabel.font = AlmidyDesignTokens.Font.body(16)
-        statusLabel.textColor = AlmidyDesignTokens.Color.searchEmptyState
-        statusLabel.numberOfLines = 0
-        statusLabel.textAlignment = .center
-        statusLabel.text = initialStatusText
-        statusLabel.isAccessibilityElement = true
-
-        suggestionTable.register(UITableViewCell.self, forCellReuseIdentifier: "map-search-suggestion")
-        suggestionTable.dataSource = self
-        suggestionTable.delegate = self
-        suggestionTable.isHidden = true
-        suggestionTable.rowHeight = 68
-        suggestionTable.backgroundColor = AlmidyDesignTokens.Color.card
-        suggestionTable.layer.cornerRadius = AlmidyDesignTokens.Radius.control
-        suggestionTable.layer.borderWidth = 1
-        suggestionTable.layer.borderColor = AlmidyDesignTokens.Color.line.cgColor
-
-        [cancelButton, title, subtitle, queryField, statusLabel, suggestionTable].forEach {
-            $0.translatesAutoresizingMaskIntoConstraints = false
-            view.addSubview($0)
-        }
-
-        NSLayoutConstraint.activate([
-            cancelButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 10),
-            cancelButton.leadingAnchor.constraint(equalTo: title.leadingAnchor),
-            cancelButton.heightAnchor.constraint(greaterThanOrEqualToConstant: 44),
-            title.topAnchor.constraint(equalTo: cancelButton.bottomAnchor, constant: 22),
-            title.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            title.leadingAnchor.constraint(greaterThanOrEqualTo: view.leadingAnchor, constant: 24),
-            title.trailingAnchor.constraint(lessThanOrEqualTo: view.trailingAnchor, constant: -24),
-            title.widthAnchor.constraint(lessThanOrEqualToConstant: NativeAdaptiveLayout.formMaxWidth),
-            NativeAdaptiveLayout.preferredWidth(title, equalTo: view.widthAnchor, constant: -48),
-            subtitle.topAnchor.constraint(equalTo: title.bottomAnchor, constant: 5),
-            subtitle.leadingAnchor.constraint(equalTo: title.leadingAnchor),
-            subtitle.trailingAnchor.constraint(equalTo: title.trailingAnchor),
-            queryField.topAnchor.constraint(equalTo: subtitle.bottomAnchor, constant: 24),
-            queryField.leadingAnchor.constraint(equalTo: title.leadingAnchor),
-            queryField.trailingAnchor.constraint(equalTo: title.trailingAnchor),
-            queryField.heightAnchor.constraint(equalToConstant: 54),
-            statusLabel.topAnchor.constraint(equalTo: queryField.bottomAnchor, constant: 10),
-            statusLabel.leadingAnchor.constraint(equalTo: title.leadingAnchor),
-            statusLabel.trailingAnchor.constraint(equalTo: title.trailingAnchor),
-            suggestionTable.topAnchor.constraint(equalTo: statusLabel.bottomAnchor, constant: 10),
-            suggestionTable.leadingAnchor.constraint(equalTo: title.leadingAnchor),
-            suggestionTable.trailingAnchor.constraint(equalTo: title.trailingAnchor),
-            suggestionTable.heightAnchor.constraint(equalToConstant: 272),
-            suggestionTable.bottomAnchor.constraint(lessThanOrEqualTo: view.keyboardLayoutGuide.topAnchor, constant: -20)
-        ])
-
-        queryField.becomeFirstResponder()
-    }
-
-    @objc private func cancel() {
-        dismiss(animated: true)
-    }
-
-    @objc private func queryChanged() {
-        let query = queryField.text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        completions = []
-        suggestionTable.reloadData()
-        suggestionTable.isHidden = query.count < 2
-        statusLabel.text = query.count < 2 ? initialStatusText : "Searching…"
-        if query.count >= 2 {
-            let purposeTerm = purpose?.queryTerms.first ?? purpose?.searchToken ?? ""
-            completer.queryFragment = purposeTerm.isEmpty ? query : "\(purposeTerm) \(query)"
-        }
-    }
-
-    func completerDidUpdateResults(_ completer: MKLocalSearchCompleter) {
-        completions = Array(completer.results.prefix(4))
-        suggestionTable.isHidden = completions.isEmpty
-        statusLabel.text = completions.isEmpty ? "No places found yet." : ""
-        suggestionTable.reloadData()
-    }
-
-    func completer(_ completer: MKLocalSearchCompleter, didFailWithError error: Error) {
-        completions = []
-        suggestionTable.isHidden = true
-        statusLabel.text = "Could not load search suggestions."
-        UIAccessibility.post(notification: .announcement, argument: statusLabel.text)
-    }
-
-    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        completions.count
-    }
-
-    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = tableView.dequeueReusableCell(withIdentifier: "map-search-suggestion", for: indexPath)
-        let completion = completions[indexPath.row]
-        var content = cell.defaultContentConfiguration()
-        content.text = completion.title
-        content.secondaryText = completion.subtitle
-        content.textProperties.font = AlmidyDesignTokens.Font.body(16)
-        content.secondaryTextProperties.font = AlmidyDesignTokens.Font.body(13)
-        content.textProperties.color = AlmidyDesignTokens.Color.textPrimary
-        content.secondaryTextProperties.color = AlmidyDesignTokens.Color.textSecondary
-        content.textProperties.numberOfLines = 1
-        content.secondaryTextProperties.numberOfLines = 1
-        cell.contentConfiguration = content
-        cell.backgroundColor = AlmidyDesignTokens.Color.card
-        cell.tintColor = AlmidyDesignTokens.Color.gold
-        return cell
-    }
-
-    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        let completion = completions[indexPath.row]
-        queryField.resignFirstResponder()
-        suggestionTable.isHidden = true
-        statusLabel.text = "Finding \(completion.title)…"
-
-        let request = MKLocalSearch.Request()
-        request.naturalLanguageQuery = [completion.title, completion.subtitle]
-            .filter { !$0.isEmpty }
-            .joined(separator: ", ")
-        MKLocalSearch(request: request).start { [weak self] response, error in
-            DispatchQueue.main.async {
-                guard let self else { return }
-                guard let coordinate = response?.mapItems.first?.placemark.coordinate, error == nil else {
-                    self.statusLabel.text = "Could not resolve that place."
-                    UIAccessibility.post(notification: .announcement, argument: self.statusLabel.text)
-                    return
-                }
-                self.onSelect(coordinate)
-                self.dismiss(animated: true)
-            }
-        }
-    }
-
-    func textFieldShouldReturn(_ textField: UITextField) -> Bool {
-        guard !completions.isEmpty else { return false }
-        tableView(suggestionTable, didSelectRowAt: IndexPath(row: 0, section: 0))
-        return true
-    }
-}
-
 private final class NativeCaptureIdeasViewController: UIViewController, PHPickerViewControllerDelegate {
     private let tripStore: NativeTripStore?
     private let onImportFinished: () -> Void
@@ -6306,6 +10980,8 @@ private enum NativeLaunchSettingsIcon {
 }
 
 private final class NativeActivitySearchAnnotation: NSObject, MKAnnotation {
+    let mapItem: MKMapItem
+    let category: NativeActivityCategory
     let resultID: String
     let coordinate: CLLocationCoordinate2D
     let title: String?
@@ -6316,34 +10992,47 @@ private final class NativeActivitySearchAnnotation: NSObject, MKAnnotation {
     let rank: Int
 
     init(mapItem: MKMapItem, category: NativeActivityCategory, isFocused: Bool = false, rank: Int = 0) {
+        self.mapItem = mapItem
+        self.category = category
         resultID = NativeActivityPlaceIdentity.value(for: mapItem)
         coordinate = mapItem.placemark.coordinate
         title = mapItem.name
-        subtitle = [
-            mapItem.placemark.locality,
-            mapItem.placemark.administrativeArea,
-            mapItem.placemark.country,
-        ].compactMap { $0 }.joined(separator: ", ")
+        subtitle = mapItem.placemark.title
         tintColor = category.palette.tint
         image = category.image
         self.isFocused = isFocused
         self.rank = rank
         super.init()
     }
+
+    convenience init?(
+        title: String,
+        coordinate: CLLocationCoordinate2D,
+        category: NativeActivityCategory,
+        isFocused: Bool = false,
+        rank: Int = 0
+    ) {
+        guard let mapItem = NativeCoordinatePlace.mapItem(title: title, coordinate: coordinate) else {
+            return nil
+        }
+        self.init(mapItem: mapItem, category: category, isFocused: isFocused, rank: rank)
+    }
 }
 
 private final class NativeActivitySearchAnnotationView: MKAnnotationView {
     private enum Metrics {
-        static let width: CGFloat = 132
+        static let width = NativeMapAnnotationPresentation.activityLabelWidth
         static let height: CGFloat = 78
-        static let badgeSize: CGFloat = 48
-        static let glyphSize: CGFloat = 24
-        static let labelHeight: CGFloat = 22
+        static let badgeSize = NativeMapAnnotationPresentation.activityBadgeSize
+        static let glyphSize = NativeMapAnnotationPresentation.activityGlyphSize
+        static let labelHeight = NativeMapAnnotationPresentation.activityLabelHeight
     }
 
     private let badgeView = UIView()
     private let glyphView = UIImageView()
     private let titleLabel = UILabel()
+    private let selectedTailLayer = CAShapeLayer()
+    private let selectedAnchorDot = UIView()
     private var keepsTitleVisible = false
 
     override init(annotation: MKAnnotation?, reuseIdentifier: String?) {
@@ -6355,9 +11044,29 @@ private final class NativeActivitySearchAnnotationView: MKAnnotationView {
         frame = CGRect(x: 0, y: 0, width: Metrics.badgeSize, height: Metrics.badgeSize)
         clipsToBounds = false
         centerOffset = .zero
-        collisionMode = .circle
+        collisionMode = .none
         canShowCallout = false
         clusteringIdentifier = nil
+
+        let tailPath = UIBezierPath()
+        tailPath.move(to: CGPoint(x: 10, y: 0))
+        tailPath.addLine(to: CGPoint(x: 30, y: 0))
+        tailPath.addLine(to: CGPoint(x: 20, y: 22))
+        tailPath.close()
+        selectedTailLayer.path = tailPath.cgPath
+        selectedTailLayer.lineJoin = .round
+        selectedTailLayer.lineWidth = 2
+        selectedTailLayer.strokeColor = UIColor.white.cgColor
+        selectedTailLayer.isHidden = true
+        selectedTailLayer.frame = CGRect(x: 0, y: 52, width: 40, height: 22)
+        layer.addSublayer(selectedTailLayer)
+
+        selectedAnchorDot.frame = CGRect(x: 16.5, y: 71, width: 7, height: 7)
+        selectedAnchorDot.layer.cornerRadius = 3.5
+        selectedAnchorDot.layer.borderColor = UIColor.white.cgColor
+        selectedAnchorDot.layer.borderWidth = 1
+        selectedAnchorDot.isHidden = true
+        addSubview(selectedAnchorDot)
 
         badgeView.frame = CGRect(
             x: 0,
@@ -6365,13 +11074,7 @@ private final class NativeActivitySearchAnnotationView: MKAnnotationView {
             width: Metrics.badgeSize,
             height: Metrics.badgeSize
         )
-        badgeView.layer.cornerRadius = Metrics.badgeSize / 2
-        badgeView.layer.borderColor = UIColor.white.cgColor
-        badgeView.layer.borderWidth = 3
-        badgeView.layer.shadowColor = UIColor.black.cgColor
-        badgeView.layer.shadowOpacity = 0.24
-        badgeView.layer.shadowRadius = 5
-        badgeView.layer.shadowOffset = CGSize(width: 0, height: 2)
+        NativeMapAnnotationPresentation.applyActivityBadgeSurface(to: badgeView)
         addSubview(badgeView)
 
         glyphView.frame = CGRect(
@@ -6414,40 +11117,147 @@ private final class NativeActivitySearchAnnotationView: MKAnnotationView {
         titleLabel.isHidden = true
         keepsTitleVisible = false
         clusteringIdentifier = nil
+        detailCalloutAccessoryView = nil
+        selectedTailLayer.isHidden = true
+        selectedAnchorDot.isHidden = true
+        centerOffset = .zero
+        badgeView.transform = .identity
+        glyphView.transform = .identity
+        accessibilityLabel = nil
+        accessibilityTraits = .button
     }
 
     func configure(with annotation: NativeActivitySearchAnnotation) {
         badgeView.backgroundColor = annotation.tintColor
+        selectedTailLayer.fillColor = annotation.tintColor.cgColor
+        selectedAnchorDot.backgroundColor = annotation.tintColor
         glyphView.image = annotation.image.withRenderingMode(.alwaysTemplate)
         titleLabel.text = annotation.title
-        keepsTitleVisible = annotation.isFocused
-        // Keep the leading result visible while allowing nearby annotations to
-        // participate in MapKit's collision system. Requiring several dense pins
-        // makes them stack into a single unreadable marker group.
-        if annotation.isFocused || annotation.rank == 0 {
-            displayPriority = .required
-        } else if annotation.rank < 10 {
-            displayPriority = .defaultHigh
-        } else {
-            displayPriority = .defaultLow
-        }
+        // Keep the highest-value labels readable without drawing every result
+        // name over the same dense city block. All pins remain visible and
+        // tappable; selecting any pin reveals its title.
+        keepsTitleVisible = annotation.isFocused || annotation.rank < 3
+        // Search results are the primary content of this globe state. Do not let
+        // MapKit discard lower-ranked icons simply because the city is dense.
+        collisionMode = .none
+        displayPriority = .required
         clusteringIdentifier = nil
+        canShowCallout = false
+        detailCalloutAccessoryView = nil
         isHidden = false
         alpha = 1
         layer.zPosition = annotation.isFocused ? 10_001 : CGFloat(10_000 - annotation.rank)
         if #available(iOS 14.0, *) {
-            zPriority = annotation.isFocused || annotation.rank == 0 ? .max : .defaultUnselected
+            zPriority = .max
         }
         titleLabel.isHidden = !keepsTitleVisible
-        accessibilityLabel = [annotation.title, annotation.subtitle]
+        accessibilityLabel = NativeMapAnnotationPresentation.accessibilityLabel(
+            title: annotation.title,
+            subtitle: annotation.subtitle
+        )
+        accessibilityTraits = .button
+    }
+
+    override func setSelected(_ selected: Bool, animated: Bool) {
+        super.setSelected(selected, animated: animated)
+        let presentation = NativeActivityAnnotationSelectionPresentation(
+            selected: selected,
+            keepsTitleVisible: keepsTitleVisible,
+            badgeSize: Metrics.badgeSize
+        )
+        titleLabel.isHidden = presentation.titleHidden
+        selectedTailLayer.isHidden = presentation.tailHidden
+        selectedAnchorDot.isHidden = presentation.anchorHidden
+        centerOffset = presentation.centerOffset
+        titleLabel.frame.origin.y = presentation.titleOriginY
+        accessibilityTraits = presentation.accessibilityTraits
+
+        let changes = {
+            self.badgeView.transform = CGAffineTransform(
+                scaleX: presentation.badgeScale,
+                y: presentation.badgeScale
+            )
+            self.glyphView.transform = CGAffineTransform(
+                scaleX: presentation.glyphScale,
+                y: presentation.glyphScale
+            )
+        }
+        if animated {
+            UIView.animate(
+                withDuration: 0.2,
+                delay: 0,
+                options: [.beginFromCurrentState, .allowUserInteraction],
+                animations: changes
+            )
+        } else {
+            changes()
+        }
+    }
+}
+
+private final class NativeActivitySearchDetailView: UIView {
+    init(mapItem: MKMapItem) {
+        super.init(frame: .zero)
+
+        let stack = UIStackView()
+        stack.axis = .vertical
+        stack.alignment = .fill
+        stack.spacing = 4
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(stack)
+
+        let name = UILabel()
+        name.font = .preferredFont(forTextStyle: .headline)
+        name.textColor = .label
+        name.numberOfLines = 0
+        name.text = mapItem.name ?? "Unnamed place"
+        stack.addArrangedSubview(name)
+
+        let detailValues: [(String, String?)] = [
+            ("mappin.and.ellipse", mapItem.placemark.title),
+            ("phone.fill", mapItem.phoneNumber),
+            ("safari.fill", mapItem.url?.absoluteString),
+        ]
+        for (symbol, rawValue) in detailValues {
+            guard let value = rawValue?.trimmingCharacters(in: .whitespacesAndNewlines), !value.isEmpty else { continue }
+            let row = UIStackView()
+            row.axis = .horizontal
+            row.alignment = .top
+            row.spacing = 7
+
+            let icon = UIImageView(image: UIImage(systemName: symbol))
+            icon.tintColor = .secondaryLabel
+            icon.contentMode = .scaleAspectFit
+            icon.widthAnchor.constraint(equalToConstant: 16).isActive = true
+            icon.heightAnchor.constraint(equalToConstant: 18).isActive = true
+
+            let label = UILabel()
+            label.font = .preferredFont(forTextStyle: .subheadline)
+            label.textColor = .secondaryLabel
+            label.numberOfLines = 0
+            label.lineBreakMode = .byWordWrapping
+            label.text = value
+
+            row.addArrangedSubview(icon)
+            row.addArrangedSubview(label)
+            stack.addArrangedSubview(row)
+        }
+
+        NSLayoutConstraint.activate([
+            widthAnchor.constraint(equalToConstant: 250),
+            stack.topAnchor.constraint(equalTo: topAnchor, constant: 4),
+            stack.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 4),
+            stack.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -4),
+            stack.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -4),
+        ])
+        accessibilityLabel = [mapItem.name, mapItem.placemark.title, mapItem.phoneNumber, mapItem.url?.absoluteString]
             .compactMap { $0 }
             .filter { !$0.isEmpty }
             .joined(separator: ", ")
     }
 
-    override func setSelected(_ selected: Bool, animated: Bool) {
-        super.setSelected(selected, animated: animated)
-        titleLabel.isHidden = !(selected || keepsTitleVisible)
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
     }
 }
 
@@ -6624,10 +11434,7 @@ private final class NativeUserLocationAnnotationView: MKAnnotationView {
         layer.cornerRadius = 11
         layer.borderColor = UIColor.white.cgColor
         layer.borderWidth = 3
-        layer.shadowColor = UIColor.black.cgColor
-        layer.shadowOpacity = 0.24
-        layer.shadowRadius = 5
-        layer.shadowOffset = CGSize(width: 0, height: 2)
+        NativeMapAnnotationPresentation.applyMapPinElevation(to: self)
         collisionMode = .circle
         displayPriority = .required
         canShowCallout = false
@@ -6661,10 +11468,7 @@ private final class NativeTripFlagAnnotationView: MKAnnotationView {
         flagBadgeView.layer.cornerRadius = 20
         flagBadgeView.layer.borderColor = UIColor.white.cgColor
         flagBadgeView.layer.borderWidth = 3
-        flagBadgeView.layer.shadowColor = UIColor.black.cgColor
-        flagBadgeView.layer.shadowOpacity = 0.24
-        flagBadgeView.layer.shadowRadius = 5
-        flagBadgeView.layer.shadowOffset = CGSize(width: 0, height: 2)
+        NativeMapAnnotationPresentation.applyMapPinElevation(to: flagBadgeView)
         flagBadgeView.translatesAutoresizingMaskIntoConstraints = false
         addSubview(flagBadgeView)
 
@@ -6712,6 +11516,7 @@ private final class NativeTripFlagAnnotationView: MKAnnotationView {
         flagLabel.text = presentation.flag
         countryLabel.text = presentation.name
         accessibilityLabel = "Trip in \(presentation.name)"
+        accessibilityTraits = .button
     }
 
     var anchoredBadgeLayoutForTesting: (

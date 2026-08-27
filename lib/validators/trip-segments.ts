@@ -33,6 +33,18 @@ export type TripSegmentWriteInput = {
   timeZone?: string | null;
   title: string;
   tripId: string;
+  company?: string | null;
+  transportKind?: string | null;
+  transportNumber?: string | null;
+  departureLocation?: string | null;
+  departureAddress?: string | null;
+  departureLat?: number | null;
+  departureLng?: number | null;
+  arrivalLocation?: string | null;
+  arrivalAddress?: string | null;
+  arrivalLat?: number | null;
+  arrivalLng?: number | null;
+  reservationDetails?: Record<string, unknown> | null;
 };
 
 type ValidationResult<TValue> =
@@ -176,6 +188,31 @@ export function validateTripSegmentPatch(
     update.locationStatus = readNullableString(value.locationStatus ?? value.location_status, 80);
   }
   if ("notes" in value) update.notes = readNullableString(value.notes, 5000);
+  if ("note" in value) update.notes = readNullableString(value.note, 5000);
+  if ("company" in value) update.company = readNullableString(value.company, 200);
+  if ("transportKind" in value || "transport_kind" in value) {
+    update.transportKind = readNullableString(value.transportKind ?? value.transport_kind, 40);
+  }
+  if ("transportNumber" in value || "transport_number" in value) {
+    update.transportNumber = readNullableString(value.transportNumber ?? value.transport_number, 40);
+  }
+  if ("startAt" in value) update.startTime = readNullableString(value.startAt, 120);
+  if ("endAt" in value) update.endTime = readNullableString(value.endAt, 120);
+  const departure = isRecord(value.departure) ? value.departure : null;
+  if (departure) {
+    update.departureLocation = readNullableString(departure.name, 500);
+    update.departureAddress = readNullableString(departure.address, 1000);
+    update.departureLat = readNullableNumber(departure.latitude, "departure.latitude", details, -90, 90);
+    update.departureLng = readNullableNumber(departure.longitude, "departure.longitude", details, -180, 180);
+  }
+  const arrival = isRecord(value.arrival) ? value.arrival : null;
+  if (arrival) {
+    update.arrivalLocation = readNullableString(arrival.name, 500);
+    update.arrivalAddress = readNullableString(arrival.address, 1000);
+    update.arrivalLat = readNullableNumber(arrival.latitude, "arrival.latitude", details, -90, 90);
+    update.arrivalLng = readNullableNumber(arrival.longitude, "arrival.longitude", details, -180, 180);
+  }
+  if ("reservation" in value) update.reservationDetails = readNullableRecord(value.reservation);
   if ("provider" in value) update.provider = readNullableString(value.provider, 200);
   if ("providerMetadata" in value || "provider_metadata" in value) {
     update.providerMetadata = readNullableRecord(value.providerMetadata ?? value.provider_metadata);

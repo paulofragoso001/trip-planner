@@ -37,6 +37,8 @@
 	<true/>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Almidy uses your location to center the native travel map when you tap the current location control.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Almidy uses the camera when you attach a new photo to a trip activity.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Almidy uses photo access when you choose a travel screenshot to review in your native wallet.</string>
 	<key>SupabasePublishableKey</key>
