@@ -161,13 +161,13 @@ final class AlmidyDesignSystemTests: XCTestCase {
 
         AlmidyInputStyle.search.apply(to: field)
 
-        XCTAssertEqual(field.backgroundColor, AlmidyDesignTokens.Color.darkInput)
+        XCTAssertEqual(field.backgroundColor, AlmidyDesignTokens.Color.inputSurface)
         XCTAssertEqual(field.layer.cornerRadius, AlmidyDesignTokens.Radius.control)
         XCTAssertEqual(field.layer.borderWidth, 1)
-        XCTAssertEqual(field.layer.borderColor, AlmidyDesignTokens.Color.darkInputBorder.cgColor)
+        XCTAssertEqual(field.layer.borderColor, AlmidyDesignTokens.Color.inputBorder.cgColor)
         XCTAssertEqual(
             field.attributedPlaceholder?.attribute(.foregroundColor, at: 0, effectiveRange: nil) as? UIColor,
-            AlmidyDesignTokens.Color.darkPlaceholder
+            AlmidyDesignTokens.Color.inputPlaceholder
         )
     }
 

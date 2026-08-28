@@ -12,25 +12,25 @@ struct AlmidyInputStyle {
     static let standard = AlmidyInputStyle(
         fillColor: AlmidyDesignTokens.Color.surface,
         textColor: AlmidyDesignTokens.Color.textPrimary,
-        placeholderColor: AlmidyDesignTokens.Color.darkPlaceholder,
+        placeholderColor: AlmidyDesignTokens.Color.inputPlaceholder,
         cornerRadius: AlmidyDesignTokens.Radius.field,
         border: AlmidyDesignTokens.Border.outline
     )
     static let grouped = AlmidyInputStyle(
         fillColor: AlmidyDesignTokens.Color.surfaceNeutral,
         textColor: AlmidyDesignTokens.Color.textPrimary,
-        placeholderColor: AlmidyDesignTokens.Color.darkPlaceholder,
+        placeholderColor: AlmidyDesignTokens.Color.inputPlaceholder,
         cornerRadius: AlmidyDesignTokens.Radius.field,
         border: AlmidyDesignTokens.Border.Configuration(width: 0, color: .clear)
     )
     static let search = AlmidyInputStyle(
-        fillColor: AlmidyDesignTokens.Color.darkInput,
+        fillColor: AlmidyDesignTokens.Color.inputSurface,
         textColor: AlmidyDesignTokens.Color.textPrimary,
-        placeholderColor: AlmidyDesignTokens.Color.darkPlaceholder,
+        placeholderColor: AlmidyDesignTokens.Color.inputPlaceholder,
         cornerRadius: AlmidyDesignTokens.Radius.control,
         border: AlmidyDesignTokens.Border.Configuration(
             width: 1,
-            color: AlmidyDesignTokens.Color.darkInputBorder
+            color: AlmidyDesignTokens.Color.inputBorder
         )
     )
 

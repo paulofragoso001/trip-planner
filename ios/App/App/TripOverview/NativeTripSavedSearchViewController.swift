@@ -112,7 +112,7 @@ final class NativeTripSavedSearchViewController: UIViewController,
         searchField.returnKeyType = .search
         searchField.clearButtonMode = .whileEditing
         searchField.delegate = self
-        searchField.backgroundColor = AlmidyDesignTokens.Color.darkInput
+        searchField.backgroundColor = AlmidyDesignTokens.Color.inputSurface
         searchField.layer.cornerRadius = 22
         searchField.layer.cornerCurve = .continuous
         searchField.accessibilityIdentifier = "trip-saved-search-field"

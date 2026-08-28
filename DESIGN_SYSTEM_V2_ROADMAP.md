@@ -226,7 +226,16 @@ Land this documentation, create `almidy-native-design-system-v1`, and make 88 pl
 
 ### v2.1 — Exact-equivalent cleanup
 
-Deprecate misleading exact aliases, document token lifecycle state, remove only zero-consumer forwards, and expand low-false-positive token checks. No intended pixel changes.
+Completed as a zero-pixel-change mechanical pass. The audit covered color, spacing, radius, typography, control-size, shadow/elevation, component namespace, map namespace, shared-component API and documentation candidates.
+
+- Migrated `darkInput`, `darkInputBorder`, and `darkPlaceholder` to the accurately named, value-identical `inputSurface`, `inputBorder`, and `inputPlaceholder` roles.
+- Migrated `disabledActionBackground` consumers to identical `stateDisabledFill` and removed its unused text/border companions.
+- Removed zero-consumer `brandOrange`, `brandOrangeStrong`, `authSurface`, `walletSurface`, `borderSoft`, `shadowSoft`, legacy scalar `Control`/`Shadow` properties, and unused `Font.regular`/`Font.medium` forwards.
+- Retained meaningful semantic identities for canvas/surface, settings, gold text/action, modal overlay, spacing/radius, map/media, dynamic metadata, and Trip Overview roles.
+- Retained the `Component.TripOverview` compatibility bridge because both namespace paths still have real consumers.
+- Removed no shared-component API and changed no cross-platform JSON or canonical raw token value.
+
+Deferred non-exact candidates remain assigned to later approved phases: `#F2F3F6` versus `#F3F3F5`, 17pt versus 18pt typography, 28pt versus 30pt radii, and 18pt versus 20pt spacing.
 
 ### v2.2 — Screenshot and fixture foundation
 

@@ -72,3 +72,7 @@ Phase 6I changed no baseline geometry or visual ownership. Saved Place, Transpor
 Frozen August 27, 2026 with **88 executed / 88 passed / 0 failed** on the iPhone 17e simulator running iOS 26.5. This is the minimum behavioral gate for every v2 phase; later tests add to rather than replace it.
 
 The v1 baseline intentionally preserves current light-branded pixels, specialized map/media rendering, measured Trip Overview composition, accessibility-specific geometry and platform-native controls. Recommended milestone: `almidy-native-design-system-v1`. Canonical screenshots remain partial until deterministic authentication, media, MapKit, Look Around and keyboard/picker fixtures exist. See [`DESIGN_SYSTEM_V2_ROADMAP.md`](../../../DESIGN_SYSTEM_V2_ROADMAP.md) for the fixture plan and normalization risk matrix.
+
+## v2.1 baseline note
+
+The v2.1 exact-equivalent cleanup changes naming and removes dead compatibility APIs only. It changes no baseline geometry, canonical raw token value, appearance behavior, accessibility behavior, or approved feature override. Existing measured baselines remain authoritative without recapture. Deterministic screenshot and fixture work begins in v2.2.

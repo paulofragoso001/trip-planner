@@ -222,6 +222,16 @@ Collapse progress, smooth-step handoff, title collision, hero occlusion, focal t
 
 Future native work begins from this architecture and baseline. Normalization, Dark Mode, web reconciliation, Android planning and screenshot infrastructure are separate v2 tracks; they must not be described as unfinished v1 adoption. The detailed compatibility inventory, risk analysis and ordered plan live in [`DESIGN_SYSTEM_V2_ROADMAP.md`](../../DESIGN_SYSTEM_V2_ROADMAP.md).
 
+## v2.1 exact-equivalent cleanup
+
+v2.1 applies a zero-pixel-change rule. It removes obsolete zero-consumer forwards and migrates references only when the replacement has the same resolved UIKit value and behavior. The shared JSON contract and every canonical raw value remain unchanged.
+
+The inaccurate fixed light-input names `darkInput`, `darkInputBorder`, and `darkPlaceholder` are replaced by `inputSurface`, `inputBorder`, and `inputPlaceholder`. The UIColor constructions remain exactly `#F5F5F7`, black at 12% alpha, and black at 44% alpha. `disabledActionBackground` references now use the identical `stateDisabledFill`; its unused text and border companions are removed. The unused orange, auth/wallet surface, soft-border and scalar shadow compatibility forwards are also removed, along with the dead `Control`, `Shadow`, `Font.regular`, and `Font.medium` APIs after exact reference migration.
+
+Semantic distinctions intentionally remain for `canvas`/`surface`, grouped and settings surfaces, gold text/action roles, settings borders/icons, modal scrims, spacing/radius roles, adaptive metadata, map/media colors, and both Trip Overview namespace paths. Identical current values do not erase roles that may legitimately diverge in later appearance work. No shared-component API was removed.
+
+Near-equivalent values remain deferred: `#F2F3F6` versus `#F3F3F5`, 17pt versus 18pt typography, 28pt versus 30pt radii, and 18pt versus 20pt spacing. Those require deterministic visual baselines and explicit approval; they are not v2.1 cleanup.
+
 Governance rules:
 
 - Keep feature/domain behavior above feature components and out of DesignSystem.

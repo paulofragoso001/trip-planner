@@ -35,6 +35,8 @@ enum AlmidyDesignTokens {
         static let onMediaTertiary = UIColor.white.withAlphaComponent(0.82)
         static let overlayScrim = UIColor.black.withAlphaComponent(0.48)
 
+        // Active semantic aliases. They intentionally retain separate names so
+        // future appearance work can evolve roles without feature churn.
         // Native sheets use the same airy white-and-mist foundation as Settings.
         static let background = bgLight
         static let surface = bgLight
@@ -46,13 +48,13 @@ enum AlmidyDesignTokens {
         static let overviewMetadata = UIColor { traits in
             traits.accessibilityContrast == .high ? UIColor(hex: 0x4A4A50) : canonicalTextSecondary
         }
-        static let darkInput = UIColor(hex: 0xF5F5F7)
-        static let darkInputBorder = UIColor.black.withAlphaComponent(0.12)
-        static let darkPlaceholder = UIColor.black.withAlphaComponent(0.44)
-        static let disabledActionBackground = UIColor.black.withAlphaComponent(0.06)
-        static let disabledActionText = UIColor.black.withAlphaComponent(0.38)
-        static let disabledActionBorder = UIColor.black.withAlphaComponent(0.12)
+        // Input roles replace the obsolete darkInput compatibility vocabulary.
+        // Their fixed values are unchanged; Dark Mode is not introduced here.
+        static let inputSurface = UIColor(hex: 0xF5F5F7)
+        static let inputBorder = UIColor.black.withAlphaComponent(0.12)
+        static let inputPlaceholder = UIColor.black.withAlphaComponent(0.44)
 
+        // Active semantic gold aliases: identical raw values, distinct usage roles.
         // Champagne gold signals elevated action and progress without reading as warning orange.
         static let gold = brandGold
         static let goldDeep = brandGoldDeep
@@ -120,14 +122,6 @@ enum AlmidyDesignTokens {
         static let modalDimmingBackground = UIColor.black.withAlphaComponent(0.48)
         static let overlayPlaceholderText = UIColor.white.withAlphaComponent(0.45)
         static let shadowBlack = UIColor.black
-        static let shadowSoft = UIColor.black.withAlphaComponent(0.12)
-
-        // Compatibility aliases: existing visual call sites can migrate without changing behavior.
-        static let brandOrange = gold
-        static let brandOrangeStrong = goldDeep
-        static let authSurface = surface
-        static let walletSurface = surface
-        static let borderSoft = line
     }
 
     enum Spacing {
@@ -246,7 +240,7 @@ enum AlmidyDesignTokens {
         static let headerIcon: CGFloat = 16
         static let headerTitleGap: CGFloat = 10
         static let headerMetadataGap: CGFloat = 8
-        static let headingFont = Font.medium(17)
+        static let headingFont = Font.title(17)
         static let bodyFont = Font.body(15)
         static let metadataFont = Font.body(13)
         static let captionFont = Font.body(12)
@@ -297,19 +291,6 @@ enum AlmidyDesignTokens {
         static let bottomBreathingRoom: CGFloat = 40
     }
 
-    enum Control {
-        static let buttonHeight: CGFloat = 60
-        static let compactButtonHeight: CGFloat = 48
-        static let iconButton: CGFloat = 56
-        static let mapControl: CGFloat = 56
-    }
-
-    enum Shadow {
-        static let opacity: Float = 0.22
-        static let radius: CGFloat = 22
-        static let offset = CGSize(width: 0, height: -8)
-    }
-
     enum Font {
         static func display(_ size: CGFloat) -> UIFont { .systemFont(ofSize: size, weight: .regular) }
         static func title(_ size: CGFloat) -> UIFont { .systemFont(ofSize: size, weight: .medium) }
@@ -317,8 +298,6 @@ enum AlmidyDesignTokens {
         static func body(_ size: CGFloat) -> UIFont { .systemFont(ofSize: size, weight: .regular) }
         static func button(_ size: CGFloat) -> UIFont { .systemFont(ofSize: size, weight: .medium) }
         static func semibold(_ size: CGFloat) -> UIFont { .systemFont(ofSize: size, weight: .semibold) }
-        static func regular(_ size: CGFloat) -> UIFont { body(size) }
-        static func medium(_ size: CGFloat) -> UIFont { title(size) }
     }
 }
 

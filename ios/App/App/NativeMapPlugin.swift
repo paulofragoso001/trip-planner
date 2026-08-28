@@ -7005,8 +7005,8 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         stack.addArrangedSubview(body)
         stack.setCustomSpacing(18, after: body)
         stack.addArrangedSubview(actionButton(title: "Create Your First Trip", backgroundColor: AlmidyDesignTokens.Color.gold, textColor: AlmidyDesignTokens.Color.bgLight, action: #selector(createTrip), fontSize: 17, minHeight: 50, cornerRadius: AlmidyDesignTokens.Radius.capsule))
-        stack.addArrangedSubview(actionButton(title: "Import a Reservation Manually", backgroundColor: AlmidyDesignTokens.Color.disabledActionBackground, textColor: AlmidyDesignTokens.Color.textPrimary, action: #selector(openManualReservationImporter), fontSize: 17, minHeight: 50, cornerRadius: AlmidyDesignTokens.Radius.capsule))
-        stack.addArrangedSubview(actionButton(title: "Explore Sample Trip", backgroundColor: AlmidyDesignTokens.Color.disabledActionBackground, textColor: AlmidyDesignTokens.Color.textPrimary, action: #selector(openSampleTripPreview), fontSize: 17, minHeight: 50, cornerRadius: AlmidyDesignTokens.Radius.capsule))
+        stack.addArrangedSubview(actionButton(title: "Import a Reservation Manually", backgroundColor: AlmidyDesignTokens.Color.stateDisabledFill, textColor: AlmidyDesignTokens.Color.textPrimary, action: #selector(openManualReservationImporter), fontSize: 17, minHeight: 50, cornerRadius: AlmidyDesignTokens.Radius.capsule))
+        stack.addArrangedSubview(actionButton(title: "Explore Sample Trip", backgroundColor: AlmidyDesignTokens.Color.stateDisabledFill, textColor: AlmidyDesignTokens.Color.textPrimary, action: #selector(openSampleTripPreview), fontSize: 17, minHeight: 50, cornerRadius: AlmidyDesignTokens.Radius.capsule))
 
         NSLayoutConstraint.activate([
             brandWash.topAnchor.constraint(equalTo: card.topAnchor),
@@ -10244,10 +10244,10 @@ private final class NativeAuthViewController: UIViewController, ASAuthorizationC
         fields.addArrangedSubview(emailField!)
         fields.addArrangedSubview(passwordField!)
         fields.arrangedSubviews.forEach { $0.heightAnchor.constraint(equalToConstant: 64).isActive = true }
-        fields.backgroundColor = AlmidyDesignTokens.Color.darkInput
+        fields.backgroundColor = AlmidyDesignTokens.Color.inputSurface
         fields.layer.cornerRadius = 24
         fields.layer.borderWidth = 1
-        fields.layer.borderColor = AlmidyDesignTokens.Color.darkInputBorder.cgColor
+        fields.layer.borderColor = AlmidyDesignTokens.Color.inputBorder.cgColor
         fields.clipsToBounds = true
         bodyStack.addArrangedSubview(fields)
         bodyStack.addArrangedSubview(statusLabel)
@@ -10300,11 +10300,11 @@ private final class NativeAuthViewController: UIViewController, ASAuthorizationC
         let field = UITextField()
         field.attributedPlaceholder = NSAttributedString(
             string: placeholder,
-            attributes: [.foregroundColor: AlmidyDesignTokens.Color.darkPlaceholder]
+            attributes: [.foregroundColor: AlmidyDesignTokens.Color.inputPlaceholder]
         )
         field.font = AlmidyDesignTokens.Font.body(21)
         field.textColor = AlmidyDesignTokens.Color.textPrimary
-        field.backgroundColor = AlmidyDesignTokens.Color.darkInput
+        field.backgroundColor = AlmidyDesignTokens.Color.inputSurface
         field.setPadding(16)
         field.autocapitalizationType = .none
         field.autocorrectionType = .no
@@ -10312,7 +10312,7 @@ private final class NativeAuthViewController: UIViewController, ASAuthorizationC
         return field
     }
 
-    private func makeButton(_ title: String, background: UIColor, titleColor: UIColor = .white, border: Bool = false, height: CGFloat = AlmidyDesignTokens.Control.buttonHeight, fontSize: CGFloat = 17, action: Selector) -> UIButton {
+    private func makeButton(_ title: String, background: UIColor, titleColor: UIColor = .white, border: Bool = false, height: CGFloat = AlmidyDesignTokens.Size.buttonStandard, fontSize: CGFloat = 17, action: Selector) -> UIButton {
         let button = UIButton(type: .system)
         var configuration = UIButton.Configuration.filled()
         configuration.title = title
