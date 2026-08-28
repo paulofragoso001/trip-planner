@@ -194,7 +194,7 @@ jobs:
           role-to-assume: ${{ secrets.AWS_GHA_ROLE_ARN }}
 
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+        uses: hashicorp/setup-terraform@v4
 
       - name: Terraform fmt
         run: terraform fmt -check
@@ -239,7 +239,7 @@ jobs:
           role-to-assume: ${{ secrets.AWS_GHA_ROLE_ARN }}
 
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+        uses: hashicorp/setup-terraform@v4
 
       - name: Terraform init
         run: terraform init
