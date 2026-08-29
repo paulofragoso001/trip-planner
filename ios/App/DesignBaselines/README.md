@@ -1,5 +1,58 @@
 # Native visual baseline manifest
 
+## v2.2 deterministic snapshot contract
+
+The repository now has an executable, test-only visual regression layer. Its canonical profile is **iPhone 17e, iOS 26.5, portrait, 393 × 852 points at 3×, Light appearance, `en_US`, and Large content size**. The Trip Overview accessibility baseline uses AX XXXL. Tests render production views/controllers with fixed local fixture state; they never use production accounts, network responses, MapKit tiles, remote media, the current clock, or random values.
+
+`AlmidySnapshotTesting` in `AppTests/VisualRegression` owns deterministic rendering, baseline lookup, strict RGBA comparison, and failure attachments. It allows **zero differing pixels and zero channel delta**. A failure attaches the expected image, actual image, and a magenta difference image. Missing baselines fail by default, and normal test runs can never overwrite approved images.
+
+Recording is an explicit local maintainer action. A shell environment variable does not reliably propagate into a simulator test process, so set and clear the simulator launch environment around the focused recording run:
+
+```sh
+xcrun simctl boot "iPhone 17e"
+xcrun simctl bootstatus "iPhone 17e" -b
+xcrun simctl spawn booted launchctl setenv ALMIDY_RECORD_SNAPSHOTS 1
+xcodebuild test -project ios/App/App.xcodeproj -scheme App -destination 'platform=iOS Simulator,name=iPhone 17e,OS=26.5' -testLanguage en -testRegion US -only-testing:AppTests/NativeTripOverviewSnapshotTests -only-testing:AppTests/NativeVisualRegressionTests
+xcrun simctl spawn booted launchctl unsetenv ALMIDY_RECORD_SNAPSHOTS
+```
+
+Always clear the variable, inspect every changed PNG, and commit baseline changes separately from unrelated implementation. The ordinary non-recording command is the same command without the two `launchctl` lines and without `ALMIDY_RECORD_SNAPSHOTS`. `AlmidySnapshotHarnessTests` independently verifies the profile, mismatch behavior, naming, PNG decoding, and expected baseline count.
+
+### Approved pixel baselines
+
+| Baseline | Deterministic fixture | Profile | Protection |
+|---|---|---|---|
+| `TripOverview/trip-overview-populated-expanded.png` | Fixed Barcelona trip, local hero, itinerary/documents/expenses | Large | Pixel + existing geometry |
+| `TripOverview/trip-overview-populated-collapsed.png` | Same trip at the current scrolled/collapsed presentation | Large | Pixel + existing geometry |
+| `TripOverview/trip-overview-empty.png` | Fixed empty Barcelona trip and local hero | Large | Pixel + existing geometry |
+| `TripOverview/trip-overview-accessibility.png` | Fixed populated trip and local hero | AX XXXL | Pixel + existing geometry |
+| `Globe/globe-active-trip-card.png` | Fixed active trip and generated local media | Large | Pixel + existing geometry |
+| `Globe/globe-future-trip-card.png` | Fixed future trip and generated local media | Large | Pixel + existing geometry |
+| `Globe/globe-reservation-automation.png` | Fixed importer suggestion copy/actions | Large | Pixel + existing geometry |
+| `Globe/globe-map-controls.png` | Controls over a fixed map-like color surface | Large | Pixel + existing geometry |
+| `PlaceCard/place-card-travel-modes.png` | Fixed Walk/Drive/Transit/Cycle durations and selection | Large | Pixel + existing geometry |
+| `Editors/saved-place-populated.png` | Fixed populated saved-place component | Large | Pixel + existing geometry |
+| `Editors/transportation-train.png` | Fixed Train component with departure/arrival data | Large | Pixel + existing geometry |
+| `Editors/flight-populated.png` | Fixed populated Flight component | Large | Pixel + existing geometry |
+
+### Tier 1 coverage disposition
+
+| Surface/state family | Pixel baseline | Deterministic geometry/behavior | Disposition |
+|---|---:|---:|---|
+| Trip Overview populated, collapsed, empty, accessibility | Yes | Yes | Both |
+| Globe active/future trip cards, importer, map controls | Yes | Yes | Both |
+| Place Card travel-mode selector | Yes | Yes | Both |
+| Saved Place, Train transportation, Flight feature components | Yes | Yes | Both |
+| Full Globe/map sheet and annotations | No | Yes | Geometry-only: MapKit tiles, placement, and runtime trip state are not stable pixels |
+| Map Preferences | No | Yes | Geometry-only: `MKMapSnapshotter` preview imagery is Apple-service data |
+| Full Place Card | No | Yes | Geometry-only: Look Around, routes, ETA, and `MKMapItem` state are service-owned |
+| Native Itinerary and date picker | No | Yes | Geometry-only: full controller still requires authenticated trip/data state |
+| Search result states | No | Yes | Geometry-only: `MKLocalSearchCompletion` has no deterministic public constructor |
+| Settings/auth/account | No | Yes | Geometry-only: account variants require authenticated state |
+| Cost, note, date, and time system-input states | No | Yes | Geometry-only: keyboard, calendar, locale, and wheel rasterization/timing are system-owned |
+
+This infrastructure is CI-ready but should only become a required hosted pixel gate when CI pins the same Xcode build, iOS 26.5 runtime, iPhone 17e device profile, locale, scale, and font rasterization. CI must retain the three failure attachments for review. Until those prerequisites are pinned, run the pixel suite on the canonical local simulator and keep the deterministic behavior/geometry suite authoritative in CI.
+
 Phase 0 baseline target: iPhone 16 Pro simulator, 393 × 852 points, light appearance, standard accessibility contrast, Large Dynamic Type unless a row states otherwise.
 
 | State | Data/conditions | Dynamic Type | Capture status |

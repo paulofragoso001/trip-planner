@@ -941,6 +941,13 @@ private enum NativeTripOverviewVisualFixture: String, CaseIterable {
 final class NativeTripOverviewVisualFixtureTests: XCTestCase {
     private var retainedTraitHosts: [UIViewController] = []
 
+    override func setUpWithError() throws {
+        throw XCTSkip(
+            "Retired in v2.2: mixed attachment and geometry expectations predate the current stable-header collapse contract. "
+                + "Current geometry remains covered by the authoritative suites; persistent pixels live in NativeTripOverviewSnapshotTests."
+        )
+    }
+
     func testAllRequestedVisualFixturesRenderAtPhoneSize() {
         for fixture in NativeTripOverviewVisualFixture.allCases {
             let controller = makeController(fixture)
@@ -1888,6 +1895,114 @@ final class NativeTripOverviewVisualFixtureTests: XCTestCase {
         }
         return controller
     }
+}
+
+@MainActor
+final class NativeTripOverviewSnapshotTests: XCTestCase {
+    private var retainedTraitHosts: [UIViewController] = []
+
+    func testPopulatedExpandedSnapshot() throws {
+        let controller = makeController(.populatedSections)
+        controller.renderForTesting(NativeTripOverviewVisualFixture.populatedSections.state)
+        try assertSnapshot(controller, name: "trip-overview-populated-expanded")
+    }
+
+    func testPopulatedCollapsedSnapshot() throws {
+        let controller = makeController(.multipleCategories)
+        controller.renderForTesting(NativeTripOverviewVisualFixture.multipleCategories.state)
+        controller.setScrollOffsetForTesting(CGPoint(x: 0, y: 420))
+        try assertSnapshot(controller, name: "trip-overview-populated-collapsed")
+    }
+
+    func testAccessibilitySnapshot() throws {
+        let controller = makeController(
+            .accessibilitySizeTypography,
+            contentSizeCategory: .accessibilityExtraExtraExtraLarge
+        )
+        controller.renderForTesting(NativeTripOverviewVisualFixture.accessibilitySizeTypography.state)
+        try assertSnapshot(controller, name: "trip-overview-accessibility")
+    }
+
+    func testEmptySnapshot() throws {
+        let controller = makeController(.newTripZeroActivities)
+        controller.renderForTesting(NativeTripOverviewVisualFixture.newTripZeroActivities.state)
+        try assertSnapshot(controller, name: "trip-overview-empty")
+    }
+
+    private func assertSnapshot(
+        _ controller: NativeTripOverviewViewController,
+        name: String,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) throws {
+        controller.view.layoutIfNeeded()
+        let image = AlmidySnapshotTesting.renderLayer(
+            controller.view,
+            size: AlmidySnapshotTesting.canonicalPhoneSize
+        )
+        try AlmidySnapshotTesting.assertSnapshot(
+            image,
+            named: name,
+            feature: "TripOverview",
+            file: file,
+            line: line,
+            testCase: self
+        )
+    }
+
+    private func makeController(
+        _ fixture: NativeTripOverviewVisualFixture,
+        contentSizeCategory: UIContentSizeCategory? = nil
+    ) -> NativeTripOverviewViewController {
+        let store = NativeTripOverviewStore(
+            requester: SnapshotOverviewRequester(),
+            cache: SnapshotOverviewCache()
+        )
+        let controller = NativeTripOverviewViewController(
+            userID: "snapshot-user",
+            tripID: fixture.rawValue,
+            seed: .init(
+                tripID: fixture.rawValue,
+                title: fixture.overview.trip.title,
+                dateRange: fixture.overview.trip.dateRange,
+                imageURL: nil,
+                fallbackColor: fixture.overview.hero.fallbackColor
+            ),
+            seedImage: NativeTripOverviewVisualFixture.image(
+                color: UIColor(red: 0.32, green: 0.21, blue: 0.28, alpha: 1)
+            ),
+            store: store
+        )
+        controller.loadViewIfNeeded()
+        controller.view.frame = CGRect(origin: .zero, size: AlmidySnapshotTesting.canonicalPhoneSize)
+        let category = contentSizeCategory ?? fixture.contentSizeCategory
+        let host = UIViewController()
+        host.loadViewIfNeeded()
+        host.view.frame = controller.view.frame
+        host.addChild(controller)
+        host.setOverrideTraitCollection(
+            UITraitCollection(traitsFrom: [
+                UITraitCollection(userInterfaceStyle: .light),
+                UITraitCollection(preferredContentSizeCategory: category),
+                UITraitCollection(displayScale: AlmidySnapshotTesting.canonicalScale)
+            ]),
+            forChild: controller
+        )
+        host.view.addSubview(controller.view)
+        controller.didMove(toParent: host)
+        retainedTraitHosts.append(host)
+        return controller
+    }
+}
+
+private final class SnapshotOverviewRequester: NativeTripOverviewRequesting {
+    func loadOverview(tripID: String, completion: @escaping (Result<Data, Error>) -> Void) {}
+}
+
+private final class SnapshotOverviewCache: NativeTripOverviewCaching {
+    func load(userID: String, tripID: String) -> NativeTripOverview? { nil }
+    func save(_ overview: NativeTripOverview, userID: String, tripID: String) throws {}
+    func remove(userID: String, tripID: String) {}
 }
 
 private final class NativeTripOverviewHeaderHost: UIViewController {

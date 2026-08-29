@@ -239,7 +239,9 @@ Deferred non-exact candidates remain assigned to later approved phases: `#F2F3F6
 
 ### v2.2 — Screenshot and fixture foundation
 
-Build deterministic fixtures and local media substitution for Settings, utility editors, Itinerary and Trip Overview geometry first; then Map/Place-dependent surfaces. This precedes intentional normalization.
+**Completed August 28, 2026.** Added a test-only deterministic rendering/comparison harness, explicit opt-in recording, strict zero-tolerance RGBA comparison, retained expected/actual/difference failure artifacts, and twelve reviewed Light-mode baselines. Pixel protection now covers four Trip Overview states, active/future Globe cards, reservation automation, map controls, Place Card travel modes, and representative Saved Place, Train, and Flight compositions. Existing deterministic geometry and behavior tests remain the protection tier for full Map/Globe, Map Preferences, full Place Card, Itinerary, Search, Settings/account, and system keyboard/picker states whose pixels depend on authentication, Apple services, runtime data, or system timing.
+
+The canonical profile is iPhone 17e on iOS 26.5, portrait, `en_US`, 3×, Large content size, with AX XXXL for the Trip Overview accessibility state. Baseline updates require an explicit simulator-scoped `ALMIDY_RECORD_SNAPSHOTS=1` recording run and manual PNG review; normal tests cannot overwrite images. Hosted pixel gating remains conditional on pinning the identical Xcode/runtime/device/locale/font-rasterization environment and preserving failure attachments. No production token, component, value, appearance, behavior, or fallback changed.
 
 ### v2.3 — Typography, spacing and icon normalization
 

@@ -111,6 +111,8 @@
 		F73000000000000000000001 /* NativeGlobeCardViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = F73000000000000000000011 /* NativeGlobeCardViews.swift */; };
 		F73000000000000000000002 /* NativeGlobeCardPresentationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F73000000000000000000012 /* NativeGlobeCardPresentationTests.swift */; };
 		F80000000000000000000002 /* NativeTripOverviewDesignSystemTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F80000000000000000000012 /* NativeTripOverviewDesignSystemTests.swift */; };
+		F90000000000000000000001 /* AlmidySnapshotTesting.swift in Sources */ = {isa = PBXBuildFile; fileRef = F90000000000000000000011 /* AlmidySnapshotTesting.swift */; };
+		F90000000000000000000002 /* NativeVisualRegressionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F90000000000000000000012 /* NativeVisualRegressionTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -165,6 +167,8 @@
 		F73000000000000000000011 /* NativeGlobeCardViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeGlobeCardViews.swift; sourceTree = "<group>"; };
 		F73000000000000000000012 /* NativeGlobeCardPresentationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeGlobeCardPresentationTests.swift; sourceTree = "<group>"; };
 		F80000000000000000000012 /* NativeTripOverviewDesignSystemTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeTripOverviewDesignSystemTests.swift; sourceTree = "<group>"; };
+		F90000000000000000000011 /* AlmidySnapshotTesting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisualRegression/AlmidySnapshotTesting.swift; sourceTree = "<group>"; };
+		F90000000000000000000012 /* NativeVisualRegressionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisualRegression/NativeVisualRegressionTests.swift; sourceTree = "<group>"; };
 		958DCC722DB07C7200EA8C5F /* debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = debug.xcconfig; path = ../debug.xcconfig; sourceTree = SOURCE_ROOT; };
 		958DCC732DB07C7200EA8C5F /* release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = release.xcconfig; path = ../release.xcconfig; sourceTree = SOURCE_ROOT; };
 		A10000000000000000000002 /* NativeMapConnectivityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeMapConnectivityTests.swift; sourceTree = "<group>"; };
@@ -318,6 +322,8 @@
 		A10000000000000000000007 /* AppTests */ = {
 			isa = PBXGroup;
 			children = (
+				F90000000000000000000011 /* AlmidySnapshotTesting.swift */,
+				F90000000000000000000012 /* NativeVisualRegressionTests.swift */,
 				F65000000000000000000012 /* NativeTotalCostInputTests.swift */,
 				F66000000000000000000012 /* NativeNoteInputTests.swift */,
 				F67000000000000000000012 /* NativeFlightDateInputTests.swift */,
@@ -630,6 +636,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F90000000000000000000001 /* AlmidySnapshotTesting.swift in Sources */,
+				F90000000000000000000002 /* NativeVisualRegressionTests.swift in Sources */,
 				F65000000000000000000002 /* NativeTotalCostInputTests.swift in Sources */,
 				F66000000000000000000002 /* NativeNoteInputTests.swift in Sources */,
 				F67000000000000000000002 /* NativeFlightDateInputTests.swift in Sources */,

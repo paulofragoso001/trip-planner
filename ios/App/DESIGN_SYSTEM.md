@@ -212,6 +212,14 @@ The Overview presentation now actively consumes `AlmidySheetConfiguration.overvi
 
 Collapse progress, smooth-step handoff, title collision, hero occlusion, focal translation, and compact-detent endpoint composition are unchanged. Dynamic Type continues to select dedicated accessibility header heights and horizontally scrolling shortcuts. High contrast retains dynamic border and metadata treatment. Reduce Motion keeps linear progress while reaching the same final geometry. Custom header and action controls now route touch and VoiceOver activation through the same callback.
 
+## v2.2 visual regression architecture
+
+`AppTests/VisualRegression/AlmidySnapshotTesting.swift` is test-only infrastructure: it renders production components under fixed traits, reads approved PNGs from `DesignBaselines/Snapshots`, performs exact RGBA comparison, and attaches expected/actual/difference artifacts on failure. Recording requires the explicit `ALMIDY_RECORD_SNAPSHOTS=1` simulator launch environment; missing or changed baselines otherwise fail and are never rewritten automatically.
+
+The canonical profile is iPhone 17e on iOS 26.5, portrait, Light, `en_US`, Large content size at 3×. Twelve approved baselines protect four Trip Overview states, four Globe surfaces, the Place Card travel selector, and representative Saved Place, Transportation, and Flight compositions. Existing geometry/behavior contracts remain authoritative for system- or service-dependent surfaces. Full Map/Globe, Map Preferences, full Place Card, Itinerary, Search, Settings/account, and keyboard/native-picker states remain geometry-only until they can be rendered without authentication, live Apple data, system timing, or private framework construction.
+
+The visual layer introduces no production snapshot framework, fixture flag, runtime dependency, or fallback path. Fixtures use fixed local images and in-memory request/cache boundaries available only to tests. See `DesignBaselines/README.md` for the baseline registry, exact recording command, strict tolerance policy, and CI prerequisites.
+
 ## Native Design System v1 closure
 
 **Status:** Complete and frozen
