@@ -65,7 +65,7 @@ final class NativePlaceTravelModesView: UIStackView {
         var configuration = UIButton.Configuration.plain()
         configuration.image = UIImage(systemName: symbol)
         var titleAttributes = AttributeContainer()
-        titleAttributes.font = .systemFont(ofSize: 14, weight: .regular)
+        titleAttributes.font = AlmidyDesignTokens.Font.body(14)
         configuration.attributedTitle = AttributedString(duration, attributes: titleAttributes)
         configuration.preferredSymbolConfigurationForImage = UIImage.SymbolConfiguration(pointSize: 14, weight: .regular)
         configuration.imagePadding = 3

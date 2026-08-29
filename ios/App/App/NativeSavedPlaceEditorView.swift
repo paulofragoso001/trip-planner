@@ -106,7 +106,7 @@ private final class NativeSavedPlacePrimaryFieldsView: UIView {
         for (index, name) in ["Name", "Address"].enumerated() {
             let field = NativeSavedPlaceTextField(onChange: onChange)
             field.placeholder = name
-            field.font = .systemFont(ofSize: 17)
+            field.font = AlmidyDesignTokens.Font.body(17)
             field.heightAnchor.constraint(equalToConstant: 48).isActive = true
             field.accessibilityLabel = name
             field.accessibilityIdentifier = "native-flight-\(name.lowercased())"

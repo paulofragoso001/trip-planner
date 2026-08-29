@@ -113,6 +113,10 @@
 		F80000000000000000000002 /* NativeTripOverviewDesignSystemTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F80000000000000000000012 /* NativeTripOverviewDesignSystemTests.swift */; };
 		F90000000000000000000001 /* AlmidySnapshotTesting.swift in Sources */ = {isa = PBXBuildFile; fileRef = F90000000000000000000011 /* AlmidySnapshotTesting.swift */; };
 		F90000000000000000000002 /* NativeVisualRegressionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F90000000000000000000012 /* NativeVisualRegressionTests.swift */; };
+		FA0000000000000000000001 /* InstrumentSans-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = FA0000000000000000000011 /* InstrumentSans-Regular.ttf */; };
+		FA0000000000000000000002 /* InstrumentSans-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = FA0000000000000000000012 /* InstrumentSans-Medium.ttf */; };
+		FA0000000000000000000003 /* InstrumentSans-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = FA0000000000000000000013 /* InstrumentSans-SemiBold.ttf */; };
+		FA0000000000000000000004 /* InstrumentSans-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = FA0000000000000000000014 /* InstrumentSans-Bold.ttf */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -169,6 +173,10 @@
 		F80000000000000000000012 /* NativeTripOverviewDesignSystemTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeTripOverviewDesignSystemTests.swift; sourceTree = "<group>"; };
 		F90000000000000000000011 /* AlmidySnapshotTesting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisualRegression/AlmidySnapshotTesting.swift; sourceTree = "<group>"; };
 		F90000000000000000000012 /* NativeVisualRegressionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisualRegression/NativeVisualRegressionTests.swift; sourceTree = "<group>"; };
+		FA0000000000000000000011 /* InstrumentSans-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = Fonts/InstrumentSans/InstrumentSans-Regular.ttf; sourceTree = "<group>"; };
+		FA0000000000000000000012 /* InstrumentSans-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = Fonts/InstrumentSans/InstrumentSans-Medium.ttf; sourceTree = "<group>"; };
+		FA0000000000000000000013 /* InstrumentSans-SemiBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = Fonts/InstrumentSans/InstrumentSans-SemiBold.ttf; sourceTree = "<group>"; };
+		FA0000000000000000000014 /* InstrumentSans-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = Fonts/InstrumentSans/InstrumentSans-Bold.ttf; sourceTree = "<group>"; };
 		958DCC722DB07C7200EA8C5F /* debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = debug.xcconfig; path = ../debug.xcconfig; sourceTree = SOURCE_ROOT; };
 		958DCC732DB07C7200EA8C5F /* release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = release.xcconfig; path = ../release.xcconfig; sourceTree = SOURCE_ROOT; };
 		A10000000000000000000002 /* NativeMapConnectivityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeMapConnectivityTests.swift; sourceTree = "<group>"; };
@@ -313,6 +321,10 @@
 				504EC30E1FED79650016851F /* Assets.xcassets */,
 				504EC3101FED79650016851F /* LaunchScreen.storyboard */,
 				504EC3131FED79650016851F /* Info.plist */,
+				FA0000000000000000000011 /* InstrumentSans-Regular.ttf */,
+				FA0000000000000000000012 /* InstrumentSans-Medium.ttf */,
+				FA0000000000000000000013 /* InstrumentSans-SemiBold.ttf */,
+				FA0000000000000000000014 /* InstrumentSans-Bold.ttf */,
 				2FAD9762203C412B000D30F8 /* config.xml */,
 				50B271D01FEDC1A000F3C39B /* public */,
 			);
@@ -542,6 +554,10 @@
 				50379B232058CBB4000EE86E /* capacitor.config.json in Resources */,
 				504EC30D1FED79650016851F /* Main.storyboard in Resources */,
 				2FAD9763203C412B000D30F8 /* config.xml in Resources */,
+				FA0000000000000000000001 /* InstrumentSans-Regular.ttf in Resources */,
+				FA0000000000000000000002 /* InstrumentSans-Medium.ttf in Resources */,
+				FA0000000000000000000003 /* InstrumentSans-SemiBold.ttf in Resources */,
+				FA0000000000000000000004 /* InstrumentSans-Bold.ttf in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

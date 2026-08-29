@@ -51,7 +51,7 @@ final class NativeTripSavedSearchViewController: UIViewController,
             textStyle: UIFont.TextStyle
         ) -> UIFont {
             UIFontMetrics(forTextStyle: textStyle).scaledFont(
-                for: .systemFont(ofSize: size, weight: weight)
+                for: AlmidyDesignTokens.Font.font(size, weight: weight)
             )
         }
     }

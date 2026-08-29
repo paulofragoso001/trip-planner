@@ -22,12 +22,12 @@ final class NativeReservationDetailsView: UIView {
         for (index, row) in rows.enumerated() {
             let label = UILabel()
             label.text = row.label
-            label.font = .systemFont(ofSize: 17, weight: .regular)
+            label.font = AlmidyDesignTokens.Font.body(17)
             label.setContentCompressionResistancePriority(.required, for: .horizontal)
 
             let value = NativeReservationTextField(onChange: onChange)
             value.placeholder = row.placeholder
-            value.font = .systemFont(ofSize: 17, weight: .regular)
+            value.font = AlmidyDesignTokens.Font.body(17)
             value.textAlignment = .left
             value.accessibilityLabel = row.label
             value.accessibilityIdentifier = "native-reservation-\(Self.identifierComponent(row.label))"

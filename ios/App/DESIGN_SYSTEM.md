@@ -220,6 +220,14 @@ The canonical profile is iPhone 17e on iOS 26.5, portrait, Light, `en_US`, Large
 
 The visual layer introduces no production snapshot framework, fixture flag, runtime dependency, or fallback path. Fixtures use fixed local images and in-memory request/cache boundaries available only to tests. See `DesignBaselines/README.md` for the baseline registry, exact recording command, strict tolerance policy, and CI prerequisites.
 
+## v2.3 Instrument Sans typography
+
+Instrument Sans is the approved family for Almidy-owned native interface text. Four static SIL OFL 1.1 faces ship with the iOS target: `InstrumentSans-Regular`, `InstrumentSans-Medium`, `InstrumentSans-SemiBold`, and `InstrumentSans-Bold`. Static faces are used for predictable UIKit weight resolution; a system-font fallback exists for resilience, while registration tests make fallback an error in supported builds.
+
+`AlmidyDesignTokens.Typography` remains the canonical owner. The semantic hierarchy is Display / Hero; Screen, Sheet, Section, and Card Title; Body Default, Compact, and Emphasis; Action; Metadata and Metadata Emphasis; Caption; and Badge. Regular maps to editorial/body roles, Medium to compatibility title/button roles, SemiBold to interface hierarchy/actions, and Bold only to small badges or existing bold emphasis. Existing point sizes are unchanged. Scalable roles continue through `UIFontMetrics`; measured compatibility typography resolves the same four faces at its existing fixed sizes.
+
+UIKit-owned picker/calendar internals, alerts, menus, MapKit-owned controls, and technical/system rendering remain platform typography. Symbol-only controls have no family migration. Figma should mirror the semantic names and weight philosophy above; native is the implementation source of truth. Web and future Android adoption remain later cross-platform alignment work.
+
 ## Native Design System v1 closure
 
 **Status:** Complete and frozen

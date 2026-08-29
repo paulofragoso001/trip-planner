@@ -20,7 +20,7 @@ final class NativeAttachmentActionView: UIView {
 
         titleLabel.text = "Add File, Photo or Link"
         titleLabel.textColor = .secondaryLabel
-        titleLabel.font = .systemFont(ofSize: 19, weight: .semibold)
+        titleLabel.font = AlmidyDesignTokens.Font.semibold(19)
 
         let row = UIStackView(arrangedSubviews: [icon, titleLabel])
         row.axis = .horizontal

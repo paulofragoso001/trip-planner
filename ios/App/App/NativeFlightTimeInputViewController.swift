@@ -23,14 +23,14 @@ private final class NativeTimeZoneSelectorViewController: UIViewController,
         let cancel = UIButton(type: .system)
         cancel.setTitle("Cancel", for: .normal)
         cancel.setTitleColor(.label, for: .normal)
-        cancel.titleLabel?.font = .systemFont(ofSize: 18, weight: .medium)
+        cancel.titleLabel?.font = AlmidyDesignTokens.Font.title(18)
         cancel.backgroundColor = .secondarySystemBackground
         cancel.layer.cornerRadius = 22
         cancel.addTarget(self, action: #selector(close), for: .touchUpInside)
 
         let title = UILabel()
         title.text = "Select Time Zone"
-        title.font = .systemFont(ofSize: 22, weight: .semibold)
+        title.font = AlmidyDesignTokens.Font.semibold(22)
         title.textAlignment = .center
 
         searchBar.placeholder = "Search"
@@ -89,10 +89,10 @@ private final class NativeTimeZoneSelectorViewController: UIViewController,
             cell.accessibilityValue = "\(entry.offsetText()), \(entry.identifier)"
             cell.accessoryType = NativeTimeZonePreference.selectedIdentifier == entry.identifier ? .checkmark : .none
         }
-        cell.textLabel?.font = .systemFont(ofSize: 17, weight: .regular)
+        cell.textLabel?.font = AlmidyDesignTokens.Font.body(17)
         cell.textLabel?.textColor = .label
         cell.textLabel?.lineBreakMode = .byTruncatingTail
-        cell.detailTextLabel?.font = .systemFont(ofSize: 16, weight: .regular)
+        cell.detailTextLabel?.font = AlmidyDesignTokens.Font.body(16)
         cell.detailTextLabel?.textColor = accent
         cell.detailTextLabel?.setContentCompressionResistancePriority(.required, for: .horizontal)
         cell.tintColor = accent
@@ -149,7 +149,7 @@ final class NativeFlightTimeInputViewController: UIViewController {
         let cancelButton = UIButton(type: .system)
         cancelButton.setTitle("Cancel", for: .normal)
         cancelButton.setTitleColor(accent, for: .normal)
-        cancelButton.titleLabel?.font = .systemFont(ofSize: 16, weight: .medium)
+        cancelButton.titleLabel?.font = AlmidyDesignTokens.Font.title(16)
         cancelButton.backgroundColor = .secondarySystemBackground
         cancelButton.layer.cornerRadius = 18
         cancelButton.accessibilityIdentifier = "native-flight-time-cancel"
@@ -157,10 +157,10 @@ final class NativeFlightTimeInputViewController: UIViewController {
 
         let titleLabel = UILabel()
         titleLabel.text = "Change Date"
-        titleLabel.font = .systemFont(ofSize: 18, weight: .semibold)
+        titleLabel.font = AlmidyDesignTokens.Font.semibold(18)
         titleLabel.textAlignment = .center
 
-        subtitleLabel.font = .systemFont(ofSize: 14)
+        subtitleLabel.font = AlmidyDesignTokens.Font.body(14)
         subtitleLabel.textColor = accent
         subtitleLabel.textAlignment = .center
         updateSubtitle()
@@ -168,7 +168,7 @@ final class NativeFlightTimeInputViewController: UIViewController {
         let saveButton = UIButton(type: .system)
         saveButton.setTitle("Save", for: .normal)
         saveButton.setTitleColor(.white, for: .normal)
-        saveButton.titleLabel?.font = .systemFont(ofSize: 16, weight: .semibold)
+        saveButton.titleLabel?.font = AlmidyDesignTokens.Font.semibold(16)
         saveButton.backgroundColor = accent
         saveButton.layer.cornerRadius = 18
         saveButton.accessibilityIdentifier = "native-flight-time-save"
@@ -185,7 +185,7 @@ final class NativeFlightTimeInputViewController: UIViewController {
         timePicker.accessibilityIdentifier = "flightTimePicker"
 
         timeZoneButton.setTitleColor(accent, for: .normal)
-        timeZoneButton.titleLabel?.font = .systemFont(ofSize: 16, weight: .semibold)
+        timeZoneButton.titleLabel?.font = AlmidyDesignTokens.Font.semibold(16)
         timeZoneButton.backgroundColor = accent.withAlphaComponent(0.12)
         timeZoneButton.layer.cornerRadius = 14
         timeZoneButton.clipsToBounds = true
@@ -196,7 +196,7 @@ final class NativeFlightTimeInputViewController: UIViewController {
         let clearButton = UIButton(type: .system)
         clearButton.setTitle("Clear Time", for: .normal)
         clearButton.setTitleColor(.systemRed, for: .normal)
-        clearButton.titleLabel?.font = .systemFont(ofSize: 17, weight: .semibold)
+        clearButton.titleLabel?.font = AlmidyDesignTokens.Font.semibold(17)
         clearButton.backgroundColor = UIColor.systemRed.withAlphaComponent(0.1)
         clearButton.layer.cornerRadius = 14
         clearButton.accessibilityIdentifier = "native-flight-time-clear"

@@ -29,11 +29,11 @@ final class NativeLocationCategoryView: UIView {
         let title = UILabel()
         title.text = category
         title.textColor = .label
-        title.font = .systemFont(ofSize: 18, weight: .semibold)
+        title.font = AlmidyDesignTokens.Font.semibold(18)
         let change = UILabel()
         change.text = "Change Category"
         change.textColor = accent
-        change.font = .systemFont(ofSize: 17, weight: .regular)
+        change.font = AlmidyDesignTokens.Font.body(17)
         let labels = UIStackView(arrangedSubviews: [title, change])
         labels.axis = .vertical
         labels.spacing = 2
@@ -80,7 +80,7 @@ final class NativeLocationScheduleView: UIView {
         let titleLabel = UILabel()
         titleLabel.text = title
         titleLabel.textColor = .secondaryLabel
-        titleLabel.font = .systemFont(ofSize: 18, weight: .semibold)
+        titleLabel.font = AlmidyDesignTokens.Font.semibold(18)
 
         Self.configure(dateButton, title: "Date")
         Self.configure(timeButton, title: "Time")
@@ -148,11 +148,11 @@ final class NativeLocationDetailsView: UIView {
         for (index, row) in Self.rows.enumerated() {
             let label = UILabel()
             label.text = row.label
-            label.font = .systemFont(ofSize: 17, weight: .regular)
+            label.font = AlmidyDesignTokens.Font.body(17)
             label.setContentCompressionResistancePriority(.required, for: .horizontal)
             let value = NativeLocationTextField(onChange: onChange)
             value.placeholder = row.placeholder
-            value.font = .systemFont(ofSize: 17, weight: .regular)
+            value.font = AlmidyDesignTokens.Font.body(17)
             value.textAlignment = .left
             value.accessibilityLabel = row.label
             value.accessibilityIdentifier = "native-location-\(row.label.lowercased().replacingOccurrences(of: " ", with: "-"))"

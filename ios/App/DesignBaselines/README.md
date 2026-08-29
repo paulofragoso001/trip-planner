@@ -2,6 +2,12 @@
 
 ## v2.2 deterministic snapshot contract
 
+### v2.3 typography baseline update
+
+The same twelve canonical states were reviewed and explicitly re-recorded after the approved Instrument Sans migration. Eleven typography-bearing states changed only in text rasterization/metrics; `Globe/globe-map-controls.png` remained identical because it is icon-only. Trip Overview expanded, collapsed, empty, and AX XXXL retained their protected geometry with no clipping or overlap. No comparison tolerance changed: approved images still require exact RGBA equality, zero differing pixels, and zero channel delta.
+
+The v2.2 commit `7ec861a` is the immutable pre-Instrument reference; duplicate “before” PNGs are not stored in the active directory. Instrument Sans candidate images were inspected before approval, then recorded using the existing explicit simulator-scoped workflow. No additional typography snapshot was necessary because the existing set covers the highest-risk hero, on-media, selector, and editor compositions.
+
 The repository now has an executable, test-only visual regression layer. Its canonical profile is **iPhone 17e, iOS 26.5, portrait, 393 × 852 points at 3×, Light appearance, `en_US`, and Large content size**. The Trip Overview accessibility baseline uses AX XXXL. Tests render production views/controllers with fixed local fixture state; they never use production accounts, network responses, MapKit tiles, remote media, the current clock, or random values.
 
 `AlmidySnapshotTesting` in `AppTests/VisualRegression` owns deterministic rendering, baseline lookup, strict RGBA comparison, and failure attachments. It allows **zero differing pixels and zero channel delta**. A failure attaches the expected image, actual image, and a magenta difference image. Missing baselines fail by default, and normal test runs can never overwrite approved images.

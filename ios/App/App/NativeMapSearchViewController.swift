@@ -63,7 +63,7 @@ final class NativeMapSearchViewController: UIViewController, MKLocalSearchComple
         let subtitle = UILabel()
         subtitle.text = purpose.map { "Search places for \($0.canonicalName.lowercased()) on the globe." }
             ?? "Find a place and move the globe there."
-        subtitle.font = .systemFont(ofSize: 17, weight: .regular)
+        subtitle.font = AlmidyDesignTokens.Font.body(17)
         subtitle.textColor = AlmidyDesignTokens.Color.textSecondary
 
         queryField.placeholder = searchPlaceholder

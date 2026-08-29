@@ -33,7 +33,7 @@ final class NativeFlightDateInputViewController: UIViewController {
         let cancelButton = UIButton(type: .system)
         cancelButton.setTitle("Cancel", for: .normal)
         cancelButton.setTitleColor(accent, for: .normal)
-        cancelButton.titleLabel?.font = .systemFont(ofSize: 17, weight: .medium)
+        cancelButton.titleLabel?.font = AlmidyDesignTokens.Font.title(17)
         cancelButton.backgroundColor = .secondarySystemBackground
         cancelButton.layer.cornerRadius = 22
         cancelButton.accessibilityIdentifier = "native-flight-date-cancel"
@@ -41,10 +41,10 @@ final class NativeFlightDateInputViewController: UIViewController {
 
         let titleLabel = UILabel()
         titleLabel.text = "Change Date"
-        titleLabel.font = .systemFont(ofSize: 20, weight: .semibold)
+        titleLabel.font = AlmidyDesignTokens.Font.semibold(20)
         titleLabel.textAlignment = .center
 
-        selectedDateLabel.font = .systemFont(ofSize: 15, weight: .regular)
+        selectedDateLabel.font = AlmidyDesignTokens.Font.body(15)
         selectedDateLabel.textColor = accent
         selectedDateLabel.textAlignment = .center
         selectedDateLabel.accessibilityIdentifier = "native-flight-date-selection"
@@ -52,7 +52,7 @@ final class NativeFlightDateInputViewController: UIViewController {
 
         saveButton.setTitle("Save", for: .normal)
         saveButton.setTitleColor(.white, for: .normal)
-        saveButton.titleLabel?.font = .systemFont(ofSize: 17, weight: .semibold)
+        saveButton.titleLabel?.font = AlmidyDesignTokens.Font.semibold(17)
         saveButton.backgroundColor = accent
         saveButton.layer.cornerRadius = 22
         saveButton.accessibilityIdentifier = "native-flight-date-save"
@@ -81,7 +81,7 @@ final class NativeFlightDateInputViewController: UIViewController {
         let clearButton = UIButton(type: .system)
         clearButton.setTitle("Clear Date & Time", for: .normal)
         clearButton.setTitleColor(.systemRed, for: .normal)
-        clearButton.titleLabel?.font = .systemFont(ofSize: 18, weight: .semibold)
+        clearButton.titleLabel?.font = AlmidyDesignTokens.Font.semibold(18)
         clearButton.backgroundColor = UIColor.systemRed.withAlphaComponent(0.1)
         clearButton.layer.cornerRadius = 14
         clearButton.accessibilityIdentifier = "native-flight-date-clear"
@@ -154,10 +154,10 @@ final class NativeFlightDateInputViewController: UIViewController {
         let formatter = DateFormatter()
         formatter.dateFormat = "EEE, MMM d"
         var attributedTitle = AttributedString("\(title)\n")
-        attributedTitle.font = .systemFont(ofSize: 16, weight: .semibold)
+        attributedTitle.font = AlmidyDesignTokens.Font.semibold(16)
         var subtitle = AttributedString(formatter.string(from: date))
         subtitle.foregroundColor = .secondaryLabel
-        subtitle.font = .systemFont(ofSize: 15)
+        subtitle.font = AlmidyDesignTokens.Font.body(15)
         attributedTitle.append(subtitle)
         configuration.attributedTitle = attributedTitle
         configuration.image = UIImage(systemName: "calendar.badge.plus")

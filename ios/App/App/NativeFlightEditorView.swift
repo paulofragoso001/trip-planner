@@ -100,7 +100,7 @@ private final class NativeFlightPrimaryFieldsView: UIView {
             let field = NativeFlightTextField(onChange: onChange)
             field.placeholder = name
             field.text = initialValues[name] ?? nil
-            field.font = .systemFont(ofSize: 17)
+            field.font = AlmidyDesignTokens.Font.body(17)
             field.heightAnchor.constraint(equalToConstant: 48).isActive = true
             field.accessibilityLabel = name
             field.accessibilityIdentifier = "native-flight-\(name.lowercased().replacingOccurrences(of: " ", with: "-"))"

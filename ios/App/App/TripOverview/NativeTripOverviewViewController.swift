@@ -1692,7 +1692,7 @@ private final class NativeTripOverviewCustomizeViewController: UIViewController,
         let header = UIView()
         let title = UILabel()
         title.text = "Customize Overview"
-        title.font = .systemFont(ofSize: 20, weight: .semibold)
+        title.font = AlmidyDesignTokens.Font.semibold(20)
         title.textAlignment = .center
 
         let cancel = capsuleButton(title: "Cancel", action: #selector(cancelTapped))
@@ -1713,7 +1713,7 @@ private final class NativeTripOverviewCustomizeViewController: UIViewController,
         flagsCard.layer.cornerRadius = 24
         let flagsLabel = UILabel()
         flagsLabel.text = "Show Country Flags"
-        flagsLabel.font = .systemFont(ofSize: 18, weight: .semibold)
+        flagsLabel.font = AlmidyDesignTokens.Font.semibold(18)
         flagsSwitch.isOn = draft.showsCountryFlags
         flagsSwitch.onTintColor = AlmidyDesignTokens.Color.goldDeep
         flagsSwitch.addTarget(self, action: #selector(flagsChanged), for: .valueChanged)
@@ -1750,7 +1750,7 @@ private final class NativeTripOverviewCustomizeViewController: UIViewController,
         addConfiguration.baseForegroundColor = AlmidyDesignTokens.Color.settingsGold
         addConfiguration.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { incoming in
             var outgoing = incoming
-            outgoing.font = .systemFont(ofSize: 18, weight: .semibold)
+            outgoing.font = AlmidyDesignTokens.Font.semibold(18)
             return outgoing
         }
         addShortcut.configuration = addConfiguration
@@ -1809,7 +1809,7 @@ private final class NativeTripOverviewCustomizeViewController: UIViewController,
         configuration.contentInsets = NSDirectionalEdgeInsets(top: 10, leading: 10, bottom: 10, trailing: 10)
         configuration.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { incoming in
             var outgoing = incoming
-            outgoing.font = .systemFont(ofSize: 18, weight: .medium)
+            outgoing.font = AlmidyDesignTokens.Font.title(18)
             return outgoing
         }
         button.configuration = configuration
@@ -1821,13 +1821,13 @@ private final class NativeTripOverviewCustomizeViewController: UIViewController,
 
     private func sectionTitle(_ text: String) -> UILabel {
         let label = UILabel(); label.text = text; label.textColor = .secondaryLabel
-        label.font = .systemFont(ofSize: 16, weight: .semibold)
+        label.font = AlmidyDesignTokens.Font.semibold(16)
         return label
     }
 
     private func sectionNote(_ text: String) -> UILabel {
         let label = UILabel(); label.text = text; label.textColor = AlmidyDesignTokens.Color.settingsSecondary; label.numberOfLines = 0
-        label.font = .systemFont(ofSize: 15)
+        label.font = AlmidyDesignTokens.Font.body(15)
         return label
     }
 
@@ -1837,7 +1837,7 @@ private final class NativeTripOverviewCustomizeViewController: UIViewController,
             let item = UIView(); item.translatesAutoresizingMaskIntoConstraints = false
             let circle = UIView(); circle.backgroundColor = shortcut.tint.withAlphaComponent(0.12); circle.layer.cornerRadius = 32
             let image = UIImageView(image: UIImage(systemName: shortcut.symbol)); image.tintColor = shortcut.tint; image.contentMode = .scaleAspectFit
-            let label = UILabel(); label.text = shortcut.title; label.font = .systemFont(ofSize: 13); label.textAlignment = .center; label.textColor = AlmidyDesignTokens.Color.settingsSecondary; label.adjustsFontSizeToFitWidth = true; label.minimumScaleFactor = 0.72
+            let label = UILabel(); label.text = shortcut.title; label.font = AlmidyDesignTokens.Font.body(13); label.textAlignment = .center; label.textColor = AlmidyDesignTokens.Color.settingsSecondary; label.adjustsFontSizeToFitWidth = true; label.minimumScaleFactor = 0.72
             let remove = UIButton(type: .system); remove.setImage(UIImage(systemName: "minus", withConfiguration: UIImage.SymbolConfiguration(pointSize: 10, weight: .bold)), for: .normal); remove.tintColor = .white; remove.backgroundColor = AlmidyDesignTokens.Color.danger; remove.layer.cornerRadius = 10; remove.tag = index
             remove.addTarget(self, action: #selector(removeShortcut(_:)), for: .touchUpInside)
             [circle, image, label, remove].forEach { $0.translatesAutoresizingMaskIntoConstraints = false; item.addSubview($0) }
@@ -1890,7 +1890,7 @@ private final class NativeTripOverviewCustomizeViewController: UIViewController,
         content.image = widgetIcon(for: widget)
         content.imageProperties.maximumSize = CGSize(width: 36, height: 36)
         content.imageProperties.reservedLayoutSize = CGSize(width: 48, height: 36)
-        content.textProperties.font = .systemFont(ofSize: 18, weight: .semibold)
+        content.textProperties.font = AlmidyDesignTokens.Font.semibold(18)
         cell.contentConfiguration = content
         cell.backgroundColor = .clear
         cell.showsReorderControl = true

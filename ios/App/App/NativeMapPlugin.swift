@@ -1661,7 +1661,7 @@ final class NativeMapPreferencesViewController: UIViewController {
 
         let titleLabel = UILabel()
         titleLabel.text = "Map Preferences"
-        titleLabel.font = .systemFont(ofSize: Self.titleFontSize, weight: .regular)
+        titleLabel.font = AlmidyDesignTokens.Font.body(Self.titleFontSize)
         titleLabel.adjustsFontForContentSizeCategory = true
 
         let closeButton = AlmidyIconButton(
@@ -1735,7 +1735,7 @@ final class NativeMapPreferencesViewController: UIViewController {
 
         let label = UILabel()
         label.text = title
-        label.font = .systemFont(ofSize: 20, weight: .regular)
+        label.font = AlmidyDesignTokens.Font.body(20)
         label.textColor = .label
         label.textAlignment = .center
         label.backgroundColor = AlmidyDesignTokens.Color.settingsCard
@@ -2230,7 +2230,7 @@ final class NativeActivityPlaceDetailsViewController: UIViewController {
 
         let title = UILabel()
         title.text = mapItem.name ?? "Place"
-        title.font = .systemFont(ofSize: 24, weight: .semibold)
+        title.font = AlmidyDesignTokens.Font.semibold(24)
         title.textAlignment = .center
         title.numberOfLines = 2
         title.lineBreakMode = .byTruncatingTail
@@ -2241,7 +2241,7 @@ final class NativeActivityPlaceDetailsViewController: UIViewController {
         let locality = placeLocality()
         subtitle.text = [placeCategoryName(), locality]
             .compactMap { $0 }.joined(separator: " in ")
-        subtitle.font = .systemFont(ofSize: 16, weight: .regular)
+        subtitle.font = AlmidyDesignTokens.Font.body(16)
         subtitle.textColor = UIColor.secondaryLabel.withAlphaComponent(0.78)
         subtitle.textAlignment = .center
 
@@ -2327,7 +2327,7 @@ final class NativeActivityPlaceDetailsViewController: UIViewController {
         let stack = cardStack()
         let title = UILabel()
         title.text = "Travel Time"
-        title.font = .systemFont(ofSize: 22, weight: .semibold)
+        title.font = AlmidyDesignTokens.Font.semibold(22)
         stack.addArrangedSubview(padded(title, insets: UIEdgeInsets(top: 18, left: 16, bottom: 8, right: 16)))
 
         let meters = CLLocation(latitude: origin.latitude, longitude: origin.longitude).distance(
@@ -2539,7 +2539,7 @@ final class NativeActivityPlaceDetailsViewController: UIViewController {
 
         let save = UIButton(type: .system)
         save.setTitle("Save Place", for: .normal)
-        save.titleLabel?.font = .systemFont(ofSize: 20, weight: .semibold)
+        save.titleLabel?.font = AlmidyDesignTokens.Font.semibold(20)
         save.setTitleColor(
             UIColor(red: 1.0, green: 0.91, blue: 0.67, alpha: 1),
             for: .normal
@@ -2662,11 +2662,11 @@ final class NativeActivityPlaceDetailsViewController: UIViewController {
     private func detailRow(label: String, value: String, action: (() -> Void)?) -> UIView {
         let caption = UILabel()
         caption.text = label
-        caption.font = .systemFont(ofSize: 14, weight: .regular)
+        caption.font = AlmidyDesignTokens.Font.body(14)
         caption.textColor = UIColor.secondaryLabel.withAlphaComponent(0.72)
         let detail = UILabel()
         detail.text = value
-        detail.font = .systemFont(ofSize: 16, weight: .regular)
+        detail.font = AlmidyDesignTokens.Font.body(16)
         detail.textColor = action == nil ? .label : category.palette.tint
         detail.numberOfLines = 0
         let stack = UIStackView(arrangedSubviews: [caption, detail])
@@ -2716,7 +2716,7 @@ final class NativeActivityPlaceDetailsViewController: UIViewController {
         ])
         let label = UILabel()
         label.text = title
-        label.font = .systemFont(ofSize: 16, weight: .regular)
+        label.font = AlmidyDesignTokens.Font.body(16)
         label.numberOfLines = 1
         if capturesTitleLabel {
             travelSummaryLabel = label
@@ -2982,7 +2982,7 @@ private final class NativeVerticalCalendarView: UIView {
             label.text = weekday.uppercased()
             label.textAlignment = .center
             label.textColor = .secondaryLabel
-            label.font = .systemFont(ofSize: 13, weight: .semibold)
+            label.font = AlmidyDesignTokens.Font.semibold(13)
             weekdayRow.addArrangedSubview(label)
         }
 
@@ -3031,7 +3031,7 @@ private final class NativeVerticalCalendarView: UIView {
         formatter.dateFormat = "MMMM yyyy"
         let title = UILabel()
         title.text = formatter.string(from: month)
-        title.font = .systemFont(ofSize: 23, weight: .semibold)
+        title.font = AlmidyDesignTokens.Font.semibold(23)
         container.addArrangedSubview(title)
 
         let grid = UIStackView()
@@ -3056,7 +3056,7 @@ private final class NativeVerticalCalendarView: UIView {
                 let index = rowIndex * 7 + column
                 let day = index - leadingBlanks + 1
                 let button = UIButton(type: .system)
-                button.titleLabel?.font = .systemFont(ofSize: 20, weight: .regular)
+                button.titleLabel?.font = AlmidyDesignTokens.Font.body(20)
                 button.heightAnchor.constraint(equalToConstant: 42).isActive = true
                 guard day >= 1, day <= dayRange.count,
                       let date = calendar.date(byAdding: .day, value: day - 1, to: month) else {
@@ -3149,7 +3149,7 @@ final class NativeFlightSearchViewController: UIViewController,
         let cancel = UIButton(type: .system)
         cancel.setTitle("Cancel", for: .normal)
         cancel.setTitleColor(.label, for: .normal)
-        cancel.titleLabel?.font = .systemFont(ofSize: 18, weight: .medium)
+        cancel.titleLabel?.font = AlmidyDesignTokens.Font.title(18)
         cancel.backgroundColor = UIColor.secondarySystemBackground.withAlphaComponent(0.82)
         cancel.layer.cornerRadius = 22
         cancel.layer.shadowColor = UIColor.black.cgColor
@@ -3160,11 +3160,11 @@ final class NativeFlightSearchViewController: UIViewController,
 
         let title = UILabel()
         title.text = "Search Flight"
-        title.font = .systemFont(ofSize: 22, weight: .semibold)
+        title.font = AlmidyDesignTokens.Font.semibold(22)
         title.textAlignment = .center
 
         searchField.placeholder = "Airport, Airline or Flight Number (e.g AA107)"
-        searchField.font = .systemFont(ofSize: 17)
+        searchField.font = AlmidyDesignTokens.Font.body(17)
         searchField.backgroundColor = .secondarySystemFill
         searchField.layer.cornerRadius = 12
         searchField.clearButtonMode = .whileEditing
@@ -3229,16 +3229,16 @@ final class NativeFlightSearchViewController: UIViewController,
         icon.contentMode = .scaleAspectFit
         let title = UILabel()
         title.text = "Forward Reservations"
-        title.font = .systemFont(ofSize: 18, weight: .semibold)
+        title.font = AlmidyDesignTokens.Font.semibold(18)
         let detail = UILabel()
         detail.text = "Forward ticket reservations, and save in your itinerary automatically."
-        detail.font = .systemFont(ofSize: 14)
+        detail.font = AlmidyDesignTokens.Font.body(14)
         detail.textColor = .secondaryLabel
         detail.numberOfLines = 2
         let setup = UIButton(type: .system)
         setup.setTitle("Set Up Now", for: .normal)
         setup.setTitleColor(AlmidyDesignTokens.Color.goldDark, for: .normal)
-        setup.titleLabel?.font = .systemFont(ofSize: 17, weight: .semibold)
+        setup.titleLabel?.font = AlmidyDesignTokens.Font.semibold(17)
         setup.contentHorizontalAlignment = .leading
         setup.addTarget(self, action: #selector(setUpForwarding), for: .touchUpInside)
         let close = UIButton(type: .system)
@@ -3347,7 +3347,7 @@ final class NativeFlightSearchViewController: UIViewController,
             content.secondaryText = completion.subtitle
         }
         content.imageProperties.tintColor = AlmidyDesignTokens.Color.goldDark
-        content.textProperties.font = .systemFont(ofSize: 16, weight: .medium)
+        content.textProperties.font = AlmidyDesignTokens.Font.title(16)
         content.secondaryTextProperties.color = .secondaryLabel
         cell.contentConfiguration = content
         return cell
@@ -3409,11 +3409,11 @@ final class NativeFlightSearchViewController: UIViewController,
         let icons = flightPromptIcons()
         let prompt = UILabel()
         prompt.text = "Enter Arrival"
-        prompt.font = .systemFont(ofSize: 24, weight: .semibold)
+        prompt.font = AlmidyDesignTokens.Font.semibold(24)
         prompt.textAlignment = .center
         let subtitle = UILabel()
         subtitle.text = "You can search by arrival city or airport"
-        subtitle.font = .systemFont(ofSize: 17)
+        subtitle.font = AlmidyDesignTokens.Font.body(17)
         subtitle.textColor = .secondaryLabel
         subtitle.textAlignment = .center
         let empty = UIStackView(arrangedSubviews: [icons, prompt, subtitle])
@@ -3521,7 +3521,7 @@ final class NativeFlightSearchViewController: UIViewController,
         let field = UITextField()
         field.placeholder = text
         field.text = text == "Flight Number" || text == "Date" ? nil : text
-        field.font = .systemFont(ofSize: 17)
+        field.font = AlmidyDesignTokens.Font.body(17)
         field.backgroundColor = .secondarySystemFill
         field.layer.cornerRadius = 12
         field.setPadding(44)
@@ -3560,13 +3560,13 @@ final class NativeFlightSearchViewController: UIViewController,
         let icon = UILabel()
         icon.text = selectedAirline?.codes.components(separatedBy: " · ").last ?? "✈"
         icon.textColor = AlmidyDesignTokens.Color.goldDark
-        icon.font = .systemFont(ofSize: 16, weight: .medium)
+        icon.font = AlmidyDesignTokens.Font.title(16)
         let title = UILabel()
         title.tag = 201
-        title.font = .systemFont(ofSize: 20, weight: .semibold)
+        title.font = AlmidyDesignTokens.Font.semibold(20)
         let subtitle = UILabel()
         subtitle.text = selectedAirline?.name
-        subtitle.font = .systemFont(ofSize: 14)
+        subtitle.font = AlmidyDesignTokens.Font.body(14)
         subtitle.textColor = .secondaryLabel
         let labels = UIStackView(arrangedSubviews: [title, subtitle])
         labels.axis = .vertical
@@ -3677,18 +3677,18 @@ final class NativeFlightSearchViewController: UIViewController,
         symbols.alignment = .center
         let heading = UILabel()
         heading.text = "Search Flight"
-        heading.font = .systemFont(ofSize: 24, weight: .semibold)
+        heading.font = AlmidyDesignTokens.Font.semibold(24)
         heading.textAlignment = .center
         let detail = UILabel()
         detail.text = "Search by Airport, Airline, or Flight Number. If it’s not a commercial flight, add it manually."
-        detail.font = .systemFont(ofSize: 16)
+        detail.font = AlmidyDesignTokens.Font.body(16)
         detail.textColor = .secondaryLabel
         detail.textAlignment = .center
         detail.numberOfLines = 3
         let manual = UIButton(type: .system)
         manual.setTitle("Enter manually", for: .normal)
         manual.setTitleColor(AlmidyDesignTokens.Color.goldDark, for: .normal)
-        manual.titleLabel?.font = .systemFont(ofSize: 18, weight: .semibold)
+        manual.titleLabel?.font = AlmidyDesignTokens.Font.semibold(18)
         manual.addTarget(self, action: #selector(openManualFlightRoute), for: .touchUpInside)
         let stack = UIStackView(arrangedSubviews: [symbols, heading, detail, manual])
         stack.axis = .vertical
@@ -3721,16 +3721,16 @@ final class NativeFlightSearchViewController: UIViewController,
 
         let airlineLabel = UILabel()
         airlineLabel.text = airline
-        airlineLabel.font = .systemFont(ofSize: 19, weight: .semibold)
+        airlineLabel.font = AlmidyDesignTokens.Font.semibold(19)
         let route = UILabel()
         route.text = "Flight details will be confirmed when you save."
-        route.font = .systemFont(ofSize: 15)
+        route.font = AlmidyDesignTokens.Font.body(15)
         route.textColor = .secondaryLabel
         route.numberOfLines = 2
         let dateLabel = UILabel()
         dateLabel.text = "\(dayFormatter.string(from: date))\n\(code)\(number)"
         dateLabel.textColor = .secondaryLabel
-        dateLabel.font = .systemFont(ofSize: 16, weight: .medium)
+        dateLabel.font = AlmidyDesignTokens.Font.title(16)
         dateLabel.textAlignment = .right
         dateLabel.numberOfLines = 2
         let left = UIStackView(arrangedSubviews: [airlineLabel, route])
@@ -3742,11 +3742,11 @@ final class NativeFlightSearchViewController: UIViewController,
         let question = UILabel()
         question.text = "Unable to find what you want?"
         question.textColor = .secondaryLabel
-        question.font = .systemFont(ofSize: 16)
+        question.font = AlmidyDesignTokens.Font.body(16)
         let manual = UIButton(type: .system)
         manual.setTitle("Enter manually", for: .normal)
         manual.setTitleColor(AlmidyDesignTokens.Color.goldDark, for: .normal)
-        manual.titleLabel?.font = .systemFont(ofSize: 17, weight: .semibold)
+        manual.titleLabel?.font = AlmidyDesignTokens.Font.semibold(17)
         manual.addTarget(self, action: #selector(openManualFlightRoute), for: .touchUpInside)
         let footer = UIStackView(arrangedSubviews: [question, UIView(), manual])
         footer.axis = .horizontal
@@ -3965,13 +3965,13 @@ final class NativeManualFlightRouteViewController: UIViewController,
         title.text = routeKind == .location
             ? "\(initialLocationCategory ?? "Place") Details"
             : routeKind.title
-        title.font = .systemFont(ofSize: 22, weight: .semibold)
+        title.font = AlmidyDesignTokens.Font.semibold(22)
         title.textAlignment = .center
         let save = UIButton(type: .system)
         saveButton = save
         save.setTitle("Save", for: .normal)
         save.isEnabled = false
-        save.titleLabel?.font = .systemFont(ofSize: 18, weight: .semibold)
+        save.titleLabel?.font = AlmidyDesignTokens.Font.semibold(18)
         save.backgroundColor = .tertiarySystemFill
         save.layer.cornerRadius = 20
         save.accessibilityIdentifier = "native-flight-save"
@@ -3984,7 +3984,7 @@ final class NativeManualFlightRouteViewController: UIViewController,
         let stack = UIStackView()
         stack.axis = .vertical
         stack.spacing = 14
-        submissionStatusLabel.font = .systemFont(ofSize: 15, weight: .medium)
+        submissionStatusLabel.font = AlmidyDesignTokens.Font.title(15)
         submissionStatusLabel.textColor = .systemRed
         submissionStatusLabel.numberOfLines = 0
         submissionStatusLabel.textAlignment = .center
@@ -4185,7 +4185,7 @@ final class NativeManualFlightRouteViewController: UIViewController,
             icon.text = "+"
             icon.textAlignment = .center
             icon.textColor = AlmidyDesignTokens.Color.goldDark
-            icon.font = .systemFont(ofSize: 27)
+            icon.font = AlmidyDesignTokens.Font.body(27)
             addIcon = icon
         }
         addIcon.backgroundColor = AlmidyDesignTokens.Color.goldDark.withAlphaComponent(0.12)
@@ -4196,7 +4196,7 @@ final class NativeManualFlightRouteViewController: UIViewController,
         addIcon.setContentHuggingPriority(.required, for: .horizontal)
         addIcon.setContentCompressionResistancePriority(.required, for: .horizontal)
         addIcon.setContentCompressionResistancePriority(.required, for: .vertical)
-        let add = UIButton(type: .system); add.setTitle(title, for: .normal); add.setTitleColor(AlmidyDesignTokens.Color.goldDark, for: .normal); add.titleLabel?.font = .systemFont(ofSize: 18, weight: .semibold); add.contentHorizontalAlignment = .leading; add.isUserInteractionEnabled = false
+        let add = UIButton(type: .system); add.setTitle(title, for: .normal); add.setTitleColor(AlmidyDesignTokens.Color.goldDark, for: .normal); add.titleLabel?.font = AlmidyDesignTokens.Font.semibold(18); add.contentHorizontalAlignment = .leading; add.isUserInteractionEnabled = false
         if footer == "Departure" || footer == "Pick-up" { departureButton = add } else { arrivalButton = add }
         let addRow = UIStackView(arrangedSubviews: [addIcon, add]); addRow.axis = .horizontal; addRow.alignment = .center; addRow.spacing = 14
         addRow.isUserInteractionEnabled = true
@@ -4204,7 +4204,7 @@ final class NativeManualFlightRouteViewController: UIViewController,
         addRow.accessibilityLabel = title
         addRow.addGestureRecognizer(UITapGestureRecognizer(target: self, action: action))
         let separator = UIView(); separator.backgroundColor = .separator; separator.heightAnchor.constraint(equalToConstant: 0.5).isActive = true
-        let footerLabel = UILabel(); footerLabel.text = footer; footerLabel.textColor = .secondaryLabel; footerLabel.font = .systemFont(ofSize: 18, weight: .semibold)
+        let footerLabel = UILabel(); footerLabel.text = footer; footerLabel.textColor = .secondaryLabel; footerLabel.font = AlmidyDesignTokens.Font.semibold(18)
         let date = UIButton(type: .system); date.setTitle("Date", for: .normal); date.tintColor = .label; date.backgroundColor = .secondarySystemFill; date.layer.cornerRadius = 8
         date.contentEdgeInsets = UIEdgeInsets(top: 0, left: 12, bottom: 0, right: 12)
         date.setContentHuggingPriority(.required, for: .horizontal)
@@ -4243,7 +4243,7 @@ final class NativeManualFlightRouteViewController: UIViewController,
         let label = UILabel()
         label.text = "Same Drop-off Address"
         label.textColor = .secondaryLabel
-        label.font = .systemFont(ofSize: 19, weight: .semibold)
+        label.font = AlmidyDesignTokens.Font.semibold(19)
         let toggle = UISwitch()
         toggle.isOn = true
         toggle.onTintColor = accent
@@ -4264,7 +4264,7 @@ final class NativeManualFlightRouteViewController: UIViewController,
         let footerLabel = UILabel()
         footerLabel.text = footer
         footerLabel.textColor = .secondaryLabel
-        footerLabel.font = .systemFont(ofSize: 18, weight: .semibold)
+        footerLabel.font = AlmidyDesignTokens.Font.semibold(18)
         let date = UIButton(type: .system)
         date.setTitle("Date", for: .normal)
         date.tintColor = .label
@@ -4641,7 +4641,7 @@ final class NativeManualFlightRouteViewController: UIViewController,
         let label = UILabel()
         label.text = title
         label.textColor = .secondaryLabel
-        label.font = .systemFont(ofSize: 19, weight: .semibold)
+        label.font = AlmidyDesignTokens.Font.semibold(19)
         if title == "Total Cost" { totalCostLabel = label }
         if title == "Write a note" { noteLabel = label }
         let row = UIStackView(arrangedSubviews: [icon, label])
@@ -4666,10 +4666,10 @@ final class NativeManualFlightRouteViewController: UIViewController,
         let title = UILabel()
         title.text = "Distance"
         title.textColor = .secondaryLabel
-        title.font = .systemFont(ofSize: 17, weight: .regular)
+        title.font = AlmidyDesignTokens.Font.body(17)
         let value = UILabel()
         value.textColor = .label
-        value.font = .systemFont(ofSize: 17, weight: .regular)
+        value.font = AlmidyDesignTokens.Font.body(17)
         value.textAlignment = .right
         distanceValueLabel = value
         let row = UIStackView(arrangedSubviews: [title, UIView(), value])
@@ -4791,7 +4791,7 @@ final class NativeManualFlightRouteViewController: UIViewController,
         let text = NSMutableAttributedString(
             string: name,
             attributes: [
-                .font: UIFont.systemFont(ofSize: 18, weight: .semibold),
+                .font: AlmidyDesignTokens.Font.semibold(18),
                 .foregroundColor: UIColor.label,
             ]
         )
@@ -4799,7 +4799,7 @@ final class NativeManualFlightRouteViewController: UIViewController,
             text.append(NSAttributedString(
                 string: "\n\(address)",
                 attributes: [
-                    .font: UIFont.systemFont(ofSize: 15, weight: .regular),
+                    .font: AlmidyDesignTokens.Font.body(15),
                     .foregroundColor: UIColor.secondaryLabel,
                 ]
             ))
@@ -5252,7 +5252,7 @@ private final class NativeFlightARPreviewViewController: UIViewController, MKMap
 
         let title = UILabel()
         title.text = "\(departure.name ?? "Departure")  →  \(arrival.name ?? "Arrival")"
-        title.font = .systemFont(ofSize: 17, weight: .semibold)
+        title.font = AlmidyDesignTokens.Font.semibold(17)
         title.textColor = .label
         title.numberOfLines = 2
 
@@ -5326,7 +5326,7 @@ private final class NativeFlightARPreviewViewController: UIViewController, MKMap
 
     private func addPlaneNode() {
         let text = SCNText(string: "✈︎", extrusionDepth: 0.02)
-        text.font = .systemFont(ofSize: 0.34, weight: .semibold)
+        text.font = AlmidyDesignTokens.Font.semibold(0.34)
         text.firstMaterial?.diffuse.contents = accent
         let node = SCNNode(geometry: text)
         let bounds = text.boundingBox
@@ -5386,13 +5386,13 @@ private final class NativeFlightLocationSearchViewController: UIViewController,
 
         cancelButton.setTitle("Cancel", for: .normal)
         cancelButton.setTitleColor(.label, for: .normal)
-        cancelButton.titleLabel?.font = .systemFont(ofSize: 18, weight: .medium)
+        cancelButton.titleLabel?.font = AlmidyDesignTokens.Font.title(18)
         cancelButton.backgroundColor = .secondarySystemBackground
         cancelButton.layer.cornerRadius = 22
         cancelButton.addTarget(self, action: #selector(close), for: .touchUpInside)
 
         titleLabel.text = screenTitle
-        titleLabel.font = .systemFont(ofSize: 22, weight: .semibold)
+        titleLabel.font = AlmidyDesignTokens.Font.semibold(22)
         titleLabel.textAlignment = .center
 
         searchContainer.backgroundColor = .systemBackground
@@ -5405,7 +5405,7 @@ private final class NativeFlightLocationSearchViewController: UIViewController,
         searchIcon.tintColor = .label
         searchIcon.contentMode = .scaleAspectFit
         searchField.placeholder = "City or Airport"
-        searchField.font = .systemFont(ofSize: 20)
+        searchField.font = AlmidyDesignTokens.Font.body(20)
         searchField.textColor = .label
         searchField.tintColor = AlmidyDesignTokens.Color.goldDark
         searchField.clearButtonMode = .never
@@ -5636,7 +5636,7 @@ private final class NativeRouteDestinationSearchViewController: UIViewController
         let cancel = UIButton(type: .system)
         cancel.setTitle("Cancel", for: .normal)
         cancel.setTitleColor(.label, for: .normal)
-        cancel.titleLabel?.font = .systemFont(ofSize: 18, weight: .medium)
+        cancel.titleLabel?.font = AlmidyDesignTokens.Font.title(18)
         cancel.backgroundColor = UIColor.secondarySystemBackground.withAlphaComponent(0.82)
         cancel.layer.cornerRadius = 22
         cancel.layer.shadowColor = UIColor.black.cgColor
@@ -5647,11 +5647,11 @@ private final class NativeRouteDestinationSearchViewController: UIViewController
 
         let title = UILabel()
         title.text = screenTitle
-        title.font = .systemFont(ofSize: 22, weight: .semibold)
+        title.font = AlmidyDesignTokens.Font.semibold(22)
         title.textAlignment = .center
 
         searchField.placeholder = "Search by a locality"
-        searchField.font = .systemFont(ofSize: 17)
+        searchField.font = AlmidyDesignTokens.Font.body(17)
         searchField.backgroundColor = .secondarySystemFill
         searchField.layer.cornerRadius = 12
         searchField.clearButtonMode = .whileEditing
@@ -5708,7 +5708,7 @@ private final class NativeRouteDestinationSearchViewController: UIViewController
 
     private func configureScopeButton(_ button: UIButton, title: String, action: Selector) {
         button.setTitle(title, for: .normal)
-        button.titleLabel?.font = .systemFont(ofSize: 17, weight: .regular)
+        button.titleLabel?.font = AlmidyDesignTokens.Font.body(17)
         button.addTarget(self, action: action, for: .touchUpInside)
     }
 
@@ -5761,10 +5761,10 @@ private final class NativeRouteDestinationSearchViewController: UIViewController
         content.imageProperties.tintColor = accent
         content.text = completion.title
         content.secondaryText = completion.subtitle
-        content.textProperties.font = .systemFont(ofSize: 16, weight: .medium)
+        content.textProperties.font = AlmidyDesignTokens.Font.title(16)
         content.textProperties.numberOfLines = 1
         content.secondaryTextProperties.color = .secondaryLabel
-        content.secondaryTextProperties.font = .systemFont(ofSize: 15, weight: .regular)
+        content.secondaryTextProperties.font = AlmidyDesignTokens.Font.body(15)
         content.secondaryTextProperties.numberOfLines = 1
         content.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 12)
         cell.contentConfiguration = content
@@ -6322,7 +6322,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         titleLabel.tag = 4101
 
         let descriptionLabel = UILabel()
-        descriptionLabel.font = .systemFont(ofSize: 14, weight: .regular)
+        descriptionLabel.font = AlmidyDesignTokens.Font.body(14)
         descriptionLabel.textColor = AlmidyDesignTokens.Color.textSecondary
         descriptionLabel.numberOfLines = 0
         descriptionLabel.textAlignment = .center
@@ -6987,7 +6987,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         let eyebrow = UILabel()
         eyebrow.text = "WELCOME"
         eyebrow.textColor = AlmidyDesignTokens.Color.goldSoft
-        eyebrow.font = .systemFont(ofSize: 14, weight: .semibold)
+        eyebrow.font = AlmidyDesignTokens.Font.semibold(14)
 
         let title = UILabel()
         title.text = "Get Started"
@@ -7035,7 +7035,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
 
         let iconView = UILabel()
         iconView.text = regionFlagEmoji()
-        iconView.font = .systemFont(ofSize: 38)
+        iconView.font = AlmidyDesignTokens.Font.body(38)
         iconView.textAlignment = .center
         iconView.backgroundColor = AlmidyDesignTokens.Color.surface
         iconView.layer.cornerRadius = AlmidyDesignTokens.Radius.control
@@ -9927,7 +9927,7 @@ private final class NativeAuthViewController: UIViewController, ASAuthorizationC
         bodyStack.alignment = .fill
         bodyStack.spacing = 16
         bodyStack.translatesAutoresizingMaskIntoConstraints = false
-        statusLabel.font = .systemFont(ofSize: 15, weight: .medium)
+        statusLabel.font = AlmidyDesignTokens.Font.title(15)
         statusLabel.textColor = AlmidyDesignTokens.Color.danger
         statusLabel.numberOfLines = 0
         statusLabel.textAlignment = .center
@@ -10165,7 +10165,7 @@ private final class NativeAuthViewController: UIViewController, ASAuthorizationC
             let paragraph = NSMutableParagraphStyle()
             paragraph.alignment = .center
             let attributes: [NSAttributedString.Key: Any] = [
-                .font: UIFont.systemFont(ofSize: size),
+                .font: AlmidyDesignTokens.Font.body(size),
                 .paragraphStyle: paragraph
             ]
             let rect = CGRect(x: 0, y: (canvas.height - size * 1.15) / 2, width: canvas.width, height: size * 1.15)
@@ -10255,7 +10255,7 @@ private final class NativeAuthViewController: UIViewController, ASAuthorizationC
             let forgot = UIButton(type: .system)
             forgot.setTitle("Forgot Password?", for: .normal)
             forgot.setTitleColor(orange, for: .normal)
-            forgot.titleLabel?.font = .systemFont(ofSize: 20, weight: .regular)
+            forgot.titleLabel?.font = AlmidyDesignTokens.Font.body(20)
             forgot.addTarget(self, action: #selector(forgotPassword), for: .touchUpInside)
             forgot.accessibilityLabel = "Forgot password"
             forgot.heightAnchor.constraint(greaterThanOrEqualToConstant: 44).isActive = true
@@ -10289,7 +10289,7 @@ private final class NativeAuthViewController: UIViewController, ASAuthorizationC
     private func makeLabel(_ text: String, size: CGFloat, weight: UIFont.Weight, color: UIColor, alignment: NSTextAlignment) -> UILabel {
         let label = UILabel()
         label.text = text
-        label.font = .systemFont(ofSize: size, weight: weight)
+        label.font = AlmidyDesignTokens.Font.font(size, weight: weight)
         label.textColor = color
         label.textAlignment = alignment
         label.numberOfLines = 0
@@ -10751,7 +10751,7 @@ private final class NativeCaptureIdeasViewController: UIViewController, PHPicker
         let cancel = UIButton(type: .system)
         cancel.setTitle("Cancel", for: .normal)
         cancel.setTitleColor(AlmidyDesignTokens.Color.settingsGold, for: .normal)
-        cancel.titleLabel?.font = .systemFont(ofSize: 17, weight: .semibold)
+        cancel.titleLabel?.font = AlmidyDesignTokens.Font.semibold(17)
         cancel.addTarget(self, action: #selector(close), for: .touchUpInside)
 
         let title = UILabel()
@@ -10762,7 +10762,7 @@ private final class NativeCaptureIdeasViewController: UIViewController, PHPicker
         let subtitle = UILabel()
         subtitle.text = "Forward a reservation, paste a note, or save an idea without leaving your globe."
         subtitle.textColor = AlmidyDesignTokens.Color.settingsSecondary
-        subtitle.font = .systemFont(ofSize: 17, weight: .regular)
+        subtitle.font = AlmidyDesignTokens.Font.body(17)
         subtitle.numberOfLines = 0
 
         let sourceStack = UIStackView(arrangedSubviews: [
@@ -10775,11 +10775,11 @@ private final class NativeCaptureIdeasViewController: UIViewController, PHPicker
 
         sourceLabel.text = "Choose a capture option to start."
         sourceLabel.textColor = AlmidyDesignTokens.Color.settingsSecondary
-        sourceLabel.font = .systemFont(ofSize: 15, weight: .medium)
+        sourceLabel.font = AlmidyDesignTokens.Font.title(15)
 
         noteView.backgroundColor = AlmidyDesignTokens.Color.settingsCard
         noteView.textColor = AlmidyDesignTokens.Color.settingsText
-        noteView.font = .systemFont(ofSize: 17, weight: .regular)
+        noteView.font = AlmidyDesignTokens.Font.body(17)
         noteView.layer.cornerRadius = 16
         noteView.layer.borderWidth = 1
         noteView.layer.borderColor = AlmidyDesignTokens.Color.settingsLine.cgColor
@@ -10790,7 +10790,7 @@ private final class NativeCaptureIdeasViewController: UIViewController, PHPicker
 
         linkField.placeholder = "Paste a travel link"
         linkField.textColor = AlmidyDesignTokens.Color.settingsText
-        linkField.font = .systemFont(ofSize: 17, weight: .regular)
+        linkField.font = AlmidyDesignTokens.Font.body(17)
         linkField.borderStyle = .roundedRect
         linkField.isHidden = true
 
@@ -10826,7 +10826,7 @@ private final class NativeCaptureIdeasViewController: UIViewController, PHPicker
         button.setImage(UIImage(systemName: systemName), for: .normal)
         button.setTitleColor(AlmidyDesignTokens.Color.settingsText, for: .normal)
         button.tintColor = AlmidyDesignTokens.Color.settingsIcon
-        button.titleLabel?.font = .systemFont(ofSize: 17, weight: .semibold)
+        button.titleLabel?.font = AlmidyDesignTokens.Font.semibold(17)
         button.backgroundColor = AlmidyDesignTokens.Color.settingsCard
         button.layer.cornerRadius = 16
         var configuration = UIButton.Configuration.plain()
@@ -11093,7 +11093,7 @@ private final class NativeActivitySearchAnnotationView: MKAnnotationView {
             width: Metrics.width,
             height: Metrics.labelHeight
         )
-        titleLabel.font = .systemFont(ofSize: 13, weight: .semibold)
+        titleLabel.font = AlmidyDesignTokens.Font.semibold(13)
         titleLabel.textColor = .white
         titleLabel.textAlignment = .center
         titleLabel.numberOfLines = 1
@@ -11328,7 +11328,7 @@ private final class NativeGeographicLabelAnnotationView: MKAnnotationView {
 
         switch annotation.kind {
         case .continent:
-            font = .systemFont(ofSize: 18, weight: .bold)
+            font = AlmidyDesignTokens.Font.bold(18)
             fillColor = .white
             strokeColor = UIColor.black.withAlphaComponent(0.88)
             strokeWidth = -4
@@ -11473,7 +11473,7 @@ private final class NativeTripFlagAnnotationView: MKAnnotationView {
         addSubview(flagBadgeView)
 
         flagLabel.backgroundColor = .clear
-        flagLabel.font = .systemFont(ofSize: 36)
+        flagLabel.font = AlmidyDesignTokens.Font.body(36)
         flagLabel.textAlignment = .center
         flagLabel.layer.cornerRadius = 20
         flagLabel.clipsToBounds = true
@@ -11481,7 +11481,7 @@ private final class NativeTripFlagAnnotationView: MKAnnotationView {
         flagBadgeView.addSubview(flagLabel)
 
         countryLabel.textColor = .white
-        countryLabel.font = .systemFont(ofSize: 14, weight: .bold)
+        countryLabel.font = AlmidyDesignTokens.Font.bold(14)
         countryLabel.textAlignment = .center
         countryLabel.adjustsFontSizeToFitWidth = true
         countryLabel.minimumScaleFactor = 0.72

@@ -25,7 +25,7 @@ extension NativeCreateTripViewController {
         configureNameField()
         configureDatePresentation()
 
-        locationStatus.font = .systemFont(ofSize: 14, weight: .medium)
+        locationStatus.font = AlmidyDesignTokens.Font.title(14)
         locationStatus.textColor = AlmidyDesignTokens.Color.tripCardTextTertiary
         locationStatus.textAlignment = .center
         locationStatus.numberOfLines = 0

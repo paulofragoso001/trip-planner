@@ -214,11 +214,11 @@ final class NativeItineraryViewController: UIViewController, UITableViewDataSour
         let month = UILabel()
         let formatter = DateFormatter(); formatter.dateFormat = "MMMM yyyy"
         month.text = formatter.string(from: startDate)
-        month.font = .systemFont(ofSize: 17, weight: .semibold)
+        month.font = AlmidyDesignTokens.Font.semibold(17)
         month.textColor = AlmidyDesignTokens.Color.textSecondary
         let title = UILabel()
         title.text = tripTitle
-        title.font = .systemFont(ofSize: 32, weight: .bold)
+        title.font = AlmidyDesignTokens.Font.bold(32)
         title.textColor = AlmidyDesignTokens.Color.textPrimary
         let close = UIButton(type: .system)
         close.setImage(UIImage(systemName: "xmark"), for: .normal)
@@ -293,7 +293,7 @@ final class NativeItineraryViewController: UIViewController, UITableViewDataSour
         todayConfiguration.title = "Today"
         today.configuration = todayConfiguration
         today.tintColor = AlmidyDesignTokens.Color.textPrimary
-        today.titleLabel?.font = .systemFont(ofSize: 17, weight: .semibold)
+        today.titleLabel?.font = AlmidyDesignTokens.Font.semibold(17)
         today.backgroundColor = AlmidyDesignTokens.Color.surface; today.layer.cornerRadius = 25
         applyFloatingShadow(to: today)
         today.addTarget(self, action: #selector(scrollToToday), for: .touchUpInside)
@@ -759,7 +759,7 @@ private final class NativeItineraryDatePickerViewController: UIViewController, U
         let cancel = UIButton(type: .system)
         cancel.setTitle("Cancel", for: .normal)
         cancel.setTitleColor(AlmidyDesignTokens.Color.goldDark, for: .normal)
-        cancel.titleLabel?.font = .systemFont(ofSize: 17, weight: .medium)
+        cancel.titleLabel?.font = AlmidyDesignTokens.Font.title(17)
         cancel.backgroundColor = AlmidyDesignTokens.Color.surface
         cancel.layer.cornerRadius = 22
         cancel.layer.shadowColor = AlmidyDesignTokens.Color.shadowBlack.cgColor
@@ -782,8 +782,8 @@ private final class NativeItineraryDatePickerViewController: UIViewController, U
                 thickness: 1,
                 color: AlmidyDesignTokens.Color.tripOverviewDivider
             ),
-            titleFont: .systemFont(ofSize: 18, weight: .bold),
-            subtitleFont: .systemFont(ofSize: 15)
+            titleFont: AlmidyDesignTokens.Font.bold(18),
+            subtitleFont: AlmidyDesignTokens.Font.body(15)
         )
         sheetHeader = header
 
@@ -848,11 +848,11 @@ private final class NativeItineraryDayButton: UIControl {
         super.init(frame: .zero)
         let weekdayFormatter = DateFormatter(); weekdayFormatter.dateFormat = "EEE"
         weekdayLabel.text = weekdayFormatter.string(from: date).uppercased()
-        weekdayLabel.font = .systemFont(ofSize: 12, weight: .semibold)
+        weekdayLabel.font = AlmidyDesignTokens.Font.semibold(12)
         weekdayLabel.textAlignment = .center
         weekdayLabel.textColor = AlmidyDesignTokens.Color.textSecondary
         numberLabel.text = "\(calendar.component(.day, from: date))"
-        numberLabel.font = .systemFont(ofSize: 19, weight: .regular)
+        numberLabel.font = AlmidyDesignTokens.Font.body(19)
         numberLabel.textAlignment = .center
         numberLabel.layer.cornerRadius = 20
         numberLabel.clipsToBounds = true
@@ -885,10 +885,10 @@ private final class NativeItineraryDayHeaderView: UIView {
         backgroundColor = AlmidyDesignTokens.Color.surface
         let formatter = DateFormatter(); formatter.dateFormat = "EEE, MMMM d"
         let dateLabel = UILabel(); dateLabel.text = formatter.string(from: date).uppercased()
-        dateLabel.font = .systemFont(ofSize: 17, weight: .semibold)
+        dateLabel.font = AlmidyDesignTokens.Font.semibold(17)
         dateLabel.textColor = AlmidyDesignTokens.Color.textSecondary
         let ordinalLabel = UILabel(); ordinalLabel.text = ordinal
-        ordinalLabel.font = .systemFont(ofSize: 16)
+        ordinalLabel.font = AlmidyDesignTokens.Font.body(16)
         ordinalLabel.textColor = Calendar.current.isDateInToday(date) ? AlmidyDesignTokens.Color.goldDark : AlmidyDesignTokens.Color.textSecondary
         let divider = UIView(); divider.backgroundColor = AlmidyDesignTokens.Color.tripOverviewDivider
         [dateLabel, ordinalLabel, divider].forEach { $0.translatesAutoresizingMaskIntoConstraints = false; addSubview($0) }
@@ -921,12 +921,12 @@ private final class NativeItineraryCalendarPromoCell: UITableViewCell {
 
         let title = UILabel()
         title.text = "Calendar Events"
-        title.font = .systemFont(ofSize: 17, weight: .semibold)
+        title.font = AlmidyDesignTokens.Font.semibold(17)
         title.textColor = AlmidyDesignTokens.Color.textPrimary
 
         let pro = UILabel()
         pro.text = "PRO"
-        pro.font = .systemFont(ofSize: 11, weight: .bold)
+        pro.font = AlmidyDesignTokens.Font.bold(11)
         pro.textColor = .white
         pro.textAlignment = .center
         pro.backgroundColor = AlmidyDesignTokens.Color.textTertiary
@@ -935,7 +935,7 @@ private final class NativeItineraryCalendarPromoCell: UITableViewCell {
 
         let message = UILabel()
         message.text = "Events from your personal calendar can be shown alongside your trip itineraries."
-        message.font = .systemFont(ofSize: 14)
+        message.font = AlmidyDesignTokens.Font.body(14)
         message.textColor = AlmidyDesignTokens.Color.textSecondary
         message.numberOfLines = 2
 
@@ -996,8 +996,8 @@ private final class NativeItineraryTimelineCell: UITableViewCell {
         node.backgroundColor = AlmidyDesignTokens.Color.goldMutedSurface
         node.layer.cornerRadius = 20
         iconView.tintColor = AlmidyDesignTokens.Color.goldDark; iconView.contentMode = .scaleAspectFit
-        title.font = .systemFont(ofSize: 17, weight: .semibold); title.textColor = AlmidyDesignTokens.Color.textPrimary
-        detail.font = .systemFont(ofSize: 14); detail.textColor = AlmidyDesignTokens.Color.textSecondary; detail.numberOfLines = 2
+        title.font = AlmidyDesignTokens.Font.semibold(17); title.textColor = AlmidyDesignTokens.Color.textPrimary
+        detail.font = AlmidyDesignTokens.Font.body(14); detail.textColor = AlmidyDesignTokens.Color.textSecondary; detail.numberOfLines = 2
         chevron.tintColor = AlmidyDesignTokens.Color.textTertiary; chevron.contentMode = .scaleAspectFit
         let text = UIStackView(arrangedSubviews: [title, detail]); text.axis = .vertical; text.spacing = 3
         [topLine, bottomLine, node, iconView, text, chevron].forEach { $0.translatesAutoresizingMaskIntoConstraints = false; contentView.addSubview($0) }

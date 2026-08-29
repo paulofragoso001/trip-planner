@@ -3,6 +3,58 @@ import UIKit
 @testable import Almidy
 
 final class AlmidyDesignSystemTests: XCTestCase {
+    func testInstrumentSansRequiredFacesResolveWithoutFallback() {
+        let expected = [
+            "InstrumentSans-Regular",
+            "InstrumentSans-Medium",
+            "InstrumentSans-SemiBold",
+            "InstrumentSans-Bold"
+        ]
+        XCTAssertEqual(AlmidyDesignTokens.Typography.Face.allCases.map(\.rawValue), expected)
+        for face in AlmidyDesignTokens.Typography.Face.allCases {
+            let font = face.font(ofSize: 17)
+            XCTAssertEqual(font.fontName, face.rawValue, "Missing or incorrectly registered face: \(face.rawValue)")
+            XCTAssertEqual(font.familyName, "Instrument Sans")
+        }
+    }
+
+    func testSemanticTypographyUsesInstrumentSansWeightMapping() {
+        XCTAssertEqual(AlmidyDesignTokens.Typography.displayHero.baseFont.fontName, "InstrumentSans-Regular")
+        XCTAssertEqual(AlmidyDesignTokens.Typography.body.baseFont.fontName, "InstrumentSans-Regular")
+        XCTAssertEqual(AlmidyDesignTokens.Font.title(17).fontName, "InstrumentSans-Medium")
+        XCTAssertEqual(AlmidyDesignTokens.Typography.cardTitle.baseFont.fontName, "InstrumentSans-SemiBold")
+        XCTAssertEqual(AlmidyDesignTokens.Typography.badge.baseFont.fontName, "InstrumentSans-Bold")
+    }
+
+    func testInstrumentSansSemanticRoleBaseSizesRemainFrozen() {
+        let roles: [(AlmidyDesignTokens.Typography.Style, CGFloat)] = [
+            (AlmidyDesignTokens.Typography.displayHero, 52),
+            (AlmidyDesignTokens.Typography.screenTitle, 24),
+            (AlmidyDesignTokens.Typography.sheetTitle, 22),
+            (AlmidyDesignTokens.Typography.sectionTitle, 20),
+            (AlmidyDesignTokens.Typography.cardTitle, 17),
+            (AlmidyDesignTokens.Typography.body, 17),
+            (AlmidyDesignTokens.Typography.bodyCompact, 15),
+            (AlmidyDesignTokens.Typography.bodyEmphasized, 17),
+            (AlmidyDesignTokens.Typography.action, 17),
+            (AlmidyDesignTokens.Typography.metadata, 13),
+            (AlmidyDesignTokens.Typography.metadataEmphasis, 13),
+            (AlmidyDesignTokens.Typography.caption, 12),
+            (AlmidyDesignTokens.Typography.badge, 11)
+        ]
+        for (role, expectedSize) in roles {
+            XCTAssertEqual(role.baseFont.pointSize, expectedSize)
+            XCTAssertTrue(role.baseFont.fontName.hasPrefix("InstrumentSans-"))
+        }
+    }
+
+    func testFixedSizeCompatibilityHelpersResolveInstrumentSans() {
+        XCTAssertEqual(AlmidyDesignTokens.Font.display(52).fontName, "InstrumentSans-Regular")
+        XCTAssertEqual(AlmidyDesignTokens.Font.body(18).pointSize, 18)
+        XCTAssertEqual(AlmidyDesignTokens.Font.semibold(17).fontName, "InstrumentSans-SemiBold")
+        XCTAssertEqual(AlmidyDesignTokens.Font.bold(11).fontName, "InstrumentSans-Bold")
+    }
+
     func testSharedSemanticColorsPreserveCanonicalValues() {
         assertColor(AlmidyDesignTokens.Color.accent, hex: 0xD6A84F)
         assertColor(AlmidyDesignTokens.Color.accentPressed, hex: 0xB88A2E)

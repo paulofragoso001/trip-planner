@@ -155,7 +155,7 @@ private final class NativeTransportationPrimaryFieldsView: UIView {
         for (index, name) in names.enumerated() {
             let field = NativeTransportationTextField(onChange: onChange)
             field.placeholder = name
-            field.font = .systemFont(ofSize: 17)
+            field.font = AlmidyDesignTokens.Font.body(17)
             field.heightAnchor.constraint(equalToConstant: 48).isActive = true
             field.accessibilityLabel = name
             field.accessibilityIdentifier = "native-flight-\(name.lowercased().replacingOccurrences(of: " ", with: "-"))"

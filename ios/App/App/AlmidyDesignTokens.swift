@@ -292,12 +292,19 @@ enum AlmidyDesignTokens {
     }
 
     enum Font {
-        static func display(_ size: CGFloat) -> UIFont { .systemFont(ofSize: size, weight: .regular) }
-        static func title(_ size: CGFloat) -> UIFont { .systemFont(ofSize: size, weight: .medium) }
-        static func section(_ size: CGFloat) -> UIFont { .systemFont(ofSize: size, weight: .medium) }
-        static func body(_ size: CGFloat) -> UIFont { .systemFont(ofSize: size, weight: .regular) }
-        static func button(_ size: CGFloat) -> UIFont { .systemFont(ofSize: size, weight: .medium) }
-        static func semibold(_ size: CGFloat) -> UIFont { .systemFont(ofSize: size, weight: .semibold) }
+        static func display(_ size: CGFloat) -> UIFont { Typography.Face.regular.font(ofSize: size) }
+        static func title(_ size: CGFloat) -> UIFont { Typography.Face.medium.font(ofSize: size) }
+        static func section(_ size: CGFloat) -> UIFont { Typography.Face.medium.font(ofSize: size) }
+        static func body(_ size: CGFloat) -> UIFont { Typography.Face.regular.font(ofSize: size) }
+        static func button(_ size: CGFloat) -> UIFont { Typography.Face.medium.font(ofSize: size) }
+        static func semibold(_ size: CGFloat) -> UIFont { Typography.Face.semibold.font(ofSize: size) }
+        static func bold(_ size: CGFloat) -> UIFont { Typography.Face.bold.font(ofSize: size) }
+        static func font(_ size: CGFloat, weight: UIFont.Weight) -> UIFont {
+            if weight >= .bold { return bold(size) }
+            if weight >= .semibold { return semibold(size) }
+            if weight >= .medium { return title(size) }
+            return body(size)
+        }
     }
 }
 

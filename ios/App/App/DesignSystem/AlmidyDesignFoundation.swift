@@ -2,6 +2,26 @@ import UIKit
 
 extension AlmidyDesignTokens {
     enum Typography {
+        enum Face: String, CaseIterable {
+            case regular = "InstrumentSans-Regular"
+            case medium = "InstrumentSans-Medium"
+            case semibold = "InstrumentSans-SemiBold"
+            case bold = "InstrumentSans-Bold"
+
+            func font(ofSize size: CGFloat) -> UIFont {
+                UIFont(name: rawValue, size: size) ?? UIFont.systemFont(ofSize: size, weight: fallbackWeight)
+            }
+
+            private var fallbackWeight: UIFont.Weight {
+                switch self {
+                case .regular: return .regular
+                case .medium: return .medium
+                case .semibold: return .semibold
+                case .bold: return .bold
+                }
+            }
+        }
+
         struct Style {
             let baseFont: UIFont
             let textStyle: UIFont.TextStyle
@@ -24,19 +44,19 @@ extension AlmidyDesignTokens {
             }
         }
 
-        static let displayHero = Style(baseFont: .systemFont(ofSize: 52, weight: .regular), textStyle: .largeTitle)
-        static let screenTitle = Style(baseFont: .systemFont(ofSize: 24, weight: .semibold), textStyle: .title2)
-        static let sheetTitle = Style(baseFont: .systemFont(ofSize: 22, weight: .semibold), textStyle: .title2)
-        static let sectionTitle = Style(baseFont: .systemFont(ofSize: 20, weight: .semibold), textStyle: .title3)
-        static let cardTitle = Style(baseFont: .systemFont(ofSize: 17, weight: .semibold), textStyle: .headline)
-        static let body = Style(baseFont: .systemFont(ofSize: 17, weight: .regular), textStyle: .body)
-        static let bodyCompact = Style(baseFont: .systemFont(ofSize: 15, weight: .regular), textStyle: .subheadline)
-        static let bodyEmphasized = Style(baseFont: .systemFont(ofSize: 17, weight: .semibold), textStyle: .body)
-        static let action = Style(baseFont: .systemFont(ofSize: 17, weight: .semibold), textStyle: .headline)
-        static let metadata = Style(baseFont: .systemFont(ofSize: 13, weight: .regular), textStyle: .caption1)
-        static let metadataEmphasis = Style(baseFont: .systemFont(ofSize: 13, weight: .semibold), textStyle: .caption1)
-        static let caption = Style(baseFont: .systemFont(ofSize: 12, weight: .regular), textStyle: .caption2)
-        static let badge = Style(baseFont: .systemFont(ofSize: 11, weight: .bold), textStyle: .caption2)
+        static let displayHero = Style(baseFont: Face.regular.font(ofSize: 52), textStyle: .largeTitle)
+        static let screenTitle = Style(baseFont: Face.semibold.font(ofSize: 24), textStyle: .title2)
+        static let sheetTitle = Style(baseFont: Face.semibold.font(ofSize: 22), textStyle: .title2)
+        static let sectionTitle = Style(baseFont: Face.semibold.font(ofSize: 20), textStyle: .title3)
+        static let cardTitle = Style(baseFont: Face.semibold.font(ofSize: 17), textStyle: .headline)
+        static let body = Style(baseFont: Face.regular.font(ofSize: 17), textStyle: .body)
+        static let bodyCompact = Style(baseFont: Face.regular.font(ofSize: 15), textStyle: .subheadline)
+        static let bodyEmphasized = Style(baseFont: Face.semibold.font(ofSize: 17), textStyle: .body)
+        static let action = Style(baseFont: Face.semibold.font(ofSize: 17), textStyle: .headline)
+        static let metadata = Style(baseFont: Face.regular.font(ofSize: 13), textStyle: .caption1)
+        static let metadataEmphasis = Style(baseFont: Face.semibold.font(ofSize: 13), textStyle: .caption1)
+        static let caption = Style(baseFont: Face.regular.font(ofSize: 12), textStyle: .caption2)
+        static let badge = Style(baseFont: Face.bold.font(ofSize: 11), textStyle: .caption2)
     }
 
     enum Size {

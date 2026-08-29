@@ -386,24 +386,24 @@ enum NativeActivityPurposeRegistry {
 
 final class NativeNewActivityViewController: UIViewController, UITableViewDataSource, UITableViewDelegate {
     fileprivate enum Typography {
-        static let title = UIFont.systemFont(ofSize: 36, weight: .bold)
+        static let title = AlmidyDesignTokens.Font.bold(36)
         static let search = UIFontMetrics(forTextStyle: .body).scaledFont(
-            for: .systemFont(ofSize: 17), maximumPointSize: 19
+            for: AlmidyDesignTokens.Font.body(17), maximumPointSize: 19
         )
         static let section = UIFontMetrics(forTextStyle: .headline).scaledFont(
-            for: .systemFont(ofSize: 16, weight: .semibold), maximumPointSize: 18
+            for: AlmidyDesignTokens.Font.semibold(16), maximumPointSize: 18
         )
         static let row = UIFontMetrics(forTextStyle: .body).scaledFont(
-            for: .systemFont(ofSize: 18, weight: .semibold), maximumPointSize: 20
+            for: AlmidyDesignTokens.Font.semibold(18), maximumPointSize: 20
         )
         static let quick = UIFontMetrics(forTextStyle: .caption1).scaledFont(
-            for: .systemFont(ofSize: 13), maximumPointSize: 14
+            for: AlmidyDesignTokens.Font.body(13), maximumPointSize: 14
         )
         static let footerPrompt = UIFontMetrics(forTextStyle: .body).scaledFont(
-            for: .systemFont(ofSize: 16), maximumPointSize: 17
+            for: AlmidyDesignTokens.Font.body(16), maximumPointSize: 17
         )
         static let footerAction = UIFontMetrics(forTextStyle: .headline).scaledFont(
-            for: .systemFont(ofSize: 17, weight: .semibold), maximumPointSize: 18
+            for: AlmidyDesignTokens.Font.semibold(17), maximumPointSize: 18
         )
     }
 
@@ -1451,7 +1451,7 @@ private final class NativeActivityLocationViewController: UIViewController,
 
         searchField.placeholder = "Search by a locality"
         searchField.accessibilityLabel = "Search by a locality"
-        searchField.font = UIFont.systemFont(ofSize: 17)
+        searchField.font = AlmidyDesignTokens.Font.body(17)
         searchField.backgroundColor = .secondarySystemFill
         searchField.layer.cornerRadius = 11
         searchField.clipsToBounds = true
@@ -1562,8 +1562,8 @@ private final class NativeActivityLocationViewController: UIViewController,
             content.image = UIImage(systemName: "mappin")
             content.imageProperties.tintColor = AlmidyDesignTokens.Color.tripOverviewAccent
         }
-        content.textProperties.font = UIFont.systemFont(ofSize: 17, weight: .semibold)
-        content.secondaryTextProperties.font = UIFont.systemFont(ofSize: 14)
+        content.textProperties.font = AlmidyDesignTokens.Font.semibold(17)
+        content.secondaryTextProperties.font = AlmidyDesignTokens.Font.body(14)
         content.secondaryTextProperties.color = .secondaryLabel
         cell.contentConfiguration = content
         return cell
@@ -1672,7 +1672,7 @@ private final class NativeActivityCategoriesEditorViewController: UITableViewCon
         appearance.backgroundColor = surface
         appearance.shadowColor = .clear
         appearance.titleTextAttributes = [
-            .font: UIFont.systemFont(ofSize: 18, weight: .semibold),
+            .font: AlmidyDesignTokens.Font.semibold(18),
             .foregroundColor: UIColor.label,
         ]
         navigationController?.navigationBar.standardAppearance = appearance
@@ -1709,7 +1709,7 @@ private final class NativeActivityCategoriesEditorViewController: UITableViewCon
 
     override func tableView(_ tableView: UITableView, willDisplayHeaderView view: UIView, forSection section: Int) {
         guard let header = view as? UITableViewHeaderFooterView else { return }
-        header.textLabel?.font = UIFont.systemFont(ofSize: 18, weight: .semibold)
+        header.textLabel?.font = AlmidyDesignTokens.Font.semibold(18)
         header.textLabel?.textColor = .secondaryLabel
         header.textLabel?.text = header.textLabel?.text?.localizedCapitalized
     }
@@ -1729,7 +1729,7 @@ private final class NativeActivityCategoriesEditorViewController: UITableViewCon
 
         var content = cell.defaultContentConfiguration()
         content.text = category.name
-        content.textProperties.font = UIFont.systemFont(ofSize: 18)
+        content.textProperties.font = AlmidyDesignTokens.Font.body(18)
         content.image = category.image.withConfiguration(
             UIImage.SymbolConfiguration(pointSize: 20, weight: .semibold)
         )
@@ -1846,7 +1846,7 @@ private final class NativeCustomCategoriesViewController: UITableViewController 
         appearance.backgroundColor = surfaceColor
         appearance.shadowColor = .clear
         appearance.titleTextAttributes = [
-            .font: UIFont.systemFont(ofSize: 18, weight: .semibold),
+            .font: AlmidyDesignTokens.Font.semibold(18),
             .foregroundColor: UIColor.label,
         ]
         navigationController?.navigationBar.standardAppearance = appearance
@@ -1866,7 +1866,7 @@ private final class NativeCustomCategoriesViewController: UITableViewController 
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "CustomCategoryCell", for: indexPath)
         var content = cell.defaultContentConfiguration()
-        content.textProperties.font = UIFont.systemFont(ofSize: 18, weight: .regular)
+        content.textProperties.font = AlmidyDesignTokens.Font.body(18)
         content.imageToTextPadding = 18
 
         if indexPath.section == 0 {
@@ -1991,7 +1991,7 @@ private final class NativeCustomCategoryViewController: UIViewController, UIText
         navigationItem.rightBarButtonItem = UIBarButtonItem(title: "Save", style: .done, target: self, action: #selector(save))
         navigationItem.rightBarButtonItem?.isEnabled = false
         navigationController?.navigationBar.titleTextAttributes = [
-            .font: UIFont.systemFont(ofSize: 18, weight: .semibold),
+            .font: AlmidyDesignTokens.Font.semibold(18),
             .foregroundColor: UIColor.label,
         ]
         navigationController?.navigationBar.tintColor = AlmidyDesignTokens.Color.tripOverviewAccent
@@ -2012,7 +2012,7 @@ private final class NativeCustomCategoryViewController: UIViewController, UIText
         nameField.placeholder = "Name"
         nameField.backgroundColor = .systemBackground
         nameField.layer.cornerRadius = 24
-        nameField.font = UIFont.systemFont(ofSize: 17)
+        nameField.font = AlmidyDesignTokens.Font.body(17)
         nameField.autocapitalizationType = .words
         nameField.returnKeyType = .done
         nameField.delegate = self
@@ -2052,7 +2052,7 @@ private final class NativeCustomCategoryViewController: UIViewController, UIText
     private func sectionLabel(_ text: String) -> UILabel {
         let label = UILabel()
         label.text = text
-        label.font = UIFont.systemFont(ofSize: 19, weight: .semibold)
+        label.font = AlmidyDesignTokens.Font.semibold(19)
         label.textColor = .secondaryLabel
         return label
     }
@@ -2183,7 +2183,7 @@ private final class NativeActivityCategoryCell: UITableViewCell {
         titleLabel.adjustsFontForContentSizeCategory = true
 
         subtitleLabel.font = UIFontMetrics(forTextStyle: .subheadline).scaledFont(
-            for: .systemFont(ofSize: 15), maximumPointSize: 16
+            for: AlmidyDesignTokens.Font.body(15), maximumPointSize: 16
         )
         subtitleLabel.textColor = .secondaryLabel
         subtitleLabel.numberOfLines = 1

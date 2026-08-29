@@ -377,7 +377,7 @@ final class NativeWebFeatureViewController: UIViewController, WKNavigationDelega
         loadingView.color = AlmidyDesignTokens.Color.gold
 
         statusLabel.textAlignment = .center
-        statusLabel.font = .systemFont(ofSize: 16, weight: .medium)
+        statusLabel.font = AlmidyDesignTokens.Font.title(16)
         statusLabel.textColor = AlmidyDesignTokens.Color.textSecondary
         statusLabel.numberOfLines = 0
         statusLabel.isHidden = true
@@ -386,7 +386,7 @@ final class NativeWebFeatureViewController: UIViewController, WKNavigationDelega
 
         retryButton.setTitle("Retry", for: .normal)
         retryButton.setTitleColor(AlmidyDesignTokens.Color.gold, for: .normal)
-        retryButton.titleLabel?.font = .systemFont(ofSize: 17, weight: .semibold)
+        retryButton.titleLabel?.font = AlmidyDesignTokens.Font.semibold(17)
         retryButton.accessibilityLabel = "Retry loading \(featureTitle)"
         retryButton.addTarget(self, action: #selector(retry), for: .touchUpInside)
         retryButton.isHidden = true

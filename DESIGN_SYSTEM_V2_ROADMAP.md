@@ -243,9 +243,11 @@ Deferred non-exact candidates remain assigned to later approved phases: `#F2F3F6
 
 The canonical profile is iPhone 17e on iOS 26.5, portrait, `en_US`, 3×, Large content size, with AX XXXL for the Trip Overview accessibility state. Baseline updates require an explicit simulator-scoped `ALMIDY_RECORD_SNAPSHOTS=1` recording run and manual PNG review; normal tests cannot overwrite images. Hosted pixel gating remains conditional on pinning the identical Xcode/runtime/device/locale/font-rasterization environment and preserving failure attachments. No production token, component, value, appearance, behavior, or fallback changed.
 
-### v2.3 — Typography, spacing and icon normalization
+### v2.3 — Instrument Sans typography migration
 
-Work by semantic role and screen family. Approve explicit before/after baselines; validate localization, Dynamic Type, VoiceOver and control targets.
+**Completed August 29, 2026.** Almidy-owned native typography now resolves through four bundled static Instrument Sans faces—Regular, Medium, SemiBold, and Bold—under the existing `AlmidyDesignTokens.Typography` authority. Semantic sizes, Dynamic Type behavior, protected component geometry, colors, spacing, radii, elevations, icons, and product behavior remain unchanged. UIKit/MapKit-owned presentation remains platform typography.
+
+All twelve deterministic states were compared to the committed v2.2 reference before explicit approval and re-recording. Eleven changed as expected from typography pixels; the icon-only map controls remained identical. No metric safety correction or new baseline was required. Figma should use the documented Display/Title/Body/Action/Metadata/Caption/Badge hierarchy; web and Android adoption remain later cross-platform alignment work.
 
 ### v2.4 — Surface, radius and elevation normalization
 
