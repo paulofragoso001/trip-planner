@@ -251,7 +251,9 @@ All twelve deterministic states were compared to the committed v2.2 reference be
 
 ### v2.4 — Surface, radius and elevation normalization
 
-Evaluate ordinary cards and controls first. Keep sheet, map, Place and Trip Overview geometry in separate high-risk proposals.
+**Planning completed August 29, 2026.** The repository-wide audit retains the canonical spacing/radius/elevation foundation, formally documents measured exceptions, protects feature geometry, and identifies neutral-surface convergence as the safest first visible proposal. No production value or canonical screenshot changed. The detailed candidate inventory, risk matrix, coverage gaps, target system, and approval gates live in `DESIGN_SYSTEM_NORMALIZATION_PLAN.md`.
+
+Recommended implementation sequence: neutral surfaces; exact-equivalent elevation API adoption; generic separator policy after adding coverage; generic spacing by semantic family; ordinary shared card/control radii; then opt-in feature compatibility reviews. Do not combine these families in one visual diff.
 
 ### v2.5 — Dark Mode
 

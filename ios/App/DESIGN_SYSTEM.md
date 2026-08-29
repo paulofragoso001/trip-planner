@@ -228,6 +228,12 @@ Instrument Sans is the approved family for Almidy-owned native interface text. F
 
 UIKit-owned picker/calendar internals, alerts, menus, MapKit-owned controls, and technical/system rendering remain platform typography. Symbol-only controls have no family migration. Figma should mirror the semantic names and weight philosophy above; native is the implementation source of truth. Web and future Android adoption remain later cross-platform alignment work.
 
+## v2.4 normalization planning
+
+The spacing/radius/surface audit is documented in `DESIGN_SYSTEM_NORMALIZATION_PLAN.md`. The canonical spacing scale remains 4/8/12/16/20/24/32/48 with measured exceptions; existing semantic radius and elevation families remain valid. Trip Overview, Globe, Place, annotations, editor compositions, accessibility geometry, and media rendering are protected feature contracts rather than consistency debt.
+
+The first proposed implementation is an isolated review of `tripOverviewNeutralSurface` (`#F3F3F5`) against the canonical grouped neutral (`#F2F3F6`). This is a proposal only: v2.4 changes no production value or screenshot. Semantic surface distinctions must survive any future Light-mode convergence so Dark Mode can evolve roles independently.
+
 ## Native Design System v1 closure
 
 **Status:** Complete and frozen

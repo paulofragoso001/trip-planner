@@ -8,6 +8,10 @@ The same twelve canonical states were reviewed and explicitly re-recorded after 
 
 The v2.2 commit `7ec861a` is the immutable pre-Instrument reference; duplicate “before” PNGs are not stored in the active directory. Instrument Sans candidate images were inspected before approval, then recorded using the existing explicit simulator-scoped workflow. No additional typography snapshot was necessary because the existing set covers the highest-risk hero, on-media, selector, and editor compositions.
 
+### v2.4 normalization planning coverage
+
+No canonical PNG changes are authorized in v2.4. Existing snapshots protect Trip Overview neutral surfaces and rhythm, Globe cards/actions/controls, Place travel modes, and representative Saved Place, Transportation, and Flight compositions. Full Globe and Place sheets, Native Itinerary, Search, Settings, Cost, and system-input states require additional deterministic coverage before visible normalization. See `../../../DESIGN_SYSTEM_NORMALIZATION_PLAN.md` for the candidate-to-coverage matrix and approval sequence.
+
 The repository now has an executable, test-only visual regression layer. Its canonical profile is **iPhone 17e, iOS 26.5, portrait, 393 × 852 points at 3×, Light appearance, `en_US`, and Large content size**. The Trip Overview accessibility baseline uses AX XXXL. Tests render production views/controllers with fixed local fixture state; they never use production accounts, network responses, MapKit tiles, remote media, the current clock, or random values.
 
 `AlmidySnapshotTesting` in `AppTests/VisualRegression` owns deterministic rendering, baseline lookup, strict RGBA comparison, and failure attachments. It allows **zero differing pixels and zero channel delta**. A failure attaches the expected image, actual image, and a magenta difference image. Missing baselines fail by default, and normal test runs can never overwrite approved images.
