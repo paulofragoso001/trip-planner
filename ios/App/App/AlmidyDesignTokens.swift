@@ -111,7 +111,7 @@ enum AlmidyDesignTokens {
         static let tripOverviewAccentSurface = goldMutedSurface
         static let tripOverviewNeutralText = UIColor(hex: 0x8E8E93)
         static let tripOverviewNeutralIcon = UIColor(hex: 0x929297)
-        static let tripOverviewNeutralSurface = UIColor(hex: 0xF3F3F5)
+        static let tripOverviewNeutralSurface = UIColor(hex: 0xF2F3F6)
         static let tripOverviewDivider = UIColor(hex: 0xE7E7EA)
 
         // Decorative account surfaces are intentionally pastel and are not provider-brand colors.

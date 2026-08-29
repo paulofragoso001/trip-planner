@@ -61,6 +61,7 @@ final class AlmidyDesignSystemTests: XCTestCase {
         assertColor(AlmidyDesignTokens.Color.accentText, hex: 0x8C641E)
         assertColor(AlmidyDesignTokens.Color.canvas, hex: 0xFFFFFF)
         assertColor(AlmidyDesignTokens.Color.canvasGrouped, hex: 0xF2F3F6)
+        assertColor(AlmidyDesignTokens.Color.tripOverviewNeutralSurface, hex: 0xF2F3F6)
         assertColor(AlmidyDesignTokens.Color.textPrimary, hex: 0x050505)
         assertColor(AlmidyDesignTokens.Color.textSecondary, hex: 0x7D7D84)
     }

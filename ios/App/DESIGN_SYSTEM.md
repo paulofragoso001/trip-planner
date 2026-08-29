@@ -232,7 +232,7 @@ UIKit-owned picker/calendar internals, alerts, menus, MapKit-owned controls, and
 
 The spacing/radius/surface audit is documented in `DESIGN_SYSTEM_NORMALIZATION_PLAN.md`. The canonical spacing scale remains 4/8/12/16/20/24/32/48 with measured exceptions; existing semantic radius and elevation families remain valid. Trip Overview, Globe, Place, annotations, editor compositions, accessibility geometry, and media rendering are protected feature contracts rather than consistency debt.
 
-The first proposed implementation is an isolated review of `tripOverviewNeutralSurface` (`#F3F3F5`) against the canonical grouped neutral (`#F2F3F6`). This is a proposal only: v2.4 changes no production value or screenshot. Semantic surface distinctions must survive any future Light-mode convergence so Dark Mode can evolve roles independently.
+v2.4A completed the isolated `tripOverviewNeutralSurface` Light-mode normalization from `#F3F3F5` to `#F2F3F6`. The role remains an independent Trip Overview semantic rather than an alias or replacement reference, allowing future Dark Mode values to diverge without feature-code migration. Only the four Trip Overview baselines and Place travel modes changed; geometry, typography, spacing, radius, border, elevation, behavior, and dynamic contrast paths remain unchanged.
 
 ## Native Design System v1 closure
 

@@ -139,3 +139,7 @@ The v1 baseline intentionally preserves current light-branded pixels, specialize
 ## v2.1 baseline note
 
 The v2.1 exact-equivalent cleanup changes naming and removes dead compatibility APIs only. It changes no baseline geometry, canonical raw token value, appearance behavior, accessibility behavior, or approved feature override. Existing measured baselines remain authoritative without recapture. Deterministic screenshot and fixture work begins in v2.2.
+
+## v2.4A neutral surface baseline update
+
+The approved Light-mode value of the independent `tripOverviewNeutralSurface` semantic changed from `#F3F3F5` to `#F2F3F6`. Strict comparison first failed only the four Trip Overview baselines and `PlaceCard/place-card-travel-modes.png`, each with maximum channel delta 1. Their expected/actual/magenta artifacts showed changes only in token-backed neutral regions. Those five PNGs were explicitly re-recorded; the other seven canonical baselines remained byte/pixel-identical. Canonical count remains 12, with no geometry, typography, spacing, radius, border, elevation, or behavior change.

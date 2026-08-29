@@ -255,6 +255,10 @@ All twelve deterministic states were compared to the committed v2.2 reference be
 
 Recommended implementation sequence: neutral surfaces; exact-equivalent elevation API adoption; generic separator policy after adding coverage; generic spacing by semantic family; ordinary shared card/control radii; then opt-in feature compatibility reviews. Do not combine these families in one visual diff.
 
+#### v2.4A — Neutral Surface Normalization
+
+**Completed August 29, 2026.** The independent native `tripOverviewNeutralSurface` semantic changed from `#F3F3F5` to `#F2F3F6` in Light mode. Four Trip Overview baselines and the Place travel-mode baseline were reviewed and explicitly re-recorded; the other seven canonical states remained exact. No geometry, typography, spacing, radius, border, elevation, behavior, Dark Mode, web, or Android change was included. The next proposed phase is v2.4B exact elevation API adoption.
+
 ### v2.5 — Dark Mode
 
 Run as product-approved appearance work: foundations, utilities, editors, Map/Place, then Trip Overview/media. Do not combine with unrelated normalization.

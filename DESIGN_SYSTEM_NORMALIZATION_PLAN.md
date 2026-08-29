@@ -4,7 +4,7 @@
 
 This document records the v2.4 planning audit against commit `459b139`. It proposes no production rendering change. The current foundation is coherent: most off-scale values belong to measured feature compositions, while a smaller set of neutral surfaces, generic separators, and reconstructed shadows are credible future normalization candidates.
 
-The recommended first implementation is **v2.4A — Neutral Surface Normalization**. It should evaluate `tripOverviewNeutralSurface` (`#F3F3F5`) against the canonical grouped neutral (`#F2F3F6`) in isolation. Semantic role names should remain distinct even if their Light-mode pixels converge.
+**v2.4A — Neutral Surface Normalization** was completed August 29, 2026. `tripOverviewNeutralSurface` now renders `#F2F3F6` in Light mode instead of `#F3F3F5`. Its semantic role remains independent from grouped and generic neutral surfaces so a future Dark Mode may diverge without changing feature code.
 
 ## Audit method and current state
 
@@ -149,7 +149,7 @@ Pixel-protected: Trip Overview neutral/card rhythm; Globe cards/actions/controls
 
 ## Implementation sequence
 
-1. **v2.4A — Neutral Surface Normalization:** evaluate only `#F3F3F5` → `#F2F3F6`, preserve semantic roles, review all covered states.
+1. **v2.4A — Neutral Surface Normalization (complete):** changed only `#F3F3F5` → `#F2F3F6`, preserved the semantic role, and reviewed/re-recorded the four Trip Overview states plus Place travel modes with zero geometry change.
 2. **v2.4B — Exact Elevation API Adoption:** replace only provably pixel-identical local reconstructions.
 3. **v2.4C — Generic Separator Policy:** add missing baselines, then migrate genuine generic separators one family at a time.
 4. **v2.4D — Shared Spacing Review:** page insets first, internal card insets second; no feature geometry.
@@ -162,4 +162,4 @@ Every visible implementation requires committed before baseline, actual normaliz
 
 ## Figma, Coolors, Dark Mode, and cross-platform
 
-Figma should define semantic variables/styles for spacing, radius, surface, border, and elevation using the proposed roles, while retaining documented feature exceptions. Do not change Figma raw values until native approval. Coolors should retain both near-neutral references until v2.4A is approved. Canvas, grouped canvas, surface, neutral, input, on-media, and map semantics must remain distinct so future Dark Mode can diverge even if Light values converge. Web and Android implementation remains out of scope; approved reusable semantic decisions can be promoted during later cross-platform alignment.
+Figma should define semantic variables/styles for spacing, radius, surface, border, and elevation using the proposed roles, while retaining documented feature exceptions. The separate `Trip Overview / Neutral Surface` variable now has Light value `#F2F3F6`; it must not be collapsed into another variable. Coolors may describe `#F2F3F6` as the active Trip Overview neutral without otherwise simplifying the neutral palette. Canvas, grouped canvas, surface, neutral, input, on-media, and map semantics must remain distinct so future Dark Mode can diverge even when Light values match. Web and Android implementation remains out of scope; approved reusable semantic decisions can be promoted during later cross-platform alignment.
