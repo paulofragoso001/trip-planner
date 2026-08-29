@@ -259,6 +259,10 @@ Recommended implementation sequence: neutral surfaces; exact-equivalent elevatio
 
 **Completed August 29, 2026.** The independent native `tripOverviewNeutralSurface` semantic changed from `#F3F3F5` to `#F2F3F6` in Light mode. Four Trip Overview baselines and the Place travel-mode baseline were reviewed and explicitly re-recorded; the other seven canonical states remained exact. No geometry, typography, spacing, radius, border, elevation, behavior, Dark Mode, web, or Android change was included. The next proposed phase is v2.4B exact elevation API adoption.
 
+#### v2.4B — Exact Elevation API Adoption
+
+**Completed August 29, 2026.** Exact reconstructed shadows now use the existing `controlSubtle`, `controlRaised`, `floating`, and `cardRaised` configurations. Six raw declaration blocks covering seven controls/cards were migrated, and the zero-use itinerary floating-shadow helper was removed. Canonical elevation values, local near-matches, renderer/media shadows, behavior, and all twelve baseline PNGs remain unchanged. The next proposed phase is v2.4C generic separator policy.
+
 ### v2.5 — Dark Mode
 
 Run as product-approved appearance work: foundations, utilities, editors, Map/Place, then Trip Overview/media. Do not combine with unrelated normalization.

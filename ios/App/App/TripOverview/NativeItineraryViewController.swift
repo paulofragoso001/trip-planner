@@ -225,10 +225,7 @@ final class NativeItineraryViewController: UIViewController, UITableViewDataSour
         close.tintColor = .label
         close.backgroundColor = AlmidyDesignTokens.Color.surface
         close.layer.cornerRadius = 25
-        close.layer.shadowColor = AlmidyDesignTokens.Color.shadowBlack.cgColor
-        close.layer.shadowOpacity = 0.10
-        close.layer.shadowRadius = 14
-        close.layer.shadowOffset = CGSize(width: 0, height: 5)
+        AlmidyDesignTokens.Elevation.controlRaised.apply(to: close)
         close.addTarget(self, action: #selector(closeSheet), for: .touchUpInside)
         close.accessibilityLabel = "Close itinerary"
 
@@ -295,12 +292,12 @@ final class NativeItineraryViewController: UIViewController, UITableViewDataSour
         today.tintColor = AlmidyDesignTokens.Color.textPrimary
         today.titleLabel?.font = AlmidyDesignTokens.Font.semibold(17)
         today.backgroundColor = AlmidyDesignTokens.Color.surface; today.layer.cornerRadius = 25
-        applyFloatingShadow(to: today)
+        AlmidyDesignTokens.Elevation.floating.apply(to: today)
         today.addTarget(self, action: #selector(scrollToToday), for: .touchUpInside)
         let add = UIButton(type: .system)
         add.setImage(UIImage(systemName: "plus", withConfiguration: UIImage.SymbolConfiguration(pointSize: 27, weight: .regular)), for: .normal)
         add.tintColor = .white; add.backgroundColor = AlmidyDesignTokens.Color.gold; add.layer.cornerRadius = 31
-        applyFloatingShadow(to: add)
+        AlmidyDesignTokens.Elevation.floating.apply(to: add)
         add.addTarget(self, action: #selector(addActivity), for: .touchUpInside)
         add.accessibilityLabel = "Add activity"
         [timeline, more, today, add].forEach { $0.translatesAutoresizingMaskIntoConstraints = false; view.addSubview($0) }
@@ -393,13 +390,6 @@ final class NativeItineraryViewController: UIViewController, UITableViewDataSour
         ) { [weak self] _ in self?.exportItineraryCSV() }
         button.menu = UIMenu(children: [layout, preferences, selectItems, export])
         button.showsMenuAsPrimaryAction = true
-    }
-
-    private func applyFloatingShadow(to view: UIView) {
-        view.layer.shadowColor = AlmidyDesignTokens.Color.shadowBlack.cgColor
-        view.layer.shadowOpacity = 0.16
-        view.layer.shadowRadius = 12
-        view.layer.shadowOffset = CGSize(width: 0, height: 5)
     }
 
     private func buildDayRail() {
@@ -762,10 +752,7 @@ private final class NativeItineraryDatePickerViewController: UIViewController, U
         cancel.titleLabel?.font = AlmidyDesignTokens.Font.title(17)
         cancel.backgroundColor = AlmidyDesignTokens.Color.surface
         cancel.layer.cornerRadius = 22
-        cancel.layer.shadowColor = AlmidyDesignTokens.Color.shadowBlack.cgColor
-        cancel.layer.shadowOpacity = 0.08
-        cancel.layer.shadowRadius = 10
-        cancel.layer.shadowOffset = CGSize(width: 0, height: 4)
+        AlmidyDesignTokens.Elevation.controlSubtle.apply(to: cancel)
         cancel.addTarget(self, action: #selector(cancelTapped), for: .touchUpInside)
 
         cancel.translatesAutoresizingMaskIntoConstraints = false

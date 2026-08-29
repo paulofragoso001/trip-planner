@@ -3152,10 +3152,7 @@ final class NativeFlightSearchViewController: UIViewController,
         cancel.titleLabel?.font = AlmidyDesignTokens.Font.title(18)
         cancel.backgroundColor = UIColor.secondarySystemBackground.withAlphaComponent(0.82)
         cancel.layer.cornerRadius = 22
-        cancel.layer.shadowColor = UIColor.black.cgColor
-        cancel.layer.shadowOpacity = 0.08
-        cancel.layer.shadowRadius = 10
-        cancel.layer.shadowOffset = CGSize(width: 0, height: 4)
+        AlmidyDesignTokens.Elevation.controlSubtle.apply(to: cancel)
         cancel.addTarget(self, action: #selector(cancelSearch), for: .touchUpInside)
 
         let title = UILabel()
@@ -5639,10 +5636,7 @@ private final class NativeRouteDestinationSearchViewController: UIViewController
         cancel.titleLabel?.font = AlmidyDesignTokens.Font.title(18)
         cancel.backgroundColor = UIColor.secondarySystemBackground.withAlphaComponent(0.82)
         cancel.layer.cornerRadius = 22
-        cancel.layer.shadowColor = UIColor.black.cgColor
-        cancel.layer.shadowOpacity = 0.08
-        cancel.layer.shadowRadius = 10
-        cancel.layer.shadowOffset = CGSize(width: 0, height: 4)
+        AlmidyDesignTokens.Elevation.controlSubtle.apply(to: cancel)
         cancel.addTarget(self, action: #selector(cancelSearch), for: .touchUpInside)
 
         let title = UILabel()
@@ -7027,10 +7021,7 @@ final class NativeMapViewController: UIViewController, CLLocationManagerDelegate
         let card = UIView()
         card.backgroundColor = AlmidyDesignTokens.Color.card
         card.layer.cornerRadius = AlmidyDesignTokens.Radius.card
-        card.layer.shadowColor = AlmidyDesignTokens.Color.shadowBlack.cgColor
-        card.layer.shadowOpacity = 0.18
-        card.layer.shadowRadius = 24
-        card.layer.shadowOffset = CGSize(width: 0, height: 12)
+        AlmidyDesignTokens.Elevation.cardRaised.apply(to: card)
         card.translatesAutoresizingMaskIntoConstraints = false
 
         let iconView = UILabel()

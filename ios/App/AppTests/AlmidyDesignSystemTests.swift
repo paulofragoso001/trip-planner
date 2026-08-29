@@ -103,8 +103,19 @@ final class AlmidyDesignSystemTests: XCTestCase {
         XCTAssertEqual(AlmidyDesignTokens.Border.timeline(color: .red).width, 2)
         XCTAssertEqual(AlmidyDesignTokens.Elevation.controlSubtle.opacity, 0.08)
         XCTAssertEqual(AlmidyDesignTokens.Elevation.controlSubtle.radius, 10)
+        XCTAssertEqual(AlmidyDesignTokens.Elevation.controlRaised.offset, CGSize(width: 0, height: 5))
+        XCTAssertEqual(AlmidyDesignTokens.Elevation.floating.opacity, 0.16)
+        XCTAssertEqual(AlmidyDesignTokens.Elevation.cardRaised.radius, 24)
         XCTAssertEqual(AlmidyDesignTokens.Elevation.sheet.offset.height, -4)
         XCTAssertEqual(AlmidyDesignTokens.Elevation.mapPin.radius, 5)
+
+        let layer = CALayer()
+        AlmidyDesignTokens.Elevation.cardRaised.apply(to: layer)
+        AlmidyDesignTokens.Elevation.controlSubtle.apply(to: layer)
+        XCTAssertEqual(layer.shadowColor, UIColor.black.cgColor)
+        XCTAssertEqual(layer.shadowOpacity, 0.08)
+        XCTAssertEqual(layer.shadowRadius, 10)
+        XCTAssertEqual(layer.shadowOffset, CGSize(width: 0, height: 4))
     }
 
     func testMotionResolvesImmediatelyForReduceMotion() {

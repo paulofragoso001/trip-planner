@@ -234,6 +234,8 @@ The spacing/radius/surface audit is documented in `DESIGN_SYSTEM_NORMALIZATION_P
 
 v2.4A completed the isolated `tripOverviewNeutralSurface` Light-mode normalization from `#F3F3F5` to `#F2F3F6`. The role remains an independent Trip Overview semantic rather than an alias or replacement reference, allowing future Dark Mode values to diverge without feature-code migration. Only the four Trip Overview baselines and Place travel modes changed; geometry, typography, spacing, radius, border, elevation, behavior, and dynamic contrast paths remain unchanged.
 
+v2.4B adopted existing elevation configurations only at exact semantic and numeric matches. Native Itinerary close/date controls and floating Today/Add controls, Flight and route-search cancel controls, and the Globe first-trip card now use `controlRaised`, `controlSubtle`, `floating`, or `cardRaised` as applicable. Place Save, search chrome, Globe action, annotation, map label, and media-text shadows remain feature/rendering-owned because their values differ. Figma elevation styles map to Control / Subtle, Control / Raised, Floating, Card / Raised, Sheet, Map / Pin, and Text / On Media without changing visual values.
+
 ## Native Design System v1 closure
 
 **Status:** Complete and frozen

@@ -111,6 +111,10 @@ Canonical roles are hairline, outline, outlineStrong, selected, selectedProminen
 
 Exact semantic matches are low-risk code cleanup only if they produce zero pixels. Near matches must not be folded into canonical elevation families without approval.
 
+### v2.4B exact elevation adoption
+
+Completed August 29, 2026 with zero pixel and zero raw-value change. Six reconstructed declaration blocks were replaced by canonical configurations across seven consumers: three `controlSubtle` controls, one `controlRaised` close control, two `floating` itinerary controls, and one `cardRaised` Globe card. The single-purpose `applyFloatingShadow` helper was removed. Remaining locals are intentional: Place Save; search and Globe compatibility controls; annotation rendering; and map/media labels. No exact canonical duplicate remains.
+
 ## Shared-component overrides
 
 - `AlmidyIconButton`: six measured override sites. Globe, Place, and Trip Overview vary diameter, symbol size, foreground/background, border, or elevation for genuine feature composition. The repeated 50pt Itinerary control is a measured compatibility case, not a new global default.
@@ -150,7 +154,7 @@ Pixel-protected: Trip Overview neutral/card rhythm; Globe cards/actions/controls
 ## Implementation sequence
 
 1. **v2.4A — Neutral Surface Normalization (complete):** changed only `#F3F3F5` → `#F2F3F6`, preserved the semantic role, and reviewed/re-recorded the four Trip Overview states plus Place travel modes with zero geometry change.
-2. **v2.4B — Exact Elevation API Adoption:** replace only provably pixel-identical local reconstructions.
+2. **v2.4B — Exact Elevation API Adoption (complete):** adopted `controlSubtle`, `controlRaised`, `floating`, and `cardRaised` at exact-match sites with all canonical PNGs unchanged.
 3. **v2.4C — Generic Separator Policy:** add missing baselines, then migrate genuine generic separators one family at a time.
 4. **v2.4D — Shared Spacing Review:** page insets first, internal card insets second; no feature geometry.
 5. **v2.4E — Ordinary Card/Control Radius Review:** shared components only, with explicit visual approval.
