@@ -57,7 +57,7 @@ The shared JSON excludes safe areas, sheet detents, MapKit camera values, CALaye
 | C — feature/platform semantic (6 families) | Maps/globe, wallet imagery, provider colors, auth chrome, admin status UI, native-map underlay | Keep scoped |
 | D — legacy web debt (4 palette families) | Broad slate, blue, orange, and mixed zinc/gray utility usage | Inventory-backed future migration |
 
-Current web has no comprehensive visual-regression suite for a global token migration. v2.6B therefore limits adoption to exact equivalents and verifies the generated semantic inputs deterministically, with no intentional visual changes.
+Web now has a focused deterministic suite covering the five v2.6C reconciliation families, typography, Auth/forms, ordinary components, and representative accessibility/responsive behavior. It is sufficient for the approved v2 scope but is not a global Dark Mode matrix; broad appearance rollout remains post-v2.
 
 ### v2.6B Tier A adoption manifest
 
@@ -104,4 +104,4 @@ Map shared colors into a Compose color scheme, typography roles into Instrument 
 
 `npm run tokens:verify` validates contract version/schema, legacy compatibility, semantic names, Light/Dark modes, Swift role presence, typography bases, spacing/radius values, and TypeScript/Tailwind consumption. Native visual suites independently prove that reconciliation does not change Light or Dark pixels.
 
-The same command now verifies the single Instrument Sans registration, all four approved weights, the product-font CSS variable, Tailwind typography consumption and the global product-font application. Exact web pixels are enforced separately by the seven-fixture Playwright suite.
+The same command verifies the single Instrument Sans registration, all four approved weights, the product-font CSS variable, Tailwind typography consumption, global product-font application, and focused component-adoption guards. Exact web pixels are enforced separately by eight Playwright screenshot fixtures; a ninth test covers component accessibility and responsive behavior.

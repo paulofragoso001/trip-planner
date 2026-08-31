@@ -365,3 +365,19 @@ The web visual suite now contains seven strict fixtures: the five v2.6C families
 Three small ordinary primitives now own proven repeated presentation: `AlmidyButton` for primary and compact neutral actions, ref-forwarding `AlmidyInput`/`AlmidySelect`, and `AlmidyCard` for the raised account surface shell. Auth, Profile, Security, reset-password and Preferences consumers migrate without navigation, submission or data-flow changes. Exact migrations remove repeated field, card and compact-neutral definitions; the only intentional alignment is the accent-backed primary action plus standard field geometry on covered Auth surfaces.
 
 An isolated component-gallery fixture raises the active web visual count to eight without changing the document geometry of the existing seven. A ninth non-image check covers focus order, disabled skipping, invalid description, effective 200% desktop width and mobile overflow. Provider, Wallet, map, media, admin, specialized trip, badge and empty-state compositions remain scoped; Tier D palette debt remains untouched. Recommended next milestone: Design System v2 Completion Review.
+
+## Design System v2 completion and freeze
+
+**Approved August 31, 2026.** Milestones v2.1, v2.2, v2.3, v2.4A–E, v2.5, v2.6, v2.6B, v2.6C, v2.7, and v2.7B are complete. The system has one shared token contract, one native namespace, semantic native/web adapters, Instrument Sans product typography, governed feature exceptions, and deterministic native/web regression protection. The authoritative release record is [`DESIGN_SYSTEM_V2_RELEASE.md`](DESIGN_SYSTEM_V2_RELEASE.md).
+
+## Post-v2 backlog
+
+- Broad global web Dark Mode rollout and its dedicated visual matrix.
+- Intent-by-intent Tier D slate, blue, orange/amber, and zinc/gray legacy palette review.
+- Additional stable native/web fixtures for currently geometry-only or feature-owned surfaces.
+- Further feature-level component consolidation where multiple equivalent consumers emerge.
+- Android Compose implementation from the shared semantic contract.
+- Automated Figma/token synchronization and optional token code generation.
+- Broader automated accessibility coverage across browsers and assistive technologies.
+
+These items are continuous product/design-system evolution, not unfinished v2 architecture. New work follows semantic proposal, affected-platform audit, deterministic coverage, implementation, visual review, and parity verification.

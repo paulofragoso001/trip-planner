@@ -226,7 +226,7 @@ Instrument Sans is the approved family for Almidy-owned native interface text. F
 
 `AlmidyDesignTokens.Typography` remains the canonical owner. The semantic hierarchy is Display / Hero; Screen, Sheet, Section, and Card Title; Body Default, Compact, and Emphasis; Action; Metadata and Metadata Emphasis; Caption; and Badge. Regular maps to editorial/body roles, Medium to compatibility title/button roles, SemiBold to interface hierarchy/actions, and Bold only to small badges or existing bold emphasis. Existing point sizes are unchanged. Scalable roles continue through `UIFontMetrics`; measured compatibility typography resolves the same four faces at its existing fixed sizes.
 
-UIKit-owned picker/calendar internals, alerts, menus, MapKit-owned controls, and technical/system rendering remain platform typography. Symbol-only controls have no family migration. Figma should mirror the semantic names and weight philosophy above; native is the implementation source of truth. Web and future Android adoption remain later cross-platform alignment work.
+UIKit-owned picker/calendar internals, alerts, menus, MapKit-owned controls, and technical/system rendering remain platform typography. Symbol-only controls have no family migration. Figma should mirror the semantic names and weight philosophy above; the shared JSON contract is cross-platform authority and native remains the UIKit implementation source. Web adoption is complete for v2; future Android implementation remains post-v2.
 
 ## v2.4 normalization planning
 
