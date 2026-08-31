@@ -101,6 +101,11 @@ extension AlmidyDesignTokens {
                 layer.borderWidth = width
                 layer.borderColor = color.cgColor
             }
+
+            func apply(to view: UIView, traits: UITraitCollection? = nil) {
+                view.layer.borderWidth = width
+                view.layer.borderColor = color.resolvedColor(with: traits ?? view.traitCollection).cgColor
+            }
         }
 
         static var hairline: Configuration {
@@ -131,7 +136,12 @@ extension AlmidyDesignTokens {
                 layer.shadowOffset = offset
             }
 
-            func apply(to view: UIView) { apply(to: view.layer) }
+            func apply(to view: UIView, traits: UITraitCollection? = nil) {
+                view.layer.shadowColor = color.resolvedColor(with: traits ?? view.traitCollection).cgColor
+                view.layer.shadowOpacity = opacity
+                view.layer.shadowRadius = radius
+                view.layer.shadowOffset = offset
+            }
         }
 
         static let controlSubtle = Configuration(color: .black, opacity: 0.08, radius: 10, offset: CGSize(width: 0, height: 4))

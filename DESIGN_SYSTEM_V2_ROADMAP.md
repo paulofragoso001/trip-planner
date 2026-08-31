@@ -335,3 +335,7 @@ The specialized header, hero/media pipeline, collapse transition, action rail, c
 - Cross-platform debt: web reconciliation and future Android semantic contract.
 - Test infrastructure debt: deterministic fixtures, stable local media and screenshot governance.
 - Specialized feature complexity: MapKit, media, Trip Overview and route/editor orchestration are not automatically debt.
+
+## v2.5 — Dark Mode (complete)
+
+The native semantic namespace now supports Light, Dark, and independent Increased Contrast resolution. Shared layer-backed components and configuration-owned control colors refresh across appearance transitions. Deterministic coverage is the same 12 scenarios in both appearances (24 exact-RGBA PNGs). Existing Light tokens, geometry, typography, and Light baselines remain frozen. Palette and exception details live in `DARK_MODE_SPEC.md`.

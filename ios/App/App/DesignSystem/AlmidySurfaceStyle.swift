@@ -52,7 +52,7 @@ struct AlmidySurfaceStyle {
         elevation: AlmidyDesignTokens.Elevation.controlSubtle
     )
 
-    func apply(to view: UIView) {
+    func apply(to view: UIView, traits: UITraitCollection? = nil) {
         view.backgroundColor = backgroundColor
         view.layer.cornerRadius = cornerRadius
         view.layer.borderWidth = 0
@@ -61,7 +61,7 @@ struct AlmidySurfaceStyle {
         view.layer.shadowOpacity = 0
         view.layer.shadowRadius = 0
         view.layer.shadowOffset = .zero
-        border?.apply(to: view.layer)
-        elevation?.apply(to: view.layer)
+        border?.apply(to: view, traits: traits)
+        elevation?.apply(to: view, traits: traits)
     }
 }

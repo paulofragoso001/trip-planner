@@ -2,12 +2,34 @@ import UIKit
 
 /// Native Almidy visual language. Keep product behavior in the controllers; keep visual decisions here.
 enum AlmidyDesignTokens {
-    /// Almidy currently presents a light branded planning surface with selected
-    /// adaptive UIKit utilities. This is an explicit compatibility contract,
-    /// not a complete native Dark Mode definition.
-    static let appearanceContract = "light-branded-planning-surface"
+    /// Full semantic Light + Dark appearance with intentional media, map, and
+    /// native-platform exceptions.
+    static let appearanceContract = "semantic-light-dark-with-media-map-native-exceptions"
 
     enum Color {
+        private static let darkCanvas = UIColor(hex: 0x151310)
+        private static let darkGroupedCanvas = UIColor(hex: 0x1B1916)
+        private static let darkSurface = UIColor(hex: 0x211F1B)
+        private static let darkNeutralSurface = UIColor(hex: 0x292620)
+        private static let darkTextPrimary = UIColor(hex: 0xF4F0E8)
+        private static let darkTextSecondary = UIColor(hex: 0xB8B1A6)
+        private static let darkTextTertiary = UIColor(hex: 0x8F887D)
+
+        private static func adaptive(
+            light: UIColor,
+            dark: UIColor,
+            lightHighContrast: UIColor? = nil,
+            darkHighContrast: UIColor? = nil
+        ) -> UIColor {
+            UIColor { traits in
+                let increased = traits.accessibilityContrast == .high
+                if traits.userInterfaceStyle == .dark {
+                    return increased ? (darkHighContrast ?? dark) : dark
+                }
+                return increased ? (lightHighContrast ?? light) : light
+            }
+        }
+
         // Canonical values: design-system/almidy.tokens.json.
         static let brandGold = UIColor(hex: 0xD6A84F)
         static let brandGoldDeep = UIColor(hex: 0xB88A2E)
@@ -16,20 +38,44 @@ enum AlmidyDesignTokens {
         static let bgLightMist = UIColor(hex: 0xF2F3F6)
         static let canonicalTextPrimary = UIColor(hex: 0x050505)
         static let canonicalTextSecondary = UIColor(hex: 0x7D7D84)
-        static let borderSubtle = UIColor.black.withAlphaComponent(0.10)
+        static let borderSubtle = adaptive(
+            light: UIColor.black.withAlphaComponent(0.10),
+            dark: darkTextPrimary.withAlphaComponent(0.12),
+            darkHighContrast: darkTextPrimary.withAlphaComponent(0.20)
+        )
 
         // Semantic foundation. These aliases preserve the existing pixels while
         // allowing new components to describe intent instead of legacy names.
-        static let accent = brandGold
-        static let accentPressed = brandGoldDeep
-        static let accentText = brandGoldText
-        static let canvas = bgLight
-        static let canvasGrouped = bgLightMist
-        static let surfaceNeutral = bgLightMist
-        static let dividerSubtle = UIColor.black.withAlphaComponent(0.08)
-        static let borderStrong = UIColor.black.withAlphaComponent(0.12)
-        static let stateDisabledFill = UIColor.black.withAlphaComponent(0.06)
-        static let stateDisabledText = UIColor.black.withAlphaComponent(0.38)
+        static let accent = adaptive(light: brandGold, dark: UIColor(hex: 0xDDBB72))
+        static let accentPressed = adaptive(light: brandGoldDeep, dark: UIColor(hex: 0xC69B4D))
+        static let accentText = adaptive(
+            light: brandGoldText,
+            dark: UIColor(hex: 0xE4C27B),
+            lightHighContrast: UIColor(hex: 0x765116),
+            darkHighContrast: UIColor(hex: 0xF0D28F)
+        )
+        static let canvas = adaptive(light: bgLight, dark: darkCanvas)
+        static let canvasGrouped = adaptive(light: bgLightMist, dark: darkGroupedCanvas)
+        static let surfaceNeutral = adaptive(light: bgLightMist, dark: darkNeutralSurface)
+        static let dividerSubtle = adaptive(
+            light: UIColor.black.withAlphaComponent(0.08),
+            dark: darkTextPrimary.withAlphaComponent(0.10),
+            darkHighContrast: darkTextPrimary.withAlphaComponent(0.18)
+        )
+        static let borderStrong = adaptive(
+            light: UIColor.black.withAlphaComponent(0.12),
+            dark: darkTextPrimary.withAlphaComponent(0.18),
+            darkHighContrast: darkTextPrimary.withAlphaComponent(0.28)
+        )
+        static let stateDisabledFill = adaptive(
+            light: UIColor.black.withAlphaComponent(0.06),
+            dark: darkTextPrimary.withAlphaComponent(0.08)
+        )
+        static let stateDisabledText = adaptive(
+            light: UIColor.black.withAlphaComponent(0.38),
+            dark: UIColor(hex: 0x858075),
+            darkHighContrast: UIColor(hex: 0xA39C90)
+        )
         static let onMediaPrimary = UIColor.white
         static let onMediaSecondary = UIColor.white.withAlphaComponent(0.92)
         static let onMediaTertiary = UIColor.white.withAlphaComponent(0.82)
@@ -38,48 +84,72 @@ enum AlmidyDesignTokens {
         // Active semantic aliases. They intentionally retain separate names so
         // future appearance work can evolve roles without feature churn.
         // Native sheets use the same airy white-and-mist foundation as Settings.
-        static let background = bgLight
-        static let surface = bgLight
-        static let card = bgLightMist
+        static let background = canvas
+        static let surface = adaptive(light: bgLight, dark: darkSurface)
+        static let card = surfaceNeutral
         static let line = borderSubtle
-        static let textPrimary = canonicalTextPrimary
-        static let textSecondary = canonicalTextSecondary
-        static let textTertiary = UIColor(hex: 0xA2A2A8)
+        static let textPrimary = adaptive(
+            light: canonicalTextPrimary,
+            dark: darkTextPrimary,
+            darkHighContrast: UIColor.white
+        )
+        static let textSecondary = adaptive(
+            light: canonicalTextSecondary,
+            dark: darkTextSecondary,
+            lightHighContrast: UIColor(hex: 0x5F5F66),
+            darkHighContrast: UIColor(hex: 0xD0C9BD)
+        )
+        static let textTertiary = adaptive(
+            light: UIColor(hex: 0xA2A2A8),
+            dark: darkTextTertiary,
+            darkHighContrast: UIColor(hex: 0xAAA397)
+        )
         static let overviewMetadata = UIColor { traits in
-            traits.accessibilityContrast == .high ? UIColor(hex: 0x4A4A50) : canonicalTextSecondary
+            if traits.userInterfaceStyle == .dark {
+                return traits.accessibilityContrast == .high ? UIColor(hex: 0xD0C9BD) : darkTextSecondary
+            }
+            return traits.accessibilityContrast == .high ? UIColor(hex: 0x4A4A50) : canonicalTextSecondary
         }
         // Input roles replace the obsolete darkInput compatibility vocabulary.
         // Their fixed values are unchanged; Dark Mode is not introduced here.
-        static let inputSurface = UIColor(hex: 0xF5F5F7)
-        static let inputBorder = UIColor.black.withAlphaComponent(0.12)
-        static let inputPlaceholder = UIColor.black.withAlphaComponent(0.44)
+        static let inputSurface = adaptive(light: UIColor(hex: 0xF5F5F7), dark: darkNeutralSurface)
+        static let inputBorder = adaptive(
+            light: UIColor.black.withAlphaComponent(0.12),
+            dark: darkTextPrimary.withAlphaComponent(0.16),
+            darkHighContrast: darkTextPrimary.withAlphaComponent(0.26)
+        )
+        static let inputPlaceholder = adaptive(
+            light: UIColor.black.withAlphaComponent(0.44),
+            dark: UIColor(hex: 0xA69E91),
+            darkHighContrast: UIColor(hex: 0xC2BAAE)
+        )
 
         // Active semantic gold aliases: identical raw values, distinct usage roles.
         // Champagne gold signals elevated action and progress without reading as warning orange.
-        static let gold = brandGold
-        static let goldDeep = brandGoldDeep
-        static let goldDark = brandGoldText
-        static let goldMuted = UIColor(hex: 0x9F8857)
-        static let goldMutedSurface = UIColor(hex: 0xF2EBDD)
+        static let gold = accent
+        static let goldDeep = accentPressed
+        static let goldDark = accentText
+        static let goldMuted = adaptive(light: UIColor(hex: 0x9F8857), dark: UIColor(hex: 0xB6A076))
+        static let goldMutedSurface = adaptive(light: UIColor(hex: 0xF2EBDD), dark: UIColor(hex: 0x342D22))
         static let accentMuted = goldMuted
         static let accentMutedSurface = goldMutedSurface
         // Text accents sit on light surfaces, so use the contrast-safe dark gold.
         static let goldSoft = goldDark
 
         // Settings is intentionally light and uses the darker gold variants for contrast.
-        static let settingsBackground = bgLightMist
-        static let settingsCard = bgLight
-        static let settingsText = canonicalTextPrimary
-        static let settingsSecondary = UIColor(hex: 0x8B8B92)
-        static let settingsLine = UIColor.black.withAlphaComponent(0.08)
+        static let settingsBackground = canvasGrouped
+        static let settingsCard = surface
+        static let settingsText = textPrimary
+        static let settingsSecondary = adaptive(light: UIColor(hex: 0x8B8B92), dark: darkTextSecondary)
+        static let settingsLine = dividerSubtle
         static let settingsGold = goldDark
         static let settingsIcon = goldDark
         static let settingsRowBackground = settingsCard
         static let searchEmptyState = textSecondary
 
-        static let success = UIColor(hex: 0x3C8F5A)
-        static let danger = UIColor(hex: 0xC2413A)
-        static let info = UIColor(hex: 0x6D86A8)
+        static let success = adaptive(light: UIColor(hex: 0x3C8F5A), dark: UIColor(hex: 0x72B98A))
+        static let danger = adaptive(light: UIColor(hex: 0xC2413A), dark: UIColor(hex: 0xE27A72))
+        static let info = adaptive(light: UIColor(hex: 0x6D86A8), dark: UIColor(hex: 0x8FA8C5))
         static let mapSurface = UIColor(hex: 0x030406)
 
         // Native map and generated imagery retain their existing depth while sharing semantic roles.
@@ -109,17 +179,20 @@ enum AlmidyDesignTokens {
         // semantic action color and must not override the product brand tokens.
         static let tripOverviewAccent = goldMuted
         static let tripOverviewAccentSurface = goldMutedSurface
-        static let tripOverviewNeutralText = UIColor(hex: 0x8E8E93)
-        static let tripOverviewNeutralIcon = UIColor(hex: 0x929297)
-        static let tripOverviewNeutralSurface = UIColor(hex: 0xF2F3F6)
-        static let tripOverviewDivider = UIColor(hex: 0xE7E7EA)
+        static let tripOverviewNeutralText = adaptive(light: UIColor(hex: 0x8E8E93), dark: darkTextSecondary)
+        static let tripOverviewNeutralIcon = adaptive(light: UIColor(hex: 0x929297), dark: darkTextTertiary)
+        static let tripOverviewNeutralSurface = adaptive(light: UIColor(hex: 0xF2F3F6), dark: darkNeutralSurface)
+        static let tripOverviewDivider = adaptive(light: UIColor(hex: 0xE7E7EA), dark: darkTextPrimary.withAlphaComponent(0.10))
 
         // Decorative account surfaces are intentionally pastel and are not provider-brand colors.
-        static let avatarRoseSurface = UIColor(red: 1.00, green: 0.84, blue: 0.85, alpha: 1)
-        static let avatarPeachSurface = UIColor(red: 1.00, green: 0.87, blue: 0.80, alpha: 1)
-        static let avatarLavenderSurface = UIColor(red: 0.96, green: 0.79, blue: 0.94, alpha: 1)
+        static let avatarRoseSurface = adaptive(light: UIColor(red: 1.00, green: 0.84, blue: 0.85, alpha: 1), dark: UIColor(hex: 0x4A2D32))
+        static let avatarPeachSurface = adaptive(light: UIColor(red: 1.00, green: 0.87, blue: 0.80, alpha: 1), dark: UIColor(hex: 0x4B3428))
+        static let avatarLavenderSurface = adaptive(light: UIColor(red: 0.96, green: 0.79, blue: 0.94, alpha: 1), dark: UIColor(hex: 0x423044))
 
-        static let modalDimmingBackground = UIColor.black.withAlphaComponent(0.48)
+        static let modalDimmingBackground = adaptive(
+            light: UIColor.black.withAlphaComponent(0.48),
+            dark: UIColor.black.withAlphaComponent(0.64)
+        )
         static let overlayPlaceholderText = UIColor.white.withAlphaComponent(0.45)
         static let shadowBlack = UIColor.black
     }

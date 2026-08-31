@@ -185,3 +185,7 @@ Every visible implementation requires committed before baseline, actual normaliz
 ## Figma, Coolors, Dark Mode, and cross-platform
 
 Figma should define semantic variables/styles for spacing, radius, surface, border, and elevation using the proposed roles, while retaining documented feature exceptions. The separate `Trip Overview / Neutral Surface` variable now has Light value `#F2F3F6`; it must not be collapsed into another variable. Coolors may describe `#F2F3F6` as the active Trip Overview neutral without otherwise simplifying the neutral palette. Canvas, grouped canvas, surface, neutral, input, on-media, and map semantics must remain distinct so future Dark Mode can diverge even when Light values match. Web and Android implementation remains out of scope; approved reusable semantic decisions can be promoted during later cross-platform alignment.
+
+## v2.5 Dark Mode
+
+Semantic roles now resolve across Light, Dark, and Increased Contrast without changing Light raw values. Dark uses warm near-black canvases, warm off-white text, champagne accents, and warm-white alpha borders; media, map, renderer, and system-native roles remain intentional exceptions. Layer-backed colors refresh on trait changes. The strict matrix is 12 Light plus 12 Dark images, with the original Light PNGs unchanged. See `DARK_MODE_SPEC.md`.

@@ -50,6 +50,11 @@ final class AlmidyButton: UIButton {
         fatalError("init(coder:) has not been implemented")
     }
 
+    override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+        super.traitCollectionDidChange(previousTraitCollection)
+        if previousTraitCollection?.hasDifferentColorAppearance(comparedTo: traitCollection) == true { applyStyle() }
+    }
+
     override var isHighlighted: Bool {
         didSet { alpha = isHighlighted ? 0.78 : 1 }
     }
@@ -83,7 +88,7 @@ final class AlmidyButton: UIButton {
         case .secondary:
             backgroundColor = AlmidyDesignTokens.Color.surface
             setTitleColor(AlmidyDesignTokens.Color.textPrimary, for: .normal)
-            AlmidyDesignTokens.Border.outline.apply(to: layer)
+            AlmidyDesignTokens.Border.outline.apply(to: self)
         case .tertiary:
             backgroundColor = .clear
             setTitleColor(AlmidyDesignTokens.Color.accentText, for: .normal)

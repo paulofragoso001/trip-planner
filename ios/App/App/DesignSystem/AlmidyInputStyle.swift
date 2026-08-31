@@ -47,13 +47,13 @@ struct AlmidyInputStyle {
         textField.isEnabled = state != .disabled
 
         switch state {
-        case .normal, .disabled: border.apply(to: textField.layer)
-        case .focused: AlmidyDesignTokens.Border.selected.apply(to: textField.layer)
+        case .normal, .disabled: border.apply(to: textField)
+        case .focused: AlmidyDesignTokens.Border.selected.apply(to: textField)
         case .error:
             AlmidyDesignTokens.Border.Configuration(
                 width: AlmidyDesignTokens.Border.selected.width,
                 color: AlmidyDesignTokens.Color.danger
-            ).apply(to: textField.layer)
+            ).apply(to: textField)
         }
 
         if let placeholder = textField.placeholder ?? textField.attributedPlaceholder?.string {

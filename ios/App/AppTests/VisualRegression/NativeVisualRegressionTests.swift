@@ -31,7 +31,7 @@ final class AlmidySnapshotHarnessTests: XCTestCase {
     }
 
     func testEveryCanonicalBaselineDecodes() throws {
-        XCTAssertEqual(try AlmidySnapshotTesting.validateBaselines().count, 12)
+        XCTAssertEqual(try AlmidySnapshotTesting.validateBaselines().count, 24)
     }
 
     private func solidImage(color: UIColor, size: CGSize) -> UIImage {
@@ -47,6 +47,23 @@ final class AlmidySnapshotHarnessTests: XCTestCase {
 
 @MainActor
 final class NativeVisualRegressionTests: XCTestCase {
+    func testDarkGlobeActiveTripCard() throws { try withDarkAppearance { try testGlobeActiveTripCard() } }
+    func testDarkGlobeFutureTripCard() throws { try withDarkAppearance { try testGlobeFutureTripCard() } }
+    func testDarkReservationAutomationCard() throws { try withDarkAppearance { try testReservationAutomationCard() } }
+    func testDarkMapControlCluster() throws { try withDarkAppearance { try testMapControlCluster() } }
+    func testDarkPlaceTravelModeSelection() throws { try withDarkAppearance { try testPlaceTravelModeSelection() } }
+    func testDarkSavedPlacePopulatedComposition() throws { try withDarkAppearance { try testSavedPlacePopulatedComposition() } }
+    func testDarkTransportationTrainComposition() throws { try withDarkAppearance { try testTransportationTrainComposition() } }
+    func testDarkFlightPopulatedComposition() throws { try withDarkAppearance { try testFlightPopulatedComposition() } }
+
+    private func withDarkAppearance(_ body: () throws -> Void) throws {
+        var result: Result<Void, Error>!
+        UITraitCollection(userInterfaceStyle: .dark).performAsCurrent {
+            result = Result { try body() }
+        }
+        try result.get()
+    }
+
     func testGlobeActiveTripCard() throws {
         let card = NativeGlobeTripCardView(
             identifier: "fixture-active-trip",
@@ -161,8 +178,15 @@ final class NativeVisualRegressionTests: XCTestCase {
 
     private func snapshot(_ view: UIView, size: CGSize, name: String, feature: String) throws {
         view.backgroundColor = view.backgroundColor ?? AlmidyDesignTokens.Color.canvasGrouped
-        let image = AlmidySnapshotTesting.render(view, size: size)
-        try AlmidySnapshotTesting.assertSnapshot(image, named: name, feature: feature, testCase: self)
+        let appearance: UIUserInterfaceStyle = self.name.contains("testDark") ? .dark : .light
+        let image = AlmidySnapshotTesting.render(view, size: size, appearance: appearance)
+        try AlmidySnapshotTesting.assertSnapshot(
+            image,
+            named: name,
+            feature: feature,
+            appearance: appearance,
+            testCase: self
+        )
     }
 
     private func fixtureMedia(start: UIColor, end: UIColor) -> UIImage {

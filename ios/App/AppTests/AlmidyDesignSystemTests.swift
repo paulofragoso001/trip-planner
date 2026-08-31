@@ -66,6 +66,68 @@ final class AlmidyDesignSystemTests: XCTestCase {
         assertColor(AlmidyDesignTokens.Color.textSecondary, hex: 0x7D7D84)
     }
 
+    func testSemanticColorsResolveAcrossLightAndDarkAppearances() {
+        let light = UITraitCollection(userInterfaceStyle: .light)
+        let dark = UITraitCollection(userInterfaceStyle: .dark)
+        let roles = [
+            AlmidyDesignTokens.Color.canvas,
+            AlmidyDesignTokens.Color.canvasGrouped,
+            AlmidyDesignTokens.Color.surface,
+            AlmidyDesignTokens.Color.surfaceNeutral,
+            AlmidyDesignTokens.Color.textPrimary,
+            AlmidyDesignTokens.Color.textSecondary,
+            AlmidyDesignTokens.Color.accentText,
+            AlmidyDesignTokens.Color.inputSurface,
+            AlmidyDesignTokens.Color.inputPlaceholder,
+            AlmidyDesignTokens.Color.success,
+            AlmidyDesignTokens.Color.danger,
+            AlmidyDesignTokens.Color.info
+        ]
+        for role in roles {
+            XCTAssertNotEqual(role.resolvedColor(with: light), role.resolvedColor(with: dark))
+        }
+        XCTAssertEqual(
+            AlmidyDesignTokens.Color.onMediaPrimary.resolvedColor(with: light),
+            AlmidyDesignTokens.Color.onMediaPrimary.resolvedColor(with: dark)
+        )
+        XCTAssertEqual(AlmidyDesignTokens.appearanceContract, "semantic-light-dark-with-media-map-native-exceptions")
+    }
+
+    func testHighContrastRemainsIndependentFromAppearance() {
+        let light = UITraitCollection(traitsFrom: [
+            UITraitCollection(userInterfaceStyle: .light),
+            UITraitCollection(accessibilityContrast: .high)
+        ])
+        let dark = UITraitCollection(traitsFrom: [
+            UITraitCollection(userInterfaceStyle: .dark),
+            UITraitCollection(accessibilityContrast: .high)
+        ])
+        XCTAssertNotEqual(
+            AlmidyDesignTokens.Color.textSecondary.resolvedColor(with: light),
+            AlmidyDesignTokens.Color.textSecondary.resolvedColor(with: dark)
+        )
+        XCTAssertNotEqual(
+            AlmidyDesignTokens.Color.borderStrong.resolvedColor(with: dark),
+            AlmidyDesignTokens.Color.borderStrong.resolvedColor(with: UITraitCollection(userInterfaceStyle: .dark))
+        )
+    }
+
+    func testLayerBackedSharedSurfaceRefreshesForTraitTransition() {
+        let card = AlmidyCard(style: .standard)
+        let light = UITraitCollection(userInterfaceStyle: .light)
+        let dark = UITraitCollection(userInterfaceStyle: .dark)
+        card.refreshAppearance(using: light)
+        let lightBorder = card.layer.borderColor
+        card.refreshAppearance(using: dark)
+        let darkBorder = card.layer.borderColor
+
+        XCTAssertNotEqual(lightBorder, darkBorder)
+        XCTAssertEqual(
+            darkBorder,
+            AlmidyDesignTokens.Color.borderSubtle.resolvedColor(with: dark).cgColor
+        )
+    }
+
     func testSemanticSpacingRadiusAndSizeValues() {
         XCTAssertEqual(AlmidyDesignTokens.Spacing.nativeContent, 20)
         XCTAssertEqual(AlmidyDesignTokens.Spacing.sheetContentInset, 20)
@@ -221,7 +283,10 @@ final class AlmidyDesignSystemTests: XCTestCase {
         XCTAssertEqual(field.layer.borderWidth, AlmidyDesignTokens.Border.selected.width)
 
         AlmidyInputStyle.standard.apply(to: field, state: .error)
-        XCTAssertEqual(field.layer.borderColor, AlmidyDesignTokens.Color.danger.cgColor)
+        XCTAssertEqual(
+            field.layer.borderColor,
+            AlmidyDesignTokens.Color.danger.resolvedColor(with: field.traitCollection).cgColor
+        )
 
         AlmidyInputStyle.standard.apply(to: field, state: .disabled)
         XCTAssertFalse(field.isEnabled)
@@ -237,7 +302,10 @@ final class AlmidyDesignSystemTests: XCTestCase {
         XCTAssertEqual(field.backgroundColor, AlmidyDesignTokens.Color.inputSurface)
         XCTAssertEqual(field.layer.cornerRadius, AlmidyDesignTokens.Radius.control)
         XCTAssertEqual(field.layer.borderWidth, 1)
-        XCTAssertEqual(field.layer.borderColor, AlmidyDesignTokens.Color.inputBorder.cgColor)
+        XCTAssertEqual(
+            field.layer.borderColor,
+            AlmidyDesignTokens.Color.inputBorder.resolvedColor(with: field.traitCollection).cgColor
+        )
         XCTAssertEqual(
             field.attributedPlaceholder?.attribute(.foregroundColor, at: 0, effectiveRange: nil) as? UIColor,
             AlmidyDesignTokens.Color.inputPlaceholder
@@ -415,7 +483,8 @@ final class AlmidyDesignSystemTests: XCTestCase {
         line: UInt = #line
     ) {
         var red: CGFloat = 0, green: CGFloat = 0, blue: CGFloat = 0, alpha: CGFloat = 0
-        XCTAssertTrue(color.getRed(&red, green: &green, blue: &blue, alpha: &alpha), file: file, line: line)
+        let light = color.resolvedColor(with: UITraitCollection(userInterfaceStyle: .light))
+        XCTAssertTrue(light.getRed(&red, green: &green, blue: &blue, alpha: &alpha), file: file, line: line)
         XCTAssertEqual(red, CGFloat((hex >> 16) & 0xFF) / 255, accuracy: 0.001, file: file, line: line)
         XCTAssertEqual(green, CGFloat((hex >> 8) & 0xFF) / 255, accuracy: 0.001, file: file, line: line)
         XCTAssertEqual(blue, CGFloat(hex & 0xFF) / 255, accuracy: 0.001, file: file, line: line)

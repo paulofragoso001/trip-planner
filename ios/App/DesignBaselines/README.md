@@ -159,3 +159,7 @@ The shared spacing audit produced one exact semantic adoption: `AlmidyBadge`'s u
 ## v2.4E ordinary card and control radius review
 
 Two exact semantic adoptions were made with no pixel change: the reusable reservation-details and attachment-action surfaces now reference `Radius.control` for their existing 18pt curvature. No visible radius normalization was approved and no baseline was recorded. Shape-derived circles/capsules, protected sheet and feature radii, and uncovered Native Itinerary/Search/Settings/Cost candidates remain unchanged; the canonical image count stays 12.
+
+## v2.5 Light/Dark matrix
+
+Root feature folders remain the frozen Light baselines; matching Dark fixtures live under `Snapshots/Dark/<Feature>/`. Record only the intended appearance. The canonical count is 24 (12 Light + 12 Dark), using exact RGBA comparison with zero differing pixels and zero tolerance. Fixture hosts use a real `UIWindow` so UIKit and semantic dynamic colors resolve deterministically. Inspect every Dark PNG, including accessibility typography and compact controls, before accepting it.

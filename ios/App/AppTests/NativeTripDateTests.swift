@@ -1900,6 +1900,20 @@ final class NativeTripOverviewVisualFixtureTests: XCTestCase {
 @MainActor
 final class NativeTripOverviewSnapshotTests: XCTestCase {
     private var retainedTraitHosts: [UIViewController] = []
+    private var retainedTraitWindows: [UIWindow] = []
+
+    func testDarkPopulatedExpandedSnapshot() throws { try withDarkAppearance { try testPopulatedExpandedSnapshot() } }
+    func testDarkPopulatedCollapsedSnapshot() throws { try withDarkAppearance { try testPopulatedCollapsedSnapshot() } }
+    func testDarkAccessibilitySnapshot() throws { try withDarkAppearance { try testAccessibilitySnapshot() } }
+    func testDarkEmptySnapshot() throws { try withDarkAppearance { try testEmptySnapshot() } }
+
+    private func withDarkAppearance(_ body: () throws -> Void) throws {
+        var result: Result<Void, Error>!
+        UITraitCollection(userInterfaceStyle: .dark).performAsCurrent {
+            result = Result { try body() }
+        }
+        try result.get()
+    }
 
     func testPopulatedExpandedSnapshot() throws {
         let controller = makeController(.populatedSections)
@@ -1944,6 +1958,7 @@ final class NativeTripOverviewSnapshotTests: XCTestCase {
             image,
             named: name,
             feature: "TripOverview",
+            appearance: self.name.contains("testDark") ? .dark : .light,
             file: file,
             line: line,
             testCase: self
@@ -1978,11 +1993,20 @@ final class NativeTripOverviewSnapshotTests: XCTestCase {
         let category = contentSizeCategory ?? fixture.contentSizeCategory
         let host = UIViewController()
         host.loadViewIfNeeded()
+        host.overrideUserInterfaceStyle = self.name.contains("testDark") ? .dark : .light
         host.view.frame = controller.view.frame
+        var window: UIWindow?
+        if self.name.contains("testDark") {
+            let darkWindow = UIWindow(frame: host.view.frame)
+            darkWindow.overrideUserInterfaceStyle = .dark
+            darkWindow.rootViewController = host
+            darkWindow.isHidden = false
+            window = darkWindow
+        }
         host.addChild(controller)
         host.setOverrideTraitCollection(
             UITraitCollection(traitsFrom: [
-                UITraitCollection(userInterfaceStyle: .light),
+                UITraitCollection(userInterfaceStyle: self.name.contains("testDark") ? .dark : .light),
                 UITraitCollection(preferredContentSizeCategory: category),
                 UITraitCollection(displayScale: AlmidySnapshotTesting.canonicalScale)
             ]),
@@ -1991,6 +2015,7 @@ final class NativeTripOverviewSnapshotTests: XCTestCase {
         host.view.addSubview(controller.view)
         controller.didMove(toParent: host)
         retainedTraitHosts.append(host)
+        if let window { retainedTraitWindows.append(window) }
         return controller
     }
 }

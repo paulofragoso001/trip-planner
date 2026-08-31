@@ -22,18 +22,28 @@ enum AlmidySnapshotTesting {
     static func render(
         _ view: UIView,
         size: CGSize,
-        contentSizeCategory: UIContentSizeCategory = .large
+        contentSizeCategory: UIContentSizeCategory = .large,
+        appearance: UIUserInterfaceStyle = .light
     ) -> UIImage {
         let child = UIViewController()
         child.view = view
         let host = UIViewController()
         host.loadViewIfNeeded()
+        host.overrideUserInterfaceStyle = appearance
         host.view.frame = CGRect(origin: .zero, size: size)
         host.view.backgroundColor = .systemBackground
+        var window: UIWindow?
+        if appearance == .dark {
+            let darkWindow = UIWindow(frame: host.view.frame)
+            darkWindow.overrideUserInterfaceStyle = .dark
+            darkWindow.rootViewController = host
+            darkWindow.isHidden = false
+            window = darkWindow
+        }
         host.addChild(child)
         host.setOverrideTraitCollection(
             UITraitCollection(traitsFrom: [
-                UITraitCollection(userInterfaceStyle: .light),
+                UITraitCollection(userInterfaceStyle: appearance),
                 UITraitCollection(preferredContentSizeCategory: contentSizeCategory),
                 UITraitCollection(displayScale: canonicalScale)
             ]),
@@ -43,9 +53,13 @@ enum AlmidySnapshotTesting {
         child.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         host.view.addSubview(child.view)
         child.didMove(toParent: host)
+        if appearance == .dark {
+            child.view.traitCollectionDidChange(UITraitCollection(userInterfaceStyle: .light))
+        }
         host.view.setNeedsLayout()
         host.view.layoutIfNeeded()
         child.view.layoutIfNeeded()
+        _ = window
         return renderLayer(host.view, size: size)
     }
 
@@ -54,7 +68,7 @@ enum AlmidySnapshotTesting {
         format.scale = canonicalScale
         format.opaque = true
         return UIGraphicsImageRenderer(size: size, format: format).image { context in
-            UIColor.systemBackground.setFill()
+            UIColor.systemBackground.resolvedColor(with: view.traitCollection).setFill()
             context.fill(CGRect(origin: .zero, size: size))
             view.layer.render(in: context.cgContext)
         }
@@ -64,13 +78,17 @@ enum AlmidySnapshotTesting {
         _ image: UIImage,
         named name: String,
         feature: String,
+        appearance: UIUserInterfaceStyle = .light,
         file: StaticString = #filePath,
         line: UInt = #line,
         testCase: XCTestCase
     ) throws {
         precondition(name.range(of: "^[a-z0-9][a-z0-9-]*$", options: .regularExpression) != nil)
         precondition(feature.range(of: "^[A-Za-z][A-Za-z0-9]*$", options: .regularExpression) != nil)
-        let directory = baselineRoot.appendingPathComponent(feature, isDirectory: true)
+        let appearanceRoot = appearance == .dark
+            ? baselineRoot.appendingPathComponent("Dark", isDirectory: true)
+            : baselineRoot
+        let directory = appearanceRoot.appendingPathComponent(feature, isDirectory: true)
         let baseline = directory.appendingPathComponent("\(name).png")
         let data = try XCTUnwrap(image.pngData(), "Could not encode rendered snapshot", file: file, line: line)
 

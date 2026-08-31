@@ -9,9 +9,13 @@ final class NativePlaceTravelModesView: UIStackView {
 
     private(set) var buttons: [UIButton] = []
     private let onSelect: (Int) -> Void
+    private var durations: [String]
+    private var selectedIndex: Int
 
     init(durations: [String], selectedIndex: Int, onSelect: @escaping (Int) -> Void) {
         self.onSelect = onSelect
+        self.durations = durations
+        self.selectedIndex = selectedIndex
         super.init(frame: .zero)
         axis = .horizontal
         distribution = .fillEqually
@@ -25,7 +29,12 @@ final class NativePlaceTravelModesView: UIStackView {
             let duration = durations.indices.contains(index) ? durations[index] : ""
             let button = UIButton(type: .system)
             button.tag = index
-            button.configuration = Self.configuration(symbol: symbol, duration: duration, selected: index == selectedIndex)
+            button.configuration = Self.configuration(
+                symbol: symbol,
+                duration: duration,
+                selected: index == selectedIndex,
+                traits: traitCollection
+            )
             button.titleLabel?.numberOfLines = 1
             button.titleLabel?.lineBreakMode = .byClipping
             button.titleLabel?.adjustsFontSizeToFitWidth = true
@@ -45,12 +54,15 @@ final class NativePlaceTravelModesView: UIStackView {
     }
 
     func update(durations: [String], selectedIndex: Int) {
+        self.durations = durations
+        self.selectedIndex = selectedIndex
         for (index, button) in buttons.enumerated() {
             let duration = durations.indices.contains(index) ? durations[index] : ""
             button.configuration = Self.configuration(
                 symbol: Self.symbols[index],
                 duration: duration,
-                selected: index == selectedIndex
+                selected: index == selectedIndex,
+                traits: traitCollection
             )
             button.accessibilityLabel = "\(duration) travel time"
             button.accessibilityTraits = index == selectedIndex ? [.button, .selected] : .button
@@ -61,18 +73,42 @@ final class NativePlaceTravelModesView: UIStackView {
         onSelect(index)
     }
 
-    private static func configuration(symbol: String, duration: String, selected: Bool) -> UIButton.Configuration {
+    override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+        super.traitCollectionDidChange(previousTraitCollection)
+        guard previousTraitCollection == nil
+            || previousTraitCollection?.hasDifferentColorAppearance(comparedTo: traitCollection) == true
+        else { return }
+        update(durations: durations, selectedIndex: selectedIndex)
+    }
+
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        guard window != nil else { return }
+        update(durations: durations, selectedIndex: selectedIndex)
+    }
+
+    private static func configuration(
+        symbol: String,
+        duration: String,
+        selected: Bool,
+        traits: UITraitCollection
+    ) -> UIButton.Configuration {
         var configuration = UIButton.Configuration.plain()
         configuration.image = UIImage(systemName: symbol)
+        let foreground = UIColor.label.resolvedColor(with: traits)
         var titleAttributes = AttributeContainer()
         titleAttributes.font = AlmidyDesignTokens.Font.body(14)
+        titleAttributes.foregroundColor = foreground
         configuration.attributedTitle = AttributedString(duration, attributes: titleAttributes)
         configuration.preferredSymbolConfigurationForImage = UIImage.SymbolConfiguration(pointSize: 14, weight: .regular)
         configuration.imagePadding = 3
-        configuration.baseForegroundColor = .label
+        configuration.baseForegroundColor = foreground
+        configuration.imageColorTransformer = UIConfigurationColorTransformer { _ in foreground }
         configuration.contentInsets = NSDirectionalEdgeInsets(top: 4, leading: 2, bottom: 4, trailing: 2)
         configuration.titleLineBreakMode = .byClipping
-        configuration.background.backgroundColor = selected ? AlmidyDesignTokens.Color.settingsCard : .clear
+        configuration.background.backgroundColor = selected
+            ? AlmidyDesignTokens.Color.settingsCard.resolvedColor(with: traits)
+            : .clear
         configuration.background.cornerRadius = Self.selectedCornerRadius
         return configuration
     }

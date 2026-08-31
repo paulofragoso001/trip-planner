@@ -31,6 +31,17 @@ final class AlmidyCard: UIView {
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
+    override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+        super.traitCollectionDidChange(previousTraitCollection)
+        guard previousTraitCollection?.hasDifferentColorAppearance(comparedTo: traitCollection) == true else { return }
+        refreshAppearance(using: traitCollection)
+    }
+
+    func refreshAppearance(using traits: UITraitCollection) {
+        surfaceStyle.apply(to: self, traits: traits)
+        layer.masksToBounds = semanticStyle != .large
+    }
+
     private var surfaceStyle: AlmidySurfaceStyle {
         switch semanticStyle {
         case .standard, .compact: return .card

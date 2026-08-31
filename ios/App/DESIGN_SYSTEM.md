@@ -271,3 +271,7 @@ Governance rules:
 - Allow raw renderer, algorithmic, media and measured component values; discourage repeated raw brand colors, standard surface radii, control shadows and semantic fonts.
 - Evolve tokens through proposed → active → compatibility alias → deprecated → removed.
 - Require tests, accessibility review, backward-compatible migration, and visual parity or explicit approval for shared-component evolution.
+
+## v2.5 Dark Mode contract
+
+`AlmidyDesignTokens.Color` remains the single appearance namespace. Semantic colors resolve for Light, Dark, and Increased Contrast; callers do not branch on appearance. Shared `CALayer` borders/shadows resolve against their owning view and refresh after color-appearance changes. UIKit-native controls may retain adaptive system colors, while map/media/on-image roles remain fixed. Light values and composition are frozen. The canonical matrix is now 12 Light plus 12 Dark PNGs. See [`DARK_MODE_SPEC.md`](../../DARK_MODE_SPEC.md).

@@ -49,6 +49,8 @@ final class AlmidyIconButton: UIButton {
     private let normalBackgroundColor: UIColor
     private let disabledForegroundColor = AlmidyDesignTokens.Color.stateDisabledText
     private let disabledBackgroundColor = AlmidyDesignTokens.Color.stateDisabledFill
+    private let semanticBorder: AlmidyDesignTokens.Border.Configuration?
+    private let semanticElevation: AlmidyDesignTokens.Elevation.Configuration?
 
     init(
         symbol: String,
@@ -63,6 +65,8 @@ final class AlmidyIconButton: UIButton {
         semanticSymbolWeight = overrides.symbolWeight ?? defaults.symbolWeight
         normalForegroundColor = overrides.foregroundColor ?? defaults.foreground
         normalBackgroundColor = overrides.backgroundColor ?? defaults.background
+        semanticBorder = overrides.border ?? defaults.border
+        semanticElevation = overrides.elevation ?? defaults.elevation
         super.init(frame: .zero)
 
         translatesAutoresizingMaskIntoConstraints = false
@@ -80,10 +84,8 @@ final class AlmidyIconButton: UIButton {
         )
         self.accessibilityLabel = accessibilityLabel
         accessibilityTraits.insert(.button)
-        let border = overrides.border ?? defaults.border
-        border?.apply(to: layer)
-        let elevation = overrides.elevation ?? defaults.elevation
-        elevation?.apply(to: layer)
+        semanticBorder?.apply(to: self)
+        semanticElevation?.apply(to: self)
         applyColors()
     }
 
@@ -109,6 +111,14 @@ final class AlmidyIconButton: UIButton {
 
     override var isEnabled: Bool {
         didSet { applyColors() }
+    }
+
+    override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+        super.traitCollectionDidChange(previousTraitCollection)
+        guard previousTraitCollection?.hasDifferentColorAppearance(comparedTo: traitCollection) == true else { return }
+        semanticBorder?.apply(to: self)
+        semanticElevation?.apply(to: self)
+        applyColors()
     }
 
     override func layoutSubviews() {

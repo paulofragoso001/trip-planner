@@ -38,7 +38,7 @@ for (const [name, value] of Object.entries(swiftHexTokens)) {
   );
 }
 
-assert.match(swiftSource, /static let borderSubtle = UIColor\.black\.withAlphaComponent\(0\.10\)/);
+assert.match(swiftSource, /static let borderSubtle = adaptive\([\s\S]*?light: UIColor\.black\.withAlphaComponent\(0\.10\)/);
 const pixelValue = (value) => Number.parseFloat(value.replace("px", ""));
 assert.match(swiftSource, /static let md: CGFloat = 16/);
 assert.match(swiftSource, /static let sm: CGFloat = 12/);
@@ -53,9 +53,9 @@ assert.match(swiftSource, /static let elementGap = sm/);
 assert.match(swiftSource, /static let contentInset = lg/);
 assert.match(swiftSource, /static let card: CGFloat = 24/);
 assert.match(swiftSource, /static let control: CGFloat = 18/);
-assert.match(swiftSource, /static let accent = brandGold/);
-assert.match(swiftSource, /static let canvas = bgLight/);
-assert.match(swiftSource, /static let surfaceNeutral = bgLightMist/);
+assert.match(swiftSource, /static let accent = adaptive\(light: brandGold,/);
+assert.match(swiftSource, /static let canvas = adaptive\(light: bgLight,/);
+assert.match(swiftSource, /static let surfaceNeutral = adaptive\(light: bgLightMist,/);
 assert.match(foundationSource, /enum Typography/);
 assert.match(foundationSource, /enum Elevation/);
 assert.match(foundationSource, /enum Component/);
