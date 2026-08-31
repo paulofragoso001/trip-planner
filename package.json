@@ -23,7 +23,9 @@
     "test:prod:auth": "npx playwright test tests/playwright/auth-boundary.spec.ts --workers=1",
     "test:prod:calendar": "ALLOW_TEST_DASHBOARD_BYPASS=true npx playwright test tests/playwright/calendar-contract.spec.ts tests/playwright/calendar-worker.spec.ts --workers=1",
     "test:prod:imports": "ALLOW_TEST_DASHBOARD_BYPASS=true npx playwright test tests/playwright/imports-write.spec.ts --workers=1",
-    "test:prod:social-imports": "ALLOW_TEST_DASHBOARD_BYPASS=true npx playwright test tests/playwright/social-import-loop.spec.ts --workers=1"
+    "test:prod:social-imports": "ALLOW_TEST_DASHBOARD_BYPASS=true npx playwright test tests/playwright/social-import-loop.spec.ts --workers=1",
+    "test:visual:web": "npx playwright test tests/playwright/tier-b.visual.spec.ts --workers=1",
+    "test:visual:web:update": "npx playwright test tests/playwright/tier-b.visual.spec.ts --workers=1 --update-snapshots"
   },
   "dependencies": {
     "@capacitor/app": "^8.1.0",

@@ -13,6 +13,7 @@ export default defineConfig({
   webServer: {
     command: `PATH="/Users/fragoso/.nvm/versions/node/v20.20.2/bin:$PATH" ./node_modules/.bin/next dev --webpack -H 127.0.0.1 -p ${port}`,
     env: {
+      ALMIDY_WEB_VISUAL_FIXTURES: "true",
       ALLOW_LOCAL_DASHBOARD_BYPASS: "true",
       ALLOW_TEST_DASHBOARD_BYPASS: "true",
       NEXT_PUBLIC_UNIFIED_MAP_SURFACE: "true",

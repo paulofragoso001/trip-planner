@@ -325,13 +325,13 @@ export function TripSegmentForm({
   const textareaClass = mobileTextareaClassName;
   const shouldUseGoogleAutocomplete = hydrated && !isMobileViewport;
   const groupClass =
-    "divide-y divide-zinc-800/60 overflow-visible rounded-xl border border-zinc-800 bg-[#1e1e24] shadow-xl lg:border-slate-200 lg:bg-slate-50";
+    "divide-y divide-zinc-800/60 overflow-visible rounded-xl border border-zinc-800 bg-almidy-dark-surface shadow-xl lg:border-slate-200 lg:bg-slate-50";
   const labelClass =
-    "grid min-w-0 gap-1.5 px-3.5 py-3.5 text-[9px] font-extrabold uppercase tracking-[0.14em] text-zinc-500 transition-colors focus-within:bg-[#25252d] lg:text-slate-500 lg:focus-within:bg-white";
+    "grid min-w-0 gap-1.5 px-3.5 py-3.5 text-[9px] font-extrabold uppercase tracking-[0.14em] text-zinc-500 transition-colors focus-within:bg-almidy-dark-surface-neutral lg:text-slate-500 lg:focus-within:bg-white";
 
   return (
     <form
-      className="flex max-h-[min(78dvh,44rem)] min-h-0 flex-col overflow-hidden rounded-[1.55rem] border border-white/10 bg-[#1f1f21] p-4 text-white shadow-[0_22px_60px_rgba(0,0,0,0.32)] lg:max-h-none lg:overflow-visible lg:rounded-2xl lg:border-slate-200 lg:bg-white lg:text-slate-950 lg:shadow-sm"
+      className="flex max-h-[min(78dvh,44rem)] min-h-0 flex-col overflow-hidden rounded-[1.55rem] border border-white/10 bg-almidy-dark-canvas-grouped p-4 text-white shadow-[0_22px_60px_rgba(0,0,0,0.32)] lg:max-h-none lg:overflow-visible lg:rounded-2xl lg:border-slate-200 lg:bg-white lg:text-slate-950 lg:shadow-sm"
       data-testid={isEditing ? "mobile-edit-trip-item-form" : "mobile-add-trip-item-form"}
       onSubmit={submit}
     >

@@ -36,7 +36,7 @@ export function MobileFormShell({
   return (
     <div
       className={cn(
-        "min-h-0 rounded-[1.55rem] border border-white/10 bg-[#1f1f21] text-white shadow-[0_22px_60px_rgba(0,0,0,0.32)]",
+        "min-h-0 rounded-[1.55rem] border border-white/10 bg-almidy-dark-canvas-grouped text-white shadow-[0_22px_60px_rgba(0,0,0,0.32)]",
         "lg:border-slate-200 lg:bg-white lg:text-slate-950 lg:shadow-sm",
         className
       )}
@@ -83,7 +83,7 @@ export function MobileFormSection({
           {title}
         </h3>
       ) : null}
-      <div className="divide-y divide-zinc-800/60 overflow-visible rounded-xl border border-zinc-800 bg-[#1e1e24] shadow-xl lg:border-slate-200 lg:bg-slate-50">
+      <div className="divide-y divide-zinc-800/60 overflow-visible rounded-xl border border-zinc-800 bg-almidy-dark-surface shadow-xl lg:border-slate-200 lg:bg-slate-50">
         {children}
       </div>
     </section>
@@ -92,7 +92,7 @@ export function MobileFormSection({
 
 export function MobileField({ children, helper, label }: MobileFieldProps) {
   return (
-    <div className="grid min-h-14 gap-1 px-3.5 py-3.5 transition-colors focus-within:bg-[#25252d] lg:focus-within:bg-white">
+    <div className="grid min-h-14 gap-1 px-3.5 py-3.5 transition-colors focus-within:bg-almidy-dark-surface-neutral lg:focus-within:bg-white">
       <span className="text-[9px] font-extrabold uppercase tracking-[0.14em] text-zinc-500 lg:text-slate-500">
         {label}
       </span>

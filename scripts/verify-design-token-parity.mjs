@@ -110,7 +110,8 @@ assert.match(typescriptSource, /import canonicalTokens from "\.\.\/\.\.\/design-
 assert.match(typescriptSource, /export type AppearanceMode = "light" \| "dark"/);
 assert.match(typescriptSource, /export function semanticColor/);
 assert.match(typescriptSource, /export const webSemanticColors/);
-assert.match(tailwindSource, /import \{ almidyTokens, webSemanticColors \} from "\.\/lib\/design-system\/almidy-tokens"/);
+assert.match(typescriptSource, /export const webDarkSemanticColors/);
+assert.match(tailwindSource, /import \{ almidyTokens, webDarkSemanticColors, webSemanticColors \} from "\.\/lib\/design-system\/almidy-tokens"/);
 
 for (const key of Object.keys(tokens.colors)) {
   assert.ok(

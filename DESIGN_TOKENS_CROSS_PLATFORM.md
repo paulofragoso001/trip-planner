@@ -84,6 +84,12 @@ The typed adapter exports the Light-mode `webSemanticColors` map, and Tailwind e
 
 `scripts/verify-web-token-adoption.mjs` rejects reintroduced `ink`/`line`/`brand` production utilities and raw canonical gold, verifies compatibility routing, and proves accent, grouped canvas, primary text, and subtle border values remain exact. It deliberately permits classified feature/provider/map/media values.
 
+### v2.6C Tier B visual reconciliation
+
+Five strict Playwright fixtures were established from the v2.6B rendering before any candidate change and reproduced with zero diff. The suite covers warm Light composition, mobile Dark composition, keyboard focus, selected/unselected state and raised-panel elevation. It uses pinned local Chromium, waits for fonts, disables motion and compares with zero channel threshold and zero differing pixels. See [`design-baselines/web/README.md`](design-baselines/web/README.md).
+
+Warm trip neutrals were retained after the candidate made the editorial card visibly colder and more generic. Generic mobile form surfaces partially adopted shared Dark `canvasGrouped`, `surface` and `surfaceNeutral` roles; wallet, map, auth and other feature compositions remain scoped. The draggable-list selected fill adopted `accentMutedSurface` while retaining primary text for accessible contrast. Existing blue/orange keyboard focus and the web `panel` shadow tuple were retained because they provide stronger focus recognition and appropriate platform depth without unrelated compensation.
+
 ## Figma and Coolors
 
 Figma uses one semantic variable collection with Light and Dark modes, matching JSON names. Typography, spacing, radius, shape, elevation intent, and border intent use the same roles. Feature exceptions remain scoped libraries. Increased Contrast stays platform-specific until design provides shared contrast modes. Coolors is reference/exploration only: contract → Figma/platforms → Coolors reference.

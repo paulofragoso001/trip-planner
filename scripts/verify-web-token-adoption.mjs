@@ -32,6 +32,20 @@ assert.match(tailwind, /brand: webSemanticColors\.accent/);
 assert.match(globals, /--almidy-color-accent: theme\("colors\.almidy-accent"\)/);
 assert.match(globals, /var\(--almidy-color-accent\)/);
 
+const reconciledDarkFiles = [
+  "components/ui/mobile-form.tsx",
+  "components/trip/trip-segment-form.tsx",
+];
+for (const file of reconciledDarkFiles) {
+  const source = fs.readFileSync(file, "utf8");
+  assert.doesNotMatch(source, /#(?:1f1f21|1e1e24|25252d)/i, `${file} reintroduced a reconciled dark neutral`);
+}
+assert.doesNotMatch(
+  fs.readFileSync("components/DraggableList.tsx", "utf8"),
+  /selected\s*\?[^\n]*bg-blue-50/,
+  "DraggableList reintroduced the legacy blue selected fill",
+);
+
 const equivalence = {
   accent: [tokens.colors["brand-gold"], tokens.semantic.colors.accent.light],
   canvasGrouped: [tokens.colors["bg-light-mist"], tokens.semantic.colors.canvasGrouped.light],

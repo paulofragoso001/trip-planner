@@ -52,4 +52,12 @@ export const webSemanticColors = {
   info: semanticColor("info", "light"),
 } as const;
 
+export const webDarkSemanticColors = {
+  canvas: semanticColor("canvas", "dark"),
+  "canvas-grouped": semanticColor("canvasGrouped", "dark"),
+  surface: semanticColor("surface", "dark"),
+  "surface-neutral": semanticColor("surfaceNeutral", "dark"),
+  "input-surface": semanticColor("inputSurface", "dark"),
+} as const;
+
 export default almidyTokens;

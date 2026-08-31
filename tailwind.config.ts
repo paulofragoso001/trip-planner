@@ -1,5 +1,5 @@
 import type { Config } from "tailwindcss";
-import { almidyTokens, webSemanticColors } from "./lib/design-system/almidy-tokens";
+import { almidyTokens, webDarkSemanticColors, webSemanticColors } from "./lib/design-system/almidy-tokens";
 
 const config: Config = {
   darkMode: "class",
@@ -13,6 +13,9 @@ const config: Config = {
       colors: {
         ...Object.fromEntries(
           Object.entries(webSemanticColors).map(([name, value]) => [`almidy-${name}`, value]),
+        ),
+        ...Object.fromEntries(
+          Object.entries(webDarkSemanticColors).map(([name, value]) => [`almidy-dark-${name}`, value]),
         ),
         "brand-gold": almidyTokens.colors["brand-gold"],
         "brand-gold-deep": almidyTokens.colors["brand-gold-deep"],

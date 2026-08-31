@@ -167,7 +167,7 @@ export function SortableItem<TItem extends DraggableItem>({
       ref={setNodeRef}
       aria-label={`${item.title}, ${formatSegmentType(item.segment_type)}`}
       className={`rounded-2xl border p-4 transition ${
-        selected ? "border-almidy-accent bg-blue-50" : "border-almidy-border-subtle hover:bg-slate-50"
+        selected ? "border-almidy-accent bg-almidy-accent-muted-surface" : "border-almidy-border-subtle hover:bg-slate-50"
       } ${isDragging ? "opacity-70 shadow-panel" : ""}`}
       data-testid={`timeline-item-${id}`}
       role="listitem"
