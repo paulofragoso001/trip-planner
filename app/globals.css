@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 :root {
-  --almidy-brand-gold: #D6A84F;
+  --almidy-color-accent: theme("colors.almidy-accent");
   color-scheme: light;
 }
 
@@ -12,7 +12,7 @@
 }
 
 body {
-  @apply bg-mist text-ink antialiased;
+  @apply bg-almidy-canvas-grouped text-almidy-text-primary antialiased;
 }
 
 :root.dark body {
@@ -51,7 +51,7 @@ body {
 input,
 select,
 textarea {
-  @apply w-full min-w-0 rounded-lg border border-line bg-white px-3 py-2 text-sm outline-none transition focus:border-brand focus:ring-4 focus:ring-blue-100;
+  @apply w-full min-w-0 rounded-lg border border-almidy-border-subtle bg-white px-3 py-2 text-sm outline-none transition focus:border-almidy-accent focus:ring-4 focus:ring-blue-100;
 }
 
 :root.dark input,
@@ -106,7 +106,7 @@ gmp-place-autocomplete {
 }
 
 .pac-matched {
-  color: var(--almidy-brand-gold, #D6A84F) !important;
+  color: var(--almidy-color-accent) !important;
 }
 
 .pac-icon {

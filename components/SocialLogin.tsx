@@ -76,7 +76,7 @@ export function SocialLogin() {
       <div className="grid gap-3 md:grid-cols-2">
         {providers.map((item) => (
           <button
-            className="flex min-h-12 w-full items-center justify-center gap-3 rounded-lg border border-line bg-white px-4 py-3 text-sm font-bold text-ink transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 sm:min-h-11 md:justify-start"
+            className="flex min-h-12 w-full items-center justify-center gap-3 rounded-lg border border-almidy-border-subtle bg-white px-4 py-3 text-sm font-bold text-almidy-text-primary transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 sm:min-h-11 md:justify-start"
             disabled={loadingProvider !== null}
             key={item.provider}
             onClick={() => signIn(item.provider)}
@@ -87,7 +87,7 @@ export function SocialLogin() {
                 : undefined
             }
           >
-            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-line bg-white">
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-almidy-border-subtle bg-white">
               <img
                 alt={item.alt}
                 className="h-4 w-4 object-contain"

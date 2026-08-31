@@ -390,7 +390,7 @@ export default function TripMap({
       </GoogleMap>
 
       {showRouteDetails && (routeInfo.distance || routeInfo.duration) ? (
-        <div className="mb-3 mt-3 rounded-lg border border-line bg-white p-4 shadow-sm">
+        <div className="mb-3 mt-3 rounded-lg border border-almidy-border-subtle bg-white p-4 shadow-sm">
           <div className="flex items-center justify-between">
             <div>
               <div className="text-xs text-gray-500">Route preview</div>
@@ -408,7 +408,7 @@ export default function TripMap({
       ) : null}
 
       {showRouteDetails && legsInfo.length > 0 ? (
-        <div className="mt-4 space-y-2 rounded-lg border border-line bg-white p-3 shadow-sm">
+        <div className="mt-4 space-y-2 rounded-lg border border-almidy-border-subtle bg-white p-3 shadow-sm">
           {legsInfo.map((leg, index) => (
             <div key={leg.id || index} className="text-sm text-gray-600">
               <strong>{leg.duration}</strong> - {leg.distance}

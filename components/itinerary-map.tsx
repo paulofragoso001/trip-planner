@@ -60,7 +60,7 @@ export function ItineraryMap({ items }: ItineraryMapProps) {
 
   return (
     <MapShell>
-      <div className="relative overflow-hidden rounded-lg border border-line">
+      <div className="relative overflow-hidden rounded-lg border border-almidy-border-subtle">
         <TripMap
           items={mapItems}
           selectedId={selectedPoint?.id}
@@ -70,8 +70,8 @@ export function ItineraryMap({ items }: ItineraryMapProps) {
         />
       </div>
       {selectedPoint ? (
-        <div className="mt-3 rounded-lg border border-line bg-slate-50 p-3 text-sm">
-          <p className="font-black text-ink">{selectedPoint.title}</p>
+        <div className="mt-3 rounded-lg border border-almidy-border-subtle bg-slate-50 p-3 text-sm">
+          <p className="font-black text-almidy-text-primary">{selectedPoint.title}</p>
           <p className="mt-1 text-slate-600">
             {[selectedPoint.type, selectedPoint.date, selectedPoint.time]
               .filter(Boolean)
@@ -85,13 +85,13 @@ export function ItineraryMap({ items }: ItineraryMapProps) {
 
 function MapShell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="mt-4 rounded-lg bg-white p-4 ring-1 ring-line">
+    <div className="mt-4 rounded-lg bg-white p-4 ring-1 ring-almidy-border-subtle">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.12em] text-slate-500">
             Map
           </p>
-          <h4 className="mt-1 text-sm font-black text-ink">Itinerary route map</h4>
+          <h4 className="mt-1 text-sm font-black text-almidy-text-primary">Itinerary route map</h4>
         </div>
       </div>
       {children}

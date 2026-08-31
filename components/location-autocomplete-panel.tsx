@@ -5,7 +5,7 @@ import dynamic from "next/dynamic";
 const LocationAutocomplete = dynamic(() => import("@/components/LocationAutocomplete"), {
   ssr: false,
   loading: () => (
-    <div className="rounded-lg border border-line bg-[#f7f6f2] px-3 py-2 text-xs font-semibold text-slate-500">
+    <div className="rounded-lg border border-almidy-border-subtle bg-[#f7f6f2] px-3 py-2 text-xs font-semibold text-slate-500">
       Loading location tools...
     </div>
   )

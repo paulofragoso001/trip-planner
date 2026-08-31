@@ -28,4 +28,28 @@ export function semanticColor(name: keyof typeof canonicalTokens.semantic.colors
   return typeof value === "string" ? value : value[mode];
 }
 
+export const webSemanticColors = {
+  accent: semanticColor("accent", "light"),
+  "accent-pressed": semanticColor("accentPressed", "light"),
+  "accent-text": semanticColor("accentText", "light"),
+  "accent-muted": semanticColor("accentMuted", "light"),
+  "accent-muted-surface": semanticColor("accentMutedSurface", "light"),
+  canvas: semanticColor("canvas", "light"),
+  "canvas-grouped": semanticColor("canvasGrouped", "light"),
+  surface: semanticColor("surface", "light"),
+  "surface-neutral": semanticColor("surfaceNeutral", "light"),
+  "text-primary": semanticColor("textPrimary", "light"),
+  "text-secondary": semanticColor("textSecondary", "light"),
+  "text-tertiary": semanticColor("textTertiary", "light"),
+  "border-subtle": semanticColor("borderSubtle", "light"),
+  "divider-subtle": semanticColor("dividerSubtle", "light"),
+  "border-strong": semanticColor("borderStrong", "light"),
+  "input-surface": semanticColor("inputSurface", "light"),
+  "input-border": semanticColor("inputBorder", "light"),
+  "input-placeholder": semanticColor("inputPlaceholder", "light"),
+  success: semanticColor("success", "light"),
+  danger: semanticColor("danger", "light"),
+  info: semanticColor("info", "light"),
+} as const;
+
 export default almidyTokens;

@@ -89,7 +89,7 @@ export default function Comments({ itemId }: CommentsProps) {
   }
 
   return (
-    <div className="mt-4 border-t border-line pt-4">
+    <div className="mt-4 border-t border-almidy-border-subtle pt-4">
       <div className="mb-1 text-xs text-green-500">Live</div>
       <div className="max-h-40 space-y-3 overflow-y-auto">
         {comments.map((comment) => (
@@ -117,7 +117,7 @@ export default function Comments({ itemId }: CommentsProps) {
 
       <div className="mt-3 flex gap-2">
         <input
-          className="flex-1 rounded-lg border border-line p-2 text-sm"
+          className="flex-1 rounded-lg border border-almidy-border-subtle p-2 text-sm"
           value={text}
           onChange={(event) => setText(event.target.value)}
           placeholder="Add comment..."

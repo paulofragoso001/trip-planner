@@ -343,3 +343,9 @@ The native semantic namespace now supports Light, Dark, and independent Increase
 ## v2.6 — Cross-platform semantic contract
 
 `design-system/almidy.tokens.json` is now the versioned Almidy Design Tokens 2.0.0 source for shared Light/Dark color intent, Instrument Sans base typography, spacing, radius, shape, elevation names, and border names. Existing web compatibility keys remain pixel-stable. Increased Contrast, scaling mechanics, sheets, maps, media, and measured feature geometry remain platform/feature-owned. The audit, platform matrix, and Tier A–D migration backlog live in [`DESIGN_TOKENS_CROSS_PLATFORM.md`](DESIGN_TOKENS_CROSS_PLATFORM.md). Recommended follow-up: v2.6B exact-equivalent web semantic adoption.
+
+## v2.6B — Web semantic token adoption
+
+Tier A exact equivalents are now owned by the shared TypeScript/Tailwind path. Active `ink`, `line`, `brand`, and global `mist` consumers migrated to semantic `almidy-*` utilities while all compatibility aliases remain available. The autocomplete accent now resolves through a semantic CSS variable. A deterministic adoption guard proves the four compatibility values remain identical and prevents their raw/legacy reintroduction in production paths. There are no shared JSON raw-value, native, native PNG, typography, spacing, radius, or intentional web visual changes.
+
+The five Tier B families remain deferred: warm trip neutrals versus shared Light text/surfaces; mobile dark neutrals versus shared Dark surfaces; orange/blue focus colors versus accent interaction roles; selected-state fills versus accent-muted intent; and panel-shadow tuples versus elevation intent. Feature/platform Tier C and broad slate/blue/orange/zinc/gray Tier D families remain classified in the cross-platform specification. Recommended follow-up: v2.6C, limited to visually reviewed Tier B reconciliation.

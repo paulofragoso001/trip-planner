@@ -102,7 +102,7 @@ export function FlightStatusPanel({
                           ? "bg-red-100 text-red-700"
                           : alert.tone === "warning"
                             ? "bg-amber-100 text-amber-800"
-                            : "bg-blue-100 text-brand"
+                            : "bg-blue-100 text-almidy-accent"
                       )}
                     >
                       {alert.title}
@@ -153,7 +153,7 @@ function FlightStatusPill({ status }: { status?: string | null }) {
           : normalized === "delayed"
             ? "bg-amber-100 text-amber-800"
             : normalized === "boarding"
-              ? "bg-blue-100 text-brand"
+              ? "bg-blue-100 text-almidy-accent"
               : "bg-emerald-100 text-evergreen"
       )}
     >

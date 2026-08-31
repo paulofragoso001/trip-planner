@@ -92,7 +92,7 @@ export function FlightTruthPanel({
                 aria-current={selected ? "true" : undefined}
                 className={cn(
                   "rounded-2xl border bg-white p-4 text-left transition hover:bg-slate-50",
-                  selected ? "border-brand ring-2 ring-brand/20" : "border-black/10"
+                  selected ? "border-almidy-accent ring-2 ring-almidy-accent/20" : "border-black/10"
                 )}
                 data-testid={`flight-truth-row-${flight.id}`}
                 key={flight.id}
@@ -165,7 +165,7 @@ export function FlightTruthPanel({
                           ? "bg-red-100 text-red-700"
                           : alert.tone === "warning"
                             ? "bg-amber-100 text-amber-800"
-                            : "bg-blue-100 text-brand"
+                            : "bg-blue-100 text-almidy-accent"
                       )}
                     >
                       {alert.title}
@@ -216,7 +216,7 @@ function FlightStatusPill({ status }: { status?: string | null }) {
           : normalized === "delayed"
             ? "bg-amber-100 text-amber-800"
             : normalized === "boarding"
-              ? "bg-blue-100 text-brand"
+              ? "bg-blue-100 text-almidy-accent"
               : "bg-emerald-100 text-evergreen"
       )}
     >

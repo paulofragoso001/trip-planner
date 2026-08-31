@@ -8,7 +8,7 @@
     "audit:import-parse-rls": "node scripts/audit-import-parse-rls.mjs",
     "audit:compliance": "node scripts/compliance-audit.mjs",
     "layout:scorecard": "node scripts/layout-integrity-scorecard.mjs",
-    "tokens:verify": "node scripts/verify-design-token-parity.mjs",
+    "tokens:verify": "node scripts/verify-design-token-parity.mjs && node scripts/verify-web-token-adoption.mjs",
     "guardrails:check": "node scripts/check-almidy-guardrails.mjs",
     "native:typography:check": "node scripts/check-native-typography-guardrails.mjs",
     "preflight:prod-env": "node scripts/production-env-preflight.mjs",

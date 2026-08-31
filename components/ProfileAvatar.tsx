@@ -37,14 +37,14 @@ export function ProfileAvatar({ email, profile }: ProfileAvatarProps) {
   }
 
   return (
-    <div className="flex items-center gap-3 rounded-lg border border-line bg-white px-3 py-2">
+    <div className="flex items-center gap-3 rounded-lg border border-almidy-border-subtle bg-white px-3 py-2">
       <img
         alt={username}
         className="h-8 w-8 rounded-full object-cover"
         src={avatarUrl || defaultAvatar}
       />
       <div className="min-w-0">
-        <p className="truncate text-sm font-bold text-ink">{username}</p>
+        <p className="truncate text-sm font-bold text-almidy-text-primary">{username}</p>
         <label className="mt-0.5 block cursor-pointer text-xs font-semibold text-slate-500">
           {uploading ? "Uploading..." : "Change avatar"}
           <input

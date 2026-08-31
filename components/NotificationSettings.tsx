@@ -100,15 +100,15 @@ export default function NotificationSettings() {
 }
 
 function NotificationShell({ children }: { children: ReactNode }) {
-  return <section aria-labelledby="notification-settings-title" className="rounded-[1.75rem] border border-line bg-white p-5 shadow-panel" id="notifications"><p className="text-xs font-black uppercase tracking-[0.18em] text-orange-500">Preferences</p><h2 className="mt-1 text-2xl font-black text-slate-950" id="notification-settings-title">Notifications</h2><p className="mb-4 mt-2 text-sm text-slate-600">Choose how Almidy contacts you about trip comments and mentions.</p>{children}</section>;
+  return <section aria-labelledby="notification-settings-title" className="rounded-[1.75rem] border border-almidy-border-subtle bg-white p-5 shadow-panel" id="notifications"><p className="text-xs font-black uppercase tracking-[0.18em] text-orange-500">Preferences</p><h2 className="mt-1 text-2xl font-black text-slate-950" id="notification-settings-title">Notifications</h2><p className="mb-4 mt-2 text-sm text-slate-600">Choose how Almidy contacts you about trip comments and mentions.</p>{children}</section>;
 }
 
 function NotificationGroup({ children, title }: { children: ReactNode; title: string }) {
-  return <fieldset className="mt-4 space-y-3 border-t border-line pt-4"><legend className="text-sm font-bold text-ink">{title}</legend>{children}</fieldset>;
+  return <fieldset className="mt-4 space-y-3 border-t border-almidy-border-subtle pt-4"><legend className="text-sm font-bold text-almidy-text-primary">{title}</legend>{children}</fieldset>;
 }
 
 function PreferenceToggle({ ariaLabel, checked, description, label, onChange }: { ariaLabel: string; checked: boolean; description: string; label: string; onChange: (value: boolean) => void }) {
-  return <label className="flex min-h-12 cursor-pointer items-center justify-between gap-4 text-sm text-ink"><span><span className="block font-medium">{label}</span><span className="mt-0.5 block text-xs leading-5 text-slate-500">{description}</span></span><input aria-label={ariaLabel} checked={checked} className="peer sr-only" onChange={(event) => onChange(event.target.checked)} type="checkbox"/><span aria-hidden="true" className="relative h-6 w-11 shrink-0 rounded-full bg-slate-200 transition peer-checked:bg-black peer-focus-visible:ring-4 peer-focus-visible:ring-orange-300/40"><span className="absolute left-1 top-1 h-4 w-4 rounded-full bg-white shadow-sm transition peer-checked:translate-x-5" /></span></label>;
+  return <label className="flex min-h-12 cursor-pointer items-center justify-between gap-4 text-sm text-almidy-text-primary"><span><span className="block font-medium">{label}</span><span className="mt-0.5 block text-xs leading-5 text-slate-500">{description}</span></span><input aria-label={ariaLabel} checked={checked} className="peer sr-only" onChange={(event) => onChange(event.target.checked)} type="checkbox"/><span aria-hidden="true" className="relative h-6 w-11 shrink-0 rounded-full bg-slate-200 transition peer-checked:bg-black peer-focus-visible:ring-4 peer-focus-visible:ring-orange-300/40"><span className="absolute left-1 top-1 h-4 w-4 rounded-full bg-white shadow-sm transition peer-checked:translate-x-5" /></span></label>;
 }
 
 export { notificationPreferenceFields };

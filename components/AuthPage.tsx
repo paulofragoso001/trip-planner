@@ -130,7 +130,7 @@ export default function AuthPage({ message }: AuthPageProps) {
     <main className="flex min-h-screen items-center justify-center bg-gradient-to-br from-gray-50 to-gray-200 px-4 py-8 sm:px-6">
       <section className="animate-fade-in w-full max-w-md rounded-2xl border border-gray-200 bg-white/80 p-6 shadow-xl backdrop-blur-xl sm:p-8">
         <div className="mb-6 text-center">
-          <div className="text-2xl font-semibold tracking-tight text-ink">
+          <div className="text-2xl font-semibold tracking-tight text-almidy-text-primary">
             Almidy
           </div>
           <p className="mt-1 text-sm text-gray-500">
@@ -214,7 +214,7 @@ export default function AuthPage({ message }: AuthPageProps) {
 
         <p className="mt-4 text-center text-sm text-slate-600">
           New to Almidy?{" "}
-          <Link className="font-bold text-brand hover:underline" href="/signup">
+          <Link className="font-bold text-almidy-accent hover:underline" href="/signup">
             Create an account
           </Link>
         </p>

@@ -167,7 +167,7 @@ export function SortableItem<TItem extends DraggableItem>({
       ref={setNodeRef}
       aria-label={`${item.title}, ${formatSegmentType(item.segment_type)}`}
       className={`rounded-2xl border p-4 transition ${
-        selected ? "border-brand bg-blue-50" : "border-line hover:bg-slate-50"
+        selected ? "border-almidy-accent bg-blue-50" : "border-almidy-border-subtle hover:bg-slate-50"
       } ${isDragging ? "opacity-70 shadow-panel" : ""}`}
       data-testid={`timeline-item-${id}`}
       role="listitem"
@@ -182,7 +182,7 @@ export function SortableItem<TItem extends DraggableItem>({
     >
       <div className="grid gap-4 md:grid-cols-[96px_56px_minmax(0,1fr)_auto]">
         <div className="text-left md:text-right">
-          <p className="text-lg font-black text-ink">{time.time}</p>
+          <p className="text-lg font-black text-almidy-text-primary">{time.time}</p>
           <p className="text-xs font-black uppercase tracking-[0.08em] text-[#6f675c]">{time.zone}</p>
         </div>
         <div className="relative hidden justify-center md:flex" aria-hidden="true">
@@ -213,7 +213,7 @@ export function SortableItem<TItem extends DraggableItem>({
         <div className="flex flex-wrap items-start justify-end gap-2">
           <button
             type="button"
-            className="rounded-full border border-black/10 px-3 py-2 text-xs font-bold text-brand"
+            className="rounded-full border border-black/10 px-3 py-2 text-xs font-bold text-almidy-accent"
             onClick={(event) => {
               event.stopPropagation();
             }}

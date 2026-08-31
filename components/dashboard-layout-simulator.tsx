@@ -216,7 +216,7 @@ export function DashboardLayoutSimulator({
         <div className="flex flex-wrap items-end gap-3">
           {scorecard ? <LayoutIntegrityCard scorecard={scorecard} /> : null}
           <button
-            className="min-h-11 rounded-xl border border-black/10 bg-white px-4 text-sm font-black shadow-sm transition hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-brand/20 dark:border-white/10 dark:bg-[#111827]"
+            className="min-h-11 rounded-xl border border-black/10 bg-white px-4 text-sm font-black shadow-sm transition hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-almidy-accent/20 dark:border-white/10 dark:bg-[#111827]"
             onClick={() => setState(initialState)}
             type="button"
           >
@@ -364,7 +364,7 @@ function SimulatorControls({
         <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
           {Object.entries(dashboardLayoutReferencePresets).map(([key, preset]) => (
             <button
-              className="min-h-11 rounded-xl border border-black/10 bg-white px-3 text-left text-xs font-black capitalize shadow-sm transition hover:bg-slate-100 focus:outline-none focus:ring-4 focus:ring-brand/20 dark:border-white/10 dark:bg-[#0b1120] dark:hover:bg-white/10"
+              className="min-h-11 rounded-xl border border-black/10 bg-white px-3 text-left text-xs font-black capitalize shadow-sm transition hover:bg-slate-100 focus:outline-none focus:ring-4 focus:ring-almidy-accent/20 dark:border-white/10 dark:bg-[#0b1120] dark:hover:bg-white/10"
               data-testid={`layout-reference-${key}`}
               key={key}
               onClick={() => onChange(preset)}
@@ -457,7 +457,7 @@ function ControlSelect<TValue extends string>({
     <label className="grid gap-2 text-sm font-bold">
       <span>{label}</span>
       <select
-        className="h-11 rounded-xl border-black/10 bg-[#f8fafc] text-sm capitalize focus:outline-none focus:ring-4 focus:ring-brand/20 dark:border-white/10 dark:bg-[#0b1120]"
+        className="h-11 rounded-xl border-black/10 bg-[#f8fafc] text-sm capitalize focus:outline-none focus:ring-4 focus:ring-almidy-accent/20 dark:border-white/10 dark:bg-[#0b1120]"
         value={value}
         onChange={(event) => onChange(event.target.value as TValue)}
       >
@@ -515,7 +515,7 @@ function PreviewSidebar({
                 return (
                   <button
                     className={cn(
-                      "flex min-h-11 items-center gap-3 rounded-xl px-3 text-left text-sm font-bold transition focus:outline-none focus:ring-4 focus:ring-brand/20",
+                      "flex min-h-11 items-center gap-3 rounded-xl px-3 text-left text-sm font-bold transition focus:outline-none focus:ring-4 focus:ring-almidy-accent/20",
                       collapsed && "justify-center px-0",
                       active ? `${accent.bg} text-white` : "hover:bg-slate-100 dark:hover:bg-white/10"
                     )}
@@ -536,7 +536,7 @@ function PreviewSidebar({
       </div>
 
       <div className="mt-auto border-t border-black/10 pt-3 dark:border-white/10">
-        <button className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-bold hover:bg-slate-100 focus:outline-none focus:ring-4 focus:ring-brand/20 dark:hover:bg-white/10" type="button">
+        <button className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-bold hover:bg-slate-100 focus:outline-none focus:ring-4 focus:ring-almidy-accent/20 dark:hover:bg-white/10" type="button">
           <span className="grid h-8 w-8 place-items-center rounded-lg bg-slate-100 text-xs dark:bg-white/10">
             W
           </span>
@@ -615,17 +615,17 @@ function PreviewTopBar({
         {mode === "filter-heavy" ? (
           <div className="flex flex-wrap gap-2">
             {["Today", "Delayed", "Terminal 8"].map((filter) => (
-              <button className="min-h-11 rounded-xl border border-black/10 px-3 text-xs font-black focus:outline-none focus:ring-4 focus:ring-brand/20 dark:border-white/10" key={filter} type="button">
+              <button className="min-h-11 rounded-xl border border-black/10 px-3 text-xs font-black focus:outline-none focus:ring-4 focus:ring-almidy-accent/20 dark:border-white/10" key={filter} type="button">
                 {filter}
               </button>
             ))}
           </div>
         ) : null}
 
-        <button className="min-h-11 rounded-xl border border-black/10 px-3 text-sm font-bold focus:outline-none focus:ring-4 focus:ring-brand/20 dark:border-white/10" type="button">
+        <button className="min-h-11 rounded-xl border border-black/10 px-3 text-sm font-bold focus:outline-none focus:ring-4 focus:ring-almidy-accent/20 dark:border-white/10" type="button">
           Search
         </button>
-        <button className="grid h-11 w-11 place-items-center rounded-xl border border-black/10 font-black focus:outline-none focus:ring-4 focus:ring-brand/20 dark:border-white/10" type="button">
+        <button className="grid h-11 w-11 place-items-center rounded-xl border border-black/10 font-black focus:outline-none focus:ring-4 focus:ring-almidy-accent/20 dark:border-white/10" type="button">
           N
         </button>
       </div>

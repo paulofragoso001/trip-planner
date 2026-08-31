@@ -43,7 +43,7 @@ export default function TripView({ trip, items }: TripViewProps) {
     <div className="mx-auto max-w-6xl space-y-8 p-6 sm:p-8">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="space-y-2">
-          <h2 className="text-2xl font-black tracking-tight text-ink">{tripTitle}</h2>
+          <h2 className="text-2xl font-black tracking-tight text-almidy-text-primary">{tripTitle}</h2>
           <p className="text-sm font-medium text-gray-500">
             {trip.start_date || "Start date"} to {trip.end_date || "End date"}
           </p>
@@ -86,7 +86,7 @@ export default function TripView({ trip, items }: TripViewProps) {
             <div
               data-trip-item-card="true"
               key={item.id}
-              className="rounded-lg border border-line bg-white p-4 shadow-sm"
+              className="rounded-lg border border-almidy-border-subtle bg-white p-4 shadow-sm"
             >
               {getItemImages(item).length > 0 ? (
                 <div className="mb-3 grid gap-2 sm:grid-cols-2">
@@ -103,7 +103,7 @@ export default function TripView({ trip, items }: TripViewProps) {
               ) : null}
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <div className="font-semibold text-ink">{item.title}</div>
+                  <div className="font-semibold text-almidy-text-primary">{item.title}</div>
                   <div className="mt-1 text-sm text-gray-500">
                     {item.location || "No location"}
                   </div>
@@ -125,7 +125,7 @@ export default function TripView({ trip, items }: TripViewProps) {
                   </div>
                   {item.booking_url ? (
                     <a
-                      className="mt-1 block truncate text-sm font-bold text-brand hover:underline"
+                      className="mt-1 block truncate text-sm font-bold text-almidy-accent hover:underline"
                       href={item.booking_url}
                       rel="noreferrer"
                       target="_blank"
@@ -133,7 +133,7 @@ export default function TripView({ trip, items }: TripViewProps) {
                       Open
                     </a>
                   ) : (
-                    <div className="mt-1 text-sm font-bold text-ink">Not added</div>
+                    <div className="mt-1 text-sm font-bold text-almidy-text-primary">Not added</div>
                   )}
                 </div>
               </div>
@@ -155,7 +155,7 @@ function TripFact({ label, value }: { label: string; value: string }) {
       <div className="text-xs font-bold uppercase tracking-[0.12em] text-slate-500">
         {label}
       </div>
-      <div className="mt-1 text-sm font-bold text-ink">{value}</div>
+      <div className="mt-1 text-sm font-bold text-almidy-text-primary">{value}</div>
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import type { Config } from "tailwindcss";
-import { almidyTokens } from "./lib/design-system/almidy-tokens";
+import { almidyTokens, webSemanticColors } from "./lib/design-system/almidy-tokens";
 
 const config: Config = {
   darkMode: "class",
@@ -11,6 +11,9 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        ...Object.fromEntries(
+          Object.entries(webSemanticColors).map(([name, value]) => [`almidy-${name}`, value]),
+        ),
         "brand-gold": almidyTokens.colors["brand-gold"],
         "brand-gold-deep": almidyTokens.colors["brand-gold-deep"],
         "brand-gold-text": almidyTokens.colors["brand-gold-text"],
@@ -19,10 +22,10 @@ const config: Config = {
         "text-primary": almidyTokens.colors["text-primary"],
         "text-secondary": almidyTokens.colors["text-secondary"],
         "border-subtle": almidyTokens.colors["border-subtle"],
-        ink: almidyTokens.colors["text-primary"],
-        mist: almidyTokens.colors["bg-light-mist"],
-        line: almidyTokens.colors["border-subtle"],
-        brand: almidyTokens.colors["brand-gold"],
+        ink: webSemanticColors["text-primary"],
+        mist: webSemanticColors["canvas-grouped"],
+        line: webSemanticColors["border-subtle"],
+        brand: webSemanticColors.accent,
         evergreen: "#14805e"
       },
       spacing: {

@@ -4,8 +4,8 @@ const lastUpdated = "May 26, 2026";
 
 export default function TermsPage() {
   return (
-    <main className="min-h-screen bg-[#f4f7fb] px-6 py-10 text-ink">
-      <article className="mx-auto max-w-3xl rounded-2xl border border-line bg-white p-6 shadow-panel sm:p-8">
+    <main className="min-h-screen bg-[#f4f7fb] px-6 py-10 text-almidy-text-primary">
+      <article className="mx-auto max-w-3xl rounded-2xl border border-almidy-border-subtle bg-white p-6 shadow-panel sm:p-8">
         <p className="text-xs font-bold uppercase tracking-[0.12em] text-slate-500">
           Almidy legal
         </p>
@@ -14,7 +14,7 @@ export default function TermsPage() {
 
         <div className="mt-8 grid gap-6 text-sm leading-7 text-slate-700">
           <section>
-            <h2 className="text-lg font-black text-ink">Use of Almidy</h2>
+            <h2 className="text-lg font-black text-almidy-text-primary">Use of Almidy</h2>
             <p className="mt-2">
               Almidy is a travel planning and operations tool. You are responsible
               for the accuracy of trip, budget, itinerary, import, and sharing
@@ -23,7 +23,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="text-lg font-black text-ink">Accounts and Security</h2>
+            <h2 className="text-lg font-black text-almidy-text-primary">Accounts and Security</h2>
             <p className="mt-2">
               You must keep your account credentials secure and only connect
               calendar, email, or import accounts you are authorized to use. You
@@ -32,7 +32,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="text-lg font-black text-ink">Connected Services</h2>
+            <h2 className="text-lg font-black text-almidy-text-primary">Connected Services</h2>
             <p className="mt-2">
               Google Calendar, Microsoft Calendar, maps, email, and flight-data
               integrations may be subject to their own provider terms and
@@ -43,7 +43,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="text-lg font-black text-ink">Data and Content</h2>
+            <h2 className="text-lg font-black text-almidy-text-primary">Data and Content</h2>
             <p className="mt-2">
               You retain responsibility for the content you submit to Almidy.
               You grant Almidy the limited right to process that content to
@@ -53,7 +53,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="text-lg font-black text-ink">No Travel Guarantee</h2>
+            <h2 className="text-lg font-black text-almidy-text-primary">No Travel Guarantee</h2>
             <p className="mt-2">
               Almidy may help organize travel information, but it does not book,
               guarantee, insure, or operate flights, hotels, meetings, or other
@@ -63,7 +63,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="text-lg font-black text-ink">Termination and Deletion</h2>
+            <h2 className="text-lg font-black text-almidy-text-primary">Termination and Deletion</h2>
             <p className="mt-2">
               You may stop using Almidy at any time and request account deletion
               from the Account page. Almidy may suspend access for misuse,
@@ -72,7 +72,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="text-lg font-black text-ink">Changes</h2>
+            <h2 className="text-lg font-black text-almidy-text-primary">Changes</h2>
             <p className="mt-2">
               These terms may be updated as Almidy evolves. Material changes
               should be communicated through the app or the deployment operator.
@@ -80,11 +80,11 @@ export default function TermsPage() {
           </section>
         </div>
 
-        <div className="mt-8 flex flex-wrap gap-3 border-t border-line pt-5">
-          <Link className="rounded-lg bg-brand px-4 py-2 text-sm font-bold text-white" href="/dashboard">
+        <div className="mt-8 flex flex-wrap gap-3 border-t border-almidy-border-subtle pt-5">
+          <Link className="rounded-lg bg-almidy-accent px-4 py-2 text-sm font-bold text-white" href="/dashboard">
             Open dashboard
           </Link>
-          <Link className="rounded-lg border border-line px-4 py-2 text-sm font-bold" href="/privacy">
+          <Link className="rounded-lg border border-almidy-border-subtle px-4 py-2 text-sm font-bold" href="/privacy">
             Privacy
           </Link>
         </div>

@@ -4,8 +4,8 @@ const lastUpdated = "May 26, 2026";
 
 export default function PrivacyPage() {
   return (
-    <main className="min-h-screen bg-[#f4f7fb] px-6 py-10 text-ink">
-      <article className="mx-auto max-w-3xl rounded-2xl border border-line bg-white p-6 shadow-panel sm:p-8">
+    <main className="min-h-screen bg-[#f4f7fb] px-6 py-10 text-almidy-text-primary">
+      <article className="mx-auto max-w-3xl rounded-2xl border border-almidy-border-subtle bg-white p-6 shadow-panel sm:p-8">
         <p className="text-xs font-bold uppercase tracking-[0.12em] text-slate-500">
           Almidy legal
         </p>
@@ -14,7 +14,7 @@ export default function PrivacyPage() {
 
         <div className="mt-8 grid gap-6 text-sm leading-7 text-slate-700">
           <section>
-            <h2 className="text-lg font-black text-ink">Overview</h2>
+            <h2 className="text-lg font-black text-almidy-text-primary">Overview</h2>
             <p className="mt-2">
               Almidy helps users organize trips, itinerary segments, imports,
               budgets, sharing, and calendar sync. This policy describes the data
@@ -23,7 +23,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-lg font-black text-ink">Data We Process</h2>
+            <h2 className="text-lg font-black text-almidy-text-primary">Data We Process</h2>
             <ul className="mt-2 list-disc space-y-2 pl-5">
               <li>Account data, such as email address and profile information.</li>
               <li>Trip data, such as destinations, dates, itinerary items, budgets, and collaborator roles.</li>
@@ -34,7 +34,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-lg font-black text-ink">How We Use Data</h2>
+            <h2 className="text-lg font-black text-almidy-text-primary">How We Use Data</h2>
             <ul className="mt-2 list-disc space-y-2 pl-5">
               <li>To create, store, and display trip workspaces.</li>
               <li>To classify imported travel records and help convert them into itinerary items.</li>
@@ -45,7 +45,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-lg font-black text-ink">Calendar Access</h2>
+            <h2 className="text-lg font-black text-almidy-text-primary">Calendar Access</h2>
             <p className="mt-2">
               If you connect Google Calendar or Outlook Calendar, Almidy uses
               calendar event permissions to create, update, and delete Almidy
@@ -56,7 +56,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-lg font-black text-ink">Service Providers</h2>
+            <h2 className="text-lg font-black text-almidy-text-primary">Service Providers</h2>
             <p className="mt-2">
               Almidy may use infrastructure and integration providers including
               Supabase, Resend, Google APIs, Microsoft Graph, Google Maps, and
@@ -66,7 +66,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-lg font-black text-ink">Retention and Deletion</h2>
+            <h2 className="text-lg font-black text-almidy-text-primary">Retention and Deletion</h2>
             <p className="mt-2">
               Trip and account records are retained while your account is active
               or as needed for security, legal, or operational requirements. You
@@ -77,7 +77,7 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-lg font-black text-ink">Contact</h2>
+            <h2 className="text-lg font-black text-almidy-text-primary">Contact</h2>
             <p className="mt-2">
               For privacy questions or deletion requests, use the in-app Account
               page or contact the Almidy operator for this deployment.
@@ -85,11 +85,11 @@ export default function PrivacyPage() {
           </section>
         </div>
 
-        <div className="mt-8 flex flex-wrap gap-3 border-t border-line pt-5">
-          <Link className="rounded-lg bg-brand px-4 py-2 text-sm font-bold text-white" href="/dashboard">
+        <div className="mt-8 flex flex-wrap gap-3 border-t border-almidy-border-subtle pt-5">
+          <Link className="rounded-lg bg-almidy-accent px-4 py-2 text-sm font-bold text-white" href="/dashboard">
             Open dashboard
           </Link>
-          <Link className="rounded-lg border border-line px-4 py-2 text-sm font-bold" href="/terms">
+          <Link className="rounded-lg border border-almidy-border-subtle px-4 py-2 text-sm font-bold" href="/terms">
             Terms
           </Link>
         </div>

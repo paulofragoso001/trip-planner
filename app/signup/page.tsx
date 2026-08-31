@@ -13,7 +13,7 @@ export default async function SignupPage({
   return (
     <main className="min-h-screen px-4 py-6 sm:px-6 sm:py-10 lg:px-8">
       <section className="mx-auto grid min-h-[calc(100vh-3rem)] w-full max-w-6xl overflow-hidden rounded-none bg-white shadow-panel sm:min-h-0 sm:rounded-2xl lg:grid-cols-[0.9fr_1.1fr]">
-        <aside className="bg-ink px-6 py-8 text-white sm:px-8 lg:flex lg:flex-col lg:justify-between lg:p-10">
+        <aside className="bg-almidy-text-primary px-6 py-8 text-white sm:px-8 lg:flex lg:flex-col lg:justify-between lg:p-10">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.12em] text-blue-200">
               Start planning
@@ -56,21 +56,21 @@ export default async function SignupPage({
             <SocialLogin />
 
             <div className="my-6 flex items-center gap-3">
-              <div className="h-px flex-1 bg-line" />
+              <div className="h-px flex-1 bg-almidy-border-subtle" />
               <span className="text-xs font-bold uppercase tracking-[0.12em] text-slate-400">
                 Or use email
               </span>
-              <div className="h-px flex-1 bg-line" />
+              <div className="h-px flex-1 bg-almidy-border-subtle" />
             </div>
 
             <Auth />
 
             <div className="my-6 flex items-center gap-3">
-              <div className="h-px flex-1 bg-line" />
+              <div className="h-px flex-1 bg-almidy-border-subtle" />
               <span className="text-xs font-bold uppercase tracking-[0.12em] text-slate-400">
                 Or use password
               </span>
-              <div className="h-px flex-1 bg-line" />
+              <div className="h-px flex-1 bg-almidy-border-subtle" />
             </div>
 
             <form className="grid gap-4">
@@ -96,7 +96,7 @@ export default async function SignupPage({
               ) : null}
               <button
                 formAction={signup}
-                className="min-h-11 rounded-lg bg-brand px-5 py-3 text-sm font-bold text-white transition hover:bg-blue-700"
+                className="min-h-11 rounded-lg bg-almidy-accent px-5 py-3 text-sm font-bold text-white transition hover:bg-blue-700"
               >
                 Sign up
               </button>
@@ -104,7 +104,7 @@ export default async function SignupPage({
 
             <p className="mt-5 text-center text-sm text-slate-600">
               Already have an account?{" "}
-              <Link className="font-bold text-brand hover:underline" href="/login">
+              <Link className="font-bold text-almidy-accent hover:underline" href="/login">
                 Log in
               </Link>
             </p>

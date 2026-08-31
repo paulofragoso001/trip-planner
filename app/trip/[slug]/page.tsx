@@ -104,10 +104,10 @@ export default async function TripPage({ params }: TripPageProps) {
   return (
     <main className="min-h-screen px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
       <section className="mx-auto w-full max-w-7xl">
-        <Link className="text-sm font-bold text-brand hover:underline" href="/dashboard">
+        <Link className="text-sm font-bold text-almidy-accent hover:underline" href="/dashboard">
           Back to dashboard
         </Link>
-        <div className="mt-8 rounded-lg border border-line bg-white">
+        <div className="mt-8 rounded-lg border border-almidy-border-subtle bg-white">
           <TripView trip={trip} items={tripItems} />
         </div>
         {user?.id === trip.user_id ? (
@@ -128,7 +128,7 @@ export default async function TripPage({ params }: TripPageProps) {
 function PrivateTripState({ signedIn }: { signedIn: boolean }) {
   return (
     <main className="grid min-h-screen place-items-center px-4 py-10">
-      <section className="w-full max-w-lg rounded-lg border border-line bg-white p-8 text-center shadow-sm">
+      <section className="w-full max-w-lg rounded-lg border border-almidy-border-subtle bg-white p-8 text-center shadow-sm">
         <p className="text-xs font-bold uppercase tracking-[0.12em] text-slate-500">
           Private trip
         </p>
@@ -144,14 +144,14 @@ function PrivateTripState({ signedIn }: { signedIn: boolean }) {
         <div className="mt-6 flex flex-wrap justify-center gap-3">
           {signedIn ? null : (
             <Link
-              className="rounded-lg bg-brand px-4 py-2 text-sm font-bold text-white transition hover:bg-brand/90"
+              className="rounded-lg bg-almidy-accent px-4 py-2 text-sm font-bold text-white transition hover:bg-almidy-accent/90"
               href="/login"
             >
               Sign in
             </Link>
           )}
           <Link
-            className="rounded-lg border border-line px-4 py-2 text-sm font-bold text-ink transition hover:bg-slate-50"
+            className="rounded-lg border border-almidy-border-subtle px-4 py-2 text-sm font-bold text-almidy-text-primary transition hover:bg-slate-50"
             href="/dashboard"
           >
             Back to dashboard

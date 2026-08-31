@@ -339,7 +339,7 @@ export function TripDetail({
                   key={type.value}
                   className={`whitespace-nowrap rounded-full border px-3 py-2 text-sm font-bold transition ${
                     form.segment_type === type.value
-                      ? "border-brand bg-brand text-white"
+                      ? "border-almidy-accent bg-almidy-accent text-white"
                       : "border-black/10 bg-white text-[#6f675c] hover:bg-[#faf8f5]"
                   }`}
                   onClick={() =>
@@ -491,7 +491,7 @@ export function TripDetail({
                   key={day}
                   className={`whitespace-nowrap rounded-full px-4 py-2 text-sm transition ${
                     selectedDay === day
-                      ? "bg-brand text-white"
+                      ? "bg-almidy-accent text-white"
                       : "bg-[#f7f6f2] text-[#6f675c] hover:bg-[#f1ede7]"
                   }`}
                   onClick={() => {
@@ -516,7 +516,7 @@ export function TripDetail({
             <section key={day}>
               <button
                 className={`mb-2 text-left font-black transition ${
-                  selectedDay === day ? "text-brand" : "text-ink hover:text-brand"
+                  selectedDay === day ? "text-almidy-accent" : "text-almidy-text-primary hover:text-almidy-accent"
                 }`}
                 onClick={() => {
                   setSelectedDay(day);
@@ -548,7 +548,7 @@ export function TripDetail({
             <p className={tripDetailEyebrow}>
               {previewLabel} trip section
             </p>
-            <h2 className="text-xl font-black text-ink sm:text-2xl">
+            <h2 className="text-xl font-black text-almidy-text-primary sm:text-2xl">
               {previewTitle}
             </h2>
             <p className="text-sm leading-6 text-[#6f675c]">
@@ -557,15 +557,15 @@ export function TripDetail({
             </p>
             <div className="grid grid-cols-1 gap-2 text-center text-xs font-bold text-[#6f675c] sm:grid-cols-3">
               <div className={`${tripDetailInset} p-3`}>
-                <span className="block text-lg text-ink">{items.length}</span>
+                <span className="block text-lg text-almidy-text-primary">{items.length}</span>
                 Segments
               </div>
               <div className={`${tripDetailInset} p-3`}>
-                <span className="block text-lg text-ink">{dayOptions.length}</span>
+                <span className="block text-lg text-almidy-text-primary">{dayOptions.length}</span>
                 Days
               </div>
               <div className={`${tripDetailInset} p-3`}>
-                <span className="block text-lg text-ink">
+                <span className="block text-lg text-almidy-text-primary">
                   {dayItems.filter(hasCoordinates).length}
                 </span>
                 Places

@@ -50,18 +50,29 @@ The shared JSON excludes safe areas, sheet detents, MapKit camera values, CALaye
 
 | Tier | Finding | Action |
 | --- | --- | --- |
-| A — exact semantic match (20 families) | Existing gold/ink/mist/line aliases and several white/black surface uses match shared Light intent | Preserve compatibility; adopt semantic aliases later without pixels |
+| A — exact semantic match (20 families) | Existing gold/ink/mist/line aliases and shared Light-role values | Adopted through the typed web adapter and `almidy-*` Tailwind utilities; ambiguous white/black feature composition remains scoped |
 | B — same intent, different value (5 families) | Warm trip neutrals, mobile dark surfaces, focus colors, selected states, and panel shadows | Require visual coverage and product review |
 | C — feature/platform semantic (6 families) | Maps/globe, wallet imagery, provider colors, auth chrome, admin status UI, native-map underlay | Keep scoped |
 | D — legacy web debt (4 palette families) | Broad slate, blue, orange, and mixed zinc/gray utility usage | Inventory-backed future migration |
 
-Current web has no comprehensive visual-regression suite for a global token migration. v2.6 therefore adds the contract and typed consumption without intentional visual changes.
+Current web has no comprehensive visual-regression suite for a global token migration. v2.6B therefore limits adoption to exact equivalents and verifies the generated semantic inputs deterministically, with no intentional visual changes.
+
+### v2.6B Tier A adoption manifest
+
+| Old source | Old value | Canonical role | Migrated consumers | Rendered difference |
+| --- | --- | --- | ---: | --- |
+| `ink` | `#050505` | `textPrimary` | 39 | None |
+| `line` | `rgba(0,0,0,0.10)` | `borderSubtle` | 52 | None |
+| `brand` / `--almidy-brand-gold` | `#D6A84F` | `accent` | 36 | None |
+| `mist` global canvas | `#F2F3F6` | `canvasGrouped` | 1 | None |
+
+The active consumers now use `almidy-text-primary`, `almidy-border-subtle`, `almidy-accent`, and `almidy-canvas-grouped`. Compatibility aliases remain available and resolve through the same semantic adapter. `#050505` dark import panels, white composition, scrim alpha values, and media colors were audited but retained because their semantic ownership is not shared text/accent/surface intent.
 
 ### Migration backlog
 
 | Current usage | Desired direction | Risk | Coverage | Phase |
 | --- | --- | --- | --- | --- |
-| Exact gold/ink/mist/line values | Semantic web aliases/CSS variables | Low | Build/typecheck | v2.6B |
+| Exact gold/ink/mist/line values | Semantic web aliases/CSS variables | Low | Build/typecheck plus deterministic equivalence scan | Completed in v2.6B |
 | Warm trip neutrals (#221d17, #6f675c, #8a8175, #f7f6f2, #faf8f5) | Decide shared feature palette vs local ownership | Medium | Feature tests, limited pixels | v2.6C |
 | Dark/mobile neutrals (#121214, #1f1f21, #1e1e24, #25252d, #343338) | Compare with shared Dark roles | High | Partial | v2.6C |
 | Slate/blue/orange Tailwind families | Intent-by-intent semantic migration | High | Fragmented | v2.6C |
@@ -69,7 +80,9 @@ Current web has no comprehensive visual-regression suite for a global token migr
 
 ## Tailwind and CSS
 
-The current compatibility keys remain available through Tailwind, preserving rendered output. The typed `semanticColor(name, mode)` adapter exposes the versioned contract for future CSS-variable generation. A later exact-equivalent phase should emit `--almidy-color-*` variables and map Tailwind aliases; broad web Dark Mode is not part of v2.6.
+The typed adapter exports the Light-mode `webSemanticColors` map, and Tailwind exposes it as stable `almidy-*` utilities. The current compatibility keys remain available but now resolve through that map. The global autocomplete accent uses `--almidy-color-accent`, resolved from the Tailwind semantic utility without another raw palette source. Broad web Dark Mode is not part of v2.6B.
+
+`scripts/verify-web-token-adoption.mjs` rejects reintroduced `ink`/`line`/`brand` production utilities and raw canonical gold, verifies compatibility routing, and proves accent, grouped canvas, primary text, and subtle border values remain exact. It deliberately permits classified feature/provider/map/media values.
 
 ## Figma and Coolors
 
@@ -82,4 +95,3 @@ Map shared colors into a Compose color scheme, typography roles into Instrument 
 ## Validation
 
 `npm run tokens:verify` validates contract version/schema, legacy compatibility, semantic names, Light/Dark modes, Swift role presence, typography bases, spacing/radius values, and TypeScript/Tailwind consumption. Native visual suites independently prove that reconciliation does not change Light or Dark pixels.
-

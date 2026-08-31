@@ -338,7 +338,7 @@ function SettingsSurfaceSection({
   title: string;
 }) {
   return (
-    <section className="rounded-[1.75rem] border border-line bg-white p-5 shadow-panel" id={id}>
+    <section className="rounded-[1.75rem] border border-almidy-border-subtle bg-white p-5 shadow-panel" id={id}>
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-xs font-black uppercase tracking-[0.18em] text-orange-500">
@@ -390,7 +390,7 @@ function SettingsActionRow({ row }: { row: SettingsRow }) {
     return (
       <div
         aria-disabled="true"
-        className="flex items-center gap-3 rounded-3xl border border-line bg-slate-50 px-4 py-3"
+        className="flex items-center gap-3 rounded-3xl border border-almidy-border-subtle bg-slate-50 px-4 py-3"
       >
         {content}
       </div>
@@ -399,7 +399,7 @@ function SettingsActionRow({ row }: { row: SettingsRow }) {
 
   return (
     <Link
-      className="flex items-center gap-3 rounded-3xl border border-line bg-slate-50 px-4 py-3 transition hover:border-orange-200 hover:bg-orange-50/60 focus:outline-none focus:ring-4 focus:ring-orange-300/20"
+      className="flex items-center gap-3 rounded-3xl border border-almidy-border-subtle bg-slate-50 px-4 py-3 transition hover:border-orange-200 hover:bg-orange-50/60 focus:outline-none focus:ring-4 focus:ring-orange-300/20"
       href={row.href}
     >
       {content}
