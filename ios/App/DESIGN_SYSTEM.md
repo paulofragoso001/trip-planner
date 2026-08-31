@@ -238,6 +238,8 @@ v2.4B adopted existing elevation configurations only at exact semantic and numer
 
 v2.4C defines generic custom separators as one physical device pixel: `1 / UIScreen.main.scale`, applied through `AlmidyDivider`/`Border.hairline`. Figma represents the concept as `Border / Hairline`; native resolves its physical thickness per display scale. Measured 0.5pt editor/date/time lines, structural/timeline geometry, 0.75pt map compatibility borders, ordinary outlines, selections, on-media/map strokes, and UIKit table separators remain distinct semantics. Divider colors and all protected geometry remain unchanged.
 
+v2.4D confirms the shared spacing scale as 4/8/12/16/20/24/32/48. Reusable components use those semantic values; `AlmidyBadge` now expresses its unchanged 4×8 content inset through `Spacing.xxs/xs`. Values 6/10/14/18 remain feature-scoped measured exceptions and are not general-purpose defaults. Figma should expose `Spacing / 04`, `/08`, `/12`, `/16`, `/20`, `/24`, `/32`, and `/48`; measured exceptions may be documented at feature level but should not become easy global variables.
+
 ## Native Design System v1 closure
 
 **Status:** Complete and frozen

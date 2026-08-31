@@ -151,3 +151,7 @@ Exact local shadow declarations were replaced by their numerically identical sem
 ## v2.4C generic separator policy
 
 Generic custom separators resolve to one physical device pixel through `AlmidyDivider` and `Border.hairline`. Four exact local constructions adopted the primitive; strict zero-tolerance comparison passed all 12 canonical images without recording. The canonical iPhone 17e profile resolves the hairline to one 3× pixel; the same formula resolves to 0.5pt on 2×. Retained 0.5pt measured lines and specialized structural, outline, selection, map/media, and UIKit-native separators were not normalized.
+
+## v2.4D shared spacing review
+
+The shared spacing audit produced one exact semantic adoption: `AlmidyBadge`'s unchanged 4pt vertical/8pt horizontal inset now references `Spacing.xxs/xs`. No visible spacing normalization was approved, no baseline was recorded, and strict comparison passed all 12 canonical images. Native Itinerary, Search, Settings, and Cost visible candidates remain deferred until deterministic screenshot coverage exists; protected Trip Overview, Globe, Place, and editor geometry remains unchanged.

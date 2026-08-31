@@ -4,7 +4,12 @@ final class AlmidyBadge: UILabel {
     enum Style { case neutral, accent, success, danger }
 
     let semanticStyle: Style
-    let contentInsets = UIEdgeInsets(top: 4, left: 8, bottom: 4, right: 8)
+    let contentInsets = UIEdgeInsets(
+        top: AlmidyDesignTokens.Spacing.xxs,
+        left: AlmidyDesignTokens.Spacing.xs,
+        bottom: AlmidyDesignTokens.Spacing.xxs,
+        right: AlmidyDesignTokens.Spacing.xs
+    )
 
     init(text: String, style: Style = .neutral) {
         semanticStyle = style

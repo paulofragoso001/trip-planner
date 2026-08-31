@@ -46,6 +46,12 @@ Sixteen points is the reusable internal/card inset. Fourteen points commonly exp
 
 The canonical scale remains 4/8/12/16/20/24/32/48. Values 6/10/14/18 remain permitted when documented as measured component, renderer, media, or accessibility geometry. Repetition alone does not justify a token.
 
+### v2.4D shared spacing review
+
+Completed August 31, 2026. The audit retained the 508 line-based layout indicators documented above: 377 canonical-scale matches and 131 measured `6/10/14/18` indicators. Shared component defaults already use the canonical spacing system. The only unexplained raw shared construction was `AlmidyBadge`'s exact 4pt vertical/8pt horizontal inset; it now uses `Spacing.xxs`/`Spacing.xs` with identical geometry and focused contract coverage.
+
+No visible spacing normalization was approved. Trip Overview, Globe, Place, editor, accessibility, and media/rendering geometry remains protected. Potential visible work in Native Itinerary, Search, Settings, and Cost remains deferred until deterministic pixel coverage and separate approval exist. The final policy keeps 4/8/12/16/20/24/32/48 as the easy shared path while treating 6/10/14/18 as feature-scoped measured exceptions rather than general-purpose roles.
+
 ## Radius
 
 | Role/family | Current values | Consumers | Recommendation | Risk |
@@ -162,7 +168,7 @@ Pixel-protected: Trip Overview neutral/card rhythm; Globe cards/actions/controls
 1. **v2.4A — Neutral Surface Normalization (complete):** changed only `#F3F3F5` → `#F2F3F6`, preserved the semantic role, and reviewed/re-recorded the four Trip Overview states plus Place travel modes with zero geometry change.
 2. **v2.4B — Exact Elevation API Adoption (complete):** adopted `controlSubtle`, `controlRaised`, `floating`, and `cardRaised` at exact-match sites with all canonical PNGs unchanged.
 3. **v2.4C — Generic Separator Policy (complete):** canonicalized exact one-device-pixel constructions; retained measured and specialized widths; no PNG changed.
-4. **v2.4D — Shared Spacing Review:** page insets first, internal card insets second; no feature geometry.
+4. **v2.4D — Shared Spacing Review (complete):** adopted the one exact shared inset construction; retained all measured exceptions; no visible or PNG change.
 5. **v2.4E — Ordinary Card/Control Radius Review:** shared components only, with explicit visual approval.
 6. **Feature compatibility reviews:** opt-in proposals for Globe, Place, editors, and Trip Overview only when product benefit outweighs identity/regression risk.
 

@@ -191,6 +191,15 @@ final class AlmidyDesignSystemTests: XCTestCase {
         XCTAssertEqual(badge.font.pointSize, AlmidyDesignTokens.Typography.badge.scaledFont().pointSize)
         XCTAssertEqual(badge.accessibilityLabel, "PRO")
         XCTAssertEqual(badge.textColor, AlmidyDesignTokens.Color.accentText)
+        XCTAssertEqual(
+            badge.contentInsets,
+            UIEdgeInsets(
+                top: AlmidyDesignTokens.Spacing.xxs,
+                left: AlmidyDesignTokens.Spacing.xs,
+                bottom: AlmidyDesignTokens.Spacing.xxs,
+                right: AlmidyDesignTokens.Spacing.xs
+            )
+        )
     }
 
     func testSurfaceAppliesRadiusBorderAndElevationContract() {

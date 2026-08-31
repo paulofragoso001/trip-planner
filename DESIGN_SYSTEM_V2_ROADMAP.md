@@ -267,6 +267,10 @@ Recommended implementation sequence: neutral surfaces; exact-equivalent elevatio
 
 **Completed August 29, 2026.** Generic custom separators now consistently express one physical device pixel through `AlmidyDivider` and `Border.hairline`. Four exact local constructions adopted the primitive with zero pixel change. Eight 0.5pt editor/date/time lines remain documented measured compatibility geometry; 0.75pt map borders, structural/timeline lines, outlines, selection borders, media/map rendering, and UIKit-native separators remain specialized. Canonical colors, values, behavior, and all twelve PNGs are unchanged. The next proposed phase is v2.4D shared spacing review.
 
+#### v2.4D — Shared Spacing Review
+
+**Completed August 31, 2026.** Shared components already conform to the canonical 4/8/12/16/20/24/32/48 scale. `AlmidyBadge`'s exact 4×8 inset now references `Spacing.xxs/xs`; no numeric geometry changed. Repeated 6/10/14/18 values remain documented feature, accessibility, or rendering exceptions. No visible normalization was approved for protected or uncovered surfaces, all twelve PNGs remain unchanged, and the next proposed phase is v2.4E ordinary card/control radius review.
+
 ### v2.5 — Dark Mode
 
 Run as product-approved appearance work: foundations, utilities, editors, Map/Place, then Trip Overview/media. Do not combine with unrelated normalization.
