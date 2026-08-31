@@ -41,7 +41,7 @@ export default function Auth() {
       <input
         type="email"
         placeholder="Your email"
-        className="w-full rounded-lg border border-almidy-border-subtle p-3"
+        className="w-full rounded-lg border border-almidy-border-subtle p-3 text-almidy-body-compact"
         value={email}
         onChange={(event) => setEmail(event.target.value)}
       />
@@ -50,7 +50,7 @@ export default function Auth() {
         type="button"
         onClick={login}
         disabled={loading}
-        className="min-h-11 w-full rounded-lg bg-black px-5 py-3 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-60"
+        className="min-h-11 w-full rounded-lg bg-black px-5 py-3 text-almidy-action text-white disabled:cursor-not-allowed disabled:opacity-60"
       >
         {loading ? "Sending..." : "Sign in"}
       </button>

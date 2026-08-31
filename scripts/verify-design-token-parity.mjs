@@ -111,7 +111,10 @@ assert.match(typescriptSource, /export type AppearanceMode = "light" \| "dark"/)
 assert.match(typescriptSource, /export function semanticColor/);
 assert.match(typescriptSource, /export const webSemanticColors/);
 assert.match(typescriptSource, /export const webDarkSemanticColors/);
-assert.match(tailwindSource, /import \{ almidyTokens, webDarkSemanticColors, webSemanticColors \} from "\.\/lib\/design-system\/almidy-tokens"/);
+assert.match(typescriptSource, /export const webSemanticTypography/);
+assert.match(tailwindSource, /import \{ almidyTokens, webDarkSemanticColors, webSemanticColors, webSemanticTypography \} from "\.\/lib\/design-system\/almidy-tokens"/);
+assert.match(tailwindSource, /fontSize: webSemanticTypography/);
+assert.match(tailwindSource, /almidy: \["var\(--font-almidy-product\)"/);
 
 for (const key of Object.keys(tokens.colors)) {
   assert.ok(

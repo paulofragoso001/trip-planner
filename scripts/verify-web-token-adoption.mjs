@@ -5,6 +5,7 @@ import path from "node:path";
 const tokens = JSON.parse(fs.readFileSync("design-system/almidy.tokens.json", "utf8"));
 const tailwind = fs.readFileSync("tailwind.config.ts", "utf8");
 const globals = fs.readFileSync("app/globals.css", "utf8");
+const layout = fs.readFileSync("app/layout.tsx", "utf8");
 const roots = ["app", "components", "lib"];
 
 function productionFiles(directory) {
@@ -31,6 +32,18 @@ assert.match(tailwind, /line: webSemanticColors\["border-subtle"\]/);
 assert.match(tailwind, /brand: webSemanticColors\.accent/);
 assert.match(globals, /--almidy-color-accent: theme\("colors\.almidy-accent"\)/);
 assert.match(globals, /var\(--almidy-color-accent\)/);
+assert.match(globals, /@apply[^;]*font-almidy/);
+assert.match(layout, /localFont from "next\/font\/local"/);
+assert.match(layout, /variable: "--font-almidy-product"/);
+for (const [file, weight] of [
+  ["InstrumentSans-Regular.ttf", "400"],
+  ["InstrumentSans-Medium.ttf", "500"],
+  ["InstrumentSans-SemiBold.ttf", "600"],
+  ["InstrumentSans-Bold.ttf", "700"],
+]) {
+  assert.ok(layout.includes(file), `Instrument Sans registration is missing ${file}`);
+  assert.match(layout, new RegExp(`weight: "${weight}"`));
+}
 
 const reconciledDarkFiles = [
   "components/ui/mobile-form.tsx",

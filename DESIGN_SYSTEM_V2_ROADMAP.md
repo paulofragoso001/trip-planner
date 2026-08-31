@@ -353,3 +353,9 @@ The five Tier B families remain deferred: warm trip neutrals versus shared Light
 ## v2.6C — Web intentional visual reconciliation
 
 Five deterministic Playwright images now protect the Tier B families with explicit recording and strict zero-diff comparison. Review retained the warm editorial palette, accessible blue/orange focus system and current web panel shadow. Generic mobile form shells, groups and focus-within surfaces partially align to the approved warm Dark contract, and one reusable draggable selected state now uses the restrained muted-accent surface. Two baselines changed intentionally; three remain pixel-identical to the pre-change set. Tier C/D, typography, spacing, radius, layout, native code and shared raw values remain untouched.
+
+## v2.7 — Web typography and component semantics
+
+Instrument Sans is now the canonical web product family, loaded once through `next/font/local` from the repository-approved Regular, Medium, SemiBold and Bold assets. The typed adapter and Tailwind expose the shared typography roles with web-owned line heights and responsive `displayHero` scaling. Auth actions and titles adopt semantic roles, shared product inputs use `bodyCompact`, and the existing mobile form fields adopt the exact-equivalent `bodyEmphasized` API. Maps, providers, admin presentation, monospace data, Wallet feature composition and Tier D palette families remain scoped.
+
+The web visual suite now contains seven strict fixtures: the five v2.6C families plus pre-migration trip/editorial and auth/form references. All active baselines reflect the approved Instrument Sans rendering with zero comparison tolerance. See [`WEB_DESIGN_SYSTEM.md`](WEB_DESIGN_SYSTEM.md) for web component ownership and responsive/accessibility policy. Recommended next milestone: Design System v2 Completion Review.

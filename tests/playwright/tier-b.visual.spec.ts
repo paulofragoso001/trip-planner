@@ -42,3 +42,13 @@ test("mobile Tier B dark fixture", async ({ page }) => {
   await openFixture(page, { width: 390, height: 844 });
   await expect(page.getByTestId("tier-b-dark")).toHaveScreenshot("tier-b-mobile-dark.png", screenshotOptions);
 });
+
+test("trip typography fixture", async ({ page }) => {
+  await openFixture(page, { width: 1280, height: 900 });
+  await expect(page.getByTestId("typography-trip")).toHaveScreenshot("typography-trip-light.png", screenshotOptions);
+});
+
+test("auth typography fixture", async ({ page }) => {
+  await openFixture(page, { width: 1280, height: 900 });
+  await expect(page.getByTestId("typography-auth")).toHaveScreenshot("typography-auth-light.png", screenshotOptions);
+});

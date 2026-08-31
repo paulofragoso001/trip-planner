@@ -130,7 +130,7 @@ export default function AuthPage({ message }: AuthPageProps) {
     <main className="flex min-h-screen items-center justify-center bg-gradient-to-br from-gray-50 to-gray-200 px-4 py-8 sm:px-6">
       <section className="animate-fade-in w-full max-w-md rounded-2xl border border-gray-200 bg-white/80 p-6 shadow-xl backdrop-blur-xl sm:p-8">
         <div className="mb-6 text-center">
-          <div className="text-2xl font-semibold tracking-tight text-almidy-text-primary">
+          <div className="text-almidy-screen-title tracking-tight text-almidy-text-primary">
             Almidy
           </div>
           <p className="mt-1 text-sm text-gray-500">
@@ -140,7 +140,7 @@ export default function AuthPage({ message }: AuthPageProps) {
 
         <div className="space-y-3">
           <button
-            className="flex min-h-12 w-full items-center justify-center gap-3 rounded-xl border border-gray-300 bg-white py-3 text-sm font-medium shadow-sm transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+            className="flex min-h-12 w-full items-center justify-center gap-3 rounded-xl border border-gray-300 bg-white py-3 text-almidy-action shadow-sm transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
             disabled={loading !== null}
             onClick={signInWithGoogle}
             type="button"
@@ -156,7 +156,7 @@ export default function AuthPage({ message }: AuthPageProps) {
 
           {process.env.NEXT_PUBLIC_FACEBOOK_LOGIN_ENABLED === "true" && (
             <button
-              className="flex min-h-12 w-full items-center justify-center gap-3 rounded-xl bg-[#1877F2] py-3 text-sm font-medium text-white transition hover:bg-[#166fe5] disabled:cursor-not-allowed disabled:opacity-60"
+              className="flex min-h-12 w-full items-center justify-center gap-3 rounded-xl bg-[#1877F2] py-3 text-almidy-action text-white transition hover:bg-[#166fe5] disabled:cursor-not-allowed disabled:opacity-60"
               disabled={loading !== null}
               onClick={signInWithFacebook}
               type="button"
@@ -183,6 +183,7 @@ export default function AuthPage({ message }: AuthPageProps) {
             Email
             <input
               autoComplete="email"
+              className="text-almidy-body-compact"
               id="email"
               name="email"
               onChange={(event) => setEmail(event.target.value)}
@@ -193,7 +194,7 @@ export default function AuthPage({ message }: AuthPageProps) {
           </label>
 
           <button
-            className="min-h-12 w-full rounded-xl bg-black py-3 text-sm font-medium text-white transition hover:bg-gray-900 disabled:cursor-not-allowed disabled:opacity-60"
+            className="min-h-12 w-full rounded-xl bg-black py-3 text-almidy-action text-white transition hover:bg-gray-900 disabled:cursor-not-allowed disabled:opacity-60"
             disabled={loading !== null}
             onClick={signInWithEmail}
             type="button"

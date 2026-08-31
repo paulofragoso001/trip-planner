@@ -107,13 +107,13 @@ export function MobileField({ children, helper, label }: MobileFieldProps) {
 }
 
 export const mobileInputClassName =
-  "min-h-9 w-full min-w-0 border-0 bg-transparent p-0 text-[17px] font-semibold leading-tight text-white outline-none placeholder:text-zinc-500 focus:ring-0 lg:text-slate-950 lg:placeholder:text-slate-400";
+  "min-h-9 w-full min-w-0 border-0 bg-transparent p-0 text-almidy-body-emphasized leading-tight text-white outline-none placeholder:text-zinc-500 focus:ring-0 lg:text-slate-950 lg:placeholder:text-slate-400";
 
 export const mobileSelectClassName =
-  "min-h-9 w-full min-w-0 border-0 bg-transparent p-0 text-[17px] font-semibold leading-tight text-white outline-none focus:ring-0 lg:text-slate-950";
+  "min-h-9 w-full min-w-0 border-0 bg-transparent p-0 text-almidy-body-emphasized leading-tight text-white outline-none focus:ring-0 lg:text-slate-950";
 
 export const mobileTextareaClassName =
-  "min-h-24 w-full min-w-0 resize-none border-0 bg-transparent p-0 text-[17px] font-semibold leading-6 text-white outline-none placeholder:text-zinc-500 focus:ring-0 lg:text-slate-950 lg:placeholder:text-slate-400";
+  "min-h-24 w-full min-w-0 resize-none border-0 bg-transparent p-0 text-almidy-body-emphasized text-white outline-none placeholder:text-zinc-500 focus:ring-0 lg:text-slate-950 lg:placeholder:text-slate-400";
 
 export const mobilePrimaryActionClassName =
   "inline-flex min-h-11 items-center justify-center rounded-full bg-orange-500 px-4 text-sm font-black text-white transition hover:bg-orange-400 disabled:cursor-not-allowed disabled:opacity-45";

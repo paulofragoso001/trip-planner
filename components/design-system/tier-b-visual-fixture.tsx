@@ -62,6 +62,49 @@ export function TierBVisualFixture() {
           </div>
         </Fixture>
       </div>
+
+      <div className="mx-auto mt-8 grid max-w-5xl items-start gap-8 lg:grid-cols-2">
+        <Fixture title="Trip editorial hierarchy" testId="typography-trip">
+          <article className="rounded-3xl bg-[#faf8f5] p-6 text-[#221d17]">
+            <p className="text-xs font-bold uppercase tracking-[0.12em] text-[#8a8175]">Barcelona · September 12–18</p>
+            <h1 className="mt-2 text-almidy-display-hero">A week shaped by the city</h1>
+            <p className="mt-4 max-w-xl text-almidy-body text-[#6f675c]">
+              Morning markets, long lunches, and an open afternoon beside the Mediterranean.
+            </p>
+            <div className="mt-6 grid grid-cols-2 gap-3">
+              <div className="rounded-2xl bg-white p-4">
+                <p className="text-xs font-bold uppercase tracking-[0.1em] text-[#8a8175]">Next</p>
+                <h2 className="mt-1 text-almidy-card-title">Casa Batlló</h2>
+                <p className="mt-1 text-almidy-metadata text-[#6f675c]">10:30 · Passeig de Gràcia</p>
+              </div>
+              <div className="rounded-2xl bg-white p-4">
+                <p className="text-xs font-bold uppercase tracking-[0.1em] text-[#8a8175]">Later</p>
+                <h2 className="mt-1 text-almidy-card-title">Dinner at Compartir</h2>
+                <p className="mt-1 text-almidy-metadata text-[#6f675c]">20:00 · Eixample</p>
+              </div>
+            </div>
+          </article>
+        </Fixture>
+
+        <Fixture title="Account form hierarchy" testId="typography-auth">
+          <form className="rounded-3xl bg-white p-6" onSubmit={(event) => event.preventDefault()}>
+            <h1 className="text-almidy-screen-title text-slate-950">Welcome back</h1>
+            <p className="mt-2 text-almidy-body-compact text-slate-600">Sign in to continue planning your next trip.</p>
+            <label className="mt-5 block text-sm font-semibold text-slate-700">
+              Email address
+              <input className="mt-2 h-11 text-almidy-body-compact" defaultValue="traveler@example.com" type="email" />
+            </label>
+            <label className="mt-4 block text-sm font-semibold text-slate-700">
+              Password
+              <input className="mt-2 h-11 text-almidy-body-compact" defaultValue="instrument-sans" type="password" />
+            </label>
+            <button className="mt-5 w-full rounded-xl bg-almidy-accent px-4 py-3 text-almidy-action text-almidy-text-primary" type="submit">
+              Sign in
+            </button>
+            <p className="mt-4 text-center text-xs text-slate-500">Protected by secure account access.</p>
+          </form>
+        </Fixture>
+      </div>
     </main>
   );
 }

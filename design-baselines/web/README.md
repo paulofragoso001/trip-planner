@@ -21,3 +21,9 @@ Run `npm run test:visual:web` for strict comparison. Recording is never automati
 - `components/DraggableList.tsx`: selected `blue-50` (`#EFF6FF`) → `accentMutedSurface` (`#F2EBDD`); the existing accent border and primary text remain.
 
 The selected fixture deliberately uses `textPrimary`, not `accentText`: `accentText` on `accentMutedSurface` measured 4.47:1, while primary text preserves strong normal-text contrast. White on Dark canvas measures 18.54:1. Focus styling is unchanged and remains visibly represented in its baseline.
+
+## v2.7 typography baselines
+
+Two fixtures were added and twice verified before Instrument Sans adoption: `typography-trip-light` protects editorial hierarchy, metadata, cards and wrapping; `typography-auth-light` protects headings, labels, inputs, actions and supporting copy. Their system-font reference images live in `v2.7-before/`. The active suite has seven fixtures and continues to wait for `document.fonts.ready` with exact RGBA comparison (`threshold: 0`, `maxDiffPixels: 0`).
+
+After visual review, all seven active PNGs were explicitly re-recorded for the approved product-family migration. Expected differences are glyph contours, widths, baselines and the semantic role metrics visible in the two typography fixtures. No color, radius, border, shadow or focus policy changed. Run `npm run test:visual:web`; recording remains opt-in through `npm run test:visual:web:update` or a focused Playwright `--grep` update.

@@ -12,7 +12,8 @@
 }
 
 body {
-  @apply bg-almidy-canvas-grouped text-almidy-text-primary antialiased;
+  @apply bg-almidy-canvas-grouped font-almidy text-almidy-text-primary antialiased;
+  font-synthesis: none;
 }
 
 :root.dark body {

@@ -25,7 +25,7 @@ Appearance-independent roles such as `onMediaPrimary` remain scalar values. Incr
 | Family | Shared contract | iOS | Web | Figma | Future Android |
 | --- | --- | --- | --- | --- | --- |
 | Color | Light/Dark semantic roles | Dynamic UIColor | Typed tokens; compatibility aliases remain | Light/Dark modes | Compose ColorScheme mapping |
-| Typography | Instrument Sans base roles | UIFontMetrics scaling | Future CSS/rem adoption | Shared text styles | TextStyle + Android scaling |
+| Typography | Instrument Sans base roles | UIFontMetrics scaling | `next/font/local` plus semantic responsive utilities | Shared text styles | TextStyle + Android scaling |
 | Spacing | 4/8/12/16/20/24/32/48 | CGFloat aliases | px/rem adapter | Numeric variables | dp |
 | Radius | small/field/control/card/cardLarge | CGFloat roles | CSS radius adapter | Numeric variables | RoundedCornerShape |
 | Shape | circle/capsule intent | Native shape resolution | border-radius implementation | Shape variables | CircleShape/RoundedCornerShape |
@@ -41,6 +41,8 @@ Shared fixed roles are onMediaPrimary, onMediaSecondary, onMediaTertiary, and ov
 ## Typography
 
 Instrument Sans is the approved product family. Shared base roles are displayHero, screenTitle, sheetTitle, sectionTitle, cardTitle, body, bodyCompact, bodyEmphasized, action, metadata, metadataEmphasis, caption, and badge. The contract supplies base size and weight only. iOS Dynamic Type, web responsive/rem behavior, and Android font scaling remain platform-owned.
+
+The web implementation loads the repository-approved 400/500/600/700 faces once from `ios/App/App/Fonts/InstrumentSans` through `next/font/local`; the adjacent OFL file documents licensing. The CSS variable `--font-almidy-product` and Tailwind `font-almidy` utility own product sans typography. Monospace technical data, third-party/provider rendering and feature/media-specific treatments remain explicit exceptions. Web line heights are platform mappings, and `displayHero` expands responsively from the shared 52px base without adding breakpoint values to the shared JSON.
 
 ## Platform and feature exclusions
 
@@ -101,3 +103,5 @@ Map shared colors into a Compose color scheme, typography roles into Instrument 
 ## Validation
 
 `npm run tokens:verify` validates contract version/schema, legacy compatibility, semantic names, Light/Dark modes, Swift role presence, typography bases, spacing/radius values, and TypeScript/Tailwind consumption. Native visual suites independently prove that reconciliation does not change Light or Dark pixels.
+
+The same command now verifies the single Instrument Sans registration, all four approved weights, the product-font CSS variable, Tailwind typography consumption and the global product-font application. Exact web pixels are enforced separately by the seven-fixture Playwright suite.

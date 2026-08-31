@@ -1,5 +1,5 @@
 import type { Config } from "tailwindcss";
-import { almidyTokens, webDarkSemanticColors, webSemanticColors } from "./lib/design-system/almidy-tokens";
+import { almidyTokens, webDarkSemanticColors, webSemanticColors, webSemanticTypography } from "./lib/design-system/almidy-tokens";
 
 const config: Config = {
   darkMode: "class",
@@ -10,6 +10,10 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        almidy: ["var(--font-almidy-product)", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "sans-serif"]
+      },
+      fontSize: webSemanticTypography,
       colors: {
         ...Object.fromEntries(
           Object.entries(webSemanticColors).map(([name, value]) => [`almidy-${name}`, value]),
