@@ -163,3 +163,7 @@ Two exact semantic adoptions were made with no pixel change: the reusable reserv
 ## v2.5 Light/Dark matrix
 
 Root feature folders remain the frozen Light baselines; matching Dark fixtures live under `Snapshots/Dark/<Feature>/`. Record only the intended appearance. The canonical count is 24 (12 Light + 12 Dark), using exact RGBA comparison with zero differing pixels and zero tolerance. Fixture hosts use a real `UIWindow` so UIKit and semantic dynamic colors resolve deterministically. Inspect every Dark PNG, including accessibility typography and compact controls, before accepting it.
+
+## v2.6 preservation gate
+
+Cross-platform contract changes must pass all 24 native snapshots without recording. The shared schema and TypeScript adapter may evolve, but native Light/Dark raw values and PNGs are frozen. Any mismatch is a regression to investigate, not a baseline update.

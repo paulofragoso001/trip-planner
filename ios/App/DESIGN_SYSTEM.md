@@ -275,3 +275,7 @@ Governance rules:
 ## v2.5 Dark Mode contract
 
 `AlmidyDesignTokens.Color` remains the single appearance namespace. Semantic colors resolve for Light, Dark, and Increased Contrast; callers do not branch on appearance. Shared `CALayer` borders/shadows resolve against their owning view and refresh after color-appearance changes. UIKit-native controls may retain adaptive system colors, while map/media/on-image roles remain fixed. Light values and composition are frozen. The canonical matrix is now 12 Light plus 12 Dark PNGs. See [`DARK_MODE_SPEC.md`](../../DARK_MODE_SPEC.md).
+
+## v2.6 shared mapping
+
+The native foundation implements Almidy Design Tokens 2.0.0 but remains platform-owned code. Shared JSON includes only reusable intent; UIKit text scaling, one-physical-pixel borders, CALayer shadows, sheet mechanics, safe areas, MapKit behavior, media rendering, and feature geometry stay in native namespaces. Parity validation covers shared names and values without requiring platform-only APIs to match other platforms. See [`DESIGN_TOKENS_CROSS_PLATFORM.md`](../../DESIGN_TOKENS_CROSS_PLATFORM.md).

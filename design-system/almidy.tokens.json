@@ -1,21 +1,27 @@
 {
-  "colors": {
-    "brand-gold": "#D6A84F",
-    "brand-gold-deep": "#B88A2E",
-    "brand-gold-text": "#8C641E",
-    "bg-light": "#FFFFFF",
-    "bg-light-mist": "#F2F3F6",
-    "text-primary": "#050505",
-    "text-secondary": "#7D7D84",
-    "border-subtle": "rgba(0,0,0,0.10)"
+  "contract": { "name": "Almidy Design Tokens", "version": "2.0.0", "appearanceModes": ["light", "dark"], "accessibilityContrast": "platform-owned" },
+  "semantic": {
+    "colors": {
+      "accent": { "light": "#D6A84F", "dark": "#DDBB72" }, "accentPressed": { "light": "#B88A2E", "dark": "#C69B4D" }, "accentText": { "light": "#8C641E", "dark": "#E4C27B" },
+      "accentMuted": { "light": "#9F8857", "dark": "#B6A076" }, "accentMutedSurface": { "light": "#F2EBDD", "dark": "#342D22" },
+      "canvas": { "light": "#FFFFFF", "dark": "#151310" }, "canvasGrouped": { "light": "#F2F3F6", "dark": "#1B1916" }, "surface": { "light": "#FFFFFF", "dark": "#211F1B" }, "surfaceNeutral": { "light": "#F2F3F6", "dark": "#292620" },
+      "textPrimary": { "light": "#050505", "dark": "#F4F0E8" }, "textSecondary": { "light": "#7D7D84", "dark": "#B8B1A6" }, "textTertiary": { "light": "#A2A2A8", "dark": "#8F887D" },
+      "borderSubtle": { "light": "rgba(0,0,0,0.10)", "dark": "rgba(244,240,232,0.12)" }, "dividerSubtle": { "light": "rgba(0,0,0,0.08)", "dark": "rgba(244,240,232,0.10)" }, "borderStrong": { "light": "rgba(0,0,0,0.12)", "dark": "rgba(244,240,232,0.18)" },
+      "inputSurface": { "light": "#F5F5F7", "dark": "#292620" }, "inputBorder": { "light": "rgba(0,0,0,0.12)", "dark": "rgba(244,240,232,0.16)" }, "inputPlaceholder": { "light": "rgba(0,0,0,0.44)", "dark": "#A69E91" },
+      "stateDisabledFill": { "light": "rgba(0,0,0,0.06)", "dark": "rgba(244,240,232,0.08)" }, "stateDisabledText": { "light": "rgba(0,0,0,0.38)", "dark": "#858075" },
+      "success": { "light": "#3C8F5A", "dark": "#72B98A" }, "danger": { "light": "#C2413A", "dark": "#E27A72" }, "info": { "light": "#6D86A8", "dark": "#8FA8C5" },
+      "onMediaPrimary": "#FFFFFF", "onMediaSecondary": "rgba(255,255,255,0.92)", "onMediaTertiary": "rgba(255,255,255,0.82)", "overlayScrim": "rgba(0,0,0,0.48)"
+    },
+    "typography": { "family": "Instrument Sans", "roles": {
+      "displayHero": { "size": 52, "weight": 400 }, "screenTitle": { "size": 24, "weight": 600 }, "sheetTitle": { "size": 22, "weight": 600 }, "sectionTitle": { "size": 20, "weight": 600 }, "cardTitle": { "size": 17, "weight": 600 },
+      "body": { "size": 17, "weight": 400 }, "bodyCompact": { "size": 15, "weight": 400 }, "bodyEmphasized": { "size": 17, "weight": 600 }, "action": { "size": 17, "weight": 600 },
+      "metadata": { "size": 13, "weight": 400 }, "metadataEmphasis": { "size": 13, "weight": 600 }, "caption": { "size": 12, "weight": 400 }, "badge": { "size": 11, "weight": 700 }
+    } },
+    "spacing": { "xs2": 4, "xs": 8, "sm": 12, "md": 16, "content": 20, "lg": 24, "xl": 32, "xl2": 48 },
+    "radius": { "small": 8, "field": 12, "control": 18, "card": 24, "cardLarge": 28 },
+    "shape": { "circle": "circle", "capsule": "capsule" }, "elevation": ["controlSubtle", "controlRaised", "floating", "cardRaised", "sheet"], "border": ["hairline", "outline", "outlineStrong", "selected"]
   },
-  "spacing": {
-    "card-padding": "16px",
-    "element-gap": "12px",
-    "content-inset": "24px"
-  },
-  "radius": {
-    "card": "24px",
-    "control": "18px"
-  }
+  "colors": { "brand-gold": "#D6A84F", "brand-gold-deep": "#B88A2E", "brand-gold-text": "#8C641E", "bg-light": "#FFFFFF", "bg-light-mist": "#F2F3F6", "text-primary": "#050505", "text-secondary": "#7D7D84", "border-subtle": "rgba(0,0,0,0.10)" },
+  "spacing": { "card-padding": "16px", "element-gap": "12px", "content-inset": "24px" },
+  "radius": { "card": "24px", "control": "18px" }
 }

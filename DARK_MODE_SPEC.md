@@ -19,3 +19,7 @@ On-media text, image gradients, scrims, map rendering, and renderer colors remai
 ## Runtime and governance
 
 Views consume dynamic semantic `UIColor`s. Components that copy colors into `CALayer` or `UIButton.Configuration` refresh resolved colors after appearance changes. Appearance never changes geometry, typography, icons, behavior, or data. Figma should use one semantic variable collection with Light and Dark modes; fixed roles must be marked fixed. Coolors is a communication aid and must not replace semantic ownership. The authoritative suite is 12 Light plus 12 Dark deterministic PNGs under exact RGBA comparison, with the original Light set unchanged.
+
+## Shared contract relationship
+
+Normal Light/Dark values are mirrored by the versioned shared contract in `design-system/almidy.tokens.json`. Increased Contrast remains platform-owned because accessibility adjustment mechanics differ. Native dynamic providers remain the iOS implementation; the shared JSON expresses intent and does not encode UIKit behavior. Cross-platform ownership and fixed-role boundaries are documented in `DESIGN_TOKENS_CROSS_PLATFORM.md`.

@@ -339,3 +339,7 @@ The specialized header, hero/media pipeline, collapse transition, action rail, c
 ## v2.5 — Dark Mode (complete)
 
 The native semantic namespace now supports Light, Dark, and independent Increased Contrast resolution. Shared layer-backed components and configuration-owned control colors refresh across appearance transitions. Deterministic coverage is the same 12 scenarios in both appearances (24 exact-RGBA PNGs). Existing Light tokens, geometry, typography, and Light baselines remain frozen. Palette and exception details live in `DARK_MODE_SPEC.md`.
+
+## v2.6 — Cross-platform semantic contract
+
+`design-system/almidy.tokens.json` is now the versioned Almidy Design Tokens 2.0.0 source for shared Light/Dark color intent, Instrument Sans base typography, spacing, radius, shape, elevation names, and border names. Existing web compatibility keys remain pixel-stable. Increased Contrast, scaling mechanics, sheets, maps, media, and measured feature geometry remain platform/feature-owned. The audit, platform matrix, and Tier A–D migration backlog live in [`DESIGN_TOKENS_CROSS_PLATFORM.md`](DESIGN_TOKENS_CROSS_PLATFORM.md). Recommended follow-up: v2.6B exact-equivalent web semantic adoption.

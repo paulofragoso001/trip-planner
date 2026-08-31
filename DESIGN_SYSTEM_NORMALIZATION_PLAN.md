@@ -189,3 +189,7 @@ Figma should define semantic variables/styles for spacing, radius, surface, bord
 ## v2.5 Dark Mode
 
 Semantic roles now resolve across Light, Dark, and Increased Contrast without changing Light raw values. Dark uses warm near-black canvases, warm off-white text, champagne accents, and warm-white alpha borders; media, map, renderer, and system-native roles remain intentional exceptions. Layer-backed colors refresh on trait changes. The strict matrix is 12 Light plus 12 Dark images, with the original Light PNGs unchanged. See `DARK_MODE_SPEC.md`.
+
+## v2.6 reconciliation boundary
+
+Shared foundation intent is canonical in Almidy Design Tokens 2.0.0. Native values are consumed as the approved reference without reopening appearance or geometry. Web exact matches retain compatibility aliases; same-intent/different-value families, legacy palettes, and feature/rendering colors are classified for controlled later phases. No iOS or web visual normalization is part of v2.6. See `DESIGN_TOKENS_CROSS_PLATFORM.md`.

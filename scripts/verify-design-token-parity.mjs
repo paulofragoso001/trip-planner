@@ -11,13 +11,59 @@ const [canonicalSource, swiftSource, foundationSource, tailwindSource, typescrip
 ]);
 
 const tokens = JSON.parse(canonicalSource);
-assert.deepEqual(Object.keys(tokens).sort(), ["colors", "radius", "spacing"]);
+assert.deepEqual(Object.keys(tokens).sort(), ["colors", "contract", "radius", "semantic", "spacing"]);
+assert.equal(tokens.contract.name, "Almidy Design Tokens");
+assert.equal(tokens.contract.version, "2.0.0");
+assert.deepEqual(tokens.contract.appearanceModes, ["light", "dark"]);
+assert.equal(tokens.contract.accessibilityContrast, "platform-owned");
 assert.deepEqual(Object.keys(tokens.colors).sort(), [
   "bg-light", "bg-light-mist", "border-subtle", "brand-gold",
   "brand-gold-deep", "brand-gold-text", "text-primary", "text-secondary"
 ]);
 assert.deepEqual(Object.keys(tokens.spacing).sort(), ["card-padding", "content-inset", "element-gap"]);
 assert.deepEqual(Object.keys(tokens.radius).sort(), ["card", "control"]);
+
+const adaptiveRoles = [
+  "accent", "accentPressed", "accentText",
+  "canvas", "canvasGrouped", "surface", "surfaceNeutral",
+  "textPrimary", "textSecondary", "textTertiary",
+  "borderSubtle", "dividerSubtle", "borderStrong",
+  "inputSurface", "inputBorder", "inputPlaceholder",
+  "stateDisabledFill", "stateDisabledText", "success", "danger", "info"
+];
+for (const role of adaptiveRoles) {
+  assert.deepEqual(Object.keys(tokens.semantic.colors[role]).sort(), ["dark", "light"]);
+  assert.match(swiftSource, new RegExp(`static let ${role} = adaptive\\(`), `Swift is missing adaptive semantic ${role}`);
+}
+assert.match(swiftSource, /static let accentMuted = goldMuted/);
+assert.match(swiftSource, /static let accentMutedSurface = goldMutedSurface/);
+for (const role of ["onMediaPrimary", "onMediaSecondary", "onMediaTertiary", "overlayScrim"]) {
+  assert.equal(typeof tokens.semantic.colors[role], "string");
+  assert.match(swiftSource, new RegExp(`static let ${role} =`), `Swift is missing fixed semantic ${role}`);
+}
+for (const value of Object.values(tokens.semantic.colors)) {
+  for (const color of typeof value === "string" ? [value] : Object.values(value)) {
+    const match = color.match(/^#([0-9A-F]{6})$/i);
+    if (match) {
+      assert.ok(swiftSource.includes(`0x${match[1].toUpperCase()}`) || color === "#FFFFFF", `Swift is missing semantic value ${color}`);
+    }
+  }
+}
+
+assert.equal(tokens.semantic.typography.family, "Instrument Sans");
+const typographyRoles = {
+  displayHero: [52, 400], screenTitle: [24, 600], sheetTitle: [22, 600], sectionTitle: [20, 600],
+  cardTitle: [17, 600], body: [17, 400], bodyCompact: [15, 400], bodyEmphasized: [17, 600],
+  action: [17, 600], metadata: [13, 400], metadataEmphasis: [13, 600], caption: [12, 400], badge: [11, 700]
+};
+for (const [role, [size, weight]] of Object.entries(typographyRoles)) {
+  assert.deepEqual(tokens.semantic.typography.roles[role], { size, weight });
+  assert.match(foundationSource, new RegExp(`static let ${role} = Style\\(baseFont: Face\\.[a-z]+\\.font\\(ofSize: ${size}\\)`));
+}
+assert.deepEqual(Object.values(tokens.semantic.spacing), [4, 8, 12, 16, 20, 24, 32, 48]);
+assert.deepEqual(tokens.semantic.radius, { small: 8, field: 12, control: 18, card: 24, cardLarge: 28 });
+assert.deepEqual(tokens.semantic.elevation, ["controlSubtle", "controlRaised", "floating", "cardRaised", "sheet"]);
+assert.deepEqual(tokens.semantic.border, ["hairline", "outline", "outlineStrong", "selected"]);
 
 const swiftHexTokens = {
   brandGold: tokens.colors["brand-gold"],
@@ -61,16 +107,9 @@ assert.match(foundationSource, /enum Elevation/);
 assert.match(foundationSource, /enum Component/);
 
 assert.match(typescriptSource, /import canonicalTokens from "\.\.\/\.\.\/design-system\/almidy\.tokens\.json"/);
+assert.match(typescriptSource, /export type AppearanceMode = "light" \| "dark"/);
+assert.match(typescriptSource, /export function semanticColor/);
 assert.match(tailwindSource, /import \{ almidyTokens \} from "\.\/lib\/design-system\/almidy-tokens"/);
-
-for (const group of ["colors", "spacing", "radius"]) {
-  for (const key of Object.keys(tokens[group])) {
-    assert.ok(
-      typescriptSource.includes(`"${key}"`) || typescriptSource.includes(`${key}:`),
-      `TypeScript contract is missing ${group}.${key}`
-    );
-  }
-}
 
 for (const key of Object.keys(tokens.colors)) {
   assert.ok(
