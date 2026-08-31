@@ -19,6 +19,10 @@ final class NativeActivityUtilityTests: XCTestCase {
         XCTAssertEqual(view.fields["Phone"]?.font?.pointSize, 17)
         XCTAssertEqual(view.fields["Website"]?.keyboardType, .default)
         XCTAssertEqual(view.bounds.height, 170)
+        XCTAssertEqual(
+            view.utilityDescendants(of: UIStackView.self).first?.layer.cornerRadius,
+            AlmidyDesignTokens.Radius.control
+        )
 
         XCTAssertEqual(NativeReservationDetailsView.rowHeight, 52)
         XCTAssertEqual(NativeReservationDetailsView.labelWidth, 138)
@@ -91,6 +95,10 @@ final class NativeActivityUtilityTests: XCTestCase {
         XCTAssertEqual(view.bounds.height, 64)
         XCTAssertEqual(view.titleLabel.text, "Add File, Photo or Link")
         XCTAssertEqual(view.titleLabel.font.pointSize, 19)
+        XCTAssertEqual(
+            view.utilityDescendants(of: UIStackView.self).first?.layer.cornerRadius,
+            AlmidyDesignTokens.Radius.control
+        )
         XCTAssertTrue(button.showsMenuAsPrimaryAction)
         XCTAssertEqual(button.menu?.title, "Add Document")
         XCTAssertEqual(button.menu?.children.compactMap { ($0 as? UIAction)?.title }, [

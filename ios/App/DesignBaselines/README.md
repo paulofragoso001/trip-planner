@@ -155,3 +155,7 @@ Generic custom separators resolve to one physical device pixel through `AlmidyDi
 ## v2.4D shared spacing review
 
 The shared spacing audit produced one exact semantic adoption: `AlmidyBadge`'s unchanged 4pt vertical/8pt horizontal inset now references `Spacing.xxs/xs`. No visible spacing normalization was approved, no baseline was recorded, and strict comparison passed all 12 canonical images. Native Itinerary, Search, Settings, and Cost visible candidates remain deferred until deterministic screenshot coverage exists; protected Trip Overview, Globe, Place, and editor geometry remains unchanged.
+
+## v2.4E ordinary card and control radius review
+
+Two exact semantic adoptions were made with no pixel change: the reusable reservation-details and attachment-action surfaces now reference `Radius.control` for their existing 18pt curvature. No visible radius normalization was approved and no baseline was recorded. Shape-derived circles/capsules, protected sheet and feature radii, and uncovered Native Itinerary/Search/Settings/Cost candidates remain unchanged; the canonical image count stays 12.

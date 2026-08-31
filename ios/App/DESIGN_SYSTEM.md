@@ -240,6 +240,8 @@ v2.4C defines generic custom separators as one physical device pixel: `1 / UIScr
 
 v2.4D confirms the shared spacing scale as 4/8/12/16/20/24/32/48. Reusable components use those semantic values; `AlmidyBadge` now expresses its unchanged 4×8 content inset through `Spacing.xxs/xs`. Values 6/10/14/18 remain feature-scoped measured exceptions and are not general-purpose defaults. Figma should expose `Spacing / 04`, `/08`, `/12`, `/16`, `/20`, `/24`, `/32`, and `/48`; measured exceptions may be documented at feature level but should not become easy global variables.
 
+v2.4E confirms the ordinary radius hierarchy as `small` 8, `field` 12, `control` 18, `card` 24, and `cardLarge` 28. `NativeReservationDetailsView` and `NativeAttachmentActionView` now use `Radius.control` with identical 18pt geometry. Circular controls derive curvature from geometry (or `Shape.circle`), capsules remain shape semantics, and sheet/feature roles at 28/30/34/36/38/40 remain distinct. Figma should likewise separate ordinary radius variables, Circle/Capsule shapes, and sheet/feature roles rather than flattening numerically adjacent values.
+
 ## Native Design System v1 closure
 
 **Status:** Complete and frozen

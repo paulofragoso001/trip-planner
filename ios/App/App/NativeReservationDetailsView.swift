@@ -14,7 +14,7 @@ final class NativeReservationDetailsView: UIView {
         stack.axis = .vertical
         stack.spacing = 0
         stack.backgroundColor = .systemBackground
-        stack.layer.cornerRadius = 18
+        stack.layer.cornerRadius = AlmidyDesignTokens.Radius.control
         stack.isLayoutMarginsRelativeArrangement = true
         stack.layoutMargins = Self.contentMargins
 

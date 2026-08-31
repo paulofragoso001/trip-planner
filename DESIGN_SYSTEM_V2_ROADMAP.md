@@ -271,6 +271,10 @@ Recommended implementation sequence: neutral surfaces; exact-equivalent elevatio
 
 **Completed August 31, 2026.** Shared components already conform to the canonical 4/8/12/16/20/24/32/48 scale. `AlmidyBadge`'s exact 4×8 inset now references `Spacing.xxs/xs`; no numeric geometry changed. Repeated 6/10/14/18 values remain documented feature, accessibility, or rendering exceptions. No visible normalization was approved for protected or uncovered surfaces, all twelve PNGs remain unchanged, and the next proposed phase is v2.4E ordinary card/control radius review.
 
+#### v2.4E — Ordinary Card & Control Radius Review
+
+**Completed August 31, 2026.** The ordinary shared hierarchy remains 8/12/18/24/28 for small, field, control, card, and large-card roles. The reservation-details and attachment-action shared surfaces now reference `Radius.control` at their existing 18pt geometry, with focused contract tests. No raw radius or screenshot changed; circles/capsules remain shape semantics, sheet and feature radii remain distinct, and uncovered visible candidates remain deferred. The recommended next milestone is v2.5 Dark Mode preparation and implementation as separately approved appearance work.
+
 ### v2.5 — Dark Mode
 
 Run as product-approved appearance work: foundations, utilities, editors, Map/Place, then Trip Overview/media. Do not combine with unrelated normalization.

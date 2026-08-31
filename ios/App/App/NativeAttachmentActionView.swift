@@ -27,7 +27,7 @@ final class NativeAttachmentActionView: UIView {
         row.alignment = .center
         row.spacing = 18
         row.backgroundColor = .systemBackground
-        row.layer.cornerRadius = 18
+        row.layer.cornerRadius = AlmidyDesignTokens.Radius.control
         row.isLayoutMarginsRelativeArrangement = true
         row.layoutMargins = UIEdgeInsets(top: 15, left: 18, bottom: 15, right: 18)
         row.translatesAutoresizingMaskIntoConstraints = false

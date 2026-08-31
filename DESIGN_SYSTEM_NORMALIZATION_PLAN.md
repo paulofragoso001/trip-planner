@@ -70,6 +70,12 @@ No visible spacing normalization was approved. Trip Overview, Globe, Place, edit
 
 The lone 30pt radius is the measured Native Itinerary date-picker sheet. It is not evidence that 28 should become 30. The 34/36/38/40 sheet family describes editor/Overview, prominent, Place, and Globe identities respectively and should remain separated.
 
+### v2.4E ordinary card and control radius review
+
+Completed August 31, 2026. The production audit covered 166 `cornerRadius` references across 34 files, including 97 explicit numeric constructions plus semantic, component-scoped, and geometry-derived uses. The ordinary shared hierarchy remains `small` 8, `field` 12, `control` 18, `card` 24, and `cardLarge` 28. `NativeReservationDetailsView` and `NativeAttachmentActionView` now express their unchanged reusable 18pt surfaces through `Radius.control`; focused tests enforce the semantic contract.
+
+No visible radius normalization or canonical raw-value change was approved. Circle/capsule geometry remains shape-derived; 28/30/34/36/38/40 sheet and feature roles remain distinct; Trip Overview, Globe, Place, editor, media, rendering, and compatibility radii remain protected. Visible candidates in Native Itinerary, Search, Settings, and Cost remain deferred until deterministic pixel coverage and separate approval exist.
+
 ## Surfaces
 
 | Existing role | Current Light value | Role/consumers | Proposed direction | Risk |
@@ -169,7 +175,7 @@ Pixel-protected: Trip Overview neutral/card rhythm; Globe cards/actions/controls
 2. **v2.4B — Exact Elevation API Adoption (complete):** adopted `controlSubtle`, `controlRaised`, `floating`, and `cardRaised` at exact-match sites with all canonical PNGs unchanged.
 3. **v2.4C — Generic Separator Policy (complete):** canonicalized exact one-device-pixel constructions; retained measured and specialized widths; no PNG changed.
 4. **v2.4D — Shared Spacing Review (complete):** adopted the one exact shared inset construction; retained all measured exceptions; no visible or PNG change.
-5. **v2.4E — Ordinary Card/Control Radius Review:** shared components only, with explicit visual approval.
+5. **v2.4E — Ordinary Card/Control Radius Review (complete):** adopted two exact reusable 18pt surfaces through `Radius.control`; retained shape, sheet, feature, media, and uncovered compatibility geometry; no visible or PNG change.
 6. **Feature compatibility reviews:** opt-in proposals for Globe, Place, editors, and Trip Overview only when product benefit outweighs identity/regression risk.
 
 ## Approval gates
