@@ -59,6 +59,39 @@ assert.doesNotMatch(
   "DraggableList reintroduced the legacy blue selected fill",
 );
 
+const consolidatedComponentFiles = [
+  "components/Auth.tsx",
+  "components/AuthPage.tsx",
+  "components/account/profile-settings-form.tsx",
+  "components/account/password-reset-button.tsx",
+  "components/account/reset-password-form.tsx",
+  "components/account/user-preferences-settings.tsx",
+];
+const consolidatedSources = consolidatedComponentFiles.map((file) => [file, fs.readFileSync(file, "utf8")]);
+
+for (const [file, source] of consolidatedSources) {
+  assert.doesNotMatch(
+    source,
+    /min-h-11 rounded-xl border border-almidy-border-subtle (?:bg-white )?px-3/,
+    `${file} reconstructs the consolidated ordinary form-control signature`,
+  );
+  assert.doesNotMatch(
+    source,
+    /rounded-\[1\.75rem\] border border-almidy-border-subtle bg-white p-5 shadow-panel/,
+    `${file} reconstructs the consolidated ordinary card signature`,
+  );
+  assert.doesNotMatch(
+    source,
+    /rounded-xl bg-slate-950 px-4 py-2 text-sm font-bold text-white disabled:opacity-50/,
+    `${file} reconstructs the consolidated compact neutral action signature`,
+  );
+}
+
+assert.match(fs.readFileSync("components/ui/almidy-button.tsx", "utf8"), /type AlmidyButtonVariant = "primary" \| "neutral"/);
+assert.match(fs.readFileSync("components/ui/almidy-form-control.tsx", "utf8"), /export const AlmidyInput/);
+assert.match(fs.readFileSync("components/ui/almidy-form-control.tsx", "utf8"), /export const AlmidySelect/);
+assert.match(fs.readFileSync("components/ui/almidy-card.tsx", "utf8"), /export const almidyCardClassName/);
+
 const equivalence = {
   accent: [tokens.colors["brand-gold"], tokens.semantic.colors.accent.light],
   canvasGrouped: [tokens.colors["bg-light-mist"], tokens.semantic.colors.canvasGrouped.light],

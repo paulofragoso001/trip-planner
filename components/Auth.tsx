@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { AlmidyButton } from "@/components/ui/almidy-button";
+import { AlmidyInput } from "@/components/ui/almidy-form-control";
 import { getAuthCallbackUrl } from "@/lib/auth/auth-redirect-url";
 import { createClient } from "@/lib/supabase/client";
 
@@ -38,22 +40,22 @@ export default function Auth() {
 
   return (
     <div className="mx-auto mt-6 w-full max-w-sm space-y-3">
-      <input
+      <AlmidyInput
         type="email"
         placeholder="Your email"
-        className="w-full rounded-lg border border-almidy-border-subtle p-3 text-almidy-body-compact"
+        className="w-full p-3 text-almidy-body-compact"
         value={email}
         onChange={(event) => setEmail(event.target.value)}
       />
 
-      <button
+      <AlmidyButton
         type="button"
         onClick={login}
         disabled={loading}
-        className="min-h-11 w-full rounded-lg bg-black px-5 py-3 text-almidy-action text-white disabled:cursor-not-allowed disabled:opacity-60"
+        className="w-full"
       >
         {loading ? "Sending..." : "Sign in"}
-      </button>
+      </AlmidyButton>
 
       {message ? <p className="text-center text-sm text-slate-600">{message}</p> : null}
     </div>

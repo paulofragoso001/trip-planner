@@ -1,10 +1,10 @@
 import { expect, test, type Page } from "@playwright/test";
 
-async function openFixture(page: Page, viewport: { width: number; height: number }) {
+async function openFixture(page: Page, viewport: { width: number; height: number }, path = "/dashboard/design-system-visual") {
   await page.setViewportSize(viewport);
   await page.setExtraHTTPHeaders({ "x-cypress-dashboard": "true" });
   await page.emulateMedia({ reducedMotion: "reduce" });
-  await page.goto("/dashboard/design-system-visual");
+  await page.goto(path);
   await page.evaluate(() => document.fonts.ready);
   await page.addStyleTag({ content: "*,*::before,*::after{animation:none!important;transition:none!important;caret-color:transparent!important}" });
   await expect(page.getByTestId("tier-b-visual-fixture")).toBeVisible();
@@ -51,4 +51,34 @@ test("trip typography fixture", async ({ page }) => {
 test("auth typography fixture", async ({ page }) => {
   await openFixture(page, { width: 1280, height: 900 });
   await expect(page.getByTestId("typography-auth")).toHaveScreenshot("typography-auth-light.png", screenshotOptions);
+});
+
+test("ordinary web components fixture", async ({ page }) => {
+  await openFixture(page, { width: 1280, height: 900 }, "/dashboard/design-system-visual?components=true");
+  await expect(page.getByTestId("web-components-light")).toHaveScreenshot("web-components-light.png", screenshotOptions);
+});
+
+test("ordinary web components accessibility and responsive behavior", async ({ page }) => {
+  await openFixture(page, { width: 640, height: 900 }, "/dashboard/design-system-visual?components=true");
+
+  await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+
+  const primary = page.getByRole("button", { name: "Primary action" });
+  const neutral = page.getByRole("button", { name: "Neutral action" });
+  const destination = page.getByLabel("Destination");
+
+  await primary.focus();
+  await expect(primary).toBeFocused();
+  await expect(primary).not.toHaveCSS("box-shadow", "none");
+  await page.keyboard.press("Tab");
+  await expect(neutral).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(destination).toBeFocused();
+
+  const invalid = page.getByLabel("Confirmation");
+  await expect(invalid).toHaveAttribute("aria-invalid", "true");
+  await expect(invalid).toHaveAttribute("aria-describedby", "fixture-error");
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
 });

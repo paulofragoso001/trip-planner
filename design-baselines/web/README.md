@@ -27,3 +27,9 @@ The selected fixture deliberately uses `textPrimary`, not `accentText`: `accentT
 Two fixtures were added and twice verified before Instrument Sans adoption: `typography-trip-light` protects editorial hierarchy, metadata, cards and wrapping; `typography-auth-light` protects headings, labels, inputs, actions and supporting copy. Their system-font reference images live in `v2.7-before/`. The active suite has seven fixtures and continues to wait for `document.fonts.ready` with exact RGBA comparison (`threshold: 0`, `maxDiffPixels: 0`).
 
 After visual review, all seven active PNGs were explicitly re-recorded for the approved product-family migration. Expected differences are glyph contours, widths, baselines and the semantic role metrics visible in the two typography fixtures. No color, radius, border, shadow or focus policy changed. Run `npm run test:visual:web`; recording remains opt-in through `npm run test:visual:web:update` or a focused Playwright `--grep` update.
+
+## v2.7B component baseline
+
+`web-components-light` was captured and verified before consolidation, then isolated behind the test-only `?components=true` fixture mode so the original seven screenshots retain exact document geometry. Its preserved reference lives in `v2.7b-before/`. The gallery covers primary, neutral and disabled actions; ordinary and invalid inputs; an ordinary card; representative badge typography; and an empty-state hierarchy.
+
+After review, only `web-components-light` and `typography-auth-light` were explicitly updated. Approved visible changes are the product primary action from black to accent/accentPressed and Auth fields adopting the ordinary 44px/12px field geometry. The suite keeps exact RGBA comparison. A non-image test also verifies keyboard focus order, disabled skipping, the invalid-field description, no overflow at an effective 200% desktop width, and the canonical mobile width.

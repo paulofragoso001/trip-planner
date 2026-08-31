@@ -35,6 +35,14 @@ Visual role and HTML hierarchy are independent. Preserve correct `h1`–`h6`, la
 - Ordinary reusable cards may adopt shared surface, border, radius and title roles. Trip editorial cards, media cards, Wallet composition, maps and provider panels remain feature-owned.
 - Badges may share typography while keeping domain/status color ownership. Empty states should share hierarchy only when multiple active consumers express the same product pattern.
 
+### Implemented ordinary primitives
+
+- `AlmidyButton` owns the ordinary `primary` and compact `neutral` action variants. Primary uses `accent`, `accentPressed`, `textPrimary`, `action` typography, the web focus ring and disabled semantics. Neutral preserves the compact dark account action used by Profile and Security. Provider, map, Wallet, media and destructive confirmation buttons remain feature-owned.
+- `AlmidyInput` and `AlmidySelect` preserve native HTML behavior and forward refs. They own the ordinary 44px minimum height, field radius, subtle border and padding; global input rules continue to own the established focus treatment. Invalid fields use `aria-invalid` and must retain an explicit label and described validation text.
+- `AlmidyCard` owns only the ordinary raised surface shell: surface, subtle border, 28px compatibility radius, padding and panel elevation. Its class export supports form and conditional semantic hosts without changing their element type. Interactive, editorial, dashboard, Wallet, media and feature cards remain local.
+
+No generic badge or empty-state primitive exists yet. The audit found feature/status ownership but no repeated ordinary production signature strong enough to justify another abstraction.
+
 ## Responsive behavior and accessibility
 
 Web may expand display roles while preserving the shared family, hierarchy and weight intent. Validate major changes at canonical desktop and mobile widths and at 200% zoom. Preserve keyboard focus, semantic headings, explicit labels, contrast, disabled/error states, hit targets and responsive wrapping. Font migration must not add hardcoded text widths to hide metric differences.
@@ -45,4 +53,4 @@ Tier C includes maps/globe, provider branding, Wallet/media composition, native-
 
 ## Visual regression
 
-`npm run test:visual:web` runs seven deterministic Playwright fixtures at zero pixel tolerance after `document.fonts.ready`. `npm run test:visual:web:update` is the explicit full recording command; use a focused `--grep` update when only one approved fixture changes. Pre-v2.7 system-font references for the trip and auth fixtures live under `design-baselines/web/v2.7-before/`.
+`npm run test:visual:web` runs eight deterministic visual fixtures plus one component accessibility/responsive test at zero pixel tolerance after `document.fonts.ready`. `npm run test:visual:web:update` is the explicit full recording command; use a focused `--grep` update when only one approved fixture changes. Pre-v2.7 system-font references for the trip and auth fixtures live under `design-baselines/web/v2.7-before/`; the pre-consolidation component gallery lives under `design-baselines/web/v2.7b-before/`.

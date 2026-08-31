@@ -6,6 +6,8 @@ import { useEffect, useMemo, useState } from "react";
 import { getAuthCallbackUrl } from "@/lib/auth/auth-redirect-url";
 import { signInWithNativeOAuth } from "@/lib/auth/native-oauth";
 import { createClient } from "@/lib/supabase/client";
+import { AlmidyButton } from "@/components/ui/almidy-button";
+import { AlmidyInput } from "@/components/ui/almidy-form-control";
 
 type AuthPageProps = {
   message?: string;
@@ -181,7 +183,7 @@ export default function AuthPage({ message }: AuthPageProps) {
         <div className="space-y-3">
           <label htmlFor="email">
             Email
-            <input
+            <AlmidyInput
               autoComplete="email"
               className="text-almidy-body-compact"
               id="email"
@@ -193,14 +195,14 @@ export default function AuthPage({ message }: AuthPageProps) {
             />
           </label>
 
-          <button
-            className="min-h-12 w-full rounded-xl bg-black py-3 text-almidy-action text-white transition hover:bg-gray-900 disabled:cursor-not-allowed disabled:opacity-60"
+          <AlmidyButton
+            className="w-full"
             disabled={loading !== null}
             onClick={signInWithEmail}
             type="button"
           >
             {loading === "email" ? "Sending..." : "Continue with Email"}
-          </button>
+          </AlmidyButton>
         </div>
 
         {status ? (

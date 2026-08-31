@@ -1,6 +1,20 @@
 "use client";
 
-export function TierBVisualFixture() {
+import { AlmidyButton } from "@/components/ui/almidy-button";
+import { AlmidyCard } from "@/components/ui/almidy-card";
+import { AlmidyInput } from "@/components/ui/almidy-form-control";
+
+export function TierBVisualFixture({ componentsOnly = false }: { componentsOnly?: boolean }) {
+  if (componentsOnly) {
+    return (
+      <main className="min-h-screen bg-slate-100 p-8" data-testid="tier-b-visual-fixture">
+        <div className="mx-auto max-w-5xl">
+          <ComponentsFixture />
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="min-h-screen bg-slate-100 p-8" data-testid="tier-b-visual-fixture">
       <div className="mx-auto grid max-w-5xl gap-8 lg:grid-cols-2">
@@ -92,20 +106,61 @@ export function TierBVisualFixture() {
             <p className="mt-2 text-almidy-body-compact text-slate-600">Sign in to continue planning your next trip.</p>
             <label className="mt-5 block text-sm font-semibold text-slate-700">
               Email address
-              <input className="mt-2 h-11 text-almidy-body-compact" defaultValue="traveler@example.com" type="email" />
+              <AlmidyInput className="mt-2 text-almidy-body-compact" defaultValue="traveler@example.com" type="email" />
             </label>
             <label className="mt-4 block text-sm font-semibold text-slate-700">
               Password
-              <input className="mt-2 h-11 text-almidy-body-compact" defaultValue="instrument-sans" type="password" />
+              <AlmidyInput className="mt-2 text-almidy-body-compact" defaultValue="instrument-sans" type="password" />
             </label>
-            <button className="mt-5 w-full rounded-xl bg-almidy-accent px-4 py-3 text-almidy-action text-almidy-text-primary" type="submit">
+            <AlmidyButton className="mt-5 w-full" type="submit">
               Sign in
-            </button>
+            </AlmidyButton>
             <p className="mt-4 text-center text-xs text-slate-500">Protected by secure account access.</p>
           </form>
         </Fixture>
       </div>
+
     </main>
+  );
+}
+
+function ComponentsFixture() {
+  return (
+    <Fixture title="Ordinary component semantics" testId="web-components-light">
+          <div className="grid gap-5 rounded-3xl bg-white p-6 text-slate-950">
+            <div className="flex flex-wrap gap-3">
+              <AlmidyButton type="button">
+                Primary action
+              </AlmidyButton>
+              <AlmidyButton size="compact" type="button" variant="neutral">
+                Neutral action
+              </AlmidyButton>
+              <AlmidyButton disabled type="button">
+                Disabled action
+              </AlmidyButton>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="grid gap-2 text-sm font-bold text-slate-950">
+                Destination
+                <AlmidyInput defaultValue="Copenhagen" />
+              </label>
+              <label className="grid gap-2 text-sm font-bold text-slate-950">
+                Confirmation
+                <AlmidyInput aria-describedby="fixture-error" aria-invalid="true" defaultValue="Needs review" />
+                <span className="text-xs text-red-700" id="fixture-error">Check this value before continuing.</span>
+              </label>
+            </div>
+            <AlmidyCard>
+              <span className="rounded-full bg-almidy-accent-muted-surface px-2.5 py-1 text-almidy-badge text-almidy-text-primary">UPCOMING</span>
+              <h2 className="mt-3 text-almidy-section-title">Ordinary travel card</h2>
+              <p className="mt-1 text-almidy-body-compact text-slate-600">Reusable surface semantics without feature-owned composition.</p>
+            </AlmidyCard>
+            <section className="rounded-2xl border border-dashed border-almidy-border-subtle px-5 py-6 text-center">
+              <h2 className="text-almidy-card-title">No saved places yet</h2>
+              <p className="mt-1 text-almidy-body-compact text-slate-600">Save a place when it belongs in this trip.</p>
+            </section>
+          </div>
+    </Fixture>
   );
 }
 

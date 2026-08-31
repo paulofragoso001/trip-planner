@@ -1,6 +1,8 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { currencyLabels, distanceLabels, supportedCurrencyCodes, supportedDistanceUnits, type UserPreferences, type UserPreferencesResponse } from "@/lib/user-preferences";
+import { almidyCardClassName } from "@/components/ui/almidy-card";
+import { AlmidySelect } from "@/components/ui/almidy-form-control";
 
 type PreferenceField = keyof UserPreferences;
 export function UserPreferencesSettings({ compact = false }: { compact?: boolean }) {
@@ -36,14 +38,14 @@ export function UserPreferencesSettings({ compact = false }: { compact?: boolean
     }
   }
 
-  const shell = compact ? "bg-white px-5 py-4" : "rounded-[1.75rem] border border-almidy-border-subtle bg-white p-5 shadow-panel";
+  const shell = compact ? "bg-white px-5 py-4" : almidyCardClassName;
   if (status === "loading") return <section className={shell} aria-label="Travel preferences"><p aria-live="polite" className="text-sm text-slate-500">Loading saved travel preferences…</p></section>;
   if (!preferences) return <section className={shell} aria-label="Travel preferences"><p role="alert" className="text-sm text-red-700">{message} <button className="font-bold underline" onClick={() => void hydrate()} type="button">Try again</button></p></section>;
   return <section className={shell} aria-labelledby={compact ? undefined : "travel-preferences-title"} aria-label={compact ? "Travel preferences" : undefined}>
     {compact ? null : <><p className="text-xs font-black uppercase tracking-[0.18em] text-orange-500">Preferences</p><h2 className="mt-1 text-2xl font-black text-slate-950" id="travel-preferences-title">Currency and distance</h2><p className="mt-2 text-sm text-slate-600">Defaults apply to new records and displayed distances. Existing money is never converted.</p></>}
     <div className={compact ? "grid gap-4" : "mt-4 grid gap-4 sm:grid-cols-2"}>
-      <label className="grid gap-2 text-sm font-bold text-slate-950">Default currency<select aria-label="Default currency" className="min-h-11 rounded-xl border border-almidy-border-subtle bg-white px-3" onChange={(event) => void update("default_currency", event.target.value as UserPreferences["default_currency"])} value={preferences.default_currency}>{supportedCurrencyCodes.map((code) => <option key={code} value={code}>{currencyLabels[code]}</option>)}</select></label>
-      <label className="grid gap-2 text-sm font-bold text-slate-950">Distance unit<select aria-label="Distance unit" className="min-h-11 rounded-xl border border-almidy-border-subtle bg-white px-3" onChange={(event) => void update("distance_unit", event.target.value as UserPreferences["distance_unit"])} value={preferences.distance_unit}>{supportedDistanceUnits.map((unit) => <option key={unit} value={unit}>{distanceLabels[unit]}</option>)}</select></label>
+      <label className="grid gap-2 text-sm font-bold text-slate-950">Default currency<AlmidySelect aria-label="Default currency" onChange={(event) => void update("default_currency", event.target.value as UserPreferences["default_currency"])} value={preferences.default_currency}>{supportedCurrencyCodes.map((code) => <option key={code} value={code}>{currencyLabels[code]}</option>)}</AlmidySelect></label>
+      <label className="grid gap-2 text-sm font-bold text-slate-950">Distance unit<AlmidySelect aria-label="Distance unit" onChange={(event) => void update("distance_unit", event.target.value as UserPreferences["distance_unit"])} value={preferences.distance_unit}>{supportedDistanceUnits.map((unit) => <option key={unit} value={unit}>{distanceLabels[unit]}</option>)}</AlmidySelect></label>
     </div>
     <p aria-live="polite" className={`mt-3 min-h-5 text-xs font-semibold ${status === "error" ? "text-red-700" : "text-slate-500"}`}>{message}</p>
   </section>;
