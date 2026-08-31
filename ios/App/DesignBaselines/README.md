@@ -147,3 +147,7 @@ The approved Light-mode value of the independent `tripOverviewNeutralSurface` se
 ## v2.4B exact elevation API adoption
 
 Exact local shadow declarations were replaced by their numerically identical semantic elevation configurations. Strict zero-tolerance comparison passed all 12 canonical images without recording, and every PNG remains byte-identical to the committed v2.4A baseline. No shadow value, surface, border, radius, spacing, typography, geometry, or behavior changed.
+
+## v2.4C generic separator policy
+
+Generic custom separators resolve to one physical device pixel through `AlmidyDivider` and `Border.hairline`. Four exact local constructions adopted the primitive; strict zero-tolerance comparison passed all 12 canonical images without recording. The canonical iPhone 17e profile resolves the hairline to one 3× pixel; the same formula resolves to 0.5pt on 2×. Retained 0.5pt measured lines and specialized structural, outline, selection, map/media, and UIKit-native separators were not normalized.

@@ -3184,8 +3184,7 @@ final class NativeFlightSearchViewController: UIViewController,
         resultsTable.tableFooterView = UIView()
         resultsTable.isHidden = true
 
-        let separator = UIView()
-        separator.backgroundColor = UIColor.separator.withAlphaComponent(0.22)
+        let separator = AlmidyDivider(color: UIColor.separator.withAlphaComponent(0.22))
         [cancel, title, searchField, separator, forwardingCard, resultsTable].forEach {
             $0.translatesAutoresizingMaskIntoConstraints = false
             view.addSubview($0)
@@ -3204,7 +3203,6 @@ final class NativeFlightSearchViewController: UIViewController,
             separator.topAnchor.constraint(equalTo: searchField.bottomAnchor, constant: 8),
             separator.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             separator.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            separator.heightAnchor.constraint(equalToConstant: 1 / UIScreen.main.scale),
             forwardingCard.topAnchor.constraint(equalTo: separator.bottomAnchor, constant: 16),
             forwardingCard.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
             forwardingCard.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),

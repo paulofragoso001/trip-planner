@@ -93,6 +93,12 @@ Canonical roles are hairline, outline, outlineStrong, selected, selectedProminen
 - 2pt selection/timeline roles and 3pt prominent map-selection borders remain specialized.
 - On-media outlines retain their alpha-based white role.
 
+### v2.4C generic separator policy
+
+Completed August 29, 2026. Generic custom Almidy separators resolve to one physical device pixel through `AlmidyDivider` and `Border.hairline` (`1 / UIScreen.main.scale`). Four local dividers already using that exact formula—New Activity results/header rules, the Trip Overview shortcut-card divider, and Flight Search header separation—now use the canonical primitive with their colors and insets unchanged. All twelve screenshots remained exact; no baseline was recorded.
+
+The audit covered 61 source sites/constructors: 9 generic custom separators, 11 measured compatibility lines, 6 structural lines, 21 selected/outline borders, 7 map/media/rendering lines, and 7 UIKit-native separator configurations. Eight retained 0.5pt sites belong to Date/Time, Reservation, Location, Saved Place, Transportation, Flight, and route-card measured geometry. The 0.75pt map-control borders, 1/1.5/2pt structural and outline roles, 3pt selections, media/map strokes, and UIKit table separators remain specialized. No unexplained generic custom separator remains.
+
 ## Elevation
 
 | Family | Contract | Finding |
@@ -155,7 +161,7 @@ Pixel-protected: Trip Overview neutral/card rhythm; Globe cards/actions/controls
 
 1. **v2.4A — Neutral Surface Normalization (complete):** changed only `#F3F3F5` → `#F2F3F6`, preserved the semantic role, and reviewed/re-recorded the four Trip Overview states plus Place travel modes with zero geometry change.
 2. **v2.4B — Exact Elevation API Adoption (complete):** adopted `controlSubtle`, `controlRaised`, `floating`, and `cardRaised` at exact-match sites with all canonical PNGs unchanged.
-3. **v2.4C — Generic Separator Policy:** add missing baselines, then migrate genuine generic separators one family at a time.
+3. **v2.4C — Generic Separator Policy (complete):** canonicalized exact one-device-pixel constructions; retained measured and specialized widths; no PNG changed.
 4. **v2.4D — Shared Spacing Review:** page insets first, internal card insets second; no feature geometry.
 5. **v2.4E — Ordinary Card/Control Radius Review:** shared components only, with explicit visual approval.
 6. **Feature compatibility reviews:** opt-in proposals for Globe, Place, editors, and Trip Overview only when product benefit outweighs identity/regression risk.

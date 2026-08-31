@@ -263,6 +263,10 @@ Recommended implementation sequence: neutral surfaces; exact-equivalent elevatio
 
 **Completed August 29, 2026.** Exact reconstructed shadows now use the existing `controlSubtle`, `controlRaised`, `floating`, and `cardRaised` configurations. Six raw declaration blocks covering seven controls/cards were migrated, and the zero-use itinerary floating-shadow helper was removed. Canonical elevation values, local near-matches, renderer/media shadows, behavior, and all twelve baseline PNGs remain unchanged. The next proposed phase is v2.4C generic separator policy.
 
+#### v2.4C — Generic Separator Policy
+
+**Completed August 29, 2026.** Generic custom separators now consistently express one physical device pixel through `AlmidyDivider` and `Border.hairline`. Four exact local constructions adopted the primitive with zero pixel change. Eight 0.5pt editor/date/time lines remain documented measured compatibility geometry; 0.75pt map borders, structural/timeline lines, outlines, selection borders, media/map rendering, and UIKit-native separators remain specialized. Canonical colors, values, behavior, and all twelve PNGs are unchanged. The next proposed phase is v2.4D shared spacing review.
+
 ### v2.5 — Dark Mode
 
 Run as product-approved appearance work: foundations, utilities, editors, Map/Place, then Trip Overview/media. Do not combine with unrelated normalization.

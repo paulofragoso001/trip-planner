@@ -1757,7 +1757,7 @@ private final class NativeTripOverviewCustomizeViewController: UIViewController,
         addShortcut.addTarget(self, action: #selector(addShortcutTapped), for: .touchUpInside)
         addShortcut.translatesAutoresizingMaskIntoConstraints = false
         shortcutCard.addSubview(addShortcut)
-        let divider = UIView(); divider.backgroundColor = AlmidyDesignTokens.Color.settingsLine; divider.translatesAutoresizingMaskIntoConstraints = false; shortcutCard.addSubview(divider)
+        let divider = AlmidyDivider(color: AlmidyDesignTokens.Color.settingsLine); divider.translatesAutoresizingMaskIntoConstraints = false; shortcutCard.addSubview(divider)
         NSLayoutConstraint.activate([
             shortcutCard.heightAnchor.constraint(equalToConstant: 186),
             shortcutsScroll.leadingAnchor.constraint(equalTo: shortcutCard.leadingAnchor, constant: 12), shortcutsScroll.trailingAnchor.constraint(equalTo: shortcutCard.trailingAnchor, constant: -12),
@@ -1766,7 +1766,7 @@ private final class NativeTripOverviewCustomizeViewController: UIViewController,
             shortcutsStack.topAnchor.constraint(equalTo: shortcutsScroll.contentLayoutGuide.topAnchor), shortcutsStack.bottomAnchor.constraint(equalTo: shortcutsScroll.contentLayoutGuide.bottomAnchor),
             shortcutsStack.widthAnchor.constraint(equalTo: shortcutsScroll.frameLayoutGuide.widthAnchor),
             shortcutsStack.heightAnchor.constraint(equalTo: shortcutsScroll.frameLayoutGuide.heightAnchor),
-            divider.leadingAnchor.constraint(equalTo: shortcutCard.leadingAnchor, constant: 18), divider.trailingAnchor.constraint(equalTo: shortcutCard.trailingAnchor, constant: -18), divider.topAnchor.constraint(equalTo: shortcutsScroll.bottomAnchor), divider.heightAnchor.constraint(equalToConstant: 1 / UIScreen.main.scale),
+            divider.leadingAnchor.constraint(equalTo: shortcutCard.leadingAnchor, constant: 18), divider.trailingAnchor.constraint(equalTo: shortcutCard.trailingAnchor, constant: -18), divider.topAnchor.constraint(equalTo: shortcutsScroll.bottomAnchor),
             addShortcut.leadingAnchor.constraint(equalTo: shortcutCard.leadingAnchor, constant: 12), addShortcut.topAnchor.constraint(equalTo: divider.bottomAnchor, constant: 4), addShortcut.heightAnchor.constraint(equalToConstant: 52)
         ])
         contentStack.addArrangedSubview(shortcutCard)

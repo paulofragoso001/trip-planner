@@ -236,6 +236,8 @@ v2.4A completed the isolated `tripOverviewNeutralSurface` Light-mode normalizati
 
 v2.4B adopted existing elevation configurations only at exact semantic and numeric matches. Native Itinerary close/date controls and floating Today/Add controls, Flight and route-search cancel controls, and the Globe first-trip card now use `controlRaised`, `controlSubtle`, `floating`, or `cardRaised` as applicable. Place Save, search chrome, Globe action, annotation, map label, and media-text shadows remain feature/rendering-owned because their values differ. Figma elevation styles map to Control / Subtle, Control / Raised, Floating, Card / Raised, Sheet, Map / Pin, and Text / On Media without changing visual values.
 
+v2.4C defines generic custom separators as one physical device pixel: `1 / UIScreen.main.scale`, applied through `AlmidyDivider`/`Border.hairline`. Figma represents the concept as `Border / Hairline`; native resolves its physical thickness per display scale. Measured 0.5pt editor/date/time lines, structural/timeline geometry, 0.75pt map compatibility borders, ordinary outlines, selections, on-media/map strokes, and UIKit table separators remain distinct semantics. Divider colors and all protected geometry remain unchanged.
+
 ## Native Design System v1 closure
 
 **Status:** Complete and frozen

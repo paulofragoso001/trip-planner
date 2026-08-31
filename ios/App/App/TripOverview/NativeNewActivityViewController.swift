@@ -418,7 +418,7 @@ final class NativeNewActivityViewController: UIViewController, UITableViewDataSo
     private let nearbySearchRegion: MKCoordinateRegion?
     private let sheetBlurView = UIVisualEffectView(effect: UIBlurEffect(style: .systemChromeMaterial))
     private let sheetReadabilityVeil = UIView()
-    private let headerResultsDivider = UIView()
+    private let headerResultsDivider = AlmidyDivider(color: .separator)
     // Grouped tables scroll section headers with their content. A plain table
     // pins its current header, which collides with rows at the compact sheet
     // detent and makes the collapsed New Activity view appear broken.
@@ -712,8 +712,6 @@ final class NativeNewActivityViewController: UIViewController, UITableViewDataSo
         tableView.tableFooterView = makeManualFooter()
         view.addSubview(tableView)
         headerResultsDivider.translatesAutoresizingMaskIntoConstraints = false
-        headerResultsDivider.isUserInteractionEnabled = false
-        headerResultsDivider.backgroundColor = .separator
         view.addSubview(headerResultsDivider)
         NSLayoutConstraint.activate([
             tableView.topAnchor.constraint(equalTo: filteredManualStack.bottomAnchor),
@@ -723,7 +721,6 @@ final class NativeNewActivityViewController: UIViewController, UITableViewDataSo
             headerResultsDivider.topAnchor.constraint(equalTo: tableView.topAnchor),
             headerResultsDivider.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             headerResultsDivider.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            headerResultsDivider.heightAnchor.constraint(equalToConstant: 1 / UIScreen.main.scale),
         ])
     }
 
@@ -841,8 +838,7 @@ final class NativeNewActivityViewController: UIViewController, UITableViewDataSo
         label.textColor = .secondaryLabel
         label.translatesAutoresizingMaskIntoConstraints = false
 
-        let rule = UIView()
-        rule.backgroundColor = .separator
+        let rule = AlmidyDivider(color: .separator)
         rule.translatesAutoresizingMaskIntoConstraints = false
 
         header.addSubview(label)
@@ -854,7 +850,6 @@ final class NativeNewActivityViewController: UIViewController, UITableViewDataSo
             rule.leadingAnchor.constraint(equalTo: header.leadingAnchor, constant: 16),
             rule.trailingAnchor.constraint(equalTo: header.trailingAnchor),
             rule.bottomAnchor.constraint(equalTo: header.bottomAnchor),
-            rule.heightAnchor.constraint(equalToConstant: 1 / UIScreen.main.scale),
         ])
         return header
     }
